@@ -53,22 +53,50 @@ composeAst (cf, rf, sf, f) (cg, rg, sg, g) =
    g ++ (W "id#", sf ++ [(cf+1,x) | x <- [0..rg'-1]]) : f)        
   where rg' = max 0 (rg - length sf)
 
-evalA :: AST -> Maybe [Value]
+--evalA :: AST -> Maybe (AST, Value)
 evalA (c, r, s, g) | r /= 0 = Nothing
                    | otherwise = Just $ getArgs s vs
   where vs = foldr (\(x, ds) s -> exec x (getArgs ds s) : s) [] g
 
-eval :: [Value] -> Maybe [Value]
-eval = evalA . ast
+reachable :: [Int] -> [[Int]] -> ([Int], [Bool])
+reachable = mapAccumL f
+  where f s d | 0 `elem` s = (dec s ++ d, True)
+              | otherwise = (dec s, False)
+        dec = map (subtract 1) . filter (> 0)
+
+-- selectively remove items from the AST
+collapse g s = reverse $ foldl (\g' (b, x) -> if b then x:g' else moveDep (-1) g') [] (zip s g)
 
 -- remove dropped branches
+prune (c, r, s, g) = (length g', r, s', g')
+  where (_, bs) = reachable (map fst s) (map (map fst . snd) g)
+        (_,s'):g' = collapse ((W "", s):g) (True:bs)
+
+-- splits the AST, separating the first indivisible calculation from the rest of the AST
+-- TODO: will need to check if reach is outside graph to determine number of required args
+split (c, r, s, g) = ((length gh, if and bs then r else 0, sh', gh), (length gt, if and bs then 0 else r, st', gt))
+  where (_, bs) = reachable [fst $ head s] (map (map fst . snd) g)
+        sh = filter ((bs !!) . fst) s
+        st = filter (not . flip elem sh) s
+        (_, sh'):gh = collapse ((W "", sh) : g) (True : bs)
+        (_, st'):gt = collapse ((W "", st) : g) (True : map not bs)
+
+astGraph (_,_,_,g) = g
+
+{-
+eval :: [Value] -> Maybe [Value]
+eval = evalA . ast
+-}
+{-
 prune :: AST -> AST
 prune (c, r, s, g) = (length g', r, s', g')
   where ((_, s'):g') = reverse . snd $ foldl shift ([0], []) ((W "", s):g)
-        shift (s, g) (x, ds) | 0 `elem` s = (map fst ds ++ (filter (>=0) . map (subtract 1) $ s), (x, ds) : g)
-                             | otherwise = (filter (>= 0) . map (subtract 1) $ s, update g)
-        update = zipWith shiftDep [0..] :: [ValInfo] -> [ValInfo]
-          where shiftDep n (x, ds) = (x, map (\(d, y) -> if d > n then (d-1, y) else (d, y)) ds) :: ValInfo
+
+shift (s, g) (x, ds) | 0 `elem` s = (map fst ds ++ (filter (>=0) . map (subtract 1) $ s), (x, ds) : g)
+                     | otherwise = (filter (>= 0) . map (subtract 1) $ s, moveDep (-1) g)
+-}
+moveDep o = zipWith f [0..] :: [ValInfo] -> [ValInfo]
+  where f n (x, ds) = (x, map (\(d, y) -> if d > n then (d+o, y) else (d, y)) ds) :: ValInfo
 
 exec (W "+") [I y, I x] = [I $ x + y]
 exec (W "-") [I y, I x] = [I $ x - y]
