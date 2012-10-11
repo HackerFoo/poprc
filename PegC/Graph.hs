@@ -22,6 +22,7 @@ import PegC.Value
 import Control.Monad.State
 import Data.List
 import Debug.Trace
+import Control.Applicative
 {-
 arity = foldl' composeArity (0,0)
 
@@ -29,12 +30,10 @@ composeArity (i0, o0) (i1, o1) | d >= 0 = (i0, o1 + d)
                                | otherwise = (i0 - d, o1)
   where d = o0 - i1
 -}
-type ValInfo = (Value, [(Int, Int)])
-type AST = (Int, Int, [(Int, Int)], [ValInfo])
 
 -- dependencies
 ast :: [Value] -> AST
-ast = foldl' (\x v -> op v (arity v) x) (0, 0, [], [])
+ast = foldl' (\x v -> op (q v) (arity v) x) (0, 0, [], [])
       -- c --> output count
       -- r --> remaining values required
       -- s --> stack holding locations of outputs
@@ -44,19 +43,44 @@ ast = foldl' (\x v -> op v (arity v) x) (0, 0, [], [])
                 r' = i - length a
                 s'' = [(0, x) | x <- [0..o-1]] ++ map (\(x, y) -> (x+1, y)) s'
                 g' = (v, a ++ [(c, x) | x <- [r..r+r'-1]]) : g
+        q (L x) = Q (ast x)
+        q x = x
 
 composeAst :: AST -> AST -> AST
-composeAst (cf, rf, sf, f) (cg, rg, sg, g) =
-  (cf + cg + 1,
-   rf + rg',
-   sg ++ map (\(x, y) -> (x+cg+1, y)) (drop rg sf),
-   g ++ (W "id#", sf ++ [(cf+1,x) | x <- [0..rg'-1]]) : f)        
+composeAst (cf, rf, sf, f) (cg, rg, sg, g)
+  | rg == 0 = (cf + cg, rf, sg ++ map (\(x, y) -> (x+cg, y)) sf, g ++ f)
+  | otherwise = (cf + cg + 1,
+                 rf + rg',
+                 sg ++ map (\(x, y) -> (x+cg+1, y)) (drop rg sf),
+                 g ++ (W "id#", sf ++ [(cf+1,x) | x <- [0..rg'-1]]) : f)        
   where rg' = max 0 (rg - length sf)
 
---evalA :: AST -> Maybe (AST, Value)
+evalA :: AST -> Maybe [Value]
 evalA (c, r, s, g) | r /= 0 = Nothing
-                   | otherwise = Just $ getArgs s vs
-  where vs = foldr (\(x, ds) s -> exec x (getArgs ds s) : s) [] g
+                   | otherwise = getArgs s <$> foldM (\s (x, ds) -> (:s) <$> exec x (getArgs ds s)) [] (reverse g)
+
+generate n = generate' n . absRef
+generate' :: String -> AST -> (String, String)
+generate' n (c, r, s, g) = (sig, "{\n" ++ dec ++ body ++ tail ++ "}\n")
+  where sig = "void " ++ n ++ "(" ++ comma (["int " ++ varString (0, x) | x <- [0..r-1]] ++
+                                            ["int *out" ++ show n | n <- [0..length s-1]]) ++ ")"
+        intVs = filter (\(x,_) -> x > 0) . nub . sort . (s++) . concatMap snd $ g
+        dec = "  int " ++ comma (map varString intVs) ++ ";\n"
+        body = concatMap (\((w, rs), n) -> "  " ++ gen w rs n ++ ";\n") $ zip (reverse g) [1..]
+        tail = concat ["  " ++ copyOut x n ++ ";\n" | (x, n) <- zip s [0..]]
+
+proto (h, b) = h ++ ";\n"
+func (h, b) = h ++ "\n" ++ b
+
+shiftFst n (x, y) = (n-x-1, y)
+
+-- make references absolute (instead of relative)
+absRef (c, r, s, g) = (c, r, map (shiftFst (c+1)) s, reverse g')
+  where g' = map (\(n, (w, xs)) -> (w, map (shiftFst n) xs)) . zip [1..] . reverse $ g 
+
+varString (0, y) = "in" ++ show y
+varString (x, y) = "var" ++ show x ++ "_" ++ show y
+copyOut x n = "*out" ++ show n ++ " = " ++ varString x
 
 reachable :: [Int] -> [[Int]] -> ([Int], [Bool])
 reachable = mapAccumL f
@@ -72,9 +96,16 @@ prune (c, r, s, g) = (length g', r, s', g')
   where (_, bs) = reachable (map fst s) (map (map fst . snd) g)
         (_,s'):g' = collapse ((W "", s):g) (True:bs)
 
+evalS a = do 
+  (h, t) <- split a
+  eh <- evalA h
+  return (eh, t)
+
 -- splits the AST, separating the first indivisible calculation from the rest of the AST
 -- TODO: will need to check if reach is outside graph to determine number of required args
-split (c, r, s, g) = ((length gh, if and bs then r else 0, sh', gh), (length gt, if and bs then 0 else r, st', gt))
+split (c, r, s, g)
+  | and bs && r > 0 = Nothing
+  | otherwise = Just ((length gh, 0, sh', gh), (length gt, r, st', gt))
   where (_, bs) = reachable [fst $ head s] (map (map fst . snd) g)
         sh = filter ((bs !!) . fst) s
         st = filter (not . flip elem sh) s
@@ -98,24 +129,49 @@ shift (s, g) (x, ds) | 0 `elem` s = (map fst ds ++ (filter (>=0) . map (subtract
 moveDep o = zipWith f [0..] :: [ValInfo] -> [ValInfo]
   where f n (x, ds) = (x, map (\(d, y) -> if d > n then (d+o, y) else (d, y)) ds) :: ValInfo
 
-exec (W "+") [I y, I x] = [I $ x + y]
-exec (W "-") [I y, I x] = [I $ x - y]
-exec (W "dup") [x] = [x, x]
-exec (W "drop") [x] = []
-exec (W "swap") [x, y] = [y, x]
-exec (W "id#") x = x
-exec x [] = [x]
+exec (W "+") [I y, I x] = return [I $ x + y]
+exec (W "-") [I y, I x] = return [I $ x - y]
+exec (W "dup") [x] = return [x, x]
+exec (W "drop") [x] = return []
+exec (W "swap") [x, y] = return [y, x]
+exec (W "id#") x = return x
+exec (W "!") [A "True"] = return [A "True"]
+exec (W "!") [_] = mzero
+exec (W "popr") [Q ast] = do
+  (h, t) <- evalS ast
+  return [head h, Q t]
+exec x [] = return [x]
+
+comma = concat . intersperse ", "
+
+gen_op op [y, x] o = varString (o, 0) ++ " = " ++ varString x ++ " " ++ op ++ " " ++ varString y
+
+gen (W "+") i o = gen_op "+" i o
+gen (W "-") i o = gen_op "-" i o
+gen (W "*") i o = gen_op "*" i o
+gen (W "/") i o = gen_op "/" i o
+gen (I x) [] o = varString (o, 0) ++ " = " ++ show x
+gen (W w) i o = w ++ "(" ++ comma (map varString i ++ map (\x -> "&" ++ varString (o, x)) [0..oc-1]) ++ ")"
+  where (ic, oc) = arity (W w)
 
 getArgs ds s = map (\(x,y) -> s!!x!!y) ds
 
-arity x@(W "+") = (2,1)
-arity x@(W "-") = (2,1)
-arity x@(W "dup") = (1,2)
-arity x@(W "drop") = (1,0)
-arity x@(W "swap") = (2,2)
-arity x@(W "\\/") = (2,1)
-arity x@(W "!") = (1,1)
-arity x@(W ".") = (2,1)
+tok s = case tokenize s of
+  Right x -> x
+  Left _ -> []
+
+arity (W "+") = (2,1)
+arity (W "-") = (2,1)
+arity (W "*") = (2,1)
+arity (W "/") = (2,1)
+arity (W "dup") = (1,2)
+arity (W "drop") = (1,0)
+arity (W "swap") = (2,2)
+arity (W "\\/") = (2,1)
+arity (W "!") = (1,1)
+arity (W ".") = (2,1)
+arity (W "popr") = (1,2)
+arity (W "pushr") = (2,1)
 arity _ = (0,1)
 
 -- $ forces arg to calculate arity

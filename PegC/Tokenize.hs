@@ -42,7 +42,7 @@ word = W <$> ((:) <$> (lower <|> char ':') <*> many (alphaNum <|> oneOf "?_'#"))
 
 atom :: Parser Value
 atom = A <$> (((:) <$> upper <*> many (alphaNum <|> oneOf "?_'#")) <|>
-              ((:[]) <$>  oneOf "[_"))
+              ((:[]) <$>  oneOf "_"))
 
 var :: Parser Value
 var = V <$> (char '?' *> many1 (alphaNum <|> char '_'))
@@ -51,8 +51,14 @@ svar :: Parser Value
 svar = S <$> (char '@' *> many1 (alphaNum <|> char '_'))
 
 symbol :: Parser Value
-symbol = W <$> (many1 (oneOf "!@#$%^&*()-+=<>.~/?\\|") <|>
-                fmap (:[]) (oneOf "]{};"))
+symbol = W <$> (many1 (oneOf "!@#$%^&*()-+=<>.~/?\\|")) -- <|>
+                -- fmap (:[]) (oneOf "]{};"))
+
+subExpr :: Parser Value
+subExpr = do char '['
+             s <- stackExpr
+             char ']'
+             return (L s)
 
 quote :: Parser Value
 quote = L . (:[]) <$> (char '`' *> value)
@@ -67,6 +73,7 @@ value :: Parser Value
 value = try number        <|>
         try var           <|>
         try svar          <|>
+        try subExpr       <|>
         try symbol        <|>
         word              <|>
         atom              <|>
@@ -77,7 +84,7 @@ value = try number        <|>
 comment = string "--" >> many (noneOf "\n")
 
 stackExpr :: Parser [Value]
-stackExpr = concatMap f <$> (whiteSpace >> value `sepEndBy` whiteSpace <* optional comment)
+stackExpr = {-concatMap f <$>-} (whiteSpace >> value `sepEndBy` whiteSpace <* optional comment)
   where f (W "{") = [A "[", A "["]
         f (W "}") = [W "]", W "]"]
         f (W ";") = [A "[", W "]"]

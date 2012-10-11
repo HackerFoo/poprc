@@ -25,12 +25,16 @@ data Value = F Double  -- float
            | I Integer -- integer
            | C Char    -- character
            | L [Value] -- list
+           | Q AST     -- quote
            | W String  -- word
            | A String  -- atom
            | V String  -- variable
            | S String  -- stack variable
            | Io        -- I/O token
   deriving (Show, Eq, Ord)
+
+type ValInfo = (Value, [(Int, Int)])
+type AST = (Int, Int, [(Int, Int)], [ValInfo])
 
 isWord (W _) = True
 isWord _ = False
