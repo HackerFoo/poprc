@@ -23,6 +23,7 @@ import Control.Monad.State
 import Data.List
 import Debug.Trace
 import Control.Applicative
+import Control.Arrow (first, second)
 {-
 arity = foldl' composeArity (0,0)
 
@@ -52,7 +53,7 @@ composeAst (cf, rf, sf, f) (cg, rg, sg, g)
   | otherwise = (cf + cg + 1,
                  rf + rg',
                  sg ++ map (\(x, y) -> (x+cg+1, y)) (drop rg sf),
-                 g ++ (W "id#", sf ++ [(cf+1,x) | x <- [0..rg'-1]]) : f)        
+                 g ++ (W "id", sf ++ [(cf+1,x) | x <- [0..rg'-1]]) : f)        
   where rg' = max 0 (rg - length sf)
 
 evalA :: AST -> Maybe [Value]
@@ -96,10 +97,32 @@ prune (c, r, s, g) = (length g', r, s', g')
   where (_, bs) = reachable (map fst s) (map (map fst . snd) g)
         (_,s'):g' = collapse ((W "", s):g) (True:bs)
 
+swizzle (c, r, s, g) = (length g'', r, s', g'')
+  where g' = map (\((w, ds):g) -> (w, map (deepGet g) ds)) . init . tails $ (W "",s) : g
+        ((_,s'):g'') = collapse g' (map f g')
+        f (W "dup", _) = False
+        f (W "swap", _) = False
+        f (W "id", _) = False
+        f _ = True
+
+deepGet g (x,y) = case h of
+  (W "swap", ds) -> cont (reverse ds !! y)
+  (W "id", ds) -> cont (ds !! y)
+  (W "dup", [d]) -> cont d
+  _ -> (x, y)
+  where h:g' = drop x g
+        cont = first ((+1).(+x)) . deepGet g'
+
 evalS a = do 
   (h, t) <- split a
   eh <- evalA h
   return (eh, t)
+  
+outDep (c, r, s, g) = transpose $ map (\x -> snd . reachable [fst x] $ map (map fst . snd) g) s
+
+comp = swizzle . ast . tok
+
+--fragments
 
 -- splits the AST, separating the first indivisible calculation from the rest of the AST
 -- TODO: will need to check if reach is outside graph to determine number of required args
@@ -134,7 +157,7 @@ exec (W "-") [I y, I x] = return [I $ x - y]
 exec (W "dup") [x] = return [x, x]
 exec (W "drop") [x] = return []
 exec (W "swap") [x, y] = return [y, x]
-exec (W "id#") x = return x
+exec (W "id") x = return x
 exec (W "!") [A "True"] = return [A "True"]
 exec (W "!") [_] = mzero
 exec (W "popr") [Q ast] = do
