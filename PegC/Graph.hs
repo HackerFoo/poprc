@@ -89,6 +89,12 @@ reachable = mapAccumL f
               | otherwise = (dec s, False)
         dec = map (subtract 1) . filter (> 0)
 
+reachable2 :: [(Int, Int)] -> [[(Int, Int)]] -> ([(Int, Int)], [Bool])
+reachable2 = mapAccumL f
+  where f s d | 0 `elem` map fst s = (dec s ++ d, True)
+              | otherwise = (dec s, False)
+        dec = map (first $ subtract 1) . filter ((> 0) . fst)
+
 -- selectively remove items from the AST
 collapse g s = reverse $ foldl (\g' (b, x) -> if b then x:g' else moveDep (-1) g') [] (zip s g)
 
@@ -105,20 +111,20 @@ swizzle (c, r, s, g) = (length g'', r, s', g'')
         f (W "id", _) = False
         f _ = True
 
-deepGet g (x,y) = case h of
-  (W "swap", ds) -> cont (reverse ds !! y)
-  (W "id", ds) -> cont (ds !! y)
-  (W "dup", [d]) -> cont d
+deepGet g (x,y) = case drop x g of
+  (W "swap", ds) : g' -> cont g' (reverse ds !! y)
+  (W "id", ds) : g' -> cont g' (ds !! y)
+  (W "dup", [d]) : g' -> cont g' d
   _ -> (x, y)
-  where h:g' = drop x g
-        cont = first ((+1).(+x)) . deepGet g'
+  where cont g' = first ((+1).(+x)) . deepGet g'
 
 evalS a = do 
   (h, t) <- split a
   eh <- evalA h
   return (eh, t)
   
-outDep (c, r, s, g) = transpose $ map (\x -> snd . reachable [fst x] $ map (map fst . snd) g) s
+outDep (c, r, s, g) = ((map.map) snd rs, transpose bs)
+  where (rs, bs) = unzip $ map (\x -> reachable2 [x] $ map snd g) s
 
 comp = swizzle . ast . tok
 
