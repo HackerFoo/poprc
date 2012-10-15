@@ -24,6 +24,8 @@ import Data.List
 import Debug.Trace
 import Control.Applicative
 import Control.Arrow (first, second)
+import Data.Maybe
+
 {-
 arity = foldl' composeArity (0,0)
 
@@ -117,30 +119,60 @@ deepGet g (x,y) = case drop x g of
   (W "dup", [d]) : g' -> cont g' d
   _ -> (x, y)
   where cont g' = first ((+1).(+x)) . deepGet g'
-
+{-
 evalS a = do 
   (h, t) <- split a
   eh <- evalA h
   return (eh, t)
-  
-outDep (c, r, s, g) = ((map.map) snd rs, transpose bs)
-  where (rs, bs) = unzip $ map (\x -> reachable2 [x] $ map snd g) s
+-}
+outDep (c, r, s, g) = (reverse $ (binSet . map snd) `map` rs, map binary $ transpose bs)
+  where (rs, bs) = unzip . map (flip reachable2 (map snd g) . (:[])) $ s
 
 comp = swizzle . ast . tok
 
---fragments
+binary = foldl' (\s x -> s*2 + if x then 1 else 0) 0
+binSet = foldl' (\s x -> s + 2^x) 0
 
+fragment ast = (rs, [ collapse g (map (==z) od) | z <- ids ])
+  where (rs, od) = outDep ast
+        ids = nub . sort $ od
+        (c, r, s, g) = ast
+{-
+fragGen n ast = 
+-}
 -- splits the AST, separating the first indivisible calculation from the rest of the AST
 -- TODO: will need to check if reach is outside graph to determine number of required args
+{-
 split (c, r, s, g)
-  | and bs && r > 0 = Nothing
-  | otherwise = Just ((length gh, 0, sh', gh), (length gt, r, st', gt))
-  where (_, bs) = reachable [fst $ head s] (map (map fst . snd) g)
-        sh = filter ((bs !!) . fst) s
-        st = filter (not . flip elem sh) s
-        (_, sh'):gh = collapse ((W "", sh) : g) (True : bs)
-        (_, st'):gt = collapse ((W "", st) : g) (True : map not bs)
+  | not (null rem) = Nothing
+  | otherwise = Just ((length gh, 0, [head s], gh), (prune (length gt, r, ts, gt), rt))
+  where (rem, bs) = reachable [fst $ head s] (map (map fst . snd) g)
+        gh = collapse g bs
+        (rt, (_, ts):gt) = replaceRef ((W "", tail s) : g) (False:bs) 
 
+-- uses negative values to represent outside references
+replaceRef g bs = (map (\(x,y) -> (-x-1, y)) refs, g'')
+  where mn = snd $ mapAccumL (\n b -> if b then (n+1, Just n) else (n, Nothing)) 1 bs
+        g' = [ maybe (w, [ (maybe x negate (m!!x), y) | (x,y) <- ds ])
+                           (const (w,ds)) h | ((w, ds), h : m) <- zip g (tails mn) ]
+        refs = nub $ sort [ (x, y) | (_, ds) <- g', (x, y) <- ds, x < 0 ]
+        rm = zip refs [0..]
+        g'' = [ (w, [ if x < 0 then (-1, fromJust (lookup (x,y) rm)) else (x, y) | (x,y) <- ds ]) | (w, ds) <- g' ]
+
+erasePopr = foldl
+  where f s (W "popr", [(x,y)])
+-}
+
+{-
+unRef g = refs
+  where refs = [ (x,y) | ((R x, _), y) <- depList g ]
+          
+depList [] = []
+depList ((_,ds):g) = [(g!!x, y) | (x,y) <- ds, x < length g] ++ depList g 
+
+addRef n (R x, r) = (R (x+n), r)
+addRef _ x = x
+-}
 astGraph (_,_,_,g) = g
 
 {-
@@ -166,9 +198,11 @@ exec (W "swap") [x, y] = return [y, x]
 exec (W "id") x = return x
 exec (W "!") [A "True"] = return [A "True"]
 exec (W "!") [_] = mzero
+{-
 exec (W "popr") [Q ast] = do
   (h, t) <- evalS ast
   return [head h, Q t]
+-}
 exec x [] = return [x]
 
 comma = concat . intersperse ", "

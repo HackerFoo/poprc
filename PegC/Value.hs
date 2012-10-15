@@ -31,6 +31,7 @@ data Value = F Double  -- float
            | V String  -- variable
            | S String  -- stack variable
            | Io        -- I/O token
+           | R Int     -- reference
   deriving (Show, Eq, Ord)
 
 type ValInfo = (Value, [(Int, Int)])
@@ -71,6 +72,9 @@ isVar _ = False
 
 isStackVar (S _) = True
 isStackVar _ = False
+
+isRef (R _) = True
+isRef _ = False
 
 has p (L l) = any (has p) l
 has p x = p x
