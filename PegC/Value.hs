@@ -25,17 +25,17 @@ data Value = F Double  -- float
            | I Integer -- integer
            | C Char    -- character
            | L [Value] -- list
-           | Q AST     -- quote
+           | Q [AST]   -- quote
            | W String  -- word
            | A String  -- atom
            | V String  -- variable
            | S String  -- stack variable
            | Io        -- I/O token
            | R Int     -- reference
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq)
 
-type ValInfo = (Value, [(Int, Int)])
-type AST = (Int, Int, [(Int, Int)], [ValInfo])
+data AST = Node Value Int [AST] deriving (Show, Eq)
+
 
 isWord (W _) = True
 isWord _ = False
