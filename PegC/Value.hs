@@ -36,7 +36,6 @@ data Value = F Double  -- float
 
 data AST = Node Value Int [AST] deriving (Show, Eq)
 
-
 isWord (W _) = True
 isWord _ = False
 
