@@ -24,6 +24,7 @@ import Data.List
 import Control.Monad
 import qualified Data.IntMap as M
 import Control.Monad.State
+import Control.Monad.Writer
 import Debug.Trace
 
 arity (W "+") = (2,1)
@@ -72,8 +73,8 @@ refAdd n = map (mapAST f)
         f v i ns = Node v i ns
 
 mapAST f (Node x i ns) = f x i $ mapAST f `map` ns
-mapASTM f (Node x i ns) = f x i =<< mapM (mapASTM f) ns
-
+mapASTM f (Node x i ns) = f x i $ mapM (mapASTM f) ns
+{-
 mapASTMR f (Node (R r) _ [n]) = do
   m <- get
   case M.lookup r m of
@@ -81,45 +82,107 @@ mapASTMR f (Node (R r) _ [n]) = do
                   modify (M.insert r x)
                   return x
     Just x -> return x
-mapASTMR f (Node x i ns) = f x i =<< mapM (mapASTMR f) ns
-
+mapASTMR f (Node x i ns) = f x i $ mapM (mapASTMR f) ns
+-}
 swizzle = mapASTM f
-  where f (W "dup") _ [x] = return x
-        f (W "id") n xs = guard (n < length xs) >> return (xs !! n)
-        f (W "swap") n xs = guard (n < length xs) >> return (reverse xs !! n)
-        f (W "popr") 0 [q] = do Q (x:xs) <- eval q
-                                guard $ req [x] == 0
-                                return x
-        f (W "popr") 1 [q] = do Q (x:xs) <- eval q
-                                guard $ req [x] == 0
-                                return $ Node (Q xs) 0 []
-        f (L l) i xs = return $ Node (Q (ast l)) i xs
-        f (W "quot") _ [x] = return $ Node (Q [x]) 0 []
-        f v i xs = return $ Node v i xs
+  where f (W "dup") _ m = fmap head m
+        f (W "id") n m = do xs <- m
+                            guard (n < length xs)
+                            return (xs !! n)
+        f (W "swap") n m = do xs <- m
+                              guard (n < length xs)
+                              return (reverse xs !! n)
+        f (W "popr") 0 m = do [q] <- m
+                              Q (x:xs) <- eval q
+                              guard $ req [x] == 0
+                              return x
+        f (W "popr") 1 m = do [q] <- m
+                              Q (x:xs) <- eval q
+                              guard $ req [x] == 0
+                              return $ Node (Q xs) 0 []
+        f (L l) i m = Node (Q (ast l)) i `fmap` m
+        f (W "quot") _ m = do [x] <- m
+                              return $ Node (Q [x]) 0 []
+        f v i m = Node v i `fmap` m
                 
 tok x = case tokenize x of
   Left _ -> mzero
   Right x -> return x
 
-eval = mapASTMR exec
+eval = mapASTM exec
 
 composeAST x y = map (mapAST f) y' ++ drop (req y) x
   where f (W "in") n [] = x!!n
         f v i xs = Node v i xs
         y' = refAdd (refCount x) y
 
-exec (W "+") _ [I y, I x] = return . I $ x + y
-exec (W "-") _ [I y, I x] = return . I $ x - y
-exec (W "*") _ [I y, I x] = return . I $ x * y
-exec (W "div") _ [I y, I x] = return . I $ x `div` y
-exec (W ".") _ [Q y, Q x] = return . Q $ composeAST x y
-exec (W "dup") _ [x] = return x
-exec (W "id") n xs | n < length xs = return $ xs !! n
-exec (W "swap") n xs | n < length xs = return $ reverse xs !! n
-exec (R _) _ [x] = return x
+exec (W "+") _ m = do [I y, I x] <- m
+                      return . I $ x + y
+exec (W "-") _ m = do [I y, I x] <- m 
+                      return . I $ x - y
+exec (W "*") _ m = do [I y, I x] <- m 
+                      return . I $ x * y
+exec (W "div") _ m = do [I y, I x] <- m
+                        return . I $ x `div` y
+exec (W ".") _ m = do [Q y, Q x] <- m
+                      return . Q $ composeAST x y
+exec (W "dup") _ m = do [x] <- m
+                        return x
+exec (W "id") n m = do xs <- m
+                       guard $ n < length xs
+                       return $ xs !! n
+exec (W "swap") n m = do xs <- m
+                         guard $ n < length xs
+                         return $ reverse xs !! n
+exec (R x) _ y = do m <- get
+                    case M.lookup x m of
+                      Nothing -> do [z] <- y
+                                    modify (M.insert x z)
+                                    return z
+                      Just z -> return z
 exec (W _) _ _ = mzero
 exec x _ _ = return x
+
+varName x = "var" ++ show x
+
+gen (W "+") _ b = do [x, y] <- b
+                     (m, c, i) <- get
+                     tell [varName c ++ " = " ++ varName x ++ " + " ++ varName y]
+                     put (m, c+1, i)
+                     return c
+gen (I x) _ _ = do (m, c, i) <- get
+                   tell [varName c ++ " = " ++ show x]
+                   put (m, c+1, i)
+                   return c
+gen (R n) _ b = do (m, _, _) <- get
+                   case M.lookup n m of
+                     Nothing -> do [x] <- b
+                                   modify (\(m, c, i) -> (M.insert n x m, c, i))
+                                   return x
+                     Just x -> return x
+gen (W "in") x _ = do (m, c, i) <- get
+                      put (m, c+1, c:i)
+                      return c
 
 comp = mapM swizzle . ast <=< tok
 comp' = flip evalStateT M.empty . comp
 run = flip evalStateT M.empty . (mapM eval <=< comp)
+
+commas = concat . intersperse ", "
+
+generate src = do
+  a <- comp' src          
+  ((o, (_, n, i)), s) <- runWriterT . flip runStateT (M.empty, 0, []) $ mapM (mapASTM gen) a
+  return (i, o, n, s)
+
+genFunc n x = func n `fmap` generate x
+
+outName n = "out" ++ show n
+
+proto name i o = "void " ++ name ++ "( " ++ commas (["int " ++ varName x | x <- i] ++
+                                                    ["int* " ++ outName x | x <- [0..length o - 1]]) ++ " )"
+func name (i, o, n, s) = dec ++ "\n{\n  int " ++ commas [varName x | x <- [0..n-1], x `notElem` i] ++ ";\n" ++
+                         concatMap (("  "++).(++ ";\n")) s ++
+                         concatMap (\(x, y) -> "  *" ++ outName y ++ " = " ++ varName x ++ ";\n") (zip o [0..]) ++
+                         "}\n"
+  where dec = proto name i o
