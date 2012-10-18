@@ -161,28 +161,36 @@ gen (R n) _ b = do (m, _, _) <- get
                                    return x
                      Just x -> return x
 gen (W "in") x _ = do (m, c, i) <- get
-                      put (m, c+1, c:i)
+                      put (m, c+1, (x,c):i)
                       return c
 
-comp = mapM swizzle . ast <=< tok
+comp x = do (a, (r, _)) <- ast' 0 `fmap` tok x
+            a' <- mapM swizzle a
+            return (a', r)
 comp' = flip evalStateT M.empty . comp
-run = flip evalStateT M.empty . (mapM eval <=< comp)
+run = flip evalStateT M.empty . (mapM eval . fst <=< comp)
 
 commas = concat . intersperse ", "
 
 generate src = do
-  a <- comp' src          
+  (a, r) <- comp' src
   ((o, (_, n, i)), s) <- runWriterT . flip runStateT (M.empty, 0, []) $ mapM (mapASTM gen) a
-  return (i, o, n, s)
+  return (i, r, o, n, s)
 
 genFunc n x = func n `fmap` generate x
 
 outName n = "out" ++ show n
+inName n = "in" ++ show n
 
-proto name i o = "void " ++ name ++ "( " ++ commas (["int " ++ varName x | x <- i] ++
-                                                    ["int* " ++ outName x | x <- [0..length o - 1]]) ++ " )"
-func name (i, o, n, s) = dec ++ "\n{\n  int " ++ commas [varName x | x <- [0..n-1], x `notElem` i] ++ ";\n" ++
-                         concatMap (("  "++).(++ ";\n")) s ++
-                         concatMap (\(x, y) -> "  *" ++ outName y ++ " = " ++ varName x ++ ";\n") (zip o [0..]) ++
-                         "}\n"
-  where dec = proto name i o
+proto name r o = "void " ++ name ++ "( " ++ commas (["int in" ++ show x | x <- [0..r-1]] ++
+                                                    ["int* out" ++ show x | x <- [0..length o - 1]]) ++ " )"
+func name (i, r, o, n, s) = proto name r o ++ "\n{\n" ++
+                            declare ++
+                            copyIn ++
+                            concatMap (("  "++).(++ ";\n")) s ++
+                            copyOut ++
+                            "}\n"
+  where declare | n - length i > 0 = "  int " ++ commas [varName x | x <- [0..n-1]] ++ ";\n"
+                | otherwise = ""
+        copyIn = concatMap (\(x, y) -> "  " ++ varName y ++ " = in" ++ show x ++ ";\n") i
+        copyOut = concatMap (\(x, y) -> "  *out" ++ show y ++ " = " ++ varName x ++ ";\n") (zip o [0..])
