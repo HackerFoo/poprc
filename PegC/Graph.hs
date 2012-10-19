@@ -43,48 +43,39 @@ arity (W "quot") = (1,1)
 arity (R _) = (1,1)
 arity _ = (0,1)
 
-ast = fst . ast' 0
-
-ast' r = foldl' f ([], (0, r))
-  where f (s, (rc, r)) x = (on ++ s', (if i > a then rc + i - a else rc, r'))
+ast xs = foldl' f (AST [] 0 0) xs
+  where f (AST s rf rq) x = AST (on ++ s')
+                                (if x == W "dup" then rf+1 else rf)
+                                (max rq (rq + i - a))
           where (i, o) = arity x
-                (r', x') = case x of
-                  (W "dup") -> (r+1, x)
-                  (L xs) -> let (a, (_, r')) = ast' r xs in (r', Q a)
-                  _ -> (r, x)
+                x' = case x of
+                  (L xs) -> Q $ ast xs
+                  _ -> x
                 on = if x /= W "dup"
                        then [Node x' n c | n <- [0..o-1]]
-                       else [Node (R r) n [Node x n c] | n <- [0..o-1]]
-                (c, s') = splitAt i $ s ++ [Node (W "in") n [] | n <- [rc..rc+i-a-1]]
+                       else [Node (R rf) n [Node x n c] | n <- [0..o-1]]
+                (c, s') = splitAt i $ s ++ [Node (W "in") n [] | n <- [rq..rq+i-a-1]]
                 a = length s
-
+{-
 req xs = foldl' req' (-1) xs + 1
-  where req' n (Node (W "in") x ns) = foldl' req' (max x n) ns
+  where --req' n (Node (W "in") x ns) = foldl' req' (max x n) ns
         req' n (Node _ _ ns) = foldl' req' n ns
 
 refCount xs = foldl' rc (-1) xs + 1
   where rc n (Node (R x) _ ns) = foldl' rc (max x n) ns
-        rc n (Node (Q xs) _ ns) = foldl' rc (max (refCount xs) n) ns
+        --rc n (Node (Q xs) _ ns) = foldl' rc (max (refCount xs) n) ns
         rc n (Node _ _ ns) = foldl' rc n ns
-
+-}
 refAdd n = map (mapAST f)
   where f (R r) i ns = Node (R (r+n)) i ns
-        f (Q xs) i ns = Node (Q $ refAdd n xs) i ns
+        f (Q (AST xs rf rq)) i ns = Node (Q $ AST (refAdd n xs) rf rq) i ns
         f v i ns = Node v i ns
 
 mapAST f (Node x i ns) = f x i $ mapAST f `map` ns
 mapASTM f (Node x i ns) = f x i $ mapM (mapASTM f) ns
-{-
-mapASTMR f (Node (R r) _ [n]) = do
-  m <- get
-  case M.lookup r m of
-    Nothing -> do x <- mapASTMR f n
-                  modify (M.insert r x)
-                  return x
-    Just x -> return x
-mapASTMR f (Node x i ns) = f x i $ mapM (mapASTMR f) ns
--}
-swizzle = mapASTM f
+
+swizzle (AST xs rf rq) = do xs' <- mapM (mapASTM f) xs
+                            return $ AST xs' rf rq
   where f (W "dup") _ m = fmap head m
         f (W "id") n m = do xs <- m
                             guard (n < length xs)
@@ -93,16 +84,16 @@ swizzle = mapASTM f
                               guard (n < length xs)
                               return (reverse xs !! n)
         f (W "popr") 0 m = do [q] <- m
-                              Q (x:xs) <- eval q
-                              guard $ req [x] == 0
+                              Q (AST (x:xs) _ 0) <- eval (probe "q = " q)
+                              --guard $ req [x] == 0
                               return x
         f (W "popr") 1 m = do [q] <- m
-                              Q (x:xs) <- eval q
-                              guard $ req [x] == 0
-                              return $ Node (Q xs) 0 []
-        f (L l) i m = Node (Q (ast l)) i `fmap` m
+                              Q (AST (x:xs) rf 0) <- eval q
+                              --guard $ req [x] == 0
+                              return $ Node (Q (AST xs rf 0)) 0 []
+        f (L l) i m = Node (Q $ ast l) i `fmap` m
         f (W "quot") _ m = do [x] <- m
-                              return $ Node (Q [x]) 0 []
+                              return $ Node (Q (AST [x] rf 0)) 0 []
         f v i m = Node v i `fmap` m
                 
 tok x = case tokenize x of
@@ -111,10 +102,10 @@ tok x = case tokenize x of
 
 eval = mapASTM exec
 
-composeAST x y = map (mapAST f) y' ++ drop (req y) x
+composeAST (AST x rfx rqx) (AST y rfy rqy) = AST (map (mapAST f) y' ++ drop rqy x) (rfx + rfy) (rqx + max 0 (rqy - length x))
   where f (W "in") n [] = x!!n
         f v i xs = Node v i xs
-        y' = refAdd (refCount x) y
+        y' = refAdd rfx y
 
 exec (W "+") _ m = do [I y, I x] <- m
                       return . I $ x + y
@@ -164,9 +155,9 @@ gen (W "in") x _ = do (m, c, i) <- get
                       put (m, c+1, (x,c):i)
                       return c
 
-comp x = do (a, (r, _)) <- ast' 0 `fmap` tok x
-            a' <- mapM swizzle a
-            return (a', r)
+comp x = do t <- ast `fmap` tok x
+            AST a _ r <- swizzle t
+            return (a, r)
 comp' = flip evalStateT M.empty . comp
 run = flip evalStateT M.empty . (mapM eval . fst <=< comp)
 
@@ -183,7 +174,7 @@ outName n = "out" ++ show n
 inName n = "in" ++ show n
 
 proto name r o = "void " ++ name ++ "( " ++ commas (["int in" ++ show x | x <- [0..r-1]] ++
-                                                    ["int* out" ++ show x | x <- [0..length o - 1]]) ++ " )"
+                                                    ["int *out" ++ show x | x <- [0..length o - 1]]) ++ " )"
 func name (i, r, o, n, s) = proto name r o ++ "\n{\n" ++
                             declare ++
                             copyIn ++

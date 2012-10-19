@@ -25,7 +25,7 @@ data Value = F Double  -- float
            | I Integer -- integer
            | C Char    -- character
            | L [Value] -- list
-           | Q [AST]   -- quote
+           | Q AST   -- quote
            | W String  -- word
            | A String  -- atom
            | V String  -- variable
@@ -34,7 +34,16 @@ data Value = F Double  -- float
            | R Int     -- reference
   deriving (Show, Eq)
 
-data AST = Node Value Int [AST] deriving (Show, Eq)
+data AST = AST {
+  astNodes :: [ASTNode],
+  astRefs  :: Int,
+  astReqs  :: Int
+  } deriving (Show, Eq)
+data ASTNode = Node {
+  nodeVal      :: Value,
+  nodePos      :: Int,
+  nodeChildren :: [ASTNode]
+  } deriving (Show, Eq)
 
 isWord (W _) = True
 isWord _ = False
