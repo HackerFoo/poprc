@@ -32,6 +32,7 @@ data Value = F Double  -- float
            | S String  -- stack variable
            | Io        -- I/O token
            | R Int     -- reference
+           | In Int    -- input
   deriving (Show, Eq)
 
 data AST = AST {
@@ -51,8 +52,8 @@ data ASTNode = Node {
 
 instance Show ASTNode where
   show (Node (W w) p c) = w ++ ":" ++ show p ++ if null c then "" else " " ++ show c
-  show (Node (R r) p [Node (R r') p' _]) = "#" ++ show r ++ ":" ++ show p ++ " = #" ++ show r' ++ ":" ++ show p'
-  show (Node (R r) p [c]) = "#" ++ show r ++ ":" ++ show p ++ " = " ++ show c
+  show (Node (R r) p [Node (R r') p' _]) = "#" ++ show r ++ {- ":" ++ show p ++ -} " = #" ++ show r' {- ++ ":" ++ show p' -}
+  show (Node (R r) p [c]) = "#" ++ show r ++ {- ":" ++ show p ++ -} " = " ++ show c
   show (Node v _ _) = show v
 
 isWord (W _) = True

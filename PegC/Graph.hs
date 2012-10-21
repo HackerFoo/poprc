@@ -15,7 +15,7 @@
     along with pegc.  If not, see <http://www.gnu.org/licenses/>.
 -}
 
-{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE NoMonomorphismRestriction, FlexibleContexts #-}
 module PegC.Graph where
 
 import PegC.Tokenize
@@ -54,27 +54,15 @@ ast rf xs = foldl' f (AST [] 0, rf) xs
                 on = if x /= W "dup"
                        then [Node x' n c | n <- [0..o-1]]
                        else [Node (R rf) n [Node x n c] | n <- [0..o-1]]
-                (c, s') = splitAt i $ s ++ [Node (W "in") n [] | n <- [rq..rq+i-a-1]]
+                (c, s') = splitAt i $ s ++ [Node (In 0) n [] | n <- [rq..rq+i-a-1]]
                 a = length s
 
-{-
-req xs = foldl' req' (-1) xs + 1
-  where --req' n (Node (W "in") x ns) = foldl' req' (max x n) ns
-        req' n (Node _ _ ns) = foldl' req' n ns
-
-refCount xs = foldl' rc (-1) xs + 1
-  where rc n (Node (R x) _ ns) = foldl' rc (max x n) ns
-        --rc n (Node (Q xs) _ ns) = foldl' rc (max (refCount xs) n) ns
-        rc n (Node _ _ ns) = foldl' rc n ns
-
-refAdd n = map (mapAST f)
-  where f (R r) i ns = Node (R (r+n)) i ns
-        f (Q (AST xs rf rq)) i ns = Node (Q $ AST (refAdd n xs) rf rq) i ns
-        f v i ns = Node v i ns
--}
 mapAST f (Node x i ns) = f x i $ mapAST f `map` ns
 mapASTM f (Node x i ns) = f x i $ mapM (mapASTM f) ns
 
+swizzle
+  :: (Functor m, MonadPlus m, MonadState (M.IntMap Value) m) =>
+     AST -> m AST
 swizzle (AST xs rq) = do xs' <- mapM (mapASTM f) xs
                          return $ AST xs' rq
   where f (W "dup") _ m = fmap head m
@@ -86,15 +74,18 @@ swizzle (AST xs rq) = do xs' <- mapM (mapASTM f) xs
                               return (reverse xs !! n)
         f (W "popr") 0 m = do [q] <- m
                               Q (AST (x:xs) 0) <- eval (probe "q = " q)
-                              --guard $ req [x] == 0
-                              return x
+                              return (moveIn (-1) x)
         f (W "popr") 1 m = do [q] <- m
                               Q (AST (x:xs) 0) <- eval q
-                              --guard $ req [x] == 0
                               return $ Node (Q $ AST xs 0) 0 []
         f (W "quot") _ m = do [x] <- m
-                              return $ Node (Q $ AST [x] 0) 0 []
+                              return $ Node (Q $ AST [moveIn 1 x] 0) 0 []
+        f (Q ast) i m = do ast' <- swizzle ast
+                           Node (Q ast') i `fmap` m
         f v i m = Node v i `fmap` m
+        
+moveIn y (Node (In l) n c) = Node (In $ l + y) n (map (moveIn y) c)
+moveIn y (Node x n c) = Node x n (map (moveIn y) c)
                 
 tok x = case tokenize x of
   Left _ -> mzero
@@ -102,9 +93,10 @@ tok x = case tokenize x of
 
 eval = mapASTM exec
 
-composeAST (AST x rx) (AST y ry) = AST (map (mapAST f) y ++ drop ry x) (rx + max 0 (ry - length x))
-  where f (W "in") n [] = x!!n
-        f v i xs = Node v i xs
+composeAST (AST x rx) (AST y ry) = AST (map (mapAST (f 0)) y ++ drop ry x) (rx + max 0 (ry - length x))
+  where f l (In l') n [] | l == l' = x!!n
+        f l (Q (AST ns 0)) n [] = Node (Q (AST (map (mapAST (f (l+1))) ns) 0)) n [] 
+        f _ v i xs = Node v i xs
 
 exec (W "+") _ m = do [I y, I x] <- m
                       return . I $ x + y
@@ -150,9 +142,9 @@ gen (R n) _ b = do (m, _, _) <- get
                                    modify (\(m, c, i) -> (M.insert n x m, c, i))
                                    return x
                      Just x -> return x
-gen (W "in") x _ = do (m, c, i) <- get
-                      put (m, c+1, (x,c):i)
-                      return c
+gen (In 0) x _ = do (m, c, i) <- get
+                    put (m, c+1, (x,c):i)
+                    return c
 
 comp x = do (t, _) <- ast 0 `fmap` tok x
             AST a r <- swizzle t
