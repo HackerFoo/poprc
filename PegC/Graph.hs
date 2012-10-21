@@ -25,6 +25,7 @@ import Control.Monad
 import qualified Data.IntMap as M
 import Control.Monad.State
 import Control.Monad.Writer
+import Control.Arrow (first)
 import Debug.Trace
 
 arity (W "+") = (2,1)
@@ -43,19 +44,19 @@ arity (W "quot") = (1,1)
 arity (R _) = (1,1)
 arity _ = (0,1)
 
-ast xs = foldl' f (AST [] 0 0) xs
-  where f (AST s rf rq) x = AST (on ++ s')
-                                (if x == W "dup" then rf+1 else rf)
-                                (max rq (rq + i - a))
+ast rf xs = foldl' f (AST [] 0, rf) xs
+  where f (AST s rq, rf) x = (AST (on ++ s') (max rq $ rq + i - a), rf')
           where (i, o) = arity x
-                x' = case x of
-                  (L xs) -> Q $ ast xs
-                  _ -> x
+                (x', rf') = case x of
+                  (L xs) -> first Q $ ast rf xs
+                  (W "dup") -> (x, rf+1)
+                  _ -> (x, rf)
                 on = if x /= W "dup"
                        then [Node x' n c | n <- [0..o-1]]
                        else [Node (R rf) n [Node x n c] | n <- [0..o-1]]
                 (c, s') = splitAt i $ s ++ [Node (W "in") n [] | n <- [rq..rq+i-a-1]]
                 a = length s
+
 {-
 req xs = foldl' req' (-1) xs + 1
   where --req' n (Node (W "in") x ns) = foldl' req' (max x n) ns
@@ -65,17 +66,17 @@ refCount xs = foldl' rc (-1) xs + 1
   where rc n (Node (R x) _ ns) = foldl' rc (max x n) ns
         --rc n (Node (Q xs) _ ns) = foldl' rc (max (refCount xs) n) ns
         rc n (Node _ _ ns) = foldl' rc n ns
--}
+
 refAdd n = map (mapAST f)
   where f (R r) i ns = Node (R (r+n)) i ns
         f (Q (AST xs rf rq)) i ns = Node (Q $ AST (refAdd n xs) rf rq) i ns
         f v i ns = Node v i ns
-
+-}
 mapAST f (Node x i ns) = f x i $ mapAST f `map` ns
 mapASTM f (Node x i ns) = f x i $ mapM (mapASTM f) ns
 
-swizzle (AST xs rf rq) = do xs' <- mapM (mapASTM f) xs
-                            return $ AST xs' rf rq
+swizzle (AST xs rq) = do xs' <- mapM (mapASTM f) xs
+                         return $ AST xs' rq
   where f (W "dup") _ m = fmap head m
         f (W "id") n m = do xs <- m
                             guard (n < length xs)
@@ -84,16 +85,15 @@ swizzle (AST xs rf rq) = do xs' <- mapM (mapASTM f) xs
                               guard (n < length xs)
                               return (reverse xs !! n)
         f (W "popr") 0 m = do [q] <- m
-                              Q (AST (x:xs) _ 0) <- eval (probe "q = " q)
+                              Q (AST (x:xs) 0) <- eval (probe "q = " q)
                               --guard $ req [x] == 0
                               return x
         f (W "popr") 1 m = do [q] <- m
-                              Q (AST (x:xs) rf 0) <- eval q
+                              Q (AST (x:xs) 0) <- eval q
                               --guard $ req [x] == 0
-                              return $ Node (Q (AST xs rf 0)) 0 []
-        f (L l) i m = Node (Q $ ast l) i `fmap` m
+                              return $ Node (Q $ AST xs 0) 0 []
         f (W "quot") _ m = do [x] <- m
-                              return $ Node (Q (AST [x] rf 0)) 0 []
+                              return $ Node (Q $ AST [x] 0) 0 []
         f v i m = Node v i `fmap` m
                 
 tok x = case tokenize x of
@@ -102,10 +102,9 @@ tok x = case tokenize x of
 
 eval = mapASTM exec
 
-composeAST (AST x rfx rqx) (AST y rfy rqy) = AST (map (mapAST f) y' ++ drop rqy x) (rfx + rfy) (rqx + max 0 (rqy - length x))
+composeAST (AST x rx) (AST y ry) = AST (map (mapAST f) y ++ drop ry x) (rx + max 0 (ry - length x))
   where f (W "in") n [] = x!!n
         f v i xs = Node v i xs
-        y' = refAdd rfx y
 
 exec (W "+") _ m = do [I y, I x] <- m
                       return . I $ x + y
@@ -155,8 +154,8 @@ gen (W "in") x _ = do (m, c, i) <- get
                       put (m, c+1, (x,c):i)
                       return c
 
-comp x = do t <- ast `fmap` tok x
-            AST a _ r <- swizzle t
+comp x = do (t, _) <- ast 0 `fmap` tok x
+            AST a r <- swizzle t
             return (a, r)
 comp' = flip evalStateT M.empty . comp
 run = flip evalStateT M.empty . (mapM eval . fst <=< comp)

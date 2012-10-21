@@ -36,14 +36,24 @@ data Value = F Double  -- float
 
 data AST = AST {
   astNodes :: [ASTNode],
-  astRefs  :: Int,
   astReqs  :: Int
-  } deriving (Show, Eq)
+  } deriving (Eq)
+             
+instance Show AST where
+  show (AST ns r) | r == 0 = "AST " ++ show ns
+                  | otherwise = "AST " ++ show r ++ " -> " ++ show ns 
+  
 data ASTNode = Node {
   nodeVal      :: Value,
   nodePos      :: Int,
   nodeChildren :: [ASTNode]
-  } deriving (Show, Eq)
+  } deriving (Eq)
+
+instance Show ASTNode where
+  show (Node (W w) p c) = w ++ ":" ++ show p ++ if null c then "" else " " ++ show c
+  show (Node (R r) p [Node (R r') p' _]) = "#" ++ show r ++ ":" ++ show p ++ " = #" ++ show r' ++ ":" ++ show p'
+  show (Node (R r) p [c]) = "#" ++ show r ++ ":" ++ show p ++ " = " ++ show c
+  show (Node v _ _) = show v
 
 isWord (W _) = True
 isWord _ = False
