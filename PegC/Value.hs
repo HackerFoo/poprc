@@ -54,6 +54,7 @@ instance Show ASTNode where
   show (Node (W w) p c) = w ++ ":" ++ show p ++ if null c then "" else " " ++ show c
   show (Node (R r) p [Node (R r') p' _]) = "#" ++ show r ++ {- ":" ++ show p ++ -} " = #" ++ show r' {- ++ ":" ++ show p' -}
   show (Node (R r) p [c]) = "#" ++ show r ++ {- ":" ++ show p ++ -} " = " ++ show c
+  show (Node (In x) p []) = "In" ++ replicate x '^' ++ ":" ++ show p
   show (Node v _ _) = show v
 
 isWord (W _) = True

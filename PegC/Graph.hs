@@ -61,11 +61,11 @@ mapAST f (Node x i ns) = f x i $ mapAST f `map` ns
 mapASTM f (Node x i ns) = f x i $ mapM (mapASTM f) ns
 
 swizzle
-  :: (Functor m, MonadPlus m, MonadState (M.IntMap Value) m) =>
+  :: (MonadPlus m, MonadState (M.IntMap Value) m) =>
      AST -> m AST
 swizzle (AST xs rq) = do xs' <- mapM (mapASTM f) xs
                          return $ AST xs' rq
-  where f (W "dup") _ m = fmap head m
+  where f (W "dup") _ m = liftM head m
         f (W "id") n m = do xs <- m
                             guard (n < length xs)
                             return (xs !! n)
@@ -73,28 +73,31 @@ swizzle (AST xs rq) = do xs' <- mapM (mapASTM f) xs
                               guard (n < length xs)
                               return (reverse xs !! n)
         f (W "popr") 0 m = do [q] <- m
-                              Q (AST (x:xs) 0) <- eval (probe "q = " q)
+                              Q (AST (x:xs) 0) <- mapASTM exec q
                               return (moveIn (-1) x)
         f (W "popr") 1 m = do [q] <- m
-                              Q (AST (x:xs) 0) <- eval q
+                              Q (AST (x:xs) 0) <- mapASTM exec q
                               return $ Node (Q $ AST xs 0) 0 []
         f (W "quot") _ m = do [x] <- m
                               return $ Node (Q $ AST [moveIn 1 x] 0) 0 []
         f (Q ast) i m = do ast' <- swizzle ast
-                           Node (Q ast') i `fmap` m
-        f v i m = Node v i `fmap` m
+                           Node (Q ast') i `liftM` m
+        f v i m = Node v i `liftM` m
         
 moveIn y (Node (In l) n c) = Node (In $ l + y) n (map (moveIn y) c)
 moveIn y (Node x n c) = Node x n (map (moveIn y) c)
                 
 tok x = case tokenize x of
-  Left _ -> mzero
+  Left _ -> error "failed to tokenize"
   Right x -> return x
 
-eval = mapASTM exec
+eval (AST xs 0) = mapM (mapASTM exec) xs
+eval (AST _ _) = error "not enough arguments"
 
 composeAST (AST x rx) (AST y ry) = AST (map (mapAST (f 0)) y ++ drop ry x) (rx + max 0 (ry - length x))
-  where f l (In l') n [] | l == l' = x!!n
+  where f l (In l') n [] | l == l' = if n < length x
+                                        then x!!n
+                                        else Node (In l) (n - length x) []
         f l (Q (AST ns 0)) n [] = Node (Q (AST (map (mapAST (f (l+1))) ns) 0)) n [] 
         f _ v i xs = Node v i xs
 
@@ -119,10 +122,13 @@ exec (W "swap") n m = do xs <- m
 exec (R x) _ y = do m <- get
                     case M.lookup x m of
                       Nothing -> do [z] <- y
-                                    modify (M.insert x z)
-                                    return z
+                                    case z of
+                                      In _ -> return z
+                                      _ -> do
+                                        modify (M.insert x z)
+                                        return z
                       Just z -> return z
-exec (W _) _ _ = mzero
+exec (W _) _ _ = error "unknown word"
 exec x _ _ = return x
 
 varName x = "var" ++ show x
@@ -146,20 +152,20 @@ gen (In 0) x _ = do (m, c, i) <- get
                     put (m, c+1, (x,c):i)
                     return c
 
-comp x = do (t, _) <- ast 0 `fmap` tok x
-            AST a r <- swizzle t
-            return (a, r)
+comp x = do (t, _) <- ast 0 `liftM` tok x
+            a <- swizzle t
+            return a
 comp' = flip evalStateT M.empty . comp
-run = flip evalStateT M.empty . (mapM eval . fst <=< comp)
+run = flip evalStateT M.empty . (eval <=< comp)
 
 commas = concat . intersperse ", "
 
 generate src = do
-  (a, r) <- comp' src
+  AST a r <- comp' src
   ((o, (_, n, i)), s) <- runWriterT . flip runStateT (M.empty, 0, []) $ mapM (mapASTM gen) a
   return (i, r, o, n, s)
 
-genFunc n x = func n `fmap` generate x
+genFunc n x = func n `liftM` generate x
 
 outName n = "out" ++ show n
 inName n = "in" ++ show n
