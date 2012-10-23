@@ -32,31 +32,28 @@ data Value = F Double  -- float
            | S String  -- stack variable
            | Io        -- I/O token
            | R Int     -- reference
-           | In Int    -- input
+--           | In Int    -- input
   deriving (Show, Eq)
 
-data AST = AST {
-  astNodes :: [ASTNode],
-  astReqs  :: Int
-  } deriving (Eq)
-             
+data AST = AST {- in -} [Int] {- out -} [Int] deriving (Show, Eq)
+{-
 instance Show AST where
-  show (AST ns r) | r == 0 = "AST " ++ show ns
-                  | otherwise = "AST " ++ show r ++ " -> " ++ show ns 
+  show (AST i o) | null i = "AST " ++ show ns
+                 | otherwise = "AST " ++ show r ++ " -> " ++ show ns 
   
 data ASTNode = Node {
   nodeVal      :: Value,
   nodePos      :: Int,
-  nodeChildren :: [ASTNode]
+  nodeChildren :: [Int]
   } deriving (Eq)
 
 instance Show ASTNode where
   show (Node (W w) p c) = w ++ ":" ++ show p ++ if null c then "" else " " ++ show c
-  show (Node (R r) p [Node (R r') p' _]) = "#" ++ show r ++ {- ":" ++ show p ++ -} " = #" ++ show r' {- ++ ":" ++ show p' -}
+  --show (Node (R r) p [Node (R r') p' _]) = "#" ++ show r ++ {- ":" ++ show p ++ -} " = #" ++ show r' {- ++ ":" ++ show p' -}
   show (Node (R r) p [c]) = "#" ++ show r ++ {- ":" ++ show p ++ -} " = " ++ show c
-  show (Node (In x) p []) = "In" ++ replicate x '^' ++ ":" ++ show p
+  --show (Node (In x) p []) = "In" ++ replicate x '^' ++ ":" ++ show p
   show (Node v _ _) = show v
-
+-}
 isWord (W _) = True
 isWord _ = False
 

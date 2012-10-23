@@ -25,7 +25,9 @@ import Control.Monad
 import qualified Data.IntMap as M
 import Control.Monad.State
 import Control.Monad.Writer
+import Control.Monad.Reader
 import Control.Arrow (first)
+import Data.Array
 import Debug.Trace
 
 arity (W "+") = (2,1)
@@ -39,27 +41,68 @@ arity (W "\\/") = (2,1)
 arity (W "!") = (1,1)
 arity (W ".") = (2,1)
 arity (W "popr") = (1,2)
---arity (W "pushr") = (2,1)
+arity (W "pushr") = (2,1)
 arity (W "quot") = (1,1)
 arity (R _) = (1,1)
 arity _ = (0,1)
 
-ast rf xs = foldl' f (AST [] 0, rf) xs
-  where f (AST s rq, rf) x = (AST (on ++ s') (max rq $ rq + i - a), rf')
-          where (i, o) = arity x
-                (x', rf') = case x of
-                  (L xs) -> first Q $ ast rf xs
-                  (W "dup") -> (x, rf+1)
-                  _ -> (x, rf)
-                on = if x /= W "dup"
-                       then [Node x' n c | n <- [0..o-1]]
-                       else [Node (R rf) n [Node x n c] | n <- [0..o-1]]
-                (c, s') = splitAt i $ s ++ [Node (In 0) n [] | n <- [rq..rq+i-a-1]]
-                a = length s
+composeArity (ix, ox) (iy, oy) = (ix + max 0 (-h), oy + max 0 h) 
+  where h = ox - iy
+arityM = foldl' (\s -> composeArity s . arity) (0,0)
 
+--getCount = liftM snd get
+--setCount c = modify (\(s, _) -> (s, c))
+push = do (s, c) <- get
+          put (c:s, c+1)
+          return c
+pop = do (x:s, c) <- get
+         put (s, c)
+         return x
+swap = do (x:y:s, c) <- get
+          put (y:x:s, c)
+          return [y,x]
+dup = do (x:s, c) <- get
+         put (x:x:s, c)
+         return [x,x]
+
+ast (L xs) = do
+    i <- replicateM ic push
+    mapM_ ast xs
+    o <- replicateM oc pop
+    r <- push
+    tell [(r, (0, Q (AST i o), []))]
+    return [r]
+  where (ic, oc) = arityM xs
+ast (W "swap") = swap
+ast (W "dup") = dup
+ast x = do
+    i <- replicateM ic pop
+    o <- replicateM oc push
+    tell [(r, (n, x, i)) | (r,n) <- zip o [0..]]
+    return o
+  where (ic, oc) = arity x
+
+buildAst xs = array (0, c-1) vs
+  where (([r], (s, c)), vs) = runWriter . flip runStateT ([], 0) . ast . L $ xs
+
+exec (0, W "+", i) = do
+  [I x, I y] <- mapM force i
+  return . I $ x + y
+exec (0, x, []) = return x
+
+force x = exec . (!x) =<< ask  
+
+eval a = mapM force o `runReader` a
+  where (0, c) = bounds a
+        (0, Q (AST [] o), []) = a!c
+
+run xs = (eval . buildAst) `liftM` tok xs
+
+{-
 mapAST f (Node x i ns) = f x i $ mapAST f `map` ns
 mapASTM f (Node x i ns) = f x i $ mapM (mapASTM f) ns
-
+-}
+{-
 swizzle
   :: (MonadPlus m, MonadState (M.IntMap Value) m) =>
      AST -> m AST
@@ -86,11 +129,11 @@ swizzle (AST xs rq) = do xs' <- mapM (mapASTM f) xs
         
 moveIn y (Node (In l) n c) = Node (In $ l + y) n (map (moveIn y) c)
 moveIn y (Node x n c) = Node x n (map (moveIn y) c)
-                
+-}                
 tok x = case tokenize x of
   Left _ -> error "failed to tokenize"
   Right x -> return x
-
+{-
 eval (AST xs 0) = mapM (mapASTM exec) xs
 eval (AST _ _) = error "not enough arguments"
 
@@ -151,6 +194,11 @@ gen (R n) _ b = do (m, _, _) <- get
 gen (In 0) x _ = do (m, c, i) <- get
                     put (m, c+1, (x,c):i)
                     return c
+gen (W w) x b = do cs <- b
+                   (m, c, i) <- get 
+                   tell [varName c ++ " = " ++ w ++ "(" ++ commas (map varName cs) ++ ")"]
+                   put (m, c+1, i)
+                   return c
 
 comp x = do (t, _) <- ast 0 `liftM` tok x
             a <- swizzle t
@@ -162,17 +210,17 @@ commas = concat . intersperse ", "
 
 generate src = do
   AST a r <- comp' src
-  ((o, (_, n, i)), s) <- runWriterT . flip runStateT (M.empty, 0, []) $ mapM (mapASTM gen) a
-  return (i, r, o, n, s)
+  flip mapM a $ \x -> do
+    ((o, (_, n, i)), s) <- runWriterT . flip runStateT (M.empty, 0, []) $ mapASTM gen x
+    return (i, r, o, n, s)
 
-genFunc n x = func n `liftM` generate x
+genFunc n x = (map (\(i, f) -> func (n ++ "_" ++ show i) f) . zip [0..]) `liftM` generate x
 
 outName n = "out" ++ show n
 inName n = "in" ++ show n
 
-proto name r o = "void " ++ name ++ "( " ++ commas (["int in" ++ show x | x <- [0..r-1]] ++
-                                                    ["int *out" ++ show x | x <- [0..length o - 1]]) ++ " )"
-func name (i, r, o, n, s) = proto name r o ++ "\n{\n" ++
+proto name r = "void " ++ name ++ "( " ++ commas ["int in" ++ show x | x <- [0..r-1]] ++ " )"
+func name (i, r, o, n, s) = proto name r ++ "\n{\n" ++
                             declare ++
                             copyIn ++
                             concatMap (("  "++).(++ ";\n")) s ++
@@ -181,4 +229,5 @@ func name (i, r, o, n, s) = proto name r o ++ "\n{\n" ++
   where declare | n - length i > 0 = "  int " ++ commas [varName x | x <- [0..n-1]] ++ ";\n"
                 | otherwise = ""
         copyIn = concatMap (\(x, y) -> "  " ++ varName y ++ " = in" ++ show x ++ ";\n") i
-        copyOut = concatMap (\(x, y) -> "  *out" ++ show y ++ " = " ++ varName x ++ ";\n") (zip o [0..])
+        copyOut = "  return " ++ varName o ++ ";\n"
+-}
