@@ -35,7 +35,7 @@ arity (W "-") = (2,1)
 arity (W "*") = (2,1)
 arity (W "div") = (2,1)
 arity (W "dup") = (1,2)
-arity (W "drop") = (1,0)
+arity (W "pop") = (1,0)
 arity (W "swap") = (2,2)
 arity (W "\\/") = (2,1)
 arity (W "!") = (1,1)
@@ -50,40 +50,83 @@ composeArity (ix, ox) (iy, oy) = (ix + max 0 (-h), oy + max 0 h)
   where h = ox - iy
 arityM = foldl' (\s -> composeArity s . arity) (0,0)
 
---getCount = liftM snd get
---setCount c = modify (\(s, _) -> (s, c))
-push = do (s, c) <- get
-          put (c:s, c+1)
+push = do (a, s, c) <- get
+          put (a, c:s, c+1)
           return c
-pop = do (x:s, c) <- get
-         put (s, c)
+pushI x = do (a, s, c) <- get
+             put (a, x:s, c)
+             return x
+pop = do (a, x:s, c) <- get
+         put $ trace ("B (s,c) = " ++ show (s,c)) (a, s, c)
          return x
-swap = do (x:y:s, c) <- get
-          put (y:x:s, c)
+swap = do (a, x:y:s, c) <- get
+          put (a, y:x:s, c)
           return [y,x]
-dup = do (x:s, c) <- get
-         put (x:x:s, c)
+dup = do (a, x:s, c) <- get
+         put (a, x:x:s, c)
          return [x,x]
+
+regCnt (L xs) = ic + sum (map regCnt xs) + 1
+  where (ic, oc) = arityM xs
+regCnt (W "swap") = 0
+regCnt (W "dup") = 0
+regCnt (W "pop") = 0
+regCnt (W "popr") = 1
+regCnt x = snd (arity x)
+
+tellA x = modify (\(a, s, c) -> (a // x, s, c))
+withA f = do
+  (a, s, c) <- get
+  return $ f `runReader` a
+getRef x = do
+  (a, _, _) <- get
+  return (a!x)
 
 ast (L xs) = do
     i <- replicateM ic push
     mapM_ ast xs
     o <- replicateM oc pop
     r <- push
-    tell [(r, (0, Q (AST i o), []))]
+    tellA [(r, (0, Q (AST i o), []))]
     return [r]
   where (ic, oc) = arityM xs
 ast (W "swap") = swap
 ast (W "dup") = dup
+ast (W "pop") = (:[]) `liftM` pop
+ast (W "quot") = do
+  x <- pop
+  r <- push
+  tellA [(r, (0, Q (AST [] [x]), []))]
+  return [r]
+ast (W "popr") = do
+  r <- pop
+  (_,Q (AST i (x:o)),_) <- getRef r
+  y <- push
+  tellA [(y, (0, Q (AST i o),[]))]
+  pushI x
+  return [x,y]
+  {-
+ast (W ".") = do
+  x <- pop
+  y <- pop
+  (_, Q astX, _) <- getRef x
+  (_, Q astY, _) <- getRef y
+  z <- push
+  tellA [(z, (0, composeAst astX astY, []))]
+  return [z]
+-}
 ast x = do
     i <- replicateM ic pop
     o <- replicateM oc push
-    tell [(r, (n, x, i)) | (r,n) <- zip o [0..]]
+    tellA [(r, (n, x, i)) | (r,n) <- zip o [0..]]
     return o
   where (ic, oc) = arity x
-
-buildAst xs = array (0, c-1) vs
-  where (([r], (s, c)), vs) = runWriter . flip runStateT ([], 0) . ast . L $ xs
+{-
+composeAst (AST ix ox) (AST iy oy) =
+  where 
+-}
+buildAst xs = a
+  where (a, s, c) = flip execState (array (0, regCnt (L xs) - 1) [], [], 0) . ast . L $ xs
 
 exec (0, W "+", i) = do
   [I x, I y] <- mapM force i
