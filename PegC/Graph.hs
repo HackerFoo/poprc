@@ -23,6 +23,7 @@ import PegC.Value
 import Data.List
 import Control.Monad
 import qualified Data.IntMap as M
+import qualified Data.Set as S
 import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Reader
@@ -144,6 +145,12 @@ run xs = (eval . buildAst) `liftM` tok xs
 tok x = case tokenize x of
   Left _ -> error "failed to tokenize"
   Right x -> return x
+  
+sets ss = S.fromList [ x `S.intersection` y | (x:xs) <- init . tails . S.toList $ ss, y <- xs]
+allSets ss | ss' `S.isSubsetOf` ss = ss
+           | otherwise = ss `S.union` allSets ss'
+  where ss' = sets ss
+
 {-
 varName x = "var" ++ show x
 
