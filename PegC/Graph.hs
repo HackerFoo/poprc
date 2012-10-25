@@ -23,7 +23,7 @@ import PegC.Value
 import Data.List
 import Control.Monad
 import qualified Data.IntMap as M
-import qualified Data.Set as S
+import qualified Data.IntSet as S
 import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Reader
@@ -121,10 +121,12 @@ ast x = do
     return o
   where (ic, oc) = arity x
 
+composeAst :: (MonadState (Array Int (Int, Value, [Int]), [Int], Int) m) => AST -> AST -> m AST
 composeAst (AST ix ox) (AST iy oy) = do
   tellA . map (\(o, i) -> (i, (0, R o, []))) $ zip ox iy
   return (AST (drop (length ox) iy ++ ix) (oy ++ drop (length iy) ox))
 
+buildAst :: [Value] -> Array Int (Int, Value, [Int])
 buildAst xs = a
   where (a, s, c) = flip execState (array (0, regCnt (L xs) - 1) [], [], 0) . ast . L $ xs
 
@@ -145,11 +147,36 @@ run xs = (eval . buildAst) `liftM` tok xs
 tok x = case tokenize x of
   Left _ -> error "failed to tokenize"
   Right x -> return x
-  
+{-
 sets ss = S.fromList [ x `S.intersection` y | (x:xs) <- init . tails . S.toList $ ss, y <- xs]
 allSets ss | ss' `S.isSubsetOf` ss = ss
            | otherwise = ss `S.union` allSets ss'
   where ss' = sets ss
+-}
+
+seperate [s] = [s]
+seperate ss = filter (\x -> not $ any (S.isProperSubsetOf x) ss') ss'
+  where ss' = concat [[x `S.difference` y, x `S.intersection` y, y `S.difference` x] | (x:xs) <- init . tails $ ss, y <- xs]
+
+deps a x = deps' [x] S.empty
+  where deps' [] s = s
+        deps' (x:xs) s = deps' (c ++ xs) (x `S.insert` s)
+          where (_,_,c) = a!x
+                
+{-
+deps a x = deps' [x] S.empty []
+  where deps' [] s [] = [s]
+        deps' [] s (y:ys) = s : deps' [y] S.empty ys
+        deps' (x:xs) s ys = case w of
+                                 W "dup" -> deps' xs s (x:ys) -- defer
+                                 _ -> deps' (c ++ xs) (x `S.insert` s) ys
+          where (_,w,c) = a!x
+-}
+
+outDeps a = map (deps a) s
+  where (_, Q (AST _ s), _) = a ! snd (bounds a)
+
+units = seperate . outDeps
 
 {-
 varName x = "var" ++ show x
