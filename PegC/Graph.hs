@@ -155,13 +155,15 @@ allSets ss | ss' `S.isSubsetOf` ss = ss
 -}
 
 seperate [s] = [s]
-seperate ss = filter (\x -> not $ any (S.isProperSubsetOf x) ss') ss'
+seperate ss = nub . sort . filter (\x -> not $ any (S.isProperSubsetOf x) ss') $ ss'
   where ss' = concat [[x `S.difference` y, x `S.intersection` y, y `S.difference` x] | (x:xs) <- init . tails $ ss, y <- xs]
 
-deps a x = deps' [x] S.empty
+deps a x = deps' x S.empty
   where deps' [] s = s
-        deps' (x:xs) s = deps' (c ++ xs) (x `S.insert` s)
-          where (_,_,c) = a!x
+        deps' (x:xs) s = deps' (dep1 a x ++ xs) (x `S.insert` s)
+
+dep1 a x = c
+  where (_,_,c) = a!x
                 
 {-
 deps a x = deps' [x] S.empty []
@@ -173,60 +175,38 @@ deps a x = deps' [x] S.empty []
           where (_,w,c) = a!x
 -}
 
-outDeps a = map (deps a) s
+outDeps a = map (deps a . (:[])) $ s
   where (_, Q (AST _ s), _) = a ! snd (bounds a)
 
-units = seperate . outDeps
+units a = reg
+  where ds = seperate . outDeps $ a
+        pr = [ (x, S.fromList (dep1 a `concatMap` S.toList x) `S.difference` x) | x <- ds ]
+        o = S.fromList (concatMap (S.toList . snd) pr ++ s)
+        (_, Q (AST _ s), _) = a ! snd (bounds a)
+        reg = [ (S.toAscList r, S.toAscList $ p `S.difference` o, S.toAscList $ p `S.intersection` o) | (p, r) <- pr ]
 
-{-
-varName x = "var" ++ show x
+varName x = "reg" ++ show x
 
-gen (W "+") _ b = do [x, y] <- b
-                     (m, c, i) <- get
-                     tell [varName c ++ " = " ++ varName x ++ " + " ++ varName y]
-                     put (m, c+1, i)
-                     return c
-gen (I x) _ _ = do (m, c, i) <- get
-                   tell [varName c ++ " = " ++ show x]
-                   put (m, c+1, i)
-                   return c
-gen (R n) _ b = do (m, _, _) <- get
-                   case M.lookup n m of
-                     Nothing -> do [x] <- b
-                                   modify (\(m, c, i) -> (M.insert n x m, c, i))
-                                   return x
-                     Just x -> return x
-gen (In 0) x _ = do (m, c, i) <- get
-                    put (m, c+1, (x,c):i)
-                    return c
-gen (W w) x b = do cs <- b
-                   (m, c, i) <- get 
-                   tell [varName c ++ " = " ++ w ++ "(" ++ commas (map varName cs) ++ ")"]
-                   put (m, c+1, i)
-                   return c
+gen (d, (_, W "+", [x, y])) = varName d ++ " = " ++ varName x ++ " + " ++ varName y
+gen (d, (_, I x, _)) = varName d ++ " = " ++ show x
+gen (d, (x, W w, cs)) = varName d ++ " = " ++ w ++ "_" ++ show x ++ "(" ++ commas (map varName cs) ++ ")"
 
 commas = concat . intersperse ", "
 
-generate src = do
-  AST a r <- comp' src
-  flip mapM a $ \x -> do
-    ((o, (_, n, i)), s) <- runWriterT . flip runStateT (M.empty, 0, []) $ mapASTM gen x
-    return (i, r, o, n, s)
+generate name src = do
+  a <- buildAst `liftM` tok src
+  --return (units a)
+  return [func (name ++ "_" ++ show c) a u | (c,u) <- zip [0..] (units a)]
 
-genFunc n x = (map (\(i, f) -> func (n ++ "_" ++ show i) f) . zip [0..]) `liftM` generate x
-
-outName n = "out" ++ show n
-inName n = "in" ++ show n
-
-proto name r = "void " ++ name ++ "( " ++ commas ["int in" ++ show x | x <- [0..r-1]] ++ " )"
-func name (i, r, o, n, s) = proto name r ++ "\n{\n" ++
-                            declare ++
-                            copyIn ++
-                            concatMap (("  "++).(++ ";\n")) s ++
-                            copyOut ++
-                            "}\n"
-  where declare | n - length i > 0 = "  int " ++ commas [varName x | x <- [0..n-1]] ++ ";\n"
-                | otherwise = ""
-        copyIn = concatMap (\(x, y) -> "  " ++ varName y ++ " = in" ++ show x ++ ";\n") i
-        copyOut = "  return " ++ varName o ++ ";\n"
--}
+proto name i o = "int " ++ name ++ "( " ++ commas (["int " ++ varName x | x <- i] ++ 
+                                                    ["int *" ++ varName x | x <- o]) ++ " )"
+func name a (i, r, o) = proto name i (tail o) ++ "\n{\n" ++
+                        declare ++
+                        --copyIn ++
+                        concatMap (\x -> "  "++ gen (x, (a!x)) ++ ";\n") (r ++ [head o]) ++
+                        concatMap (\x -> "  *"++ gen (x, (a!x)) ++ ";\n") (tail o)  ++
+                        copyOut ++
+                        "}\n"
+  where declare = "  int " ++ commas [varName x | x <- r ++ [head o]] ++ ";\n"
+        --copyIn = concatMap (\(x, y) -> "  " ++ varName y ++ " = in" ++ show x ++ ";\n") i
+        copyOut = "  return " ++ varName (head o) ++ ";\n"
