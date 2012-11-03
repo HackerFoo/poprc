@@ -28,7 +28,7 @@ import Control.Monad.State
 import Control.Monad.Writer
 import Control.Monad.Reader
 import Control.Arrow (first)
-import Data.Array
+import Data.IntMap (IntMap, (!))
 import Debug.Trace
 
 arity (W "+") = (2,1)
@@ -44,6 +44,7 @@ arity (W ".") = (2,1)
 arity (W "popr") = (1,2)
 arity (W "pushr") = (2,1)
 arity (W "quot") = (1,1)
+arity (W "id") = (1,1)
 arity (R _) = (1,1)
 arity _ = (0,1)
 
@@ -54,20 +55,18 @@ arityM = foldl' (\s -> composeArity s . arity) (0,0)
 push = do (a, s, c) <- get
           put (a, c:s, c+1)
           return c
+newRefs n = do (a, s, c) <- get
+               put (a, s, c+n)
+               return c
 pushI x = do (a, s, c) <- get
              put (a, x:s, c)
-             return x
-pop = do (a, x:s, c) <- get
-         put (a, s, c)
-         return x
-swap = do (a, x:y:s, c) <- get
-          put (a, y:x:s, c)
-          return [y,x]
-dup = do (a, x:s, c) <- get
-         put (a, x:x:s, c)
-         return [x,x]
+             return x  
+pop = do
+  (a, x:s, c) <- get
+  put (a, s, c)
+  return x
 
-regCnt (L xs) = fst (arityM xs) + sum (map regCnt xs) + 1
+regCntM xs = fst (arityM xs) + sum (map regCnt xs)
 regCnt (W "swap") = 0
 regCnt (W "dup") = 0
 regCnt (W "pop") = 0
@@ -75,14 +74,58 @@ regCnt (W "pop") = 0
 regCnt (W "popr") = 1
 regCnt x = snd (arity x)
 
-tellA x = modify (\(a, s, c) -> (a // x, s, c))
+
+tellA x = modify (\(a, s, c) -> (a `M.union` M.fromList x, s, c))
 withA f = do
   (a, s, c) <- get
   return $ f `runReader` a
 getRef x = do
   (a, _, _) <- get
   return (a!x)
+  
+-- initial pass
+swizzle (W "swap") = do
+  (a, x:y:s, c) <- get
+  put (a, y:x:s, c)
+swizzle (W "dup") = do
+  (a, x:s, c) <- get
+  put (a, x:x:s, c)
+swizzle (W "pop") = pop >> return ()
+swizzle (W "quot") = do
+  x <- pop
+  r <- push
+  tellA [(r, (0, Q $ AST (M.fromList [(0, (0, R x, []))]) [] [0], [x]))]
+swizzle (W "popr") = do  
+  x <- pop
+  (0, Q a, []) <- getRef x
+  rt <- push
+  let (h, t) = splitAst (rt+1) a
+  newRefs $ M.size h - 1
+  tellA $ (rt, (0, Q t, [])) : M.toList h
+  push
+  return ()
+swizzle (L xs) = do
+  o <- push
+  tellA [(o, (0, Q (buildAst xs), []))]
+swizzle x = do
+    i <- replicateM ic pop
+    o <- replicateM oc push
+    tellA [(r, (n, x, i)) | (r,n) <- zip o [0..]]
+  where (ic, oc) = arity x
 
+transplant o m = M.fromList . zip [o..] . map f . M.elems $ m
+  where nm = M.fromList $ zip (M.keys m) [o..]
+        f (0, R r, []) = (0, W "id", [r])
+        f (n, w, cs) = (n, w, map (nm!) cs)
+
+splitAst x (AST a i (o:os)) = (transplant x h, AST t i os)
+  where od = deps a [o]
+        (h, t) = M.partitionWithKey (\k _ -> k `S.member` od) a
+
+-- when composing, ast is spliced as soon as depencies are met
+-- ast represented as graphs missing dependencies + registers of outputs + registers of refs + input count
+
+{-
 ast (L xs) = do
     i <- replicateM ic push
     mapM_ ast xs
@@ -91,9 +134,6 @@ ast (L xs) = do
     tellA [(r, (0, Q (AST i o), []))]
     return [r]
   where (ic, oc) = arityM xs
-ast (W "swap") = swap
-ast (W "dup") = dup
-ast (W "pop") = (:[]) `liftM` pop
 ast (W "quot") = do
   x <- pop
   r <- push
@@ -115,22 +155,21 @@ ast (W ".") = do
   z <- push
   tellA [(z, (0, Q astZ, []))]
   return [z]
-ast x = do
-    i <- replicateM ic pop
-    o <- replicateM oc push
-    tellA [(r, (n, x, i)) | (r,n) <- zip o [0..]]
-    return o
-  where (ic, oc) = arity x
-
-composeAst :: (MonadState (Array Int (Int, Value, [Int]), [Int], Int) m) => AST -> AST -> m AST
+composeAst :: (MonadState (IntMap Int (Int, Value, [Int]), [Int], Int) m) => AST -> AST -> m AST
 composeAst (AST ix ox) (AST iy oy) = do
   tellA . map (\(o, i) -> (i, (0, R o, []))) $ zip ox iy
   return (AST (drop (length ox) iy ++ ix) (oy ++ drop (length iy) ox))
+-}
+buildAst :: [Value] -> AST --([Int], [Int], IntMap (Int, Value, [Int]))
+buildAst xs = AST a ir or
+  where ((ir,or), (a, s, c)) = flip runState (M.empty, [], -i) $ do
+          ir <- replicateM i push
+          mapM_ swizzle xs
+          or <- replicateM o pop
+          return (ir, or)
+        (i, o) = arityM xs
 
-buildAst :: [Value] -> Array Int (Int, Value, [Int])
-buildAst xs = a -- // [(x, (x, W "in", [])) | x <- [0..i-1]]
-  where (a, s, c) = flip execState (array (0, regCnt (L xs) - 1 - i) [], [], -i) . ast . L $ xs
-        (i, _) = arityM xs
+testAst = liftM buildAst . tok
 
 exec (0, W "+", i) = do
   [I x, I y] <- mapM force i
@@ -140,9 +179,7 @@ exec (0, x, []) = return x
 
 force x = exec . (!x) =<< ask  
 
-eval a = mapM force o `runReader` a
-  where (0, c) = bounds a
-        (0, Q (AST [] o), []) = a!c
+eval (AST a i o) = mapM force o `runReader` a
 
 run xs = (eval . buildAst) `liftM` tok xs
 
@@ -155,20 +192,24 @@ seperate ss = nub . sort . filter (\x -> not $ any (S.isProperSubsetOf x) ss') $
   where ss' = concat [[x `S.difference` y, x `S.intersection` y, y `S.difference` x] | (x:xs) <- init . tails $ ss, y <- xs]
 
 deps a x = deps' x S.empty
+  where deps' [] s = s
+        deps' (x:xs) s = deps' (dep1 a x ++ xs) (x `S.insert` s)
+
+depsM a x = deps' x S.empty
   where deps' [] s = return s
         deps' (x:xs) s = do xs' <- dep1 a x
                             deps' (xs' ++ xs) (x `S.insert` s)
 
-dep1 a x | x < 0 = return []
-         | w == W "\\/" = return [c!!0] `mplus` return [c!!1]
-         | otherwise = return c
+dep1M a x | x < 0 = return []
+          | w == W "\\/" = return [c!!0] `mplus` return [c!!1]
+          | otherwise = return c
   where (_,w,c) = a!x
                 
-dep1' a x | x < 0 = []
-          | w == W "\\/" = []
-          | otherwise = c
+dep1 a x | x < 0 = []
+         | w == W "\\/" = []
+         | otherwise = c
   where (_,w,c) = a!x
-                
+{-
 outDeps a = mapM (deps a . (:[])) $ s
   where (_, Q (AST _ s), _) = a ! snd (bounds a)
 
@@ -180,7 +221,7 @@ units a = reg
         o = S.fromList (concatMap (S.toList . snd) pr ++ s)
         (_, Q (AST _ s), _) = a ! snd (bounds a)
         reg = [ (S.toAscList r, S.toAscList $ p `S.difference` o, S.toAscList $ p `S.intersection` o) | (p, r) <- pr ]
-
+-}
 varName x | x < 0 = "in" ++ show (negate x - 1)
           | otherwise = "reg" ++ show x
 
@@ -191,11 +232,11 @@ gen (d, (x, W "in", _)) = varName d ++ " = in" ++ show x
 gen (d, (x, W w, cs)) = varName d ++ " = " ++ w ++ "_" ++ show x ++ "(" ++ commas (map varName cs) ++ ")"
 
 commas = concat . intersperse ", "
-
+{-
 generate name src = do
   a <- buildAst `liftM` tok src
   return [func (name ++ "_" ++ show c) a u | (c,u) <- zip [0..] $ units a]
-
+-}
 proto name i o = "int " ++ name ++ "( " ++ commas (["int " ++ varName x | x <- i] ++ 
                                                     ["int *" ++ varName x | x <- o]) ++ " )"
 func name a (i, r, o) =

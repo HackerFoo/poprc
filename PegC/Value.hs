@@ -20,6 +20,7 @@ module PegC.Value where
 import Data.Maybe
 import Control.Monad
 import Control.Applicative
+import Data.IntMap (IntMap)
 
 data Value = F Double  -- float
            | I Integer -- integer
@@ -35,25 +36,13 @@ data Value = F Double  -- float
 --           | In Int    -- input
   deriving (Show, Eq)
 
-data AST = AST {- in -} [Int] {- out -} [Int] deriving (Show, Eq)
-{-
-instance Show AST where
-  show (AST i o) | null i = "AST " ++ show ns
-                 | otherwise = "AST " ++ show r ++ " -> " ++ show ns 
-  
-data ASTNode = Node {
-  nodeVal      :: Value,
-  nodePos      :: Int,
-  nodeChildren :: [Int]
-  } deriving (Eq)
+-- used at run/compile time
+-- one per output
+-- dependencies updated when called
+data Frag = Frag String [Int] [Int]
 
-instance Show ASTNode where
-  show (Node (W w) p c) = w ++ ":" ++ show p ++ if null c then "" else " " ++ show c
-  --show (Node (R r) p [Node (R r') p' _]) = "#" ++ show r ++ {- ":" ++ show p ++ -} " = #" ++ show r' {- ++ ":" ++ show p' -}
-  show (Node (R r) p [c]) = "#" ++ show r ++ {- ":" ++ show p ++ -} " = " ++ show c
-  --show (Node (In x) p []) = "In" ++ replicate x '^' ++ ":" ++ show p
-  show (Node v _ _) = show v
--}
+data AST = AST (IntMap (Int, Value, [Int])) [Int] [Int] deriving (Show, Eq)
+
 isWord (W _) = True
 isWord _ = False
 
