@@ -97,12 +97,12 @@ swizzle (W "quot") = do
   tellA [(r, (0, Q $ AST (M.fromList [(0, (0, R x, []))]) [] [0], [x]))]
 swizzle (W "popr") = do  
   x <- pop
-  (0, Q a, []) <- getRef x
+  (0, Q a, _) <- getRef x
   rt <- push
-  let (h, t) = splitAst (rt+1) a
-  newRefs $ M.size h - 1
-  tellA $ (rt, (0, Q t, [])) : M.toList h
-  push
+  let (h, r, o, t) = splitAst (rt+1) a
+  newRefs $ M.size h
+  tellA $ (rt, (0, Q t, r)) : M.toList h
+  pushI o
   return ()
 swizzle (L xs) = do
   o <- push
@@ -113,14 +113,21 @@ swizzle x = do
     tellA [(r, (n, x, i)) | (r,n) <- zip o [0..]]
   where (ic, oc) = arity x
 
-transplant o m = M.fromList . zip [o..] . map f . M.elems $ m
-  where nm = M.fromList $ zip (M.keys m) [o..]
-        f (0, R r, []) = (0, W "id", [r])
+-- messy, needs clean up
+splitAst x (AST a i (o:os)) = (h', map (nm!) $ S.toList rd, nm!o, AST t' i os)
+  where t = M.mapWithKey (\k x -> case k `M.lookup` nm of -- add refs
+                             Just r -> (0, R r, [])
+                             Nothing -> x) a
+        t' = M.filterWithKey (\k _ -> k `S.member` td) $ t -- filter tail
+        td = deps t os
+        hd = deps a [o]
+        rd = td `S.intersection` hd
+        h = M.filterWithKey (\k (_, w, _) -> k `S.member` hd && not (isRef w)) $ a -- filter head
+        h' = M.fromList . zip [x..] . map f . M.elems $ h -- transpant
+        nm = M.fromList $ zip (M.keys h) [x..] ++ -- map from inside to outside node IDs
+                          [(x, y) | (x, (_, R y, _)) <- M.toList a]
+        --f (0, R r, []) = (0, W "id", [r])
         f (n, w, cs) = (n, w, map (nm!) cs)
-
-splitAst x (AST a i (o:os)) = (transplant x h, AST t i os)
-  where od = deps a [o]
-        (h, t) = M.partitionWithKey (\k _ -> k `S.member` od) a
 
 -- when composing, ast is spliced as soon as depencies are met
 -- ast represented as graphs missing dependencies + registers of outputs + registers of refs + input count
@@ -174,8 +181,9 @@ testAst = liftM buildAst . tok
 exec (0, W "+", i) = do
   [I x, I y] <- mapM force i
   return . I $ x + y
+exec (0, W "id", [x]) = force x
 exec (0, R x, []) = force x
-exec (0, x, []) = return x
+exec (0, x, _) = return x
 
 force x = exec . (!x) =<< ask  
 
@@ -197,7 +205,7 @@ deps a x = deps' x S.empty
 
 depsM a x = deps' x S.empty
   where deps' [] s = return s
-        deps' (x:xs) s = do xs' <- dep1 a x
+        deps' (x:xs) s = do xs' <- dep1M a x
                             deps' (xs' ++ xs) (x `S.insert` s)
 
 dep1M a x | x < 0 = return []
@@ -209,19 +217,17 @@ dep1 a x | x < 0 = []
          | w == W "\\/" = []
          | otherwise = c
   where (_,w,c) = a!x
-{-
-outDeps a = mapM (deps a . (:[])) $ s
-  where (_, Q (AST _ s), _) = a ! snd (bounds a)
 
-units a = reg
+outDeps (AST a i o) = mapM (depsM a . (:[])) $ o
+
+units ast@(AST a i o) = reg
   where pr = [ (x, S.fromList (concat y) `S.difference` x)
-             | od <- outDeps a,
+             | od <- outDeps ast,
                x <- (map (S.filter (>= 0)) . seperate) od,
-               let y = dep1' a `map` S.toList x ]
-        o = S.fromList (concatMap (S.toList . snd) pr ++ s)
-        (_, Q (AST _ s), _) = a ! snd (bounds a)
-        reg = [ (S.toAscList r, S.toAscList $ p `S.difference` o, S.toAscList $ p `S.intersection` o) | (p, r) <- pr ]
--}
+               let y = dep1 a `map` S.toList x ]
+        o' = S.fromList (concatMap (S.toList . snd) pr ++ o)
+        reg = [ (S.toAscList r, S.toAscList $ p `S.difference` o', S.toAscList $ p `S.intersection` o') | (p, r) <- pr ]
+
 varName x | x < 0 = "in" ++ show (negate x - 1)
           | otherwise = "reg" ++ show x
 
@@ -232,14 +238,14 @@ gen (d, (x, W "in", _)) = varName d ++ " = in" ++ show x
 gen (d, (x, W w, cs)) = varName d ++ " = " ++ w ++ "_" ++ show x ++ "(" ++ commas (map varName cs) ++ ")"
 
 commas = concat . intersperse ", "
-{-
+
 generate name src = do
   a <- buildAst `liftM` tok src
   return [func (name ++ "_" ++ show c) a u | (c,u) <- zip [0..] $ units a]
--}
+
 proto name i o = "int " ++ name ++ "( " ++ commas (["int " ++ varName x | x <- i] ++ 
                                                     ["int *" ++ varName x | x <- o]) ++ " )"
-func name a (i, r, o) =
+func name (AST a _ _) (i, r, o) =
   proto name i (tail o) ++ "\n" ++
   "{\n" ++
   "  int " ++ commas [varName x | x <- r ++ [head o]] ++ ";\n" ++
