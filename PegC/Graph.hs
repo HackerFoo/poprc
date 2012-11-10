@@ -65,7 +65,7 @@ pop = do
   (a, x:s, c) <- get
   put (a, s, c)
   return x
-
+{-
 regCntM xs = fst (arityM xs) + sum (map regCnt xs)
 regCnt (W "swap") = 0
 regCnt (W "dup") = 0
@@ -73,7 +73,7 @@ regCnt (W "pop") = 0
 --regCnt (W "\\/") = 0
 regCnt (W "popr") = 1
 regCnt x = snd (arity x)
-
+-}
 
 tellA x = modify (\(a, s, c) -> (a `M.union` M.fromList x, s, c))
 withA f = do
@@ -104,6 +104,11 @@ swizzle (W "popr") = do
   tellA $ (rt, (0, Q t, r)) : M.toList h
   pushI o
   return ()
+swizzle (W ".") = do
+  (0, Q y, yd) <- getRef =<< pop
+  (0, Q x, xd) <- getRef =<< pop
+  z <- push
+  tellA [(z, (0, Q $ x `composeAst` y, xd ++ yd))]
 swizzle (L xs) = do
   o <- push
   tellA [(o, (0, Q (buildAst xs), []))]
@@ -129,45 +134,26 @@ splitAst x (AST a i (o:os)) = (h', map (nm!) $ S.toList rd, nm!o, AST t' i os)
         --f (0, R r, []) = (0, W "id", [r])
         f (n, w, cs) = (n, w, map (nm!) cs)
 
--- when composing, ast is spliced as soon as depencies are met
--- ast represented as graphs missing dependencies + registers of outputs + registers of refs + input count
-
-{-
-ast (L xs) = do
-    i <- replicateM ic push
-    mapM_ ast xs
-    o <- replicateM oc pop
-    r <- push
-    tellA [(r, (0, Q (AST i o), []))]
-    return [r]
-  where (ic, oc) = arityM xs
-ast (W "quot") = do
-  x <- pop
-  r <- push
-  tellA [(r, (0, Q (AST [] [x]), []))]
-  return [r]
-ast (W "popr") = do
-  r <- pop
-  (_,Q (AST i (x:o)),_) <- getRef r
-  y <- push
-  tellA [(y, (0, Q (AST i o),[]))]
-  pushI x
-  return [x,y]
-ast (W ".") = do
-  y <- pop
-  x <- pop
-  (_, Q astX, _) <- getRef x
-  (_, Q astY, _) <- getRef y
-  astZ <- composeAst astX astY
-  z <- push
-  tellA [(z, (0, Q astZ, []))]
-  return [z]
-composeAst :: (MonadState (IntMap Int (Int, Value, [Int]), [Int], Int) m) => AST -> AST -> m AST
-composeAst (AST ix ox) (AST iy oy) = do
-  tellA . map (\(o, i) -> (i, (0, R o, []))) $ zip ox iy
-  return (AST (drop (length ox) iy ++ ix) (oy ++ drop (length iy) ox))
--}
-buildAst :: [Value] -> AST --([Int], [Int], IntMap (Int, Value, [Int]))
+-- messy, but works
+composeAst :: AST -> AST -> AST
+composeAst (AST ax ix ox) (AST ay iy oy) = AST axy (ix ++ iy') (oy' ++ drop (length iy) ox)
+  where mIx = if M.null ax then 0 else fst (M.findMax ax) + 1
+        axy = M.union ax . M.fromList .
+              map (\(k, (n, w, ns)) -> (k+mIx, (n, updateRef w, map update ns))) .
+              M.toList $ ay
+        update x | x < 0 = iom!x
+                 | otherwise = x+mIx
+        -- maintain references in subs
+        updateRef (Q (AST a i o)) = Q $ AST (M.map f a) i o
+          where f (n, R x, d) = (n, R $ update x, d)
+                f x = x
+        updateRef x = x
+        iom = M.fromList $ zip iy (iy' ++ ox)
+        iy' = reverse $ take (length iy - length ox) [minIn, minIn-1..]
+        minIn = if null ix then (-1) else minimum (ix ++ iy) - 1
+        oy' = map (+mIx) oy
+        
+buildAst :: [Value] -> AST
 buildAst xs = AST a ir or
   where ((ir,or), (a, s, c)) = flip runState (M.empty, [], -i) $ do
           ir <- replicateM i push
