@@ -29,6 +29,7 @@ import Control.Monad.Writer
 import Control.Monad.Reader
 import Control.Arrow (first)
 import Data.IntMap (IntMap, (!))
+import Control.Monad.Trans.List
 import Debug.Trace
 
 arity (W "+") = (2,1)
@@ -94,7 +95,7 @@ swizzle (W "pop") = pop >> return ()
 swizzle (W "quot") = do
   x <- pop
   r <- push
-  tellA [(r, (0, Q $ AST (M.fromList [(0, (0, R x, []))]) [] [0], [x]))]
+  tellA [(r, (0, Q $ AST (M.fromList [(0, (0, R x, []))]) [] [[0]], [x]))]
 swizzle (W "popr") = do  
   x <- pop
   (0, Q a, _) <- getRef x
@@ -119,7 +120,7 @@ swizzle x = do
   where (ic, oc) = arity x
 
 -- messy, needs clean up
-splitAst x (AST a i (o:os)) = (h', map (nm!) $ S.toList rd, nm!o, AST t' i os)
+splitAst x (AST a i [o:os]) = (h', map (nm!) $ S.toList rd, nm!o, AST t' i [os])
   where t = M.mapWithKey (\k x -> case k `M.lookup` nm of -- add refs
                              Just r -> (0, R r, [])
                              Nothing -> x) a
@@ -136,7 +137,7 @@ splitAst x (AST a i (o:os)) = (h', map (nm!) $ S.toList rd, nm!o, AST t' i os)
 
 -- messy, but works
 composeAst :: AST -> AST -> AST
-composeAst (AST ax ix ox) (AST ay iy oy) = AST axy (ix ++ iy') (oy' ++ drop (length iy) ox)
+composeAst (AST ax ix [ox]) (AST ay iy [oy]) = AST axy (ix ++ iy') [oy' ++ drop (length iy) ox]
   where mIx = if M.null ax then 0 else fst (M.findMax ax) + 1
         axy = M.union ax . M.fromList .
               map (\(k, (n, w, ns)) -> (k+mIx, (n, updateRef w, map update ns))) .
@@ -154,12 +155,11 @@ composeAst (AST ax ix ox) (AST ay iy oy) = AST axy (ix ++ iy') (oy' ++ drop (len
         oy' = map (+mIx) oy
         
 buildAst :: [Value] -> AST
-buildAst xs = AST a ir or
-  where ((ir,or), (a, s, c)) = flip runState (M.empty, [], -i) $ do
-          ir <- replicateM i push
+buildAst xs = AST a [(-i)..(-1)] or
+  where (or, (a, s, c)) = flip runState (M.empty, [], -i) . runListT $ do
+          replicateM i push
           mapM_ swizzle xs
-          or <- replicateM o pop
-          return (ir, or)
+          replicateM o pop
         (i, o) = arityM xs
 
 testAst = liftM buildAst . tok
@@ -173,7 +173,7 @@ exec (0, x, _) = return x
 
 force x = exec . (!x) =<< ask  
 
-eval (AST a i o) = mapM force o `runReader` a
+eval (AST a i [o]) = mapM force o `runReader` a
 
 run xs = (eval . buildAst) `liftM` tok xs
 
@@ -204,9 +204,9 @@ dep1 a x | x < 0 = []
          | otherwise = c
   where (_,w,c) = a!x
 
-outDeps (AST a i o) = mapM (depsM a . (:[])) $ o
+outDeps (AST a i [o]) = mapM (depsM a . (:[])) $ o
 
-units ast@(AST a i o) = reg
+units ast@(AST a i [o]) = reg
   where pr = [ (x, S.fromList (concat y) `S.difference` x)
              | od <- outDeps ast,
                x <- (map (S.filter (>= 0)) . seperate) od,

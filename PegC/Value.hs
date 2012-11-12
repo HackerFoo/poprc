@@ -41,7 +41,7 @@ data Value = F Double  -- float
 -- dependencies updated when called
 data Frag = Frag String [Int] [Int]
 
-data AST = AST (IntMap (Int, Value, [Int])) [Int] [Int] deriving (Show, Eq)
+data AST = AST (IntMap (Int, Value, [Int])) [Int] [[Int]] deriving (Show, Eq)
 
 isWord (W _) = True
 isWord _ = False
