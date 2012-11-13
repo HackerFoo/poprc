@@ -31,6 +31,7 @@ import Control.Arrow (first)
 import Data.IntMap (IntMap, (!))
 import Control.Monad.Trans.List
 import Debug.Trace
+import Data.Monoid
 
 arity (W "+") = (2,1)
 arity (W "-") = (2,1)
@@ -53,18 +54,20 @@ composeArity (ix, ox) (iy, oy) = (ix + max 0 (-h), oy + max 0 h)
   where h = ox - iy
 arityM = foldl' (\s -> composeArity s . arity) (0,0)
 
-push = do (a, s, c) <- get
-          put (a, c:s, c+1)
+push = do s <- get
+          (a,c) <- lift get
+          put (c:s)
+          lift $ put (a, c+1)
           return c
-newRefs n = do (a, s, c) <- get
-               put (a, s, c+n)
+newRefs n = do (a, c) <- lift get
+               lift $ put (a, c+n)
                return c
-pushI x = do (a, s, c) <- get
-             put (a, x:s, c)
+pushI x = do s <- get
+             put (x:s)
              return x  
 pop = do
-  (a, x:s, c) <- get
-  put (a, s, c)
+  (x:s) <- get
+  put s
   return x
 {-
 regCntM xs = fst (arityM xs) + sum (map regCnt xs)
@@ -76,40 +79,52 @@ regCnt (W "popr") = 1
 regCnt x = snd (arity x)
 -}
 
-tellA x = modify (\(a, s, c) -> (a `M.union` M.fromList x, s, c))
-withA f = do
-  (a, s, c) <- get
-  return $ f `runReader` a
+tellA x = lift $ modify (\(a, c) -> (a `M.union` M.fromList x, c))
 getRef x = do
-  (a, _, _) <- get
-  return (a!x)
+  (a, _) <- lift get
+  case a!x of
+    (n, W "\\/", [a, b]) -> getRef a `mplus` getRef b
+    (n, W ".", [ar, br]) -> do
+      Q a <- getRef ar
+      Q b <- getRef br
+      return . Q $ a `composeAst` b
+    (n, W "quot", [a]) ->
+      return . Q $ AST (M.fromList [(0, (0, R a, []))]) [] [[0]]
+    (n, x, d) -> return x
   
 -- initial pass
 swizzle (W "swap") = do
-  (a, x:y:s, c) <- get
-  put (a, y:x:s, c)
+  (x:y:s) <- get
+  put (y:x:s)
 swizzle (W "dup") = do
-  (a, x:s, c) <- get
-  put (a, x:x:s, c)
+  (x:s) <- get
+  put (x:x:s)
 swizzle (W "pop") = pop >> return ()
-swizzle (W "quot") = do
-  x <- pop
-  r <- push
-  tellA [(r, (0, Q $ AST (M.fromList [(0, (0, R x, []))]) [] [[0]], [x]))]
 swizzle (W "popr") = do  
   x <- pop
-  (0, Q a, _) <- getRef x
+  Q a <- getRef x
   rt <- push
   let (h, r, o, t) = splitAst (rt+1) a
   newRefs $ M.size h
   tellA $ (rt, (0, Q t, r)) : M.toList h
   pushI o
   return ()
+{-
+swizzle (W "quot") = do
+  x <- pop
+  r <- push
+  tellA [(r, (0, Q $ AST (M.fromList [(0, (0, R x, []))]) [] [[0]], [x]))]
 swizzle (W ".") = do
   (0, Q y, yd) <- getRef =<< pop
   (0, Q x, xd) <- getRef =<< pop
   z <- push
   tellA [(z, (0, Q $ x `composeAst` y, xd ++ yd))]
+swizzle (W "\\/") = do
+  y <- pop
+  x <- pop
+  pushI x `mplus` pushI y
+  return ()
+-}
 swizzle (L xs) = do
   o <- push
   tellA [(o, (0, Q (buildAst xs), []))]
@@ -156,7 +171,7 @@ composeAst (AST ax ix [ox]) (AST ay iy [oy]) = AST axy (ix ++ iy') [oy' ++ drop 
         
 buildAst :: [Value] -> AST
 buildAst xs = AST a [(-i)..(-1)] or
-  where (or, (a, s, c)) = flip runState (M.empty, [], -i) . runListT $ do
+  where (or, (a, _)) = flip runState (M.empty, -i) . runListT . flip evalStateT [] $ do
           replicateM i push
           mapM_ swizzle xs
           replicateM o pop
@@ -168,12 +183,17 @@ exec (0, W "+", i) = do
   [I x, I y] <- mapM force i
   return . I $ x + y
 exec (0, W "id", [x]) = force x
+exec (0, W "\\/", [x, y]) = force x `mplus` force y
 exec (0, R x, []) = force x
 exec (0, x, _) = return x
 
-force x = exec . (!x) =<< ask  
+force x = exec . (!x) =<< ask
 
-eval (AST a i [o]) = mapM force o `runReader` a
+choose = foldr (mplus . return) mzero
+
+eval (AST a i os) = flip runReader a . runListT $ do
+  o <- choose os
+  mapM force o
 
 run xs = (eval . buildAst) `liftM` tok xs
 
