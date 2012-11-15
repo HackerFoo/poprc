@@ -33,6 +33,7 @@ data Value = F Double  -- float
            | S String  -- stack variable
            | Io        -- I/O token
            | R Int     -- reference
+           | P String  -- function pointer
 --           | In Int    -- input
   deriving (Show, Eq)
 
@@ -41,7 +42,7 @@ data Value = F Double  -- float
 -- dependencies updated when called
 data Frag = Frag String [Int] [Int]
 
-data AST = AST (IntMap (Int, Value, [Int])) [Int] [[Int]] deriving (Show, Eq)
+data AST = AST (IntMap (Int, Value, [Int])) [Int] [Int] [Int] deriving (Show, Eq)
 
 isWord (W _) = True
 isWord _ = False

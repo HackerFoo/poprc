@@ -80,6 +80,7 @@ regCnt x = snd (arity x)
 -}
 
 tellA x = lift $ modify (\(a, c) -> (a `M.union` M.fromList x, c))
+{-
 getRef x = do
   (a, _) <- lift get
   case a!x of
@@ -89,9 +90,14 @@ getRef x = do
       Q b <- getRef br
       return . Q $ a `composeAst` b
     (n, W "quot", [a]) ->
-      return . Q $ AST (M.fromList [(0, (0, R a, []))]) [] [[0]]
+      return . Q $ AST (M.fromList [(0, (0, R a, []))]) [] [0]
     (n, x, d) -> return x
-  
+-}
+multi m = do
+  s <- get        
+  (a, c) <- lift get
+  return . flip evalStateT (a, c) . runListT . flip evalState s $ m
+
 -- initial pass
 swizzle (W "swap") = do
   (x:y:s) <- get
@@ -100,16 +106,18 @@ swizzle (W "dup") = do
   (x:s) <- get
   put (x:x:s)
 swizzle (W "pop") = pop >> return ()
-swizzle (W "popr") = do  
-  x <- pop
-  Q a <- getRef x
-  rt <- push
-  let (h, r, o, t) = splitAst (rt+1) a
-  newRefs $ M.size h
-  tellA $ (rt, (0, Q t, r)) : M.toList h
-  pushI o
-  return ()
 {-
+swizzle (W "popr") = do
+  x <- pop
+  l <- multi $ do
+    Q a <- getRef x
+    [rt] <- newRefs 1
+    let (h, r, o, t) = splitAst (rt+1) a
+    newRefs $ M.size h
+    tellA $ (rt, (0, Q t, r)) : M.toList h
+    return (rt, o)
+  c <- 
+  return ()
 swizzle (W "quot") = do
   x <- pop
   r <- push
@@ -134,8 +142,17 @@ swizzle x = do
     tellA [(r, (n, x, i)) | (r,n) <- zip o [0..]]
   where (ic, oc) = arity x
 
+seperateAst n xs = seperateAst' 0 [(n, xs)]
+  where seperateAst' c [] = []
+        seperateAst' c ((t, AST x e i o):xs) = (t, AST x' e i o) : seperateAst' c' (ss ++ xs)
+          where ((c', ss), x') = M.mapAccum f (c, []) x
+                f (c, ss) (n, (Q x), d) = ((c+1, ((sn c, x):ss)), (n, P $ sn c, d))
+                f (c, ss) x = ((c, ss), x)
+                sn c = n ++ "_sub" ++ show c
+  
+{-
 -- messy, needs clean up
-splitAst x (AST a i [o:os]) = (h', map (nm!) $ S.toList rd, nm!o, AST t' i [os])
+splitAst x (AST a i (o:os)) = (h', map (nm!) $ S.toList rd, nm!o, AST t' i os)
   where t = M.mapWithKey (\k x -> case k `M.lookup` nm of -- add refs
                              Just r -> (0, R r, [])
                              Nothing -> x) a
@@ -152,7 +169,7 @@ splitAst x (AST a i [o:os]) = (h', map (nm!) $ S.toList rd, nm!o, AST t' i [os])
 
 -- messy, but works
 composeAst :: AST -> AST -> AST
-composeAst (AST ax ix [ox]) (AST ay iy [oy]) = AST axy (ix ++ iy') [oy' ++ drop (length iy) ox]
+composeAst (AST ax ix ox) (AST ay iy oy) = AST axy (ix ++ iy') (oy' ++ drop (length iy) ox)
   where mIx = if M.null ax then 0 else fst (M.findMax ax) + 1
         axy = M.union ax . M.fromList .
               map (\(k, (n, w, ns)) -> (k+mIx, (n, updateRef w, map update ns))) .
@@ -168,10 +185,10 @@ composeAst (AST ax ix [ox]) (AST ay iy [oy]) = AST axy (ix ++ iy') [oy' ++ drop 
         iy' = reverse $ take (length iy - length ox) [minIn, minIn-1..]
         minIn = if null ix then (-1) else minimum (ix ++ iy) - 1
         oy' = map (+mIx) oy
-        
+-}      
 buildAst :: [Value] -> AST
-buildAst xs = AST a [(-i)..(-1)] or
-  where (or, (a, _)) = flip runState (M.empty, -i) . runListT . flip evalStateT [] $ do
+buildAst xs = AST a [] [(-i)..(-1)] or
+  where (or, (a, _)) = flip runState (M.empty, -i) . flip evalStateT [] $ do
           replicateM i push
           mapM_ swizzle xs
           replicateM o pop
@@ -191,9 +208,7 @@ force x = exec . (!x) =<< ask
 
 choose = foldr (mplus . return) mzero
 
-eval (AST a i os) = flip runReader a . runListT $ do
-  o <- choose os
-  mapM force o
+eval (AST a e i o) = flip runReader a . runListT $ mapM force o
 
 run xs = (eval . buildAst) `liftM` tok xs
 
@@ -218,15 +233,15 @@ dep1M a x | x < 0 = return []
           | w == W "\\/" = return [c!!0] `mplus` return [c!!1]
           | otherwise = return c
   where (_,w,c) = a!x
-                
+
 dep1 a x | x < 0 = []
          | w == W "\\/" = []
          | otherwise = c
   where (_,w,c) = a!x
 
-outDeps (AST a i [o]) = mapM (depsM a . (:[])) $ o
+outDeps (AST a e i o) = mapM (depsM a . (:[])) $ o
 
-units ast@(AST a i [o]) = reg
+units ast@(AST a e i o) = reg
   where pr = [ (x, S.fromList (concat y) `S.difference` x)
              | od <- outDeps ast,
                x <- (map (S.filter (>= 0)) . seperate) od,
@@ -239,19 +254,22 @@ varName x | x < 0 = "in" ++ show (negate x - 1)
 
 gen (d, (_, W "+", [x, y])) = varName d ++ " = " ++ varName x ++ " + " ++ varName y
 gen (d, (_, I x, _)) = varName d ++ " = " ++ show x
+gen (d, (_, P n, _)) = varName d ++ " = &" ++ n 
 gen (d, (_, Q _, _)) = varName d ++ " = <<AST>>"
-gen (d, (x, W "in", _)) = varName d ++ " = in" ++ show x
+gen (d, (x, W "id", [r])) = varName d ++ " = " ++ varName r
 gen (d, (x, W w, cs)) = varName d ++ " = " ++ w ++ "_" ++ show x ++ "(" ++ commas (map varName cs) ++ ")"
 
 commas = concat . intersperse ", "
 
 generate name src = do
   a <- buildAst `liftM` tok src
-  return [func (name ++ "_" ++ show c) a u | (c,u) <- zip [0..] $ units a]
+  return [func (n ++ "_" ++ show c) a' u |
+          (n, a') <- seperateAst name a,
+          (c,u) <- zip [0..] $ units a']
 
 proto name i o = "int " ++ name ++ "( " ++ commas (["int " ++ varName x | x <- i] ++ 
-                                                    ["int *" ++ varName x | x <- o]) ++ " )"
-func name (AST a _ _) (i, r, o) =
+                                                   ["int *" ++ varName x | x <- o]) ++ " )"
+func name (AST a _ _ _) (i, r, o) =
   proto name i (tail o) ++ "\n" ++
   "{\n" ++
   "  int " ++ commas [varName x | x <- r ++ [head o]] ++ ";\n" ++
@@ -259,3 +277,5 @@ func name (AST a _ _) (i, r, o) =
   concatMap (\x -> "  *"++ gen (x, (a!x)) ++ ";\n") (tail o) ++
   "  return " ++ varName (head o) ++ ";\n" ++
   "}\n"
+
+testGen = mapM_ putStrLn <=< generate "test"
