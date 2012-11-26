@@ -20,6 +20,10 @@ int noop(closure_t *c) {
   return c->val;
 }
 
+bool is_closure(void *p) {
+  return p >= (void *)&cl_stack && p < (void *)(&cl_stack+1);
+}
+
 closure_t *val(int x) {
   cl_stack[top].func = noop;
   cl_stack[top].val = x;
@@ -37,6 +41,12 @@ closure_t *func(int (*f)(closure_t *), int args) {
   return &cl_stack[cur];
 }
 
+closure_t *pop() {
+  while(top && (!cl_stack[--top].func ||
+		is_closure(cl_stack[top].func)));
+  return &cl_stack[top];
+}
+
 int add(closure_t *c) {
   int x = force(c->in[0]);
   int y = force(c->in[1]);
@@ -46,12 +56,9 @@ int add(closure_t *c) {
   return c->val;
 }
 
-bool is_closure(void *p) {
-  return p >= (void *)&cl_stack && p < (void *)(&cl_stack+1);
-}
-
 // destructive composition
 bool comp(closure_t *c, closure_t *a) {
+  if(c->func == noop) return false;
   closure_t **p = c->in;
   while(is_closure(*p)) {
     if(comp(*p, a)) return true;
@@ -63,15 +70,46 @@ bool comp(closure_t *c, closure_t *a) {
   }
   return false; 
 }
-/*
-closure_t *dup(closure_t *c) {
-  closure_t tmp;
-  
-}
-*/
-bool arg(closure_t *c, closure_t *a) {
+
+int closure_size(closure_t *c) {
+  if(c->func == noop) return 0;
   closure_t **p = c->in;
-  while(is_closure(*p)) ++p;
+  int n = 0;
+  while(!*p || is_closure(*p)) {
+    p++;
+    n++;
+  }
+  return n;
+}
+
+closure_t *dup(closure_t *c) {
+  if(!is_closure(c)) return c;
+  closure_t *tmp;
+  bool copy = false;
+  if(c->func == noop) {
+    tmp = c;
+  } else {
+    int i, size = closure_size(c);
+    tmp = func(c->func, size);
+    for(i = 0; i < size; i++) {
+      tmp->in[i] = dup(c->in[i]);
+      if(tmp->in[i] != c->in[i] ||
+	 !is_closure(tmp->in[i]))
+	copy = true;
+    }
+    if(!copy) {
+      pop();
+      tmp = c;
+    }
+    else printf("copy\n");
+  }
+  return tmp;
+}
+
+bool arg(closure_t *c, closure_t *a) {
+  if(c->func == noop) return false;
+  closure_t **p = c->in;
+  while(!*p || is_closure(*p)) ++p;
   if(!*p) {
     *p = a;
     return true;
@@ -85,7 +123,7 @@ int force(closure_t *c) {
 }
 
 void main() {
-  closure_t *a, *b, *c, *d, *e;
+  closure_t *a, *b, *c, *d, *e, *f;
 
   a = val(1);
   b = val(2);
@@ -95,9 +133,12 @@ void main() {
   comp(e, c);
   comp(e, a);
   comp(e, b);
+  f = dup(e);
   comp(e, d);
+  comp(f, a);
   
   printf("c = %d\n", force(c));
   printf("e = %d\n", force(e));
-  printf("c = %d\n", force(c));
+  printf("f = %d\n", force(f));
+  printf("closure_size() = %d\n", closure_size(e));
 }
