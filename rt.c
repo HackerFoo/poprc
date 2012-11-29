@@ -1,19 +1,30 @@
 #include <stdio.h>
-#include <strings.h>
+#include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <assert.h>
 
 typedef struct closure closure_t;
+typedef int (*closure_func_t)(closure_t *);
 struct closure {
-  int (*func)(closure_t *);
+  closure_func_t func;
   union {
     intptr_t val;
     closure_t *in[1];
   };
 };
 
+bool closure_is_ready(closure_t *c) {
+  return !((intptr_t)c->func & 0x1);
+}
+
+void closure_set_ready(closure_t *c, bool r) {
+  c->func = (closure_func_t)(((intptr_t)c->func & ~0x1) | !r);
+}
+
 #define LENGTH(_a) (sizeof((_a)[0]) / sizeof(_a))
+
 // make sure &cl_stack > 255
 uint8_t padding[256];
 closure_t cl_stack[1024];
@@ -38,26 +49,25 @@ bool is_offset(closure_t *c) {
   return !((intptr_t)c & ~0xff);
 }
 
+// args must be >= 1
 closure_t *func(int (*f)(closure_t *), int args) {
+  // assert(args >= 0); // breaks things somehow
   int cur = top;
   int size = 1 + ((sizeof(closure_t *) * (args - 1) + sizeof(closure_t) - 1) / sizeof(closure_t));
   bzero(&cl_stack[cur], sizeof(closure_t)*size);
-  /*
-  if((void*)(&cl_stack[cur].in[args]) < (void*)(&cl_stack+1))
-    cl_stack[cur].in[args] = &cl_stack[-1]; // invalid nonzero value to mark end of arguments
-  */
   cl_stack[cur].func = f;
-  cl_stack[cur].in[0] = (closure_t *)(intptr_t)args;
+  cl_stack[cur].in[0] = (closure_t *)(intptr_t)(args - 1);
   top += size;
+  closure_set_ready(&cl_stack[cur], false);
   return &cl_stack[cur];
 }
-
+/*
 closure_t *pop() {
   while(top && (!cl_stack[--top].func ||
 		is_closure(cl_stack[top].func)));
   return &cl_stack[top];
 }
-
+*/
 int add(closure_t *c) {
   int x = force(c->in[0]);
   int y = force(c->in[1]);
@@ -67,24 +77,12 @@ int add(closure_t *c) {
   return c->val;
 }
 
-bool arg(closure_t *c, closure_t *a) {
-  if(c->func == noop) return false;
-
-  // c->in[0] is an offset to the next arg
-  // until it is replaced with a closure
-  if(is_closure(c->in[0]) ||
-     !(intptr_t)c->in[0]) return false;
-  intptr_t o = --*((intptr_t *)&c->in[0]);
-  c->in[o] = a;
-  return true;
-}
-
 int closure_size(closure_t *c) {
   if(c->func == noop) return 0;
   closure_t **p = c->in;
   int n = 0;
   if(is_offset(*p)) {
-    intptr_t o = (intptr_t)(*p);
+    intptr_t o = (intptr_t)(*p) + 1;
     p += o;
     n += o;
   }
@@ -95,53 +93,48 @@ int closure_size(closure_t *c) {
   return n;
 }
 
+int closure_next(closure_t *c) {
+  return is_offset(c->in[0]) ? (intptr_t)c->in[0] : 0;
+}
+
 // destructive composition
-bool comp(closure_t *c, closure_t *a) {
-  if(c->func == noop) return false;
-  int i = closure_size(c) - 1;
-  while(i >= 0 && is_closure(c->in[i])) {
-    if(comp(c->in[i], a)) return true;
-    --i;
-  }
-  if(i >= 0) {
-    c->in[0] = (closure_t *)(intptr_t)i;
+void comp(closure_t *c, closure_t *a) {
+  assert(!closure_is_ready(c));
+  int i = closure_next(c);
+  if(!is_closure(c->in[i])) {
+    c->in[0] = (closure_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
     c->in[i] = a;
-    return true;
+    if(i == 0) closure_set_ready(c, closure_is_ready(a));
+  } else {
+    comp(c->in[i], a);
+    if(closure_is_ready(c->in[i])) {
+      if(i == 0) closure_set_ready(c, true);
+      else --*(intptr_t *)c->in; // decrement offset
+    }
   }
-  return false; 
 }
 
 closure_t *dup(closure_t *c) {
-  if(!is_closure(c)) return c;
-  closure_t *tmp;
-  bool copy = false;
-  if(c->func == noop) {
-    tmp = c;
-  } else {
-    int i, size = closure_size(c);
-    tmp = func(c->func, size);
-    for(i = 0; i < size; i++) {
-      tmp->in[i] = dup(c->in[i]);
-      if(tmp->in[i] != c->in[i] ||
-	 !is_closure(tmp->in[i]))
-	copy = true;
-    }
-    if(!copy) {
-      pop();
-      tmp = c;
-    }
-    else printf("copy\n");
-  }
+  assert(is_closure(c));
+  if(closure_is_ready(c)) return c;
+  int size = closure_size(c);
+  closure_t *tmp = func(c->func, size);
+  memcpy(&tmp->in, &c->in, sizeof(c->in[0]) * size);
+  // c->in[<i] are empty and c->in[>i] are ready, so no need to copy
+  // c->in[i] only needs copied if filled
+  int i = closure_next(c);
+  if(is_closure(c->in[i])) tmp->in[i] = dup(c->in[i]);
   return tmp;
 }
 
 inline
 int force(closure_t *c) {
+  assert(closure_is_ready(c));
   c->func(c);
 }
 
 int main() {
-  closure_t *a, *b, *c, *d, *e, *f;
+  closure_t *a, *b, *c, *d, *e, *f, *g;
 
   a = val(1);
   b = val(2);
@@ -151,13 +144,19 @@ int main() {
   comp(e, c);
   comp(e, a);
   comp(e, b);
+  printf("closure_size(e) = %d\n", closure_size(e));
   f = dup(e);
   comp(e, d);
   comp(f, a);
-  
-  printf("c = %d\n", force(c));
-  printf("e = %d\n", force(e));
-  printf("f = %d\n", force(f));
-  printf("closure_size() = %d\n", closure_size(f));
+  g = func(add, 2);
+  comp(g, val(10));
+  comp(g, f);
+
+#define show(x)\
+printf(#x " = %d\n", force(x))
+
+  show(c);
+  show(e);
+  show(g);
   return 0;
 }
