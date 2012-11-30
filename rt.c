@@ -5,6 +5,9 @@
 #include <stdint.h>
 #include <assert.h>
 
+#define show(x)\
+printf(#x " = %d\n", x)
+
 typedef struct closure closure_t;
 typedef int (*closure_func_t)(closure_t *);
 struct closure {
@@ -28,9 +31,9 @@ void closure_set_ready(closure_t *c, bool r) {
 // make sure &cl_stack > 255
 uint8_t padding[256];
 closure_t cl_stack[1024];
-int top = 0;
+int cl_stack_top = 0;
 
-int noop(closure_t *c) {
+int return_val(closure_t *c) {
   return c->val;
 }
 
@@ -39,9 +42,13 @@ bool is_closure(void *p) {
 }
 
 closure_t *val(int x) {
-  cl_stack[top].func = noop;
-  cl_stack[top].val = x;
-  return &cl_stack[top++];
+  cl_stack[cl_stack_top].func = return_val;
+  cl_stack[cl_stack_top].val = x;
+  return &cl_stack[cl_stack_top++];
+}
+
+bool is_val(closure_t *c) {
+  return c->func == return_val;
 }
 
 // max offset is 255
@@ -52,33 +59,29 @@ bool is_offset(closure_t *c) {
 // args must be >= 1
 closure_t *func(int (*f)(closure_t *), int args) {
   // assert(args >= 0); // breaks things somehow
-  int cur = top;
+  int cur = cl_stack_top;
   int size = 1 + ((sizeof(closure_t *) * (args - 1) + sizeof(closure_t) - 1) / sizeof(closure_t));
   bzero(&cl_stack[cur], sizeof(closure_t)*size);
   cl_stack[cur].func = f;
   cl_stack[cur].in[0] = (closure_t *)(intptr_t)(args - 1);
-  top += size;
+  cl_stack_top += size;
+  // make sure that is_closure(cl_stack[cur].in[args]) == false 
+  if((void *)&cl_stack[cur].in[args] < (void *)(&cl_stack+1)) cl_stack[cur].in[args] = 0;
   closure_set_ready(&cl_stack[cur], false);
   return &cl_stack[cur];
 }
-/*
-closure_t *pop() {
-  while(top && (!cl_stack[--top].func ||
-		is_closure(cl_stack[top].func)));
-  return &cl_stack[top];
-}
-*/
+
 int add(closure_t *c) {
   int x = force(c->in[0]);
   int y = force(c->in[1]);
   printf("add(%d, %d)\n", x, y);
   c->val = x + y;
-  c->func = noop;
+  c->func = return_val;
   return c->val;
 }
 
 int closure_size(closure_t *c) {
-  if(c->func == noop) return 0;
+  if(is_val(c)) return 0;
   closure_t **p = c->in;
   int n = 0;
   if(is_offset(*p)) {
@@ -133,30 +136,59 @@ int force(closure_t *c) {
   c->func(c);
 }
 
-int main() {
-  closure_t *a, *b, *c, *d, *e, *f, *g;
+int max_closure(int pmax, closure_t *c) {
+  int n = c - &cl_stack[0];
+  if(is_val(c)) return n;
 
-  a = val(1);
-  b = val(2);
-  c = func(add, 2);
-  d = val(4);
+  int i = closure_next(c);
+  if(!is_closure(c->in[i])) i++;
+  while(is_closure(c->in[i])) {
+    n = max_closure(n, c->in[i]);
+    i++;
+  }
+  return n;
+}
+
+// simple GC:
+// calculate maximum closure address of returned
+// closure, and set top accordingly before returning
+#define return_closure(__c)\
+  cl_stack_top = max_closure(0, __c) + 1;\
+  return __c;
+
+closure_t *test() {
+  closure_t *a, *b, *c, *d, *e, *f, *g, *h;
+
+  g = func(add, 2);
   e = func(add, 2);
+  c = func(add, 2);
+
+  h = val(10);
+  b = val(2);
+  a = val(1);
+
   comp(e, c);
   comp(e, a);
   comp(e, b);
-  printf("closure_size(e) = %d\n", closure_size(e));
+  show(closure_size(e));
   f = dup(e);
+  d = val(4);
   comp(e, d);
   comp(f, a);
-  g = func(add, 2);
-  comp(g, val(10));
+  comp(g, h);
   comp(g, f);
 
-#define show(x)\
-printf(#x " = %d\n", force(x))
+  //show(force(c));
+  //show(force(e));
+  show(force(f));
+  show(max_closure(0, g));
 
-  show(c);
-  show(e);
-  show(g);
+  return_closure(g)
+}
+
+int main() {
+  closure_t *x = test();
+  show(force(x));
+  show(cl_stack_top);
   return 0;
 }
