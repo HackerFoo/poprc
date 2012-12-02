@@ -33,10 +33,8 @@ void closure_set_ready(cell_t *c, bool r) {
 #define LENGTH(_a) (sizeof(_a) / sizeof((_a)[0]))
 
 // make sure &cells > 255
-uint8_t padding[256];
 cell_t cells[1024];
 cell_t *cells_ptr;
-int cells_top;
 
 int closure_val(cell_t *c) {
   printf("val(%d)\n", (int)c->val);
@@ -51,8 +49,8 @@ void cells_init() {
     cells[i].prev = &cells[i-1];
     cells[i].next = &cells[i+1];
   }
-  cells[0].prev = &cells[i];
-  cells[i].next = &cells[0];
+  cells[0].prev = &cells[LENGTH(cells)-1];
+  cells[LENGTH(cells)-1].next = &cells[0];
 
   cells_ptr = &cells[0];
 }
@@ -80,8 +78,8 @@ bool is_closure(void *p) {
 }
 
 cell_t *closure_alloc(int size) {
-  cell_t* ptr = cells_next();
-  cell_t* mark = ptr;
+  cell_t *ptr = cells_next(), *c = ptr;
+  cell_t *mark = ptr;
   int cnt = 0;
 
   // search for contiguous chunk
@@ -91,21 +89,22 @@ cell_t *closure_alloc(int size) {
       ptr++;
     } else {
       cnt = 0;
-      ptr = cells_next();
+      c = ptr = cells_next();
       if(ptr == mark) return 0;
     }
   }
 
-  cells_next();
+  while(cells_ptr >= &c[0] && cells_ptr < &c[size])
+    cells_next();
 
   // remove the found chunk
   int i;
   for(i = 0; i < size; i++) {
-    cell_alloc(&cells[i]);
+    cell_alloc(&c[i]);
   }
 
-  bzero(ptr, sizeof(cell_t)*size);
-  return ptr;
+  bzero(c, sizeof(cell_t)*size);
+  return c;
 }
 
 void closure_free(cell_t *c) {
@@ -224,21 +223,9 @@ int closure_max(int pmax, cell_t *c) {
   return n;
 }
 
-// simple GC:
-// calculate maximum cell address of returned
-// cell, and set top accordingly before returning
-#define return_closure(__c)\
-  cells_top = closure_max(0, __c) + 1;\
-  return __c;
-
 cell_t *test() {
   cell_t *a, *b, *c, *d, *e, *f, *g, *h;
-  a = func(add, 2);
-  b = val(1);
-  c = val(2);
-  comp(a, b);
-  comp(a, c);
-  /*
+
   g = func(add, 2);
   e = func(add, 2);
   c = func(add, 2);
@@ -263,17 +250,12 @@ cell_t *test() {
   show(force(f));
   show(closure_max(0, g));
   
-  //return_closure(g)
-  */
-  return a;
+  return g;
 }
 
 int main() {
   cells_init();
   cell_t *x = test();
   show(force(x));
-  /*
-  show(cells_top);
-  */
   return 0;
 }
