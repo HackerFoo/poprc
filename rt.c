@@ -5,9 +5,6 @@
 #include <stdint.h>
 #include <assert.h>
 
-#define show(x)\
-printf(#x " = %d\n", x)
-
 typedef struct cell cell_t;
 typedef int (*cell_func_t)(cell_t *);
 struct cell {
@@ -22,6 +19,16 @@ struct cell {
   };
 };
 
+// make sure &cells > 255
+#define STRIDE 1
+cell_t cells[1024];
+cell_t *cells_ptr;
+
+#define show(x)\
+printf(#x " = %d\n", x)
+
+#define LENGTH(_a) (sizeof(_a) / sizeof((_a)[0]))
+
 bool closure_is_ready(cell_t *c) {
   return !((intptr_t)c->func & 0x1);
 }
@@ -30,42 +37,9 @@ void closure_set_ready(cell_t *c, bool r) {
   c->func = (cell_func_t)(((intptr_t)c->func & ~0x1) | !r);
 }
 
-#define LENGTH(_a) (sizeof(_a) / sizeof((_a)[0]))
-
-// make sure &cells > 255
-cell_t cells[1024];
-cell_t *cells_ptr;
-
 int closure_val(cell_t *c) {
   printf("val(%d)\n", (int)c->val);
   return c->val;
-}
-
-void cells_init() {
-  int i;
-
-  // set up doubly-linked pointer ring
-  for(i = 0; i < LENGTH(cells); i++) {
-    cells[i].prev = &cells[i-1];
-    cells[i].next = &cells[i+1];
-  }
-  cells[0].prev = &cells[LENGTH(cells)-1];
-  cells[LENGTH(cells)-1].next = &cells[0];
-
-  cells_ptr = &cells[0];
-}
-
-cell_t *cells_next() {
-  cell_t *p = cells_ptr;
-  cells_ptr = cells_ptr->in[0];
-  return p;
-}
-
-void cell_alloc(cell_t *c) {
-  cell_t *prev = c->prev;
-  cell_t *next = c->next;
-  prev->next = next;
-  next->prev = prev;
 }
 
 bool is_cell(void *p) {
@@ -73,8 +47,37 @@ bool is_cell(void *p) {
 }
 
 bool is_closure(void *p) {
-  return is_cell(p) &&
-    !((void *)((cell_t *)p)->func >= (void *)&cells && (void *)((cell_t *)p)->func < (void *)(&cells+1));
+  return is_cell(p) && !is_cell(((cell_t *)p)->func);
+}
+
+void cells_init() {
+  int i;
+
+  // set up doubly-linked pointer ring
+  for(i = 0; i < LENGTH(cells); i++) {
+    cells[i].prev = &cells[(i-STRIDE) % LENGTH(cells)];
+    cells[i].next = &cells[(i+STRIDE) % LENGTH(cells)];
+  }
+  //cells[0].prev = &cells[LENGTH(cells)-1];
+  //cells[LENGTH(cells)-1].next = &cells[0];
+
+  cells_ptr = &cells[0];
+}
+
+cell_t *cells_next() {
+  cell_t *p = cells_ptr;
+  assert(is_cell(p) && !is_closure(p));
+  cells_ptr = cells_ptr->next;
+  return p;
+}
+
+void cell_alloc(cell_t *c) {
+  assert(is_cell(c) && !is_closure(c));
+  cell_t *prev = c->prev;
+  cell_t *next = c->next;
+  if(cells_ptr == c) cells_next();
+  prev->next = next;
+  next->prev = prev;
 }
 
 cell_t *closure_alloc(int size) {
@@ -83,20 +86,20 @@ cell_t *closure_alloc(int size) {
   int cnt = 0;
 
   // search for contiguous chunk
-  while(cnt < size && (intptr_t)ptr < (intptr_t)(&cells+1)) {
-    if(!is_closure(ptr)) {
+  while(cnt < size) {
+    if(is_cell(ptr) && !is_closure(ptr)) {
       cnt++;
       ptr++;
     } else {
       cnt = 0;
       c = ptr = cells_next();
-      if(ptr == mark) return 0;
+      assert(c != mark);
     }
   }
-
+  /*
   while(cells_ptr >= &c[0] && cells_ptr < &c[size])
     cells_next();
-
+  */
   // remove the found chunk
   int i;
   for(i = 0; i < size; i++) {
@@ -109,13 +112,14 @@ cell_t *closure_alloc(int size) {
 
 void closure_free(cell_t *c) {
   int i, size = 1 + ((sizeof(cell_t *) * (closure_size(c) - 1) + sizeof(cell_t) - 1) / sizeof(cell_t));
+  assert(is_closure(c));
   for(i = 0; i < size; i++) {
     c[i].prev = &c[i-1];
     c[i].next = &c[i+1];
   }
-  c->prev = cells_ptr;
-  c->next = cells_ptr->next;
-  cells_ptr->next = c;
+  c[0].prev = cells_ptr->prev;
+  c[size-1].next = cells_ptr;
+  cells_ptr->prev = &c[0];
 }
 
 cell_t *val(int x) {
@@ -144,6 +148,14 @@ cell_t *func(int (*f)(cell_t *), int args) {
   closure_set_ready(c, false);
   return c;
 }
+/*
+int consume(cell_t *c) {
+  int x = force(c);
+  closure_free(c);
+  return x;
+}
+*/
+// add refs to duped vals to a scan list, dups are gc'ed
 
 int add(cell_t *c) {
   int x = force(c->in[0]);
@@ -209,7 +221,7 @@ int force(cell_t *c) {
   assert(closure_is_ready(c));
   c->func(c);
 }
-
+/*
 int closure_max(int pmax, cell_t *c) {
   int n = c - &cells[0];
   if(is_val(c)) return n;
@@ -221,6 +233,20 @@ int closure_max(int pmax, cell_t *c) {
     i++;
   }
   return n;
+}
+*/
+
+alloc_test() {
+  int i, j;
+  cell_t *a[30];
+  for(j = 0; j < 50; j++) {
+    for(i = 0; i < LENGTH(a); i++) {
+      a[i] = func(add, 9);
+    }
+    for(i = 0; i < LENGTH(a); i++) {
+      closure_free(a[i]);
+    }
+  }
 }
 
 cell_t *test() {
@@ -248,13 +274,14 @@ cell_t *test() {
   //show(force(c));
   //show(force(e));
   show(force(f));
-  show(closure_max(0, g));
+  //show(closure_max(0, g));
   
   return g;
 }
 
 int main() {
   cells_init();
+  alloc_test();
   cell_t *x = test();
   show(force(x));
   return 0;
