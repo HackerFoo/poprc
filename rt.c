@@ -24,23 +24,12 @@ struct cell {
 cell_t cells[1024];
 cell_t *cells_ptr;
 
+// #define CHECK_CYCLE
+
 #define show(x)\
 printf(#x " = %d\n", x)
 
 #define LENGTH(_a) (sizeof(_a) / sizeof((_a)[0]))
-
-bool closure_is_ready(cell_t *c) {
-  return !((intptr_t)c->func & 0x1);
-}
-
-void closure_set_ready(cell_t *c, bool r) {
-  c->func = (cell_func_t)(((intptr_t)c->func & ~0x1) | !r);
-}
-
-int closure_val(cell_t *c) {
-  printf("val(%d)\n", (int)c->val);
-  return c->val;
-}
 
 bool is_cell(void *p) {
   return p >= (void *)&cells && p < (void *)(&cells+1);
@@ -49,6 +38,47 @@ bool is_cell(void *p) {
 bool is_closure(void *p) {
   return is_cell(p) && !is_cell(((cell_t *)p)->func);
 }
+
+bool closure_is_ready(cell_t *c) {
+  assert(is_closure(c));
+  return !((intptr_t)c->func & 0x1);
+}
+
+void closure_set_ready(cell_t *c, bool r) {
+  assert(is_closure(c));
+  c->func = (cell_func_t)(((intptr_t)c->func & ~0x1) | !r);
+}
+
+int closure_val(cell_t *c) {
+  assert(is_closure(c));
+  printf("val(%d)\n", (int)c->val);
+  return c->val;
+}
+
+cell_t *cells_next() {
+  cell_t *p = cells_ptr;
+  assert(is_cell(p) && !is_closure(p) && is_cell(cells_ptr->next));
+  cells_ptr = cells_ptr->next;
+  return p;
+}
+
+#ifdef CHECK_CYCLE
+bool check_cycle() {
+  int i = 0;
+  cell_t *start = cells_ptr, *ptr = start;
+  while(ptr->next != start) {
+    if(i > LENGTH(cells)) return false;
+    i++;
+    assert(is_cell(ptr->next->next));
+    ptr = ptr->next;
+  }
+  return true;
+}
+#else
+bool check_cycle() {
+  return true;
+}
+#endif
 
 void cells_init() {
   int i;
@@ -62,22 +92,19 @@ void cells_init() {
   //cells[LENGTH(cells)-1].next = &cells[0];
 
   cells_ptr = &cells[0];
-}
-
-cell_t *cells_next() {
-  cell_t *p = cells_ptr;
-  assert(is_cell(p) && !is_closure(p));
-  cells_ptr = cells_ptr->next;
-  return p;
+  assert(check_cycle());
 }
 
 void cell_alloc(cell_t *c) {
   assert(is_cell(c) && !is_closure(c));
   cell_t *prev = c->prev;
+  assert(is_cell(prev) && !is_closure(prev));
   cell_t *next = c->next;
+  assert(is_cell(next) && !is_closure(next));
   if(cells_ptr == c) cells_next();
   prev->next = next;
   next->prev = prev;
+  assert(check_cycle());
 }
 
 cell_t *closure_alloc(int size) {
@@ -107,6 +134,7 @@ cell_t *closure_alloc(int size) {
   }
 
   bzero(c, sizeof(cell_t)*size);
+  assert(check_cycle());
   return c;
 }
 
@@ -118,8 +146,10 @@ void closure_free(cell_t *c) {
     c[i].next = &c[i+1];
   }
   c[0].prev = cells_ptr->prev;
+  cells_ptr->prev->next = &c[0];
   c[size-1].next = cells_ptr;
-  cells_ptr->prev = &c[0];
+  cells_ptr->prev = &c[size-1];
+  assert(check_cycle());
 }
 
 cell_t *val(int x) {
@@ -140,22 +170,21 @@ bool is_offset(cell_t *c) {
 
 // args must be >= 1
 cell_t *func(int (*f)(cell_t *), int args) {
-  // assert(args >= 0); // breaks things somehow
+  assert(args >= 0);
   int size = 1 + ((sizeof(cell_t *) * (args - 1) + sizeof(cell_t) - 1) / sizeof(cell_t));
   cell_t *c = closure_alloc(size);
+  assert(c->func == 0);
   c->func = f;
   c->in[0] = (cell_t *)(intptr_t)(args - 1);
   closure_set_ready(c, false);
   return c;
 }
-/*
+
 int consume(cell_t *c) {
   int x = force(c);
   closure_free(c);
   return x;
 }
-*/
-// add refs to duped vals to a scan list, dups are gc'ed
 
 int add(cell_t *c) {
   int x = force(c->in[0]);
@@ -167,6 +196,7 @@ int add(cell_t *c) {
 }
 
 int closure_size(cell_t *c) {
+  assert(is_closure(c));
   if(is_val(c)) return 0;
   cell_t **p = c->in;
   int n = 0;
@@ -183,11 +213,13 @@ int closure_size(cell_t *c) {
 }
 
 int closure_next_child(cell_t *c) {
+  assert(is_closure(c));
   return is_offset(c->in[0]) ? (intptr_t)c->in[0] : 0;
 }
 
 // destructive composition
 void comp(cell_t *c, cell_t *a) {
+  assert(is_closure(c) && is_closure(a));
   assert(!closure_is_ready(c));
   int i = closure_next_child(c);
   if(!is_cell(c->in[i])) {
