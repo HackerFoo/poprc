@@ -20,7 +20,6 @@ struct cell {
 };
 
 // make sure &cells > 255
-#define STRIDE 1
 cell_t cells[1024];
 cell_t *cells_ptr;
 
@@ -49,10 +48,9 @@ void closure_set_ready(cell_t *c, bool r) {
   c->func = (cell_func_t)(((intptr_t)c->func & ~0x1) | !r);
 }
 
-int closure_val(cell_t *c) {
-  assert(is_closure(c));
-  printf("val(%d)\n", (int)c->val);
-  return c->val;
+int reduce(cell_t *c) {
+  assert(closure_is_ready(c));
+  return c->func(c);
 }
 
 cell_t *cells_next() {
@@ -85,11 +83,11 @@ void cells_init() {
 
   // set up doubly-linked pointer ring
   for(i = 0; i < LENGTH(cells); i++) {
-    cells[i].prev = &cells[(i-STRIDE) % LENGTH(cells)];
-    cells[i].next = &cells[(i+STRIDE) % LENGTH(cells)];
+    cells[i].prev = &cells[i-1];
+    cells[i].next = &cells[i+1];
   }
-  //cells[0].prev = &cells[LENGTH(cells)-1];
-  //cells[LENGTH(cells)-1].next = &cells[0];
+  cells[0].prev = &cells[LENGTH(cells)-1];
+  cells[LENGTH(cells)-1].next = &cells[0];
 
   cells_ptr = &cells[0];
   assert(check_cycle());
@@ -138,8 +136,16 @@ cell_t *closure_alloc(int size) {
   return c;
 }
 
+int calculate_cells(int args) {
+  return 1 + ((sizeof(cell_t *) * (args - 1) + sizeof(cell_t) - 1) / sizeof(cell_t));
+}
+
+int closure_cells(cell_t *c) {
+  return calculate_cells(closure_args(c));
+}
+
 void closure_free(cell_t *c) {
-  int i, size = 1 + ((sizeof(cell_t *) * (closure_size(c) - 1) + sizeof(cell_t) - 1) / sizeof(cell_t));
+  int i, size = closure_cells(c);
   assert(is_closure(c));
   for(i = 0; i < size; i++) {
     c[i].prev = &c[i-1];
@@ -150,6 +156,30 @@ void closure_free(cell_t *c) {
   c[size-1].next = cells_ptr;
   cells_ptr->prev = &c[size-1];
   assert(check_cycle());
+}
+
+int closure_val(cell_t *c) {
+  assert(is_closure(c));
+  int val = c->val;
+  printf("val(%d)\n", val);
+  closure_free(c);
+  return val;
+}
+
+int closure_ref_reduced(cell_t *c) {
+  assert(is_closure(c));
+  int val = (intptr_t)c->in[1];
+  printf("ref(%d)\n", val);
+  if(!--*(intptr_t *)c->in[0]) closure_free(c);
+  return val;
+}
+
+int closure_ref(cell_t *c) {
+  intptr_t val = reduce(c->in[1]);
+  c->in[1] = (cell_t *)val;
+  c->func = closure_ref_reduced;
+  printf("ref(%d)\n", (int)val);
+  return val;
 }
 
 cell_t *val(int x) {
@@ -163,15 +193,19 @@ bool is_val(cell_t *c) {
   return c->func == closure_val;
 }
 
+bool is_ref(cell_t *c) {
+  return c->func == closure_ref || c->func == closure_ref_reduced;
+}
+
 // max offset is 255
 bool is_offset(cell_t *c) {
   return !((intptr_t)c & ~0xff);
 }
 
 // args must be >= 1
-cell_t *func(int (*f)(cell_t *), int args) {
+cell_t *func(cell_func_t f, int args) {
   assert(args >= 0);
-  int size = 1 + ((sizeof(cell_t *) * (args - 1) + sizeof(cell_t) - 1) / sizeof(cell_t));
+  int size = calculate_cells(args);
   cell_t *c = closure_alloc(size);
   assert(c->func == 0);
   c->func = f;
@@ -180,24 +214,18 @@ cell_t *func(int (*f)(cell_t *), int args) {
   return c;
 }
 
-int consume(cell_t *c) {
-  int x = force(c);
-  closure_free(c);
-  return x;
-}
-
 int add(cell_t *c) {
-  int x = force(c->in[0]);
-  int y = force(c->in[1]);
+  int x = reduce(c->in[0]);
+  int y = reduce(c->in[1]);
   printf("add(%d, %d)\n", x, y);
-  c->val = x + y;
-  c->func = closure_val;
-  return c->val;
+  closure_free(c);
+  return x + y;
 }
 
-int closure_size(cell_t *c) {
+int closure_args(cell_t *c) {
   assert(is_closure(c));
-  if(is_val(c)) return 0;
+  if(is_val(c)) return 1;
+  if(is_ref(c)) return 2;
   cell_t **p = c->in;
   int n = 0;
   if(is_offset(*p)) {
@@ -235,38 +263,40 @@ void comp(cell_t *c, cell_t *a) {
   }
 }
 
+cell_t *copy(cell_t *c) {
+  int size = closure_cells(c);
+  cell_t *new = closure_alloc(size);
+  memcpy(new, c, size * sizeof(cell_t));
+  return new;
+}
+
+cell_t *ref(cell_t *c) {
+  assert(is_closure(c));
+  if(is_ref(c)) {
+    ++*(intptr_t *)&c->in[0];
+    return c;
+  } else {
+    cell_t *new = copy(c);
+    cell_t *ref_cell = closure_alloc(2);
+    ref_cell->func = closure_ref;
+    ref_cell->in[0] = (cell_t *)1;
+    ref_cell->in[1] = new;
+    return ref_cell;
+  }
+}
+
 cell_t *dup(cell_t *c) {
   assert(is_closure(c));
-  if(closure_is_ready(c)) return c;
-  int size = closure_size(c);
-  cell_t *tmp = func(c->func, size);
-  memcpy(&tmp->in, &c->in, sizeof(c->in[0]) * size);
+  if(closure_is_ready(c)) return ref(c);
+  int args = closure_args(c);
+  cell_t *tmp = copy(c);
   // c->in[<i] are empty and c->in[>i] are ready, so no need to copy
   // c->in[i] only needs copied if filled
   int i = closure_next_child(c);
   if(is_closure(c->in[i])) tmp->in[i] = dup(c->in[i]);
+  while(++i < args) tmp->in[i] = ref(c->in[i]);
   return tmp;
 }
-
-inline
-int force(cell_t *c) {
-  assert(closure_is_ready(c));
-  c->func(c);
-}
-/*
-int closure_max(int pmax, cell_t *c) {
-  int n = c - &cells[0];
-  if(is_val(c)) return n;
-
-  int i = closure_next_child(c);
-  if(!is_closure(c->in[i])) i++;
-  while(is_closure(c->in[i])) {
-    n = closure_max(n, c->in[i]);
-    i++;
-  }
-  return n;
-}
-*/
 
 alloc_test() {
   int i, j;
@@ -281,40 +311,35 @@ alloc_test() {
   }
 }
 
-cell_t *test() {
+void test() {
   cell_t *a, *b, *c, *d, *e, *f, *g, *h;
-
   g = func(add, 2);
   e = func(add, 2);
   c = func(add, 2);
 
   h = val(10);
   b = val(2);
+
   a = val(1);
 
   comp(e, c);
   comp(e, a);
   comp(e, b);
-  show(closure_size(e));
+  show(closure_args(e));
   f = dup(e);
   d = val(4);
   comp(e, d);
-  comp(f, a);
+  comp(f, dup(a));
   comp(g, h);
   comp(g, f);
 
-  //show(force(c));
-  //show(force(e));
-  show(force(f));
-  //show(closure_max(0, g));
-  
-  return g;
+  show(reduce(g));
+  return;
 }
 
 int main() {
   cells_init();
-  alloc_test();
-  cell_t *x = test();
-  show(force(x));
+  //alloc_test();
+  test();
   return 0;
 }
