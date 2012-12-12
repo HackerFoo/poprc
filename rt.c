@@ -418,6 +418,10 @@ cell_t *pushl(cell_t *a, cell_t *b) {
   }
 }
 
+void func_pushl(cell_t *c, void *r) {
+  *(cell_t **)r = pushl(c->in[0], c->in[1]);
+}
+
 void func_quot(cell_t *c, void *r) {
   *(cell_t **)r = cons(c->in[0], nil);
 }
@@ -438,6 +442,10 @@ cell_t *compose(cell_t *a, cell_t *b) {
   cell_t *h = a->in[0];
   cell_t *bp = compose(a->in[1], b);
   return pushl(h, bp);
+}
+
+void func_compose(cell_t *c, void *r) {
+  *(cell_t **)r = compose(c->in[0], c->in[1]);
 }
 
 void alloc_test() {
@@ -482,12 +490,29 @@ void test() {
   intptr_t ret;
   reduce(j, &ret);
   show((int)ret);
-  return;
+}
+
+void test2() {
+  cell_t *a, *b, *c, *d;
+  // 1 [2 +] pushl popr
+  a = func(func_add, 2);
+  arg(a, val(2));
+  //arg(a, val(3));
+  b = cons(a, nil);
+  c = func(func_pushl, 2);
+  arg(c, a);
+  arg(c, b);
+  d = func(func_reduce_head, 1);
+  arg(d, b);
+
+  intptr_t ret;
+  reduce(d, &ret);
+  show((int)ret);
 }
 
 int main() {
   cells_init();
   //alloc_test();
-  test();
+  test2();
   return 0;
 }
