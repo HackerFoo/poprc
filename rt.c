@@ -13,8 +13,7 @@ struct cell {
     cell_t *prev;
   };
   union {
-    intptr_t val;
-    cell_t *in[1];
+    cell_t *arg[1];
     cell_t *next;
   };
 };
@@ -71,6 +70,7 @@ void func_tail(cell_t *c, void *r);
 void func_reduce_head(cell_t *c, void *r);
 cell_t *pushl(cell_t *a, cell_t *b);
 cell_t *compose(cell_t *a, cell_t *b);
+void print_sexpr(cell_t *c);
 
 bool is_cell(void *p) {
   return p >= (void *)&cells && p < (void *)(&cells+1);
@@ -92,6 +92,7 @@ void closure_set_ready(cell_t *c, bool r) {
 
 void reduce(cell_t *c, void *r) {
   assert(closure_is_ready(c));
+  print_sexpr(c);
   c->func(c, r);
 }
 
@@ -125,7 +126,7 @@ void cells_init() {
 
   // cells[0] is the nil cell
   cells[0].func = func_nil;
-  cells[0].val = 0;
+  cells[0].arg[0] = 0;
 
   // set up doubly-linked pointer ring
   for(i = 1; i < LENGTH(cells); i++) {
@@ -210,34 +211,31 @@ void func_nil(cell_t *c, void *r) {
 
 void func_val(cell_t *c, void *r) {
   assert(is_closure(c));
-  intptr_t val = c->val;
-  printf("val(%d)\n", (int)val);
+  intptr_t val = (intptr_t)c->arg[0];
   closure_free(c);
   *(intptr_t *)r = val;
 }
 
 void func_ref_reduced(cell_t *c, void *r) {
   assert(is_closure(c));
-  intptr_t val = (intptr_t)c->in[1];
-  printf("ref(%d)\n", (int)val);
-  if(!--*(intptr_t *)&c->in[0]) closure_free(c);
+  intptr_t val = (intptr_t)c->arg[1];
+  if(!--*(intptr_t *)&c->arg[0]) closure_free(c);
   *(intptr_t *)r = val;
 }
 
 void func_ref(cell_t *c, void *r) {
   intptr_t val;
-  reduce(c->in[1], &val);
-  c->in[1] = (cell_t *)val;
+  reduce(c->arg[1], &val);
+  c->arg[1] = (cell_t *)val;
   c->func = func_ref_reduced;
-  printf("ref(%d)\n", (int)val);
-  if(!--*(intptr_t *)&c->in[0]) closure_free(c);
+  if(!--*(intptr_t *)&c->arg[0]) closure_free(c);
   *(intptr_t *)r = val;
 }
 
 cell_t *val(intptr_t x) {
   cell_t *c = closure_alloc(1);
   c->func = func_val;
-  c->val = x;
+  c->arg[0] = (cell_t *)x;
   return c;
 }
 
@@ -261,17 +259,16 @@ cell_t *func(cell_func_t f, int args) {
   cell_t *c = closure_alloc(size);
   assert(c->func == 0);
   c->func = f;
-  c->in[0] = (cell_t *)(intptr_t)(args - 1);
+  c->arg[0] = (cell_t *)(intptr_t)(args - 1);
   closure_set_ready(c, false);
   return c;
 }
 
 void func_add(cell_t *c, void *r) {
   intptr_t x;
-  reduce(c->in[0], &x);
+  reduce(c->arg[0], &x);
   intptr_t y;
-  reduce(c->in[1], &y);
-  printf("add(%d, %d)\n", (int)x, (int)y);
+  reduce(c->arg[1], &y);
   closure_free(c);
   *(intptr_t *)r = x + y;
 }
@@ -280,7 +277,7 @@ int closure_args(cell_t *c) {
   assert(is_closure(c));
   if(is_val(c)) return 1;
   if(is_ref(c)) return 2;
-  cell_t **p = c->in;
+  cell_t **p = c->arg;
   int n = 0;
   if(is_offset(*p)) {
     intptr_t o = (intptr_t)(*p) + 1;
@@ -296,22 +293,22 @@ int closure_args(cell_t *c) {
 
 int closure_next_child(cell_t *c) {
   assert(is_closure(c));
-  return is_offset(c->in[0]) ? (intptr_t)c->in[0] : 0;
+  return is_offset(c->arg[0]) ? (intptr_t)c->arg[0] : 0;
 }
 
 void arg(cell_t *c, cell_t *a) {
   assert(is_closure(c) && is_closure(a));
   assert(!closure_is_ready(c));
   int i = closure_next_child(c);
-  if(!is_cell(c->in[i])) {
-    c->in[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
-    c->in[i] = a;
+  if(!is_cell(c->arg[i])) {
+    c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
+    c->arg[i] = a;
     if(i == 0) closure_set_ready(c, closure_is_ready(a));
   } else {
-    arg(c->in[i], a);
-    if(closure_is_ready(c->in[i])) {
+    arg(c->arg[i], a);
+    if(closure_is_ready(c->arg[i])) {
       if(i == 0) closure_set_ready(c, true);
-      else --*(intptr_t *)c->in; // decrement offset
+      else --*(intptr_t *)c->arg; // decrement offset
     }
   }
 }
@@ -326,14 +323,14 @@ cell_t *copy(cell_t *c) {
 cell_t *ref(cell_t *c) {
   assert(is_closure(c));
   if(is_ref(c)) {
-    ++*(intptr_t *)&c->in[0];
+    ++*(intptr_t *)&c->arg[0];
     return c;
   } else {
     cell_t *new = copy(c);
     cell_t *ref_cell = closure_alloc(2);
     ref_cell->func = func_ref;
-    ref_cell->in[0] = (cell_t *)2;
-    ref_cell->in[1] = new;
+    ref_cell->arg[0] = (cell_t *)2;
+    ref_cell->arg[1] = new;
     return ref_cell;
   }
 }
@@ -343,11 +340,11 @@ cell_t *dup(cell_t *c) {
   if(closure_is_ready(c)) return ref(c);
   int args = closure_args(c);
   cell_t *tmp = copy(c);
-  // c->in[<i] are empty and c->in[>i] are ready, so no need to copy
-  // c->in[i] only needs copied if filled
+  // c->arg[<i] are empty and c->arg[>i] are ready, so no need to copy
+  // c->arg[i] only needs copied if filled
   int i = closure_next_child(c);
-  if(is_closure(c->in[i])) tmp->in[i] = dup(c->in[i]);
-  while(++i < args) tmp->in[i] = ref(c->in[i]);
+  if(is_closure(c->arg[i])) tmp->arg[i] = dup(c->arg[i]);
+  while(++i < args) tmp->arg[i] = ref(c->arg[i]);
   return tmp;
 }
 
@@ -360,47 +357,47 @@ bool is_nil(cell_t *c) {
 }
 
 bool is_cons(cell_t *c) {
-  return c->func = func_cons;
+  return c->func == func_cons;
 }
 
 cell_t *cons(cell_t *h, cell_t *t) {
   assert(is_cons(t) || is_nil(t));
   cell_t *c = closure_alloc(2);
   c->func = func_cons;
-  c->in[0] = h;
-  c->in[1] = t;
+  c->arg[0] = h;
+  c->arg[1] = t;
   return c;
 }
 
 void drop(cell_t *c) {
   if(!is_closure(c)) return;
   if(is_ref(c)) {
-    if(--*(intptr_t *)&c->in[0]) {
+    if(--*(intptr_t *)&c->arg[0]) {
       if(c->func == func_ref)
-	drop(c->in[1]);
+	drop(c->arg[1]);
       closure_free(c);
     }
   } else if(is_val(c)) {
     closure_free(c);
   } else {
     int i = closure_args(c) - 1;
-    while(i--) drop(c->in[i]);
+    while(i--) drop(c->arg[i]);
     closure_free(c);
   }
 }
 
 void func_head(cell_t *c, void *r) {
-  cell_t *x = c->in[0];
+  cell_t *x = c->arg[0];
   assert(is_cons(x));
-  drop(x->in[1]);
-  *(cell_t **)r = x->in[0];
+  drop(x->arg[1]);
+  *(cell_t **)r = x->arg[0];
 }
 
 void func_tail(cell_t *c, void *r) {
-  cell_t *x = c->in[0];
+  cell_t *x = c->arg[0];
   assert(is_cons(x));
-  drop(x->in[0]);
-  *(cell_t **)r = x->in[1];
+  drop(x->arg[0]);
+  *(cell_t **)r = x->arg[1];
 }
 
 cell_t *pushl(cell_t *a, cell_t *b) {
@@ -409,7 +406,7 @@ cell_t *pushl(cell_t *a, cell_t *b) {
   if(is_nil(b)) {
     return cons(a, b);
   }
-  cell_t *h = b->in[0];
+  cell_t *h = b->arg[0];
   if(closure_is_ready(h)) {
     return cons(a, b);
   } else {
@@ -419,18 +416,19 @@ cell_t *pushl(cell_t *a, cell_t *b) {
 }
 
 void func_pushl(cell_t *c, void *r) {
-  *(cell_t **)r = pushl(c->in[0], c->in[1]);
+  *(cell_t **)r = pushl(c->arg[0], c->arg[1]);
 }
 
 void func_quot(cell_t *c, void *r) {
-  *(cell_t **)r = cons(c->in[0], nil);
+  *(cell_t **)r = cons(c->arg[0], nil);
 }
 
 void func_reduce_head(cell_t *c, void *r) {
-  cell_t *x = c->in[0];
+  cell_t *x;
+  reduce(c->arg[0], &x);
   assert(is_cons(x));
-  drop(x->in[1]);
-  reduce(x->in[0], r);
+  drop(x->arg[1]);
+  reduce(x->arg[0], r);
 }
 
 cell_t *compose(cell_t *a, cell_t *b) {
@@ -439,13 +437,13 @@ cell_t *compose(cell_t *a, cell_t *b) {
 	 (is_cons(b) || is_nil(b)));
   if(is_nil(a)) return b;
   if(is_nil(b)) return a;
-  cell_t *h = a->in[0];
-  cell_t *bp = compose(a->in[1], b);
+  cell_t *h = a->arg[0];
+  cell_t *bp = compose(a->arg[1], b);
   return pushl(h, bp);
 }
 
 void func_compose(cell_t *c, void *r) {
-  *(cell_t **)r = compose(c->in[0], c->in[1]);
+  *(cell_t **)r = compose(c->arg[0], c->arg[1]);
 }
 
 void alloc_test() {
@@ -492,18 +490,81 @@ void test() {
   show((int)ret);
 }
 
+void print_sexpr_help(cell_t *);
+
+void print_list_help(cell_t *c) {
+  if(c == nil) {
+    printf(" ] ");
+    return;
+  }
+  assert(is_cons(c));
+  print_sexpr_help(c->arg[0]);
+  print_list_help(c->arg[1]); 
+}
+
+void print_list(cell_t *c) {
+  printf(" [");
+  print_list_help(c);
+}
+
+void print_sexpr_help(cell_t *r) {
+  if(!is_closure(r)) {
+    printf(" ?");
+    return;
+  } else if(is_cons(r) || is_nil(r)) {
+    print_list(r);
+    return;
+  } else if(is_ref(r)) {
+    //print_sexpr_help(r->arg[1]);
+    printf(" ref");
+    return;
+  }
+
+  intptr_t f = ((intptr_t)r->func) & ~1;
+  char *n;
+  int i;
+  int args = closure_args(r);
+
+  if(is_val(r)) {
+    printf(" %d", (int)(intptr_t)r->arg[0]);
+    return;
+  }
+
+# define CASE(x) if(f == (intptr_t)func_##x) n = #x
+
+  CASE(add);
+  CASE(pushl);
+  CASE(reduce_head);
+
+
+# undef CASE
+
+  printf(" (%s", n);
+
+  for(i = 0; i < args; i++) {
+    print_sexpr_help(r->arg[i]);
+  }
+
+  printf(")");
+}
+
+void print_sexpr(cell_t *r) {
+  print_sexpr_help(r);
+  printf("\n");
+}
+
 void test2() {
   cell_t *a, *b, *c, *d;
   // 1 [2 +] pushl popr
   a = func(func_add, 2);
   arg(a, val(2));
-  //arg(a, val(3));
   b = cons(a, nil);
   c = func(func_pushl, 2);
-  arg(c, a);
   arg(c, b);
+  arg(c, val(1));
   d = func(func_reduce_head, 1);
-  arg(d, b);
+  arg(d, c);
+  //print_sexpr(d);
 
   intptr_t ret;
   reduce(d, &ret);
