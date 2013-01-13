@@ -20,12 +20,12 @@ struct cell {
     /* unallocated: previous pointer in free cell ring */
     cell_t *prev;
   };
-  union {
+  //union {
   /* unallocated: next pointer in free cell ring */
   cell_t *next;
   /* allocated: args for reduction function, can be extended */
   cell_t *arg[1];
-  };
+  //};
 };
 
 // make sure &cells > 255
@@ -101,9 +101,36 @@ void closure_set_ready(cell_t *c, bool r) {
   c->func = (reduce_t *)(((intptr_t)c->func & ~0x1) | !r);
 }
 
+/* expands closure on arg x */
+void closure_expand_arg(cell_t *c, int x) {
+  cell_t *h = c, *t = c->next;
+  cell_t *a = c->arg[x];
+  while(a = a->next) {
+    h->next = copy(c);
+    h = h->next;
+    h->arg[x] = a;
+  }
+  h->next = t;
+}
+
+/* propagate alternatives down to root of expression tree */
+void closure_split(cell_t *c) {
+  assert(is_closure(c) && closure_is_ready(c));
+  int n = closure_args(c);
+  cell_t *p, *pn;
+  while(--n) {
+    p = c;
+    do {
+      pn = p->next;
+      closure_expand_arg(p, n);
+    } while(p = pn);
+  }
+}
+
 status_t reduce(cell_t *c, void *r) {
   assert(closure_is_ready(c));
   print_sexpr(c);
+  closure_split(c);
   return c->func(c, r);
 }
 
