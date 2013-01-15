@@ -71,6 +71,9 @@ void drop(cell_t *c);
 cell_t *pushl(cell_t *a, cell_t *b);
 cell_t *compose(cell_t *a, cell_t *b);
 void print_sexpr(cell_t *c);
+void closure_split(cell_t *c);
+void closure_expand_arg(cell_t *c, int x);
+void conc_alt(cell_t *a, cell_t *b);
 
 reduce_t reduce,
          func_nil,
@@ -103,35 +106,49 @@ void closure_set_ready(cell_t *c, bool r) {
 
 /* expands closure on arg x */
 void closure_expand_arg(cell_t *c, int x) {
-  cell_t *h = c, *t = c->next;
-  cell_t *a = c->arg[x];
-  while(a = a->next) {
-    h->next = copy(c);
-    h = h->next;
-    h->arg[x] = a;
+  assert(is_closure(c));
+  cell_t *a = c->arg[x]->next;
+  if(a) {
+    cell_t *n = copy(c);
+    n->next = c->next;
+    c->next = n;
+    n->arg[x] = a;
+    //printf("__expand(%d):", x);
+    //print_sexpr(n);
   }
-  h->next = t;
 }
 
 /* propagate alternatives down to root of expression tree */
 void closure_split(cell_t *c) {
+  //printf("__closure_split:");
+  //print_sexpr(c);
   assert(is_closure(c) && closure_is_ready(c));
-  int n = closure_args(c);
-  cell_t *p, *pn;
-  while(--n) {
-    p = c;
-    do {
-      pn = p->next;
-      closure_expand_arg(p, n);
-    } while(p = pn);
-  }
+  if(is_val(c)) return;
+  int n, s = closure_args(c);
+  cell_t *p, *pn, *ps;
+  ps = c;
+  do {
+    pn = ps->next;
+    // expand each arg from this alt to the next
+    n = s; while(n--) {
+      p = ps;
+      do {
+	closure_expand_arg(p, n);
+	p = p->next;
+      } while(p != pn);
+    }
+    // seperate args from alternatives
+    n = s; while(n--) ps->arg[n]->next = 0;
+  } while(ps = pn);
 }
 
 status_t reduce(cell_t *c, void *r) {
+  status_t s;
   assert(closure_is_ready(c));
   print_sexpr(c);
+  s = c->func(c, r);
   closure_split(c);
-  return c->func(c, r);
+  return s;
 }
 
 cell_t *cells_next() {
@@ -229,6 +246,7 @@ int closure_cells(cell_t *c) {
 }
 
 void closure_free(cell_t *c) {
+  /*
   int i, size = closure_cells(c);
   assert(is_closure(c));
   for(i = 0; i < size; i++) {
@@ -240,6 +258,7 @@ void closure_free(cell_t *c) {
   c[size-1].next = cells_ptr;
   cells_ptr->prev = &c[size-1];
   assert(check_cycle());
+  */
 }
 
 status_t func_nil(cell_t *c, void *r) {
@@ -501,6 +520,12 @@ status_t func_compose(cell_t *c, void *r) {
   return DONE;
 }
 
+void conc_alt(cell_t *a, cell_t *b) {
+  cell_t *p = a;
+  while(p->next) p = p->next;
+  p->next = b;
+}
+
 void alloc_test() {
   int i, j;
   cell_t *a[30];
@@ -626,9 +651,44 @@ void test2() {
   show((int)ret);
 }
 
+void test3() {
+  int cnt;
+  intptr_t x;
+  cell_t *a, *b, *c, *d, *e, *f, *g, *h, *i, *p;
+
+  a = func(func_add, 2);
+  b = val(2);
+  e = val(23);
+  conc_alt(b, e);
+  conc_alt(b, val(10));
+  c = val(3);
+  d = val(7);
+  conc_alt(c, d);
+  arg(a, b);
+  arg(a, c);
+  f = func(func_add, 2);
+  g = val(31);
+  h = val(63);
+  i = val(127);
+  conc_alt(g, h);
+  //conc_alt(g, i);
+  arg(f, g);
+  arg(f, a);
+
+  p = a;
+  cnt = 0;
+  while(p) {
+    reduce(p, &x);
+    show((int)x);
+    p = p->next;
+    cnt++;
+  }
+  show(cnt);
+}
+
 int main() {
   cells_init();
   //alloc_test();
-  test2();
+  test3();
   return 0;
 }
