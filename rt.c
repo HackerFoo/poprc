@@ -5,14 +5,8 @@
 #include <stdint.h>
 #include <assert.h>
 
-typedef enum status {
-  DONE = 0,
-  CONT,
-  FAIL
-} status_t;
-
 typedef struct cell cell_t;
-typedef status_t (reduce_t)(cell_t *, void *);
+typedef bool (reduce_t)(cell_t *, void *);
 struct cell {
   union {
     /* allocated: reduction function */
@@ -127,27 +121,25 @@ void closure_split(cell_t *c) {
   int n, s = closure_args(c);
   cell_t *p, *pn, *ps;
   ps = c;
-  do {
-    pn = ps->next;
-    // expand each arg from this alt to the next
-    n = s; while(n--) {
-      p = ps;
-      do {
-	closure_expand_arg(p, n);
-	p = p->next;
-      } while(p != pn);
-    }
-    // seperate args from alternatives
-    n = s; while(n--) ps->arg[n]->next = 0;
-  } while(ps = pn);
+  n = s; while(n--) {
+    if(!c->arg[n]->next) continue;
+    p = c;
+    do {
+      pn = p->next;
+      if(p->arg[n] == c->arg[n]) closure_expand_arg(p, n);
+    } while (p = pn);
+  }
+  n = s; while(n--) ps->arg[n]->next = 0;
 }
 
-status_t reduce(cell_t *c, void *r) {
-  status_t s;
+bool reduce(cell_t *c, void *r) {
+  bool s;
   assert(closure_is_ready(c));
-  print_sexpr(c);
-  s = c->func(c, r);
-  closure_split(c);
+  do {
+    print_sexpr(c);
+    s = c->func(c, r);
+    closure_split(c);
+  } while(!s && (c = c->next));
   return s;
 }
 
@@ -261,30 +253,30 @@ void closure_free(cell_t *c) {
   */
 }
 
-status_t func_nil(cell_t *c, void *r) {
+bool func_nil(cell_t *c, void *r) {
   assert(false);
-  return FAIL;
+  return false;
 }
 
-status_t func_val(cell_t *c, void *r) {
+bool func_val(cell_t *c, void *r) {
   assert(is_closure(c));
   intptr_t val = (intptr_t)c->arg[0];
   closure_free(c);
   *(intptr_t *)r = val;
-  return DONE;
+  return true;
 }
 
-status_t func_ref_reduced(cell_t *c, void *r) {
+bool func_ref_reduced(cell_t *c, void *r) {
   assert(is_closure(c));
   intptr_t val = (intptr_t)c->arg[1];
   if(!--*(intptr_t *)&c->arg[0]) closure_free(c);
   *(intptr_t *)r = val;
-  return DONE;
+  return true;
 }
 
-status_t func_ref(cell_t *c, void *r) {
+bool func_ref(cell_t *c, void *r) {
   intptr_t val;
-  status_t ret = reduce(c->arg[1], &val);
+  bool ret = reduce(c->arg[1], &val);
   c->arg[1] = (cell_t *)val;
   c->func = func_ref_reduced;
   if(!--*(intptr_t *)&c->arg[0]) closure_free(c);
@@ -324,20 +316,13 @@ cell_t *func(reduce_t *f, int args) {
   return c;
 }
 
-status_t status_and(status_t x, status_t y) {
-  if(x == FAIL || y == FAIL) return FAIL;
-  if(x == CONT || y == CONT) return CONT;
-  return DONE;
-}
-
-status_t func_add(cell_t *c, void *r) {
-  intptr_t x;
-  status_t sx = reduce(c->arg[0], &x);
-  intptr_t y;
-  status_t sy = reduce(c->arg[1], &y);
+bool func_add(cell_t *c, void *r) {
+  intptr_t x, y;
+  bool s = reduce(c->arg[0], &x) &&
+           reduce(c->arg[1], &y);
   closure_free(c);
-  *(intptr_t *)r = x + y;
-  return status_and(x, y);
+  if(s) *(intptr_t *)r = x + y;
+  return s;
 }
 
 int closure_args(cell_t *c) {
@@ -415,9 +400,9 @@ cell_t *dup(cell_t *c) {
   return tmp;
 }
 
-status_t func_cons(cell_t *c, void *r) {
+bool func_cons(cell_t *c, void *r) {
   *(cell_t **)r = c;
-  return DONE;
+  return true;
 }
 
 bool is_nil(cell_t *c) {
@@ -454,20 +439,20 @@ void drop(cell_t *c) {
   }
 }
 
-status_t func_head(cell_t *c, void *r) {
+bool func_head(cell_t *c, void *r) {
   cell_t *x = c->arg[0];
-  if (!is_cons(x)) return FAIL;
+  if (!is_cons(x)) return false;
   drop(x->arg[1]);
   *(cell_t **)r = x->arg[0];
-  return DONE;
+  return true;
 }
 
-status_t func_tail(cell_t *c, void *r) {
+bool func_tail(cell_t *c, void *r) {
   cell_t *x = c->arg[0];
-  if(!is_cons(x)) return FAIL;
+  if(!is_cons(x)) return false;
   drop(x->arg[0]);
   *(cell_t **)r = x->arg[1];
-  return DONE;
+  return true;
 }
 
 cell_t *pushl(cell_t *a, cell_t *b) {
@@ -485,23 +470,23 @@ cell_t *pushl(cell_t *a, cell_t *b) {
   }
 }
 
-status_t func_pushl(cell_t *c, void *r) {
+bool func_pushl(cell_t *c, void *r) {
   *(cell_t **)r = pushl(c->arg[0], c->arg[1]);
-  return DONE;
+  return true;
 }
 
-status_t func_quot(cell_t *c, void *r) {
+bool func_quot(cell_t *c, void *r) {
   *(cell_t **)r = cons(c->arg[0], nil);
-  return DONE;
+  return true;
 }
 
-status_t func_reduce_head(cell_t *c, void *r) {
+bool func_reduce_head(cell_t *c, void *r) {
   cell_t *x;
   reduce(c->arg[0], &x);
   assert(is_cons(x));
   drop(x->arg[1]);
   reduce(x->arg[0], r);
-  return DONE;
+  return true;
 }
 
 cell_t *compose(cell_t *a, cell_t *b) {
@@ -515,9 +500,9 @@ cell_t *compose(cell_t *a, cell_t *b) {
   return pushl(h, bp);
 }
 
-status_t func_compose(cell_t *c, void *r) {
+bool func_compose(cell_t *c, void *r) {
   *(cell_t **)r = compose(c->arg[0], c->arg[1]);
-  return DONE;
+  return true;
 }
 
 void conc_alt(cell_t *a, cell_t *b) {
@@ -660,7 +645,6 @@ void test3() {
   b = val(2);
   e = val(23);
   conc_alt(b, e);
-  conc_alt(b, val(10));
   c = val(3);
   d = val(7);
   conc_alt(c, d);
@@ -671,11 +655,11 @@ void test3() {
   h = val(63);
   i = val(127);
   conc_alt(g, h);
-  //conc_alt(g, i);
+  conc_alt(g, i);
   arg(f, g);
   arg(f, a);
 
-  p = a;
+  p = f;
   cnt = 0;
   while(p) {
     reduce(p, &x);
