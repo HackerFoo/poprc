@@ -78,7 +78,8 @@ reduce_t reduce,
          func_head,
          func_tail,
          func_reduce_head,
-         func_add;
+         func_add,
+         func_assert;
 
 bool is_cell(void *p) {
   return p >= (void *)&cells && p < (void *)(&cells+1);
@@ -511,6 +512,11 @@ void conc_alt(cell_t *a, cell_t *b) {
   p->next = b;
 }
 
+bool func_assert(cell_t *c, void *r) {
+  intptr_t x;
+  return reduce(c->arg[0], &x) && x;
+}
+
 void alloc_test() {
   int i, j;
   cell_t *a[30];
@@ -600,7 +606,7 @@ void print_sexpr_help(cell_t *r) {
   CASE(add);
   CASE(pushl);
   CASE(reduce_head);
-
+  CASE(assert);
 
 # undef CASE
 
@@ -643,7 +649,8 @@ void test3() {
 
   a = func(func_add, 2);
   b = val(2);
-  e = val(23);
+  e = func(func_assert, 1); //val(23);
+  arg(e, val(0));
   conc_alt(b, e);
   c = val(3);
   d = val(7);
@@ -661,8 +668,7 @@ void test3() {
 
   p = f;
   cnt = 0;
-  while(p) {
-    reduce(p, &x);
+  while(p && reduce(p, &x)) {
     show((int)x);
     p = p->next;
     cnt++;
