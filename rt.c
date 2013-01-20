@@ -71,6 +71,7 @@ void print_sexpr(cell_t *c);
 void closure_split(cell_t *c);
 void closure_expand_arg(cell_t *c, int x);
 void conc_alt(cell_t *a, cell_t *b);
+bool __reduce(reduce_t f, cell_t *c, void *r);
 
 reduce_t reduce,
          func_nil,
@@ -141,25 +142,27 @@ void closure_split(cell_t *c) {
   }
 }
 
-bool reduce(cell_t *c, void *r) {
+bool __reduce(reduce_t f, cell_t *c, void *r) {
   cell_t *t, *p = c;
-  print_sexpr(c);
+  //print_sexpr(c);
   while(p) {
-    assert(closure_is_ready(c));
-    if(p->func(p, r)) {
+    if(f(p, r)) {
       to_ref(c, *(intptr_t *)r);
       if(p != c) {
 	c->next = p->next;
 	deref(p);
       }
       return true;
-    } else {
-      t = p;
-      p = p->next;
-      deref(t);
     }
-  };
+    t = p;
+    p = p->next;
+    if(t != c) deref(t);
+  }
   return false;
+}
+
+bool reduce(cell_t *c, void *r) {
+  return c->func(c, r);
 }
 
 cell_t *cells_next() {
@@ -343,15 +346,18 @@ cell_t *func(reduce_t *f, int args) {
 }
 
 bool func_add(cell_t *c, void *r) {
-  intptr_t x, y;
-  bool s;
-  s = reduce(c->arg[0], &x) &&
-    reduce(c->arg[1], &y);
-  closure_split(c);
-  deref(c->arg[0]);
-  deref(c->arg[1]);
-  if(s) *(intptr_t *)r = x + y;
-  return s;
+  bool f(cell_t *c, void *r) {
+    intptr_t x, y;
+    bool s;
+    s = reduce(c->arg[0], &x) &&
+      reduce(c->arg[1], &y);
+    closure_split(c);
+    deref(c->arg[0]);
+    deref(c->arg[1]);
+    if(s) *(intptr_t *)r = x + y;
+    return s;
+  }
+  __reduce(f, c, r);
 }
 
 int closure_args(cell_t *c) {
@@ -469,17 +475,16 @@ cell_t *cons(cell_t *h, cell_t *t) {
 }
 
 void deref(cell_t *c) {
-  //return;
   if(!is_closure(c)) return;
   if(is_ref(c)) {
-    printf("DEREF(%d) to %d\n", (int)(c - &cells[0]), (int)*(intptr_t *)&c->arg[0]-1);
+    //printf("DEREF(%d) to %d\n", (int)(c - &cells[0]), (int)*(intptr_t *)&c->arg[0]-1);
     if(!--*(intptr_t *)&c->arg[0]) {
       if(c->func == func_ref)
 	deref(c->arg[1]);
       closure_free(c);
     }
   } else {
-    printf("DEREF(%d)\n", (int)(c - &cells[0]));
+    //printf("DEREF(%d)\n", (int)(c - &cells[0]));
     closure_free(c);
   }
 }
@@ -737,7 +742,7 @@ void test3() {
   conc_alt(g, i);
   arg(f, g);
   arg(f, a);
-
+  /*
   addr(a);
   addr(b);
   addr(c);
@@ -747,7 +752,7 @@ void test3() {
   addr(g);
   addr(h);
   addr(i);
-
+  */
   p = f;
   cnt = 0;
   while(p && reduce(p, &x)) {
@@ -775,9 +780,18 @@ void test4() {
   show((int)y);
 }
 
+void check_free() {
+  int i;
+  for(i = 1; i < LENGTH(cells); i++) {
+    if(is_closure(&cells[i]))
+      printf("LEAK: %d\n", i);
+  }
+}
+
 int main() {
   cells_init();
   //alloc_test();
   test3();
+  check_free();
   return 0;
 }
