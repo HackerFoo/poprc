@@ -26,7 +26,7 @@ struct cell {
 cell_t cells[1024];
 cell_t *cells_ptr;
 
-cell_t *nil = &cells[0];
+cell_t *nil = 0; //&cells[0];
 
 // #define CHECK_CYCLE
 
@@ -218,17 +218,17 @@ void cells_init() {
   bzero(&cells, sizeof(cells));
 
   // cells[0] is the nil cell
-  cells[0].func = func_nil;
+  //cells[0].func = func_nil;
 
   // set up doubly-linked pointer ring
-  for(i = 1; i < LENGTH(cells); i++) {
+  for(i = 0; i < LENGTH(cells); i++) {
     cells[i].prev = &cells[i-1];
     cells[i].next = &cells[i+1];
   }
-  cells[1].prev = &cells[LENGTH(cells)-1];
+  cells[0].prev = &cells[LENGTH(cells)-1];
   cells[LENGTH(cells)-1].next = &cells[0];
 
-  cells_ptr = &cells[1];
+  cells_ptr = &cells[0];
   assert(check_cycle());
 }
 
@@ -480,7 +480,7 @@ cell_t *dup(cell_t *c) {
 }
 
 bool is_nil(cell_t *c) {
-  return c == nil;
+  return !c;
 }
 
 bool is_cons(cell_t *c) {
@@ -488,7 +488,7 @@ bool is_cons(cell_t *c) {
 }
 
 cell_t *cons(cell_t *h, cell_t *t) {
-  assert(is_cons(t) || is_nil(t));
+  assert(is_nil(t) || is_cons(t));
   cell_t *c = closure_alloc(1);
   c->func = func_cons;
   c->arg[0] = h;
@@ -719,7 +719,7 @@ void test() {
 void print_sexpr_help(cell_t *);
 
 void print_list_help(cell_t *c) {
-  if(c == nil) {
+  if(is_nil(c)) {
     printf(" ] ");
     return;
   }
@@ -956,7 +956,11 @@ void check_free() {
 int main() {
   cells_init();
   //alloc_test();
+  test();
   test2();
+  test3();
+  test4();
+  test5();
   check_free();
   return 0;
 }
