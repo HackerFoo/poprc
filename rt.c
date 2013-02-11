@@ -575,6 +575,7 @@ bool func_pushl(cell_t *c, void *r) {
   bool ret = reduce(c->arg[1], &x);
   closure_split(c);
   *(cell_t **)r = pushl(c->arg[0], x);
+  deref(c->arg[1]);
   return ret;
 }
 
@@ -584,7 +585,7 @@ bool func_quot(cell_t *c, void *r) {
 }
 
 bool func_cons(cell_t *c, void *r) {
-  *(cell_t **)r = ref(c);
+  *(cell_t **)r = cons(c->arg[0], c->arg[1]);
   return true;
 }
 
