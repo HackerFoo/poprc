@@ -596,19 +596,19 @@ bool popr(cell_t *c, void *r) {
     deref(c->arg[0]);
     return ret;
   }
-  return __reduce_noref(f, c, r);
+  return __reduce(f, c, r);
 }
 
 bool func_popr(cell_t *c, void *r) {
   bool f(cell_t *c, void *r) {
-    cell_t *x;
+    cell_t *x, *tmp;
     if(!reduce(c->arg[0], &x)) goto fail;
-    closure_split(x);
+    if(!popr(x, r)) goto fail;
+    if(x->next) {
+      conc_alt(c->arg[0], val((intptr_t)x->next));
+    }
     closure_split(c);
     deref(c->arg[0]);
-    //c->arg[0] = x;
-    if(!popr(x, r)) goto fail;
-    //closure_split(c);
     deref(x);
     return true;
   fail:
@@ -792,25 +792,25 @@ void print_sexpr(cell_t *r) {
 void test2() {
   int cnt;
   intptr_t x;
-  cell_t *xp[2];
   cell_t *a, *b, *c, *d, *e, *p, *t, *z;
   cell_t *a_, *b_, *c_, *e_;
   // 1 [2 +] pushl popr
-
   a = func(func_add, 2);
   e = val(2);
   arg(a, e);
   b = cons(a, nil);
 
   a_ = func(func_add, 2);
-  e_ = val(7);
+  e_ = func(func_alt, 2);
+  arg(e_, val(3));
+  arg(e_, val(7));
   arg(a_, e_);
   b_ = cons(a_, nil);
-
+ 
   z = func(func_alt, 2);
   arg(z, b_);
   arg(z, b);
-  
+ 
   c = func(func_pushl, 2);
   arg(c, z);
   arg(c, val(1));
@@ -922,7 +922,9 @@ void test5() {
   arg(c, b);
       
   d = val(10);
-  f = val(20);
+  f = func(func_alt, 2);
+  arg(f, val(20));
+  arg(f, val(30));
   e = func(func_alt, 2);
   arg(e, d);
   arg(e, f);
