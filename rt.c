@@ -23,8 +23,8 @@
 #include <assert.h>
 
 typedef struct cell cell_t;
-typedef bool (reduce_t)(cell_t *cell, void *val, cell_t **next, cell_t **alt);
-#define FUNC(x) bool func_##x(cell_t *c, void *v, cell_t **n, cell_t **a)
+typedef cell_t *(reduce_t)(cell_t *cell);
+#define FUNC(x) cell_t *func_##x(cell_t *c)
 struct __attribute__((packed)) cell {
   union {
     /* allocated: reduction function */
@@ -101,7 +101,7 @@ void print_sexpr(cell_t *c);
 void closure_split(cell_t *c);
 void closure_expand_arg(cell_t *c, int x);
 cell_t *conc_alt(cell_t *a, cell_t *b);
-bool __reduce(reduce_t f, cell_t *c, void *v, cell_t **n, cell_t **a);
+cell_t *__reduce(reduce_t f, cell_t *c);
 
 reduce_t reduce,
          func_nil,
@@ -176,12 +176,12 @@ void closure_split(cell_t *c) {
   }
 }
 
-bool __reduce(reduce_t f, cell_t *c, void *v, cell_t **n, cell_t **a) {
+cell_t *__reduce(reduce_t f, cell_t *c) {
   cell_t *t, *p = c;
   //print_sexpr(c);
   while(p) {
-    if(f(p, v, n, a)) {
-      to_ref(c, *(intptr_t *)v, *n, *a);
+    if(f(p)) {
+      //to_ref(c, *(intptr_t *)v, *n, *a);
       if(p != c) {
 	c->alt = p->alt;
 	deref(p);
@@ -196,27 +196,8 @@ bool __reduce(reduce_t f, cell_t *c, void *v, cell_t **n, cell_t **a) {
   return false;
 }
 
-bool __reduce_noref(reduce_t f, cell_t *c, void *v, cell_t **n, cell_t **a) {
-  cell_t *t, *p = c;
-  //print_sexpr(c);
-  while(p) {
-    if(f(p, v, n, a)) {
-      if(p != c) {
-	c->alt = p->alt;
-	deref(p);
-      }
-      return true;
-    }
-    t = p;
-    p = p->alt;
-    if(t != c) deref(t);
-  }
-  c->alt = 0;
-  return false;
-}
-
-bool reduce(cell_t *c, void *v, cell_t **n, cell_t **a) {
-  return c->func(c, v, n, a);
+cell_t *reduce(cell_t *c) {
+  return c->func(c);
 }
 
 cell_t *cells_next() {
@@ -349,8 +330,6 @@ bool func_val(cell_t *c, void *r) {
 */
 FUNC(ref_reduced) {
   assert(is_closure(c));
-  //intptr_t val = (intptr_t)c->arg[1];
-  *(intptr_t *)v = c->val;
   return true;
 }
 
@@ -360,15 +339,15 @@ FUNC(ref_failed) {
 
 FUNC(ref) {
   intptr_t val;
-  bool ret = reduce(c->ptr, &val, &c->next, &c->alt);
-  deref(c->ptr);
-  c->val = val;
-  if(ret) c->func = func_ref_reduced;
-  else c->func = func_ref_failed;
-  *(intptr_t *)v = c->val;
-  *n = c->next;
-  *a = c->alt;
-  return ret;
+  cell_t *r = reduce(c->ptr);
+  if(r) {
+    memcpy(c, r, sizeof(cell_t));
+    deref(r);
+    return c;
+  } else {
+     c->func = func_ref_failed;
+     return 0;
+  }
 }
 
 cell_t *val(intptr_t x) {
@@ -408,15 +387,16 @@ cell_t *func(reduce_t *f, int args) {
 
 FUNC(add) {
   FUNC(f) {
-    intptr_t x, y;
+    intptr_t z;
     bool s;
-    s = reduce(c->arg[0], &x, &nul, &nul) &&
-      reduce(c->arg[1], &y, &nul, &nul);
+    cell_t *x = reduce(c->arg[0]);
+    cell_t *y = x == 0 ? 0 : reduce(c->arg[1]);
     closure_split(c);
-    deref(c->arg[0]);
-    deref(c->arg[1]);
-    if(s) *(intptr_t *)v = x + y;
-    return s;
+    deref(x);
+    deref(y);
+    if(y) z = x->val + y->val;
+    SET(z); // destroy self if returning 0?
+    return c;
   }
   __reduce(func_f, c, v, n, a);
 }
