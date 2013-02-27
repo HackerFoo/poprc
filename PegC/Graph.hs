@@ -252,8 +252,8 @@ units ast@(AST a e i o) = reg
 varName x | x < 0 = "in" ++ show (negate x - 1)
           | otherwise = "reg" ++ show x
 
-gen (d, (_, W "+", [x, y])) = varName d ++ " = " ++ varName x ++ " + " ++ varName y
-gen (d, (_, I x, _)) = varName d ++ " = " ++ show x
+gen (d, (_, W "+", [x, y])) = varName d ++ " = add_int(" ++ varName x ++ ", " ++ varName y ++ ")"
+gen (d, (_, I x, _)) = varName d ++ " = var_int(" ++ show x ++ ")"
 gen (d, (_, P n, _)) = varName d ++ " = &" ++ n 
 gen (d, (_, Q _, _)) = varName d ++ " = <<AST>>"
 gen (d, (x, W "id", [r])) = varName d ++ " = " ++ varName r
@@ -267,7 +267,7 @@ generate name src = do
           (n, a') <- seperateAst name a,
           (c,u) <- zip [0..] $ units a']
 
-proto name i o = "int " ++ name ++ "( " ++ commas (["int " ++ varName x | x <- i] ++ 
+proto name i o = "cell_t *" ++ name ++ "( " ++ commas (["int " ++ varName x | x <- i] ++ 
                                                    ["int *" ++ varName x | x <- o]) ++ " )"
 func name (AST a _ _ _) (i, r, o) =
   proto name i (tail o) ++ "\n" ++
