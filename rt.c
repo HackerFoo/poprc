@@ -23,14 +23,15 @@
 #include <assert.h>
 
 typedef struct cell cell_t;
-typedef cell_t *(reduce_t)(cell_t *cell);
-#define FUNC(x) cell_t *func_##x(cell_t *c)
+typedef bool (reduce_t)(cell_t *cell);
+#define FUNC(x) bool func_##x(cell_t *c)
 struct __attribute__((packed)) cell {
   union {
     /* allocated: reduction function */
     reduce_t *func;
     /* unallocated: previous pointer in free cell ring */
     cell_t *prev;
+    cell_t *altn; // negated alt ptr for unevaluated alts
   };
   /* unallocated: next pointer in free cell ring */
   /* allocated: next alternative */
@@ -89,6 +90,7 @@ cell_t *copy(cell_t *c);
 cell_t *ref_args(cell_t *c);
 void to_ref(cell_t *c, intptr_t x, cell_t *n, cell_t *a);
 cell_t *ref(cell_t *c);
+cell_t *refn(cell_t *c, int n);
 cell_t *dup(cell_t *c);
 bool is_nil(cell_t *c);
 bool is_cons(cell_t *c);
@@ -98,10 +100,10 @@ void drop(cell_t *c);
 cell_t *pushl(cell_t *a, cell_t *b);
 cell_t *compose(cell_t *a, cell_t *b);
 void print_sexpr(cell_t *c);
-void closure_split(cell_t *c);
+cell_t *closure_split(cell_t *c);
 void closure_expand_arg(cell_t *c, int x);
 cell_t *conc_alt(cell_t *a, cell_t *b);
-cell_t *__reduce(reduce_t f, cell_t *c);
+bool __reduce(reduce_t f, cell_t *c);
 
 reduce_t reduce,
          func_nil,
@@ -137,66 +139,68 @@ void closure_set_ready(cell_t *c, bool r) {
   c->func = (reduce_t *)(((intptr_t)c->func & ~0x1) | !r);
 }
 
-/* expands closure on arg x */
-void closure_expand_arg(cell_t *c, int x) {
-  assert(is_closure(c));
-  cell_t *a = c->arg[x]->alt;
-  if(a) {
-    cell_t *n = copy(c);
-    n->alt = c->alt;
-    c->alt = n;
-    n->arg[x] = a;
-    ref_args(n);
-    //printf("__expand(%d):", x);
-    //print_sexpr(n);
-  }
-}
-
 /* propagate alternatives down to root of expression tree */
-void closure_split(cell_t *c) {
+cell_t *closure_split(cell_t *c) {
   //printf("__closure_split:");
   //print_sexpr(c);
   assert(is_closure(c) && closure_is_ready(c));
-  //if(is_val(c)) return;
-  int n, s = closure_args(c);
-  cell_t *p, *pn;
-  n = s; while(n--) {
-    if(!is_closure(c->arg[n]) || !c->arg[n]->alt) continue;
-    p = c;
-    do {
-      pn = p->alt;
-      if(p->arg[n] == c->arg[n]) closure_expand_arg(p, n);
-    } while (p = pn);
-  }
-  n = s; while(n--) {
-    if(is_closure(c->arg[n])) {
-      deref(c->arg[n]->alt);
-      c->arg[n]->alt = 0;
+  unsigned int i, j, s = closure_args(c);
+  unsigned int alt_mask = 0;
+  unsigned int alts = 0;
+
+  for(i = 1; i < (1<<s); i <<= 1)
+    if(c->arg[i]->alt != 0) {
+      alts++;
+      alt_mask |= i;
+    }
+
+  for(i = 0; i < s; i++) {
+    if(c->arg[i]->alt) {
+      refn(c->arg[i], (1 << (alts-1)) - 1);
+      refn(c->arg[i]->alt, 1 << (alts-1));
+      c->arg[i]->alt = 0;
+    } else {
+      refn(c->arg[i], (1 << alts) - 1);
     }
   }
+
+  cell_t *p = 0, *n;
+  for(i = alt_mask;
+      i != 0;
+      i = i - 1 & alt_mask) {
+    n = closure_alloc(s);
+    for(j = 0; j < s; j++) {
+      n->arg[j] = (1<<j) & i ? c->arg[j]->alt : c->arg[j];
+    }
+    n->altn = (cell_t *)~(intptr_t)p;
+    p = n;
+  }
+
+  return p;
 }
 
-cell_t *__reduce(reduce_t f, cell_t *c) {
+bool __reduce(reduce_t f, cell_t *c) {
   cell_t *t, *p = c;
   //print_sexpr(c);
   while(p) {
     if(f(p)) {
-      //to_ref(c, *(intptr_t *)v, *n, *a);
       if(p != c) {
-	c->alt = p->alt;
+	c->alt = (cell_t *)~(intptr_t)p->altn;
+	p->func = c->func;
 	deref(p);
       }
       return true;
     }
     t = p;
-    p = p->alt;
+    p = (cell_t *)~(intptr_t)p->altn;
+    t->func = c->func;
     if(t != c) deref(t);
   }
   c->alt = 0;
   return false;
 }
 
-cell_t *reduce(cell_t *c) {
+bool reduce(cell_t *c) {
   return c->func(c);
 }
 
@@ -339,15 +343,15 @@ FUNC(ref_failed) {
 
 FUNC(ref) {
   intptr_t val;
-  cell_t *r = reduce(c->ptr);
-  if(r) {
+  cell_t *r = c->ptr;
+  bool ret = reduce(r);
+  if(ret) {
     memcpy(c, r, sizeof(cell_t));
     deref(r);
-    return c;
   } else {
      c->func = func_ref_failed;
-     return 0;
   }
+  return ret;
 }
 
 cell_t *val(intptr_t x) {
@@ -388,17 +392,20 @@ cell_t *func(reduce_t *f, int args) {
 FUNC(add) {
   FUNC(f) {
     intptr_t z;
-    bool s;
-    cell_t *x = reduce(c->arg[0]);
-    cell_t *y = x == 0 ? 0 : reduce(c->arg[1]);
-    closure_split(c);
-    deref(x);
-    deref(y);
-    if(y) z = x->val + y->val;
-    SET(z); // destroy self if returning 0?
-    return c;
+    bool s = reduce(c->arg[0]) && reduce(c->arg[1]);
+    if(s) {
+      cell_t *alt = closure_split(c);
+      z = c->arg[0]->val + c->arg[1]->val;
+      deref(c->arg[0]);
+      deref(c->arg[1]);
+      to_ref(c, z, alt, 0);
+    } else {
+      deref(c->arg[0]);
+      deref(c->arg[1]);
+    }
+    return s;
   }
-  __reduce(func_f, c, v, n, a);
+  return __reduce(func_f, c);
 }
 
 int closure_args(cell_t *c) {
@@ -466,6 +473,15 @@ void to_ref(cell_t *c, intptr_t x, cell_t *n, cell_t *a) {
   c->alt = a;
 }
 
+void to_fail(cell_t *c) {
+  closure_shrink(c,1);
+  c->func = func_ref_failed;
+  c->n = 1;
+  c->val = 0;
+  c->next = 0;
+  c->alt = 0;
+}
+
 cell_t *ref(cell_t *c) {
   assert(is_closure(c));
   if(is_ref(c)) {
@@ -477,6 +493,23 @@ cell_t *ref(cell_t *c) {
     closure_shrink(c, 1);
     c->func = func_ref;
     c->n = 2;
+    c->ptr = new;
+  }
+  return c;
+}
+
+cell_t *refn(cell_t *c, int n) {
+  assert(is_closure(c));
+  if(n <= 0) return c;
+  if(is_ref(c)) {
+    c->n += n;
+  } else {
+    /* copy closure to a new location,         */
+    /* then convert the closure to a reference */
+    cell_t *new = copy(c);
+    closure_shrink(c, 1);
+    c->func = func_ref;
+    c->n = n+1;
     c->ptr = new;
   }
   return c;
@@ -554,10 +587,10 @@ FUNC(head) {
     cell_t *x = c->arg[0];
     if (!is_cons(x)) return false;
     drop(x->arg[1]);
-    *(cell_t **)v = x->arg[0];
+    c->ptr = x->arg[0];
     return true;
   }
-  return __reduce(func_f, c, v, n, a);
+  return __reduce(func_f, c);
 }
 
 FUNC(tail) {
@@ -565,10 +598,10 @@ FUNC(tail) {
     cell_t *x = c->arg[0];
     if(!is_cons(x)) return false;
     drop(x->arg[0]);
-    *(cell_t **)v = x->arg[1];
+    c->ptr = x->arg[1];
     return true;
   }
-  return __reduce(func_f, c, v, n, a);
+  return __reduce(func_f, c);
 }
 
 cell_t *pushl(cell_t *a, cell_t *b) {
@@ -587,58 +620,69 @@ cell_t *pushl(cell_t *a, cell_t *b) {
 }
 
 FUNC(pushl) {
-  cell_t *x;
-  bool ret = reduce(c->arg[1], &x, &nul, &nul);
-  closure_split(c);
-  *(cell_t **)v = pushl(c->arg[0], x);
+  bool ret = reduce(c->arg[1]);
+  if(ret) {
+    cell_t *alt = closure_split(c);
+    cell_t *v = pushl(c->arg[0], c->arg[1]->ptr);
+    to_ref(c, (intptr_t)v, 0, alt);
+  }
   deref(c->arg[1]);
   return ret;
 }
 
 FUNC(quot) {
-  *(cell_t **)v = cons(c->arg[0], nil);
+  to_ref(c, (intptr_t)cons(c->arg[0], nil), 0, 0);
   return true;
 }
 
 FUNC(cons) {
-  *(cell_t **)v = cons(c->arg[0], c->arg[1]);
+  to_ref(c, (intptr_t)cons(c->arg[0], c->arg[1]), 0, 0);
   return true;
 }
 
-bool popr(cell_t *c, void *v) {
+bool popr(cell_t *c) {
   FUNC(f) {
-    bool ret = reduce(c->arg[0], v, &nul, &nul);
-    closure_split(c);
-    deref(c->arg[0]);
+    bool ret = reduce(c->arg[0]);
+    if(ret) {
+      intptr_t v = c->arg[0]->val;
+      cell_t *alt = closure_split(c);
+      deref(c->arg[0]);
+      //to_val(c, v, 0, alt);
+    } else {
+      deref(c->arg[0]);
+    }
     return ret;
   }
-  return __reduce(func_f, c, v, &nul, &nul);
+  return __reduce(func_f, c);
 }
 
 FUNC(popr) {
   FUNC(f) {
     cell_t *x, *tmp;
-    if(!reduce(c->arg[0], &x, &nul, &nul)) goto fail;
-    if(!popr(x, v)) goto fail;
-    if(x->alt) {
-      conc_alt(c->arg[0], val((intptr_t)x->alt));
+    if(!reduce(c->arg[0])) goto fail;
+    if(!popr(c->arg[0]->ptr)) goto fail;
+    if(c->arg[0]->ptr->alt) {
+      conc_alt(c->arg[0], val((intptr_t)c->arg[0]->ptr->alt));
     }
     closure_split(c);
+    deref(c->arg[0]->ptr);
     deref(c->arg[0]);
-    deref(x);
     return true;
   fail:
     deref(c->arg[0]);
     return false;
   }
-  return __reduce(func_f, c, v, n, a);
+  return __reduce(func_f, c);
 }
 
 FUNC(alt) {
-  bool ret = reduce(c->arg[0], v, n, a);
-  c->alt = conc_alt(c->arg[0]->alt, c->arg[1]);
-  deref(c->arg[0]);
-  to_ref(c, *(intptr_t *)v, *n, *a);
+  cell_t *p = c->arg[0];
+  bool ret = reduce(p);
+  if(ret) {
+    cell_t *alt = conc_alt(p->alt, c->arg[1]);
+    to_ref(c, p->val, p->next, alt);
+  }
+  deref(p);
   return ret;
 }
 
@@ -654,7 +698,7 @@ cell_t *compose(cell_t *a, cell_t *b) {
 }
 
 FUNC(compose) {
-  *(cell_t **)v = compose(c->arg[0], c->arg[1]);
+  c->ptr = compose(c->arg[0], c->arg[1]);
   return true;
 }
 
@@ -670,11 +714,12 @@ cell_t *conc_alt(cell_t *a, cell_t *b) {
 
 FUNC(assert) {
   FUNC(f) {
-    bool ret = reduce(c->arg[0], v, n, a);
+    bool ret = reduce(c->arg[0]);
+    intptr_t v = c->val;
     deref(c->arg[0]);
-    return ret && (*(intptr_t *)v);
+    return ret && v;
   }
-  return __reduce(func_f, c, v, n, a);
+  return __reduce(func_f, c);
 }
 
 void alloc_test() {
@@ -722,12 +767,12 @@ void test() {
   arg(j, i);
 
   intptr_t ret;
-  reduce(e, &ret, &nul, &nul);
+  reduce(e);
+  show((int)e->val);
   deref(e);
-  show((int)ret);
-  reduce(j, &ret, &nul, &nul);
+  reduce(j);
+  show((int)j->val);
   deref(j);
-  show((int)ret);
 }
 
 void print_sexpr_help(cell_t *);
@@ -838,11 +883,11 @@ void test2() {
 
   p = d;
   cnt = 0;
-  while(p && reduce(p, &x, &nul, &nul)) {
+  while(p && reduce(p)) {
     t = p;
+    show((int)p->val);
     p = p->alt;
     deref(t);
-    show((int)x);
     cnt++;
   }
   deref(p);
@@ -898,11 +943,11 @@ void test3() {
   
   p = f;
   cnt = 0;
-  while(p && reduce(p, &x, &nul, &nul)) {
+  while(p && reduce(p)) {
     t = p;
+    show((int)p->val);
     p = p->alt;
     deref(t);
-    show((int)x);
     cnt++;
   }
   deref(p);
@@ -918,12 +963,12 @@ void test4() {
   arg(c, b);
   d = ref_args(copy(c));
   intptr_t x, y;
-  reduce(c, &x, &nul, &nul);
+  reduce(c);
+  show((int)c->val);
   deref(c);
-  reduce(d, &y, &nul, &nul);
+  reduce(d);
+  show((int)d->val);
   deref(d);
-  show((int)x);
-  show((int)y);
 }
 
 void test5() {
@@ -952,11 +997,11 @@ void test5() {
   
   p = g;
   cnt = 0;
-  while(p && reduce(p, &x, &nul, &nul)) {
+  while(p && reduce(p)) {
     t = p;
+    show((int)p->val);
     p = p->alt;
     deref(t);
-    show((int)x);
     cnt++;
   }
   deref(p);
@@ -965,8 +1010,11 @@ void test5() {
 }
 
 FUNC(id) {
-  bool ret = reduce(c->arg[0], v, &nul, &nul);
-  deref(c->arg[0]);
+  cell_t *p = c->arg[0];
+  bool ret = reduce(p);
+  to_ref(c, p->val, p->next, p->alt);
+  deref(p);
+  return true;
 }
 
 void test6() {
@@ -979,8 +1027,9 @@ void test6() {
   // + -> P, x -> V(x), reverse order
   P P V(10000) V(2000) P V(300) P V(40) V(5) 
 
-    reduce(p, &x, &nul, &nul);
-  show((int)x);
+    reduce(p);
+  show((int)p->val);
+  deref(p);
 }
 
 void check_free() {
