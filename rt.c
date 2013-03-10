@@ -84,7 +84,8 @@ cell_t *closure_split(cell_t *c) {
   for(i = alt_mask;
       i != 0;
       i = i - 1 & alt_mask) {
-    n = closure_alloc(1); //***
+    n = closure_alloc(s);
+    n->func = c->func;
     for(j = 0; j < s; j++) {
       n->arg[j] = (1<<j) & i ? c->arg[j]->alt : c->arg[j];
     }
@@ -104,15 +105,13 @@ bool __reduce(reduce_t f, cell_t *c) {
   while(p) {
     if(f(p)) {
       if(p != c) {
-	c->alt = p->alt;
-	p->func = c->func;
+	to_ref(c, p->val, p->next, p->alt);
 	deref(p);
       }
       return true;
     }
     t = p;
     p = p->alt;
-    t->func = c->func;
     if(t != c) deref(t);
   }
   c->alt = 0;
@@ -181,7 +180,11 @@ void cell_alloc(cell_t *c) {
   assert(check_cycle());
 }
 
-cell_t *closure_alloc(int size) {
+cell_t *closure_alloc(int args) {
+  return closure_alloc_cells(calculate_cells(args));
+}
+
+cell_t *closure_alloc_cells(int size) {
   cell_t *ptr = cells_next(), *c = ptr;
   cell_t *mark = ptr;
   int cnt = 0;
@@ -299,8 +302,8 @@ bool is_offset(cell_t *c) {
 // args must be >= 1
 cell_t *func(reduce_t *f, int args) {
   assert(args >= 0);
-  int size = calculate_cells(args);
-  cell_t *c = closure_alloc(size);
+  //int size = calculate_cells(args);
+  cell_t *c = closure_alloc(args);
   assert(c->func == 0);
   c->func = f;
   c->arg[0] = (cell_t *)(intptr_t)(args - 1);
@@ -317,7 +320,7 @@ FUNC(add) {
       z = c->arg[0]->val + c->arg[1]->val;
       deref(c->arg[0]);
       deref(c->arg[1]);
-      to_ref(c, z, alt, 0);
+      to_ref(c, z, 0, alt);
     } else {
       deref(c->arg[0]);
       deref(c->arg[1]);
@@ -369,7 +372,7 @@ void arg(cell_t *c, cell_t *a) {
 
 cell_t *copy(cell_t *c) {
   int size = closure_cells(c);
-  cell_t *new = closure_alloc(size);
+  cell_t *new = closure_alloc_cells(size);
   memcpy(new, c, size * sizeof(cell_t));
   return new;
 }
@@ -457,7 +460,7 @@ bool is_cons(cell_t *c) {
 
 cell_t *cons(cell_t *h, cell_t *t) {
   assert(is_nil(t) || is_cons(t));
-  cell_t *c = closure_alloc(1);
+  cell_t *c = closure_alloc(2);
   c->func = func_cons;
   c->arg[0] = h;
   c->arg[1] = t;
@@ -465,10 +468,11 @@ cell_t *cons(cell_t *h, cell_t *t) {
 }
 
 void deref(cell_t *c) {
+  //return;
   if(!c /*is_closure(c)*/) return;
   assert(is_closure(c));
   if(is_ref(c)) {
-    //printf("DEREF(%d) to %d\n", (int)(c - &cells[0]), (int)*(intptr_t *)&c->arg[0]-1);
+    printf("DEREF(%d) to %d\n", (int)(c - &cells[0]), (int)*(intptr_t *)&c->arg[0]-1);
     if(!--*(intptr_t *)&c->n) {
       if(c->func == func_ref)
 	deref(c->ptr);
@@ -605,17 +609,16 @@ FUNC(alt) {
     bool ret = reduce(p);
     cell_t *a = 0;
     if(p->alt) {
-      a = closure_alloc(1);
+      a = closure_alloc(2);
       a->func = func_alt;
       a->arg[0] = p->alt;
       a->arg[1] = c->arg[1];
     } else if (c->arg[1]) {
-      a = closure_alloc(1);
+      a = closure_alloc(2);
       a->func = func_alt;
       a->arg[0] = c->arg[1];
       a->arg[1] = 0;
     }
-    c->alt = a;
     to_ref(c, p->val, p->next, a);
     deref(p);
     return ret;
@@ -851,6 +854,8 @@ void test3() {
   arg(l, d);
   arg(a, k);
   arg(a, l);
+  // a = (2 | 23) + (3 | 7)
+  /*
   f = func(func_add, 2);
   g = val(31);
   h = val(63);
@@ -863,6 +868,7 @@ void test3() {
   arg(n, m);
   arg(f, n);
   arg(f, a);
+  // f = (31 | 63 | 127) + a
   
   addr(a);
   addr(b);
@@ -877,18 +883,8 @@ void test3() {
   addr(l);
   addr(m);
   addr(n);
-  
-  p = f;
-  cnt = 0;
-  while(p && reduce(p)) {
-    t = p;
-    show((int)p->val);
-    p = p->alt;
-    deref(t);
-    cnt++;
-  }
-  deref(p);
-  show(cnt);
+  */
+  show_all(a);
 }
 
 void test4() {
@@ -972,13 +968,13 @@ void test6() {
 void test7() {
   cell_t *a, *b, *c, *p, *t;
   int cnt;
+  c = func(func_add, 2);
   a = func(func_alt, 2);
   arg(a, val(2));
   arg(a, val(1));
   b = func(func_alt, 2);
-  arg(b, val(4));
-  arg(b, val(3));
-  c = func(func_alt, 2);
+  arg(b, val(20));
+  arg(b, val(10));
   arg(c, b);
   arg(c, a);
 
@@ -1032,8 +1028,8 @@ int main() {
   //test4();
   //test5();
   //test6();
-  //test7();
-  test8();
+  test7();
+  //test8();
   check_free();
   return 0;
 }
