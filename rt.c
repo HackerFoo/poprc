@@ -74,7 +74,7 @@ cell_t *closure_split(cell_t *c) {
   for(i = 0; i < s; i++) {
     if(c->arg[i]->alt) {
       refn(c->arg[i], (1 << (alts-1)) - 1);
-      refn(c->arg[i]->alt, 1 << (alts-1));
+      refn(c->arg[i]->alt, (1 << (alts-1)) - 1); // ***
     } else {
       refn(c->arg[i], (1 << alts) - 1);
     }
@@ -268,7 +268,10 @@ FUNC(ref) {
   cell_t *r = c->ptr;
   bool ret = reduce(r);
   if(ret) {
-    memcpy(c, r, sizeof(cell_t));
+    c->func = func_ref_reduced;
+    c->val = r->val;
+    c->alt = r->alt;
+    c->next = r->next;
     deref(r);
   } else {
      c->func = func_ref_failed;
@@ -468,11 +471,10 @@ cell_t *cons(cell_t *h, cell_t *t) {
 }
 
 void deref(cell_t *c) {
-  //return;
   if(!c /*is_closure(c)*/) return;
   assert(is_closure(c));
   if(is_ref(c)) {
-    printf("DEREF(%d) to %d\n", (int)(c - &cells[0]), (int)*(intptr_t *)&c->arg[0]-1);
+    //printf("DEREF(%d) to %d\n", (int)(c - &cells[0]), (int)*(intptr_t *)&c->arg[0]-1);
     if(!--*(intptr_t *)&c->n) {
       if(c->func == func_ref)
 	deref(c->ptr);
@@ -843,23 +845,23 @@ void test3() {
   b = val(2);
   //e = func(func_assert, 1);
   //arg(e, val(0));
-  e = val(23);
+  e = val(1);
   k = func(func_alt, 2);
   arg(k, b);
   arg(k, e);
-  c = val(3);
-  d = val(7);
+  c = val(20);
+  d = val(10);
   l = func(func_alt, 2);
   arg(l, c);
   arg(l, d);
   arg(a, k);
   arg(a, l);
   // a = (2 | 23) + (3 | 7)
-  /*
+
   f = func(func_add, 2);
-  g = val(31);
-  h = val(63);
-  i = val(127);
+  g = val(300);
+  h = val(200);
+  i = val(100);
   m = func(func_alt, 2);
   arg(m, g);
   arg(m, h);
@@ -883,8 +885,8 @@ void test3() {
   addr(l);
   addr(m);
   addr(n);
-  */
-  show_all(a);
+
+  show_all(f);
 }
 
 void test4() {
@@ -968,13 +970,13 @@ void test6() {
 void test7() {
   cell_t *a, *b, *c, *p, *t;
   int cnt;
-  c = func(func_add, 2);
   a = func(func_alt, 2);
   arg(a, val(2));
   arg(a, val(1));
   b = func(func_alt, 2);
   arg(b, val(20));
   arg(b, val(10));
+  c = func(func_add, 2);
   arg(c, b);
   arg(c, a);
 
@@ -1024,11 +1026,11 @@ int main() {
   //alloc_test();
   //test();
   //test2();
-  //test3();
+  test3();
   //test4();
   //test5();
   //test6();
-  test7();
+  //test7();
   //test8();
   check_free();
   return 0;
