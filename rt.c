@@ -507,7 +507,6 @@ cell_t *cons(cell_t *h, cell_t *t) {
 }
 
 void deref(cell_t *c) {
-  return;
   if(!c /*is_closure(c)*/) return;
   assert(is_closure(c));
   if(is_ref(c)) {
@@ -593,7 +592,7 @@ FUNC(pushl) {
 }
 
 FUNC(quote) {
-  to_ref(c, (intptr_t)quote(c->arg[0]), 0, 0);
+  to_ref(c, (intptr_t)c->arg[0], 0, 0);
   return true;
 }
 
@@ -623,7 +622,7 @@ FUNC(popr) {
       deref(p);
       return false;
     }
-    if(!popr(p->ptr)) {
+    if(!reduce(p->ptr)) {
       deref(p->ptr);
       deref(p);
       return false;
@@ -1036,7 +1035,7 @@ void show_all(cell_t *c) {
   while(p) {
     t = p;
     if(reduce(p))
-      show((int)p->val);
+      printf("%d\n", (int)p->val);
     p = p->alt;
     deref(t);
     cnt++;
@@ -1058,11 +1057,19 @@ void test8() {
 }
 
 void test9() {
-  cell_t *a, *b;
+  cell_t *a, *b, *c, *d, *e;
+  c = func(func_alt, 2);
+  arg(c, val(42));
+  arg(c, val(51));
   a = func(func_quote, 1);
-  arg(a, val(42));
+  arg(a, c);
+  e = func(func_quote, 1);
+  arg(e, val(123));
+  d = func(func_alt, 2);
+  arg(d, a);
+  arg(d, e);
   b = func(func_popr, 1);
-  arg(b, a);
+  arg(b, d);
   
   show_all(b);
 }
@@ -1080,7 +1087,7 @@ void check_free() {
 int main() {
   cells_init();
   //alloc_test();
-  //test();
+  test();
   //test2();
   //test3();
   //test4();
@@ -1088,7 +1095,7 @@ int main() {
   //test6();
   //test7();
   //test8();
-  test9();
+  //test9();
   check_free();
   return 0;
 }
