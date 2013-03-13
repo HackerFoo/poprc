@@ -25,4 +25,7 @@ struct __attribute__((packed)) cell {
   };
 };
 
+#define MK_APPEND(fname, field)			\
+  cell_t *fname(cell_t *a, cell_t *b);
+
 #endif

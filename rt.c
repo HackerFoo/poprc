@@ -492,7 +492,7 @@ cell_t *dup(cell_t *c) {
 bool is_nil(cell_t *c) {
   return !c;
 }
-
+/*
 bool is_cons(cell_t *c) {
   return c->func == func_cons;
 }
@@ -505,7 +505,7 @@ cell_t *cons(cell_t *h, cell_t *t) {
   c->arg[1] = t;
   return c;
 }
-
+*/
 void deref(cell_t *c) {
   if(!c /*is_closure(c)*/) return;
   assert(is_closure(c));
@@ -541,7 +541,7 @@ void drop(cell_t *c) {
     closure_free(c);
   }
 }
-
+/*
 // to do: reduce arg
 FUNC(head) {
   FUNC(f) {
@@ -564,20 +564,29 @@ FUNC(tail) {
   }
   return __reduce(func_f, c);
 }
+*/
 
 cell_t *pushl(cell_t *a, cell_t *b) {
   assert(is_closure(a) && is_closure(b));
-  assert(is_cons(b) || is_nil(b));
-  if(is_nil(b)) {
-    return cons(a, b);
-  }
-  cell_t *h = b->arg[0];
-  if(closure_is_ready(h)) {
-    return cons(a, b);
-  } else {
-    arg(h, a);
+  if(!b->ptr) {
+    b->ptr = a;
     return b;
   }
+  if(closure_is_ready(b->ptr)) {
+    cell_t *x = func(func_append, 2);
+    arg(x, b->ptr);
+    arg(x, a);
+    b->ptr = x;
+    return b;
+  } else {
+    arg(b->ptr, a);
+    return b;
+  }
+}
+
+FUNC(append) {
+  // ***
+  return true;
 }
 
 FUNC(pushl) {
@@ -595,11 +604,26 @@ FUNC(quote) {
   to_ref(c, (intptr_t)c->arg[0], 0, 0);
   return true;
 }
-
+/*
 FUNC(cons) {
   to_ref(c, (intptr_t)cons(c->arg[0], c->arg[1]), 0, 0);
   return true;
 }
+*/
+#undef MK_APPEND
+#define MK_APPEND(fname, field)			\
+  cell_t *fname(cell_t *a, cell_t *b) {		\
+    if(!a) return b;				\
+    if(!b) return a;				\
+						\
+    cell_t *p = a, *r;				\
+    while(r = p->field) p = r;			\
+    p->field = b;				\
+    return a;					\
+  }
+
+MK_APPEND(conc_alt, alt);
+MK_APPEND(append, next);
 
 bool popr(cell_t *c) {
   FUNC(f) {
@@ -668,8 +692,8 @@ FUNC(alt) {
 
 cell_t *compose(cell_t *a, cell_t *b) {
   assert(is_closure(a) && is_closure(b));
-  assert((is_cons(a) || is_nil(a)) &&
-	 (is_cons(b) || is_nil(b)));
+  //  assert((is_cons(a) || is_nil(a)) &&
+  //	 (is_cons(b) || is_nil(b)));
   if(is_nil(a)) return b;
   if(is_nil(b)) return a;
   cell_t *h = a->arg[0];
@@ -680,16 +704,6 @@ cell_t *compose(cell_t *a, cell_t *b) {
 FUNC(compose) {
   c->ptr = compose(c->arg[0], c->arg[1]);
   return true;
-}
-
-cell_t *conc_alt(cell_t *a, cell_t *b) {
-  if(!a) return b;
-  if(!b) return a;
-
-  cell_t *p = a, *r;
-  while(r = p->alt) p = r;
-  p->alt = b;
-  return a;
 }
 
 FUNC(assert) {
@@ -762,7 +776,7 @@ void print_list_help(cell_t *c) {
     printf(" ] ");
     return;
   }
-  assert(is_cons(c));
+  // assert(is_cons(c));
   print_sexpr_help(c->arg[0]);
   print_list_help(c->arg[1]); 
 }
@@ -776,9 +790,9 @@ void print_sexpr_help(cell_t *r) {
   if(!is_closure(r)) {
     printf(" ?");
     return;
-  } else if(is_cons(r) || is_nil(r)) {
-    print_list(r);
-    return;
+    //} else if(is_cons(r) || is_nil(r)) {
+    //print_list(r);
+    //return;
   } else if(r->func == func_ref) {
     //print_sexpr_help(r->arg[1]);
     printf(" (ref");
@@ -837,7 +851,7 @@ void test2() {
   a = func(func_add, 2);
   e = val(2);
   arg(a, e);
-  b = cons(a, nil);
+  //b = cons(a, nil);
 
   a_ = func(func_add, 2);
   e_ = func(func_alt, 2);
@@ -847,7 +861,7 @@ void test2() {
   arg(y, e_);
   arg(y, val(20));
   arg(a_, y);
-  b_ = cons(a_, nil);
+  //b_ = cons(a_, nil);
  
   z = func(func_alt, 2);
   arg(z, b_);
