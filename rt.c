@@ -453,19 +453,7 @@ void to_fail(cell_t *c) {
 }
 
 cell_t *ref(cell_t *c) {
-  assert(is_closure(c));
-  if(is_ref(c)) {
-    ++c->n;
-  } else {
-    /* copy closure to a new location,         */
-    /* then convert the closure to a reference */
-    cell_t *new = copy(c);
-    closure_shrink(c, 1);
-    c->func = func_ref;
-    c->n = 2;
-    c->ptr = new;
-  }
-  return c;
+  return(refn(c, 1));
 }
 
 cell_t *refn(cell_t *c, int n) {
@@ -490,8 +478,9 @@ cell_t *dup(cell_t *c) {
   if(closure_is_ready(c)) return ref(c);
   int args = closure_args(c);
   cell_t *tmp = copy(c);
-  // c->arg[<i] are empty and c->arg[>i] are ready, so no need to copy
-  // c->arg[i] only needs copied if filled
+  /* c->arg[<i] are empty and c->arg[>i] are ready, *
+   * so no need to copy                             *
+   * c->arg[i] only needs copied if filled          */
   int i = closure_next_child(c);
   if(is_closure(c->arg[i])) tmp->arg[i] = dup(c->arg[i]);
   while(++i < args) tmp->arg[i] = ref(c->arg[i]);
@@ -582,21 +571,27 @@ cell_t *pushl(cell_t *a, cell_t *b) {
     return a;
   }
   if(closure_is_ready(b)) {
-    append(b, a);
+    cell_t *n = closure_alloc(2);
+    n->func = func_concat;
+    n->arg[0] = b;
+    n->arg[1] = a;
+    return n;
   } else {
     arg(b, a);
+    return b;
   }
-  return b;
 }
 
-/* destructive! */
 FUNC(append) {
   FUNC(f) {
     cell_t *z;
     bool s = reduce(c->arg[0]) && reduce(c->arg[1]);
     if(s) {
       cell_t *alt = closure_split(c);
-      z = append(c->arg[0]->ptr, c->arg[1]->ptr);
+      z = closure_alloc(2);
+      z->func = func_concat;
+      z->arg[0] = c->arg[0]->ptr;
+      z->arg[1] = c->arg[1]->ptr;
       deref(c->arg[0]);
       deref(c->arg[1]);
       to_ref(c, (intptr_t)z, 0, alt);
@@ -674,10 +669,6 @@ FUNC(popr) {
 FUNC(alt) {
   FUNC(f) {
     cell_t *p = c->arg[0];
-    if(!p) {
-      deref(p);
-      return false;
-    }
     bool ret = reduce(p);
     cell_t *a = 0;
     if(p->alt) {
@@ -693,6 +684,27 @@ FUNC(alt) {
     }
     to_ref(c, p->val, p->next, a);
     deref(p);
+    return ret;
+  }
+  return __reduce(func_f, c);
+}
+
+FUNC(concat) {
+  FUNC(f) {
+    cell_t *p = c->arg[0];
+    bool ret = reduce(p);
+    cell_t *a = closure_split1(c, 0);
+    cell_t *n = 0;
+    if(p->next) {
+      n = closure_alloc(2);
+      n->func = func_concat;
+      n->arg[0] = p->next;
+      n->arg[1] = c->arg[1];
+    } else {
+      n = c->arg[1];
+    }
+    to_ref(c, p->val, n, a);
+    //deref(p);
     return ret;
   }
   return __reduce(func_f, c);
@@ -1106,7 +1118,7 @@ void test9() {
 }
 
 void test10() {
-  cell_t *a, *b, *c, *d, *e, *f;
+  cell_t *a, *b, *c, *d, *e, *f, *g;
 
   a = func(func_append, 2);
   arg(a, quote(val(2)));
@@ -1118,6 +1130,10 @@ void test10() {
   arg(c, b);
   arg(c, val(4));
 
+  g = func(func_pushl, 2);
+  arg(g, ref(b));
+  arg(g, val(5));
+
   d = func(func_add, 2);
   arg(d, val(2));
   e = func(func_pushl, 2);
@@ -1128,6 +1144,7 @@ void test10() {
   arg(f, c);
 
   show_eval(f);
+  show_eval(g);
   show_eval(e);
 }
 
