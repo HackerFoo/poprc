@@ -155,6 +155,7 @@ bool __reduce(reduce_t f, cell_t *c) {
 }
 
 bool reduce(cell_t *c) {
+  assert(is_closure(c) && closure_is_ready(c));
   return c && c->func(c);
 }
 
@@ -342,10 +343,11 @@ bool is_val(cell_t *c) {
 }
 */
 bool is_ref(cell_t *c) {
-  return c->func == func_ref ||
-         c->func == func_ref_reduced ||
-         c->func == func_ref_reduced_ptr ||
-         c->func == func_ref_failed;
+  reduce_t *r = clear_func(c->func);
+  return r == func_ref ||
+         r == func_ref_reduced ||
+         r == func_ref_reduced_ptr ||
+         r == func_ref_failed;
 }
 
 // max offset is 255
@@ -492,6 +494,7 @@ cell_t *refn(cell_t *c, int n) {
     c->func = func_ref;
     c->n = n+1;
     c->ptr = new;
+    closure_set_ready(c, closure_is_ready(new));
   }
   return c;
 }
@@ -527,14 +530,21 @@ cell_t *cons(cell_t *h, cell_t *t) {
   return c;
 }
 */
+
+reduce_t *clear_func(reduce_t *f) {
+  return (reduce_t *)((intptr_t)f & ~1);
+}
+
 void deref(cell_t *c) {
+  return;
   if(!c /*is_closure(c)*/) return;
   assert(is_closure(c));
   if(is_ref(c)) {
-    //printf("DEREF(%d) to %d\n", (int)(c - &cells[0]), (int)*(intptr_t *)&c->arg[0]-1);
+    printf("DEREF(%d) to %d\n", (int)(c - &cells[0]), (int)*(intptr_t *)&c->arg[0]-1);
     if(!--c->n) {
-      if(c->func == func_ref ||
-	 c->func == func_ref_reduced_ptr)
+      reduce_t *f = clear_func(c->func);
+      if(f == func_ref ||
+	 f == func_ref_reduced_ptr)
 	deref(c->ptr);
       closure_free(c);
     }
@@ -614,8 +624,8 @@ FUNC(append) {
       cell_t *alt = closure_split(c);
       z = closure_alloc(2);
       z->func = func_concat;
-      z->arg[0] = ref(c->arg[0]->ptr);
-      z->arg[1] = ref(c->arg[1]->ptr);
+      z->arg[0] = dup(c->arg[0]->ptr);
+      z->arg[1] = dup(c->arg[1]->ptr);
       deref(c->arg[0]);
       deref(c->arg[1]);
       to_ref_ptr(c, z, 0, alt);
