@@ -536,11 +536,11 @@ reduce_t *clear_func(reduce_t *f) {
 }
 
 void deref(cell_t *c) {
-  return;
+  //return;
   if(!c /*is_closure(c)*/) return;
   assert(is_closure(c));
   if(is_ref(c)) {
-    printf("DEREF(%d) to %d\n", (int)(c - &cells[0]), (int)*(intptr_t *)&c->arg[0]-1);
+    //printf("DEREF(%d) to %d\n", (int)(c - &cells[0]), (int)*(intptr_t *)&c->arg[0]-1);
     if(!--c->n) {
       reduce_t *f = clear_func(c->func);
       if(f == func_ref ||
@@ -624,8 +624,8 @@ FUNC(append) {
       cell_t *alt = closure_split(c);
       z = closure_alloc(2);
       z->func = func_concat;
-      z->arg[0] = dup(c->arg[0]->ptr);
-      z->arg[1] = dup(c->arg[1]->ptr);
+      z->arg[0] = ref(c->arg[0]->ptr);
+      z->arg[1] = ref(c->arg[1]->ptr);
       deref(c->arg[0]);
       deref(c->arg[1]);
       to_ref_ptr(c, z, 0, alt);
@@ -643,7 +643,7 @@ FUNC(pushl) {
   bool ret = reduce(p);
   if(ret) {
     cell_t *alt = closure_split1(c, 1);
-    cell_t *v = pushl(c->arg[0], ref(p->ptr));
+    cell_t *v = pushl(c->arg[0], dup(p->ptr));
     to_ref_ptr(c, v, 0, alt);
   }
   deref(p);
