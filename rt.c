@@ -33,6 +33,7 @@ cell_t *nil = 0;
 
 #define show(x) printf(#x " = %d\n", x)
 #define LENGTH(_a) (sizeof(_a) / sizeof((_a)[0]))
+#define FOREACH(a, i) for(i = 0; i < LENGTH(a); i++)
 
 cell_t *nul;
 
@@ -54,8 +55,34 @@ void closure_set_ready(cell_t *c, bool r) {
   c->func = (reduce_t *)(((intptr_t)c->func & ~0x1) | !r);
 }
 
+FUNC(locked) {
+  return false;
+}
+
+reduce_t *lock_func(reduce_t *r) {
+  return (reduce_t *)((intptr_t)r | 2);
+}
+
+reduce_t *unlock_func(reduce_t *r) {
+  return (reduce_t *)((intptr_t) r & ~2);
+}
+
+cell_t *lock(cell_t *c) {
+  c->func = lock_func(c->func);
+  return c;
+}
+
+cell_t *unlock(cell_t *c) {
+  c->func = unlock_func(c->func);
+  return c;
+}
+
+bool is_locked(cell_t *c) {
+  return ((intptr_t)c->func & 2) != 0;
+}
+
 /* propagate alternatives down to root of expression tree */
-cell_t *closure_split(cell_t *c) {
+cell_t *closure_split(cell_t *c, unsigned int rmask) {
   cell_t *split(cell_t *c, cell_t *t, unsigned int mask, unsigned int n, unsigned int s) {
     unsigned int i, j;
     cell_t *p = t, *cn;
@@ -108,6 +135,7 @@ cell_t *closure_split(cell_t *c) {
     p = t;
   }
 
+  /* calculate a mask for args with alts */
   i = s; while(i--) {
     alt_mask <<= 1;
     if(c->arg[i] != 0 && c->arg[i]->alt != 0) {
@@ -115,6 +143,9 @@ cell_t *closure_split(cell_t *c) {
       alt_mask |= 1;
     }
   }
+
+  /* clear using rmask for already reduced args */
+  alt_mask &= ~rmask;
 
   p = split(c, c->alt, alt_mask, alts, s);
 
@@ -164,7 +195,8 @@ bool __reduce(reduce_t f, cell_t *c) {
 
 bool reduce(cell_t *c) {
   if(c) {
-    assert(is_closure(c) && closure_is_ready(c));
+    assert(is_closure(c) &&
+	   closure_is_ready(c));
     return c->func(c);
   } else return false;
 }
@@ -301,6 +333,7 @@ bool func_val(cell_t *c, void *r) {
   return true;
 }
 */
+
 FUNC(reduced) {
   assert(is_closure(c));
   return c->type != T_FAIL;
@@ -346,9 +379,16 @@ cell_t *func(reduce_t *f, int args) {
 FUNC(add) {
   FUNC(f) {
     intptr_t z;
-    bool s = reduce(c->arg[0]) && reduce(c->arg[1]);
+    bool s = true;
+    unsigned int rmask = 0;
+    if(is_reduced(c->arg[0])) rmask |= 1;
+    else s = reduce(c->arg[0]);
     if(s) {
-      cell_t *alt = closure_split(c);
+      if(is_reduced(c->arg[1])) rmask |= 2;
+      else s = reduce(c->arg[1]);
+    }
+    if(s) {
+      cell_t *alt = closure_split(c, rmask);
       z = c->arg[0]->val + c->arg[1]->val;
       deref(c->arg[0]);
       deref(c->arg[1]);
@@ -499,7 +539,7 @@ cell_t *cons(cell_t *h, cell_t *t) {
 */
 
 reduce_t *clear_func(reduce_t *f) {
-  return (reduce_t *)((intptr_t)f & ~1);
+  return (reduce_t *)((intptr_t)f & ~3);
 }
 
 void deref(cell_t *c) {
@@ -580,7 +620,7 @@ FUNC(append) {
     cell_t *z;
     bool s = reduce(c->arg[0]) && reduce(c->arg[1]);
     if(s) {
-      cell_t *alt = closure_split(c);
+      cell_t *alt = closure_split(c, 0);
       z = closure_alloc(2);
       z->func = func_concat;
       z->arg[0] = c->arg[0]->ptr;
@@ -769,7 +809,7 @@ void test0() {
   arg(e, c);
   arg(e, a);
   arg(e, b);
-  show(closure_args(e));
+  //show(closure_args(e));
   f = dup(e);
   d = val(4);
   arg(e, d);
@@ -987,7 +1027,7 @@ void test2() {
   arg(f, n);
   arg(f, a);
   // f = (31 | 63 | 127) + a
-  
+  /*  
   addr(a);
   addr(b);
   addr(c);
@@ -1001,7 +1041,7 @@ void test2() {
   addr(l);
   addr(m);
   addr(n);
-
+  */
   show_eval(f);
 }
 
@@ -1199,11 +1239,13 @@ void test12() {
   cell_t *a = func(func_alt, 2);
   arg(a, val(2));
   arg(a, val(1));
+  /*
   cell_t *c = func(func_id, 1);
-  arg(c, a);
+  arg(c, ref(a));
+  */
   cell_t *b = func(func_add, 2);
-  arg(b, c);
-  arg(b, ref(c));
+  arg(b, a);
+  arg(b, ref(a));
   show_eval(b);
 }
 
@@ -1234,11 +1276,23 @@ void (*tests[])(void) = {
 int main(int argc, char *argv[]) {
   unsigned int test_number;
   if(argc != 2) return -1;
-  test_number = atoi(argv[1]);
-  if(test_number >= LENGTH(tests)) return -2;
-  cells_init();
-  //alloc_test();
-  tests[test_number]();
-  check_free();
+  if(strcmp("all", argv[1]) == 0) {
+    int i;
+    FOREACH(tests, i) {
+      printf("_________________________________"
+	     "(( test %-3d ))"
+	     "_________________________________\n", i);
+      cells_init();
+      tests[i]();
+      check_free();
+    }
+  } else {
+    test_number = atoi(argv[1]);
+    if(test_number >= LENGTH(tests)) return -2;
+    cells_init();
+    //alloc_test();
+    tests[test_number]();
+    check_free();
+  }
   return 0;
 }
