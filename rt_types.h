@@ -15,7 +15,7 @@ struct __attribute__((packed)) cell {
     reduce_t *func;
     cell_t *prev;
   };
-  cell_t *alt;
+  cell_t *alt, *head;
   uint32_t n;
   union {
     /* unevaluated */
