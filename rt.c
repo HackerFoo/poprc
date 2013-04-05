@@ -81,7 +81,37 @@ bool is_locked(cell_t *c) {
   return ((intptr_t)c->func & 2) != 0;
 }
 
+void inc_bits(unsigned int n) {
+  unsigned int bit_n = 1 << (n - 1);
+  unsigned int cnt = 1 << n;
+  unsigned int x = 1;
+  unsigned int q_size = 2*n*n;
+  unsigned int q[q_size];
+  unsigned int h = 0, t = 0;
+  int cap = 0, max_cap = 0;
+  bzero(q, sizeof(unsigned int) * q_size);
+  printf("0\n");
+  while(--cnt) {
+    //printf("%d\n", x);
+    if(!(x & 1)) {
+      q[h] = x | 1;
+      if(++h >= q_size) h = 0;
+      if(++cap > max_cap) max_cap = cap;
+    }
+    if(x & bit_n) {
+      x = q[t];
+      q[t] = 0;
+      if(++t >= q_size) t = 0;
+      --cap;
+    } else x <<= 1;
+  }
+  printf("max_cap = %d\n", max_cap);
+}
+
 /* propagate alternatives down to root of expression tree */
+/* [TODO] distribute splitting into args */
+/* or combine reduce and split, so each arg is reduced */
+/* just before split, and alts are stored then zeroed */
 cell_t *closure_split(cell_t *c, unsigned int rmask) {
   cell_t *head = c->head ? c->head : c;
   cell_t *split(cell_t *c, cell_t *t, unsigned int mask, unsigned int n, unsigned int s) {
@@ -121,33 +151,38 @@ cell_t *closure_split(cell_t *c, unsigned int rmask) {
   unsigned int alts = 0;
 
   cell_t *t, *p = c->alt;
-  
-  /* split alts in chain as needed */
-  while(p) {
-    unsigned int n = 0, mask = 0;
-    t = p->alt;
-    i = s; while(i--) {
-      mask <<= 1;
-      if(p->arg[i] == c->arg[i] && p->arg[i]->alt) {
-	n++;
-	mask |= 1;
-      }
-    }
-    p->alt = split(p, t, mask, n, s);
-    p = t;
-  }
+
+#define CALC_MASK(s, i, n, mask, cond)		\
+  do {						\
+    i = s;					\
+    n = 0;					\
+    mask = 0;					\
+    while(i--) {				\
+      mask <<= 1;				\
+      if(cond) {				\
+	n++;					\
+	mask |= 1;				\
+      }						\
+    }						\
+  } while(0)					\
 
   /* calculate a mask for args with alts */
-  i = s; while(i--) {
-    alt_mask <<= 1;
-    if(c->arg[i] != 0 && c->arg[i]->alt != 0) {
-      alts++;
-      alt_mask |= 1;
-    }
-  }
+  CALC_MASK(s, i, alts, alt_mask, (c->arg[i] && c->arg[i]->alt));
 
   /* clear using rmask for already reduced args */
   alt_mask &= ~rmask;
+
+  /* split alts in chain as needed */
+  while(p) {
+    unsigned int n, mask;
+    assert(p->func == c->func);
+    t = p->alt;
+    CALC_MASK(s, i, n, mask, (p->arg[i] == c->arg[i]));
+    mask &= alt_mask;
+    // n = count_ones(mask);
+    p->alt = split(p, t, mask, n, s);
+    p = t;
+  }
 
   p = split(c, c->alt, alt_mask, alts, s);
 
@@ -390,17 +425,21 @@ cell_t *func(reduce_t *f, int args) {
   return c;
 }
 
+bool reduce_arg(cell_t *c, unsigned int i, unsigned int *mask) {
+  if(is_reduced(c->arg[i])) {
+    *mask |= 1 << i;
+    return true;
+  } else {
+    return reduce(c->arg[i]);
+  }
+}
+
 FUNC(add) {
   FUNC(f) {
     intptr_t z;
-    bool s = true;
     unsigned int rmask = 0;
-    if(is_reduced(c->arg[0])) rmask |= 1;
-    else s = reduce(c->arg[0]);
-    if(s) {
-      if(is_reduced(c->arg[1])) rmask |= 2;
-      else s = reduce(c->arg[1]);
-    }
+    bool s = reduce_arg(c, 0, &rmask) &&
+      reduce_arg(c, 1, &rmask);
     if(s) {
       cell_t *alt = closure_split(c, rmask);
       z = c->arg[0]->val + c->arg[1]->val;
@@ -1270,9 +1309,9 @@ void test12() {
   arg(a, val(1));
 
   cell_t *b = func(func_add, 2);
-  arg(b, id(ref(a)));
-  arg(b, id(a));
-
+  arg(b, ref(a));
+  arg(b, a);
+  /*
   cell_t *e = func(func_alt, 2);
   arg(e, val(10));
   arg(e, val(20));
@@ -1280,8 +1319,8 @@ void test12() {
   cell_t *d = func(func_add, 2);
   arg(d, b);
   arg(d, e);
-
-  show_eval(d);
+  */
+  show_eval(b);
 }
 
 void test13() {
@@ -1301,11 +1340,15 @@ void check_free() {
   }
 }
 
+void test14(void) {
+  inc_bits(5);
+}
+
 void (*tests[])(void) = {
   test0, test1, test2, test3,
   test4, test5, test6, test7,
   test8, test9, test10, test11,
-  test12, test13
+  test12, test13, test14
 };
 
 int main(int argc, char *argv[]) {
