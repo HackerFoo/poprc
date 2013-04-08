@@ -108,6 +108,33 @@ void inc_bits(unsigned int n) {
   printf("max_cap = %d\n", max_cap);
 }
 
+cell_t *subs(cell_t *c, cell_t *a, cell_t *b) {
+  unsigned int i, n = closure_args(c);
+  cell_t *x, *p = c;
+  for(i = 0; i < n; i++) {
+    if(is_closure(c->arg[i])) {
+      if(c->arg[i] == a) {
+	x = ref(b);
+	deref(a);
+      } else {
+	x = subs(c->arg[i], a, b);
+      }
+      if(x != c->arg[i]) {
+	if(c == p) p = copy(c);
+	c->n = 0;
+	p->arg[i] = x;
+      }
+    }
+  }
+  if(c == p) ref(c);
+  return p;
+}
+
+/* [TODO] write self subs; takes orig and alt and subs args */
+
+
+
+
 /* propagate alternatives down to root of expression tree */
 /* [TODO] distribute splitting into args */
 /* or combine reduce and split, so each arg is reduced */
@@ -118,15 +145,6 @@ cell_t *closure_split(cell_t *c, unsigned int rmask) {
     unsigned int i, j;
     cell_t *p = t, *cn;
 
-    for(i = 0; i < s; i++) {
-      if(mask & (1<<i)) {
-	refn(c->arg[i], (1 << (n-1)) - 1);
-	refn(c->arg[i]->alt, (1 << (n-1))); // ***
-      } else {
-	refn(c->arg[i], (1 << n) - 1);
-      }
-    }
-
     for(i = mask;
 	i != 0;
 	i = (i - 1) & mask) {
@@ -134,7 +152,7 @@ cell_t *closure_split(cell_t *c, unsigned int rmask) {
       cn->func = c->func;
       cn->n = c->n;
       for(j = 0; j < s; j++) {
-	cn->arg[j] = (1<<j) & i ? c->arg[j]->alt : c->arg[j];
+	cn->arg[j] = ref((1<<j) & i ? c->arg[j]->alt : c->arg[j]);
       }
       cn->alt = p;
       cn->head = head;
@@ -1344,11 +1362,26 @@ void test14(void) {
   inc_bits(5);
 }
 
+void test15(void) {
+  cell_t *a = val(1);
+  cell_t *b = val(2);
+  cell_t *c = func(func_add, 2);
+  arg(c, ref(a));
+  arg(c, val(3));
+  cell_t *e = func(func_add, 2);
+  arg(e, c);
+  arg(e, val(20));
+  cell_t *d = subs(e, a, b);
+  deref(b);
+  show_eval(e);
+  show_eval(d);
+}
+
 void (*tests[])(void) = {
   test0, test1, test2, test3,
   test4, test5, test6, test7,
   test8, test9, test10, test11,
-  test12, test13, test14
+  test12, test13, test14, test15
 };
 
 int main(int argc, char *argv[]) {
