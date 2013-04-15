@@ -8,14 +8,21 @@ typedef enum {
 } type_t;
 
 typedef struct cell cell_t;
-typedef bool (reduce_t)(cell_t *cell);
-#define FUNC(x) bool func_##x(cell_t *c)
+typedef struct stack_frame stack_frame_t;
+
+typedef struct stack_frame {
+  stack_frame_t *up;
+  cell_t *cell;
+} stack_frame_t;
+
+typedef bool (reduce_t)(cell_t *cell, stack_frame_t *up);
+#define FUNC(x) bool func_##x(cell_t *c, stack_frame_t *up)
 struct __attribute__((packed)) cell {
   union {
     reduce_t *func;
     cell_t *prev;
   };
-  cell_t *alt, *head;
+  cell_t *alt;
   uint32_t n;
   union {
     /* unevaluated */
