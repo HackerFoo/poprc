@@ -459,6 +459,7 @@ FUNC(add) {
 int closure_args(cell_t *c) {
   assert(is_closure(c));
   if(is_reduced(c)) return 2;
+  if(is_alt(c)) return 4;
   cell_t **p = c->arg;
   int n = 0;
   if(is_offset(*p)) {
@@ -509,7 +510,7 @@ cell_t *copy_plus(cell_t *c, unsigned int n) {
   cell_t *new = closure_alloc(old_args + n);
   memcpy(new, c, size * sizeof(cell_t));
   for(i = 0; i < n; i++) {
-    c->arg[i+n] = c;
+    new->arg[i + old_args] = new;
   }
   return new;
 }
@@ -800,6 +801,38 @@ cell_t *affected_list(stack_frame_t *f) {
   return c;
 }
 
+bool update_affected(cell_t *c) {
+  bool ret = true;
+  cell_t *p = c;
+  cell_t **pa, *target, *next;
+  while(p) {
+    pa = plus_args(p, 2);
+    target = pa[0];
+    next = pa[1];
+    if(ret &= reduce(p, 0)) {
+      target->func = p->func;
+      target->type = p->type;
+      target->val = p->val;
+      target->next = p->next;
+    } else to_fail(target); // ***
+    deref(p);
+    p = next;
+  }
+  return ret;
+}
+
+bool is_alt(cell_t *c) {
+  return c->func == func_alt;
+}
+
+cell_t *alt(void) {
+  cell_t *c = func(func_alt, 4);
+  c->arg[3] = 0;
+  c->arg[2] = c;
+  c->arg[0] = (cell_t *)1;
+  return c;
+}
+
 FUNC(alt) {
   FUNC(f) {
     cell_t *p = c->arg[0];
@@ -810,21 +843,23 @@ FUNC(alt) {
       a->func = func_alt;
       a->arg[0] = p->alt;
       a->arg[1] = c->arg[1];
-      a->arg[2] = affected_list(up);
+      a->arg[2] = c->arg[2];
+      a->arg[3] = affected_list(up);
     } else if (c->arg[1]) {
       a = closure_alloc(2);
       a->func = func_alt;
       a->arg[0] = c->arg[1];
       a->arg[1] = 0;
-      a->arg[2] = affected_list(up);
+      a->arg[2] = c->arg[2];
+      a->arg[3] = affected_list(up);
     }
-    //split_up(c, a, up);
     if(p->type == T_PTR) {
       to_ref_ptr(c, p->ptr, p->next, a);
     } else {
       to_ref(c, p->val, p->next, a);
     }
     deref(p);
+    ret &= update_affected(c->arg[3]);
     return ret;
   }
   return __reduce(func_f, c, up);
@@ -1348,7 +1383,7 @@ cell_t *id(cell_t *c) {
 }
 
 void test12() {
-  cell_t *a = func(func_alt, 2);
+  cell_t *a = alt();
   arg(a, val(2));
   arg(a, val(1));
 
@@ -1356,7 +1391,7 @@ void test12() {
   arg(b, ref(a));
   arg(b, a);
 
-  cell_t *e = func(func_alt, 2);
+  cell_t *e = alt();
   arg(e, val(10));
   arg(e, val(20));
 
