@@ -131,7 +131,7 @@ cell_t *subs_args(cell_t *c, cell_t *a, cell_t *b) {
 /* [TODO] distribute splitting into args */
 /* or combine reduce and split, so each arg is reduced */
 /* just before split, and alts are stored then zeroed */
-cell_t *closure_split(cell_t *c, unsigned int rmask) {
+cell_t *closure_split(cell_t *c, unsigned int rmask, unsigned int s) {
   cell_t *split(cell_t *c, cell_t *t, unsigned int mask, unsigned int n, unsigned int s) {
     unsigned int i, j;
     cell_t *p = t, *cn;
@@ -155,7 +155,7 @@ cell_t *closure_split(cell_t *c, unsigned int rmask) {
   //printf("__closure_split:");
   //print_sexpr(c);
   assert(is_closure(c) && closure_is_ready(c));
-  unsigned int i, s = closure_args(c);
+  unsigned int i;
   unsigned int alt_mask = 0;
   unsigned int alts = 0;
 
@@ -283,17 +283,18 @@ void cells_init() {
   bzero(&cells, sizeof(cells));
 
   // cells[0] is the nil cell
-  //cells[0].func = func_nil;
+  cells[0].func = func_nil;
+  nil = &cells[0];
 
   // set up doubly-linked pointer ring
-  for(i = 0; i < LENGTH(cells); i++) {
+  for(i = 1; i < LENGTH(cells); i++) {
     cells[i].prev = &cells[i-1];
     cells[i].next = &cells[i+1];
   }
-  cells[0].prev = &cells[LENGTH(cells)-1];
-  cells[LENGTH(cells)-1].next = &cells[0];
+  cells[1].prev = &cells[LENGTH(cells)-1];
+  cells[LENGTH(cells)-1].next = &cells[1];
 
-  cells_ptr = &cells[0];
+  cells_ptr = &cells[1];
   assert(check_cycle());
 }
 
@@ -310,7 +311,10 @@ void cell_alloc(cell_t *c) {
 }
 
 cell_t *closure_alloc(int args) {
-  return closure_alloc_cells(calculate_cells(args));
+  cell_t *c = closure_alloc_cells(calculate_cells(args));
+  /* end of args must be invalid */
+  if(!c->arg[args]) c->arg[args] = (cell_t *)1;
+  return c;
 }
 
 cell_t *closure_alloc_cells(int size) {
@@ -442,7 +446,7 @@ FUNC(add) {
     bool s = reduce_arg(c, up, 0, &rmask) &&
       reduce_arg(c, up, 1, &rmask);
     if(s) {
-      cell_t *alt = closure_split(c, rmask);
+      cell_t *alt = closure_split(c, rmask, 2);
       z = c->arg[0]->val + c->arg[1]->val;
       deref(c->arg[0]);
       deref(c->arg[1]);
@@ -458,16 +462,19 @@ FUNC(add) {
 
 int closure_args(cell_t *c) {
   assert(is_closure(c));
-  if(is_reduced(c)) return 2;
-  if(is_alt(c)) return 4;
   cell_t **p = c->arg;
   int n = 0;
-  if(is_offset(*p)) {
+  if(is_reduced(c)) {
+    /* skip over value data */
+    p += LENGTH(c->arg);
+    n += LENGTH(c->arg);
+  } else if(is_offset(*p)) {
     intptr_t o = (intptr_t)(*p) + 1;
     p += o;
     n += o;
   }
-  while(is_closure(*p)) {
+  /* args must be a cell or NULL */
+  while(!*p || is_cell(*p)) {
     p++;
     n++;
   }
@@ -615,7 +622,7 @@ reduce_t *clear_func(reduce_t *f) {
 }
 
 void deref(cell_t *c) {
-  //return;
+  return;
   if(!c /*is_closure(c)*/) return;
   assert(is_closure(c));
   //printf("DEREF(%d) to %d\n", (int)(c - &cells[0]), c->n);
@@ -692,7 +699,7 @@ FUNC(append) {
     cell_t *z;
     bool s = reduce(c->arg[0], up) && reduce(c->arg[1], up);
     if(s) {
-      cell_t *alt = closure_split(c, 0);
+      cell_t *alt = closure_split(c, 0, 2);
       z = closure_alloc(2);
       z->func = func_concat;
       z->arg[0] = c->arg[0]->ptr;
@@ -782,11 +789,12 @@ void split_up(cell_t *a, cell_t *b, stack_frame_t *f) {
 }
 */
 
-cell_t *affected_list(stack_frame_t *f) {
+cell_t *affected_list(stack_frame_t *f, cell_t *al) {
   stack_frame_t *p = f;
   cell_t *c = 0, **plus;
   if(p->up) {
     c = copy_plus(p->cell, 2);
+    ref_args(p->cell);
     plus = plus_args(c, 2);
     plus[0] = p->cell;
     p = p->up;
@@ -796,7 +804,7 @@ cell_t *affected_list(stack_frame_t *f) {
       plus[0] = p->cell;
       p = p->up;
     }
-    plus[1] = 0;
+    plus[1] = al;
   }
   return c;
 }
@@ -838,20 +846,21 @@ FUNC(alt) {
     cell_t *p = c->arg[0];
     bool ret = reduce(p, up);
     cell_t *a = 0;
+    cell_t *al = c->arg[3];
     if(p->alt) {
-      a = closure_alloc(2);
+      a = closure_alloc(4);
       a->func = func_alt;
       a->arg[0] = p->alt;
       a->arg[1] = c->arg[1];
       a->arg[2] = c->arg[2];
-      a->arg[3] = affected_list(up);
+      a->arg[3] = affected_list(up, 0);
     } else if (c->arg[1]) {
-      a = closure_alloc(2);
+      a = closure_alloc(4);
       a->func = func_alt;
       a->arg[0] = c->arg[1];
       a->arg[1] = 0;
       a->arg[2] = c->arg[2];
-      a->arg[3] = affected_list(up);
+      a->arg[3] = affected_list(up, 0);
     }
     if(p->type == T_PTR) {
       to_ref_ptr(c, p->ptr, p->next, a);
@@ -859,7 +868,7 @@ FUNC(alt) {
       to_ref(c, p->val, p->next, a);
     }
     deref(p);
-    ret &= update_affected(c->arg[3]);
+    ret &= update_affected(al);
     return ret;
   }
   return __reduce(func_f, c, up);
