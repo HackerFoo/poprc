@@ -23,18 +23,21 @@ struct __attribute__((packed)) cell {
     cell_t *prev;
   };
   cell_t *alt;
-  uint32_t n;
+  union {
+    intptr_t n;
+    cell_t *target;
+  };
   union {
     /* unevaluated */
     cell_t *arg[3];
     /* reduced */
     struct {
+      intptr_t type;
+      cell_t *next;
       union {
 	intptr_t val;
 	cell_t *ptr;
       };
-      intptr_t type;
-      cell_t *next;
     };
   };
 };
@@ -43,3 +46,6 @@ struct __attribute__((packed)) cell {
   cell_t *fname(cell_t *a, cell_t *b);
 
 #endif
+
+#define to_ref(c, t, x, n, a) _to_ref((c), (t), (intptr_t)(x), (n), (a))
+#define to_ref_alt(c, t, x, n, a) _to_ref_alt((c), (t), (intptr_t)(x), (n), (a))

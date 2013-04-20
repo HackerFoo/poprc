@@ -311,10 +311,7 @@ void cell_alloc(cell_t *c) {
 }
 
 cell_t *closure_alloc(int args) {
-  cell_t *c = closure_alloc_cells(calculate_cells(args));
-  /* end of args must be invalid */
-  if(!c->arg[args]) c->arg[args] = (cell_t *)1;
-  return c;
+  return closure_alloc_cells(calculate_cells(args));
 }
 
 cell_t *closure_alloc_cells(int size) {
@@ -393,6 +390,12 @@ FUNC(reduced) {
   return c->type != T_FAIL;
 }
 
+FUNC(reduced_alt) {
+  assert(is_closure(c));
+  c->arg[3] = affected_list(up, c->arg[3]);
+  return c->type != T_FAIL;
+}
+
 cell_t *val(intptr_t x) {
   cell_t *c = closure_alloc(1);
   c->func = func_reduced;
@@ -410,7 +413,8 @@ cell_t *quote(cell_t *x) {
 }
 
 bool is_reduced(cell_t *c) {
-  return c->func == func_reduced;
+  return c->func == func_reduced ||
+    c->func == func_reduced_alt;
 }
 
 // max offset is 255
@@ -450,7 +454,7 @@ FUNC(add) {
       z = c->arg[0]->val + c->arg[1]->val;
       deref(c->arg[0]);
       deref(c->arg[1]);
-      to_ref(c, z, 0, alt);
+      to_ref(c, T_INT, z, 0, alt);
     } else {
       deref(c->arg[0]);
       deref(c->arg[1]);
@@ -473,8 +477,8 @@ int closure_args(cell_t *c) {
     p += o;
     n += o;
   }
-  /* args must be a cell or NULL */
-  while(!*p || is_cell(*p)) {
+  /* args must be cells */
+  while(is_cell(*p)) {
     p++;
     n++;
   }
@@ -535,20 +539,24 @@ cell_t *ref_args(cell_t *c) {
   return c;
 }
 
-void to_ref(cell_t *c, intptr_t x, cell_t *n, cell_t *a) {
+void _to_ref(cell_t *c, intptr_t t, intptr_t x, cell_t *n, cell_t *a) {
   closure_shrink(c, 1);
   c->func = func_reduced;
-  c->type = T_INT;
-  c->val = x;
+  c->type = t;
+  if(t == T_PTR) c->ptr = refn((cell_t *)x, c->n);
+  else c->val = x;
   c->next = n;
   c->alt = a;
 }
 
-void to_ref_ptr(cell_t *c, cell_t *x, cell_t *n, cell_t *a) {
+/* TODO: store values in seperate area */
+
+void _to_ref_alt(cell_t *c, intptr_t t, intptr_t x, cell_t *n, cell_t *a) {
   closure_shrink(c, 1);
-  c->func = func_reduced;
-  c->type = T_PTR;
-  c->ptr = refn(x, c->n);
+  c->func = func_reduced_alt;
+  c->type = t;
+  if(t == T_PTR) c->ptr = refn((cell_t *)x, c->n);
+  else c->val = x;
   c->next = n;
   c->alt = a;
 }
@@ -706,7 +714,7 @@ FUNC(append) {
       z->arg[1] = c->arg[1]->ptr;
       deref(c->arg[0]);
       deref(c->arg[1]);
-      to_ref_ptr(c, z, 0, alt);
+      to_ref(c, T_PTR, z, 0, alt);
     } else {
       deref(c->arg[0]);
       deref(c->arg[1]);
@@ -722,14 +730,14 @@ FUNC(pushl) {
   if(ret) {
     cell_t *alt = closure_split1(c, 1);
     cell_t *v = pushl(c->arg[0], p->ptr);
-    to_ref_ptr(c, v, 0, alt);
+    to_ref(c, T_PTR, v, 0, alt);
   }
   deref(p);
   return ret;
 }
 
 FUNC(quote) {
-  to_ref_ptr(c, c->arg[0], 0, 0);
+  to_ref(c, T_PTR, c->arg[0], 0, 0);
   return true;
 }
 /*
@@ -770,7 +778,7 @@ FUNC(popr) {
       conc_alt(p, quote(p->ptr->alt));
     }
     cell_t *a = closure_split1(c, 0);
-    to_ref(c, p->ptr->val, quote(p->ptr->next), a);
+    to_ref(c, p->ptr->type, p->ptr->val, quote(p->ptr->next), a);
     deref(p->ptr);
     deref(p);
     return true;
@@ -790,33 +798,32 @@ void split_up(cell_t *a, cell_t *b, stack_frame_t *f) {
 */
 
 cell_t *affected_list(stack_frame_t *f, cell_t *al) {
-  stack_frame_t *p = f;
-  cell_t *c = 0, **plus;
-  if(p->up) {
-    c = copy_plus(p->cell, 2);
-    ref_args(p->cell);
-    plus = plus_args(c, 2);
-    plus[0] = p->cell;
-    p = p->up;
-    while(p->up) {
-      plus[1] = copy_plus(p->cell, 2);
-      plus = plus_args(plus[1], 2);
-      plus[0] = p->cell;
-      p = p->up;
+  cell_t *h = 0, *c = 0;
+  if(f) {
+    h = c = copy(f->cell);
+    ref_args(f->cell);
+    c->target = f->cell;
+    f = f->up;
+    while(f) {
+      c->alt = copy(f->cell);
+      c = c->alt;
+      ref_args(f->cell);
+      c->target = f->cell;
+      f = f->up;
     }
-    plus[1] = al;
+    c->alt = al;
   }
-  return c;
+  return h;
 }
 
 bool update_affected(cell_t *c) {
   bool ret = true;
   cell_t *p = c;
-  cell_t **pa, *target, *next;
+  cell_t *next, *target;
   while(p) {
-    pa = plus_args(p, 2);
-    target = pa[0];
-    next = pa[1];
+    next = p->alt;
+    target = p->target;
+    p->alt = p->target = 0;
     if(ret &= reduce(p, 0)) {
       target->func = p->func;
       target->type = p->type;
@@ -862,11 +869,8 @@ FUNC(alt) {
       a->arg[2] = c->arg[2];
       a->arg[3] = affected_list(up, 0);
     }
-    if(p->type == T_PTR) {
-      to_ref_ptr(c, p->ptr, p->next, a);
-    } else {
-      to_ref(c, p->val, p->next, a);
-    }
+    
+    to_ref_alt(c, p->type, p->val, p->next, a);
     deref(p);
     ret &= update_affected(al);
     return ret;
@@ -889,11 +893,8 @@ FUNC(concat) {
     } else {
       n = refn(c->arg[1], c->n);
     }
-    if(p->type == T_PTR) {
-      to_ref_ptr(c, p->ptr, n, a);
-    } else {
-      to_ref(c, p->val, n, a);
-    }
+    
+    to_ref(c, p->type, p->val, n, a);
     //printf("{{(%.8x) p->n = %d, p->val = %d}}\n", (int)(intptr_t)p, (int)p->n, (int)p->val);
     deref(p);
     return ret;
@@ -995,7 +996,7 @@ void print_list(cell_t *c) {
 void print_sexpr_help(cell_t *r) {
   if(!is_closure(r)) {
     printf(" ?");
-  } else if(r->func == func_reduced) {
+  } else if(is_reduced(r)) {
     if(r->type == T_INT) {
       printf(" %d", (int)r->val);
     } else if(r->type == T_PTR) {
