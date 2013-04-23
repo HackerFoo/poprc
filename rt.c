@@ -129,12 +129,13 @@ cell_t *subs_args(cell_t *c, cell_t *a, cell_t *b) {
   return p;
 }
 */
+
 /* propagate alternatives down to root of expression tree */
 /* [TODO] distribute splitting into args */
 /* or combine reduce and split, so each arg is reduced */
 /* just before split, and alts are stored then zeroed */
 cell_t *closure_split(cell_t *c, unsigned int s) {
-  cell_t *split(cell_t *c, cell_t *t, unsigned int mask, unsigned int n, unsigned int s) {
+  cell_t *split(cell_t *c, cell_t *t, unsigned int mask, unsigned int s) {
     unsigned int i, j;
     cell_t *p = t, *cn;
 
@@ -145,9 +146,8 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
       cn->func = c->func;
       cn->n = c->n;
       for(j = 0; j < s; j++) {
-	cn->arg[j] = ref((1<<j) & i ? c->arg[j]->alt : mark_ptr(c->arg[j]));
+	cn->arg[j] = (1<<j) & i ? ref(c->arg[j]->alt) : mark_ptr(ref(c->arg[j]));
       }
-      //subs_args(cn, c, cn);
       cn->alt = p;
       p = cn;
     }
@@ -159,28 +159,25 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
   assert(is_closure(c) && closure_is_ready(c));
   unsigned int i;
   unsigned int alt_mask = 0;
-  unsigned int alts = 0;
 
-  cell_t *t, *p = c->alt;
+  cell_t /* *t,*/ *p = c->alt;
 
-#define CALC_MASK(s, i, n, mask, cond)		\
+#define CALC_MASK(s, i, mask, cond)		\
   do {						\
     i = s;					\
-    n = 0;					\
     mask = 0;					\
     while(i--) {				\
       mask <<= 1;				\
       if(cond) {				\
-	n++;					\
 	mask |= 1;				\
       }						\
     }						\
   } while(0)					\
 
   /* calculate a mask for args with alts */
-  CALC_MASK(s, i, alts, alt_mask, (!is_marked(c->arg[i]) &&
-				   c->arg[i] &&
-				   c->arg[i]->alt));
+  CALC_MASK(s, i, alt_mask, (!is_marked(c->arg[i]) &&
+			     c->arg[i] &&
+			     c->arg[i]->alt));
 
   /* clear marks on args */
   for(i = 0; i < s; i++) c->arg[i] = clear_ptr(c->arg[i]);
@@ -189,25 +186,25 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
   //alt_mask &= ~rmask;
 
   /* split alts in chain as needed */
+  /* NOT NEEDED ANYMORE
   while(p) {
-    unsigned int n, mask;
+    unsigned int mask;
     assert(p->func == c->func);
     t = p->alt;
-    CALC_MASK(s, i, n, mask, (p->arg[i] == c->arg[i]));
+    CALC_MASK(s, i, mask, (p->arg[i] == c->arg[i]));
     mask &= alt_mask;
-    // n = count_ones(mask);
-    p->alt = split(p, t, mask, n, s);
+    p->alt = split(p, t, mask, s);
     p = t;
   }
-
-  p = split(c, c->alt, alt_mask, alts, s);
-
+  */
+  p = split(c, c->alt, alt_mask, s);
+  /*
   for(i = 0; i < s; i++) {
     if(!c->arg[i]->alt) continue;
     deref(c->arg[i]->alt);
     //c->arg[i]->alt = 0;
   }
-
+  */
   return p;
 }
 
@@ -486,7 +483,7 @@ int closure_args(cell_t *c) {
     n += o;
   }
   /* args must be cells */
-  while(is_cell(*p)) {
+  while(is_closure(*p)) {
     p++;
     n++;
   }
@@ -646,7 +643,7 @@ bool is_marked(void *p) {
 }
 
 void deref(cell_t *c) {
-  return;
+  //return;
   if(!c /*is_closure(c)*/) return;
   assert(is_closure(c));
   //printf("DEREF(%d) to %d\n", (int)(c - &cells[0]), c->n);
@@ -857,10 +854,10 @@ bool is_alt(cell_t *c) {
 }
 
 cell_t *alt(void) {
-  cell_t *c = func(func_alt, 4);
-  c->arg[3] = 0;
-  c->arg[2] = c;
-  c->arg[0] = (cell_t *)1;
+  cell_t *c = func(func_alt, 2);
+  //c->arg[3] = 0;
+  //c->arg[2] = c;
+  //c->arg[0] = (cell_t *)1;
   return c;
 }
 
@@ -871,22 +868,22 @@ FUNC(alt) {
     cell_t *a = 0;
     //cell_t *al = c->arg[3];
     if(p->alt) {
-      a = closure_alloc(4);
+      a = closure_alloc(2);
       a->func = func_alt;
       a->arg[0] = p->alt;
       a->arg[1] = c->arg[1];
-      a->arg[2] = c->arg[2];
-      a->arg[3] = 0;//affected_list(up, 0);
+      //a->arg[2] = c->arg[2];
+      //a->arg[3] = 0;//affected_list(up, 0);
     } else if (c->arg[1]) {
-      a = closure_alloc(4);
+      a = closure_alloc(2);
       a->func = func_alt;
       a->arg[0] = c->arg[1];
       a->arg[1] = 0;
-      a->arg[2] = c->arg[2];
-      a->arg[3] = 0;//affected_list(up, 0);
+      //a->arg[2] = c->arg[2];
+      //a->arg[3] = 0;//affected_list(up, 0);
     }
     
-    to_ref_alt(c, p->type, p->val, p->next, a);
+    to_ref(c, p->type, p->val, p->next, a);
     deref(p);
     //ret &= update_affected(al);
     return ret;
@@ -1416,6 +1413,7 @@ void test12() {
   cell_t *b = func(func_add, 2);
   arg(b, ref(a));
   arg(b, a);
+
   /*
   cell_t *e = alt();
   arg(e, val(10));
