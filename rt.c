@@ -54,81 +54,6 @@ void closure_set_ready(cell_t *c, bool r) {
   assert(is_closure(c));
   c->func = (reduce_t *)(((intptr_t)c->func & ~0x1) | !r);
 }
-/*
-void inc_bits(unsigned int n) {
-  unsigned int bit_n = 1 << (n - 1);
-  unsigned int cnt = 1 << n;
-  unsigned int x = 1;
-  unsigned int q_size = 2*n*n;
-  unsigned int q[q_size];
-  unsigned int h = 0, t = 0;
-  int cap = 0, max_cap = 0;
-  bzero(q, sizeof(unsigned int) * q_size);
-  printf("0\n");
-  while(--cnt) {
-    //printf("%d\n", x);
-    if(!(x & 1)) {
-      q[h] = x | 1;
-      if(++h >= q_size) h = 0;
-      if(++cap > max_cap) max_cap = cap;
-    }
-    if(x & bit_n) {
-      x = q[t];
-      q[t] = 0;
-      if(++t >= q_size) t = 0;
-      --cap;
-    } else x <<= 1;
-  }
-  printf("max_cap = %d\n", max_cap);
-}
-
-cell_t *subs(cell_t *c, cell_t *a, cell_t *b) {
-  if(c == a) {
-    deref(a);
-    return ref(b);
-  }
-  unsigned int i, n = closure_args(c);
-  cell_t *x, *p = c;
-  for(i = 0; i < n; i++) {
-    x = subs(c->arg[i], a, b);
-    if(x != c->arg[i]) {
-      if(c == p) p = copy(c);
-      c->n = 0;
-      p->arg[i] = x;
-    }
-  }
-  if(c == p) ref(c);
-  return p;
-}
-*/
-#if 1
-/*
-cell_t *subs_args(cell_t *c, cell_t *a, cell_t *b) {
-  unsigned int i, n = closure_args(c);
-  unsigned int j, m = closure_args(a);
-  cell_t *x, *p = c;
-  for(i = 0; i < n; i++) {
-    if(is_closure(c->arg[i])) {
-      for(j = 0; j < m; j++) {
-	if(a->arg[j] == b->arg[j]) continue;
-	if(c->arg[i] == a->arg[j]) {
-	  x = ref(b->arg[j]);
-	  //deref(a->arg[j]);
-	  break;
-	}
-      }
-      if(j >= m) x = subs_args(c->arg[i], a, b);
-      if(x != c->arg[i]) {
-	if(c == p) p = copy(c);
-	c->n = 0;
-	p->arg[i] = x;
-      }
-    }
-  }
-  if(c == p) ref(c);
-  return p;
-}
-*/
 
 /* propagate alternatives down to root of expression tree */
 /* [TODO] distribute splitting into args */
@@ -160,51 +85,29 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
   unsigned int i;
   unsigned int alt_mask = 0;
 
-  cell_t /* *t,*/ *p = c->alt;
-
-#define CALC_MASK(s, i, mask, cond)		\
-  do {						\
-    i = s;					\
-    mask = 0;					\
-    while(i--) {				\
-      mask <<= 1;				\
-      if(cond) {				\
-	mask |= 1;				\
-      }						\
-    }						\
-  } while(0)					\
+  cell_t *p = c->alt;
 
   /* calculate a mask for args with alts */
-  CALC_MASK(s, i, alt_mask, (!is_marked(c->arg[i]) &&
-			     c->arg[i] &&
-			     c->arg[i]->alt));
-
-  /* clear marks on args */
-  for(i = 0; i < s; i++) c->arg[i] = clear_ptr(c->arg[i]);
-
-  /* clear using rmask for already reduced args */
-  //alt_mask &= ~rmask;
-
-  /* split alts in chain as needed */
-  /* NOT NEEDED ANYMORE
-  while(p) {
-    unsigned int mask;
-    assert(p->func == c->func);
-    t = p->alt;
-    CALC_MASK(s, i, mask, (p->arg[i] == c->arg[i]));
-    mask &= alt_mask;
-    p->alt = split(p, t, mask, s);
-    p = t;
+  i = s;
+  alt_mask = 0;
+  while(i--) {
+    alt_mask <<= 1;
+    if(is_marked(c->arg[i])) {
+      /* clear marks as we go */
+      c->arg[i] = clear_ptr(c->arg[i]);
+    } else if(c->arg[i] &&
+	      c->arg[i]->alt) {
+      alt_mask |= 1;
+    }
   }
-  */
+
   p = split(c, c->alt, alt_mask, s);
-  /*
+
   for(i = 0; i < s; i++) {
-    if(!c->arg[i]->alt) continue;
-    deref(c->arg[i]->alt);
-    //c->arg[i]->alt = 0;
+    if((1<<i) & alt_mask)
+      deref(c->arg[i]->alt);
   }
-  */
+
   return p;
 }
 
@@ -220,7 +123,7 @@ cell_t *closure_split1(cell_t *c, int n) {
   c->arg[n] = clear_ptr(c->arg[n]);
   return a;
 }
-#endif
+
 bool __reduce(reduce_t f, cell_t *c, stack_frame_t *up) {
   if(f(c, up)) return true;
 
@@ -381,15 +284,6 @@ void closure_free(cell_t *c) {
 FUNC(nil) {
   return false;
 }
-/*
-bool func_val(cell_t *c, void *r) {
-  assert(is_closure(c));
-  intptr_t val = (intptr_t)c->arg[0];
-  *(intptr_t *)r = val;
-  to_ref(c, val);
-  return true;
-}
-*/
 
 FUNC(reduced) {
   assert(is_closure(c));
@@ -439,16 +333,7 @@ cell_t *func(reduce_t *f, int args) {
   closure_set_ready(c, false);
   return c;
 }
-/*
-bool reduce_arg(cell_t *c, stack_frame_t *up, unsigned int i, unsigned int *mask) {
-  if(is_reduced(c->arg[i])) {
-    *mask |= 1 << i;
-    return true;
-  } else {
-    return reduce(c->arg[i], up);
-  }
-}
-*/
+
 FUNC(add) {
   FUNC(f) {
     intptr_t z;
@@ -518,24 +403,7 @@ cell_t *copy(cell_t *c) {
   memcpy(new, c, size * sizeof(cell_t));
   return new;
 }
-/*
-cell_t *copy_plus(cell_t *c, unsigned int n) {
-  int size = closure_cells(c);
-  int old_args = closure_args(c);
-  int i;
-  cell_t *new = closure_alloc(old_args + n);
-  memcpy(new, c, size * sizeof(cell_t));
-  for(i = 0; i < n; i++) {
-    new->arg[i + old_args] = new;
-  }
-  return new;
-}
 
-cell_t **plus_args(cell_t *c, unsigned int n) {
-  int plus = closure_args(c) - n;
-  return &c->arg[plus];
-}
-*/
 cell_t *ref_args(cell_t *c) {
   int n = closure_args(c);
   while(n--)
@@ -553,8 +421,6 @@ void _to_ref(cell_t *c, intptr_t t, intptr_t x, cell_t *n, cell_t *a) {
   c->next = n;
   c->alt = a;
 }
-
-/* TODO: store values in seperate area */
 
 void _to_ref_alt(cell_t *c, intptr_t t, intptr_t x, cell_t *n, cell_t *a) {
   closure_shrink(c, 1);
@@ -798,67 +664,9 @@ FUNC(popr) {
   }
   return __reduce(func_f, c, up);
 }
-/*
-void split_up(cell_t *a, cell_t *b, stack_frame_t *f) {
-  while(f) {
-    b = subs(f->cell, a, b);
-    a = f->cell;
-    if(a == b) break;
-    f->alt = b;
-    f = f->up;
-  }
-}
-*/
-/*
-cell_t *affected_list(stack_frame_t *f, cell_t *al) {
-  cell_t *h = 0, *c = 0;
-  if(f) {
-    h = c = copy(f->cell);
-    ref_args(f->cell);
-    c->target = f->cell;
-    f = f->up;
-    while(f) {
-      c->alt = copy(f->cell);
-      c = c->alt;
-      ref_args(f->cell);
-      c->target = f->cell;
-      f = f->up;
-    }
-    c->alt = al;
-  }
-  return h;
-}
 
-bool update_affected(cell_t *c) {
-  bool ret = true;
-  cell_t *p = c;
-  cell_t *next, *target;
-  while(p) {
-    next = p->alt;
-    target = p->target;
-    p->alt = p->target = 0;
-    if(ret &= reduce(p, 0)) {
-      target->func = p->func;
-      target->type = p->type;
-      target->val = p->val;
-      target->next = p->next;
-    } else to_fail(target); // ***
-    deref(p);
-    p = next;
-  }
-  return ret;
-}
-*/
 bool is_alt(cell_t *c) {
   return c->func == func_alt;
-}
-
-cell_t *alt(void) {
-  cell_t *c = func(func_alt, 2);
-  //c->arg[3] = 0;
-  //c->arg[2] = c;
-  //c->arg[0] = (cell_t *)1;
-  return c;
 }
 
 FUNC(alt) {
@@ -1034,6 +842,10 @@ void print_sexpr_help(cell_t *r) {
     CASE(pushl);
     CASE(popr);
     CASE(assert);
+    CASE(alt);
+    CASE(quote);
+    CASE(append);
+    CASE(id);
 
 # undef CASE
 
@@ -1100,30 +912,7 @@ void show_alt(cell_t *c) {
     printf(" {}");
   }
 }
-/*
-void show_eval_help(cell_t *c) {
-  cell_t *t, *p = c;
-  while(p) {
-    t = p;
-    if(reduce(p)) {
-      if(!p->alt) {
-	show_one(p);
-	show_eval_help(p->next);
-      } else {
-	printf(" {");
-	cell_t *a = p;
-	do {
-	  show_eval_help(a);
-	} while (a = a->alt);
-	printf(" }");
-      }
-      p = p->next;
-    } else {
-      printf(" {}");
-    }
-  }
-}
-*/
+
 void test1() {
   cell_t *a, *b, *c, *d, *e, *z, *y;
   cell_t *a_, *b_, *e_;
@@ -1298,28 +1087,13 @@ void test6() {
 
   show_eval(d);
 }
-/*
-void show_all(cell_t *c) {
-  cell_t *p = c, *t;
-  int cnt = 0;
 
-  while(p) {
-    t = p;
-    if(reduce(p))
-      printf("%d\n", (int)p->val);
-    p = p->alt;
-    deref(t);
-    cnt++;
-  }
-  deref(p);
-  show(cnt);
-}
-*/
 void test7() {
   cell_t *a, *b;
   a = func(func_alt, 2);
   arg(a, val(1));
   arg(a, val(2));
+
   b = func(func_add, 2);
   arg(b, a);
   arg(b, val(3));
@@ -1406,7 +1180,7 @@ cell_t *id(cell_t *c) {
 }
 
 void test12() {
-  cell_t *a = alt();
+  cell_t *a = func(func_alt, 2);
   arg(a, val(2));
   arg(a, val(1));
 
