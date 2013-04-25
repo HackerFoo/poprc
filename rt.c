@@ -59,6 +59,7 @@ void closure_set_ready(cell_t *c, bool r) {
 /* [TODO] distribute splitting into args */
 /* or combine reduce and split, so each arg is reduced */
 /* just before split, and alts are stored then zeroed */
+#define EQMODE
 cell_t *closure_split(cell_t *c, unsigned int s) {
   cell_t *split(cell_t *c, cell_t *t, unsigned int mask, unsigned int s) {
     unsigned int i, j;
@@ -71,7 +72,11 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
       cn->func = c->func;
       cn->n = c->n;
       for(j = 0; j < s; j++) {
+#ifdef EQMODE
+	cn->arg[j] = (1<<j) & i ? c->arg[j]->alt : mark_ptr(ref(c->arg[j]));
+#else
 	cn->arg[j] = (1<<j) & i ? ref(c->arg[j]->alt) : mark_ptr(ref(c->arg[j]));
+#endif
       }
       cn->alt = p;
       p = cn;
@@ -105,7 +110,11 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
 
   for(i = 0; i < s; i++) {
     if((1<<i) & alt_mask)
+#ifdef EQMODE
+      c->arg[i]->alt->n = c->arg[i]->n;
+#else
       deref(c->arg[i]->alt);
+#endif
   }
 
   return p;
@@ -118,6 +127,9 @@ cell_t *closure_split1(cell_t *c, int n) {
     a = copy(c);
     a->arg[n] = 0;
     ref_args(a);
+    if(c->arg[n]->alt) {
+      // ref(c->arg[n]->alt);
+    }
     a->arg[n] = c->arg[n]->alt;
   }
   c->arg[n] = clear_ptr(c->arg[n]);
@@ -420,6 +432,7 @@ void _to_ref(cell_t *c, intptr_t t, intptr_t x, cell_t *n, cell_t *a) {
   else c->val = x;
   c->next = n;
   c->alt = a;
+  //if(a) a->n = c->n;
 }
 
 void _to_ref_alt(cell_t *c, intptr_t t, intptr_t x, cell_t *n, cell_t *a) {
@@ -678,6 +691,7 @@ FUNC(alt) {
     if(p->alt) {
       a = closure_alloc(2);
       a->func = func_alt;
+      a->n = c->n;
       a->arg[0] = p->alt;
       a->arg[1] = c->arg[1];
       //a->arg[2] = c->arg[2];
@@ -685,6 +699,7 @@ FUNC(alt) {
     } else if (c->arg[1]) {
       a = closure_alloc(2);
       a->func = func_alt;
+      a->n = c->n;
       a->arg[0] = c->arg[1];
       a->arg[1] = 0;
       //a->arg[2] = c->arg[2];
@@ -1188,16 +1203,16 @@ void test12() {
   arg(b, ref(a));
   arg(b, a);
 
-  /*
-  cell_t *e = alt();
+
+  cell_t *e = func(func_alt, 2);
   arg(e, val(10));
   arg(e, val(20));
 
   cell_t *d = func(func_add, 2);
   arg(d, b);
   arg(d, e);
-  */
-  show_eval(b);
+
+  show_eval(d);
 }
 
 void test13() {
@@ -1216,26 +1231,7 @@ void check_free() {
     }
   }
 }
-/*
-void test14(void) {
-  inc_bits(5);
-}
 
-void test15(void) {
-  cell_t *a = id(val(1));
-  cell_t *b = id(val(2));
-  cell_t *c = func(func_add, 2);
-  arg(c, ref(a));
-  arg(c, val(3));
-  cell_t *e = func(func_add, 2);
-  arg(e, c);
-  arg(e, val(20));
-  cell_t *d = subs_args(e, a, b);
-  deref(b);
-  show_eval(e);
-  show_eval(d);
-}
-*/
 void (*tests[])(void) = {
   test0, test1, test2, test3,
   test4, test5, test6, test7,
