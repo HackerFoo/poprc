@@ -59,7 +59,6 @@ void closure_set_ready(cell_t *c, bool r) {
 /* [TODO] distribute splitting into args */
 /* or combine reduce and split, so each arg is reduced */
 /* just before split, and alts are stored then zeroed */
-#define EQMODE
 cell_t *closure_split(cell_t *c, unsigned int s) {
   cell_t *split(cell_t *c, cell_t *t, unsigned int mask, unsigned int s) {
     unsigned int i, j;
@@ -72,11 +71,9 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
       cn->func = c->func;
       cn->n = c->n;
       for(j = 0; j < s; j++) {
-#ifdef EQMODE
-	cn->arg[j] = (1<<j) & i ? c->arg[j]->alt : mark_ptr(ref(c->arg[j]));
-#else
-	cn->arg[j] = (1<<j) & i ? ref(c->arg[j]->alt) : mark_ptr(ref(c->arg[j]));
-#endif
+	cn->arg[j] = (1<<j) & i ?
+	  c->arg[j]->alt :
+	  mark_ptr(c->arg[j]);
       }
       cn->alt = p;
       p = cn;
@@ -87,7 +84,7 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
   //printf("__closure_split:");
   //print_sexpr(c);
   assert(is_closure(c) && closure_is_ready(c));
-  unsigned int i;
+  unsigned int i, n = 0;
   unsigned int alt_mask = 0;
 
   cell_t *p = c->alt;
@@ -103,18 +100,22 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
     } else if(c->arg[i] &&
 	      c->arg[i]->alt) {
       alt_mask |= 1;
+      n++;
     }
   }
+
+  if(n == 0) return p;
 
   p = split(c, c->alt, alt_mask, s);
 
   for(i = 0; i < s; i++) {
-    if((1<<i) & alt_mask)
-#ifdef EQMODE
-      c->arg[i]->alt->n = c->arg[i]->n;
-#else
-      deref(c->arg[i]->alt);
-#endif
+    if((1<<i) & alt_mask) {
+      c->arg[i]->n += (1 << (n-1)) - 1;
+      c->arg[i]->alt->n += (1 << (n-1)) - 1;
+      //c->arg[i]->alt->n = c->arg[i]->n;
+    } else {
+      c->arg[i]->n += (1 << n) - 1;
+    }
   }
 
   return p;
@@ -432,7 +433,7 @@ void _to_ref(cell_t *c, intptr_t t, intptr_t x, cell_t *n, cell_t *a) {
   else c->val = x;
   c->next = n;
   c->alt = a;
-  //if(a) a->n = c->n;
+  if(a) a->n = c->n;
 }
 
 void _to_ref_alt(cell_t *c, intptr_t t, intptr_t x, cell_t *n, cell_t *a) {
@@ -980,7 +981,7 @@ void test2() {
   arg(l, d);
   arg(a, k);
   arg(a, l);
-  // a = (2 | 23) + (3 | 7)
+  // a = (1 | 2) + (10 | 20)
 
   f = func(func_add, 2);
   g = val(300);
@@ -992,24 +993,13 @@ void test2() {
   n = func(func_alt, 2);
   arg(n, i);
   arg(n, m);
+
   arg(f, n);
   arg(f, a);
-  // f = (31 | 63 | 127) + a
-  /*  
-  addr(a);
-  addr(b);
-  addr(c);
-  addr(d);
-  addr(e);
-  addr(f);
-  addr(g);
-  addr(h);
-  addr(i);
-  addr(k);
-  addr(l);
-  addr(m);
-  addr(n);
-  */
+
+  // f = (100 | 200 | 300) + a
+  show_eval(ref(a));
+  show_eval(ref(n));
   show_eval(f);
 }
 
