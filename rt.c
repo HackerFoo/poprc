@@ -69,7 +69,7 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
 	i = (i - 1) & mask) {
       cn = closure_alloc(s);
       cn->func = c->func;
-      cn->n = c->n;
+      //cn->n = c->n;
       for(j = 0; j < s; j++) {
 	cn->arg[j] = (1<<j) & i ?
 	  c->arg[j]->alt :
@@ -110,9 +110,10 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
 
   for(i = 0; i < s; i++) {
     if((1<<i) & alt_mask) {
+      if(c->arg[i]->n > c->arg[i]->alt->n)
+        c->arg[i]->alt->n = c->arg[i]->n;
       c->arg[i]->n += (1 << (n-1)) - 1;
       c->arg[i]->alt->n += (1 << (n-1)) - 1;
-      //c->arg[i]->alt->n = c->arg[i]->n;
     } else {
       c->arg[i]->n += (1 << n) - 1;
     }
@@ -123,14 +124,10 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
 
 cell_t *closure_split1(cell_t *c, int n) {
   cell_t *a = 0;
-  if(!is_marked(c->arg[n]) &&
-     c->arg[n]->alt) {
+  if(c->arg[n]->alt) {
     a = copy(c);
     a->arg[n] = 0;
     ref_args(a);
-    if(c->arg[n]->alt) {
-      // ref(c->arg[n]->alt);
-    }
     a->arg[n] = c->arg[n]->alt;
   }
   c->arg[n] = clear_ptr(c->arg[n]);
@@ -688,28 +685,22 @@ FUNC(alt) {
     cell_t *p = c->arg[0];
     bool ret = reduce(p, up);
     cell_t *a = 0;
-    //cell_t *al = c->arg[3];
     if(p->alt) {
       a = closure_alloc(2);
       a->func = func_alt;
-      a->n = c->n;
+      //a->n = c->n;
       a->arg[0] = p->alt;
       a->arg[1] = c->arg[1];
-      //a->arg[2] = c->arg[2];
-      //a->arg[3] = 0;//affected_list(up, 0);
     } else if (c->arg[1]) {
       a = closure_alloc(2);
       a->func = func_alt;
-      a->n = c->n;
+      //a->n = c->n;
       a->arg[0] = c->arg[1];
       a->arg[1] = 0;
-      //a->arg[2] = c->arg[2];
-      //a->arg[3] = 0;//affected_list(up, 0);
     }
     
     to_ref(c, p->type, p->val, p->next, a);
     deref(p);
-    //ret &= update_affected(al);
     return ret;
   }
   return __reduce(func_f, c, up);
@@ -1190,7 +1181,7 @@ void test12() {
   arg(a, val(1));
 
   cell_t *b = func(func_add, 2);
-  arg(b, ref(a));
+  arg(b, id(ref(a)));
   arg(b, a);
 
 
