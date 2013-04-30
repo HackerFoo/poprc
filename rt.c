@@ -682,6 +682,7 @@ bool is_alt(cell_t *c) {
 
 FUNC(alt) {
   FUNC(f) {
+    printf("\nalt[%d].n = %d\n", (int)(c - cells), (int)c->n);
     cell_t *p = c->arg[0];
     bool ret = reduce(p, up);
     cell_t *a = 0;
@@ -754,6 +755,27 @@ FUNC(assert) {
     return ret && v;
   }
   return __reduce(func_f, c, up);
+}
+
+#define BM_SIZE (sizeof(intptr_t) * 4)
+
+intptr_t bm(int k, int v) {
+  if(k >= BM_SIZE) return 0;
+  return ((intptr_t)1 << (k + BM_SIZE)) |
+    (((intptr_t)v & 1) << k);
+}
+
+intptr_t bm_intersect(intptr_t a, intptr_t b) {
+  return a & b;
+}
+  
+intptr_t bm_union(intptr_t a, intptr_t b) {
+  return a | b;
+}
+  
+intptr_t bm_conflict(intptr_t a, intptr_t b) {
+  return ((a & b) >> BM_SIZE) &
+    ((a ^ b) & (((intptr_t)1<<BM_SIZE)-1));
 }
 
 void alloc_test() {
@@ -1203,6 +1225,17 @@ void test13() {
   show_eval(a);
 }
 
+void test14() {
+  intptr_t a = 0, b = 0, c = 0;
+  a = bm(1,0) | bm(2, 1) | bm(3, 0);
+  b = bm(1,0) | bm(2, 0) | bm(4, 1);
+  c = bm(2,1) | bm(4, 0) | bm(3, 0);
+
+  show((int)bm_conflict(a, b));
+  show((int)bm_conflict(b, c));
+  show((int)bm_conflict(c, a));
+}
+
 void check_free() {
   int i;
   for(i = 1; i < LENGTH(cells); i++) {
@@ -1217,7 +1250,7 @@ void (*tests[])(void) = {
   test0, test1, test2, test3,
   test4, test5, test6, test7,
   test8, test9, test10, test11,
-  test12, test13 /*, test14, test15*/
+  test12, test13, test14
 };
 
 int main(int argc, char *argv[]) {
