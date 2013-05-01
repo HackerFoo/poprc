@@ -135,14 +135,18 @@ cell_t *closure_split1(cell_t *c, int n) {
 }
 
 bool __reduce(reduce_t f, cell_t *c, stack_frame_t *up) {
+  bool m = is_marked(c);
+  c = clear_ptr(c);
   if(f(c, up)) return true;
-
+  
+  if(!m) {
   cell_t *t, *p = c->alt;
   //print_sexpr(c);
   while(p) {
-    if(f(p, up)) {
+    if(is_reduced(p) /* HACK */ || f(p, up)) {
       closure_shrink(c, 1);
       c->func = p->func;
+      c->alt_set = p->alt_set;
       c->val = p->val;
       c->type = p->type;
       c->next = p->next;
@@ -153,20 +157,21 @@ bool __reduce(reduce_t f, cell_t *c, stack_frame_t *up) {
     p = p->alt;
     deref(t);
   }
+  }
   to_fail(c);
   return false;
 }
 
 bool reduce(cell_t *c, stack_frame_t *up) {
-  c = clear_ptr(c);
-  if(c) {
+  cell_t *cp = clear_ptr(c);
+  if(cp) {
     stack_frame_t link = {
       .up = up,
       .cell = c
     };
-    assert(is_closure(c) &&
-	   closure_is_ready(c));
-    return c->func(c, &link);
+    assert(is_closure(cp) &&
+	   closure_is_ready(cp));
+    return cp->func(c, &link);
   } else return false;
 }
 
@@ -349,12 +354,27 @@ FUNC(add) {
     intptr_t z;
     bool s = reduce(c->arg[0], up) &&
       reduce(c->arg[1], up);
+    intptr_t alt_set_arg[] = {
+      ((cell_t *)clear_ptr(c->arg[0]))->alt_set,
+      ((cell_t *)clear_ptr(c->arg[1]))->alt_set
+    };
+    if(bm_conflict(alt_set_arg[0], alt_set_arg[1]))
+      return false;
+    intptr_t alt_set = alt_set_arg[0] | alt_set_arg[1];
+    assert((alt_set & ~0x0000000300000003) == 0);
+    /*
+    printf("\n%.16lx | %.16lx -> %.16lx\n",
+	   c->arg[0]->alt_set,
+	   c->arg[1]->alt_set,
+	   alt_set);
+    */
     if(s) {
       cell_t *alt = closure_split(c, 2);
       z = c->arg[0]->val + c->arg[1]->val;
       deref(c->arg[0]);
       deref(c->arg[1]);
       to_ref(c, T_INT, z, 0, alt);
+      c->alt_set = alt_set;
     } else {
       deref(c->arg[0]);
       deref(c->arg[1]);
@@ -425,6 +445,7 @@ cell_t *ref_args(cell_t *c) {
 void _to_ref(cell_t *c, intptr_t t, intptr_t x, cell_t *n, cell_t *a) {
   closure_shrink(c, 1);
   c->func = func_reduced;
+  c->alt_set = 0;
   c->type = t;
   if(t == T_PTR) c->ptr = refn((cell_t *)x, c->n);
   else c->val = x;
@@ -520,7 +541,7 @@ bool is_marked(void *p) {
 }
 
 void deref(cell_t *c) {
-  //return;
+  return;
   if(!c /*is_closure(c)*/) return;
   assert(is_closure(c));
   //printf("DEREF(%d) to %d\n", (int)(c - &cells[0]), c->n);
@@ -680,27 +701,35 @@ bool is_alt(cell_t *c) {
   return c->func == func_alt;
 }
 
+static uint8_t alt_cnt = 0;
+
 FUNC(alt) {
   FUNC(f) {
-    printf("\nalt[%d].n = %d\n", (int)(c - cells), (int)c->n);
+    //printf("\nalt[%d].n = %d\n", (int)(c - cells), (int)c->n);
     cell_t *p = c->arg[0];
     bool ret = reduce(p, up);
     cell_t *a = 0;
+    uint8_t id = (intptr_t)c->arg[2];
+    intptr_t alt_set = p->alt_set | bm(id, c->arg[1] ? 0 : 1);
+    assert((alt_set & ~0x0000000300000003) == 0);
     if(p->alt) {
       a = closure_alloc(2);
       a->func = func_alt;
       //a->n = c->n;
       a->arg[0] = p->alt;
       a->arg[1] = c->arg[1];
+      a->arg[2] = (cell_t *)(intptr_t)id;
     } else if (c->arg[1]) {
       a = closure_alloc(2);
       a->func = func_alt;
       //a->n = c->n;
       a->arg[0] = c->arg[1];
       a->arg[1] = 0;
+      a->arg[2] = (cell_t *)(intptr_t)id;
     }
     
     to_ref(c, p->type, p->val, p->next, a);
+    c->alt_set = alt_set; // HACK ***
     deref(p);
     return ret;
   }
@@ -760,7 +789,7 @@ FUNC(assert) {
 #define BM_SIZE (sizeof(intptr_t) * 4)
 
 intptr_t bm(int k, int v) {
-  if(k >= BM_SIZE) return 0;
+  assert(k < BM_SIZE);
   return ((intptr_t)1 << (k + BM_SIZE)) |
     (((intptr_t)v & 1) << k);
 }
@@ -1059,8 +1088,9 @@ FUNC(id) {
   if(reduce(p, up)) {
     cell_t *a = closure_split1(c, 0);
     c->func = func_reduced;
-    c->val = p->val;
+    c->alt_set = p->alt_set;
     c->type = p->type;
+    c->val = p->val;
     c->next = p->next;
     c->alt = a;
     deref(p);
@@ -1201,6 +1231,7 @@ void test12() {
   cell_t *a = func(func_alt, 2);
   arg(a, val(2));
   arg(a, val(1));
+  a->arg[2] = (cell_t *)(intptr_t)alt_cnt++;
 
   cell_t *b = func(func_add, 2);
   arg(b, id(ref(a)));
@@ -1210,6 +1241,7 @@ void test12() {
   cell_t *e = func(func_alt, 2);
   arg(e, val(10));
   arg(e, val(20));
+  e->arg[2] = (cell_t *)(intptr_t)alt_cnt++;
 
   cell_t *d = func(func_add, 2);
   arg(d, b);

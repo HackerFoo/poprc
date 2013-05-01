@@ -29,9 +29,10 @@ struct __attribute__((packed)) cell {
   };
   union {
     /* unevaluated */
-    cell_t *arg[3];
+    cell_t *arg[4];
     /* reduced */
     struct {
+      intptr_t alt_set;
       intptr_t type;
       cell_t *next;
       union {
