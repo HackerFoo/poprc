@@ -16,17 +16,14 @@ typedef struct stack_frame {
 } stack_frame_t;
 
 typedef bool (reduce_t)(cell_t *cell);
-#define FUNC(x) bool func_##x(cell_t *c)
+//#define FUNC(x) bool func_##x(cell_t *c)
 struct __attribute__((packed)) cell {
   union {
     reduce_t *func;
     cell_t *prev;
   };
   cell_t *alt;
-  union {
-    intptr_t n;
-    cell_t *target;
-  };
+  uint32_t n;
   union {
     /* unevaluated */
     cell_t *arg[4];
