@@ -27,16 +27,13 @@
 // make sure &cells > 255
 cell_t cells[1<<10];
 cell_t *cells_ptr;
-cell_t *nil = 0;
 uint8_t alt_cnt = 0;
 
 // #define CHECK_CYCLE
 
-#define show(x) printf(#x " = %d\n", x)
+#define show(x) printf(#x " = %d\n", (int)(x))
 #define LENGTH(_a) (sizeof(_a) / sizeof((_a)[0]))
 #define FOREACH(a, i) for(i = 0; i < LENGTH(a); i++)
-
-cell_t *nul;
 
 bool is_cell(void *p) {
   return p >= (void *)&cells && p < (void *)(&cells+1);
@@ -175,19 +172,15 @@ void cells_init() {
   // zero the cells
   bzero(&cells, sizeof(cells));
 
-  // cells[0] is the nil cell
-  cells[0].func = func_nil;
-  nil = &cells[0];
-
   // set up doubly-linked pointer ring
-  for(i = 1; i < LENGTH(cells); i++) {
+  for(i = 0; i < LENGTH(cells); i++) {
     cells[i].prev = &cells[i-1];
     cells[i].next = &cells[i+1];
   }
-  cells[1].prev = &cells[LENGTH(cells)-1];
-  cells[LENGTH(cells)-1].next = &cells[1];
+  cells[0].prev = &cells[LENGTH(cells)-1];
+  cells[LENGTH(cells)-1].next = &cells[0];
 
-  cells_ptr = &cells[1];
+  cells_ptr = &cells[0];
   assert(check_cycle());
   alt_cnt = 0;
 }
@@ -266,10 +259,6 @@ void closure_free(cell_t *c) {
   closure_shrink(c, 0);
 }
 
-bool func_nil(cell_t *c) {
-  return false;
-}
-
 bool func_reduced(cell_t *c) {
   assert(is_closure(c));
   return c->type != T_FAIL;
@@ -303,7 +292,6 @@ bool is_offset(cell_t *c) {
 // args must be >= 1
 cell_t *func(reduce_t *f, int args) {
   assert(args >= 0);
-  //int size = calculate_cells(args);
   cell_t *c = closure_alloc(args);
   assert(c->func == 0);
   c->func = f;
@@ -330,6 +318,7 @@ int closure_args(cell_t *c) {
   assert(is_closure(c));
   cell_t **p = c->arg;
   int n = 0;
+  if(c->func == func_alt) return 2;
   if(is_reduced(c)) {
     /* skip over value data */
     p += LENGTH(c->arg);
@@ -414,7 +403,6 @@ cell_t *refn(cell_t *c, int n) {
     if(c->type == T_PTR)
       refn(c->ptr, n);
   }
-  //refn(c->alt, n);
   return c;
 }
 
@@ -435,20 +423,6 @@ cell_t *dup(cell_t *c) {
 bool is_nil(cell_t *c) {
   return !c;
 }
-/*
-bool is_cons(cell_t *c) {
-  return c->func == func_cons;
-}
-
-cell_t *cons(cell_t *h, cell_t *t) {
-  assert(is_nil(t) || is_cons(t));
-  cell_t *c = closure_alloc(2);
-  c->func = func_cons;
-  c->arg[0] = h;
-  c->arg[1] = t;
-  return c;
-}
-*/
 
 void *clear_ptr(void *p) {
   return (void *)((intptr_t)p & ~1);
@@ -533,6 +507,9 @@ bool func_append(cell_t *c) {
   cell_t res = { .type = T_PTR };
   bool s = reduce(c->arg[0]) && reduce(c->arg[1]);
   res.alt = closure_split(c, 2);
+  s &= !bm_conflict(c->arg[0]->alt_set,
+		    c->arg[1]->alt_set);
+  res.alt_set = c->arg[0]->alt_set | c->arg[1]->alt_set;
   if(s) {
     res.ptr = closure_alloc(2);
     res.ptr->func = func_concat;
@@ -549,6 +526,7 @@ bool func_pushl(cell_t *c) {
   cell_t *p = c->arg[1];
   bool s = reduce(p);
   res.alt = closure_split1(c, 1);
+  res.alt_set = p->alt_set;
   res.ptr = s ? pushl(c->arg[0], p->ptr) : NULL;
   deref(p);
   return to_ref(c, &res, s);
@@ -559,12 +537,7 @@ bool func_quote(cell_t *c) {
 		 .ptr = c->arg[0] };
   return to_ref(c, &res, true);
 }
-/*
-FUNC(cons) {
-  to_ref_ptr(c, cons(c->arg[0], c->arg[1]), 0, 0);
-  return true;
-}
-*/
+
 #undef MK_APPEND
 #define MK_APPEND(fname, field)			\
   cell_t *fname(cell_t *a, cell_t *b) {		\
@@ -593,11 +566,13 @@ bool func_popr(cell_t *c) {
     deref(p);
     s = false;
   } else {
-    if(p->ptr->alt)
-      conc_alt(p, quote(p->ptr->alt));
     res.type = p->ptr->type;
     res.val = p->ptr->val;
-    //res.alt_set = ???;
+    res.alt_set = p->alt_set | p->ptr->alt_set;
+    s &= !bm_conflict(p->alt_set,
+		      p->ptr->alt_set);
+    if(p->ptr->alt)
+      conc_alt(p, quote(p->ptr->alt));
     res.next = quote(p->ptr->next);
     deref(p->ptr);
     deref(p);
@@ -648,6 +623,7 @@ bool func_concat(cell_t *c) {
   cell_t res = { .val = 0 };
   cell_t *p = c->arg[0];
   bool s = reduce(p);
+  res.alt_set = p->alt_set;
   res.alt = closure_split1(c, 0);
   if(p->next) {
     res.next = closure_alloc(2);
@@ -666,8 +642,6 @@ bool func_concat(cell_t *c) {
 
 cell_t *compose(cell_t *a, cell_t *b) {
   assert(is_closure(a) && is_closure(b));
-  //  assert((is_cons(a) || is_nil(a)) &&
-  //	 (is_cons(b) || is_nil(b)));
   if(is_nil(a)) return b;
   if(is_nil(b)) return a;
   cell_t *h = a->arg[0];
@@ -684,7 +658,7 @@ bool func_assert(cell_t *c) {
   bool s = reduce(c->arg[0]);
   cell_t res = { .val = c->val,
 		 .type = c->type };
-  // TODO built alt
+  res.alt = closure_split1(c, 0);
   deref(c->arg[0]);
   return to_ref(c, &res, s && res.val);
 }
@@ -788,8 +762,6 @@ void print_sexpr_help(cell_t *r) {
     } else if(r->type == T_FAIL) {
       printf(" (FAIL)");
     }
-  } else if(r->func == func_nil) {
-    printf(" nil");
   } else {
 
     intptr_t f = ((intptr_t)r->func) & ~1;
@@ -1167,9 +1139,9 @@ void test14() {
   b = bm(1,0) | bm(2, 0) | bm(4, 1);
   c = bm(2,1) | bm(4, 0) | bm(3, 0);
 
-  show((int)bm_conflict(a, b));
-  show((int)bm_conflict(b, c));
-  show((int)bm_conflict(c, a));
+  show(bm_conflict(a, b));
+  show(bm_conflict(b, c));
+  show(bm_conflict(c, a));
 }
 
 void check_free() {
