@@ -28,6 +28,7 @@
 cell_t cells[1<<10];
 cell_t *cells_ptr;
 cell_t *nil = 0;
+uint8_t alt_cnt = 0;
 
 // #define CHECK_CYCLE
 
@@ -134,44 +135,12 @@ cell_t *closure_split1(cell_t *c, int n) {
   return a;
 }
 
-bool __reduce(reduce_t f, cell_t *c, stack_frame_t *up) {
-  bool m = is_marked(c);
+bool reduce(cell_t *c) {
   c = clear_ptr(c);
-  if(f(c, up)) return true;
-  
-  if(!m) {
-  cell_t *t, *p = c->alt;
-  //print_sexpr(c);
-  while(p) {
-    if(is_reduced(p) /* HACK */ || f(p, up)) {
-      closure_shrink(c, 1);
-      c->func = p->func;
-      c->alt_set = p->alt_set;
-      c->val = p->val;
-      c->type = p->type;
-      c->next = p->next;
-      deref(p);
-      return true;
-    }
-    t = p;
-    p = p->alt;
-    deref(t);
-  }
-  }
-  to_fail(c);
-  return false;
-}
-
-bool reduce(cell_t *c, stack_frame_t *up) {
-  cell_t *cp = clear_ptr(c);
-  if(cp) {
-    stack_frame_t link = {
-      .up = up,
-      .cell = c
-    };
-    assert(is_closure(cp) &&
-	   closure_is_ready(cp));
-    return cp->func(c, &link);
+  if(c) {
+    assert(is_closure(c) &&
+	   closure_is_ready(c));
+    return c->func(c);
   } else return false;
 }
 
@@ -220,6 +189,7 @@ void cells_init() {
 
   cells_ptr = &cells[1];
   assert(check_cycle());
+  alt_cnt = 0;
 }
 
 void cell_alloc(cell_t *c) {
@@ -296,18 +266,12 @@ void closure_free(cell_t *c) {
   closure_shrink(c, 0);
 }
 
-FUNC(nil) {
+bool func_nil(cell_t *c) {
   return false;
 }
 
-FUNC(reduced) {
+bool func_reduced(cell_t *c) {
   assert(is_closure(c));
-  return c->type != T_FAIL;
-}
-
-FUNC(reduced_alt) {
-  assert(is_closure(c));
-  //c->arg[3] = affected_list(up, c->arg[3]);
   return c->type != T_FAIL;
 }
 
@@ -328,8 +292,7 @@ cell_t *quote(cell_t *x) {
 }
 
 bool is_reduced(cell_t *c) {
-  return c->func == func_reduced ||
-    c->func == func_reduced_alt;
+  return c->func == func_reduced;
 }
 
 // max offset is 255
@@ -349,39 +312,18 @@ cell_t *func(reduce_t *f, int args) {
   return c;
 }
 
-FUNC(add) {
-  FUNC(f) {
-    intptr_t z;
-    bool s = reduce(c->arg[0], up) &&
-      reduce(c->arg[1], up);
-    intptr_t alt_set_arg[] = {
-      ((cell_t *)clear_ptr(c->arg[0]))->alt_set,
-      ((cell_t *)clear_ptr(c->arg[1]))->alt_set
-    };
-    if(bm_conflict(alt_set_arg[0], alt_set_arg[1]))
-      return false;
-    intptr_t alt_set = alt_set_arg[0] | alt_set_arg[1];
-    assert((alt_set & ~0x0000000300000003) == 0);
-    /*
-    printf("\n%.16lx | %.16lx -> %.16lx\n",
-	   c->arg[0]->alt_set,
-	   c->arg[1]->alt_set,
-	   alt_set);
-    */
-    if(s) {
-      cell_t *alt = closure_split(c, 2);
-      z = c->arg[0]->val + c->arg[1]->val;
-      deref(c->arg[0]);
-      deref(c->arg[1]);
-      to_ref(c, T_INT, z, 0, alt);
-      c->alt_set = alt_set;
-    } else {
-      deref(c->arg[0]);
-      deref(c->arg[1]);
-    }
-    return s;
-  }
-  return __reduce(func_f, c, up);
+bool func_add(cell_t *c) {
+  cell_t res = { .type = T_INT };
+  bool s = reduce(c->arg[0]) &&
+    reduce(c->arg[1]);
+  res.alt = closure_split(c, 2);
+  s &= !bm_conflict(c->arg[0]->alt_set,
+		    c->arg[1]->alt_set);
+  res.alt_set = c->arg[0]->alt_set | c->arg[1]->alt_set;
+  res.val = s ? c->arg[0]->val + c->arg[1]->val : 0;
+  deref(c->arg[0]);
+  deref(c->arg[1]);
+  return to_ref(c, &res, s);
 }
 
 int closure_args(cell_t *c) {
@@ -442,35 +384,15 @@ cell_t *ref_args(cell_t *c) {
   return c;
 }
 
-void _to_ref(cell_t *c, intptr_t t, intptr_t x, cell_t *n, cell_t *a) {
+bool to_ref(cell_t *c, cell_t *r, bool s) {
   closure_shrink(c, 1);
+  r->n = c->n;
+  if(r->type == T_PTR) refn(r->ptr, c->n);
+  memcpy(c, r, sizeof(cell_t));
   c->func = func_reduced;
-  c->alt_set = 0;
-  c->type = t;
-  if(t == T_PTR) c->ptr = refn((cell_t *)x, c->n);
-  else c->val = x;
-  c->next = n;
-  c->alt = a;
-  if(a) a->n = c->n;
-}
-
-void _to_ref_alt(cell_t *c, intptr_t t, intptr_t x, cell_t *n, cell_t *a) {
-  closure_shrink(c, 1);
-  c->func = func_reduced_alt;
-  c->type = t;
-  if(t == T_PTR) c->ptr = refn((cell_t *)x, c->n);
-  else c->val = x;
-  c->next = n;
-  c->alt = a;
-}
-
-void to_fail(cell_t *c) {
-  closure_shrink(c,1);
-  c->func = func_reduced;
-  c->type = T_FAIL;
-  c->val = 0;
-  c->next = 0;
-  c->alt = 0;
+  if(!s) c->type = T_FAIL;
+  if(c->alt) c->alt->n = c->n;
+  return s;
 }
 
 cell_t *next(cell_t *c) {
@@ -541,19 +463,13 @@ bool is_marked(void *p) {
 }
 
 void deref(cell_t *c) {
-  return;
-  if(!c /*is_closure(c)*/) return;
-  assert(is_closure(c));
-  //printf("DEREF(%d) to %d\n", (int)(c - &cells[0]), c->n);
-  if(!c->n) {
-    /*
-    if(is_reduced(c)) {
-      if(c->type == T_PTR)
-	deref(c->ptr);
-    }
-    */
-    closure_free(c);
-  } else --c->n;
+  //return;
+  if(c) {
+    assert(is_closure(c));
+    //printf("DEREF(%d) to %d\n", (int)(c - &cells[0]), c->n);
+    if(!c->n) closure_free(c);
+    else --c->n;
+  }
 }
 
 void drop(cell_t *c) {
@@ -613,43 +529,35 @@ cell_t *pushl(cell_t *a, cell_t *b) {
   }
 }
 
-FUNC(append) {
-  FUNC(f) {
-    cell_t *z;
-    bool s = reduce(c->arg[0], up) && reduce(c->arg[1], up);
-    if(s) {
-      cell_t *alt = closure_split(c, 2);
-      z = closure_alloc(2);
-      z->func = func_concat;
-      z->arg[0] = c->arg[0]->ptr;
-      z->arg[1] = c->arg[1]->ptr;
-      deref(c->arg[0]);
-      deref(c->arg[1]);
-      to_ref(c, T_PTR, z, 0, alt);
-    } else {
-      deref(c->arg[0]);
-      deref(c->arg[1]);
-    }
-    return s;
+bool func_append(cell_t *c) {
+  cell_t res = { .type = T_PTR };
+  bool s = reduce(c->arg[0]) && reduce(c->arg[1]);
+  res.alt = closure_split(c, 2);
+  if(s) {
+    res.ptr = closure_alloc(2);
+    res.ptr->func = func_concat;
+    res.ptr->arg[0] = c->arg[0]->ptr;
+    res.ptr->arg[1] = c->arg[1]->ptr;
   }
-  return __reduce(func_f, c, up);
+  deref(c->arg[0]);
+  deref(c->arg[1]);
+  return to_ref(c, &res, s);
 }
 
-FUNC(pushl) {
+bool func_pushl(cell_t *c) {
+  cell_t res = { .type = T_PTR };
   cell_t *p = c->arg[1];
-  bool ret = reduce(p, up);
-  if(ret) {
-    cell_t *alt = closure_split1(c, 1);
-    cell_t *v = pushl(c->arg[0], p->ptr);
-    to_ref(c, T_PTR, v, 0, alt);
-  }
+  bool s = reduce(p);
+  res.alt = closure_split1(c, 1);
+  res.ptr = s ? pushl(c->arg[0], p->ptr) : NULL;
   deref(p);
-  return ret;
+  return to_ref(c, &res, s);
 }
 
-FUNC(quote) {
-  to_ref(c, T_PTR, c->arg[0], 0, 0);
-  return true;
+bool func_quote(cell_t *c) {
+  cell_t res = { .type = T_PTR,
+		 .ptr = c->arg[0] };
+  return to_ref(c, &res, true);
 }
 /*
 FUNC(cons) {
@@ -673,91 +581,87 @@ MK_APPEND(conc_alt, alt);
 /* append is destructive to a! */
 MK_APPEND(append, next);
 
-FUNC(popr) {
-  FUNC(f) {
-    cell_t *p = c->arg[0];
-    if(!reduce(p, up)) {
-      deref(p);
-      return false;
-    }
-    if(!reduce(p->ptr, up)) {
-      deref(p->ptr);
-      deref(p);
-      return false;
-    }
-    if(p->ptr->alt) {
-      conc_alt(p, quote(p->ptr->alt));
-    }
-    cell_t *a = closure_split1(c, 0);
-    to_ref(c, p->ptr->type, p->ptr->val, quote(p->ptr->next), a);
+bool func_popr(cell_t *c) {
+  cell_t res = { .val = 0 };
+  bool s = true;
+  cell_t *p = c->arg[0];
+  if(!reduce(p)) {
+    deref(p);
+    s = false;
+  } else if(!reduce(p->ptr)) {
     deref(p->ptr);
     deref(p);
-    return true;
+    s = false;
+  } else {
+    if(p->ptr->alt)
+      conc_alt(p, quote(p->ptr->alt));
+    res.type = p->ptr->type;
+    res.val = p->ptr->val;
+    //res.alt_set = ???;
+    res.next = quote(p->ptr->next);
+    deref(p->ptr);
+    deref(p);
   }
-  return __reduce(func_f, c, up);
+  res.alt = closure_split1(c, 0);
+  return to_ref(c, &res, s);
 }
 
 bool is_alt(cell_t *c) {
   return c->func == func_alt;
 }
 
-static uint8_t alt_cnt = 0;
-
-FUNC(alt) {
-  FUNC(f) {
-    //printf("\nalt[%d].n = %d\n", (int)(c - cells), (int)c->n);
-    cell_t *p = c->arg[0];
-    bool ret = reduce(p, up);
-    cell_t *a = 0;
-    uint8_t id = (intptr_t)c->arg[2];
-    intptr_t alt_set = p->alt_set | bm(id, c->arg[1] ? 0 : 1);
-    assert((alt_set & ~0x0000000300000003) == 0);
-    if(p->alt) {
-      a = closure_alloc(2);
-      a->func = func_alt;
-      //a->n = c->n;
-      a->arg[0] = p->alt;
-      a->arg[1] = c->arg[1];
-      a->arg[2] = (cell_t *)(intptr_t)id;
-    } else if (c->arg[1]) {
-      a = closure_alloc(2);
-      a->func = func_alt;
-      //a->n = c->n;
-      a->arg[0] = c->arg[1];
-      a->arg[1] = 0;
-      a->arg[2] = (cell_t *)(intptr_t)id;
-    }
-    
-    to_ref(c, p->type, p->val, p->next, a);
-    c->alt_set = alt_set; // HACK ***
-    deref(p);
-    return ret;
-  }
-  return __reduce(func_f, c, up);
+cell_t *alt() {
+  cell_t *c = func(func_alt, 2);
+  c->arg[2] = (cell_t *)(intptr_t)alt_cnt++;
+  return c;
 }
 
-FUNC(concat) {
-  FUNC(f) {
-    cell_t *p = c->arg[0];
-    bool ret = reduce(p, up);
-    cell_t *a = closure_split1(c, 0);
-    cell_t *n = 0;
-    if(p->next) {
-      n = closure_alloc(2);
-      n->func = func_concat;
-      n->n = c->n;
-      n->arg[0] = p->next;
-      n->arg[1] = c->arg[1];
-    } else {
-      n = refn(c->arg[1], c->n);
-    }
-    
-    to_ref(c, p->type, p->val, n, a);
-    //printf("{{(%.8x) p->n = %d, p->val = %d}}\n", (int)(intptr_t)p, (int)p->n, (int)p->val);
-    deref(p);
-    return ret;
+bool func_alt(cell_t *c) {
+  //printf("\nalt[%d].n = %d\n", (int)(c - cells), (int)c->n);
+  cell_t res = { .val = 0 };
+  cell_t *p = c->arg[0];
+  bool s = reduce(p);
+  uint8_t id = (intptr_t)c->arg[2];
+  res.alt_set = p->alt_set | bm(id, c->arg[1] ? 0 : 1);
+  //assert((alt_set & ~0x0000000300000003) == 0);
+  if(p->alt) {
+    res.alt = closure_alloc(2);
+    res.alt->func = func_alt;
+    res.alt->arg[0] = p->alt;
+    res.alt->arg[1] = c->arg[1];
+    res.alt->arg[2] = c->arg[2];
+  } else if (c->arg[1]) {
+    res.alt = closure_alloc(2);
+    res.alt->func = func_alt;
+    res.alt->arg[0] = c->arg[1];
+    res.alt->arg[1] = 0;
+    res.alt->arg[2] = c->arg[2];
   }
-  return __reduce(func_f, c, up);
+  res.type = p->type;
+  res.val = p->val;
+  res.next = p->next;
+  deref(p);
+  return to_ref(c, &res, s);
+}
+
+bool func_concat(cell_t *c) {
+  cell_t res = { .val = 0 };
+  cell_t *p = c->arg[0];
+  bool s = reduce(p);
+  res.alt = closure_split1(c, 0);
+  if(p->next) {
+    res.next = closure_alloc(2);
+    res.next->func = func_concat;
+    res.next->n = c->n;
+    res.next->arg[0] = p->next;
+    res.next->arg[1] = c->arg[1];
+  } else {
+    res.next = refn(c->arg[1], c->n);
+  }
+  res.type = p->type;
+  res.val = p->val;
+  deref(p);
+  return to_ref(c, &res, s);
 }
 
 cell_t *compose(cell_t *a, cell_t *b) {
@@ -771,19 +675,18 @@ cell_t *compose(cell_t *a, cell_t *b) {
   return pushl(h, bp);
 }
 
-FUNC(compose) {
+bool func_compose(cell_t *c) {
   c->ptr = compose(c->arg[0], c->arg[1]);
   return true;
 }
 
-FUNC(assert) {
-  FUNC(f) {
-    bool ret = reduce(c->arg[0], up);
-    intptr_t v = c->val;
-    deref(c->arg[0]);
-    return ret && v;
-  }
-  return __reduce(func_f, c, up);
+bool func_assert(cell_t *c) {
+  bool s = reduce(c->arg[0]);
+  cell_t res = { .val = c->val,
+		 .type = c->type };
+  // TODO built alt
+  deref(c->arg[0]);
+  return to_ref(c, &res, s && res.val);
 }
 
 #define BM_SIZE (sizeof(intptr_t) * 4)
@@ -947,8 +850,8 @@ void show_list(cell_t *c) {
 
 void show_alt(cell_t *c) {
   if(!c) return;
-  if(reduce(c, 0)) {
-    cell_t *a = c->alt;
+  if(reduce(c)) {
+    cell_t *a = c->alt, *an;
     if(!a) {
       /* one */
       show_list(c);
@@ -957,11 +860,15 @@ void show_alt(cell_t *c) {
       printf(" {");
       show_list(c);
       while(a) {
-	if(reduce(a, 0)) {
+	if(reduce(a)) {
 	  printf(" |");
+	  an = a->alt;
 	  show_list(a);
-	  a = a->alt;
+	} else { 
+	  an = a->alt;
+	  deref(a);
 	}
+	a = an;
       }
       printf(" }");
     }
@@ -982,16 +889,16 @@ void test1() {
   b = quote(a);
 
   a_ = func(func_add, 2);
-  e_ = func(func_alt, 2);
+  e_ = alt();
   arg(e_, val(3));
   arg(e_, val(7));
-  y = func(func_alt, 2);
+  y = alt();
   arg(y, e_);
   arg(y, val(20));
   arg(a_, y);
   b_ = quote(a_);
  
-  z = func(func_alt, 2);
+  z = alt();
   arg(z, b_);
   arg(z, b);
 
@@ -1013,12 +920,12 @@ void test2() {
   //e = func(func_assert, 1);
   //arg(e, val(0));
   e = val(1);
-  k = func(func_alt, 2);
+  k = alt();
   arg(k, b);
   arg(k, e);
   c = val(20);
   d = val(10);
-  l = func(func_alt, 2);
+  l = alt();
   arg(l, c);
   arg(l, d);
   arg(a, k);
@@ -1029,10 +936,10 @@ void test2() {
   g = val(300);
   h = val(200);
   i = val(100);
-  m = func(func_alt, 2);
+  m = alt();
   arg(m, g);
   arg(m, h);
-  n = func(func_alt, 2);
+  n = alt();
   arg(n, i);
   arg(n, m);
 
@@ -1064,15 +971,15 @@ void test4() {
   a = val(1);
   b = val(2);
   
-  c = func(func_alt, 2);
+  c = alt();
   arg(c, a);
   arg(c, b);
       
   d = val(10);
-  f = func(func_alt, 2);
+  f = alt();
   arg(f, val(20));
   arg(f, val(30));
-  e = func(func_alt, 2);
+  e = alt();
   arg(e, d);
   arg(e, f);
 
@@ -1083,9 +990,9 @@ void test4() {
   show_eval(g);
 }
 
-FUNC(id) {
+bool func_id(cell_t *c) {
   cell_t *p = c->arg[0];
-  if(reduce(p, up)) {
+  if(reduce(p)) {
     cell_t *a = closure_split1(c, 0);
     c->func = func_reduced;
     c->alt_set = p->alt_set;
@@ -1116,17 +1023,17 @@ void test5() {
 
 void test6() {
   cell_t *a, *b, *c, *d, *e;
-  a = func(func_alt, 2);
+  a = alt();
   arg(a, val(2));
   arg(a, val(1));
-  b = func(func_alt, 2);
+  b = alt();
   arg(b, val(20));
   arg(b, val(10));
   c = func(func_add, 2);
   arg(c, b);
   arg(c, a);
 
-  e = func(func_alt, 2);
+  e = alt();
   arg(e, val(100));
   arg(e, val(200));
   d = func(func_add, 2);
@@ -1138,7 +1045,7 @@ void test6() {
 
 void test7() {
   cell_t *a, *b;
-  a = func(func_alt, 2);
+  a = alt();
   arg(a, val(1));
   arg(a, val(2));
 
@@ -1151,14 +1058,14 @@ void test7() {
 
 void test8() {
   cell_t *a, *b, *c, *d, *e;
-  c = func(func_alt, 2);
+  c = alt();
   arg(c, val(42));
   arg(c, val(51));
   a = func(func_quote, 1);
   arg(a, c);
   e = func(func_quote, 1);
   arg(e, val(123));
-  d = func(func_alt, 2);
+  d = alt();
   arg(d, a);
   arg(d, e);
   b = func(func_popr, 1);
@@ -1228,20 +1135,17 @@ cell_t *id(cell_t *c) {
 }
 
 void test12() {
-  cell_t *a = func(func_alt, 2);
+  cell_t *a = alt();
   arg(a, val(2));
   arg(a, val(1));
-  a->arg[2] = (cell_t *)(intptr_t)alt_cnt++;
 
   cell_t *b = func(func_add, 2);
-  arg(b, id(ref(a)));
+  arg(b, ref(a));
   arg(b, a);
-
-
-  cell_t *e = func(func_alt, 2);
+ 
+  cell_t *e = alt();
   arg(e, val(10));
   arg(e, val(20));
-  e->arg[2] = (cell_t *)(intptr_t)alt_cnt++;
 
   cell_t *d = func(func_add, 2);
   arg(d, b);
@@ -1251,7 +1155,7 @@ void test12() {
 }
 
 void test13() {
-  cell_t *a = func(func_alt, 2);
+  cell_t *a = alt();
   arg(a, quote(val(1)));
   arg(a, quote(val(2)));
   show_eval(a);

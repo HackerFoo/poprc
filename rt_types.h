@@ -15,8 +15,8 @@ typedef struct stack_frame {
   cell_t *cell;
 } stack_frame_t;
 
-typedef bool (reduce_t)(cell_t *cell, stack_frame_t *up);
-#define FUNC(x) bool func_##x(cell_t *c, stack_frame_t *up)
+typedef bool (reduce_t)(cell_t *cell);
+#define FUNC(x) bool func_##x(cell_t *c)
 struct __attribute__((packed)) cell {
   union {
     reduce_t *func;
@@ -47,6 +47,3 @@ struct __attribute__((packed)) cell {
   cell_t *fname(cell_t *a, cell_t *b);
 
 #endif
-
-#define to_ref(c, t, x, n, a) _to_ref((c), (t), (intptr_t)(x), (n), (a))
-#define to_ref_alt(c, t, x, n, a) _to_ref_alt((c), (t), (intptr_t)(x), (n), (a))
