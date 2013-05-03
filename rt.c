@@ -25,7 +25,7 @@
 #include "rt.h"
 
 // make sure &cells > 255
-cell_t cells[1<<10];
+cell_t cells[1<<16];
 cell_t *cells_ptr;
 uint8_t alt_cnt = 0;
 
@@ -79,8 +79,6 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
     return p;
   }
 
-  //printf("__closure_split:");
-  //print_sexpr(c);
   assert(is_closure(c) && closure_is_ready(c));
   unsigned int i, n = 0;
   unsigned int alt_mask = 0;
@@ -185,6 +183,8 @@ void cells_init() {
   alt_cnt = 0;
 }
 
+int alloc_cnt = 0;
+
 void cell_alloc(cell_t *c) {
   assert(is_cell(c) && !is_closure(c));
   cell_t *prev = c->prev;
@@ -194,6 +194,7 @@ void cell_alloc(cell_t *c) {
   if(cells_ptr == c) cells_next();
   prev->next = next;
   next->prev = prev;
+  alloc_cnt++;
   assert(check_cycle());
 }
 
@@ -239,7 +240,6 @@ int closure_cells(cell_t *c) {
 
 void closure_shrink(cell_t *c, int s) {
   int i, size = closure_cells(c);
-  //printf("closure_shrink(&cells[%d], %d)\n", (unsigned int)(c - &cells[0]), s);
   if(size > s) {
     assert(is_closure(c));
     for(i = s; i < size; i++) {
@@ -255,7 +255,6 @@ void closure_shrink(cell_t *c, int s) {
 }
 
 void closure_free(cell_t *c) {
-  //printf("closure_free(&cells[%d])\n", (unsigned int)(c - &cells[0]));
   closure_shrink(c, 0);
 }
 
@@ -460,31 +459,6 @@ void drop(cell_t *c) {
   } else --c->n;
 }
 
-/*
-// to do: reduce arg
-FUNC(head) {
-  FUNC(f) {
-    cell_t *x = c->arg[0];
-    if (!is_cons(x)) return false;
-    drop(x->arg[1]);
-    c->ptr = x->arg[0];
-    return true;
-  }
-  return __reduce(func_f, c);
-}
-
-FUNC(tail) {
-  FUNC(f) {
-    cell_t *x = c->arg[0];
-    if(!is_cons(x)) return false;
-    drop(x->arg[0]);
-    c->ptr = x->arg[1];
-    return true;
-  }
-  return __reduce(func_f, c);
-}
-*/
-
 cell_t *pushl(cell_t *a, cell_t *b) {
   /* b is reduced, a is not */
   assert(is_closure(a) && is_closure(b));
@@ -592,7 +566,6 @@ cell_t *alt() {
 }
 
 bool func_alt(cell_t *c) {
-  //printf("\nalt[%d].n = %d\n", (int)(c - cells), (int)c->n);
   cell_t res = { .val = 0 };
   cell_t *p = c->arg[0];
   bool s = reduce(p);
@@ -1182,5 +1155,6 @@ int main(int argc, char *argv[]) {
     tests[test_number]();
     check_free();
   }
+  printf("allocated %ld bytes\n", alloc_cnt * sizeof(cell_t));
   return 0;
 }
