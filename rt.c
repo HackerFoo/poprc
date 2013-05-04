@@ -461,16 +461,16 @@ void drop(cell_t *c) {
 }
 
 cell_t *pushl(cell_t *a, cell_t *b) {
-  /* b is reduced, a is not */
-  assert(is_closure(a) && is_closure(b));
   if(b == 0) {
     return a;
   }
+  assert(is_closure(a) && is_closure(b));
   if(closure_is_ready(b)) {
     cell_t *n = closure_alloc(2);
     n->func = func_concat;
-    n->arg[0] = b;
-    n->arg[1] = a;
+    n->arg[0] = a;
+    n->arg[1] = b;
+    closure_set_ready(n, closure_is_ready(a));
     return n;
   } else {
     arg(b, a);
@@ -1146,7 +1146,7 @@ void test16() {
   arg(c, b);
   show_eval(c);
   */
-  eval(str);
+  eval(str, sizeof(str));
 }
 
 void check_free() {
@@ -1183,17 +1183,9 @@ int main(int argc, char *argv[]) {
   } else if(strcmp("eval", argv[1]) == 0) {
     char s[1024];
     bzero(s, sizeof(s));
-    if(fgets(s, sizeof(s)-1, stdin)) {
+    if(fgets(s, sizeof(s), stdin)) {
       cells_init();
-      char *p = s;
-      while(*p != '\0') {
-	if(*p == '\n') {
-	  *p = '\0';
-	  break;
-	}
-	p++;
-      }
-      eval(s);
+      eval(s, sizeof(s));
       check_free();
     }
   } else {
@@ -1263,40 +1255,53 @@ cell_t *word_parse(char *w,
   return c;
 }
 
-bool parse_word(char *str, cell_t **stk) {
+char *rtok(char *str, char *p) {
+  if(--p < str) return NULL;
+
+  /* remove trailing spaces */
+  while(*p == ' ') {
+    if(p > str) p--;
+    else return NULL;
+  }
+
+  /* move to start of token */
+  while(*p != ' ') {
+    if(p > str) p--;
+    else return p;
+  }
+
+  /* put a null before the token */
+  if(p >= str) *p = '\0';
+
+  return ++p;
+}
+
+char *parse_word(char *str, char *p, cell_t **r) {
   unsigned int in = 0, out = 0;
-  cell_t *t;
-  char *tok = strtok(str, " ");
+  char *tok = rtok(str, p);
   if(!tok) return false;
   cell_t *c = word_parse(tok, &in, &out);
-  if(c) {
-    /* pop args */
-    int n = in;
-    while(n-- && *stk) {
-      t = *stk;
-      arg(c, t);
-      *stk = t->alt;
-      t->alt = 0;
+  *r = pushl(c, *r);
+  return tok;
+}
+
+cell_t *build(char *str, char *end) {
+  cell_t *r = 0;
+  char *p = end;
+  while((p = parse_word(str, p-1, &r)));
+  return r;
+}
+
+void eval(char *str, int n) {
+  char *p = str;
+  while(*p != '\0' && n--) {
+    if(*p == '\n') {
+      *p = '\0';
+      break;
     }
-
-    /* TODO support multiple results */
-    /* push result */
-    c->alt = *stk;
-    *stk = c;
+    p++;
   }
-  return true;
-}
-
-cell_t *build(char *str) {
-  cell_t *stk = NULL;
-  if(parse_word(str, &stk)) {
-    while(parse_word(NULL, &stk));
-  }
-  return stk;
-}
-
-void eval(char *str) {
-  cell_t *c = build(str);
+  cell_t *c = build(str, p);
   c->alt = 0;
   show_eval(c);
 }
