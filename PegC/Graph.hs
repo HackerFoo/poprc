@@ -33,6 +33,7 @@ import Control.Monad.Trans.List
 import Debug.Trace
 import Data.Monoid
 
+-- return the arity of a word
 arity (W "+") = (2,1)
 arity (W "-") = (2,1)
 arity (W "*") = (2,1)
@@ -50,25 +51,35 @@ arity (W "id") = (1,1)
 arity (R _) = (1,1)
 arity _ = (0,1)
 
+-- calculate the arity of the composition of two words
 composeArity (ix, ox) (iy, oy) = (ix + max 0 (-h), oy + max 0 h) 
   where h = ox - iy
+
 arityM = foldl' (\s -> composeArity s . arity) (0,0)
 
+-- push a new index on the stack
 push = do s <- get
           (a,c) <- lift get
           put (c:s)
           lift $ put (a, c+1)
           return c
+
+-- reserve 'n' new indices, returning the first
 newRefs n = do (a, c) <- lift get
                lift $ put (a, c+n)
                return c
+
+-- push the index 'x' on the stack
 pushI x = do s <- get
              put (x:s)
-             return x  
+             return x
+
+-- pop an index off the stack
 pop = do
   (x:s) <- get
   put s
   return x
+
 {-
 regCntM xs = fst (arityM xs) + sum (map regCnt xs)
 regCnt (W "swap") = 0
@@ -79,7 +90,9 @@ regCnt (W "popr") = 1
 regCnt x = snd (arity x)
 -}
 
+-- add a new mapping
 tellA x = lift $ modify (\(a, c) -> (a `M.union` M.fromList x, c))
+
 {-
 getRef x = do
   (a, _) <- lift get
@@ -98,7 +111,7 @@ multi m = do
   (a, c) <- lift get
   return . flip evalStateT (a, c) . runListT . flip evalState s $ m
 
--- initial pass
+-- initial pass; eliminate swap, dup, quotes
 swizzle (W "swap") = do
   (x:y:s) <- get
   put (y:x:s)
@@ -142,6 +155,7 @@ swizzle x = do
     tellA [(r, (n, x, i)) | (r,n) <- zip o [0..]]
   where (ic, oc) = arity x
 
+-- seperate nested ASTs
 seperateAst n xs = seperateAst' 0 [(n, xs)]
   where seperateAst' c [] = []
         seperateAst' c ((t, AST x e i o):xs) = (t, AST x' e i o) : seperateAst' c' (ss ++ xs)
@@ -185,7 +199,9 @@ composeAst (AST ax ix ox) (AST ay iy oy) = AST axy (ix ++ iy') (oy' ++ drop (len
         iy' = reverse $ take (length iy - length ox) [minIn, minIn-1..]
         minIn = if null ix then (-1) else minimum (ix ++ iy) - 1
         oy' = map (+mIx) oy
--}      
+-}
+
+-- build an AST from tokenized input
 buildAst :: [Value] -> AST
 buildAst xs = AST a [] [(-i)..(-1)] or
   where (or, (a, _)) = flip runState (M.empty, -i) . flip evalStateT [] $ do
@@ -216,10 +232,12 @@ tok x = case tokenize x of
   Left _ -> error "failed to tokenize"
   Right x -> return x
 
+-- seperate partially dependent sets of indices
 seperate [s] = [s]
 seperate ss = nub . sort . filter (\x -> not $ any (S.isProperSubsetOf x) ss') $ ss'
   where ss' = concat [[x `S.difference` y, x `S.intersection` y, y `S.difference` x] | (x:xs) <- init . tails $ ss, y <- xs]
 
+-- calculate dependencies in an AST
 deps a x = deps' x S.empty
   where deps' [] s = s
         deps' (x:xs) s = deps' (dep1 a x ++ xs) (x `S.insert` s)
@@ -239,8 +257,10 @@ dep1 a x | x < 0 = []
          | otherwise = c
   where (_,w,c) = a!x
 
+-- dependencies of the returned values
 outDeps (AST a e i o) = mapM (depsM a . (:[])) $ o
 
+-- group independent groups of indicies of an AST into inputs, registers, and outputs
 units ast@(AST a e i o) = reg
   where pr = [ (x, S.fromList (concat y) `S.difference` x)
              | od <- outDeps ast,
@@ -252,6 +272,7 @@ units ast@(AST a e i o) = reg
 varName x | x < 0 = "in" ++ show (negate x - 1)
           | otherwise = "reg" ++ show x
 
+-- generate code from a word
 gen (d, (_, W "+", [x, y])) = varName d ++ " = add_int(" ++ varName x ++ ", " ++ varName y ++ ")"
 gen (d, (_, I x, _)) = varName d ++ " = var_int(" ++ show x ++ ")"
 gen (d, (_, P n, _)) = varName d ++ " = &" ++ n 

@@ -32,7 +32,8 @@ uint8_t alt_cnt = 0;
 // #define CHECK_CYCLE
 
 #define show(x) printf(#x " = %d\n", (int)(x))
-#define LENGTH(_a) (sizeof(_a) / sizeof((_a)[0]))
+#define WIDTH(a) (sizeof((a)[0]))
+#define LENGTH(a) (sizeof(a) / WIDTH(a))
 #define FOREACH(a, i) for(i = 0; i < LENGTH(a); i++)
 
 bool is_cell(void *p) {
@@ -1117,6 +1118,37 @@ void test14() {
   show(bm_conflict(c, a));
 }
 
+void test15() {
+  char table[] =
+    "alligator SNAP   "
+    "cat       MEOW   "
+    "dog       WOOF   "
+    "fish      SPLASH "
+    "goat      NOOO   "
+    "horse     NEIGH  "
+    "mouse     EEK    "
+    "parrot    SQUAWK "
+    "rat       SCUTTLE"
+    "zebra     ???    ";
+  char *e = lookup(table, 17, sizeof(table)/17, "rat");
+  char x[18] = "no match";
+  if(e) strncpy(x, e, 17);
+  printf("result = \"%s\"\n", x);
+}
+
+void test16() {
+  char str[] = "1 2 add";
+  /*
+  cell_t *a = word("1");
+  cell_t *b = word("2");
+  cell_t *c = word("add");
+  arg(c, a);
+  arg(c, b);
+  show_eval(c);
+  */
+  eval(str);
+}
+
 void check_free() {
   int i;
   for(i = 1; i < LENGTH(cells); i++) {
@@ -1131,7 +1163,8 @@ void (*tests[])(void) = {
   test0, test1, test2, test3,
   test4, test5, test6, test7,
   test8, test9, test10, test11,
-  test12, test13, test14
+  test12, test13, test14, test15,
+  test16
 };
 
 int main(int argc, char *argv[]) {
@@ -1147,6 +1180,22 @@ int main(int argc, char *argv[]) {
       tests[i]();
       check_free();
     }
+  } else if(strcmp("eval", argv[1]) == 0) {
+    char s[1024];
+    bzero(s, sizeof(s));
+    if(fgets(s, sizeof(s)-1, stdin)) {
+      cells_init();
+      char *p = s;
+      while(*p != '\0') {
+	if(*p == '\n') {
+	  *p = '\0';
+	  break;
+	}
+	p++;
+      }
+      eval(s);
+      check_free();
+    }
   } else {
     test_number = atoi(argv[1]);
     if(test_number >= LENGTH(tests)) return -2;
@@ -1158,3 +1207,97 @@ int main(int argc, char *argv[]) {
   printf("allocated %ld bytes\n", alloc_cnt * sizeof(cell_t));
   return 0;
 }
+
+void *lookup(void *table, unsigned int width, unsigned int rows, char *key) {
+  unsigned int low = 0, high = rows, pivot;
+  int c;
+  void *entry;
+  int key_length = strnlen(key, width);
+  while(high > low) {
+    pivot = low + ((high - low) >> 1);
+    entry = table + width * pivot;
+    c = strncmp(key, entry, key_length);
+    if(c == 0) return entry;
+    if(c < 0) high = pivot;
+    else low = pivot + 1;
+  }
+  return 0;
+}
+
+bool is_num(char *str) {
+  return str[0] >= '0' && str[0] <= '9';
+}
+
+word_entry_t word_table[] = {
+  {"add", func_add, 2, 1},
+  {"alt", func_alt, 2, 1},
+  {"id", func_id, 1, 1}
+};
+
+cell_t *word(char *w) {
+  unsigned int in, out;
+  return word_parse(w, &in, &out);
+}
+
+cell_t *word_parse(char *w,
+		   unsigned int *in,
+		   unsigned int *out) {
+  cell_t *c;
+  if(is_num(w)) {
+    c = val(atoi(w));
+    *in = 0;
+    *out = 1;
+  } else {
+    word_entry_t *e =
+      lookup(word_table,
+	     WIDTH(word_table),
+	     LENGTH(word_table),
+	     w);
+    if(!e) return NULL;
+    c = func(e->func, e->in);
+    if(e->func == func_alt)
+      c->arg[2] = (cell_t *)(intptr_t)alt_cnt++;
+    *in = e->in;
+    *out = e->out;
+  }
+  return c;
+}
+
+bool parse_word(char *str, cell_t **stk) {
+  unsigned int in = 0, out = 0;
+  cell_t *t;
+  char *tok = strtok(str, " ");
+  if(!tok) return false;
+  cell_t *c = word_parse(tok, &in, &out);
+  if(c) {
+    /* pop args */
+    int n = in;
+    while(n-- && *stk) {
+      t = *stk;
+      arg(c, t);
+      *stk = t->alt;
+      t->alt = 0;
+    }
+
+    /* TODO support multiple results */
+    /* push result */
+    c->alt = *stk;
+    *stk = c;
+  }
+  return true;
+}
+
+cell_t *build(char *str) {
+  cell_t *stk = NULL;
+  if(parse_word(str, &stk)) {
+    while(parse_word(NULL, &stk));
+  }
+  return stk;
+}
+
+void eval(char *str) {
+  cell_t *c = build(str);
+  c->alt = 0;
+  show_eval(c);
+}
+

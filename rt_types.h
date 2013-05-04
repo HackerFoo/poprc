@@ -40,6 +40,17 @@ struct __attribute__((packed)) cell {
   };
 };
 
+typedef struct word_entry_t {
+  char name[16];
+  reduce_t *func;
+  unsigned int in, out;
+} word_entry_t;
+
+typedef struct parse_tok_t {
+  cell_t *c;
+  unsigned int out;
+} parse_tok_t;
+
 #define MK_APPEND(fname, field)			\
   cell_t *fname(cell_t *a, cell_t *b);
 
