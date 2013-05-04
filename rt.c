@@ -630,8 +630,8 @@ bool func_compose(cell_t *c) {
 
 bool func_assert(cell_t *c) {
   bool s = reduce(c->arg[0]);
-  cell_t res = { .val = c->val,
-		 .type = c->type };
+  cell_t res = { .val = c->arg[0]->val,
+		 .type = c->arg[0]->type };
   res.alt = closure_split1(c, 0);
   deref(c->arg[0]);
   return to_ref(c, &res, s && res.val);
@@ -795,26 +795,33 @@ void show_list(cell_t *c) {
 }
 
 void show_alt(cell_t *c) {
-  if(!c) return;
-  if(reduce(c)) {
-    cell_t *a = c->alt, *an;
+  cell_t *p = c, *t, *a;
+  /* skip initial failures */
+  if(!p) return;
+  while(p && !reduce(p)) {
+    t = p;
+    p = p->alt;
+    deref(t);
+  }
+  if(p) {
+    a = p->alt;
     if(!a) {
       /* one */
-      show_list(c);
+      show_list(p);
     } else {
       /* many */
       printf(" {");
-      show_list(c);
+      show_list(p);
       while(a) {
 	if(reduce(a)) {
 	  printf(" |");
-	  an = a->alt;
+	  t = a->alt;
 	  show_list(a);
 	} else { 
-	  an = a->alt;
+	  t = a->alt;
 	  deref(a);
 	}
-	a = an;
+	a = t;
       }
       printf(" }");
     }
@@ -1221,9 +1228,15 @@ bool is_num(char *str) {
 }
 
 word_entry_t word_table[] = {
-  {"add", func_add, 2, 1},
-  {"alt", func_alt, 2, 1},
-  {"id", func_id, 1, 1}
+  {"!", func_assert, 1, 1},
+  {"'", func_quote, 1, 1},
+  {"+", func_add, 2, 1},
+  {"++", func_append, 2, 1},
+  {".", func_compose, 2, 1},
+  {"id", func_id, 1, 1},
+  {"popr", func_popr, 1, 2},
+  {"pushl", func_pushl, 2, 1},
+  {"|", func_alt, 2, 1}
 };
 
 cell_t *word(char *w) {
@@ -1287,7 +1300,7 @@ char *parse_word(char *str, char *p, cell_t **r) {
 
 cell_t *build(char *str, char *end) {
   cell_t *r = 0;
-  char *p = end;
+  char *p = end+1;
   while((p = parse_word(str, p-1, &r)));
   return r;
 }
@@ -1302,7 +1315,5 @@ void eval(char *str, int n) {
     p++;
   }
   cell_t *c = build(str, p);
-  c->alt = 0;
   show_eval(c);
 }
-
