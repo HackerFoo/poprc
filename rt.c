@@ -1224,7 +1224,8 @@ void *lookup(void *table, unsigned int width, unsigned int rows, char *key) {
 }
 
 bool is_num(char *str) {
-  return str[0] >= '0' && str[0] <= '9';
+  return char_class(str[0]) == CC_NUMERIC ||
+    (str[0] == '-' && char_class(str[1]) == CC_NUMERIC);
 }
 
 word_entry_t word_table[] = {
@@ -1268,40 +1269,64 @@ cell_t *word_parse(char *w,
   return c;
 }
 
-char *rtok(char *str, char *p) {
-  if(--p < str) return NULL;
+char_class_t char_class(char c) {
+  if(c <= ' ' || c > '~')
+    return CC_NONE;
+  if(c >= '0' && c <= '9')
+    return CC_NUMERIC;
+  if((c >= 'a' && c <= 'z') ||
+     (c >= 'A' && c <= 'Z'))
+    return CC_ALPHA;
+  return CC_SYMBOL;
+}
+
+char *rtok(char *str, char *ptr) {
+  if(ptr <= str) return NULL;
+
+  ptr--;
 
   /* remove trailing spaces */
-  while(*p == ' ') {
-    if(p > str) p--;
+  while(char_class(*ptr) == CC_NONE) {
+    if(ptr > str) ptr--;
     else return NULL;
   }
 
+  *(ptr+1) = '\0';
+
+  /* allow adjacent brackets to be seperately tokenized */
+  if(index("[](){}", *ptr)) return ptr;
+
   /* move to start of token */
-  while(*p != ' ') {
-    if(p > str) p--;
-    else return p;
-  }
+  char_class_t class = char_class(*ptr);
+  do {
+    if(ptr > str) ptr--;
+    else return ptr;
+  } while(char_class(*ptr) == class);
 
-  /* put a null before the token */
-  if(p >= str) *p = '\0';
+  /* handle negative numbers */
+  if(!(class == CC_NUMERIC &&
+       *ptr == '-')) ptr++;
 
-  return ++p;
+  return ptr;
 }
 
-char *parse_word(char *str, char *p, cell_t **r) {
+bool parse_word(char *str, char **p, cell_t **r) {
   unsigned int in = 0, out = 0;
-  char *tok = rtok(str, p);
-  if(!tok) return false;
-  cell_t *c = word_parse(tok, &in, &out);
-  *r = pushl(c, *r);
-  return tok;
+  cell_t *c;
+  char *tok = *p = rtok(str, *p);
+  if(!tok || strcmp(tok, "[") == 0) return false;
+  if(strcmp(tok, "]") == 0) {
+    c = quote(build(str, p));
+  } else {
+    c = word_parse(tok, &in, &out);
+  }
+  if(c) *r = pushl(c, *r);
+  return true;
 }
 
-cell_t *build(char *str, char *end) {
+cell_t *build(char *str, char **p) {
   cell_t *r = 0;
-  char *p = end+1;
-  while((p = parse_word(str, p-1, &r)));
+  while((parse_word(str, p, &r)));
   return r;
 }
 
@@ -1314,6 +1339,9 @@ void eval(char *str, int n) {
     }
     p++;
   }
-  cell_t *c = build(str, p);
-  show_eval(c);
+  cell_t *c = build(str, &p);
+  if(!closure_is_ready(c))
+    printf("incomplete expression\n");
+  else
+    show_eval(c);
 }

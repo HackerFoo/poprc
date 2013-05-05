@@ -54,4 +54,11 @@ typedef struct parse_tok_t {
 #define MK_APPEND(fname, field)			\
   cell_t *fname(cell_t *a, cell_t *b);
 
+typedef enum char_class_t {
+  CC_NONE,
+  CC_NUMERIC,
+  CC_ALPHA,
+  CC_SYMBOL
+} char_class_t;
+
 #endif
