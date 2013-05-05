@@ -244,6 +244,13 @@ int closure_cells(cell_t *c) {
   return calculate_cells(closure_args(c));
 }
 
+void cell_free(cell_t *c) {
+  c->next = cells_ptr;
+  c->prev = cells_ptr->prev;
+  cells_ptr->prev = c;
+  c->prev->next = c;
+}
+
 void closure_shrink(cell_t *c, int s) {
   int i, size = closure_cells(c);
   if(size > s) {
@@ -983,9 +990,9 @@ bool func_collect(cell_t *c) {
     while(--n > 0) {
       *dest++ = *src;
     }
-    src = *src;
+    src = (cell_t **)*src;
     cell_free(prev);
-    prev = src;
+    prev = (cell_t *)src;
   } while(src);
   bool b = reduce(collect);
   return to_ref(c, collect, b);
