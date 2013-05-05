@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <assert.h>
+#include <time.h>
 #include "rt_types.h"
 #include "rt.h"
 
@@ -28,6 +29,10 @@
 cell_t cells[1<<16];
 cell_t *cells_ptr;
 uint8_t alt_cnt = 0;
+unsigned int reduce_cnt = 0;
+unsigned int alloc_cnt = 0;
+int current_alloc_cnt = 0;
+unsigned int max_alloc_cnt = 0; 
 
 // #define CHECK_CYCLE
 
@@ -136,6 +141,7 @@ bool reduce(cell_t *c) {
   if(c) {
     assert(is_closure(c) &&
 	   closure_is_ready(c));
+    reduce_cnt++;
     return c->func(c);
   } else return false;
 }
@@ -182,9 +188,10 @@ void cells_init() {
   cells_ptr = &cells[0];
   assert(check_cycle());
   alt_cnt = 0;
+  reduce_cnt = 0;
+  current_alloc_cnt = 0;
+  max_alloc_cnt = 0;
 }
-
-int alloc_cnt = 0;
 
 void cell_alloc(cell_t *c) {
   assert(is_cell(c) && !is_closure(c));
@@ -196,6 +203,8 @@ void cell_alloc(cell_t *c) {
   prev->next = next;
   next->prev = prev;
   alloc_cnt++;
+  if(++current_alloc_cnt > max_alloc_cnt)
+    max_alloc_cnt = current_alloc_cnt;
   assert(check_cycle());
 }
 
@@ -252,6 +261,7 @@ void closure_shrink(cell_t *c, int s) {
     c[size-1].next = cells_ptr;
     cells_ptr->prev = &c[size-1];
     assert(check_cycle());
+    current_alloc_cnt -= size - s;
   }
 }
 
@@ -261,6 +271,7 @@ void closure_free(cell_t *c) {
 
 bool func_reduced(cell_t *c) {
   assert(is_closure(c));
+  reduce_cnt--;
   return c->type != T_FAIL;
 }
 
@@ -1203,7 +1214,9 @@ int main(int argc, char *argv[]) {
     tests[test_number]();
     check_free();
   }
-  printf("allocated %ld bytes\n", alloc_cnt * sizeof(cell_t));
+  printf("allocated %d bytes\n", alloc_cnt * (int)sizeof(cell_t));
+  printf("max %d bytes\n", max_alloc_cnt * (int)sizeof(cell_t));
+  printf("performed %d reduction%s\n", reduce_cnt, reduce_cnt > 1 ? "s" : "");
   return 0;
 }
 
@@ -1342,6 +1355,11 @@ void eval(char *str, int n) {
   cell_t *c = build(str, &p);
   if(!closure_is_ready(c))
     printf("incomplete expression\n");
-  else
+  else {
+    clock_t start = clock();
     show_eval(c);
+    double time = (clock() - start) /
+      (double)CLOCKS_PER_SEC;
+    printf("%.3e sec\n", time);
+  }
 }
