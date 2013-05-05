@@ -41,7 +41,7 @@ struct __attribute__((packed)) cell {
 };
 
 typedef struct word_entry_t {
-  char name[16];
+  char name[64];
   reduce_t *func;
   unsigned int in, out;
 } word_entry_t;
@@ -60,5 +60,15 @@ typedef enum char_class_t {
   CC_ALPHA,
   CC_SYMBOL
 } char_class_t;
+
+#define sizeof_field(s, f) sizeof(((s *)0)->f)
+
+typedef struct measure_t {
+  unsigned int reduce_cnt, alloc_cnt, max_alloc_cnt;
+  signed int current_alloc_cnt;
+  clock_t start, stop;
+} measure_t;
+
+#define zero(a) bzero((a), sizeof(a))
 
 #endif

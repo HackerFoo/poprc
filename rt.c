@@ -23,16 +23,15 @@
 #include <assert.h>
 #include <time.h>
 #include "rt_types.h"
+#include "linenoise/linenoise.h"
 #include "rt.h"
 
 // make sure &cells > 255
 cell_t cells[1<<16];
 cell_t *cells_ptr;
 uint8_t alt_cnt = 0;
-unsigned int reduce_cnt = 0;
-unsigned int alloc_cnt = 0;
-int current_alloc_cnt = 0;
-unsigned int max_alloc_cnt = 0; 
+
+measure_t measure, saved_measure;
 
 // #define CHECK_CYCLE
 
@@ -141,7 +140,7 @@ bool reduce(cell_t *c) {
   if(c) {
     assert(is_closure(c) &&
 	   closure_is_ready(c));
-    reduce_cnt++;
+    measure.reduce_cnt++;
     return c->func(c);
   } else return false;
 }
@@ -188,9 +187,6 @@ void cells_init() {
   cells_ptr = &cells[0];
   assert(check_cycle());
   alt_cnt = 0;
-  reduce_cnt = 0;
-  current_alloc_cnt = 0;
-  max_alloc_cnt = 0;
 }
 
 void cell_alloc(cell_t *c) {
@@ -202,9 +198,9 @@ void cell_alloc(cell_t *c) {
   if(cells_ptr == c) cells_next();
   prev->next = next;
   next->prev = prev;
-  alloc_cnt++;
-  if(++current_alloc_cnt > max_alloc_cnt)
-    max_alloc_cnt = current_alloc_cnt;
+  measure.alloc_cnt++;
+  if(++measure.current_alloc_cnt > measure.max_alloc_cnt)
+    measure.max_alloc_cnt = measure.current_alloc_cnt;
   assert(check_cycle());
 }
 
@@ -261,7 +257,7 @@ void closure_shrink(cell_t *c, int s) {
     c[size-1].next = cells_ptr;
     cells_ptr->prev = &c[size-1];
     assert(check_cycle());
-    current_alloc_cnt -= size - s;
+    measure.current_alloc_cnt -= size - s;
   }
 }
 
@@ -271,7 +267,7 @@ void closure_free(cell_t *c) {
 
 bool func_reduced(cell_t *c) {
   assert(is_closure(c));
-  reduce_cnt--;
+  measure.reduce_cnt--;
   return c->type != T_FAIL;
 }
 
@@ -1185,6 +1181,29 @@ void (*tests[])(void) = {
   test16
 };
 
+void measure_start() {
+  bzero(&measure, sizeof(measure));
+  measure.start = clock();
+}
+
+void measure_stop() {
+  memcpy(&saved_measure, &measure, sizeof(measure));
+  saved_measure.stop = clock();
+}
+
+void measure_display() {
+  double time = (saved_measure.stop - saved_measure.start) /
+    (double)CLOCKS_PER_SEC;
+  printf("time        : %.3e sec\n", time);
+  printf("allocated   : %d bytes\n",
+	 saved_measure.alloc_cnt * (int)sizeof(cell_t));
+  printf("working set : %d bytes\n",
+	 saved_measure.max_alloc_cnt * (int)sizeof(cell_t));
+  printf("reductions  : %d",
+	 saved_measure.reduce_cnt);
+ 
+}
+
 int main(int argc, char *argv[]) {
   unsigned int test_number;
   if(argc != 2) return -1;
@@ -1195,45 +1214,92 @@ int main(int argc, char *argv[]) {
 	     "(( test %-3d ))"
 	     "_________________________________\n", i);
       cells_init();
+      measure_start();
       tests[i]();
+      measure_stop();
       check_free();
     }
   } else if(strcmp("eval", argv[1]) == 0) {
-    char s[1024];
-    bzero(s, sizeof(s));
-    if(fgets(s, sizeof(s), stdin)) {
-      cells_init();
-      eval(s, sizeof(s));
-      check_free();
-    }
+    run_eval();
   } else {
     test_number = atoi(argv[1]);
     if(test_number >= LENGTH(tests)) return -2;
     cells_init();
     //alloc_test();
+    measure_start();
     tests[test_number]();
+    measure_stop();
     check_free();
   }
-  printf("allocated %d bytes\n", alloc_cnt * (int)sizeof(cell_t));
-  printf("max %d bytes\n", max_alloc_cnt * (int)sizeof(cell_t));
-  printf("performed %d reduction%s\n", reduce_cnt, reduce_cnt > 1 ? "s" : "");
+  measure_display();
   return 0;
 }
 
-void *lookup(void *table, unsigned int width, unsigned int rows, char *key) {
+#define HISTORY_FILE ".pegc_history"
+void run_eval() {
+  char *line;
+  linenoiseSetCompletionCallback(completion);
+  linenoiseHistoryLoad(HISTORY_FILE);
+  while((line = linenoise(": "))) {
+    if(line[0] == '\0') {
+      free(line);
+      break;
+    }
+    if(strcmp(line, ":m") == 0) {
+      measure_display();
+    } else {
+      linenoiseHistoryAdd(line);
+      cells_init();
+      measure_start();
+      eval(line, strlen(line));
+      measure_stop();
+      check_free();
+    }
+    free(line);
+  }
+  linenoiseHistorySave(HISTORY_FILE);
+}
+
+void completion(const char *buf, linenoiseCompletions *lc) {
+  int n = strlen(buf);
+  char comp[n+sizeof_field(word_entry_t, name)];
+  char *insert = comp + n;
+  strncpy(comp, buf, sizeof(comp));
+  char *tok = rtok(comp, insert);
+  int tok_len = strnlen(tok, sizeof_field(word_entry_t, name));
+  if(!tok) return;
+  word_entry_t *e = lookup_word(tok);
+  if(e) {
+    /* add completions */
+    do {
+      if(strnlen(e->name, sizeof_field(word_entry_t, name)) >
+	 tok_len) {
+	 
+	strncpy(tok, e->name, sizeof(e->name));
+	linenoiseAddCompletion(lc, comp);
+      }
+      e++;
+    } while(strncmp(e->name, tok, tok_len) == 0);
+  }
+}
+
+void *lookup(void *table, unsigned int width, unsigned int rows, const char *key) {
   unsigned int low = 0, high = rows, pivot;
   int c;
-  void *entry;
+  void *entry, *ret = 0;
   int key_length = strnlen(key, width);
   while(high > low) {
     pivot = low + ((high - low) >> 1);
     entry = table + width * pivot;
     c = strncmp(key, entry, key_length);
-    if(c == 0) return entry;
-    if(c < 0) high = pivot;
+    if(c == 0) {
+      /* keep looking for a lower key */
+      ret = entry;
+      high = pivot;
+    } else if(c < 0) high = pivot;
     else low = pivot + 1;
   }
-  return 0;
+  return ret;
 }
 
 bool is_num(char *str) {
@@ -1253,6 +1319,14 @@ word_entry_t word_table[] = {
   {"|", func_alt, 2, 1}
 };
 
+word_entry_t *lookup_word(const char *w) {
+    return
+      lookup(word_table,
+	     WIDTH(word_table),
+	     LENGTH(word_table),
+	     w);
+}
+
 cell_t *word(char *w) {
   unsigned int in, out;
   return word_parse(w, &in, &out);
@@ -1267,11 +1341,11 @@ cell_t *word_parse(char *w,
     *in = 0;
     *out = 1;
   } else {
-    word_entry_t *e =
-      lookup(word_table,
-	     WIDTH(word_table),
-	     LENGTH(word_table),
-	     w);
+    word_entry_t *e = lookup_word(w);
+    /* disallow partial matches */
+    if(strnlen(w, sizeof_field(word_entry_t, name)) !=
+       strnlen(e->name, sizeof_field(word_entry_t, name)))
+      return NULL;
     if(!e) return NULL;
     c = func(e->func, e->in);
     if(e->func == func_alt)
@@ -1353,13 +1427,16 @@ void eval(char *str, int n) {
     p++;
   }
   cell_t *c = build(str, &p);
+  if(!c) return;
   if(!closure_is_ready(c))
     printf("incomplete expression\n");
   else {
-    clock_t start = clock();
+    //clock_t start = clock();
     show_eval(c);
+    /*
     double time = (clock() - start) /
       (double)CLOCKS_PER_SEC;
     printf("%.3e sec\n", time);
+    */
   }
 }
