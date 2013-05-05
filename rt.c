@@ -968,6 +968,29 @@ bool func_id(cell_t *c) {
   }
 }
 
+cell_t *collect;
+
+/* reassemble a fragmented cell */
+bool func_collect(cell_t *c) {
+  collect->alt = c->alt;
+  collect->n = c->n;
+  collect->func = (reduce_t *)c->arg[0];
+  cell_t **dest = collect->arg;
+  cell_t **src = c->arg+1;
+  cell_t *prev = 0;
+  int n = sizeof(c->arg)-1;
+  do {
+    while(--n > 0) {
+      *dest++ = *src;
+    }
+    src = *src;
+    cell_free(prev);
+    prev = src;
+  } while(src);
+  bool b = reduce(collect);
+  return to_ref(c, collect, b);
+}
+
 void test5() {
   cell_t *p = func(func_id, 1);
 
@@ -1194,12 +1217,13 @@ void measure_stop() {
 void measure_display() {
   double time = (saved_measure.stop - saved_measure.start) /
     (double)CLOCKS_PER_SEC;
-  printf("time        : %.3e sec\n", time);
-  printf("allocated   : %d bytes\n",
-	 saved_measure.alloc_cnt * (int)sizeof(cell_t));
-  printf("working set : %d bytes\n",
-	 saved_measure.max_alloc_cnt * (int)sizeof(cell_t));
-  printf("reductions  : %d",
+  printf("time        : %.3e sec\n"
+	 "allocated   : %d bytes\n"
+	 "working set : %d bytes\n"
+	 "reductions  : %d\n",
+	 time,
+	 saved_measure.alloc_cnt * (int)sizeof(cell_t),
+	 saved_measure.max_alloc_cnt * (int)sizeof(cell_t),
 	 saved_measure.reduce_cnt);
  
 }
@@ -1249,6 +1273,7 @@ void run_eval() {
       measure_display();
     } else {
       linenoiseHistoryAdd(line);
+      linenoiseHistorySave(HISTORY_FILE);
       cells_init();
       measure_start();
       eval(line, strlen(line));
@@ -1257,7 +1282,6 @@ void run_eval() {
     }
     free(line);
   }
-  linenoiseHistorySave(HISTORY_FILE);
 }
 
 void completion(const char *buf, linenoiseCompletions *lc) {
@@ -1307,6 +1331,7 @@ bool is_num(char *str) {
     (str[0] == '-' && char_class(str[1]) == CC_NUMERIC);
 }
 
+/* must be in ascending order */
 word_entry_t word_table[] = {
   {"!", func_assert, 1, 1},
   {"'", func_quote, 1, 1},
@@ -1430,13 +1455,6 @@ void eval(char *str, int n) {
   if(!c) return;
   if(!closure_is_ready(c))
     printf("incomplete expression\n");
-  else {
-    //clock_t start = clock();
+  else
     show_eval(c);
-    /*
-    double time = (clock() - start) /
-      (double)CLOCKS_PER_SEC;
-    printf("%.3e sec\n", time);
-    */
-  }
 }
