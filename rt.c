@@ -543,10 +543,28 @@ MK_APPEND(conc_alt, alt);
 /* append is destructive to a! */
 MK_APPEND(append, next);
 
+cell_t *dep(cell_t *c) {
+  cell_t *n = closure_alloc(1);
+  n->func = func_dep;
+  n->arg[0] = c;
+  return n;
+}
+
+bool func_dep(cell_t *c) {
+  /* rely on another cell for reduction */
+  /* don't need to deref arg, handled by other function */
+  return reduce(c->arg[0]);
+}
+
 bool func_popr(cell_t *c) {
   cell_t res = { .val = 0 };
+  cell_t res_next = {
+    .type = T_PTR,
+    .func = func_reduced
+  };
   bool s = true;
   cell_t *p = c->arg[0];
+  cell_t *next = c->arg[1];
   if(!reduce(p)) {
     deref(p);
     s = false;
@@ -560,13 +578,22 @@ bool func_popr(cell_t *c) {
     res.alt_set = p->alt_set | p->ptr->alt_set;
     s &= !bm_conflict(p->alt_set,
 		      p->ptr->alt_set);
-    if(p->ptr->alt)
+    if(p->ptr->alt) //***
       conc_alt(p, quote(p->ptr->alt));
-    res.next = quote(p->ptr->next);
+    res_next.ptr = p->ptr->next;
+    res_next.alt_set = res.alt_set;
     deref(p->ptr);
     deref(p);
   }
   res.alt = closure_split1(c, 0);
+  if(res.alt) {
+    res.alt->arg[1] =
+      ref(res_next.alt = dep(ref(res.alt)));
+  }
+  /* deref because we are replacing next, should be == c */
+  deref(next->arg[0]);
+  to_ref(next, &res_next, s);
+  deref(next);
   return to_ref(c, &res, s);
 }
 
@@ -767,6 +794,7 @@ void print_sexpr_help(cell_t *r) {
     CASE(quote);
     CASE(append);
     CASE(id);
+    CASE(dep);
 
 # undef CASE
 
@@ -988,11 +1016,13 @@ bool func_collect(cell_t *c) {
   int n = sizeof(c->arg)-1;
   do {
     while(--n > 0) {
-      *dest++ = *src;
+      *dest++ = *src++;
     }
     src = (cell_t **)*src;
     cell_free(prev);
     prev = (cell_t *)src;
+    n = sizeof(cell_t)-1;
+    src++;
   } while(src);
   bool b = reduce(collect);
   return to_ref(c, collect, b);
@@ -1181,16 +1211,23 @@ void test15() {
 }
 
 void test16() {
-  char str[] = "1 2 add";
-  /*
-  cell_t *a = word("1");
-  cell_t *b = word("2");
-  cell_t *c = word("add");
+  cell_t *d = func(func_alt, 2);
+  arg(d, val(1));
+  arg(d, val(2));
+  //cell_t *d = val(1);
+  cell_t *a = func(func_popr, 2);
+  cell_t *b = dep(ref(a));
+  arg(a, ref(b)); //***
+  arg(a, quote(d));
+  cell_t *c = func(func_concat, 2);
   arg(c, a);
   arg(c, b);
   show_eval(c);
+
+  /*
+  show_eval(b);
+  show_eval(a);
   */
-  eval(str, sizeof(str));
 }
 
 void check_free() {
