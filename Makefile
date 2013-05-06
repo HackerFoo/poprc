@@ -4,13 +4,12 @@ CFLAGS=-falign-functions=16 -Wall -g
 .PHONY: all
 all: rt
 
-obj:
+obj/rt.o: rt.c rt.h rt_types.h
 	mkdir -p obj
-
-obj/rt.o: obj rt.c rt.h rt_types.h
 	$(CC) $(CFLAGS) -c rt.c -o obj/rt.o
 
-obj/linenoise.o: obj linenoise/linenoise.c linenoise/linenoise.c
+obj/linenoise.o: linenoise/linenoise.c linenoise/linenoise.c
+	mkdir -p obj
 	$(CC) $(CFLASGS) -c linenoise/linenoise.c -o obj/linenoise.o
 
 rt: obj/rt.o obj/linenoise.o
@@ -21,4 +20,4 @@ rt.h: rt.c
 
 .PHONY: clean
 clean:
-	rm -f obj rt.h rt
+	rm -rf obj rt.h rt
