@@ -390,7 +390,6 @@ cell_t *ref_args(cell_t *c) {
 bool to_ref(cell_t *c, cell_t *r, bool s) {
   closure_shrink(c, 1);
   r->n = c->n;
-  //if(r->type == T_PTR) refn(r->ptr, c->n);
   memcpy(c, r, sizeof(cell_t));
   c->func = func_reduced;
   if(!s) c->type = T_FAIL;
@@ -408,17 +407,11 @@ cell_t *ref(cell_t *c) {
   return(refn(c, 1));
 }
 
-cell_t *refn(cell_t *c, int n) {
-  if(!c || n <= 0) return c;
-  assert(is_closure(c));
-  c->n += n;
-  /*
-  if(is_reduced(c)) {
-    refn(c->next, n);
-    //if(c->type == T_PTR)
-    //  refn(c->ptr, n);
+cell_t *refn(cell_t *c, unsigned int n) {
+  if(c) {
+    assert(is_closure(c));
+    c->n += n;
   }
-  */
   return c;
 }
 
@@ -652,7 +645,7 @@ bool func_concat(cell_t *c) {
   if(p->next) {
     res.next = closure_alloc(2);
     res.next->func = func_concat;
-    res.next->n = c->n;
+    //res.next->n = c->n;
     res.next->arg[0] = ref(p->next);
     res.next->arg[1] = c->arg[1];
   } else {
@@ -1254,11 +1247,13 @@ void test17() {
 }
 
 void test18() {
-  show_eval(quote(val(1)));
-  cell_t *a = func(func_append, 2);
-  arg(a, quote(val(1)));
-  arg(a, quote(val(2)));
-  show_eval(a);
+  cell_t *a = func(func_concat, 2);
+  arg(a, val(2));
+  arg(a, val(1));
+  cell_t *b = func(func_concat, 2);
+  arg(b, val(3));
+  arg(b, a);
+  show_eval(quote(b));
 }
 
 void check_free() {
