@@ -109,14 +109,17 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
 
   p = split(c, c->alt, alt_mask, s);
 
+  unsigned int nref_alt_alt = 1 << (n-1);
+  unsigned int nref_alt = nref_alt_alt - 1;
+  unsigned int nref_noalt = (1 << n) - 1;
   for(i = 0; i < s; i++) {
     if((1<<i) & alt_mask) {
-      if(c->arg[i]->n > c->arg[i]->alt->n)
-        c->arg[i]->alt->n = c->arg[i]->n;
-      c->arg[i]->n += (1 << (n-1)) - 1;
-      c->arg[i]->alt->n += (1 << (n-1)) - 1;
+      //if(c->arg[i]->n > c->arg[i]->alt->n)
+      //  c->arg[i]->alt->n = c->arg[i]->n;
+      c->arg[i]->alt->n += nref_alt_alt;
+      c->arg[i]->n += nref_alt;
     } else {
-      c->arg[i]->n += (1 << n) - 1;
+      c->arg[i]->n += nref_noalt;
     }
   }
 
@@ -129,9 +132,10 @@ cell_t *closure_split1(cell_t *c, int n) {
     a = copy(c);
     a->arg[n] = 0;
     ref_args(a);
-    a->arg[n] = c->arg[n]->alt;
+    a->arg[n] = ref(c->arg[n]->alt);
+    a->n = 0;
   }
-  c->arg[n] = clear_ptr(c->arg[n]);
+  //c->arg[n] = clear_ptr(c->arg[n]);
   return a;
 }
 
@@ -393,7 +397,7 @@ bool to_ref(cell_t *c, cell_t *r, bool s) {
   memcpy(c, r, sizeof(cell_t));
   c->func = func_reduced;
   if(!s) c->type = T_FAIL;
-  if(c->alt) c->alt->n = c->n;
+  //if(c->alt) c->alt->n = c->n;
   return s;
 }
 
@@ -455,6 +459,7 @@ void deref(cell_t *c) {
 	if(c->type == T_PTR)
 	  deref(c->ptr);
 	deref(c->next);
+	deref(c->alt);
       }
       closure_free(c);
     }
@@ -610,11 +615,10 @@ bool func_alt(cell_t *c) {
   bool s = reduce(p);
   uint8_t id = (intptr_t)c->arg[2];
   res.alt_set = p->alt_set | bm(id, c->arg[1] ? 0 : 1);
-  //assert((alt_set & ~0x0000000300000003) == 0);
   if(p->alt) {
     res.alt = closure_alloc(2);
     res.alt->func = func_alt;
-    res.alt->arg[0] = p->alt;
+    res.alt->arg[0] = ref(p->alt);
     res.alt->arg[1] = c->arg[1];
     res.alt->arg[2] = c->arg[2];
   } else if (c->arg[1]) {
@@ -843,11 +847,11 @@ void show_alt(cell_t *c) {
   if(!p) return;
   while(p && !reduce(p)) {
     t = p;
-    p = p->alt;
+    p = ref(p->alt);
     deref(t);
   }
   if(p) {
-    a = p->alt;
+    a = ref(p->alt);
     if(!a) {
       /* one */
       show_list(p);
@@ -858,10 +862,10 @@ void show_alt(cell_t *c) {
       while(a) {
 	if(reduce(a)) {
 	  printf(" |");
-	  t = a->alt;
+	  t = ref(a->alt);
 	  show_list(a);
 	} else { 
-	  t = a->alt;
+	  t = ref(a->alt);
 	  deref(a);
 	}
 	a = t;
@@ -992,8 +996,7 @@ bool func_id(cell_t *c) {
     cell_t *a = closure_split1(c, 0);
     c->func = func_reduced;
     c->alt_set = p->alt_set;
-    c->type = p->type;
-    c->val = p->val;
+    copy_val(c, p);
     c->next = p->next;
     c->alt = a;
     deref(p);
@@ -1438,10 +1441,10 @@ cell_t *word_parse(char *w,
   } else {
     word_entry_t *e = lookup_word(w);
     /* disallow partial matches */
+    if(!e) return NULL;
     if(strnlen(w, sizeof_field(word_entry_t, name)) !=
        strnlen(e->name, sizeof_field(word_entry_t, name)))
       return NULL;
-    if(!e) return NULL;
     c = func(e->func, e->in);
     if(e->func == func_alt)
       c->arg[2] = (cell_t *)(intptr_t)alt_cnt++;
