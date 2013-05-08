@@ -114,8 +114,6 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
   unsigned int nref_noalt = (1 << n) - 1;
   for(i = 0; i < s; i++) {
     if((1<<i) & alt_mask) {
-      //if(c->arg[i]->n > c->arg[i]->alt->n)
-      //  c->arg[i]->alt->n = c->arg[i]->n;
       c->arg[i]->alt->n += nref_alt_alt;
       c->arg[i]->n += nref_alt;
     } else {
@@ -127,26 +125,22 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
 }
 
 cell_t *closure_split1(cell_t *c, int n) {
-  cell_t *a = 0;
-  if(c->arg[n]->alt) {
-    a = copy(c);
-    a->arg[n] = 0;
-    ref_args(a);
-    a->arg[n] = ref(c->arg[n]->alt);
-    a->n = 0;
-  }
-  //c->arg[n] = clear_ptr(c->arg[n]);
+  if(!c->arg[n]->alt) return 0;
+  cell_t *a = copy(c);
+  a->arg[n] = 0;
+  ref_args(a);
+  a->arg[n] = ref(c->arg[n]->alt);
+  a->n = 0;
   return a;
 }
 
 bool reduce(cell_t *c) {
   c = clear_ptr(c);
-  if(c) {
-    assert(is_closure(c) &&
-	   closure_is_ready(c));
-    measure.reduce_cnt++;
-    return c->func(c);
-  } else return false;
+  if(!c) return false;
+  assert(is_closure(c) &&
+	 closure_is_ready(c));
+  measure.reduce_cnt++;
+  return c->func(c);
 }
 
 cell_t *cells_next() {
@@ -397,7 +391,6 @@ bool to_ref(cell_t *c, cell_t *r, bool s) {
   memcpy(c, r, sizeof(cell_t));
   c->func = func_reduced;
   if(!s) c->type = T_FAIL;
-  //if(c->alt) c->alt->n = c->n;
   return s;
 }
 
@@ -507,10 +500,16 @@ bool func_append(cell_t *c) {
 		    c->arg[1]->alt_set);
   res.alt_set = c->arg[0]->alt_set | c->arg[1]->alt_set;
   if(s) {
-    res.ptr = closure_alloc(2);
-    res.ptr->func = func_concat;
-    res.ptr->arg[0] = ref(c->arg[0]->ptr);
-    res.ptr->arg[1] = ref(c->arg[1]->ptr);
+    if(!c->arg[0]->ptr)
+      res.ptr = ref(c->arg[1]->ptr);
+    else if(!c->arg[1]->ptr)
+      res.ptr = ref(c->arg[0]->ptr);
+    else {
+      res.ptr = closure_alloc(2);
+      res.ptr->func = func_concat;
+      res.ptr->arg[0] = ref(c->arg[0]->ptr);
+      res.ptr->arg[1] = ref(c->arg[1]->ptr);
+    }
   }
   deref(c->arg[0]);
   deref(c->arg[1]);
@@ -646,16 +645,17 @@ bool func_concat(cell_t *c) {
   bool s = reduce(p);
   res.alt_set = p->alt_set;
   res.alt = closure_split1(c, 0);
-  if(p->next) {
-    res.next = closure_alloc(2);
-    res.next->func = func_concat;
-    //res.next->n = c->n;
-    res.next->arg[0] = ref(p->next);
-    res.next->arg[1] = c->arg[1];
-  } else {
-    res.next = c->arg[1]; //refn(c->arg[1], c->n);
+  if(s) {
+    if(p->next) {
+      res.next = closure_alloc(2);
+      res.next->func = func_concat;
+      res.next->arg[0] = ref(p->next);
+      res.next->arg[1] = c->arg[1];
+    } else {
+      res.next = c->arg[1];
+    }
+    copy_val(&res, p);
   }
-  copy_val(&res, p);
   deref(p);
   return to_ref(c, &res, s);
 }
@@ -1216,6 +1216,10 @@ void test15() {
   printf("result = \"%s\"\n", x);
 }
 
+void func2(reduce_t *f, int args, int out) {
+  
+}
+
 void test16() {
   //cell_t *d = func(func_alt, 2);
   //arg(d, val(1));
@@ -1285,6 +1289,7 @@ void measure_start() {
 void measure_stop() {
   memcpy(&saved_measure, &measure, sizeof(measure));
   saved_measure.stop = clock();
+  saved_measure.alt_cnt = alt_cnt;
 }
 
 void measure_display() {
@@ -1293,11 +1298,13 @@ void measure_display() {
   printf("time        : %.3e sec\n"
 	 "allocated   : %d bytes\n"
 	 "working set : %d bytes\n"
-	 "reductions  : %d\n",
+	 "reductions  : %d\n"
+	 "alts used   : %d\n",
 	 time,
 	 saved_measure.alloc_cnt * (int)sizeof(cell_t),
 	 saved_measure.max_alloc_cnt * (int)sizeof(cell_t),
-	 saved_measure.reduce_cnt);
+	 saved_measure.reduce_cnt,
+	 saved_measure.alt_cnt);
  
 }
 
