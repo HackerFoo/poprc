@@ -312,19 +312,25 @@ cell_t *func(reduce_t *f, int args) {
   return c;
 }
 
-bool func_add(cell_t *c) {
-  cell_t res = { .type = T_INT };
-  bool s = reduce(c->arg[0]) &&
-    reduce(c->arg[1]);
-  res.alt = closure_split(c, 2);
-  s &= !bm_conflict(c->arg[0]->alt_set,
-		    c->arg[1]->alt_set);
-  res.alt_set = c->arg[0]->alt_set | c->arg[1]->alt_set;
-  res.val = s ? c->arg[0]->val + c->arg[1]->val : 0;
-  deref(c->arg[0]);
-  deref(c->arg[1]);
-  return to_ref(c, &res, s);
+#undef FUNC_OP2
+#define FUNC_OP2(name, __op__)					\
+  bool func_##name(cell_t *c) {					\
+  cell_t res = { .type = T_INT };				\
+  bool s = reduce(c->arg[0]) &&					\
+    reduce(c->arg[1]);						\
+  res.alt = closure_split(c, 2);				\
+  s &= !bm_conflict(c->arg[0]->alt_set,				\
+		    c->arg[1]->alt_set);			\
+  res.alt_set = c->arg[0]->alt_set | c->arg[1]->alt_set;	\
+  res.val = s ? c->arg[0]->val __op__ c->arg[1]->val : 0;	\
+  deref(c->arg[0]);						\
+  deref(c->arg[1]);						\
+  return to_ref(c, &res, s);					\
 }
+
+FUNC_OP2(add, +)
+FUNC_OP2(mul, *)
+FUNC_OP2(sub, -)
 
 int closure_args(cell_t *c) {
   assert(is_closure(c));
@@ -571,7 +577,6 @@ bool func_popr(cell_t *c) {
   };
   bool s = true;
   cell_t *p = c->arg[0];
-  cell_t *next = c->arg[1];
   if(!reduce(p) || !reduce(p->ptr)) {
     s = false;
   } else {
@@ -585,16 +590,15 @@ bool func_popr(cell_t *c) {
     res_next.ptr = ref(p->ptr->next);
     res_next.alt_set = res.alt_set;
   }
-  deref(p);
   res.alt = closure_split1(c, 0);
+  deref(p);
   if(res.alt) {
-    res.alt->arg[1] =
-      ref(res_next.alt = dep(ref(res.alt)));
+    res.alt->next = dep(ref(res.alt));
   }
   /* deref because we are replacing next, should be == c */
-  deref(next->arg[0]);
-  to_ref(next, &res_next, s);
-  deref(next);
+  deref(c->next->arg[0]);
+  to_ref(c->next, &res_next, s);
+  res.next = c->next;
   return to_ref(c, &res, s);
 }
 
@@ -1216,23 +1220,23 @@ void test15() {
   printf("result = \"%s\"\n", x);
 }
 
-void func2(reduce_t *f, int args, int out) {
-  
+cell_t *func2(reduce_t *f, unsigned int args, unsigned int out) {
+  cell_t *c = func(f, args), *p = c;
+  if(out > 1) while(--out) {
+    p->next = dep(ref(c));
+    p = p->next;
+  }
+  return c;
 }
 
 void test16() {
-  //cell_t *d = func(func_alt, 2);
-  //arg(d, val(1));
-  //arg(d, val(2));
-  cell_t *d = val(1);
-  cell_t *a = func(func_popr, 2);
-  cell_t *b = dep(ref(a));
-  arg(a, ref(b)); //***
+  cell_t *d = func(func_alt, 2);
+  arg(d, val(1));
+  arg(d, val(2));
+  //cell_t *d = val(1);
+  cell_t *a = func2(func_popr, 1, 2);
   arg(a, quote(d));
-  cell_t *c = func(func_concat, 2);
-  arg(c, a);
-  arg(c, b);
-  show_eval(c);
+  show_eval(a);
 
   /*
   show_eval(b);
@@ -1415,8 +1419,10 @@ bool is_num(char *str) {
 word_entry_t word_table[] = {
   {"!", func_assert, 1, 1},
   {"'", func_quote, 1, 1},
+  {"*", func_mul, 2, 1},
   {"+", func_add, 2, 1},
   {"++", func_append, 2, 1},
+  {"-", func_sub, 2, 1},
   {".", func_compose, 2, 1},
   {"id", func_id, 1, 1},
   {"popr", func_popr, 1, 2},
@@ -1452,7 +1458,7 @@ cell_t *word_parse(char *w,
     if(strnlen(w, sizeof_field(word_entry_t, name)) !=
        strnlen(e->name, sizeof_field(word_entry_t, name)))
       return NULL;
-    c = func(e->func, e->in);
+    c = func2(e->func, e->in, e->out);
     if(e->func == func_alt)
       c->arg[2] = (cell_t *)(intptr_t)alt_cnt++;
     *in = e->in;
