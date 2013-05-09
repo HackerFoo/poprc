@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-falign-functions=16 -Wall -g
+CFLAGS=-falign-functions=16 -Wall -g $(COPT)
 
 .PHONY: all
 all: rt

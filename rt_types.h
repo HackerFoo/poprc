@@ -16,7 +16,6 @@ typedef struct stack_frame {
 } stack_frame_t;
 
 typedef bool (reduce_t)(cell_t *cell);
-//#define FUNC(x) bool func_##x(cell_t *c)
 struct __attribute__((packed)) cell {
   union {
     reduce_t *func;
@@ -51,9 +50,6 @@ typedef struct parse_tok_t {
   unsigned int out;
 } parse_tok_t;
 
-#define MK_APPEND(fname, field)			\
-  cell_t *fname(cell_t *a, cell_t *b);
-
 typedef enum char_class_t {
   CC_NONE,
   CC_NUMERIC,
@@ -71,8 +67,5 @@ typedef struct measure_t {
 } measure_t;
 
 #define zero(a) bzero((a), sizeof(a))
-
-#define FUNC_OP2(name, __op__)			\
-  bool func_##name(cell_t *c);
 
 #endif

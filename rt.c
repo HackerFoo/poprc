@@ -312,25 +312,24 @@ cell_t *func(reduce_t *f, int args) {
   return c;
 }
 
-#undef FUNC_OP2
-#define FUNC_OP2(name, __op__)					\
-  bool func_##name(cell_t *c) {					\
-  cell_t res = { .type = T_INT };				\
-  bool s = reduce(c->arg[0]) &&					\
-    reduce(c->arg[1]);						\
-  res.alt = closure_split(c, 2);				\
-  s &= !bm_conflict(c->arg[0]->alt_set,				\
-		    c->arg[1]->alt_set);			\
-  res.alt_set = c->arg[0]->alt_set | c->arg[1]->alt_set;	\
-  res.val = s ? c->arg[0]->val __op__ c->arg[1]->val : 0;	\
-  deref(c->arg[0]);						\
-  deref(c->arg[1]);						\
-  return to_ref(c, &res, s);					\
-}
+#define FUNC_OP2(__op__)					\
+  do {								\
+    cell_t res = { .type = T_INT };				\
+    bool s = reduce(c->arg[0]) &&				\
+      reduce(c->arg[1]);					\
+    res.alt = closure_split(c, 2);				\
+    s &= !bm_conflict(c->arg[0]->alt_set,			\
+		      c->arg[1]->alt_set);			\
+    res.alt_set = c->arg[0]->alt_set | c->arg[1]->alt_set;	\
+    res.val = s ? c->arg[0]->val __op__ c->arg[1]->val : 0;	\
+    deref(c->arg[0]);						\
+    deref(c->arg[1]);						\
+    return to_ref(c, &res, s);					\
+  } while(0)
 
-FUNC_OP2(add, +)
-FUNC_OP2(mul, *)
-FUNC_OP2(sub, -)
+bool func_add(cell_t *c) { FUNC_OP2(+); }
+bool func_mul(cell_t *c) { FUNC_OP2(*); }
+bool func_sub(cell_t *c) { FUNC_OP2(-); }
 
 int closure_args(cell_t *c) {
   assert(is_closure(c));
@@ -371,7 +370,7 @@ void arg(cell_t *c, cell_t *a) {
     arg(c->arg[i], a);
     if(closure_is_ready(c->arg[i])) {
       if(i == 0) closure_set_ready(c, true);
-      else --*(intptr_t *)c->arg; // decrement offset
+      else --*(intptr_t *)&c->arg[0]; // decrement offset
     }
   }
 }
@@ -394,6 +393,7 @@ cell_t *ref_args(cell_t *c) {
 bool to_ref(cell_t *c, cell_t *r, bool s) {
   closure_shrink(c, 1);
   r->n = c->n;
+  if(!r->next) r->next = c->next;
   memcpy(c, r, sizeof(cell_t));
   c->func = func_reduced;
   if(!s) c->type = T_FAIL;
@@ -481,6 +481,7 @@ void drop(cell_t *c) {
 }
 
 cell_t *pushl(cell_t *a, cell_t *b) {
+  /*
   if(b == 0) {
     return a;
   }
@@ -495,6 +496,14 @@ cell_t *pushl(cell_t *a, cell_t *b) {
   } else {
     arg(b, a);
     return b;
+  }
+  */
+  if(b && !closure_is_ready(b)) {
+    arg(b, a);
+    return b;
+  } else {
+    a->next = b;
+    return a;
   }
 }
 
@@ -540,9 +549,8 @@ bool func_quote(cell_t *c) {
   return to_ref(c, &res, true);
 }
 
-#undef MK_APPEND
-#define MK_APPEND(fname, field)			\
-  cell_t *fname(cell_t *a, cell_t *b) {		\
+#define APPEND(field)				\
+  do {						\
     if(!a) return b;				\
     if(!b) return a;				\
 						\
@@ -550,11 +558,11 @@ bool func_quote(cell_t *c) {
     while((r = p->field)) p = r;		\
     p->field = b;				\
     return a;					\
-  }
+  } while(0)
 
-MK_APPEND(conc_alt, alt);
+cell_t *conc_alt(cell_t *a, cell_t *b) { APPEND(alt); }
 /* append is destructive to a! */
-MK_APPEND(append, next);
+cell_t *append(cell_t *a, cell_t *b) { APPEND(next); }
 
 cell_t *dep(cell_t *c) {
   cell_t *n = closure_alloc(1);
@@ -571,34 +579,35 @@ bool func_dep(cell_t *c) {
 
 bool func_popr(cell_t *c) {
   cell_t res = { .val = 0 };
-  cell_t res_next = {
+  cell_t res_tail = {
     .type = T_PTR,
     .func = func_reduced
   };
   bool s = true;
-  cell_t *p = c->arg[0];
-  if(!reduce(p) || !reduce(p->ptr)) {
+  cell_t *head = c->arg[0];
+  cell_t *tail = c->arg[1];
+  if(!reduce(head) || !reduce(head->ptr)) {
     s = false;
   } else {
-    res.type = p->ptr->type;
-    res.val = p->ptr->val;
-    res.alt_set = p->alt_set | p->ptr->alt_set;
-    s &= !bm_conflict(p->alt_set,
-		      p->ptr->alt_set);
-    if(p->ptr->alt) //***
-      conc_alt(p, quote(ref(p->ptr->alt)));
-    res_next.ptr = ref(p->ptr->next);
-    res_next.alt_set = res.alt_set;
+    res.type = head->ptr->type;
+    res.val = head->ptr->val;
+    res.alt_set = head->alt_set | head->ptr->alt_set;
+    s &= !bm_conflict(head->alt_set,
+		      head->ptr->alt_set);
+    if(head->ptr->alt) //***
+      conc_alt(head, quote(ref(head->ptr->alt)));
+    res_tail.ptr = ref(head->ptr->next);
+    res_tail.alt_set = res.alt_set;
   }
   res.alt = closure_split1(c, 0);
-  deref(p);
+  deref(head);
   if(res.alt) {
-    res.alt->next = dep(ref(res.alt));
+    res.alt->arg[1] = dep(ref(res.alt));
   }
   /* deref because we are replacing next, should be == c */
-  deref(c->next->arg[0]);
-  to_ref(c->next, &res_next, s);
-  res.next = c->next;
+  deref(tail->arg[0]);
+  to_ref(tail, &res_tail, s);
+  res.arg[1] = tail;
   return to_ref(c, &res, s);
 }
 
@@ -1267,6 +1276,40 @@ void test18() {
   show_eval(quote(b));
 }
 
+cell_t *concat_func(cell_t *c,
+		    unsigned int args,
+		    unsigned int out,
+		    cell_t *l) {
+  cell_t *d;
+  assert(out >= 1);
+  if(out > 1) {
+    while(--out) {
+      d = dep(ref(c));
+      arg(c, d);
+      l = pushl(d, l);
+    }
+  }
+  return pushl(c, l);
+}
+
+cell_t *reverse(cell_t *c) {
+  cell_t *prev = 0, *p = c, *t;
+  while(p) {
+    t = p->next;
+    p->next = prev;
+    prev = p;
+    p = t;
+  }
+  return prev;
+}
+
+void test19() {
+  cell_t *l = 0;
+  l = concat_func(func(func_popr, 2), 1, 2, l);
+  l = pushl(quote(val(1)), l);
+  show_eval(l);
+}
+
 void check_free() {
   int i;
   for(i = 1; i < LENGTH(cells); i++) {
@@ -1282,7 +1325,7 @@ void (*tests[])(void) = {
   test4, test5, test6, test7,
   test8, test9, test10, test11,
   test12, test13, test14, test15,
-  test16, test17, test18
+  test16, test17, test18, test19
 };
 
 void measure_start() {
@@ -1458,7 +1501,7 @@ cell_t *word_parse(char *w,
     if(strnlen(w, sizeof_field(word_entry_t, name)) !=
        strnlen(e->name, sizeof_field(word_entry_t, name)))
       return NULL;
-    c = func2(e->func, e->in, e->out);
+    c = func(e->func, e->in + e->out - 1);
     if(e->func == func_alt)
       c->arg[2] = (cell_t *)(intptr_t)alt_cnt++;
     *in = e->in;
@@ -1515,10 +1558,11 @@ bool parse_word(char *str, char **p, cell_t **r) {
   if(!tok || strcmp(tok, "[") == 0) return false;
   if(strcmp(tok, "]") == 0) {
     c = quote(build(str, p));
+    *r = pushl(c, *r);
   } else {
     c = word_parse(tok, &in, &out);
+    if(c) *r = concat_func(c, in, out, *r);
   }
-  if(c) *r = pushl(c, *r);
   return true;
 }
 
