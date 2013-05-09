@@ -393,7 +393,7 @@ cell_t *ref_args(cell_t *c) {
 bool to_ref(cell_t *c, cell_t *r, bool s) {
   closure_shrink(c, 1);
   r->n = c->n;
-  if(!r->next) r->next = c->next;
+  //if(!r->next) r->next = c->next;
   memcpy(c, r, sizeof(cell_t));
   c->func = func_reduced;
   if(!s) c->type = T_FAIL;
@@ -481,7 +481,7 @@ void drop(cell_t *c) {
 }
 
 cell_t *pushl(cell_t *a, cell_t *b) {
-  /*
+
   if(b == 0) {
     return a;
   }
@@ -496,14 +496,6 @@ cell_t *pushl(cell_t *a, cell_t *b) {
   } else {
     arg(b, a);
     return b;
-  }
-  */
-  if(b && !closure_is_ready(b)) {
-    arg(b, a);
-    return b;
-  } else {
-    a->next = b;
-    return a;
   }
 }
 
@@ -603,11 +595,14 @@ bool func_popr(cell_t *c) {
   deref(head);
   if(res.alt) {
     res.alt->arg[1] = dep(ref(res.alt));
+    res_tail.alt = ref(res.alt->arg[1]);
+    //*** res_tail.alt->alt_set = res.alt->alt_set;
   }
   /* deref because we are replacing next, should be == c */
   deref(tail->arg[0]);
   to_ref(tail, &res_tail, s);
   res.arg[1] = tail;
+  deref(tail);
   return to_ref(c, &res, s);
 }
 

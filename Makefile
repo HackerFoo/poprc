@@ -1,8 +1,10 @@
 CC=gcc
 CFLAGS=-falign-functions=16 -Wall -g $(COPT)
-
 .PHONY: all
 all: rt
+
+makeheaders/makeheaders: makeheaders/makeheaders.c
+	$(CC) -O -w makeheaders/makeheaders.c -o makeheaders/makeheaders
 
 obj/rt.o: rt.c rt.h rt_types.h
 	mkdir -p obj
@@ -15,9 +17,9 @@ obj/linenoise.o: linenoise/linenoise.c linenoise/linenoise.c
 rt: obj/rt.o obj/linenoise.o
 	$(CC) $(CFLAGS) obj/rt.o obj/linenoise.o -o rt
 
-rt.h: rt.c
-	makeheaders rt.c
+rt.h: rt.c makeheaders/makeheaders
+	./makeheaders/makeheaders rt.c
 
 .PHONY: clean
 clean:
-	rm -rf obj rt.h rt
+	rm -rf obj rt.h rt makeheaders/makeheaders
