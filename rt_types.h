@@ -21,16 +21,16 @@ struct __attribute__((packed)) cell {
     reduce_t *func;
     cell_t *prev;
   };
-  cell_t *next;
   cell_t *alt;
   uint32_t n;
   union {
     /* unevaluated */
-    cell_t *arg[3];
+    cell_t *arg[4];
     /* reduced */
     struct {
       intptr_t alt_set;
       intptr_t type;
+      cell_t *next;
       union {
 	intptr_t val;
 	cell_t *ptr;
