@@ -615,7 +615,6 @@ bool func_popr(cell_t *c) {
   if(res.alt) {
     res.alt->arg[1] = dep(ref(res.alt));
     res_tail.alt = ref(res.alt->arg[1]);
-    //*** res_tail.alt->alt_set = res.alt->alt_set;
   }
   /* deref because we are replacing next, should be == c */
   deref(tail->arg[0]);
@@ -668,7 +667,7 @@ void copy_val(cell_t *dest, cell_t *src) {
 
 bool func_concat(cell_t *c) {
   cell_t res = { .val = 0 };
-  cell_t *p = c->arg[0];
+  cell_t *p = c->arg[0], *q = c->arg[1];
   bool s = reduce(p);
   res.alt_set = (intptr_t)c->arg[2];
   s &= !bm_conflict(res.alt_set,
@@ -676,14 +675,25 @@ bool func_concat(cell_t *c) {
   res.alt_set |= p->alt_set;
   res.alt = closure_split1(c, 0);
   if(s) {
-    if(p->next) {
-      res.next = closure_alloc(2);
+    if(has_next(p)) {
+      res.next = closure_alloc(3);
       res.next->func = func_concat;
       res.next->arg[0] = ref(p->next);
       res.next->arg[1] = c->arg[1];
       res.next->arg[2] = (cell_t *)res.alt_set;
     } else {
-      res.next = c->arg[1];
+      if(!closure_is_ready(q)) {
+	arg(p, q);
+	if(has_next(q)) {
+	  res.next = closure_alloc(2);
+	  res.next->func = func_concat;
+	  res.next->arg[0] = ref(p);
+	  res.next->arg[1] = ref(q->next);
+	  res.next->arg[2] = (cell_t *)res.alt_set;
+	}
+      } else {
+	res.next = q;
+      }
     }
     copy_val(&res, p);
   }
@@ -709,6 +719,7 @@ cell_t *compose(cell_t *a, cell_t *b) {
   if(!a) return b;
   if(!b) return a;
   assert(is_closure(a) && is_closure(b));
+
   cell_t *p = a;
   cell_t *f = last(b);
   while(p && !closure_is_ready(f)) {
@@ -717,10 +728,30 @@ cell_t *compose(cell_t *a, cell_t *b) {
   }
   if(p) f->next = p;
   return b;
+  /*
+  cell_t *c = closure_alloc(3);
+  c->func = func_concat;
+  c->arg[0] = b;
+  c->arg[1] = a;
+  c->arg[2] = 0;
+  return c;
+  */
 }
 
 bool func_compose(cell_t *c) {
-  c->ptr = compose(c->arg[0], c->arg[1]);
+  cell_t res = { .val = 0 };
+  bool s = reduce(c->arg[0]) &&
+    reduce(c->arg[1]);
+  res.alt = closure_split(c, 2);
+  s &= !bm_conflict(c->arg[0]->alt_set,
+		    c->arg[1]->alt_set);
+  res.alt_set = c->arg[0]->alt_set |
+    c->arg[1]->alt_set;
+  
+  (void)res;
+
+  // ???
+
   return true;
 }
 
