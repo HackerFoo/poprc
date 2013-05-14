@@ -23,14 +23,14 @@ struct __attribute__((packed)) cell {
   };
   cell_t *alt;
   uint32_t n;
+  cell_t *next;
   union {
     /* unevaluated */
-    cell_t *arg[4];
+    cell_t *arg[3];
     /* reduced */
     struct {
       intptr_t alt_set;
       intptr_t type;
-      cell_t *next;
       union {
 	intptr_t val;
 	cell_t *ptr;

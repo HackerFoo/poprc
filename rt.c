@@ -610,17 +610,17 @@ bool func_popr(cell_t *c) {
   }
   res_tail.next = c;
   res.next = c->next;
-  res.alt = closure_split1(c, 0);
-  deref(head);
-  if(res.alt) {
-    res.alt->arg[1] = dep(ref(res.alt));
-    res_tail.alt = ref(res.alt->arg[1]);
+  if(head->alt) {
+    cell_t *alt;
+    alt = closure_alloc(2);
+    alt->func = func_popr;
+    alt->arg[0] = ref(head->alt);
+    alt->arg[1] = dep(alt);
+    res_tail.alt = ref(alt->arg[1]);
   }
-  /* deref because we are replacing next, should be == c */
-  deref(tail->arg[0]);
-  to_ref(tail, &res_tail, s);
-  //res_tail.arg[1] = tail;
+  deref(head);
   deref(tail);
+  to_ref(tail, &res_tail, s);
   return to_ref(c, &res, s);
 }
 
@@ -706,7 +706,7 @@ bool is_dep(cell_t *c) {
 }
 
 bool has_next(cell_t *c) {
-  return c && (is_dep(c) || is_reduced(c)) && c->next;
+  return c->next; //c && (is_dep(c) || is_reduced(c)) && c->next;
 }
 
 cell_t *last(cell_t *c) {
@@ -715,6 +715,7 @@ cell_t *last(cell_t *c) {
   return p;
 }
 
+/* TODO: needs rewritten */
 cell_t *compose(cell_t *a, cell_t *b) {
   if(!a) return b;
   if(!b) return a;
