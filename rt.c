@@ -395,7 +395,7 @@ cell_t *ref_args(cell_t *c) {
 bool to_ref(cell_t *c, cell_t *r, bool s) {
   closure_shrink(c, 1);
   r->n = c->n;
-  if(!r->next) r->next = c->next;
+  //if(!r->next) r->next = c->next;
   memcpy(c, r, sizeof(cell_t));
   c->func = func_reduced;
   if(!s) c->type = T_FAIL;
@@ -545,7 +545,7 @@ bool func_pushr(cell_t *c) {
   cell_t res = { .type = T_PTR };
   cell_t *p = c->arg[0];
   bool s = reduce(p);
-  res.alt = closure_split1(c, 1);
+  res.alt = closure_split1(c, 0);
   res.alt_set = p->alt_set;
   if(p->ptr) p->ptr->next = 0;
   //res.next = c->arg[1]->next;
@@ -608,18 +608,18 @@ bool func_popr(cell_t *c) {
       conc_alt(head, quote(ref(head->ptr->alt)));
     res.ptr = ref(head->ptr->next);
   }
-  res_tail.next = c;
-  res.next = c->next;
   if(head->alt) {
     cell_t *alt;
     alt = closure_alloc(2);
     alt->func = func_popr;
     alt->arg[0] = ref(head->alt);
     alt->arg[1] = dep(alt);
+    res.alt = ref(alt);
     res_tail.alt = ref(alt->arg[1]);
   }
   deref(head);
   deref(tail);
+  deref(c); /* dump ref from tail to c */
   to_ref(tail, &res_tail, s);
   return to_ref(c, &res, s);
 }
@@ -681,19 +681,12 @@ bool func_concat(cell_t *c) {
       res.next->arg[0] = ref(p->next);
       res.next->arg[1] = c->arg[1];
       res.next->arg[2] = (cell_t *)res.alt_set;
-    } else {
-      if(!closure_is_ready(q)) {
-	arg(p, q);
-	if(has_next(q)) {
-	  res.next = closure_alloc(2);
-	  res.next->func = func_concat;
-	  res.next->arg[0] = ref(p);
-	  res.next->arg[1] = ref(q->next);
-	  res.next->arg[2] = (cell_t *)res.alt_set;
-	}
-      } else {
-	res.next = q;
-      }
+    } else if(q) {
+      res.next = closure_alloc(3);
+      res.next->func = func_concat;
+      res.next->arg[0] = q;
+      res.next->arg[1] = 0;
+      res.next->arg[2] = (cell_t *)res.alt_set;      
     }
     copy_val(&res, p);
   }
@@ -715,30 +708,32 @@ cell_t *last(cell_t *c) {
   return p;
 }
 
-/* TODO: needs rewritten */
+cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
+  cell_t *c = b;
+  while(--n) {
+    cell_t *d = dep(ref(a));
+    c = compose(d, c);
+    arg(a, ref(d));
+  }
+  return compose(a, c);
+}
+
 cell_t *compose(cell_t *a, cell_t *b) {
   if(!a) return b;
   if(!b) return a;
   assert(is_closure(a) && is_closure(b));
 
-  cell_t *p = a;
-  cell_t *f = last(b);
-  while(p && !closure_is_ready(f)) {
-    arg(f, p);
-    p = p->next;
-  }
-  if(p) f->next = p;
-  return b;
-  /*
-  cell_t *c = closure_alloc(3);
-  c->func = func_concat;
-  c->arg[0] = b;
-  c->arg[1] = a;
-  c->arg[2] = 0;
+  cell_t *c;
+  if(closure_is_ready(b)) {
+    c = func(func_concat, 2);
+    arg(c, b);
+  } else c = b;
+
+  arg(c, a);
   return c;
-  */
 }
 
+/*
 bool func_compose(cell_t *c) {
   cell_t res = { .val = 0 };
   bool s = reduce(c->arg[0]) &&
@@ -755,6 +750,7 @@ bool func_compose(cell_t *c) {
 
   return true;
 }
+*/
 
 bool func_assert(cell_t *c) {
   bool s = reduce(c->arg[0]);
@@ -1310,7 +1306,7 @@ cell_t *func2(reduce_t *f, unsigned int args, unsigned int out) {
   cell_t *c, *p, *n = func(f, args + out - 1);
   if(out > 1) {
     --out;
-    c = p = dep(ref(n));
+    c = p = dep(n);
     arg(n, ref(p));
     while(--out) {
       p->next = dep(ref(n));
@@ -1537,7 +1533,7 @@ word_entry_t word_table[] = {
   {"+", func_add, 2, 1},
   {"++", func_append, 2, 1},
   {"-", func_sub, 2, 1},
-  {".", func_compose, 2, 1},
+  //  {".", func_compose, 2, 1},
   {"id", func_id, 1, 1},
   {"popr", func_popr, 1, 2},
   {"pushl", func_pushl, 2, 1},
@@ -1573,7 +1569,7 @@ cell_t *word_parse(char *w,
     if(strnlen(w, sizeof_field(word_entry_t, name)) !=
        strnlen(e->name, sizeof_field(word_entry_t, name)))
       return NULL;
-    c = func2(e->func, e->in, e->out);
+    c = func(e->func, e->in + e->out - 1);
     if(e->func == func_alt)
       c->arg[2] = (cell_t *)(intptr_t)alt_cnt++;
     *in = e->in;
@@ -1633,7 +1629,7 @@ bool parse_word(char *str, char **p, cell_t **r) {
     *r = compose(c, *r);
   } else {
     c = word_parse(tok, &in, &out);
-    *r = compose(c, *r);
+    *r = compose_expand(c, out, *r);
   }
   return true;
 }
