@@ -125,12 +125,13 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
 }
 
 cell_t *closure_split1(cell_t *c, int n) {
-  if(!c->arg[n]->alt) return 0;
+  if(!c->arg[n]->alt) return c->alt;
   cell_t *a = copy(c);
   a->arg[n] = 0;
   ref_args(a);
   a->arg[n] = ref(c->arg[n]->alt);
   a->n = 0;
+  a->alt = c->alt;
   return a;
 }
 
@@ -536,21 +537,23 @@ bool func_pushl(cell_t *c) {
   bool s = reduce(p);
   res.alt = closure_split1(c, 1);
   res.alt_set = p->alt_set;
-  res.ptr = s ? compose(c->arg[0], ref(p->ptr)) : NULL;
+  res.ptr = s ? compose(c->arg[0], ref(p->ptr), res.alt_set) : NULL;
+  /* TODO: need to enforce alt_set when p->ptr == 0 */
   deref(p);
   return to_ref(c, &res, s);
 }
 
 bool func_pushr(cell_t *c) {
   cell_t res = { .type = T_PTR };
+  bool s = reduce(c->arg[0]) && reduce(c->arg[1]);
+  res.alt = closure_split(c, 2);
   cell_t *p = c->arg[0];
-  bool s = reduce(p);
-  res.alt = closure_split1(c, 0);
-  res.alt_set = p->alt_set;
-  if(p->ptr) p->ptr->next = 0;
-  //res.next = c->arg[1]->next;
-  c->arg[1]->next = 0;
-  res.ptr = s ? compose(ref(p->ptr), c->arg[1]) : NULL;
+  cell_t *q = c->arg[1];
+  s &= !bm_conflict(p->alt_set, q->alt_set);
+  res.alt_set = p->alt_set | q->alt_set;
+  if(s) {
+    res.ptr = compose(ref(p->ptr), q, res.alt_set);
+  } else deref(q);
   deref(p);
   return to_ref(c, &res, s);
 }
@@ -605,8 +608,9 @@ bool func_popr(cell_t *c) {
     s &= !bm_conflict(head->alt_set,
 		      head->ptr->alt_set);
     if(head->ptr->alt) //***
-      conc_alt(head, quote(ref(head->ptr->alt)));
-    res.ptr = ref(head->ptr->next);
+      head->alt = conc_alt(quote(ref(head->ptr->alt)),
+			   head->alt);
+    if(s) res.ptr = ref(head->ptr->next);
   }
   if(head->alt) {
     cell_t *alt;
@@ -712,13 +716,13 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
   cell_t *c = b;
   while(--n) {
     cell_t *d = dep(ref(a));
-    c = compose(d, c);
+    c = compose(d, c, 0);
     arg(a, ref(d));
   }
-  return compose(a, c);
+  return compose(a, c, 0);
 }
 
-cell_t *compose(cell_t *a, cell_t *b) {
+cell_t *compose(cell_t *a, cell_t *b, intptr_t as) {
   if(!a) return b;
   if(!b) return a;
   assert(is_closure(a) && is_closure(b));
@@ -726,6 +730,7 @@ cell_t *compose(cell_t *a, cell_t *b) {
   cell_t *c;
   if(closure_is_ready(b)) {
     c = func(func_concat, 2);
+    c->arg[2] = (cell_t *)as;
     arg(c, b);
   } else c = b;
 
@@ -908,9 +913,13 @@ void show_eval(cell_t *c) {
 
 void show_one(cell_t *c) {
   if(c->type == T_PTR) {
+    if(c->ptr) {
     printf(" [");
-    show_alt(reduce_alt(ref(c->ptr)));
+    if(closure_is_ready(c->ptr)) {
+      show_alt(reduce_alt(ref(c->ptr)));
+    } else printf(" ...");
     printf(" ]");
+    } else printf(" []");
   } else {
     printf(" %d", (int)c->val);
   }
@@ -932,11 +941,11 @@ cell_t *reduce_alt(cell_t *c) {
   cell_t *r, *t, *p = c, *q;
   /* skip initial failures */
   while(p && !reduce_list(p)) p = p->alt;
-  if(!p) return 0;
   /* store first success */
   r = q = ref(p);
   /* deref initial failures */
   deref(c);
+  if(!p) return 0;
   /* append remaining successes */
   p = p->alt;
   while(true) {
@@ -1397,7 +1406,7 @@ cell_t *reverse(cell_t *c) {
 void test19() {
   cell_t *l = 0;
   l = func2(func_popr, 1, 2);
-  l = compose(quote(val(1)), l);
+  l = compose(quote(val(1)), l, 0);
   //l = compose(val(2), l);
   show_eval(l);
 }
@@ -1651,10 +1660,10 @@ bool parse_word(char *str, char **p, cell_t **r) {
   if(!tok || strcmp(tok, "[") == 0) return false;
   if(strcmp(tok, "]") == 0) {
     c = quote(build(str, p));
-    *r = compose(c, *r);
+    *r = compose(c, *r, 0);
   } else {
     c = word_parse(tok, &in, &out);
-    *r = compose_expand(c, out, *r);
+    if(c) *r = compose_expand(c, out, *r);
   }
   return true;
 }
