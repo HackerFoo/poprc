@@ -668,29 +668,29 @@ void copy_val(cell_t *dest, cell_t *src) {
 bool func_concat(cell_t *c) {
   cell_t res = { .val = 0 };
   cell_t *p = c->arg[0], *q = c->arg[1];
-  bool s = reduce(p);
+  bool s = reduce(q);
   res.alt_set = (intptr_t)c->arg[2];
   s &= !bm_conflict(res.alt_set,
-		    p->alt_set);
-  res.alt_set |= p->alt_set;
-  res.alt = closure_split1(c, 0);
+		    q->alt_set);
+  res.alt_set |= q->alt_set;
+  res.alt = closure_split1(c, 1);
   if(s) {
-    if(has_next(p)) {
+    if(has_next(q)) {
       res.next = closure_alloc(3);
       res.next->func = func_concat;
-      res.next->arg[0] = ref(p->next);
-      res.next->arg[1] = c->arg[1];
+      res.next->arg[0] = p;
+      res.next->arg[1] = ref(q->next);
       res.next->arg[2] = (cell_t *)res.alt_set;
-    } else if(q) {
+    } else if(p) {
       res.next = closure_alloc(3);
       res.next->func = func_concat;
-      res.next->arg[0] = q;
-      res.next->arg[1] = 0;
+      res.next->arg[0] = 0;
+      res.next->arg[1] = p;
       res.next->arg[2] = (cell_t *)res.alt_set;      
     }
-    copy_val(&res, p);
-  }
-  deref(p);
+    copy_val(&res, q);
+  } else deref(p);
+  deref(q);
   return to_ref(c, &res, s);
 }
 
@@ -849,7 +849,7 @@ void print_list(cell_t *c) {
 
 void print_sexpr_help(cell_t *r) {
   if(!is_closure(r)) {
-    printf(" ?");
+    printf(" 0x%.16x", (int)(intptr_t)r);
   } else if(is_reduced(r)) {
     if(r->type == T_INT) {
       printf(" %d", (int)r->val);
@@ -860,6 +860,8 @@ void print_sexpr_help(cell_t *r) {
     } else if(r->type == T_FAIL) {
       printf(" (FAIL)");
     }
+  } else if(r->func == func_dep) {
+    printf(" (dep)");
   } else {
 
     intptr_t f = ((intptr_t)r->func) & ~1;
@@ -872,6 +874,8 @@ void print_sexpr_help(cell_t *r) {
     CASE(add);
     CASE(pushl);
     CASE(popr);
+    CASE(pushr);
+    CASE(concat);
     CASE(assert);
     CASE(alt);
     CASE(quote);
@@ -896,22 +900,16 @@ void print_sexpr(cell_t *r) {
   printf("\n");
 }
 
-void reduce_all(cell_t *c) {
-  reduce(c);
-  if(c->next) reduce_all(c->next);
-  if(c->alt) reduce_all(c->alt);
-}
-
 void show_eval(cell_t *c) {
   printf("[");
-  show_alt(c);
+  show_alt(reduce_alt(c));
   printf(" ]\n");
 }
 
 void show_one(cell_t *c) {
   if(c->type == T_PTR) {
     printf(" [");
-    show_alt(ref(c->ptr));
+    show_alt(reduce_alt(ref(c->ptr)));
     printf(" ]");
   } else {
     printf(" %d", (int)c->val);
@@ -919,41 +917,68 @@ void show_one(cell_t *c) {
   deref(c);
 }
 
-void show_list(cell_t *c) {
-  cell_t *n = ref(c->next);
-  show_one(c);
-  if(n) show_alt(n);
+bool reduce_list(cell_t *c) {
+  return reduce(c) &&
+    (!c->next || (c->next = reduce_alt(c->next)));
 }
 
-void show_alt(cell_t *c) {
-  cell_t *p = c, *t, *a;
+void show_list(cell_t *c) {
+  cell_t *n = ref(c->next);
+  if(n) show_alt(n);
+  show_one(c);
+}
+
+cell_t *reduce_alt(cell_t *c) {
+  cell_t *r, *t, *p = c, *q;
   /* skip initial failures */
-  if(!p) return;
-  while(p && !reduce(p)) {
+  while(p && !reduce_list(p)) p = p->alt;
+  if(!p) return 0;
+  /* store first success */
+  r = q = ref(p);
+  /* deref initial failures */
+  deref(c);
+  /* append remaining successes */
+  p = p->alt;
+  while(true) {
+    while(p && reduce_list(p)) {
+      q = p;
+      p = p->alt;
+    }
+    /* q points to last success, p to first failure */
+    if(!p) break;
     t = p;
-    p = ref(p->alt);
+    while(p && !reduce_list(p)) {
+      p = p->alt;
+    }
+    /* p points to next success */
+    q->alt = ref(p);
+    q = q->alt;
     deref(t);
   }
+  return r;
+}
+    
+void show_alt(cell_t *c) {
+  cell_t *p = c, *t;
+
+  if(!p) return;
+  //p = reduce_alt(p);
   if(p) {
-    a = ref(p->alt);
-    if(!a) {
+    if(!p->alt) {
       /* one */
       show_list(p);
     } else {
       /* many */
       printf(" {");
+      t = ref(p->alt);
       show_list(p);
-      while(a) {
-	if(reduce(a)) {
-	  printf(" |");
-	  t = ref(a->alt);
-	  show_list(a);
-	} else {
-	  t = ref(a->alt);
-	  deref(a);
-	}
-	a = t;
-      }
+      p = t;
+      do {
+	printf(" |");
+	t = ref(p->alt);
+	show_list(p);
+	p = t;
+      } while(p);
       printf(" }");
     }
   } else {
