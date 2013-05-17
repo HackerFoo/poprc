@@ -723,8 +723,17 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
 }
 
 cell_t *compose(cell_t *a, cell_t *b, intptr_t as) {
-  if(!a) return b;
+  if(!a) {
+    if(!as) return b;
+    cell_t *c = closure_alloc(3);
+    c->func = func_concat;
+    c->arg[2] = (cell_t *)as;
+    c->arg[1] = b;
+    c->arg[0] = 0;
+    return c;
+  }
   if(!b) return a;
+
   assert(is_closure(a) && is_closure(b));
 
   cell_t *c;
@@ -869,28 +878,10 @@ void print_sexpr_help(cell_t *r) {
     printf(" (dep)");
   } else {
 
-    intptr_t f = ((intptr_t)r->func) & ~1;
-    char *n;
     int i;
     int args = closure_args(r);
 
-# define CASE(x) if(f == (intptr_t)func_##x) n = #x
-
-    CASE(add);
-    CASE(pushl);
-    CASE(popr);
-    CASE(pushr);
-    CASE(concat);
-    CASE(assert);
-    CASE(alt);
-    CASE(quote);
-    CASE(append);
-    CASE(id);
-    CASE(dep);
-
-# undef CASE
-
-    printf(" (%s", n);
+    printf(" (%s", function_name(r->func));
 
     for(i = 0; i < args; i++) {
       print_sexpr_help(r->arg[i]);
@@ -908,7 +899,109 @@ void print_sexpr(cell_t *r) {
 void show_eval(cell_t *c) {
   printf("[");
   show_alt(reduce_alt(c));
+  deref(c);
   printf(" ]\n");
+}
+
+char *function_name(reduce_t *f) {
+  f = clear_ptr(f);
+# define CASE(n) if(f == func_##n) return #n
+  CASE(add);
+  CASE(sub);
+  CASE(mul);
+  CASE(reduced);
+  CASE(append);
+  CASE(pushl);
+  CASE(pushr);
+  CASE(quote);
+  CASE(dep);
+  CASE(popr);
+  CASE(alt);
+  CASE(concat);
+  CASE(assert);
+  CASE(id);
+  CASE(collect);
+  return "?";
+# undef CASE
+}
+
+void make_graph(char *path, cell_t *c) {
+  FILE *f = fopen(path, "w");
+  fprintf(f, "digraph g {\n"
+	     "graph [\n"
+	     "rankdir = \"LR\"\n"
+	     "];\n");
+  graph_cell(f, c);
+  fprintf(f, "}\n");
+  fclose(f);
+}
+
+void graph_cell(FILE *f, cell_t *c) {
+  if(!is_closure(c)) return;
+  int n = closure_args(c);
+  /* functions with extra args */
+  if(c->func == func_alt ||
+     c->func == func_concat) n++;
+  int i;
+  long unsigned int node = c - cells;
+
+  /* print node attributes */
+  fprintf(f, "node%ld [\nlabel = \"", node);
+  fprintf(f, "<top> %ld ", node);
+  fprintf(f, "| func: %s%s "
+	     "| <alt> alt: %p "
+	     "| n: %d ",
+	  function_name(c->func),
+	  closure_is_ready(c) ? "" : "*",
+	  c->alt,
+	  c->n);
+  if(is_reduced(c)) {
+    fprintf(f, "| alt_set: %.16lx "
+	       "| type: %d "
+	       "| <next> next: %p ",
+	    c->alt_set,
+	    (int)c->type,
+	    c->next);
+    if(c->type == T_PTR) {
+      fprintf(f, "| <ptr> ptr: %p ", c->ptr);
+    } else {
+      fprintf(f, "| val: %ld ", c->val);
+    }
+  } else {
+    for(i = 0; i < n; i++) {
+      fprintf(f, "| <arg%d> %p ", i, c->arg[i]);
+    }
+  }
+  fprintf(f, "\"\nshape = \"record\"\n];\n");
+
+  /* print edges */
+  if(c->alt) {
+    cell_t *alt = clear_ptr(c->alt);
+    fprintf(f, "node%ld:alt -> node%ld:top;\n",
+	    node, alt - cells);
+    graph_cell(f, c->alt);
+  }
+  if(is_reduced(c)) {
+    if(c->next) {
+      fprintf(f, "node%ld:next -> node%ld:top;\n",
+	      node, c->next - cells);
+      graph_cell(f, c->next);
+    }
+    if(c->type == T_PTR && c->ptr) {
+      fprintf(f, "node%ld:ptr -> node%ld:top;\n",
+	      node, c->ptr - cells);
+      graph_cell(f, c->ptr);
+    }
+  } else {
+    for(i = 0; i < n; i++) {
+      cell_t *arg = clear_ptr(c->arg[i]);
+      if(is_closure(arg)) {
+	fprintf(f, "node%ld:arg%d -> node%ld:top;\n",
+		c - cells, i, arg - cells);
+	if(!is_dep(c)) graph_cell(f, arg);
+      }
+    }
+  }
 }
 
 void show_one(cell_t *c) {
@@ -916,14 +1009,17 @@ void show_one(cell_t *c) {
     if(c->ptr) {
     printf(" [");
     if(closure_is_ready(c->ptr)) {
-      show_alt(reduce_alt(ref(c->ptr)));
+      show_alt(reduce_alt(c->ptr));
     } else printf(" ...");
     printf(" ]");
     } else printf(" []");
   } else {
     printf(" %d", (int)c->val);
   }
-  deref(c);
+  /*
+  printf("__%.2x", (unsigned int)((c->alt_set & 0x0f) |
+				  (c->alt_set >> 28)));
+  */
 }
 
 bool reduce_list(cell_t *c) {
@@ -932,7 +1028,7 @@ bool reduce_list(cell_t *c) {
 }
 
 void show_list(cell_t *c) {
-  cell_t *n = ref(c->next);
+  cell_t *n = c->next;
   if(n) show_alt(n);
   show_one(c);
 }
@@ -979,12 +1075,12 @@ void show_alt(cell_t *c) {
     } else {
       /* many */
       printf(" {");
-      t = ref(p->alt);
+      t = p->alt;
       show_list(p);
       p = t;
       do {
 	printf(" |");
-	t = ref(p->alt);
+	t = p->alt;
 	show_list(p);
 	p = t;
       } while(p);
@@ -1488,6 +1584,9 @@ int main(int argc, char *argv[]) {
 }
 
 #define HISTORY_FILE ".pegc_history"
+#define GRAPH_FILE "cells.dot"
+#define REDUCED_GRAPH_FILE "reduced.dot"
+bool write_graph = false;
 void run_eval() {
   char *line;
   linenoiseSetCompletionCallback(completion);
@@ -1499,6 +1598,9 @@ void run_eval() {
     }
     if(strcmp(line, ":m") == 0) {
       measure_display();
+    } else if(strcmp(line, ":g") == 0) {
+      write_graph = !write_graph;
+      printf("graph %s\n", write_graph ? "ON" : "OFF");
     } else {
       linenoiseHistoryAdd(line);
       linenoiseHistorySave(HISTORY_FILE);
@@ -1684,6 +1786,9 @@ void eval(char *str, int n) {
     p++;
   }
   cell_t *c = build(str, &p);
+  if(write_graph) make_graph(GRAPH_FILE, c);
+  c = reduce_alt(c);
+  if(write_graph) make_graph(REDUCED_GRAPH_FILE, c);
   if(!c) return;
   if(!closure_is_ready(c))
     printf("incomplete expression\n");
