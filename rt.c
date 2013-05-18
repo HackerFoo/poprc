@@ -602,9 +602,11 @@ bool func_popr(cell_t *c) {
       head->alt_set | head->ptr->alt_set;
     s &= !bm_conflict(head->alt_set,
 		      head->ptr->alt_set);
-    if(head->ptr->alt) //***
-      head->alt = conc_alt(quote(ref(head->ptr->alt)),
-			   head->alt);
+    if(head->ptr->alt) { //***
+      cell_t *q = quote(ref(head->ptr->alt));
+      head->alt = conc_alt(q, head->alt);
+      q->alt_set = head->alt_set;
+    }
     if(s) res.ptr = ref(head->ptr->next);
   }
   if(head->alt) {
@@ -671,7 +673,7 @@ bool func_concat(cell_t *c) {
   res.alt_set = (intptr_t)c->arg[2];
   s &= !bm_conflict(res.alt_set,
 		    q->alt_set);
-  res.alt_set = q->alt_set;
+  res.alt_set |= q->alt_set;
   res.alt = closure_split1(c, 1);
   if(s) {
     if(has_next(q)) {
@@ -681,11 +683,15 @@ bool func_concat(cell_t *c) {
       res.next->arg[1] = ref(q->next);
       res.next->arg[2] = (cell_t *)res.alt_set;
     } else if(p) {
-      res.next = closure_alloc(3);
-      res.next->func = func_concat;
-      res.next->arg[0] = 0;
-      res.next->arg[1] = p;
-      res.next->arg[2] = (cell_t *)res.alt_set;      
+      if(res.alt_set) {
+	res.next = closure_alloc(3);
+	res.next->func = func_concat;
+	res.next->arg[0] = 0;
+	res.next->arg[1] = p;
+	res.next->arg[2] = (cell_t *)res.alt_set;
+      } else {
+	res.next = p;
+      }
     }
     copy_val(&res, q);
   } else deref(p);
@@ -778,17 +784,21 @@ intptr_t bm(int k, int v) {
     (((intptr_t)v & 1) << k);
 }
 
-intptr_t bm_intersect(intptr_t a, intptr_t b) {
+uintptr_t bm_intersect(uintptr_t a, uintptr_t b) {
   return a & b;
 }
   
-intptr_t bm_union(intptr_t a, intptr_t b) {
+uintptr_t bm_union(uintptr_t a, uintptr_t b) {
   return a | b;
 }
   
-intptr_t bm_conflict(intptr_t a, intptr_t b) {
+uintptr_t bm_conflict(uintptr_t a, uintptr_t b) {
   return ((a & b) >> BM_SIZE) &
     ((a ^ b) & (((intptr_t)1<<BM_SIZE)-1));
+}
+
+uintptr_t bm_overlap(uintptr_t a, uintptr_t b) {
+  return a | (b & (a >> BM_SIZE));
 }
 
 void alloc_test() {
@@ -982,15 +992,15 @@ void graph_cell(FILE *f, cell_t *c) {
 	  function_name(c->func),
 	  closure_is_ready(c) ? "" : "*",
 	  c->n);
-  fprintf(f, "<tr><td port=\"alt\">alt: %p</td></tr>",
+  fprintf(f, "<tr><td port=\"alt\">alt: <font color=\"lightgray\">%p</font></td></tr>",
              c->alt);
   if(is_reduced(c)) {
-    fprintf(f, "<tr><td>alt_set: %s</td></tr>"
-	       "<tr><td port=\"next\">next: %p</td></tr>",
+    fprintf(f, "<tr><td>alt_set: X%s</td></tr>"
+	       "<tr><td port=\"next\">next: <font color=\"lightgray\">%p</font></td></tr>",
 	    show_alt_set(c->alt_set),
 	    c->next);
     if(c->type == T_PTR) {
-      fprintf(f, "<tr><td port=\"ptr\">ptr: %p</td></tr>", c->ptr);
+      fprintf(f, "<tr><td port=\"ptr\">ptr: <font color=\"lightgray\">%p</font></td></tr>", c->ptr);
     } else if(c->type == T_FAIL) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
     } else {
@@ -998,7 +1008,7 @@ void graph_cell(FILE *f, cell_t *c) {
     }
   } else {
     for(i = 0; i < n; i++) {
-      fprintf(f, "<tr><td port=\"arg%d\">%p</td></tr>", i, c->arg[i]);
+      fprintf(f, "<tr><td port=\"arg%d\"><font color=\"lightgray\">%p</font></td></tr>", i, c->arg[i]);
     }
   }
   fprintf(f, "</table>>\nshape = \"none\"\n];\n");
