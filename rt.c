@@ -1075,11 +1075,14 @@ void show_list(cell_t *c) {
 cell_t *reduce_alt(cell_t *c) {
   cell_t *r, *t, *p = c, *q;
   /* skip initial failures */
-  while(p && !reduce_list(p)) p = p->alt;
+  while(p && !reduce_list(p)) {
+    t = ref(p->alt);
+    deref(p);
+    p = t;
+  }
   /* store first success */
-  r = q = ref(p);
+  r = q = p;
   /* deref initial failures */
-  deref(c);
   if(!p) return 0;
   /* append remaining successes */
   p = p->alt;
@@ -1090,14 +1093,14 @@ cell_t *reduce_alt(cell_t *c) {
     }
     /* q points to last success, p to first failure */
     if(!p) break;
-    t = p;
     while(p && !reduce_list(p)) {
-      p = p->alt;
+      t = ref(p->alt);
+      deref(p);
+      p = t;
     }
     /* p points to next success */
-    q->alt = ref(p);
+    q->alt = p;
     q = q->alt;
-    deref(t);
   }
   return r;
 }
