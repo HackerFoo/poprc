@@ -35,11 +35,6 @@ measure_t measure, saved_measure;
 
 // #define CHECK_CYCLE
 
-#define show(x) printf(#x " = %d\n", (int)(x))
-#define WIDTH(a) (sizeof((a)[0]))
-#define LENGTH(a) (sizeof(a) / WIDTH(a))
-#define FOREACH(a, i) for(i = 0; i < LENGTH(a); i++)
-
 bool is_cell(void *p) {
   return p >= (void *)&cells && p < (void *)(&cells+1);
 }
@@ -676,7 +671,7 @@ bool func_concat(cell_t *c) {
   res.alt_set = (intptr_t)c->arg[2];
   s &= !bm_conflict(res.alt_set,
 		    q->alt_set);
-  res.alt_set |= q->alt_set;
+  res.alt_set = q->alt_set;
   res.alt = closure_split1(c, 1);
   if(s) {
     if(has_next(q)) {
@@ -929,50 +924,84 @@ void make_graph(char *path, cell_t *c) {
   FILE *f = fopen(path, "w");
   fprintf(f, "digraph g {\n"
 	     "graph [\n"
-	     "rankdir = \"LR\"\n"
+	     "rankdir = \"RL\"\n"
 	     "];\n");
+  zero(visited);
   graph_cell(f, c);
   fprintf(f, "}\n");
   fclose(f);
 }
 
+uint8_t visited[(LENGTH(cells)+7)/8] = {0};
+
+void set_bit(uint8_t *m, unsigned int x) {
+  m[x >> 3] |= 1 << (x & 7);
+}
+
+void clear_bit(uint8_t *m, unsigned int x) {
+  m[x >> 3] &= ~(1 << (x & 7));
+}
+
+bool check_bit(uint8_t *m, unsigned int x) {
+  return m[x >> 3] & (1 << (x & 7));
+}
+
+char *show_alt_set(uintptr_t as) {
+  static char out[sizeof(as)*4+1];
+  char *p = out;
+  int n = sizeof(as)*4;
+  uintptr_t set_mask = 1l << (sizeof(as) * 8 - 1);
+  uintptr_t val_mask = 1l << (sizeof(as) * 4 - 1);
+  while(!(as & set_mask) && n) {
+    as <<= 1;
+    n--;
+  }
+  while(n--) {
+    *p++ = as & set_mask ? (as & val_mask ? '1' : '0') : 'X';
+    as <<= 1;
+  }
+  *p++ = '\0';
+  return out;
+}
+
 void graph_cell(FILE *f, cell_t *c) {
   if(!is_closure(c)) return;
+  long unsigned int node = c - cells;
+  if(check_bit(visited, node)) return;
+  set_bit(visited, node);
   int n = closure_args(c);
   /* functions with extra args */
   if(c->func == func_alt ||
      c->func == func_concat) n++;
   int i;
-  long unsigned int node = c - cells;
 
   /* print node attributes */
-  fprintf(f, "node%ld [\nlabel = \"", node);
-  fprintf(f, "<top> %ld ", node);
-  fprintf(f, "| func: %s%s "
-	     "| <alt> alt: %p "
-	     "| n: %d ",
+  fprintf(f, "node%ld [\nlabel =<", node);
+  fprintf(f, "<table border=\"0\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>%ld: %s%s (%d)</b></font></td></tr>",
+	  node,
 	  function_name(c->func),
 	  closure_is_ready(c) ? "" : "*",
-	  c->alt,
 	  c->n);
+  fprintf(f, "<tr><td port=\"alt\">alt: %p</td></tr>",
+             c->alt);
   if(is_reduced(c)) {
-    fprintf(f, "| alt_set: %.16lx "
-	       "| type: %d "
-	       "| <next> next: %p ",
-	    c->alt_set,
-	    (int)c->type,
+    fprintf(f, "<tr><td>alt_set: %s</td></tr>"
+	       "<tr><td port=\"next\">next: %p</td></tr>",
+	    show_alt_set(c->alt_set),
 	    c->next);
     if(c->type == T_PTR) {
-      fprintf(f, "| <ptr> ptr: %p ", c->ptr);
+      fprintf(f, "<tr><td port=\"ptr\">ptr: %p</td></tr>", c->ptr);
+    } else if(c->type == T_FAIL) {
+      fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
     } else {
-      fprintf(f, "| val: %ld ", c->val);
+      fprintf(f, "<tr><td bgcolor=\"yellow\">val: %ld</td></tr>", c->val);
     }
   } else {
     for(i = 0; i < n; i++) {
-      fprintf(f, "| <arg%d> %p ", i, c->arg[i]);
+      fprintf(f, "<tr><td port=\"arg%d\">%p</td></tr>", i, c->arg[i]);
     }
   }
-  fprintf(f, "\"\nshape = \"record\"\n];\n");
+  fprintf(f, "</table>>\nshape = \"none\"\n];\n");
 
   /* print edges */
   if(c->alt) {
@@ -998,7 +1027,7 @@ void graph_cell(FILE *f, cell_t *c) {
       if(is_closure(arg)) {
 	fprintf(f, "node%ld:arg%d -> node%ld:top;\n",
 		c - cells, i, arg - cells);
-	if(!is_dep(c)) graph_cell(f, arg);
+	graph_cell(f, arg);
       }
     }
   }

@@ -27,9 +27,9 @@ struct __attribute__((packed)) cell {
     /* unevaluated */
     cell_t *arg[4];
     /* reduced */
-    struct {
-      intptr_t alt_set;
-      intptr_t type;
+    struct __attribute__((packed)) {
+      uintptr_t alt_set;
+      uintptr_t type;
       cell_t *next;
       union {
 	intptr_t val;
@@ -67,5 +67,10 @@ typedef struct measure_t {
 } measure_t;
 
 #define zero(a) bzero((a), sizeof(a))
+
+#define show(x) printf(#x " = %d\n", (int)(x))
+#define WIDTH(a) (sizeof((a)[0]))
+#define LENGTH(a) (sizeof(a) / WIDTH(a))
+#define FOREACH(a, i) for(i = 0; i < LENGTH(a); i++)
 
 #endif
