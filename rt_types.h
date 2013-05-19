@@ -1,6 +1,13 @@
 #ifndef __RT_TYPES__
 #define __RT_TYPES__
 
+#include <stdbool.h>
+#include <stdint.h>
+
+#include <time.h>
+#include "linenoise/linenoise.h"
+#include <stdio.h>
+
 typedef enum {
   T_INT = 0,
   T_PTR,

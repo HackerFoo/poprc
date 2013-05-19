@@ -2,9 +2,9 @@ _darcs
 *~
 \#*
 .\#*
-/rt
-/rt.h
+/eval
 /.gdbinit
 /.pegc_history
-/obj
+/build
+/gen
 /makeheaders/makeheaders
