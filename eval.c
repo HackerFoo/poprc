@@ -99,6 +99,7 @@ void print_sexpr(cell_t *r) {
 
 char *function_name(reduce_t *f) {
   f = clear_ptr(f);
+  //  int i;
 # define CASE(n) if(f == func_##n) return #n
   CASE(add);
   CASE(sub);
@@ -115,6 +116,18 @@ char *function_name(reduce_t *f) {
   CASE(assert);
   CASE(id);
   CASE(collect);
+  CASE(gt);
+  CASE(gte);
+  CASE(lt);
+  CASE(lte);
+  CASE(eq);
+  CASE(dup);
+  /*
+  FOREACH(word_table, i) {
+    if(word_table[i].func == f)
+      return word_table[i].name;
+  }
+  */
   return "?";
 # undef CASE
 }
@@ -412,22 +425,6 @@ bool is_num(char *str) {
   return char_class(str[0]) == CC_NUMERIC ||
     (str[0] == '-' && char_class(str[1]) == CC_NUMERIC);
 }
-
-/* must be in ascending order */
-word_entry_t word_table[] = {
-  {"!", func_assert, 1, 1},
-  {"'", func_quote, 1, 1},
-  {"*", func_mul, 2, 1},
-  {"+", func_add, 2, 1},
-  {"++", func_append, 2, 1},
-  {"-", func_sub, 2, 1},
-  //  {".", func_compose, 2, 1},
-  {"id", func_id, 1, 1},
-  {"popr", func_popr, 1, 2},
-  {"pushl", func_pushl, 2, 1},
-  {"pushr", func_pushr, 2, 1},
-  {"|", func_alt, 2, 1}
-};
 
 word_entry_t *lookup_word(const char *w) {
     return

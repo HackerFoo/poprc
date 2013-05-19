@@ -19,25 +19,53 @@
 #include "gen/rt.h"
 #include "gen/primitive.h"
 
+/* must be in ascending order */
+word_entry_t word_table[17] = {
+  {"!", func_assert, 1, 1},
+  {"'", func_quote, 1, 1},
+  {"*", func_mul, 2, 1},
+  {"+", func_add, 2, 1},
+  {"++", func_append, 2, 1},
+  {"-", func_sub, 2, 1},
+  {"<", func_lt, 2, 1},
+  {"<=", func_lte, 2, 1},
+  {"==", func_eq, 2, 1},
+  {">", func_gt, 2, 1},
+  {">=", func_gte, 2, 1},
+  //  {".", func_compose, 2, 1},
+  {"dup", func_dup, 1, 2},
+  {"id", func_id, 1, 1},
+  {"popr", func_popr, 1, 2},
+  {"pushl", func_pushl, 2, 1},
+  {"pushr", func_pushr, 2, 1},
+  {"|", func_alt, 2, 1}
+};
 
-#define FUNC_OP2(__op__)					\
-  do {								\
-    cell_t res = { .type = T_INT };				\
-    bool s = reduce(c->arg[0]) &&				\
-      reduce(c->arg[1]);					\
-    res.alt = closure_split(c, 2);				\
-    s &= !bm_conflict(c->arg[0]->alt_set,			\
-		      c->arg[1]->alt_set);			\
-    res.alt_set = c->arg[0]->alt_set | c->arg[1]->alt_set;	\
-    res.val = s ? c->arg[0]->val __op__ c->arg[1]->val : 0;	\
-    deref(c->arg[0]);						\
-    deref(c->arg[1]);						\
-    return to_ref(c, &res, s);					\
+#define FUNC_OP2(__op__)			\
+  do {						\
+    cell_t res = { .type = T_INT };		\
+    bool s = reduce(c->arg[0]) &&		\
+      reduce(c->arg[1]);			\
+    res.alt = closure_split(c, 2);		\
+    s &= !bm_conflict(c->arg[0]->alt_set,	\
+		      c->arg[1]->alt_set);	\
+    res.alt_set = c->arg[0]->alt_set |		\
+      c->arg[1]->alt_set;			\
+    res.val = s ? c->arg[0]->val __op__		\
+      c->arg[1]->val : 0;			\
+    deref(c->arg[0]);				\
+    deref(c->arg[1]);				\
+    return to_ref(c, &res, s);			\
   } while(0)
 
 bool func_add(cell_t *c) { FUNC_OP2(+); }
 bool func_mul(cell_t *c) { FUNC_OP2(*); }
 bool func_sub(cell_t *c) { FUNC_OP2(-); }
+bool func_gt(cell_t *c) { FUNC_OP2(>); }
+bool func_gte(cell_t *c) { FUNC_OP2(>=); }
+bool func_lt(cell_t *c) { FUNC_OP2(<); }
+bool func_lte(cell_t *c) { FUNC_OP2(<=); }
+bool func_eq(cell_t *c) { FUNC_OP2(==); }
 
 
 bool func_append(cell_t *c) {
@@ -234,6 +262,21 @@ cell_t *id(cell_t *c) {
   cell_t *i = func(func_id, 1);
   arg(i, c);
   return i;
+}
+
+bool func_dup(cell_t *c) {
+  cell_t res = { .val = 0 };
+  bool s = reduce(c->arg[0]);
+  res.alt = ref(closure_split1(c, 0));
+  if(s) {
+    res.alt_set = c->arg[0]->alt_set;
+    copy_val(&res, c->arg[0]);
+  }
+  to_ref(c->arg[1], &res, s);
+  deref(c->arg[0]);
+  deref(c->arg[1]);
+  deref(c);
+  return to_ref(c, &res, s);
 }
 
 /*
