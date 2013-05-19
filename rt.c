@@ -1,4 +1,4 @@
-/* Copyright 2012 Dustin DeWeese
+/* Copyright 2012-2013 Dustin DeWeese
    This file is part of pegc.
 
     pegc is free software: you can redistribute it and/or modify
@@ -15,13 +15,9 @@
     along with pegc.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 #include <assert.h>
-#include <time.h>
 #include "rt_types.h"
-#include "linenoise/linenoise.h"
 #include "gen/rt.h"
 #include "gen/primitive.h"
 
