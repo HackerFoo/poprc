@@ -237,6 +237,7 @@ bool func_assert(cell_t *c) {
   cell_t res = { .val = c->arg[0]->val,
 		 .type = c->arg[0]->type };
   res.alt = closure_split1(c, 0);
+  res.alt_set = c->arg[0]->alt_set;
   deref(c->arg[0]);
   return to_ref(c, &res, s && res.val);
 }
