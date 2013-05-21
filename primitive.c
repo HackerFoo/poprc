@@ -20,7 +20,7 @@
 #include "gen/primitive.h"
 
 /* must be in ascending order */
-word_entry_t word_table[17] = {
+word_entry_t word_table[19] = {
   {"!", func_assert, 1, 1},
   {"'", func_quote, 1, 1},
   {"*", func_mul, 2, 1},
@@ -33,18 +33,20 @@ word_entry_t word_table[17] = {
   {">", func_gt, 2, 1},
   {">=", func_gte, 2, 1},
   //  {".", func_compose, 2, 1},
+  {"drop", func_drop, 2, 1},
   {"dup", func_dup, 1, 2},
   {"id", func_id, 1, 1},
   {"popr", func_popr, 1, 2},
   {"pushl", func_pushl, 2, 1},
   {"pushr", func_pushr, 2, 1},
+  {"swap", func_swap, 2, 2},
   {"|", func_alt, 2, 1}
 };
 
 #define FUNC_OP2(__op__)			\
   do {						\
     cell_t res = { .type = T_INT };		\
-    bool s = reduce(c->arg[0]) &&		\
+    bool s = reduce(c->arg[0]) &		\
       reduce(c->arg[1]);			\
     res.alt = closure_split(c, 2);		\
     s &= !bm_conflict(c->arg[0]->alt_set,	\
@@ -70,7 +72,7 @@ bool func_eq(cell_t *c) { FUNC_OP2(==); }
 
 bool func_append(cell_t *c) {
   cell_t res = { .type = T_PTR };
-  bool s = reduce(c->arg[0]) && reduce(c->arg[1]);
+  bool s = reduce(c->arg[0]) & reduce(c->arg[1]);
   res.alt = closure_split(c, 2);
   s &= !bm_conflict(c->arg[0]->alt_set,
 		    c->arg[1]->alt_set);
@@ -107,7 +109,7 @@ bool func_pushl(cell_t *c) {
 
 bool func_pushr(cell_t *c) {
   cell_t res = { .type = T_PTR };
-  bool s = reduce(c->arg[0]) && reduce(c->arg[1]);
+  bool s = reduce(c->arg[0]) & reduce(c->arg[1]);
   res.alt = closure_split(c, 2);
   cell_t *p = c->arg[0];
   cell_t *q = c->arg[1];
@@ -134,7 +136,7 @@ bool func_popr(cell_t *c) {
   bool s = true;
   cell_t *head = c->arg[0];
   cell_t *tail = c->arg[1];
-  if(!reduce(head) || !reduce(head->ptr)) {
+  if(!reduce(head) | !reduce(head->ptr)) {
     s = false;
   } else {
     copy_val(&res_tail, head->ptr);
@@ -243,20 +245,42 @@ bool func_assert(cell_t *c) {
 }
 
 bool func_id(cell_t *c) {
-  cell_t *p = c->arg[0];
-  if(reduce(p)) {
-    cell_t *a = closure_split1(c, 0);
-    c->func = func_reduced;
-    c->alt_set = p->alt_set;
-    copy_val(c, p);
-    c->next = p->next;
-    c->alt = a;
-    deref(p);
-    return true;
-  } else {
-    deref(p);
-    return false;
-  }
+  cell_t res = { .val = 0 };
+  bool s = reduce(c->arg[0]);
+  res.alt = closure_split1(c, 0);
+  res.alt_set = c->arg[0]->alt_set;
+  if(s) copy_val(&res, c->arg[0]);
+  deref(c->arg[0]);
+  return to_ref(c, &res, s);
+}
+
+bool func_drop(cell_t *c) {
+  cell_t res = { .val = 0 };
+  bool s = reduce(c->arg[0]) &
+    reduce(c->arg[1]);
+  res.alt = closure_split(c, 2);
+  if(s) s = !bm_conflict(c->arg[0]->alt_set,
+			 c->arg[1]->alt_set);
+  res.alt_set = c->arg[0]->alt_set |
+    c->arg[1]->alt_set;
+  if(s) copy_val(&res, c->arg[0]);
+  deref(c->arg[0]);
+  deref(c->arg[1]);
+  return to_ref(c, &res, s);
+}
+
+bool func_swap(cell_t *c) {
+  cell_t *other = c->arg[2];
+  /* if other->arg[0] != c, then other is being reduced */
+  bool reduce_other = other->arg[0] != c;
+  c->func = func_id;
+  other->func = func_id;
+  other->arg[0] = c->arg[0];
+  c->arg[0] = c->arg[1];
+  c->arg[1] = 0;
+  deref(c);
+  deref(other);
+  return reduce_other || func_id(c);
 }
 
 cell_t *id(cell_t *c) {

@@ -367,10 +367,12 @@ cell_t *ref_args(cell_t *c) {
 bool to_ref(cell_t *c, cell_t *r, bool s) {
   closure_shrink(c, 1);
   r->n = c->n;
-  //if(!r->next) r->next = c->next;
   memcpy(c, r, sizeof(cell_t));
   c->func = func_reduced;
-  if(!s) c->type = T_FAIL;
+  if(!s) {
+    c->ptr = 0;
+    c->type = T_FAIL;
+  }
   return s;
 }
 
@@ -438,6 +440,7 @@ void deref(cell_t *c) {
   }
 }
 
+/* TODO: needs more work */
 void drop(cell_t *c) {
   if(!is_closure(c)) return;
   if(!c->n) {
@@ -445,8 +448,8 @@ void drop(cell_t *c) {
       if(c->type == T_PTR)
 	drop(c->ptr);
     } else {
-      int i = closure_args(c) - 1;
-      while(i--) drop(c->arg[i]);
+      int i = closure_args(c);
+      while(i) drop(c->arg[--i]);
     }
     closure_free(c);
   } else --c->n;
@@ -477,7 +480,9 @@ cell_t *dep(cell_t *c) {
 bool func_dep(cell_t *c) {
   /* rely on another cell for reduction */
   /* don't need to deref arg, handled by other function */
-  return reduce(c->arg[0]);
+  cell_t *p = c->arg[0];
+  c->arg[0] = 0;
+  return reduce(p) && c->func(c);
 }
 
 void copy_val(cell_t *dest, cell_t *src) {

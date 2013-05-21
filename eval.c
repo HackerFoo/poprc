@@ -122,6 +122,8 @@ char *function_name(reduce_t *f) {
   CASE(lte);
   CASE(eq);
   CASE(dup);
+  CASE(swap);
+  CASE(drop);
   /*
   FOREACH(word_table, i) {
     if(word_table[i].func == f)
