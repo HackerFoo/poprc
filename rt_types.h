@@ -75,7 +75,8 @@ typedef enum char_class_t {
   CC_NONE,
   CC_NUMERIC,
   CC_ALPHA,
-  CC_SYMBOL
+  CC_SYMBOL,
+  CC_BRACKET
 } char_class_t;
 
 #define sizeof_field(s, f) sizeof(((s *)0)->f)

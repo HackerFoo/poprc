@@ -473,6 +473,8 @@ char_class_t char_class(char c) {
   if((c >= 'a' && c <= 'z') ||
      (c >= 'A' && c <= 'Z'))
     return CC_ALPHA;
+  if(index("[](){}", c))
+    return CC_BRACKET;
   return CC_SYMBOL;
 }
 
@@ -489,11 +491,12 @@ char *rtok(char *str, char *ptr) {
 
   *(ptr+1) = '\0';
 
-  /* allow adjacent brackets to be seperately tokenized */
-  if(index("[](){}", *ptr)) return ptr;
-
   /* move to start of token */
   char_class_t class = char_class(*ptr);
+  
+  /* allow adjacent brackets to be seperately tokenized */
+  if(class == CC_BRACKET) return ptr;
+
   do {
     if(ptr > str) ptr--;
     else return ptr;

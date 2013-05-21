@@ -20,19 +20,19 @@
 #include "gen/primitive.h"
 
 /* must be in ascending order */
-word_entry_t word_table[19] = {
+word_entry_t word_table[20] = {
   {"!", func_assert, 1, 1},
+  {"$", func_apply, 2, 1}, // ***
   {"'", func_quote, 1, 1},
   {"*", func_mul, 2, 1},
   {"+", func_add, 2, 1},
-  {"++", func_append, 2, 1},
   {"-", func_sub, 2, 1},
+  {".", func_append, 2, 1},
   {"<", func_lt, 2, 1},
   {"<=", func_lte, 2, 1},
   {"==", func_eq, 2, 1},
   {">", func_gt, 2, 1},
   {">=", func_gte, 2, 1},
-  //  {".", func_compose, 2, 1},
   {"drop", func_drop, 2, 1},
   {"dup", func_dup, 1, 2},
   {"id", func_id, 1, 1},
@@ -83,7 +83,7 @@ bool func_append(cell_t *c) {
     else if(!c->arg[1]->ptr)
       res.ptr = ref(c->arg[0]->ptr);
     else {
-      res.ptr = closure_alloc(2);
+      res.ptr = closure_alloc(3);
       res.ptr->func = func_concat;
       res.ptr->arg[0] = ref(c->arg[0]->ptr);
       res.ptr->arg[1] = ref(c->arg[1]->ptr);
@@ -93,6 +93,28 @@ bool func_append(cell_t *c) {
   deref(c->arg[0]);
   deref(c->arg[1]);
   return to_ref(c, &res, s);
+}
+
+bool func_apply(cell_t *c) {
+  cell_t res = { .val = 0 };
+  bool s = reduce(c->arg[1]);
+  res.alt = closure_split1(c, 1);
+  res.alt_set = c->arg[1]->alt_set;
+  if(s) {
+    cell_t *n = closure_alloc(3);
+    n->func = func_concat;
+    n->arg[0] = c->arg[0];
+    n->arg[1] = ref(c->arg[1]->ptr);
+    n->arg[2] = (cell_t *)res.alt_set;
+    deref(c->arg[1]);
+    s = reduce(n);
+    copy_val(&res, n);
+    deref(n);
+  } else {
+    deref(c->arg[0]); // ***
+    deref(c->arg[1]);
+  }
+  return to_ref(c, &res, s);  
 }
 
 bool func_pushl(cell_t *c) {
@@ -204,7 +226,15 @@ bool func_alt(cell_t *c) {
 bool func_concat(cell_t *c) {
   cell_t res = { .val = 0 };
   cell_t *p = c->arg[0], *q = c->arg[1];
-  bool s = reduce(q);
+  bool s = true;
+  while(p && !closure_is_ready(q)) { // ***
+    s &= reduce(p);
+    cell_t *n = p->next;
+    p->next = 0;
+    arg(q, p);
+    p = n;
+  }
+  s &= reduce(q);
   res.alt_set = (intptr_t)c->arg[2];
   s &= !bm_conflict(res.alt_set,
 		    q->alt_set);
