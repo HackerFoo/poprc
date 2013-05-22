@@ -20,7 +20,7 @@
 #include "gen/primitive.h"
 
 /* must be in ascending order */
-word_entry_t word_table[20] = {
+word_entry_t word_table[23] = {
   {"!", func_assert, 1, 1},
   {"$", func_apply, 2, 1}, // ***
   {"'", func_quote, 1, 1},
@@ -33,6 +33,9 @@ word_entry_t word_table[20] = {
   {"==", func_eq, 2, 1},
   {">", func_gt, 2, 1},
   {">=", func_gte, 2, 1},
+  {"dip11", func_dip11, 3, 2},
+  {"dip12", func_dip12, 3, 3},
+  {"dip21", func_dip21, 4, 2},
   {"drop", func_drop, 2, 1},
   {"dup", func_dup, 1, 2},
   {"id", func_id, 1, 1},
@@ -352,3 +355,88 @@ bool func_compose(cell_t *c) {
   return true;
 }
 */
+
+cell_t *build(char *str, unsigned int n);
+#define BUILD(x) build((x), sizeof(x))
+
+bool func_dip11(cell_t *c) {
+  bool s = true;
+  cell_t *other = c->arg[3];
+  char code[] = "swap pushr pushl popr "
+    "swap popr swap drop swap";
+  cell_t *n = BUILD(code);
+  arg(n, c->arg[2]);
+  arg(n, c->arg[1]);
+  arg(n, c->arg[0]);
+  
+  s &= reduce(n);
+  cell_t *next = n->next;
+  n->next = 0;
+  s &= reduce(next);
+  to_ref(other, n, s);
+  to_ref(c, next, s);
+  deref(n);
+  deref(next);
+  deref(c);
+  deref(other);
+  return s;
+}
+
+bool func_dip12(cell_t *c) {
+  bool s = true;
+  cell_t *other1 = c->arg[3];
+  cell_t *other2 = c->arg[4];
+  char code[] = "swap pushr pushl popr "
+    "' swap . popr swap popr swap popr swap drop";
+  cell_t *n = BUILD(code);
+  arg(n, c->arg[2]);
+  arg(n, c->arg[1]);
+  arg(n, c->arg[0]);
+  
+  s &= reduce(n);
+  cell_t *n2 = n->next;
+  n->next = 0;
+
+  s &= reduce(n2);
+  cell_t *n3 = n2->next;
+  n2->next = 0;
+
+  s &= reduce(n3);
+
+  to_ref(other2, n, s);
+  to_ref(other1, n2, s);
+  to_ref(c, n3, s);
+
+  deref(n);
+  deref(n2);
+  deref(n3);
+
+  deref(c);
+  deref(other1);
+  deref(other2);
+  return s;
+}
+
+bool func_dip21(cell_t *c) {
+  bool s = true;
+  cell_t *other = c->arg[4];
+  char code[] = "swap pushr pushl pushl popr "
+    "swap popr swap drop swap";
+  cell_t *n = BUILD(code);
+  arg(n, c->arg[3]);
+  arg(n, c->arg[2]);
+  arg(n, c->arg[1]);
+  arg(n, c->arg[0]);
+  
+  s &= reduce(n);
+  cell_t *next = n->next;
+  n->next = 0;
+  s &= reduce(next);
+  to_ref(other, n, s);
+  to_ref(c, next, s);
+  deref(n);
+  deref(next);
+  deref(c);
+  deref(other);
+  return s;
+}

@@ -500,6 +500,8 @@ char *rtok(char *str, char *ptr) {
   do {
     if(ptr > str) ptr--;
     else return ptr;
+    if(class == CC_NUMERIC && char_class(*ptr) == CC_ALPHA)
+      class = CC_ALPHA;
   } while(char_class(*ptr) == class);
 
   /* handle negative numbers */
@@ -515,7 +517,7 @@ bool parse_word(char *str, char **p, cell_t **r) {
   char *tok = *p = rtok(str, *p);
   if(!tok || strcmp(tok, "[") == 0) return false;
   if(strcmp(tok, "]") == 0) {
-    c = quote(build(str, p));
+    c = quote(_build(str, p));
     *r = compose1(c, *r, 0);
   } else {
     c = word_parse(tok, &in, &out);
@@ -524,13 +526,7 @@ bool parse_word(char *str, char **p, cell_t **r) {
   return true;
 }
 
-cell_t *build(char *str, char **p) {
-  cell_t *r = 0;
-  while((parse_word(str, p, &r)));
-  return r;
-}
-
-void eval(char *str, int n) {
+cell_t *build(char *str, unsigned int n) {
   char *p = str;
   while(*p != '\0' && n--) {
     if(*p == '\n') {
@@ -539,7 +535,17 @@ void eval(char *str, int n) {
     }
     p++;
   }
-  cell_t *c = build(str, &p);
+  return _build(str, &p);
+}
+
+cell_t *_build(char *str, char **p) {
+  cell_t *r = 0;
+  while((parse_word(str, p, &r)));
+  return r;
+}
+
+void eval(char *str, unsigned int n) {
+  cell_t *c = build(str, n);
   if(write_graph) make_graph(GRAPH_FILE, c);
   c = reduce_alt(c);
   if(write_graph) make_graph(REDUCED_GRAPH_FILE, c);

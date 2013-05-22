@@ -366,8 +366,9 @@ cell_t *ref_args(cell_t *c) {
 
 bool to_ref(cell_t *c, cell_t *r, bool s) {
   closure_shrink(c, 1);
-  r->n = c->n;
+  int n = c->n;
   memcpy(c, r, sizeof(cell_t));
+  c->n = n;
   c->func = func_reduced;
   if(!s) {
     c->ptr = 0;
