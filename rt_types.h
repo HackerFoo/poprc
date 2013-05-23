@@ -23,9 +23,9 @@
 #include <time.h>
 
 typedef enum {
-  T_INT = 0,
-  T_PTR,
-  T_FAIL
+  T_FAIL = 1,
+  T_INDIRECT,
+  T_INT
 } type_t;
 
 typedef struct cell cell_t;
@@ -39,22 +39,32 @@ typedef struct stack_frame {
 typedef bool (reduce_t)(cell_t *cell);
 struct __attribute__((packed)) cell {
   union {
-    reduce_t *func;
-    cell_t *prev;
+    struct __attribute__((packed)) {
+      reduce_t *func;
+      cell_t *alt;
+    };
+    struct __attribute__((packed)) {
+      cell_t *prev;
+      cell_t *next;
+    };
   };
-  cell_t *alt;
   uint32_t n;
   union {
     /* unevaluated */
-    cell_t *arg[4];
+    cell_t *arg[3];
     /* reduced */
     struct __attribute__((packed)) {
       uintptr_t alt_set;
-      uintptr_t type;
-      cell_t *next;
       union {
-	intptr_t val;
-	cell_t *ptr;
+	/* value */
+	struct __attribute__((packed)) {
+	  uint32_t type, val_size;
+	  intptr_t val[1];
+	};
+	/* list */
+	struct __attribute__((packed)) {
+	  cell_t *ptr[2];
+	};
       };
     };
   };

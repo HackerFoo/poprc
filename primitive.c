@@ -74,7 +74,7 @@ bool func_eq(cell_t *c) { FUNC_OP2(==); }
 
 
 bool func_append(cell_t *c) {
-  cell_t res = { .type = T_PTR };
+  cell_t res = { .ptr = 0 };
   bool s = reduce(c->arg[0]) & reduce(c->arg[1]);
   res.alt = closure_split(c, 2);
   s &= !bm_conflict(c->arg[0]->alt_set,
@@ -121,7 +121,7 @@ bool func_apply(cell_t *c) {
 }
 
 bool func_pushl(cell_t *c) {
-  cell_t res = { .type = T_PTR };
+  cell_t res = { .ptr = 0 };
   cell_t *p = c->arg[1];
   bool s = reduce(p);
   res.alt = closure_split1(c, 1);
@@ -133,7 +133,7 @@ bool func_pushl(cell_t *c) {
 }
 
 bool func_pushr(cell_t *c) {
-  cell_t res = { .type = T_PTR };
+  cell_t res = { .ptr = 0 };
   bool s = reduce(c->arg[0]) & reduce(c->arg[1]);
   res.alt = closure_split(c, 2);
   cell_t *p = c->arg[0];
@@ -148,15 +148,14 @@ bool func_pushr(cell_t *c) {
 }
 
 bool func_quote(cell_t *c) {
-  cell_t res = { .type = T_PTR,
-		 .ptr = c->arg[0] };
+  cell_t res = { .ptr = c->arg[0] };
   res.alt = closure_split1(c, 0);
   return to_ref(c, &res, true);
 }
 
 
 bool func_popr(cell_t *c) {
-  cell_t res = { .type = T_PTR };
+  cell_t res = { .ptr = 0 };
   cell_t res_tail = { .val = 0 };
   bool s = true;
   cell_t *head = c->arg[0];
@@ -170,7 +169,7 @@ bool func_popr(cell_t *c) {
     s &= !bm_conflict(head->alt_set,
 		      head->ptr->alt_set);
     if(head->ptr->alt) {
-      cell_t *q = quote(ref(head->ptr->alt));
+      cell_t *q = cons(ref(head->ptr->alt), 0);
       head->alt = conc_alt(q, head->alt);
       q->alt_set = head->alt_set;
     }
@@ -244,7 +243,7 @@ bool func_concat(cell_t *c) {
   res.alt_set |= q->alt_set;
   res.alt = closure_split1(c, 1);
   if(s) {
-    if(has_next(q)) {
+    if(q && q->next) {
       res.next = closure_alloc(3);
       res.next->func = func_concat;
       res.next->arg[0] = p;

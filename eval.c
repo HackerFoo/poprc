@@ -44,7 +44,7 @@ char *show_alt_set(uintptr_t as) {
   return out;
 }
 
-
+/*
 void print_sexpr_help(cell_t *);
 
 void print_list_help(cell_t *c) {
@@ -68,7 +68,7 @@ void print_sexpr_help(cell_t *r) {
   } else if(is_reduced(r)) {
     if(r->type == T_INT) {
       printf(" %d", (int)r->val);
-    } else if(r->type == T_PTR) {
+    } else if(is_cons(r)) {
       printf(" [");
       print_sexpr_help(r->ptr);
       printf(" ]");
@@ -96,6 +96,7 @@ void print_sexpr(cell_t *r) {
   print_sexpr_help(r);
   printf("\n");
 }
+*/
 
 char *function_name(reduce_t *f) {
   f = clear_ptr(f);
@@ -115,7 +116,7 @@ char *function_name(reduce_t *f) {
   CASE(concat);
   CASE(assert);
   CASE(id);
-  CASE(collect);
+  //  CASE(collect);
   CASE(gt);
   CASE(gte);
   CASE(lt);
@@ -170,12 +171,12 @@ void graph_cell(FILE *f, cell_t *c) {
   fprintf(f, "<tr><td port=\"alt\">alt: <font color=\"lightgray\">%p</font></td></tr>",
              c->alt);
   if(is_reduced(c)) {
-    fprintf(f, "<tr><td>alt_set: X%s</td></tr>"
-	       "<tr><td port=\"next\">next: <font color=\"lightgray\">%p</font></td></tr>",
-	    show_alt_set(c->alt_set),
-	    c->next);
-    if(c->type == T_PTR) {
-      fprintf(f, "<tr><td port=\"ptr\">ptr: <font color=\"lightgray\">%p</font></td></tr>", c->ptr);
+    fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
+	    show_alt_set(c->alt_set));
+    if(is_cons(c)) {
+      fprintf(f, "<tr><td port=\"ptr\">ptr: <font color=\"lightgray\">%p</font></td></tr>"
+	         "<tr><td port=\"next\">next: <font color=\"lightgray\">%p</font></td></tr>",
+	      c->ptr, c->next);
     } else if(c->type == T_FAIL) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
     } else {
@@ -196,15 +197,17 @@ void graph_cell(FILE *f, cell_t *c) {
     graph_cell(f, c->alt);
   }
   if(is_reduced(c)) {
-    if(c->next) {
-      fprintf(f, "node%ld:next -> node%ld:top;\n",
-	      node, c->next - cells);
-      graph_cell(f, c->next);
-    }
-    if(c->type == T_PTR && c->ptr) {
-      fprintf(f, "node%ld:ptr -> node%ld:top;\n",
-	      node, c->ptr - cells);
-      graph_cell(f, c->ptr);
+    if(is_cons(c)) {
+      if(c->next) {
+	fprintf(f, "node%ld:next -> node%ld:top;\n",
+		node, c->next - cells);
+	graph_cell(f, c->next);
+      }
+      if(is_cons(c) && c->ptr) {
+	fprintf(f, "node%ld:ptr -> node%ld:top;\n",
+		node, c->ptr - cells);
+	graph_cell(f, c->ptr);
+      }
     }
   } else {
     for(i = 0; i < n; i++) {
@@ -219,7 +222,7 @@ void graph_cell(FILE *f, cell_t *c) {
 }
 
 void show_one(cell_t *c) {
-  if(c->type == T_PTR) {
+  if(is_cons(c)) {
     if(c->ptr) {
     printf(" [");
     if(closure_is_ready(c->ptr)) {
@@ -233,8 +236,13 @@ void show_one(cell_t *c) {
 }
 
 bool reduce_list(cell_t *c) {
-  return reduce(c) &&
-    (!c->next || (c->next = reduce_alt(c->next)));
+  bool b = true;
+  c = reduce_alt(c);
+  while(c) {
+    if(is_cons(c))
+      reduce_list(c->next);
+    c = c->alt;
+  }
 }
 
 void show_list(cell_t *c) {
@@ -246,7 +254,7 @@ void show_list(cell_t *c) {
 cell_t *reduce_alt(cell_t *c) {
   cell_t *r, *t, *p = c, *q;
   /* skip initial failures */
-  while(p && !reduce_list(p)) {
+  while(p && !reduce(p)) {
     t = ref(p->alt);
     deref(p);
     p = t;
@@ -258,13 +266,13 @@ cell_t *reduce_alt(cell_t *c) {
   /* append remaining successes */
   p = p->alt;
   while(true) {
-    while(p && reduce_list(p)) {
+    while(p && reduce(p)) {
       q = p;
       p = p->alt;
     }
     /* q points to last success, p to first failure */
     if(!p) break;
-    while(p && !reduce_list(p)) {
+    while(p && !reduce(p)) {
       t = ref(p->alt);
       deref(p);
       p = t;
@@ -517,7 +525,7 @@ bool parse_word(char *str, char **p, cell_t **r) {
   char *tok = *p = rtok(str, *p);
   if(!tok || strcmp(tok, "[") == 0) return false;
   if(strcmp(tok, "]") == 0) {
-    c = quote(_build(str, p));
+    c = cons(_build(str, p), 0);
     *r = compose1(c, *r, 0);
   } else {
     c = word_parse(tok, &in, &out);
