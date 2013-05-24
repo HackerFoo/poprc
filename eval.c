@@ -20,6 +20,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 #include "linenoise/linenoise.h"
 #include "gen/rt.h"
 #include "gen/eval.h"
@@ -173,14 +174,17 @@ void graph_cell(FILE *f, cell_t *c) {
   if(is_reduced(c)) {
     fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
 	    show_alt_set(c->alt_set));
-    if(is_cons(c)) {
-      fprintf(f, "<tr><td port=\"ptr\">ptr: <font color=\"lightgray\">%p</font></td></tr>"
-	         "<tr><td port=\"next\">next: <font color=\"lightgray\">%p</font></td></tr>",
-	      c->ptr, c->next);
+    if(is_list(c)) {
+      int n = list_size(c);
+      while(n--)
+	fprintf(f, "<tr><td port=\"ptr\">ptr: <font color=\"lightgray\">%p</font></td></tr>",
+		c->ptr[n]);
     } else if(c->type == T_FAIL) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
     } else {
-      fprintf(f, "<tr><td bgcolor=\"yellow\">val: %ld</td></tr>", c->val);
+      int n = c->val_size;
+      while(n--)
+	fprintf(f, "<tr><td bgcolor=\"yellow\">val: %ld</td></tr>", c->val[n]);
     }
   } else {
     for(i = 0; i < n; i++) {
@@ -197,16 +201,19 @@ void graph_cell(FILE *f, cell_t *c) {
     graph_cell(f, c->alt);
   }
   if(is_reduced(c)) {
-    if(is_cons(c)) {
+    if(is_list(c)) {
       if(c->next) {
 	fprintf(f, "node%ld:next -> node%ld:top;\n",
 		node, c->next - cells);
 	graph_cell(f, c->next);
       }
-      if(is_cons(c) && c->ptr) {
-	fprintf(f, "node%ld:ptr -> node%ld:top;\n",
-		node, c->ptr - cells);
-	graph_cell(f, c->ptr);
+      if(is_list(c) && c->ptr) {
+	int n = list_size(c);
+	while(n--) {
+	  fprintf(f, "node%ld:ptr -> node%ld:top;\n",
+		  node, c->ptr[n] - cells);
+	  graph_cell(f, c->ptr[n]);
+	}
       }
     }
   } else {
@@ -221,40 +228,62 @@ void graph_cell(FILE *f, cell_t *c) {
   }
 }
 
-void show_one(cell_t *c) {
-  if(is_cons(c)) {
-    if(c->ptr) {
-    printf(" [");
-    if(closure_is_ready(c->ptr)) {
-      show_alt(reduce_alt(c->ptr));
-    } else printf(" ...");
-    printf(" ]");
-    } else printf(" []");
-  } else {
-    printf(" %d", (int)c->val);
+void show_val(cell_t *c) {
+  assert(c && c->type == T_INT);
+  int n = c->val_size;
+  switch(n) {
+  case 0: printf(" ()"); break;
+  case 1: printf(" %d", (int)c->val[0]); break;
+  default:
+    printf(" (");
+    while(n--) printf(" %d", (int)c->val[n]);
+    printf(" )");
+    break;
   }
 }
 
 bool reduce_list(cell_t *c) {
   bool b = true;
-  c = reduce_alt(c);
-  while(c) {
-    if(is_cons(c))
-      reduce_list(c->next);
-    c = c->alt;
+  cell_t **p = c->ptr;
+  while(*p && is_closure(*p)) {
+    *p = reduce_alt(*p);
+    b &= *p != 0;
+    ++p;
   }
+  return b;
 }
 
 void show_list(cell_t *c) {
-  cell_t *n = c->next;
-  if(n) show_alt(n);
-  show_one(c);
+  assert(c && is_list(c));
+  int n = list_size(c);
+  if(n) {
+    printf(" [");
+    while(n--) show_one(c->ptr[n]);
+    printf(" ]");
+  } else printf(" []");
+}
+
+void show_one(cell_t *c) {
+  if(!c) {
+    printf(" []");
+  } else if(c->type == T_INT) {
+    show_val(c);
+  } else if(is_list(c)) {
+    show_list(c);
+  } else {
+    printf(" ?");
+  }
+}
+
+bool reduce_one(cell_t *c) {
+  return reduce(c) &&
+    (!is_list(c) || reduce_list(c));
 }
 
 cell_t *reduce_alt(cell_t *c) {
   cell_t *r, *t, *p = c, *q;
   /* skip initial failures */
-  while(p && !reduce(p)) {
+  while(p && !reduce_one(p)) {
     t = ref(p->alt);
     deref(p);
     p = t;
@@ -266,13 +295,13 @@ cell_t *reduce_alt(cell_t *c) {
   /* append remaining successes */
   p = p->alt;
   while(true) {
-    while(p && reduce(p)) {
+    while(p && reduce_one(p)) {
       q = p;
       p = p->alt;
     }
     /* q points to last success, p to first failure */
     if(!p) break;
-    while(p && !reduce(p)) {
+    while(p && !reduce_one(p)) {
       t = ref(p->alt);
       deref(p);
       p = t;
@@ -292,17 +321,17 @@ void show_alt(cell_t *c) {
   if(p) {
     if(!p->alt) {
       /* one */
-      show_list(p);
+      show_one(p);
     } else {
       /* many */
       printf(" {");
       t = p->alt;
-      show_list(p);
+      show_one(p);
       p = t;
       do {
 	printf(" |");
 	t = p->alt;
-	show_list(p);
+	show_one(p);
 	p = t;
       } while(p);
       printf(" }");
@@ -312,14 +341,14 @@ void show_alt(cell_t *c) {
     printf(" {}");
   }
 }
-
+/*
 void show_eval(cell_t *c) {
   printf("[");
   show_alt(reduce_alt(c));
   deref(c);
   printf(" ]\n");
 }
-
+*/
 void measure_start() {
   bzero(&measure, sizeof(measure));
   measure.start = clock();
@@ -525,8 +554,8 @@ bool parse_word(char *str, char **p, cell_t **r) {
   char *tok = *p = rtok(str, *p);
   if(!tok || strcmp(tok, "[") == 0) return false;
   if(strcmp(tok, "]") == 0) {
-    c = cons(_build(str, p), 0);
-    *r = compose1(c, *r, 0);
+    c = _build(str, p);
+    *r = pushl(c, *r);
   } else {
     c = word_parse(tok, &in, &out);
     if(c) *r = compose_expand(c, out, *r);
@@ -547,7 +576,7 @@ cell_t *build(char *str, unsigned int n) {
 }
 
 cell_t *_build(char *str, char **p) {
-  cell_t *r = 0;
+  cell_t *r = empty_list();
   while((parse_word(str, p, &r)));
   return r;
 }
@@ -561,5 +590,5 @@ void eval(char *str, unsigned int n) {
   if(!closure_is_ready(c))
     printf("incomplete expression\n");
   else
-    show_eval(c);
+    show_list(c);
 }

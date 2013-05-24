@@ -285,6 +285,10 @@ cell_t *quote(cell_t *x) {
   return c;
 }
 
+cell_t *empty_list() {
+  return quote(0);
+}
+
 cell_t *push(cell_t *x, cell_t *c) {
   cell_t *e = expand(c, 1);
   int n = closure_args(e);
@@ -581,30 +585,41 @@ cell_t *data(cell_t *c) {
 }
 
 cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
-  cell_t *c = b;
-  while(--n) {
+  assert(is_closure(a) &&
+	 is_closure(b) && is_list(b));
+  int bs = list_size(b);
+  cell_t *l = b->ptr[bs - 1];
+  while(n && !closure_is_ready(l)) {
     cell_t *d = dep(ref(a));
-    c = compose1(d, c, 0);
-    arg(a, ref(d));
+    arg(l, d);
+    arg(a, d);
+    --n;
   }
-  return compose1(a, c, 0);
+  if(!closure_is_ready(l)) {
+    arg(l, a);
+  } else {
+    b = expand(b, n+1);
+    b->ptr[bs+n] = a;
+    while(n) {
+      --n;
+      cell_t *d = dep(ref(a));
+      b->ptr[bs+n] = d;
+      arg(a, d);
+    }
+  }
+  return b;
 }
 
-cell_t *compose1(cell_t *a, cell_t *b, intptr_t as) {
-  assert((!a || is_closure(a)) &&
-	 (!b || is_closure(b)));
+/* b is a list, a is a closure */
+cell_t *pushl(cell_t *a, cell_t *b) {
+  assert(is_closure(a) &&
+	 is_closure(b) && is_list(b));
 
-  if(!a) {
-    b->alt_set |= as;
-    return b;
-  }
-
-  if(!b || closure_is_ready(b)) {
-    cell_t *c = push(a, b);
-    c->alt_set = as;
-    return c;
+  cell_t *l = b->ptr[list_size(b) - 1];
+  if(closure_is_ready(l)) {
+    return push(a, b);
   } else {
-    arg(b, a);
+    arg(l, a);
     return b;
   }
 }

@@ -56,8 +56,8 @@ word_entry_t word_table[23] = {
 		      c->arg[1]->alt_set);	\
     res.alt_set = c->arg[0]->alt_set |		\
       c->arg[1]->alt_set;			\
-    res.val = s ? c->arg[0]->val __op__		\
-      c->arg[1]->val : 0;			\
+    res.val[0] = s ? c->arg[0]->val[0] __op__	\
+      c->arg[1]->val[0] : 0;			\
     deref(c->arg[0]);				\
     deref(c->arg[1]);				\
     return to_ref(c, &res, s);			\
