@@ -56,11 +56,14 @@ word_entry_t word_table[23] = {
 		      c->arg[1]->alt_set);	\
     res.alt_set = c->arg[0]->alt_set |		\
       c->arg[1]->alt_set;			\
-    res.val[0] = s ? c->arg[0]->val[0] __op__	\
-      c->arg[1]->val[0] : 0;			\
+    if(s) {					\
+      res.val[0] = c->arg[0]->val[0] __op__	\
+      c->arg[1]->val[0];			\
+      res.val_size = 1;				\
+    }						\
     deref(c->arg[0]);				\
     deref(c->arg[1]);				\
-    return to_ref(c, &res, s);			\
+    return to_ref(c, &res, 1, s);		\
   } while(0)
 
 bool func_add(cell_t *c) { FUNC_OP2(+); }
@@ -74,7 +77,7 @@ bool func_eq(cell_t *c) { FUNC_OP2(==); }
 
 
 bool func_append(cell_t *c) {
-  cell_t res = { .ptr = 0 };
+  cell_t res = { .ptr = {0} };
   bool s = reduce(c->arg[0]) & reduce(c->arg[1]);
   res.alt = closure_split(c, 2);
   s &= !bm_conflict(c->arg[0]->alt_set,
@@ -82,24 +85,24 @@ bool func_append(cell_t *c) {
   res.alt_set = c->arg[0]->alt_set | c->arg[1]->alt_set;
   if(s) {
     if(!c->arg[0]->ptr)
-      res.ptr = ref(c->arg[1]->ptr);
+      res.ptr[0] = ref(c->arg[1]->ptr[0]);
     else if(!c->arg[1]->ptr)
-      res.ptr = ref(c->arg[0]->ptr);
+      res.ptr[0] = ref(c->arg[0]->ptr[0]);
     else {
-      res.ptr = closure_alloc(3);
-      res.ptr->func = func_concat;
-      res.ptr->arg[0] = ref(c->arg[0]->ptr);
-      res.ptr->arg[1] = ref(c->arg[1]->ptr);
-      res.ptr->arg[2] = (cell_t *)res.alt_set;
+      res.ptr[0] = closure_alloc(3);
+      res.ptr[0]->func = func_concat;
+      res.ptr[0]->arg[0] = ref(c->arg[0]->ptr[0]);
+      res.ptr[0]->arg[1] = ref(c->arg[1]->ptr[0]);
+      res.ptr[0]->arg[2] = (cell_t *)res.alt_set;
     }
   }
   deref(c->arg[0]);
   deref(c->arg[1]);
-  return to_ref(c, &res, s);
+  return to_ref(c, &res, 1, s);
 }
 
 bool func_apply(cell_t *c) {
-  cell_t res = { .val = 0 };
+  cell_t res = { .val = {0} };
   bool s = reduce(c->arg[1]);
   res.alt = closure_split1(c, 1);
   res.alt_set = c->arg[1]->alt_set;
@@ -107,33 +110,36 @@ bool func_apply(cell_t *c) {
     cell_t *n = closure_alloc(3);
     n->func = func_concat;
     n->arg[0] = c->arg[0];
-    n->arg[1] = ref(c->arg[1]->ptr);
+    n->arg[1] = ref(c->arg[1]->ptr[0]);
     n->arg[2] = (cell_t *)res.alt_set;
     deref(c->arg[1]);
     s = reduce(n);
-    copy_val(&res, n);
+    //copy_val(&res, n);
     deref(n);
   } else {
     deref(c->arg[0]); // ***
     deref(c->arg[1]);
   }
-  return to_ref(c, &res, s);  
+  return to_ref(c, &res, 1, s);  
 }
 
 bool func_pushl(cell_t *c) {
-  cell_t res = { .ptr = 0 };
+  cell_t res = { .ptr = {0} };
   cell_t *p = c->arg[1];
   bool s = reduce(p);
   res.alt = closure_split1(c, 1);
   res.alt_set = p->alt_set;
-  res.ptr = s ? compose1(c->arg[0], ref(p->ptr), res.alt_set) : NULL;
+  if(s) {
+    res.ptr[0] = pushl(c->arg[0], ref(p->ptr[0]));
+    res.ptr[0]->alt_set = res.alt_set;
+  }
   /* TODO: need to enforce alt_set when p->ptr == 0 */
   deref(p);
-  return to_ref(c, &res, s);
+  return to_ref(c, &res, 1, s);
 }
 
 bool func_pushr(cell_t *c) {
-  cell_t res = { .ptr = 0 };
+  cell_t res = { .ptr = {0} };
   bool s = reduce(c->arg[0]) & reduce(c->arg[1]);
   res.alt = closure_split(c, 2);
   cell_t *p = c->arg[0];
@@ -141,39 +147,40 @@ bool func_pushr(cell_t *c) {
   s &= !bm_conflict(p->alt_set, q->alt_set);
   res.alt_set = p->alt_set | q->alt_set;
   if(s) {
-    res.ptr = compose1(ref(p->ptr), q, res.alt_set);
+    res.ptr[0] = pushl(ref(p->ptr[0]), q); //***
+    res.ptr[0]->alt_set = res.alt_set;
   } else deref(q);
   deref(p);
-  return to_ref(c, &res, s);
+  return to_ref(c, &res, 1, s);
 }
 
 bool func_quote(cell_t *c) {
-  cell_t res = { .ptr = c->arg[0] };
+  cell_t res = { .ptr = {c->arg[0]} };
   res.alt = closure_split1(c, 0);
-  return to_ref(c, &res, true);
+  return to_ref(c, &res, 1, true);
 }
 
 
 bool func_popr(cell_t *c) {
-  cell_t res = { .ptr = 0 };
-  cell_t res_tail = { .val = 0 };
+  cell_t res = { .ptr = {0} };
+  cell_t res_tail = { .val = {0} };
   bool s = true;
   cell_t *head = c->arg[0];
   cell_t *tail = c->arg[1];
-  if(!reduce(head) | !reduce(head->ptr)) {
+  if(!reduce(head) | !reduce(head->ptr[0])) {
     s = false;
   } else {
-    copy_val(&res_tail, head->ptr);
+    //copy_val(&res_tail, head->ptr[0]);
     res_tail.alt_set = res.alt_set =
-      head->alt_set | head->ptr->alt_set;
+      head->alt_set | head->ptr[0]->alt_set;
     s &= !bm_conflict(head->alt_set,
-		      head->ptr->alt_set);
-    if(head->ptr->alt) {
-      cell_t *q = cons(ref(head->ptr->alt), 0);
+		      head->ptr[0]->alt_set);
+    if(head->ptr[0]->alt) {
+      cell_t *q = quote(ref(head->ptr[0]->alt));
       head->alt = conc_alt(q, head->alt);
       q->alt_set = head->alt_set;
     }
-    if(s) res.ptr = ref(head->ptr->next);
+    if(s) res.ptr[0] = ref(head->ptr[0]->next);
   }
   if(head->alt) {
     cell_t *alt;
@@ -187,8 +194,8 @@ bool func_popr(cell_t *c) {
   deref(head);
   deref(tail);
   deref(c); /* dump ref from tail to c */
-  to_ref(tail, &res_tail, s);
-  return to_ref(c, &res, s);
+  to_ref(tail, &res_tail, 1, s);
+  return to_ref(c, &res, 1, s);
 }
 
 bool is_alt(cell_t *c) {
@@ -202,7 +209,7 @@ cell_t *alt() {
 }
 
 bool func_alt(cell_t *c) {
-  cell_t res = { .val = 0 };
+  cell_t res = { .val = {0} };
   cell_t *p = c->arg[0];
   bool s = reduce(p);
   uint8_t id = (intptr_t)c->arg[2];
@@ -220,13 +227,13 @@ bool func_alt(cell_t *c) {
     res.alt->arg[1] = 0;
     res.alt->arg[2] = c->arg[2];
   }
-  copy_val(&res, p);
+  //copy_val(&res, p);
   deref(p);
-  return to_ref(c, &res, s);
+  return to_ref(c, &res, 1, s);
 }
 
 bool func_concat(cell_t *c) {
-  cell_t res = { .val = 0 };
+  cell_t res = { .val = {0} };
   cell_t *p = c->arg[0], *q = c->arg[1];
   bool s = true;
   while(p && !closure_is_ready(q)) { // ***
@@ -260,34 +267,34 @@ bool func_concat(cell_t *c) {
 	res.next = p;
       }
     }
-    copy_val(&res, q);
+    //copy_val(&res, q);
   } else deref(p);
   deref(q);
-  return to_ref(c, &res, s);
+  return to_ref(c, &res, 1, s);
 }
 
 bool func_assert(cell_t *c) {
   bool s = reduce(c->arg[0]);
-  cell_t res = { .val = c->arg[0]->val,
+  cell_t res = { .val = {c->arg[0]->val[0]},
 		 .type = c->arg[0]->type };
   res.alt = closure_split1(c, 0);
   res.alt_set = c->arg[0]->alt_set;
   deref(c->arg[0]);
-  return to_ref(c, &res, s && res.val);
+  return to_ref(c, &res, 1, s && res.val);
 }
 
 bool func_id(cell_t *c) {
-  cell_t res = { .val = 0 };
+  cell_t res = { .val = {0} };
   bool s = reduce(c->arg[0]);
   res.alt = closure_split1(c, 0);
   res.alt_set = c->arg[0]->alt_set;
-  if(s) copy_val(&res, c->arg[0]);
+  //if(s) copy_val(&res, c->arg[0]);
   deref(c->arg[0]);
-  return to_ref(c, &res, s);
+  return to_ref(c, &res, 1, s);
 }
 
 bool func_drop(cell_t *c) {
-  cell_t res = { .val = 0 };
+  cell_t res = { .val = {0} };
   bool s = reduce(c->arg[0]) &
     reduce(c->arg[1]);
   res.alt = closure_split(c, 2);
@@ -295,10 +302,10 @@ bool func_drop(cell_t *c) {
 			 c->arg[1]->alt_set);
   res.alt_set = c->arg[0]->alt_set |
     c->arg[1]->alt_set;
-  if(s) copy_val(&res, c->arg[0]);
+  //if(s) copy_val(&res, c->arg[0]);
   deref(c->arg[0]);
   deref(c->arg[1]);
-  return to_ref(c, &res, s);
+  return to_ref(c, &res, 1, s);
 }
 
 bool func_swap(cell_t *c) {
@@ -322,18 +329,18 @@ cell_t *id(cell_t *c) {
 }
 
 bool func_dup(cell_t *c) {
-  cell_t res = { .val = 0 };
+  cell_t res = { .val = {0} };
   bool s = reduce(c->arg[0]);
   res.alt = ref(closure_split1(c, 0));
   if(s) {
     res.alt_set = c->arg[0]->alt_set;
-    copy_val(&res, c->arg[0]);
+    //copy_val(&res, c->arg[0]);
   }
-  to_ref(c->arg[1], &res, s);
+  to_ref(c->arg[1], &res, 1, s);
   deref(c->arg[0]);
   deref(c->arg[1]);
   deref(c);
-  return to_ref(c, &res, s);
+  return to_ref(c, &res, 1, s);
 }
 
 /*
@@ -372,8 +379,8 @@ bool func_dip11(cell_t *c) {
   cell_t *next = n->next;
   n->next = 0;
   s &= reduce(next);
-  to_ref(other, n, s);
-  to_ref(c, next, s);
+  to_ref(other, n, closure_cells(n), s);
+  to_ref(c, next, closure_cells(next), s);
   deref(n);
   deref(next);
   deref(c);
@@ -402,9 +409,9 @@ bool func_dip12(cell_t *c) {
 
   s &= reduce(n3);
 
-  to_ref(other2, n, s);
-  to_ref(other1, n2, s);
-  to_ref(c, n3, s);
+  to_ref(other2, n, closure_cells(n), s);
+  to_ref(other1, n2, closure_cells(n2), s);
+  to_ref(c, n3, closure_cells(n3), s);
 
   deref(n);
   deref(n2);
@@ -431,8 +438,8 @@ bool func_dip21(cell_t *c) {
   cell_t *next = n->next;
   n->next = 0;
   s &= reduce(next);
-  to_ref(other, n, s);
-  to_ref(c, next, s);
+  to_ref(other, n, closure_cells(n), s);
+  to_ref(c, next, closure_cells(next), s);
   deref(n);
   deref(next);
   deref(c);

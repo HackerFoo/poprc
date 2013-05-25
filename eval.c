@@ -589,6 +589,9 @@ void eval(char *str, unsigned int n) {
   if(!c) return;
   if(!closure_is_ready(c))
     printf("incomplete expression\n");
-  else
+  else {
     show_list(c);
+    deref(c);
+    printf("\n");
+  }
 }

@@ -292,7 +292,7 @@ cell_t *empty_list() {
 cell_t *push(cell_t *x, cell_t *c) {
   cell_t *e = expand(c, 1);
   int n = closure_args(e);
-  e->args[n-1] = x;
+  e->arg[n-1] = x;
   return e;
 }
 
@@ -340,11 +340,16 @@ cell_t *func(reduce_t *f, int args) {
   return c;
 }
 
-#define cell_offset(f) (&(((cell_t *)0)->f))
+#define cell_offset(f) ((cell_t **)&(((cell_t *)0)->f))
 
 int list_size(cell_t *c) {
-  return closure_args(c) -
-    (cell_offset(ptr[0]) - cell_offset(arg[0]));
+  int i = 0;
+  cell_t **p = c->ptr;
+  while(*p && is_closure(*p)) {
+    ++p;
+    ++i;
+  }
+  return i;
 }
 
 int val_size(cell_t *c) {
@@ -357,9 +362,13 @@ int closure_args(cell_t *c) {
   int n = 0;
   if(c->func == func_alt) return 2;
   if(is_reduced(c)) {
-    /* skip over value data */
-    p += LENGTH(c->arg);
-    n += LENGTH(c->arg);
+    if(is_list(c))
+      return list_size(c) +
+	cell_offset(ptr[0]) -
+	cell_offset(arg[0]);
+    else return val_size(c) +
+	   cell_offset(val[0]) -
+	   cell_offset(arg[0]);
   } else if(is_offset(*p)) {
     intptr_t o = (intptr_t)(*p) + 1;
     p += o;
@@ -587,25 +596,31 @@ cell_t *data(cell_t *c) {
 cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
   assert(is_closure(a) &&
 	 is_closure(b) && is_list(b));
+  assert(n);
   int bs = list_size(b);
-  cell_t *l = b->ptr[bs - 1];
-  while(n && !closure_is_ready(l)) {
-    cell_t *d = dep(ref(a));
-    arg(l, d);
-    arg(a, d);
-    --n;
-  }
-  if(!closure_is_ready(l)) {
-    arg(l, a);
-  } else {
-    b = expand(b, n+1);
-    b->ptr[bs+n] = a;
-    while(n) {
-      --n;
+  if(bs) {
+    cell_t *l = b->ptr[bs - 1];
+    while(n-1 && !closure_is_ready(l)) {
       cell_t *d = dep(ref(a));
-      b->ptr[bs+n] = d;
+      arg(l, d);
       arg(a, d);
+      --n;
     }
+    if(!closure_is_ready(l)) {
+      arg(l, a);
+      return b;
+    }
+  }
+
+  b = expand(b, n);
+  --n;
+  b->ptr[bs+n] = a;
+
+  while(n) {
+    --n;
+    cell_t *d = dep(ref(a));
+    b->ptr[bs+n] = d;
+    arg(a, d);
   }
   return b;
 }
