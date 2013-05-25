@@ -105,4 +105,12 @@ typedef struct measure_t {
 #define LENGTH(a) (sizeof(a) / WIDTH(a))
 #define FOREACH(a, i) for(i = 0; i < LENGTH(a); i++)
 
+#define min(a, b) ((a) <= (b) ? (a) : (b))
+#define max(a, b) ((a) >= (b) ? (a) : (b))
+
+#define alloca_copy(c, n)		\
+  (ref_ptrs(c),	n = closure_cells(c),	\
+    memcpy(alloca(sizeof(cell_t) * n),	\
+	   c, sizeof(cell_t) * n))
+
 #endif

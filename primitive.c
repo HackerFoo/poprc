@@ -15,6 +15,8 @@
     along with pegc.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <string.h>
+#include <alloca.h>
 #include "rt_types.h"
 #include "gen/rt.h"
 #include "gen/primitive.h"
@@ -57,8 +59,12 @@ word_entry_t word_table[23] = {
     res.alt_set = c->arg[0]->alt_set |		\
       c->arg[1]->alt_set;			\
     if(s) {					\
-      res.val[0] = c->arg[0]->val[0] __op__	\
-      c->arg[1]->val[0];			\
+      res.val_size = min(c->arg[0]->val_size,	\
+                         c->arg[1]->val_size);	\
+      int i;					\
+      for(i = 0; i < res.val_size; ++i)		\
+	res.val[0] = c->arg[0]->val[i] __op__	\
+	  c->arg[1]->val[i];			\
       res.val_size = 1;				\
     }						\
     deref(c->arg[0]);				\
@@ -329,18 +335,16 @@ cell_t *id(cell_t *c) {
 }
 
 bool func_dup(cell_t *c) {
-  cell_t res = { .val = {0} };
   bool s = reduce(c->arg[0]);
-  res.alt = ref(closure_split1(c, 0));
-  if(s) {
-    res.alt_set = c->arg[0]->alt_set;
-    //copy_val(&res, c->arg[0]);
-  }
-  to_ref(c->arg[1], &res, 1, s);
+  cell_t *alt = ref(closure_split1(c, 0));
+  int n;
+  cell_t *res = alloca_copy(c->arg[0], n);
+  res->alt = alt;
+  to_ref(c->arg[1], res, n, s);
   deref(c->arg[0]);
   deref(c->arg[1]);
   deref(c);
-  return to_ref(c, &res, 1, s);
+  return to_ref(c, res, n, s);
 }
 
 /*

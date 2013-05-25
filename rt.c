@@ -579,9 +579,13 @@ void copy_val(cell_t *dest, unsigned int size, cell_t *src) {
 }
 */
 
-#define alloca_copy(c)				    \
-  memcpy(alloca(sizeof(cell_t) * closure_cells(c)), \
-	 c, sizeof(cell_t) * closure_cells(c))
+void ref_ptrs(cell_t *c) {
+  if(is_list(c)) {
+    int i, n = list_size(c);
+    for(i = 0; i < n; i++)
+      c->ptr[i] = ref(c->ptr[i]);
+  }
+}
 
 bool is_dep(cell_t *c) {
   return c->func == func_dep;
@@ -603,7 +607,7 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
     while(n-1 && !closure_is_ready(l)) {
       cell_t *d = dep(ref(a));
       arg(l, d);
-      arg(a, d);
+      arg(a, ref(d));
       --n;
     }
     if(!closure_is_ready(l)) {
@@ -620,7 +624,7 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
     --n;
     cell_t *d = dep(ref(a));
     b->ptr[bs+n] = d;
-    arg(a, d);
+    arg(a, ref(d));
   }
   return b;
 }
