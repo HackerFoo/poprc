@@ -107,7 +107,7 @@ char *function_name(reduce_t *f) {
   CASE(sub);
   CASE(mul);
   CASE(reduced);
-  CASE(append);
+  CASE(compose);
   CASE(pushl);
   CASE(pushr);
   CASE(quote);

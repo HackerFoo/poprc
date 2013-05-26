@@ -108,6 +108,9 @@ typedef struct measure_t {
 #define min(a, b) ((a) <= (b) ? (a) : (b))
 #define max(a, b) ((a) >= (b) ? (a) : (b))
 
+#define alloca_cells(n) \
+  memset(alloca((n) * sizeof(cell_t)), 0, sizeof(cell_t))
+
 #define alloca_copy(c, n)		\
   (ref_ptrs(c),	n = closure_cells(c),	\
     memcpy(alloca(sizeof(cell_t) * n),	\

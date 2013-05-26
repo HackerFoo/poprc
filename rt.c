@@ -317,6 +317,23 @@ cell_t *append(cell_t *a, cell_t *b) {
   return e;
 }
 
+cell_t *compose(cell_t *a, cell_t *b) {
+  int n = list_size(b);
+  int n_a = list_size(a);
+  cell_t *l = b->ptr[n-1];
+  int i = 0;
+  while(!closure_is_ready(l) && i < n_a) {
+    arg(l, ref(a->ptr[i++]));
+  }
+  cell_t *e = expand_list(b, n_a - i);
+  int j;
+  for(j = n; i < n_a; ++i, ++j) {
+    e->ptr[j] = ref(a->ptr[i]);
+  }
+  deref(a);
+  return e;
+}
+
 cell_t *expand_list(cell_t *c, unsigned int s) {
   return expand(c, s, calculate_list_size);
 }
@@ -441,6 +458,13 @@ cell_t *ref_list(cell_t *c) {
   while(n--)
     if(is_closure(c->ptr[n]))
       c->ptr[n] = ref(c->ptr[n]);
+  return c;
+}
+
+cell_t *ref_all(cell_t *c) {
+  c->alt = ref(c->alt);
+  if(!is_reduced(c)) ref_args(c);
+  else if(is_list(c)) ref_list(c);
   return c;
 }
 

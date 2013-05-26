@@ -29,7 +29,7 @@ word_entry_t word_table[23] = {
   {"*", func_mul, 2, 1},
   {"+", func_add, 2, 1},
   {"-", func_sub, 2, 1},
-  {".", func_append, 2, 1},
+  {".", func_compose, 2, 1},
   {"<", func_lt, 2, 1},
   {"<=", func_lte, 2, 1},
   {"==", func_eq, 2, 1},
@@ -82,29 +82,25 @@ bool func_lte(cell_t *c) { FUNC_OP2(<=); }
 bool func_eq(cell_t *c) { FUNC_OP2(==); }
 
 
-bool func_append(cell_t *c) {
-  cell_t res = { .ptr = {0} };
+bool func_compose(cell_t *c) {
+  cell_t *res, *alt;
+  int res_n;
   bool s = reduce(c->arg[0]) & reduce(c->arg[1]);
-  res.alt = closure_split(c, 2);
+  alt = closure_split(c, 2);
   s &= !bm_conflict(c->arg[0]->alt_set,
 		    c->arg[1]->alt_set);
-  res.alt_set = c->arg[0]->alt_set | c->arg[1]->alt_set;
   if(s) {
-    if(!c->arg[0]->ptr)
-      res.ptr[0] = ref(c->arg[1]->ptr[0]);
-    else if(!c->arg[1]->ptr)
-      res.ptr[0] = ref(c->arg[0]->ptr[0]);
-    else {
-      res.ptr[0] = closure_alloc(3);
-      res.ptr[0]->func = func_concat;
-      res.ptr[0]->arg[0] = ref(c->arg[0]->ptr[0]);
-      res.ptr[0]->arg[1] = ref(c->arg[1]->ptr[0]);
-      res.ptr[0]->arg[2] = (cell_t *)res.alt_set;
-    }
+    res = compose(c->arg[0], c->arg[1]);
+    res_n = closure_cells(res);
+  } else {
+    res = alloca_cells(res_n = 1);
   }
-  deref(c->arg[0]);
-  deref(c->arg[1]);
-  return to_ref(c, &res, 1, s);
+  res->alt_set = c->arg[0]->alt_set | c->arg[1]->alt_set;
+  res->alt = alt;
+  to_ref(c, res, res_n, s);
+  if(s) closure_free(res);
+  else deref(c->arg[1]);
+  return s;
 }
 
 // *** broken
@@ -166,9 +162,6 @@ bool func_quote(cell_t *c) {
   res.alt = closure_split1(c, 0);
   return to_ref(c, &res, 1, true);
 }
-
-#define alloca_cells(n) \
-  memset(alloca((n) * sizeof(cell_t)), 0, sizeof(cell_t))
 
 bool func_popr(cell_t *c) {
   cell_t *res, *res_other;
@@ -309,12 +302,12 @@ bool func_assert(cell_t *c) {
 }
 
 bool func_id(cell_t *c) {
-  bool s = reduce(c->arg[0]);
-  int res_n;
-  cell_t *res = alloca_copy_if(c->arg[0], res_n, s);
-  res->alt = closure_split1(c, 0);
-  deref(c->arg[0]);
-  return to_ref(c, res, res_n, s);
+  cell_t *p = c->arg[0];
+  bool s = reduce(p);
+  int n = closure_cells(p);
+  to_ref(c, ref_all(p), n, s);
+  deref(p);
+  return s;
 }
 
 bool func_drop(cell_t *c) {
@@ -352,33 +345,17 @@ cell_t *id(cell_t *c) {
   return i;
 }
 
-// *** rewrite
 bool func_dup(cell_t *c) {
-  bool s = reduce(c->arg[0]);
-  int n = closure_cells(c->arg[0]);
-  to_ref(c->arg[1], c->arg[0], n, s);
-  to_ref(c, c->arg[0], n, s);
+  cell_t *p = c->arg[0];
+  bool s = reduce(p);
+  int n = closure_cells(p);
+  to_ref(c->arg[1], ref_all(p), n, s);
+  deref(c->arg[1]);
+  to_ref(c, ref_all(p), n, s);
+  deref(p);
+  deref(c);
   return s;
 }
-
-/*
-bool func_compose(cell_t *c) {
-  cell_t res = { .val = 0 };
-  bool s = reduce(c->arg[0]) &&
-    reduce(c->arg[1]);
-  res.alt = closure_split(c, 2);
-  s &= !bm_conflict(c->arg[0]->alt_set,
-		    c->arg[1]->alt_set);
-  res.alt_set = c->arg[0]->alt_set |
-    c->arg[1]->alt_set;
-  
-  (void)res;
-
-  // ???
-
-  return true;
-}
-*/
 
 cell_t *build(char *str, unsigned int n);
 #define BUILD(x) build((x), sizeof(x))
