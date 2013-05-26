@@ -177,8 +177,8 @@ void graph_cell(FILE *f, cell_t *c) {
     if(is_list(c)) {
       int n = list_size(c);
       while(n--)
-	fprintf(f, "<tr><td port=\"ptr\">ptr: <font color=\"lightgray\">%p</font></td></tr>",
-		c->ptr[n]);
+	fprintf(f, "<tr><td port=\"ptr%d\">ptr: <font color=\"lightgray\">%p</font></td></tr>",
+		n, c->ptr[n]);
     } else if(c->type == T_FAIL) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
     } else {
@@ -210,8 +210,8 @@ void graph_cell(FILE *f, cell_t *c) {
       if(is_list(c) && c->ptr) {
 	int n = list_size(c);
 	while(n--) {
-	  fprintf(f, "node%ld:ptr -> node%ld:top;\n",
-		  node, c->ptr[n] - cells);
+	  fprintf(f, "node%ld:ptr%d -> node%ld:top;\n",
+		  node, n, c->ptr[n] - cells);
 	  graph_cell(f, c->ptr[n]);
 	}
       }
@@ -258,7 +258,7 @@ void show_list(cell_t *c) {
   int n = list_size(c);
   if(n) {
     printf(" [");
-    while(n--) show_one(c->ptr[n]);
+    while(n--) show_alt(c->ptr[n]);
     printf(" ]");
   } else printf(" []");
 }
@@ -281,43 +281,26 @@ bool reduce_one(cell_t *c) {
 }
 
 cell_t *reduce_alt(cell_t *c) {
-  cell_t *r, *t, *p = c, *q;
-  /* skip initial failures */
-  while(p && !reduce_one(p)) {
-    t = ref(p->alt);
-    deref(p);
-    p = t;
-  }
-  /* store first success */
-  r = q = p;
-  /* deref initial failures */
-  if(!p) return 0;
-  /* append remaining successes */
-  p = p->alt;
-  while(true) {
-    while(p && reduce_one(p)) {
-      q = p;
+  cell_t *r, *t, *p = c;
+  cell_t **q = &r;
+  while(p) {
+    if(reduce_one(p)) {
+      *q = p;
+      q = &p->alt;
       p = p->alt;
-    }
-    /* q points to last success, p to first failure */
-    if(!p) break;
-    while(p && !reduce_one(p)) {
+    } else {
       t = ref(p->alt);
       deref(p);
       p = t;
     }
-    /* p points to next success */
-    q->alt = p;
-    q = q->alt;
   }
+  *q = 0;
   return r;
 }
     
 void show_alt(cell_t *c) {
   cell_t *p = c, *t;
 
-  if(!p) return;
-  //p = reduce_alt(p);
   if(p) {
     if(!p->alt) {
       /* one */

@@ -113,4 +113,7 @@ typedef struct measure_t {
     memcpy(alloca(sizeof(cell_t) * n),	\
 	   c, sizeof(cell_t) * n))
 
+#define alloca_copy_if(c, n, s) \
+  ((s) ? alloca_copy((c), (n)) : alloca_cells((n) = 1))
+
 #endif

@@ -225,8 +225,21 @@ cell_t *closure_alloc_cells(int size) {
   return c;
 }
 
-int calculate_cells(int args) {
-  return 1 + ((sizeof(cell_t *) * (args - LENGTH(((cell_t *)0)->arg)) + sizeof(cell_t) - 1) / sizeof(cell_t));
+#define calc_size(f, n)				\
+  ((sizeof(cell_t) - 1				\
+    + (intptr_t)&(((cell_t *)0)->f[n-1]))	\
+   / sizeof(cell_t))
+
+int calculate_cells(int n) {
+  return calc_size(arg, n);
+}
+
+int calculate_list_size(int n) {
+  return calc_size(ptr, n);
+}
+
+int calculate_val_size(int n) {
+  return calc_size(val, n);
 }
 
 int closure_cells(cell_t *c) {
@@ -290,24 +303,28 @@ cell_t *empty_list() {
 }
 
 cell_t *push(cell_t *x, cell_t *c) {
-  cell_t *e = expand(c, 1);
-  int n = closure_args(e);
-  e->arg[n-1] = x;
+  int n = list_size(c);
+  cell_t *e = expand_list(c, 1);
+  e->ptr[n] = x;
   return e;
 }
 
 cell_t *append(cell_t *a, cell_t *b) {
   int n = list_size(b);
   int n_a = list_size(a);
-  cell_t *e = expand(a, n);
+  cell_t *e = expand_list(a, n);
   while(n--) e->ptr[n + n_a] = b->ptr[n];
   return e;
 }
 
-cell_t *expand(cell_t *c, unsigned int s) {
+cell_t *expand_list(cell_t *c, unsigned int s) {
+  return expand(c, s, calculate_list_size);
+}
+
+cell_t *expand(cell_t *c, unsigned int s, int (*f)(int)) {
   int n = closure_args(c);
-  int cn_p = calculate_cells(n);
-  int cn = calculate_cells(n + s);
+  int cn_p = f(n);
+  int cn = f(n + s);
   if(c && !c->n && cn == cn_p) {
     return c;
   } else {
@@ -427,9 +444,10 @@ cell_t *ref_list(cell_t *c) {
   return c;
 }
 
-
 bool to_ref(cell_t *c, cell_t *r, unsigned int size, bool s) {
   if(!s) {
+    memcpy(c, r, sizeof(cell_t));
+    c->func = func_reduced;
     c->type = T_FAIL;
     return false;
   } else if(size <= closure_cells(c)) {
@@ -616,7 +634,7 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
     }
   }
 
-  b = expand(b, n);
+  b = expand_list(b, n);
   --n;
   b->ptr[bs+n] = a;
 
@@ -634,7 +652,9 @@ cell_t *pushl(cell_t *a, cell_t *b) {
   assert(is_closure(a) &&
 	 is_closure(b) && is_list(b));
 
-  cell_t *l = b->ptr[list_size(b) - 1];
+  int n = list_size(b);
+  if(!n) return push(a, b);
+  cell_t *l = b->ptr[n - 1];
   if(closure_is_ready(l)) {
     return push(a, b);
   } else {
