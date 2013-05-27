@@ -127,18 +127,24 @@ bool func_apply(cell_t *c) {
 }
 
 bool func_pushl(cell_t *c) {
-  cell_t res = { .ptr = {0} };
-  cell_t *p = c->arg[1];
-  bool s = reduce(p);
-  res.alt = closure_split1(c, 1);
-  res.alt_set = p->alt_set;
+  bool s = reduce(c->arg[1]);
+  cell_t *alt = closure_split1(c, 1);
+  int res_n;
+  cell_t *res;
   if(s) {
-    res.ptr[0] = pushl(c->arg[0], ref(p->ptr[0]));
-    res.ptr[0]->alt_set = res.alt_set;
+    res = pushl(c->arg[0], c->arg[1]);
+    res_n = closure_cells(res);
+    res->alt = alt;
+    to_ref(c, res, res_n, true);
+    closure_free(res);
+    return true;
+  } else {
+    res = alloca_cells(res_n = 1);
+    res->alt = alt;
+    deref(c->arg[0]);
+    deref(c->arg[1]);
+    return to_ref(c, res, res_n, false);
   }
-
-  deref(p);
-  return to_ref(c, &res, 1, s);
 }
 
 bool func_pushr(cell_t *c) {

@@ -226,8 +226,8 @@ cell_t *closure_alloc_cells(int size) {
 }
 
 #define calc_size(f, n)				\
-  ((sizeof(cell_t) - 1				\
-    + (intptr_t)&(((cell_t *)0)->f[n-1]))	\
+  ((sizeof(cell_t)				\
+    + ((intptr_t)&(((cell_t *)0)->f[n]) - 1))	\
    / sizeof(cell_t))
 
 int calculate_cells(int n) {
@@ -300,13 +300,6 @@ cell_t *quote(cell_t *x) {
 
 cell_t *empty_list() {
   return quote(0);
-}
-
-cell_t *push(cell_t *x, cell_t *c) {
-  int n = list_size(c);
-  cell_t *e = expand_list(c, 1);
-  e->ptr[n] = x;
-  return e;
 }
 
 cell_t *append(cell_t *a, cell_t *b) {
@@ -677,15 +670,20 @@ cell_t *pushl(cell_t *a, cell_t *b) {
 	 is_closure(b) && is_list(b));
 
   int n = list_size(b);
-  if(!n) return push(a, b);
-  cell_t *l = b->ptr[n - 1];
-  if(closure_is_ready(l)) {
-    return push(a, b);
-  } else {
-    arg(l, a);
-    return b;
+  if(n) {
+    cell_t *l = b->ptr[n - 1];
+    if(!closure_is_ready(l)) {
+      arg(l, a);
+      return b;
+    }
   }
+
+  cell_t *e = expand_list(b, 1);
+  e->ptr[n] = a;
+  return e;
 }
+
+//cell_t *pushr
 
 #define BM_SIZE (sizeof(intptr_t) * 4)
 

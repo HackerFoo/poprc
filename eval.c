@@ -181,6 +181,8 @@ void graph_cell(FILE *f, cell_t *c) {
 		n, c->ptr[n]);
     } else if(c->type == T_FAIL) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
+    } else if(c->type == T_INDIRECT) {
+      fprintf(f, "<tr><td port=\"ind\">ind: <font color=\"lightgray\">%p</font></td></tr>", (cell_t *)c->val[0]);
     } else {
       int n = c->val_size;
       while(n--)
@@ -215,6 +217,10 @@ void graph_cell(FILE *f, cell_t *c) {
 	  graph_cell(f, c->ptr[n]);
 	}
       }
+    } else if(c->type == T_INDIRECT) {
+      fprintf(f, "node%ld:ind -> node%ld:top;\n",
+	      node, (cell_t *)c->val[0] - cells);
+      graph_cell(f, (cell_t *)c->val[0]);
     }
   } else {
     for(i = 0; i < n; i++) {
@@ -268,6 +274,8 @@ void show_one(cell_t *c) {
     printf(" []");
   } else if(c->type == T_INT) {
     show_val(c);
+  } else if(c->type == T_INDIRECT) {
+    show_one((cell_t *)c->val[0]);
   } else if(is_list(c)) {
     show_list(c);
   } else {
