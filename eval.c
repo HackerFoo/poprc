@@ -158,8 +158,7 @@ void graph_cell(FILE *f, cell_t *c) {
   set_bit(visited, node);
   int n = closure_args(c);
   /* functions with extra args */
-  if(c->func == func_alt /* ||
-			    c->func == func_concat */) n++;
+  if(c->func == func_alt) n++;
   int i;
 
   /* print node attributes */
@@ -204,18 +203,11 @@ void graph_cell(FILE *f, cell_t *c) {
   }
   if(is_reduced(c)) {
     if(is_list(c)) {
-      if(c->next) {
-	fprintf(f, "node%ld:next -> node%ld:top;\n",
-		node, c->next - cells);
-	graph_cell(f, c->next);
-      }
-      if(is_list(c) && c->ptr) {
-	int n = list_size(c);
-	while(n--) {
-	  fprintf(f, "node%ld:ptr%d -> node%ld:top;\n",
-		  node, n, c->ptr[n] - cells);
-	  graph_cell(f, c->ptr[n]);
-	}
+      int n = list_size(c);
+      while(n--) {
+	fprintf(f, "node%ld:ptr%d -> node%ld:top;\n",
+		node, n, c->ptr[n] - cells);
+	graph_cell(f, c->ptr[n]);
       }
     } else if(c->type == T_INDIRECT) {
       fprintf(f, "node%ld:ind -> node%ld:top;\n",

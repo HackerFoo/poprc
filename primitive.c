@@ -290,8 +290,9 @@ bool func_drop(cell_t *c) {
     c->arg[1]->alt_set;
   res->alt = alt;
   deref(c->arg[1]);
+  cell_t *t = c->arg[0];
   to_ref(c, ref_all(res), closure_cells(c->arg[0]), s);
-  deref(c->arg[0]);
+  deref(t);
   return s;
 }
 

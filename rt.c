@@ -305,7 +305,7 @@ cell_t *empty_list() {
 cell_t *append(cell_t *a, cell_t *b) {
   int n = list_size(b);
   int n_a = list_size(a);
-  cell_t *e = expand_list(a, n);
+  cell_t *e = expand(a, n);
   while(n--) e->ptr[n + n_a] = b->ptr[n];
   return e;
 }
@@ -318,7 +318,7 @@ cell_t *compose(cell_t *a, cell_t *b) {
   while(!closure_is_ready(l) && i < n_a) {
     arg(l, ref(a->ptr[i++]));
   }
-  cell_t *e = expand_list(b, n_a - i);
+  cell_t *e = expand(b, n_a - i);
   int j;
   for(j = n; i < n_a; ++i, ++j) {
     e->ptr[j] = ref(a->ptr[i]);
@@ -327,14 +327,10 @@ cell_t *compose(cell_t *a, cell_t *b) {
   return e;
 }
 
-cell_t *expand_list(cell_t *c, unsigned int s) {
-  return expand(c, s, calculate_list_size);
-}
-
-cell_t *expand(cell_t *c, unsigned int s, int (*f)(int)) {
+cell_t *expand(cell_t *c, unsigned int s) {
   int n = closure_args(c);
-  int cn_p = f(n);
-  int cn = f(n + s);
+  int cn_p = calculate_cells(n);
+  int cn = calculate_cells(n + s);
   if(c && !c->n && cn == cn_p) {
     return c;
   } else {
@@ -651,7 +647,7 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
     }
   }
 
-  b = expand_list(b, n);
+  b = expand(b, n);
   --n;
   b->ptr[bs+n] = a;
 
@@ -678,7 +674,7 @@ cell_t *pushl(cell_t *a, cell_t *b) {
     }
   }
 
-  cell_t *e = expand_list(b, 1);
+  cell_t *e = expand(b, 1);
   e->ptr[n] = a;
   return e;
 }
