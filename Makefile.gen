@@ -11,3 +11,6 @@ gen/%.h: %.c makeheaders/makeheaders
 linenoise/linenoise.h:
 	git submodule init
 	git submodule update
+
+makeheaders/makeheaders: makeheaders/makeheaders.c
+	gcc -O -w makeheaders/makeheaders.c -o makeheaders/makeheaders

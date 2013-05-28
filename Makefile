@@ -57,26 +57,4 @@ clean:
 	rm -rf build gen
 
 makeheaders/makeheaders: makeheaders/makeheaders.c
-	$(CC) -O -w makeheaders/makeheaders.c -o makeheaders/makeheaders
-
-#obj/rt.o: rt.c rt.h rt_types.h
-#	mkdir -p obj
-#	$(CC) $(CFLAGS) -c rt.c -o obj/rt.o
-#
-#obj/primitive.o: primitive.c primitive.h rt.h rt_types.h
-#	mkdir -p obj
-#	$(CC) $(CFLAGS) -c primitive.c -o obj/primitive.o
-#
-#obj/eval.o: eval.c eval.h rt.h rt_types.h
-#	mkdir -p obj
-#	$(CC) $(CFLAGS) -c eval.c -o obj/eval.o
-#
-#eval: obj/eval.o obj/rt.o obj/primitive.o obj/linenoise.o
-#	$(CC) $(CFLAGS) obj/rt.o obj/linenoise.o -o rt
-#
-#rt.h: rt.c makeheaders/makeheaders
-#	./makeheaders/makeheaders rt.c
-#
-#.PHONY: clean
-#clean:
-#	rm -rf obj rt.h rt makeheaders/makeheaders
+	gcc -O -w makeheaders/makeheaders.c -o makeheaders/makeheaders
