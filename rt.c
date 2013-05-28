@@ -35,7 +35,7 @@ bool is_cell(void *p) {
 }
 
 bool is_closure(void *p) {
-  return is_cell(p) && !is_cell(((cell_t *)p)->func);
+  return is_cell(p) && ((cell_t *)p)->func;
 }
 
 bool closure_is_ready(cell_t *c) {
@@ -313,10 +313,12 @@ cell_t *append(cell_t *a, cell_t *b) {
 cell_t *compose(cell_t *a, cell_t *b) {
   int n = list_size(b);
   int n_a = list_size(a);
-  cell_t *l = b->ptr[n-1];
   int i = 0;
-  while(!closure_is_ready(l) && i < n_a) {
-    arg(l, ref(a->ptr[i++]));
+  if(n) {
+    cell_t *l = b->ptr[n-1];
+    while(!closure_is_ready(l) && i < n_a) {
+      arg(l, ref(a->ptr[i++]));
+    }
   }
   cell_t *e = expand(b, n_a - i);
   int j;
@@ -337,8 +339,8 @@ cell_t *expand(cell_t *c, unsigned int s) {
     /* copy */
     cell_t *new = closure_alloc_cells(cn);
     memcpy(new, c, cn_p * sizeof(cell_t));
-    if(c->n) --c->n;
-    else closure_free(c);
+    ref_ptrs(new);
+    deref(c);
     return new;
   }
 }
@@ -368,7 +370,7 @@ cell_t *func(reduce_t *f, int args) {
 int list_size(cell_t *c) {
   int i = 0;
   cell_t **p = c->ptr;
-  while(*p && is_closure(*p)) {
+  while(*p && is_cell(*p)) {
     ++p;
     ++i;
   }
@@ -398,7 +400,7 @@ int closure_args(cell_t *c) {
     n += o;
   }
   /* args must be cells */
-  while(is_closure(*p)) {
+  while(is_cell(*p)) {
     p++;
     n++;
   }

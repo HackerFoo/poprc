@@ -38,15 +38,9 @@ typedef struct stack_frame {
 
 typedef bool (reduce_t)(cell_t *cell);
 struct __attribute__((packed)) cell {
-  union {
-    struct __attribute__((packed)) {
-      reduce_t *func;
-      cell_t *alt;
-    };
-    struct __attribute__((packed)) {
-      cell_t *prev;
-      cell_t *next;
-    };
+  struct __attribute__((packed)) {
+    reduce_t *func;
+    cell_t *alt;
   };
   uint32_t n;
   union {
@@ -64,6 +58,9 @@ struct __attribute__((packed)) cell {
 	/* list */
 	struct __attribute__((packed)) {
 	  cell_t *ptr[2];
+	};
+	struct __attribute__((packed)) {
+	  cell_t *prev, *next;
 	};
       };
     };
