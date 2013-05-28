@@ -43,8 +43,8 @@ gen/%.h: %.c makeheaders/makeheaders
 	./makeheaders/makeheaders $*.c:gen/$*.h
 
 linenoise/linenoise.h:
-	git submodules init
-	git submodules update
+	git submodule init
+	git submodule update
 
 build/linenoise.o: linenoise/linenoise.c linenoise/linenoise.h
 	@mkdir -p build
