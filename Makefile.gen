@@ -8,3 +8,6 @@ gen/%.h: %.c makeheaders/makeheaders
 	@mkdir -p gen
 	./makeheaders/makeheaders $*.c:gen/$*.h
 
+linenoise/linenoise.h:
+	git submodule init
+	git submodule update
