@@ -5,6 +5,9 @@ GEN := $(patsubst %.c, gen/%.h, $(wildcard *.c))
 .PHONY: all
 all: eval
 
+debug:
+	echo $(OBJS:.o=.d)
+
 # modified from http://scottmcpeak.com/autodepend/autodepend.html
 
 # link
@@ -22,9 +25,10 @@ eval: $(OBJS) build/linenoise.o
 #   fmt -1: list words one per line
 #   sed:    strip leading spaces
 #   sed:    add trailing colons
-build/%.o: $(GEN) %.c
+build/%.o: %.c
 	@mkdir -p build
-	gcc -MM $(CFLAGS) -Igen $*.c > build/$*.d
+	@gcc -MM $(CFLAGS) -Igen $*.c -MG -MT build/$*.o -MF build/$*.d
+	@make -f Makefile.gen build/$*.o > /dev/null
 	gcc -c $(CFLAGS) -Igen $*.c -o build/$*.o
 	@mv -f build/$*.d build/$*.d.tmp
 	@sed -e 's|.*:|$*.o:|' < build/$*.d.tmp > build/$*.d
@@ -38,7 +42,11 @@ gen/%.h: %.c makeheaders/makeheaders
 	@mkdir -p gen
 	./makeheaders/makeheaders $*.c:gen/$*.h
 
-build/linenoise.o: linenoise/linenoise.c linenoise/linenoise.c
+linenoise/linenoise.h:
+	git submodules init
+	git submodules update
+
+build/linenoise.o: linenoise/linenoise.c linenoise/linenoise.h
 	@mkdir -p build
 	gcc $(CFLASGS) -c linenoise/linenoise.c -o build/linenoise.o
 

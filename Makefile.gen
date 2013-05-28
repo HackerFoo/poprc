@@ -1,0 +1,10 @@
+# subset of Makefile used to generate headers on demand
+
+OBJS := $(patsubst %.c, build/%.o, $(wildcard *.c))
+
+-include $(OBJS:.o=.d)
+
+gen/%.h: %.c makeheaders/makeheaders
+	@mkdir -p gen
+	./makeheaders/makeheaders $*.c:gen/$*.h
+
