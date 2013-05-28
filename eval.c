@@ -109,12 +109,12 @@ char *function_name(reduce_t *f) {
   CASE(reduced);
   CASE(compose);
   CASE(pushl);
-  CASE(pushr);
+  //  CASE(pushr);
   CASE(quote);
   CASE(dep);
   CASE(popr);
   CASE(alt);
-  CASE(concat);
+  //  CASE(concat);
   CASE(assert);
   CASE(id);
   //  CASE(collect);
@@ -158,8 +158,8 @@ void graph_cell(FILE *f, cell_t *c) {
   set_bit(visited, node);
   int n = closure_args(c);
   /* functions with extra args */
-  if(c->func == func_alt ||
-     c->func == func_concat) n++;
+  if(c->func == func_alt /* ||
+			    c->func == func_concat */) n++;
   int i;
 
   /* print node attributes */

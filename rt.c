@@ -683,8 +683,6 @@ cell_t *pushl(cell_t *a, cell_t *b) {
   return e;
 }
 
-//cell_t *pushr
-
 #define BM_SIZE (sizeof(intptr_t) * 4)
 
 intptr_t bm(int k, int v) {

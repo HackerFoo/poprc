@@ -22,9 +22,9 @@
 #include "gen/primitive.h"
 
 /* must be in ascending order */
-word_entry_t word_table[23] = {
+word_entry_t word_table[21] = {
   {"!", func_assert, 1, 1},
-  {"$", func_apply, 2, 1}, // ***
+  //  {"$", func_apply, 2, 1}, // ***
   {"'", func_quote, 1, 1},
   {"*", func_mul, 2, 1},
   {"+", func_add, 2, 1},
@@ -43,7 +43,7 @@ word_entry_t word_table[23] = {
   {"id", func_id, 1, 1},
   {"popr", func_popr, 1, 2},
   {"pushl", func_pushl, 2, 1},
-  {"pushr", func_pushr, 2, 1},
+  //  {"pushr", func_pushr, 2, 1},
   {"swap", func_swap, 2, 2},
   {"|", func_alt, 2, 1}
 };
@@ -102,7 +102,7 @@ bool func_compose(cell_t *c) {
   else deref(c->arg[1]);
   return s;
 }
-
+/*
 // *** broken
 bool func_apply(cell_t *c) {
   cell_t res = { .val = {0} };
@@ -125,7 +125,7 @@ bool func_apply(cell_t *c) {
   }
   return to_ref(c, &res, 1, s);  
 }
-
+*/
 bool func_pushl(cell_t *c) {
   bool s = reduce(c->arg[1]);
   cell_t *alt = closure_split1(c, 1);
@@ -146,23 +146,25 @@ bool func_pushl(cell_t *c) {
     return to_ref(c, res, res_n, false);
   }
 }
-
+/*
 bool func_pushr(cell_t *c) {
-  cell_t res = { .ptr = {0} };
-  bool s = reduce(c->arg[0]) & reduce(c->arg[1]);
-  res.alt = closure_split(c, 2);
+  bool s = reduce(c->arg[0]);
+  cell_t *alt = closure_split1(c, 0);
   cell_t *p = c->arg[0];
   cell_t *q = c->arg[1];
-  s &= !bm_conflict(p->alt_set, q->alt_set);
-  res.alt_set = p->alt_set | q->alt_set;
+  int n = list_size(p);
+  p = expand_list(p, 1);
+  int i;
+  memmove(&p->ptr[1], &p->ptr[0], sizeof(cell_t *)*n);
+  p->ptr[0] = q;
   if(s) {
-    res.ptr[0] = pushl(ref(p->ptr[0]), q); //***
+    res.ptr[0] = pushl(ref(p->ptr[0]), q); // ***
     res.ptr[0]->alt_set = res.alt_set;
   } else deref(q);
   deref(p);
   return to_ref(c, &res, 1, s);
 }
-
+*/
 bool func_quote(cell_t *c) {
   cell_t res = { .ptr = {c->arg[0]} };
   res.alt = closure_split1(c, 0);
@@ -256,47 +258,6 @@ bool func_alt(cell_t *c) {
   return to_ref(c, res, res_n, s);
 }
 
-bool func_concat(cell_t *c) {
-  cell_t res = { .val = {0} };
-  cell_t *p = c->arg[0], *q = c->arg[1];
-  bool s = true;
-  while(p && !closure_is_ready(q)) { // ***
-    s &= reduce(p);
-    cell_t *n = p->next;
-    p->next = 0;
-    arg(q, p);
-    p = n;
-  }
-  s &= reduce(q);
-  res.alt_set = (intptr_t)c->arg[2];
-  s &= !bm_conflict(res.alt_set,
-		    q->alt_set);
-  res.alt_set |= q->alt_set;
-  res.alt = closure_split1(c, 1);
-  if(s) {
-    if(q && q->next) {
-      res.next = closure_alloc(3);
-      res.next->func = func_concat;
-      res.next->arg[0] = p;
-      res.next->arg[1] = ref(q->next);
-      res.next->arg[2] = (cell_t *)res.alt_set;
-    } else if(p) {
-      if(res.alt_set) {
-	res.next = closure_alloc(3);
-	res.next->func = func_concat;
-	res.next->arg[0] = 0;
-	res.next->arg[1] = p;
-	res.next->arg[2] = (cell_t *)res.alt_set;
-      } else {
-	res.next = p;
-      }
-    }
-    //copy_val(&res, q);
-  } else deref(p);
-  deref(q);
-  return to_ref(c, &res, 1, s);
-}
-
 bool func_assert(cell_t *c) {
   bool s = reduce(c->arg[0]);
   s &= c->arg[0]->val[0] != 0;
@@ -317,18 +278,21 @@ bool func_id(cell_t *c) {
 }
 
 bool func_drop(cell_t *c) {
-  cell_t res = { .val = {0} };
+  cell_t *res;
+  int res_n;
   bool s = reduce(c->arg[0]) &
     reduce(c->arg[1]);
-  res.alt = closure_split(c, 2);
+  cell_t *alt = closure_split(c, 2);
   if(s) s = !bm_conflict(c->arg[0]->alt_set,
 			 c->arg[1]->alt_set);
-  res.alt_set = c->arg[0]->alt_set |
+  res = alloca_copy_if(c->arg[0], res_n, s);
+  res->alt_set = c->arg[0]->alt_set |
     c->arg[1]->alt_set;
-  //if(s) copy_val(&res, c->arg[0]);
-  deref(c->arg[0]);
+  res->alt = alt;
   deref(c->arg[1]);
-  return to_ref(c, &res, 1, s);
+  to_ref(c, ref_all(res), closure_cells(c->arg[0]), s);
+  deref(c->arg[0]);
+  return s;
 }
 
 bool func_swap(cell_t *c) {
