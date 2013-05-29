@@ -264,6 +264,8 @@ void show_list(cell_t *c) {
 void show_one(cell_t *c) {
   if(!c) {
     printf(" []");
+  } else if(!is_reduced(c)) {
+    printf(" *");
   } else if(c->type == T_INT) {
     show_val(c);
   } else if(c->type == T_INDIRECT) {
@@ -276,6 +278,7 @@ void show_one(cell_t *c) {
 }
 
 bool reduce_one(cell_t *c) {
+  if(!closure_is_ready(c)) return true;
   return reduce(c) &&
     (!is_list(c) || reduce_list(c));
 }

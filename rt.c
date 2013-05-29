@@ -311,14 +311,17 @@ cell_t *append(cell_t *a, cell_t *b) {
 }
 
 cell_t *compose(cell_t *a, cell_t *b) {
+  b = protect(b);
   int n = list_size(b);
   int n_a = list_size(a);
   int i = 0;
   if(n) {
     cell_t *l = b->ptr[n-1];
+    l = protect(l);
     while(!closure_is_ready(l) && i < n_a) {
       arg(l, ref(a->ptr[i++]));
     }
+    b->ptr[n-1] = l;
   }
   cell_t *e = expand(b, n_a - i);
   int j;
@@ -412,6 +415,17 @@ int closure_next_child(cell_t *c) {
   return is_offset(c->arg[0]) ? (intptr_t)c->arg[0] : 0;
 }
 
+/* protect against destructive modification */
+cell_t *protect(cell_t *c) {
+  if(c->n) {
+    --c->n;
+    c = dup(c);
+    c->n = 0;
+  }
+  return c;
+}
+
+/* arg is destructive to c */
 void arg(cell_t *c, cell_t *a) {
   assert(is_closure(c) && is_closure(a));
   assert(!closure_is_ready(c));
@@ -494,7 +508,21 @@ cell_t *refn(cell_t *c, unsigned int n) {
 
 cell_t *dup(cell_t *c) {
   assert(is_closure(c));
-  if(closure_is_ready(c)) return ref(c);
+  if(closure_is_ready(c)) {
+    if(is_list(c)) {
+      int n = list_size(c);
+      cell_t *l = c->ptr[n-1];
+      if(!closure_is_ready(l)) {
+	cell_t *tmp = copy(c);
+	int i;
+	for(i = 0; i < n-1; ++i)
+	  tmp->ptr[i] = ref(tmp->ptr[i]);
+	tmp->ptr[n-1] = dup(tmp->ptr[n-1]);
+	return tmp;
+      }
+    }
+    return ref(c);
+  }
   int args = closure_args(c);
   cell_t *tmp = copy(c);
   /* c->arg[<i] are empty and c->arg[>i] are ready, *
@@ -527,7 +555,8 @@ bool is_marked(void *p) {
 }
 
 bool is_list(cell_t *c) {
-  return c->type == 0 || c->type > 255;
+  return c->func == func_reduced &&
+    (c->type == 0 || c->type > 255);
 }
 
 void deref(cell_t *c) {
@@ -630,13 +659,14 @@ cell_t *data(cell_t *c) {
   else return (cell_t *)c->val[0];
 }
 
+// *** fix arg()'s
 cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
   assert(is_closure(a) &&
 	 is_closure(b) && is_list(b));
   assert(n);
   int bs = list_size(b);
   if(bs) {
-    cell_t *l = b->ptr[bs - 1];
+    cell_t *l = b->ptr[bs-1];
     while(n-1 && !closure_is_ready(l)) {
       cell_t *d = dep(ref(a));
       arg(l, d);
