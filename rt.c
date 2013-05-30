@@ -317,11 +317,9 @@ cell_t *compose(cell_t *a, cell_t *b) {
   int i = 0;
   if(n) {
     cell_t *l = b->ptr[n-1];
-    l = protect(l);
     while(!closure_is_ready(l) && i < n_a) {
       arg(l, ref(a->ptr[i++]));
     }
-    b->ptr[n-1] = l;
   }
   cell_t *e = expand(b, n_a - i);
   int j;

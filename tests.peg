@@ -1,0 +1,23 @@
+@ simple operator => [ 3 ]
+: 1 2 +
+
+@ alts => [ { 10 | 15 | 14 | 21 } ]
+: 2 3 | 5 7 | *
+
+@ pushl/popr
+: 1 [2+] pushl popr => [ [] 3 ]
+
+@ sharing test => [ [ 4 ] [ 2 ] ]
+: [1+] dup [3] swap . swap [1] swap .
+
+@ sharing test
+: [[3 +]] dup popr 1 swap pushl
+
+@ dup alt
+: 1 2 | dup
+
+@ compose alt
+: [3] [2*] [2-] | .
+
+@ compose dup
+: [1] [dup] .

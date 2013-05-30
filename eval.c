@@ -410,6 +410,9 @@ void run_eval() {
     } else if(strcmp(line, ":g") == 0) {
       write_graph = !write_graph;
       printf("graph %s\n", write_graph ? "ON" : "OFF");
+    } else if(strncmp(line, ":t ", 3) == 0) {
+      if(line[3])
+	runTests(&line[3]);
     } else {
       linenoiseHistoryAdd(line);
       linenoiseHistorySave(HISTORY_FILE);
@@ -580,4 +583,23 @@ void eval(char *str, unsigned int n) {
     deref(c);
     printf("\n");
   }
+}
+
+void runTests(char *path) {
+  size_t size;
+  char *line = 0;
+  FILE *f = fopen(path, "r");
+  while(getline(&line, &size, f) >= 0) {
+    if(line[0] == '@')
+      printf("%s", line);
+    else if(line[0] == ':') {
+      printf("%s", line);
+      cells_init();
+      eval(line, strlen(line));
+      check_free();
+    }
+    if(line) free(line);
+    line = 0;
+  }
+  fclose(f);
 }
