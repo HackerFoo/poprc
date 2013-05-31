@@ -50,26 +50,36 @@ word_entry_t word_table[21] = {
 
 #define FUNC_OP2(__op__)			\
   do {						\
-    cell_t res = { .type = T_INT };		\
     bool s = reduce(c->arg[0]) &		\
       reduce(c->arg[1]);			\
-    res.alt = closure_split(c, 2);		\
+    cell_t *res;				\
+    int res_n;					\
+    cell_t *alt = closure_split(c, 2);		\
     s &= !bm_conflict(c->arg[0]->alt_set,	\
 		      c->arg[1]->alt_set);	\
-    res.alt_set = c->arg[0]->alt_set |		\
-      c->arg[1]->alt_set;			\
+    cell_t *p = get(c->arg[0]);			\
+    cell_t *q = get(c->arg[1]);			\
     if(s) {					\
-      res.val_size = min(c->arg[0]->val_size,	\
-                         c->arg[1]->val_size);	\
+      int val_size = min(p->val_size,		\
+                         q->val_size);		\
+      res = vector(val_size);			\
+      res_n = closure_cells(res);		\
+      res->type = T_INT;			\
+      res->func = func_reduced;			\
       int i;					\
-      for(i = 0; i < res.val_size; ++i)		\
-	res.val[0] = c->arg[0]->val[i] __op__	\
-	  c->arg[1]->val[i];			\
-      res.val_size = 1;				\
+      for(i = 0; i < val_size; ++i)		\
+	res->val[i] = p->val[i] __op__		\
+	  q->val[i];				\
+      res->val_size = val_size;			\
+    } else {					\
+      res = alloca_cells(res_n = 1);		\
     }						\
-    deref(c->arg[0]);				\
-    deref(c->arg[1]);				\
-    return to_ref(c, &res, 1, s);		\
+    res->alt_set = c->arg[0]->alt_set |		\
+      c->arg[1]->alt_set;			\
+    res->alt = alt;				\
+    unref(c->arg[0]);				\
+    unref(c->arg[1]);				\
+    return to_ref(c, res, res_n, s);		\
   } while(0)
 
 bool func_add(cell_t *c) { FUNC_OP2(+); }
@@ -89,8 +99,9 @@ bool func_compose(cell_t *c) {
   alt = closure_split(c, 2);
   s &= !bm_conflict(c->arg[0]->alt_set,
 		    c->arg[1]->alt_set);
+  cell_t *p = get(c->arg[0]), *q = get(c->arg[1]);
   if(s) {
-    res = compose(c->arg[0], c->arg[1]);
+    res = compose(p, q);
     res_n = closure_cells(res);
   } else {
     res = alloca_cells(res_n = 1);
@@ -98,8 +109,10 @@ bool func_compose(cell_t *c) {
   res->alt_set = c->arg[0]->alt_set | c->arg[1]->alt_set;
   res->alt = alt;
   to_ref(c, res, res_n, s);
-  if(s) closure_free(res);
-  else deref(c->arg[1]);
+  if(!s) {
+    unref(c->arg[0]);
+    unref(c->arg[1]);
+  }
   return s;
 }
 /*
@@ -115,13 +128,13 @@ bool func_apply(cell_t *c) {
     n->arg[0] = c->arg[0];
     n->arg[1] = ref(c->arg[1]->ptr[0]);
     n->arg[2] = (cell_t *)res.alt_set;
-    deref(c->arg[1]);
+    unref(c->arg[1]);
     s = reduce(n);
     //copy_val(&res, n);
-    deref(n);
+    unref(n);
   } else {
-    deref(c->arg[0]); // ***
-    deref(c->arg[1]);
+    unref(c->arg[0]); // ***
+    unref(c->arg[1]);
   }
   return to_ref(c, &res, 1, s);  
 }
@@ -134,18 +147,16 @@ bool func_pushl(cell_t *c) {
   if(s) {
     res = pushl(c->arg[0], c->arg[1]);
     res_n = closure_cells(res);
-    res->alt = alt;
-    to_ref(c, res, res_n, true);
-    closure_free(res);
-    return true;
+    unref(c->arg[1]);
   } else {
     res = alloca_cells(res_n = 1);
-    res->alt = alt;
-    deref(c->arg[0]);
-    deref(c->arg[1]);
-    return to_ref(c, res, res_n, false);
+    unref(c->arg[0]);
+    unref(c->arg[1]);
   }
+  res->alt = alt;
+  return to_ref(c, res, res_n, s);
 }
+
 /*
 bool func_pushr(cell_t *c) {
   bool s = reduce(c->arg[0]);
@@ -160,67 +171,70 @@ bool func_pushr(cell_t *c) {
   if(s) {
     res.ptr[0] = pushl(ref(p->ptr[0]), q); // ***
     res.ptr[0]->alt_set = res.alt_set;
-  } else deref(q);
-  deref(p);
+  } else unref(q);
+  unref(p);
   return to_ref(c, &res, 1, s);
 }
 */
 bool func_quote(cell_t *c) {
   cell_t res = { .ptr = {c->arg[0]} };
-  res.alt = closure_split1(c, 0);
   return to_ref(c, &res, 1, true);
 }
 
 bool func_popr(cell_t *c) {
-  cell_t *res, *res_other;
-  int res_n, res_other_n, elems;
-  bool s = true, sh;
-  cell_t *head = c->arg[0];
-  cell_t *tail = c->arg[1];
-  if(!(sh = reduce(head)) | !reduce(head->ptr[0]) ||
-     bm_conflict(head->alt_set,
-		 head->ptr[0]->alt_set)) {
-    s = false;
-    res_n = res_other_n = 1;
-    res = alloca_cells(1);
-    res_other = alloca_cells(1);
-  } else {
-    /* copy right list element into other */
-    res_other = alloca_copy(head->ptr[0], res_other_n);
-    res_other->alt_set |= head->alt_set;
+  cell_t *res0, *res1;
+  int res0_n, res1_n, elems;
+  bool s, sp;
+  cell_t *p = c->arg[0], *pr;
+  cell_t *q = c->arg[1];
+  if((sp = reduce(p) &&
+      list_size(p = get(p)) > 0) &&
+     reduce(p->ptr[0]) &&
+     !bm_conflict(p->alt_set,
+		  p->ptr[0]->alt_set)) {
+    pr = get(p->ptr[0]);
+    s = true;
+    res1 = alloca_cells(res1_n = 1);
+    res1->type = T_INDIRECT;
+    res1->val[0] = (intptr_t)ref(pr);
+    res1->alt_set = p->alt_set | pr->alt_set;
 
     /* drop the right list element */
-    elems = list_size(head) - 1;
-    res_n = calculate_list_size(elems);
-    res = alloca_cells(res_n);
+    elems = list_size(p) - 1;
+    res0_n = calculate_list_size(elems);
+    res0 = closure_alloc_cells(res0_n);
     int i;
     for(i = 0; i < elems; ++i)
-      res->ptr[i] = ref(head->ptr[i+1]);
+      res0->ptr[i] = ref(p->ptr[i+1]);
 
-    res->alt_set = res_other->alt_set;
+    res0->alt_set = res1->alt_set;
+  } else {
+    s = false;
+    res0 = alloca_cells(res0_n = 1);
+    res1 = alloca_cells(res1_n = 1);
   }
 
-  if(sh && head->ptr[0]->alt) {
-    cell_t *q = quote(ref(head->ptr[0]->alt));
-    head->alt = conc_alt(q, head->alt);
-    q->alt_set = head->alt_set;
+  if(sp && p->ptr[0]->alt) {
+    cell_t *w = quote(ref(pr->alt));
+    p->alt = conc_alt(w, p->alt);
+    w->alt_set = p->alt_set;
   }
 
-  if(head->alt) {
+  if(p->alt) {
     cell_t *alt;
     alt = closure_alloc(2);
     alt->func = func_popr;
-    alt->arg[0] = ref(head->alt);
+    alt->arg[0] = ref(p->alt);
     alt->arg[1] = dep(alt);
-    res->alt = ref(alt);
-    res_other->alt = ref(alt->arg[1]);
+    res0->alt = ref(alt);
+    res1->alt = ref(alt->arg[1]);
   }
 
-  deref(head);
-  deref(tail);
-  deref(c); /* dump ref from tail to c */
-  to_ref(tail, res_other, res_other_n, s);
-  return to_ref(c, res, res_n, s);
+  unref(p);
+  unref(q);
+  unref(c); /* dump ref from tail to c */
+  to_ref(q, res1, res1_n, s);
+  return to_ref(c, res0, res0_n, s);
 }
 
 bool is_alt(cell_t *c) {
@@ -254,7 +268,7 @@ bool func_alt(cell_t *c) {
     res->alt->arg[1] = 0;
     res->alt->arg[2] = c->arg[2];
   }
-  deref(p);
+  unref(p);
   return to_ref(c, res, res_n, s);
 }
 
@@ -264,7 +278,7 @@ bool func_assert(cell_t *c) {
   int res_n;
   cell_t *res = alloca_copy_if(c->arg[0], res_n, s);
   res->alt = closure_split1(c, 0);
-  deref(c->arg[0]);
+  unref(c->arg[0]);
   return to_ref(c, res, res_n, s);
 }
 
@@ -273,7 +287,7 @@ bool func_id(cell_t *c) {
   bool s = reduce(p);
   int n = closure_cells(p);
   to_ref(c, ref_all(p), n, s);
-  deref(p);
+  unref(p);
   return s;
 }
 
@@ -289,10 +303,10 @@ bool func_drop(cell_t *c) {
   res->alt_set = c->arg[0]->alt_set |
     c->arg[1]->alt_set;
   res->alt = alt;
-  deref(c->arg[1]);
+  unref(c->arg[1]);
   cell_t *t = c->arg[0];
   to_ref(c, ref_all(res), closure_cells(c->arg[0]), s);
-  deref(t);
+  unref(t);
   return s;
 }
 
@@ -305,8 +319,8 @@ bool func_swap(cell_t *c) {
   other->arg[0] = c->arg[0];
   c->arg[0] = c->arg[1];
   c->arg[1] = 0;
-  deref(c);
-  deref(other);
+  unref(c);
+  unref(other);
   return reduce_other || func_id(c);
 }
 
@@ -321,10 +335,10 @@ bool func_dup(cell_t *c) {
   bool s = reduce(p);
   int n = closure_cells(p);
   to_ref(c->arg[1], ref_all(p), n, s);
-  deref(c->arg[1]);
+  unref(c->arg[1]);
   to_ref(c, ref_all(p), n, s);
-  deref(p);
-  deref(c);
+  unref(p);
+  unref(c);
   return s;
 }
 
@@ -347,10 +361,10 @@ bool func_dip11(cell_t *c) {
   s &= reduce(next);
   to_ref(other, n, closure_cells(n), s);
   to_ref(c, next, closure_cells(next), s);
-  deref(n);
-  deref(next);
-  deref(c);
-  deref(other);
+  unref(n);
+  unref(next);
+  unref(c);
+  unref(other);
   return s;
 }
 
@@ -379,13 +393,13 @@ bool func_dip12(cell_t *c) {
   to_ref(other1, n2, closure_cells(n2), s);
   to_ref(c, n3, closure_cells(n3), s);
 
-  deref(n);
-  deref(n2);
-  deref(n3);
+  unref(n);
+  unref(n2);
+  unref(n3);
 
-  deref(c);
-  deref(other1);
-  deref(other2);
+  unref(c);
+  unref(other1);
+  unref(other2);
   return s;
 }
 
@@ -406,9 +420,9 @@ bool func_dip21(cell_t *c) {
   s &= reduce(next);
   to_ref(other, n, closure_cells(n), s);
   to_ref(c, next, closure_cells(next), s);
-  deref(n);
-  deref(next);
-  deref(c);
-  deref(other);
+  unref(n);
+  unref(next);
+  unref(c);
+  unref(other);
   return s;
 }

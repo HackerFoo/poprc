@@ -291,6 +291,14 @@ cell_t *val(intptr_t x) {
   return c;
 }
 
+cell_t *vector(uint32_t n) {
+  cell_t *c = closure_alloc_cells(calculate_val_size(n));
+  c->func = func_reduced;
+  c->type = T_INT;
+  c->val_size = n;
+  return c;
+}
+
 cell_t *quote(cell_t *x) {
   cell_t *c = closure_alloc(1);
   c->func = func_reduced;
@@ -300,6 +308,12 @@ cell_t *quote(cell_t *x) {
 
 cell_t *empty_list() {
   return quote(0);
+}
+
+cell_t *ind(cell_t *x) {
+  cell_t *c = val((intptr_t)x);
+  c->type = T_INDIRECT;
+  return c;
 }
 
 cell_t *append(cell_t *a, cell_t *b) {
@@ -326,7 +340,7 @@ cell_t *compose(cell_t *a, cell_t *b) {
   for(j = n; i < n_a; ++i, ++j) {
     e->ptr[j] = ref(a->ptr[i]);
   }
-  deref(a);
+  unref(a);
   return e;
 }
 
@@ -341,7 +355,7 @@ cell_t *expand(cell_t *c, unsigned int s) {
     cell_t *new = closure_alloc_cells(cn);
     memcpy(new, c, cn_p * sizeof(cell_t));
     ref_ptrs(new);
-    deref(c);
+    unref(c);
     return new;
   }
 }
@@ -476,17 +490,16 @@ bool to_ref(cell_t *c, cell_t *r, unsigned int size, bool s) {
     memcpy(c, r, sizeof(cell_t));
     c->func = func_reduced;
     c->type = T_FAIL;
+    unref(r);
     return false;
   } else if(size <= closure_cells(c)) {
     int n = c->n;
     memcpy(c, r, sizeof(cell_t) * size);
     c->n = n;
+    shallow_unref(r);
   } else {
-    cell_t *i = closure_alloc_cells(size);
-    memcpy(i, r, sizeof(cell_t) * size);
-    i->func = func_reduced;
     c->type = T_INDIRECT;
-    c->val[0] = (intptr_t)i;
+    c->val[0] = (intptr_t)r;
   }
   c->func = func_reduced;
   return true;
@@ -557,23 +570,29 @@ bool is_list(cell_t *c) {
     (c->type == 0 || c->type > 255);
 }
 
-void deref(cell_t *c) {
+void unref(cell_t *c) {
   //return;
-  if(c) {
-    assert(is_closure(c));
-    //printf("DEREF(%d) to %d\n", (int)(c - &cells[0]), c->n);
+  if(is_closure(c)) {
+    //printf("UNREF(%d) to %d\n", (int)(c - &cells[0]), c->n);
     if(!c->n) {
       if(is_reduced(c)) {
 	if(c->type == T_INDIRECT) {
-	  deref((cell_t *)c->val[0]);
+	  unref((cell_t *)c->val[0]);
 	} else if(is_list(c)) {
 	  int n = list_size(c);
-	  while(n) deref(c->ptr[--n]);
+	  while(n) unref(c->ptr[--n]);
 	}
-	deref(c->alt);
+	unref(c->alt);
       }
       closure_free(c);
     }
+    else --c->n;
+  }
+}
+
+void shallow_unref(cell_t *c) {
+  if(is_closure(c)) {
+    if(c->n) closure_free(c);
     else --c->n;
   }
 }
@@ -622,7 +641,7 @@ cell_t *dep(cell_t *c) {
 
 bool func_dep(cell_t *c) {
   /* rely on another cell for reduction */
-  /* don't need to deref arg, handled by other function */
+  /* don't need to unref arg, handled by other function */
   cell_t *p = c->arg[0];
   c->arg[0] = 0;
   return reduce(p) && c->func(c);
@@ -688,6 +707,13 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
     arg(a, ref(d));
   }
   return b;
+}
+
+cell_t *pushl_val(intptr_t x, cell_t *c) {
+  int n = c->val_size++;
+  c = expand(c, 1);
+  c->val[n] = x;
+  return c;
 }
 
 /* b is a list, a is a closure */
@@ -808,4 +834,10 @@ void *lookup(void *table, unsigned int width, unsigned int rows, const char *key
     else low = pivot + 1;
   }
   return ret;
+}
+
+cell_t *get(cell_t *c) {
+  if(c->type == T_INDIRECT)
+    return get((cell_t *)c->val[0]);
+  else return c;
 }

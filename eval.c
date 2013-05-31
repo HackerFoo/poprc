@@ -293,7 +293,7 @@ cell_t *reduce_alt(cell_t *c) {
       p = p->alt;
     } else {
       t = ref(p->alt);
-      deref(p);
+      unref(p);
       p = t;
     }
   }
@@ -331,7 +331,7 @@ void show_alt(cell_t *c) {
 void show_eval(cell_t *c) {
   printf("[");
   show_alt(reduce_alt(c));
-  deref(c);
+  unref(c);
   printf(" ]\n");
 }
 */
@@ -537,6 +537,18 @@ char *rtok(char *str, char *ptr) {
   return ptr;
 }
 
+cell_t *parse_vector(char *str, char **p) {
+  char *tok = *p;
+  cell_t *c = vector(0);
+  while((tok = rtok(str, tok)) &&
+	strcmp("(", tok) != 0) {
+    assert(is_num(tok));
+    c = pushl_val(atoi(tok), c);
+  }
+  *p = tok;
+  return c;
+}
+
 bool parse_word(char *str, char **p, cell_t **r) {
   unsigned int in = 0, out = 0;
   cell_t *c;
@@ -544,6 +556,9 @@ bool parse_word(char *str, char **p, cell_t **r) {
   if(!tok || strcmp(tok, "[") == 0) return false;
   if(strcmp(tok, "]") == 0) {
     c = _build(str, p);
+    *r = pushl(c, *r);
+  } else if(strcmp(tok, ")") == 0) {
+    c = parse_vector(str, p);
     *r = pushl(c, *r);
   } else {
     c = word_parse(tok, &in, &out);
@@ -580,7 +595,7 @@ void eval(char *str, unsigned int n) {
     printf("incomplete expression\n");
   else {
     show_list(c);
-    deref(c);
+    unref(c);
     printf("\n");
   }
 }
