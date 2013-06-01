@@ -126,14 +126,18 @@ char *function_name(reduce_t *f) {
   CASE(dup);
   CASE(swap);
   CASE(drop);
-  /*
+  return "?";
+# undef CASE
+}
+
+char *function_token(reduce_t *f) {
+  int i;
+  f = clear_ptr(f);
   FOREACH(word_table, i) {
     if(word_table[i].func == f)
       return word_table[i].name;
   }
-  */
-  return "?";
-# undef CASE
+  return NULL;
 }
 
 /* Graphviz graph generation */
@@ -261,11 +265,26 @@ void show_list(cell_t *c) {
   } else printf(" []");
 }
 
+void show_func(cell_t *c) {
+  int n = closure_args(c), i;
+  char *s = function_token(c->func);
+  if(!s) return;
+  for(i = 0; i < n; ++i) {
+    cell_t *arg = c->arg[i];
+    if(is_closure(arg)) {
+      show_one(arg);
+    }
+  }
+  printf(" %s", s);
+}
+
 void show_one(cell_t *c) {
   if(!c) {
     printf(" []");
+  } else if(!is_closure(c)) {
+    printf(" ?");
   } else if(!is_reduced(c)) {
-    printf(" *");
+    show_func(c);
   } else if(c->type == T_INT) {
     show_val(c);
   } else if(c->type == T_INDIRECT) {
@@ -595,7 +614,7 @@ void eval(char *str, unsigned int n) {
     printf("incomplete expression\n");
   else {
     show_list(c);
-    unref(c);
+    drop(c);
     printf("\n");
   }
 }

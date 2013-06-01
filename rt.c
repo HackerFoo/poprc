@@ -486,30 +486,30 @@ cell_t *ref_all(cell_t *c) {
 }
 
 bool store_reduced(cell_t *c, cell_t *r, unsigned int size, bool s) {
+  int n = c->n;
+  r->func = func_reduced;
   if(!s) {
     memcpy(c, r, sizeof(cell_t));
-    c->func = func_reduced;
     c->type = T_FAIL;
     unref(r);
-    return false;
   } else if(size <= closure_cells(c)) {
-    int n = c->n;
     memcpy(c, r, sizeof(cell_t) * size);
-    c->n = n;
-    shallow_unref(r);
+    ref_all(r);
+    unref(r);
   } else { /* TODO: must copy if not cell */
     if(!is_cell(r)) {
-      cell_t *n = closure_alloc_cells(size);
-      memcpy(n, r, sizeof(cell_t) * size);
-      r = n;
+      cell_t *t = closure_alloc_cells(size);
+      memcpy(t, r, sizeof(cell_t) * size);
+      r = t;
     }
     c->type = T_INDIRECT;
     c->alt = ref(r->alt);
     c->alt_set = r->alt_set;
     c->val[0] = (intptr_t)r;
   }
+  c->n = n;
   c->func = func_reduced;
-  return true;
+  return s;
 }
 
 cell_t *ref(cell_t *c) {

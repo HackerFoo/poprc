@@ -145,7 +145,7 @@ bool func_pushl(cell_t *c) {
   int res_n;
   cell_t *res;
   if(s) {
-    res = pushl(c->arg[0], c->arg[1]);
+    res = pushl(get(c->arg[0]), get(c->arg[1]));
     res_n = closure_cells(res);
   } else {
     res = alloca_cells(res_n = 1);
@@ -285,8 +285,7 @@ bool func_id(cell_t *c) {
   cell_t *p = c->arg[0];
   bool s = reduce(p);
   int n = closure_cells(p);
-  store_reduced(c, ref_all(p), n, s);
-  unref(p);
+  store_reduced(c, p, n, s);
   return s;
 }
 
@@ -333,11 +332,10 @@ bool func_dup(cell_t *c) {
   cell_t *p = c->arg[0];
   bool s = reduce(p);
   int n = closure_cells(p);
-  store_reduced(c->arg[1], ref_all(p), n, s);
   unref(c->arg[1]);
-  store_reduced(c, ref_all(p), n, s);
-  unref(p);
+  store_reduced(c->arg[1], dup(p), n, s);
   unref(c);
+  store_reduced(c, p, n, s);
   return s;
 }
 
