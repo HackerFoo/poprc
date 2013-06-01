@@ -147,7 +147,6 @@ bool func_pushl(cell_t *c) {
   if(s) {
     res = pushl(c->arg[0], c->arg[1]);
     res_n = closure_cells(res);
-    unref(c->arg[1]);
   } else {
     res = alloca_cells(res_n = 1);
     unref(c->arg[0]);
@@ -253,7 +252,7 @@ bool func_alt(cell_t *c) {
   cell_t *p = c->arg[0];
   bool s = reduce(p);
   uint8_t id = (intptr_t)c->arg[2];
-  res = alloca_copy_if(p, res_n, s);
+  res = alloca_copy_if(get(p), res_n, s);
   res->alt_set = p->alt_set | bm(id, c->arg[1] ? 0 : 1);
   if(p->alt) {
     res->alt = closure_alloc(2);

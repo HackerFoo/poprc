@@ -497,7 +497,7 @@ bool to_ref(cell_t *c, cell_t *r, unsigned int size, bool s) {
     memcpy(c, r, sizeof(cell_t) * size);
     c->n = n;
     shallow_unref(r);
-  } else {
+  } else { /* TODO: must copy if not cell */
     c->type = T_INDIRECT;
     c->val[0] = (intptr_t)r;
   }
@@ -592,8 +592,8 @@ void unref(cell_t *c) {
 
 void shallow_unref(cell_t *c) {
   if(is_closure(c)) {
-    if(c->n) closure_free(c);
-    else --c->n;
+    if(c->n) --c->n;
+    else closure_free(c);
   }
 }
 
