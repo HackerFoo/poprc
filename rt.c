@@ -485,7 +485,7 @@ cell_t *ref_all(cell_t *c) {
   return c;
 }
 
-bool to_ref(cell_t *c, cell_t *r, unsigned int size, bool s) {
+bool store_reduced(cell_t *c, cell_t *r, unsigned int size, bool s) {
   if(!s) {
     memcpy(c, r, sizeof(cell_t));
     c->func = func_reduced;
@@ -498,7 +498,14 @@ bool to_ref(cell_t *c, cell_t *r, unsigned int size, bool s) {
     c->n = n;
     shallow_unref(r);
   } else { /* TODO: must copy if not cell */
+    if(!is_cell(r)) {
+      cell_t *n = closure_alloc_cells(size);
+      memcpy(n, r, sizeof(cell_t) * size);
+      r = n;
+    }
     c->type = T_INDIRECT;
+    c->alt = ref(r->alt);
+    c->alt_set = r->alt_set;
     c->val[0] = (intptr_t)r;
   }
   c->func = func_reduced;
@@ -794,7 +801,7 @@ bool func_collect(cell_t *c) {
     src++;
   } while(src);
   bool b = reduce(collect);
-  return to_ref(c, collect, b);
+  return store_reduced(c, collect, b);
 }
 */
 /*

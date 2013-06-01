@@ -4,8 +4,8 @@
 @ alts => [ { 10 | 15 | 14 | 21 } ]
 : 2 3 | 5 7 | *
 
-@ pushl/popr
-: 1 [2+] pushl popr => [ [] 3 ]
+@ pushl/popr  => [ [] 3 ]
+: 1 [2+] pushl popr
 
 @ sharing test => [ [ 4 ] [ 2 ] ]
 : [1+] dup [3] swap . swap [1] swap .
