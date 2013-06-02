@@ -282,10 +282,12 @@ bool func_assert(cell_t *c) {
 }
 
 bool func_id(cell_t *c) {
-  cell_t *p = c->arg[0];
+  cell_t *p = c->arg[0], *g;
   bool s = reduce(p);
-  int n = closure_cells(p);
-  store_reduced(c, p, n, s);
+  g = ref(get(p));
+  unref(p);
+  int n = closure_cells(g);
+  store_reduced(c, g, n, s);
   return s;
 }
 

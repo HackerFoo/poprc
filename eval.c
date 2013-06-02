@@ -298,8 +298,8 @@ void show_one(cell_t *c) {
 
 bool reduce_one(cell_t *c) {
   if(!closure_is_ready(c)) return true;
-  return reduce(c) &&
-    (!is_list(c) || reduce_list(c));
+  return reduce(c); /* &&
+		       (!is_list(c) || reduce_list(c)); */
 }
 
 cell_t *reduce_alt(cell_t *c) {
@@ -607,7 +607,7 @@ cell_t *_build(char *str, char **p) {
 void eval(char *str, unsigned int n) {
   cell_t *c = build(str, n);
   if(write_graph) make_graph(GRAPH_FILE, c);
-  c = reduce_alt(c);
+  reduce_list(c);
   if(write_graph) make_graph(REDUCED_GRAPH_FILE, c);
   if(!c) return;
   if(!closure_is_ready(c))
