@@ -255,13 +255,13 @@ bool func_alt(cell_t *c) {
   res = alloca_copy_if(get(p), res_n, s);
   res->alt_set = p->alt_set | bm(id, c->arg[1] ? 0 : 1);
   if(p->alt) {
-    res->alt = closure_alloc(2);
+    res->alt = closure_alloc(3);
     res->alt->func = func_alt;
     res->alt->arg[0] = ref(p->alt);
     res->alt->arg[1] = c->arg[1];
     res->alt->arg[2] = c->arg[2];
   } else if (c->arg[1]) {
-    res->alt = closure_alloc(2);
+    res->alt = closure_alloc(3);
     res->alt->func = func_alt;
     res->alt->arg[0] = c->arg[1];
     res->alt->arg[1] = 0;
@@ -281,13 +281,18 @@ bool func_assert(cell_t *c) {
   return store_reduced(c, res, res_n, s);
 }
 
+cell_t *get_(cell_t *c) {
+  cell_t *p = ref(get(c));
+  unref(c);
+  return p;
+}
+
 bool func_id(cell_t *c) {
-  cell_t *p = c->arg[0], *g;
+  cell_t *p = c->arg[0];
   bool s = reduce(p);
-  g = ref(get(p));
-  unref(p);
-  int n = closure_cells(g);
-  store_reduced(c, g, n, s);
+  p = get_(p);
+  int n = closure_cells(p);
+  store_reduced(c, p, n, s);
   return s;
 }
 
@@ -333,6 +338,7 @@ cell_t *id(cell_t *c) {
 bool func_dup(cell_t *c) {
   cell_t *p = c->arg[0];
   bool s = reduce(p);
+  p = get_(p);
   int n = closure_cells(p);
   unref(c->arg[1]);
   store_reduced(c->arg[1], dup(p), n, s);

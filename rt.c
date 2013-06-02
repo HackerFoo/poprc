@@ -494,7 +494,7 @@ bool store_reduced(cell_t *c, cell_t *r, unsigned int size, bool s) {
     unref(r);
   } else if(size <= closure_cells(c)) {
     memcpy(c, r, sizeof(cell_t) * size);
-    ref_all(r);
+    if(is_cell(r)) ref_all(r);
     unref(r);
   } else { /* TODO: must copy if not cell */
     if(!is_cell(r)) {
