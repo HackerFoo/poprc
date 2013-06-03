@@ -621,7 +621,15 @@ void drop(cell_t *c) {
       while(i) drop(c->arg[--i]);
     }
     closure_free(c);
-  } else --c->n;
+  } else {
+    --c->n;
+    /* break cycle in dep */
+    if(is_dep(c) && !c->n) {
+      cell_t *p = c->arg[0];
+      c->arg[0] = 0;
+      drop(p);
+    }
+  }
 }
 
 #define APPEND(field)				\

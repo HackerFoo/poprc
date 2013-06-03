@@ -5,6 +5,8 @@ GEN := $(patsubst %.c, gen/%.h, $(wildcard *.c))
 .PHONY: all
 all: eval
 
+include Makefile.gen
+
 debug:
 	echo $(OBJS:.o=.d)
 
@@ -26,23 +28,11 @@ build/%.o: %.c
 
 .SECONDARY: $(GEN)
 
-gen/%.h: %.c makeheaders/makeheaders
-	@mkdir -p gen
-	./makeheaders/makeheaders $*.c:gen/$*.h
-
-linenoise/linenoise.h:
-	git submodule init
-	git submodule update
-
 build/linenoise.o: linenoise/linenoise.c linenoise/linenoise.h
 	@mkdir -p build
 	gcc $(CFLAGS) -c linenoise/linenoise.c -o build/linenoise.o
-
 
 # remove compilation products
 clean:
 	rm -f eval
 	rm -rf build gen
-
-makeheaders/makeheaders: makeheaders/makeheaders.c
-	gcc -O -w makeheaders/makeheaders.c -o makeheaders/makeheaders
