@@ -101,7 +101,7 @@ bool func_compose(cell_t *c) {
 		    c->arg[1]->alt_set);
   cell_t *p = get(c->arg[0]), *q = get(c->arg[1]);
   if(s) {
-    res = compose(p, q);
+    res = compose_nd(p, q);
     res_n = closure_cells(res);
   } else {
     res = alloca_cells(res_n = 1);
@@ -145,7 +145,7 @@ bool func_pushl(cell_t *c) {
   int res_n;
   cell_t *res;
   if(s) {
-    res = pushl(get(c->arg[0]), get(c->arg[1]));
+    res = pushl_nd(get(c->arg[0]), get(c->arg[1]));
     res_n = closure_cells(res);
   } else {
     res = alloca_cells(res_n = 1);
@@ -341,7 +341,7 @@ bool func_dup(cell_t *c) {
   p = get_(p);
   int n = closure_cells(p);
   unref(c->arg[1]);
-  store_reduced(c->arg[1], dup(p), n, s);
+  store_reduced(c->arg[1], ref(p), n, s);
   unref(c);
   store_reduced(c, p, n, s);
   return s;

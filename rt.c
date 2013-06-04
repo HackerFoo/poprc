@@ -324,26 +324,6 @@ cell_t *append(cell_t *a, cell_t *b) {
   return e;
 }
 
-cell_t *compose(cell_t *a, cell_t *b) {
-  b = protect(b);
-  int n = list_size(b);
-  int n_a = list_size(a);
-  int i = 0;
-  if(n) {
-    cell_t *l = b->ptr[n-1];
-    while(!closure_is_ready(l) && i < n_a) {
-      arg(l, ref(a->ptr[i++]));
-    }
-  }
-  cell_t *e = expand(b, n_a - i);
-  int j;
-  for(j = n; i < n_a; ++i, ++j) {
-    e->ptr[j] = ref(a->ptr[i]);
-  }
-  unref(a);
-  return e;
-}
-
 cell_t *expand(cell_t *c, unsigned int s) {
   int n = closure_args(c);
   int cn_p = calculate_cells(n);
@@ -354,10 +334,31 @@ cell_t *expand(cell_t *c, unsigned int s) {
     /* copy */
     cell_t *new = closure_alloc_cells(cn);
     memcpy(new, c, cn_p * sizeof(cell_t));
+    new->n = 0;
     ref_ptrs(new);
     unref(c);
     return new;
   }
+}
+
+cell_t *compose_nd(cell_t *a, cell_t *b) {
+  int n = list_size(b);
+  int n_a = list_size(a);
+  int i = 0;
+  if(n) {
+    cell_t *l = b->ptr[n-1];
+    while(!closure_is_ready(l) && i < n_a) {
+      l = arg_nd(l, ref(a->ptr[i++]));
+    }
+    b->ptr[n-1] = l;
+  }
+  cell_t *e = expand(b, n_a - i);
+  int j;
+  for(j = n; i < n_a; ++i, ++j) {
+    e->ptr[j] = ref(a->ptr[i]);
+  }
+  unref(a);
+  return e;
 }
 
 bool is_reduced(cell_t *c) {
@@ -454,6 +455,34 @@ void arg(cell_t *c, cell_t *a) {
     }
   }
 }
+
+cell_t *arg_nd(cell_t *c, cell_t *a) {
+  assert(is_closure(c) && is_closure(a));
+  assert(!closure_is_ready(c));
+  if(c->n) { /* protect shared closures */
+    cell_t *t = copy(c);
+    t->n = 0;
+    int i, n = closure_args(c);
+    for(i = closure_next_child(c); i < n; ++i)
+      ref(c->arg[i]);
+    --c->n;
+    c = t;
+  }
+  int i = closure_next_child(c);
+  if(!is_cell(c->arg[i])) {
+    c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
+    c->arg[i] = a;
+    if(i == 0) closure_set_ready(c, closure_is_ready(a));
+  } else {
+    c->arg[i] = arg_nd(c->arg[i], a);
+    if(closure_is_ready(c->arg[i])) {
+      if(i == 0) closure_set_ready(c, true);
+      else --*(intptr_t *)&c->arg[0]; // decrement offset
+    }
+  }
+  return c;
+}
+
 
 cell_t *copy(cell_t *c) {
   int size = closure_cells(c);
@@ -741,6 +770,26 @@ cell_t *pushl(cell_t *a, cell_t *b) {
     cell_t *l = b->ptr[n - 1];
     if(!closure_is_ready(l)) {
       arg(l, a);
+      return b;
+    }
+  }
+
+  cell_t *e = expand(b, 1);
+  e->ptr[n] = a;
+  return e;
+}
+
+/* b is a list, a is a closure */
+cell_t *pushl_nd(cell_t *a, cell_t *b) {
+  assert(is_closure(a) &&
+	 is_closure(b) && is_list(b));
+
+  int n = list_size(b);
+  if(n) {
+    cell_t *l = b->ptr[n - 1];
+    if(!closure_is_ready(l)) {
+      l = arg_nd(l, a);
+      b->ptr[n - 1] = l;
       return b;
     }
   }
