@@ -30,12 +30,18 @@ measure_t measure, saved_measure;
 
 // #define CHECK_CYCLE
 
+extern char __data_start;
+
+bool is_data(void *p) {
+  return p >= (void *)&__data_start;
+}
+
 bool is_cell(void *p) {
   return p >= (void *)&cells && p < (void *)(&cells+1);
 }
 
 bool is_closure(void *p) {
-  return is_cell(p) && ((cell_t *)p)->func;
+  return is_data(p) && ((cell_t *)p)->func;
 }
 
 bool closure_is_ready(cell_t *c) {
@@ -335,10 +341,24 @@ cell_t *expand(cell_t *c, unsigned int s) {
     cell_t *new = closure_alloc_cells(cn);
     memcpy(new, c, cn_p * sizeof(cell_t));
     new->n = 0;
-    ref_ptrs(new);
+    ref_reduced(new);
     unref(c);
     return new;
   }
+}
+
+cell_t *expand_nd(cell_t *c, unsigned int s) {
+  int n = closure_args(c);
+  int cn_p = calculate_cells(n);
+  int cn = calculate_cells(n + s);
+
+  /* copy */
+  cell_t *new = closure_alloc_cells(cn);
+  memcpy(new, c, cn_p * sizeof(cell_t));
+  new->n = 0;
+  ref_reduced(new);
+  unref(c);
+  return new;
 }
 
 cell_t *compose_nd(cell_t *a, cell_t *b) {
@@ -352,7 +372,7 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
     }
     b->ptr[n-1] = l;
   }
-  cell_t *e = expand(b, n_a - i);
+  cell_t *e = expand_nd(b, n_a - i);
   int j;
   for(j = n; i < n_a; ++i, ++j) {
     e->ptr[j] = ref(a->ptr[i]);
@@ -386,7 +406,7 @@ cell_t *func(reduce_t *f, int args) {
 int list_size(cell_t *c) {
   int i = 0;
   cell_t **p = c->ptr;
-  while(*p && is_cell(*p)) {
+  while(*p && is_data(*p)) {
     ++p;
     ++i;
   }
@@ -415,8 +435,8 @@ int closure_args(cell_t *c) {
     p += o;
     n += o;
   }
-  /* args must be cells */
-  while(is_cell(*p)) {
+  /* args must be data ptrs */
+  while(is_data(*p)) {
     p++;
     n++;
   }
@@ -443,7 +463,7 @@ void arg(cell_t *c, cell_t *a) {
   assert(is_closure(c) && is_closure(a));
   assert(!closure_is_ready(c));
   int i = closure_next_child(c);
-  if(!is_cell(c->arg[i])) {
+  if(!is_data(c->arg[i])) {
     c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
     c->arg[i] = a;
     if(i == 0) closure_set_ready(c, closure_is_ready(a));
@@ -469,7 +489,7 @@ cell_t *arg_nd(cell_t *c, cell_t *a) {
     c = t;
   }
   int i = closure_next_child(c);
-  if(!is_cell(c->arg[i])) {
+  if(!is_data(c->arg[i])) {
     c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
     c->arg[i] = a;
     if(i == 0) closure_set_ready(c, closure_is_ready(a));
@@ -499,24 +519,28 @@ cell_t *ref_args(cell_t *c) {
   return c;
 }
 
-cell_t *ref_list(cell_t *c) {
-  int n = list_size(c);
-  while(n--)
-    if(is_closure(c->ptr[n]))
-      c->ptr[n] = ref(c->ptr[n]);
+cell_t *ref_reduced(cell_t *c) {
+  if(c->type == T_INDIRECT) {
+    c->val[0] = (intptr_t)ref((cell_t *)c->val[0]);
+    return c;
+  } else if(is_list(c)) {
+    int i, n = list_size(c);
+    for(i = 0; i < n; i++)
+      c->ptr[i] = ref(c->ptr[i]);
+  }
   return c;
 }
 
 cell_t *ref_all(cell_t *c) {
   c->alt = ref(c->alt);
-  if(!is_reduced(c)) ref_args(c);
-  else if(is_list(c)) ref_list(c);
-  return c;
+  if(!is_reduced(c)) return ref_args(c);
+  else return ref_reduced(c);
 }
 
-bool store_reduced(cell_t *c, cell_t *r, unsigned int size, bool s) {
+bool store_reduced(cell_t *c, cell_t *r, bool s) {
   int n = c->n;
   r->func = func_reduced;
+  int size = is_closure(r) ? closure_cells(r) : 0;
   if(!s) {
     memcpy(c, r, sizeof(cell_t));
     c->type = T_FAIL;
@@ -702,14 +726,6 @@ void copy_val(cell_t *dest, unsigned int size, cell_t *src) {
 }
 */
 
-void ref_ptrs(cell_t *c) {
-  if(is_list(c)) {
-    int i, n = list_size(c);
-    for(i = 0; i < n; i++)
-      c->ptr[i] = ref(c->ptr[i]);
-  }
-}
-
 bool is_dep(cell_t *c) {
   return c->func == func_dep;
 }
@@ -786,15 +802,15 @@ cell_t *pushl_nd(cell_t *a, cell_t *b) {
 
   int n = list_size(b);
   if(n) {
-    cell_t *l = b->ptr[n - 1];
+    cell_t *l = b->ptr[n-1];
     if(!closure_is_ready(l)) {
       l = arg_nd(l, a);
-      b->ptr[n - 1] = l;
+      b->ptr[n-1] = l;
       return b;
     }
   }
 
-  cell_t *e = expand(b, 1);
+  cell_t *e = expand_nd(b, 1);
   e->ptr[n] = a;
   return e;
 }

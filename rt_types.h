@@ -52,6 +52,7 @@ struct __attribute__((packed)) cell {
       union {
 	/* value */
 	struct __attribute__((packed)) {
+	  /* type must overlap low bytes of ptr[0] */
 	  uint32_t type, val_size;
 	  intptr_t val[1];
 	};
@@ -104,16 +105,5 @@ typedef struct measure_t {
 
 #define min(a, b) ((a) <= (b) ? (a) : (b))
 #define max(a, b) ((a) >= (b) ? (a) : (b))
-
-#define alloca_cells(n) \
-  memset(alloca((n) * sizeof(cell_t)), 0, sizeof(cell_t))
-
-#define alloca_copy(c, n)		\
-  (ref_ptrs(c),	n = closure_cells(c),	\
-    memcpy(alloca(sizeof(cell_t) * n),	\
-	   c, sizeof(cell_t) * n))
-
-#define alloca_copy_if(c, n, s) \
-  ((s) ? alloca_copy((c), (n)) : alloca_cells((n) = 1))
 
 #endif

@@ -8,3 +8,5 @@ _darcs
 /build
 /gen
 /makeheaders/makeheaders
+/*.dot
+/notes.org
