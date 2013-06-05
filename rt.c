@@ -632,7 +632,7 @@ bool is_list(cell_t *c) {
 
 void unref(cell_t *c) {
   //return;
-  if(is_closure(c)) {
+  if(is_cell(c) && is_closure(c)) {
     //printf("UNREF(%d) to %d\n", (int)(c - &cells[0]), c->n);
     if(!c->n) {
       if(is_reduced(c)) {
