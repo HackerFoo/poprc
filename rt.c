@@ -261,6 +261,7 @@ void cell_free(cell_t *c) {
 }
 
 void closure_shrink(cell_t *c, int s) {
+  if(!is_cell(c)) return;
   int i, size = closure_cells(c);
   if(size > s) {
     assert(is_closure(c));
@@ -804,7 +805,9 @@ cell_t *pushl_nd(cell_t *a, cell_t *b) {
   if(n) {
     cell_t *l = b->ptr[n-1];
     if(!closure_is_ready(l)) {
-      if(l->n) b = modify_copy(l, b);
+      if(l->n) {
+	b = modify_copy(l, b);
+      }
       arg(b->ptr[n-1], a);
       return b;
     }
@@ -923,9 +926,10 @@ cell_t *get(cell_t *c) {
 }
 
 cell_t *modify_copy(cell_t *c, cell_t *r) {
-  cell_t *new = _modify_copy(c, r);
+  cell_t *new = _modify_copy(c, r, true);
   if(new) {
     zero_alts(r);
+    zero_alts(c);
     return new;
   } else return r;
 }
@@ -950,52 +954,66 @@ void zero_alts(cell_t *r) {
   }
 }
 
-cell_t *_modify_copy(cell_t *c, cell_t *r) {
-  int i, n;
-  cell_t *t, *new = 0;
-  if(!is_closure(r)) return 0;
-  if(r->alt) return r->alt; // already been replaced
-  if(c == r) {
-    new = copy(r);
-    new->n = 0;
+int nondep_n(cell_t *c) {
+  if(!is_closure(c)) return 0;
+  int nd = c->n;
+  if(is_dep(c)) --nd;
+  else if(!is_reduced(c)) {
+    int n = closure_args(c);
+    while(n-- &&
+	  is_closure(c->arg[n]) &&
+	  is_dep(c->arg[n])) --nd;
   }
+  return nd;
+}
+
+cell_t *_modify_copy(cell_t *c, cell_t *r, bool up) {
+  int i, n, nd = nondep_n(r);
+  cell_t *t, *_new = 0;
+
+  /* is r unique (okay to replace)? */
+  bool u = up && !nd;
+
+  cell_t *new() {
+    if(r->alt > (cell_t *)1) _new = r->alt;
+    else if(u) _new = r;
+    else if(!_new) {
+      if(nd && up) --r->n;
+      _new = copy(r);
+      _new->alt = 0;
+      ref_all(_new);
+      _new->n = 0;
+    }
+    if(r->alt <= (cell_t *)1) r->alt = _new;
+    return _new;
+  }
+
+  if(!is_closure(r)) return 0;
+  if(r->alt) {
+    if(r->alt == (cell_t *)1) return 0; //new();
+    else return ref(r->alt); // already been replaced
+  } else r->alt = (cell_t *)1;
+  if(c == r) new();
   if(is_reduced(r)) {
     if(r->type == T_INDIRECT) {
-      if((t = _modify_copy(c, (cell_t *)r->val[0]))) {
-	if(!new) {
-	  new = copy(r);
-	  new->n = 0;
-	}
-	new->val[0] = (intptr_t)ref(t);
+    if((t = _modify_copy(c, (cell_t *)r->val[0], u))) {
+	new()->val[0] = (intptr_t)t;
       }
     } else if(is_list(r)) {
       n = list_size(r);
       for(i = 0; i < n; ++i) {
-	if((t = _modify_copy(c, r->ptr[i]))) {
-	  if(!new) {
-	    new = copy(r);
-	    new->n = 0;
-	  }
-	  new->ptr[i] = ref(t);
+    if((t = _modify_copy(c, r->ptr[i], u))) {
+	  new()->ptr[i] = t;
 	}
       }
     }
   } else {
     n = closure_args(r);
     for(i = closure_next_child(r); i < n; ++i) {
-      if((t = _modify_copy(c, r->arg[i]))) {
-	if(!new) {
-	  new = copy(r);
-	  new->n = 0;
-	}
-	new->arg[i] = ref(t);
+    if((t = _modify_copy(c, r->arg[i], u))) {
+	new()->arg[i] = t;
       }
     }
   }
-  if(new) {
-    /* leave a forwarding address */
-    r->alt = new;
-    //new->alt = r;
-  }
-  return new;
+  return _new;
 }
