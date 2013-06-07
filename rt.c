@@ -804,8 +804,8 @@ cell_t *pushl_nd(cell_t *a, cell_t *b) {
   if(n) {
     cell_t *l = b->ptr[n-1];
     if(!closure_is_ready(l)) {
-      l = arg_nd(l, a);
-      b->ptr[n-1] = l;
+      if(l->n) b = modify_copy(l, b);
+      arg(b->ptr[n-1], a);
       return b;
     }
   }
@@ -920,4 +920,82 @@ cell_t *get(cell_t *c) {
   if(c->type == T_INDIRECT)
     return get((cell_t *)c->val[0]);
   else return c;
+}
+
+cell_t *modify_copy(cell_t *c, cell_t *r) {
+  cell_t *new = _modify_copy(c, r);
+  if(new) {
+    zero_alts(r);
+    return new;
+  } else return r;
+}
+
+void zero_alts(cell_t *r) {
+  int i, n;
+  if(!is_closure(r)) return;
+  if(!r->alt) return;
+  r->alt = 0;
+  if(is_reduced(r)) {
+    if(r->type == T_INDIRECT) {
+      zero_alts((cell_t *)r->val[0]);
+    } else if(is_list(r)) {
+      n = list_size(r);
+      for(i = 0; i < n; ++i)
+	zero_alts(r->ptr[i]);
+    }
+  } else {
+    n = closure_args(r);
+    for(i = closure_next_child(r); i < n; ++i)
+      zero_alts(r->arg[i]);
+  }
+}
+
+cell_t *_modify_copy(cell_t *c, cell_t *r) {
+  int i, n;
+  cell_t *t, *new = 0;
+  if(!is_closure(r)) return 0;
+  if(r->alt) return r->alt; // already been replaced
+  if(c == r) {
+    new = copy(r);
+    new->n = 0;
+  }
+  if(is_reduced(r)) {
+    if(r->type == T_INDIRECT) {
+      if((t = _modify_copy(c, (cell_t *)r->val[0]))) {
+	if(!new) {
+	  new = copy(r);
+	  new->n = 0;
+	}
+	new->val[0] = (intptr_t)ref(t);
+      }
+    } else if(is_list(r)) {
+      n = list_size(r);
+      for(i = 0; i < n; ++i) {
+	if((t = _modify_copy(c, r->ptr[i]))) {
+	  if(!new) {
+	    new = copy(r);
+	    new->n = 0;
+	  }
+	  new->ptr[i] = ref(t);
+	}
+      }
+    }
+  } else {
+    n = closure_args(r);
+    for(i = closure_next_child(r); i < n; ++i) {
+      if((t = _modify_copy(c, r->arg[i]))) {
+	if(!new) {
+	  new = copy(r);
+	  new->n = 0;
+	}
+	new->arg[i] = ref(t);
+      }
+    }
+  }
+  if(new) {
+    /* leave a forwarding address */
+    r->alt = new;
+    //new->alt = r;
+  }
+  return new;
 }
