@@ -930,8 +930,8 @@ cell_t *modify_copy(cell_t *c, cell_t *r) {
   if(new) {
     zero_alts(r);
     zero_alts(c);
-    return new;
-  } else return r;
+  } else new = r;
+  return new;
 }
 
 void zero_alts(cell_t *r) {
@@ -976,24 +976,22 @@ cell_t *_modify_copy(cell_t *c, cell_t *r, bool up) {
 
   cell_t *new() {
     if(r->alt > (cell_t *)1) _new = r->alt;
-    else if(u) _new = r;
-    else if(!_new) {
+    else if(u) {
+      _new = r;
+    } else if(!_new) {
       if(nd && up) --r->n;
       _new = copy(r);
       _new->alt = 0;
-      ref_all(_new);
       _new->n = 0;
     }
-    if(r->alt <= (cell_t *)1) r->alt = _new;
-    return _new;
+    return r->alt = _new;
   }
 
   if(!is_closure(r)) return 0;
   if(r->alt) {
-    if(r->alt == (cell_t *)1) return 0; //new();
-    else return ref(r->alt); // already been replaced
+    if(r->alt == (cell_t *)1) return 0;
+    else return r->alt; // already been replaced
   } else r->alt = (cell_t *)1;
-  if(c == r) new();
   if(is_reduced(r)) {
     if(r->type == T_INDIRECT) {
     if((t = _modify_copy(c, (cell_t *)r->val[0], u))) {
@@ -1002,18 +1000,20 @@ cell_t *_modify_copy(cell_t *c, cell_t *r, bool up) {
     } else if(is_list(r)) {
       n = list_size(r);
       for(i = 0; i < n; ++i) {
-    if((t = _modify_copy(c, r->ptr[i], u))) {
-	  new()->ptr[i] = t;
+	if((t = _modify_copy(c, r->ptr[i], u))) {
+          new()->ptr[i] = t;
 	}
       }
     }
   } else {
     n = closure_args(r);
     for(i = closure_next_child(r); i < n; ++i) {
-    if((t = _modify_copy(c, r->arg[i], u))) {
+      if((t = _modify_copy(c, r->arg[i], u))) {
 	new()->arg[i] = t;
       }
     }
   }
+  if(c == r) new();
+  if(_new && _new != r) ref_all(_new);
   return _new;
 }
