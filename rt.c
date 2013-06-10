@@ -366,12 +366,15 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
   int n = list_size(b);
   int n_a = list_size(a);
   int i = 0;
-  if(n) {
+  if(n && n_a) {
     cell_t *l = b->ptr[n-1];
-    while(!closure_is_ready(l) && i < n_a) {
-      l = arg_nd(l, ref(a->ptr[i++]));
+    if(!closure_is_ready(l)) {
+      //if(l->n) b = modify_copy(l, b);
+      do {
+	l = arg_nd(l, ref(a->ptr[i++]));
+      } while(!closure_is_ready(l) && i < n_a);
+      b->ptr[n-1] = l;
     }
-    b->ptr[n-1] = l;
   }
   cell_t *e = expand_nd(b, n_a - i);
   int j;
@@ -926,8 +929,9 @@ cell_t *get(cell_t *c) {
 }
 
 cell_t *modify_copy(cell_t *c, cell_t *r) {
-  cell_t *new = _modify_copy(c, r, true);
+  cell_t *new = _modify_copy1(c, r, true);
   if(new) {
+    _modify_copy2(new);
     zero_alts(r);
     zero_alts(c);
   } else new = r;
@@ -967,9 +971,9 @@ int nondep_n(cell_t *c) {
   return nd;
 }
 
-cell_t *_modify_copy(cell_t *c, cell_t *r, bool up) {
+cell_t *_modify_copy1(cell_t *c, cell_t *r, bool up) {
   int i, n, nd = nondep_n(r);
-  cell_t *t, *_new = 0;
+  cell_t *_new = 0;
 
   /* is r unique (okay to replace)? */
   bool u = up && !nd;
@@ -979,41 +983,82 @@ cell_t *_modify_copy(cell_t *c, cell_t *r, bool up) {
     else if(u) {
       _new = r;
     } else if(!_new) {
-      if(nd && up) --r->n;
       _new = copy(r);
       _new->alt = 0;
-      _new->n = 0;
+      _new->n = -1;
     }
     return r->alt = _new;
   }
 
   if(!is_closure(r)) return 0;
+  if(c == r) new();
   if(r->alt) {
     if(r->alt == (cell_t *)1) return 0;
     else return r->alt; // already been replaced
   } else r->alt = (cell_t *)1;
   if(is_reduced(r)) {
     if(r->type == T_INDIRECT) {
-    if((t = _modify_copy(c, (cell_t *)r->val[0], u))) {
-	new()->val[0] = (intptr_t)t;
-      }
+      if(_modify_copy1(c, (cell_t *)r->val[0], u))
+	new();
     } else if(is_list(r)) {
       n = list_size(r);
       for(i = 0; i < n; ++i) {
-	if((t = _modify_copy(c, r->ptr[i], u))) {
-          new()->ptr[i] = t;
+	if(_modify_copy1(c, r->ptr[i], u)) {
+	  new();
 	}
       }
     }
   } else {
     n = closure_args(r);
     for(i = closure_next_child(r); i < n; ++i) {
-      if((t = _modify_copy(c, r->arg[i], u))) {
-	new()->arg[i] = t;
+      if(_modify_copy1(c, r->arg[i], u)) {
+	new();
       }
     }
   }
-  if(c == r) new();
-  if(_new && _new != r) ref_all(_new);
   return _new;
+}
+
+void _modify_copy2(cell_t *r) {
+  int i, n;
+  cell_t *t, *u, **p;
+  cell_t *a = clear_ptr(r->alt);
+  bool s = a || is_marked(r->alt);
+
+  if(!is_closure(r)) return;
+  if(is_marked(r->alt)) return;
+  r->alt = mark_ptr(r->alt);
+  if(is_reduced(r)) {
+    if(r->type == T_INDIRECT) {
+      p = (cell_t **)&r->val[0];
+      u = *p;
+      if((t = clear_ptr((*p)->alt))) {
+	*p = ref(t);
+	_modify_copy2(t);
+      } else ref(*p);
+      if(s) unref(u);
+    } else if(is_list(r)) {
+      n = list_size(r);
+      for(i = 0; i < n; ++i) {
+	p = &r->ptr[i];
+	u = *p;
+	if(*p && (t = clear_ptr((*p)->alt))) {
+	  *p = ref(t);
+	  _modify_copy2(t);
+	} else ref(*p);
+	if(s) unref(u);
+      }
+    }
+  } else {
+    n = closure_args(r);
+    for(i = closure_next_child(r); i < n; ++i) {
+      p = &r->arg[i];
+      u = *p;
+      if(*p && (t = clear_ptr((*p)->alt))) {
+	*p = ref(t);
+	_modify_copy2(t);
+      } else ref(*p);
+      if(s) unref(u);
+    }
+  }
 }

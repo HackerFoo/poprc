@@ -21,3 +21,9 @@
 
 @ compose dup
 : [1] [dup] .
+
+@ pushl sharing
+: [3+] dup 1 swap pushl
+: [dup] dup pushl
+
+: 1 [dup] dup . pushl popr

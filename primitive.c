@@ -141,7 +141,7 @@ bool func_pushl(cell_t *c) {
   cell_t *alt = closure_split1(c, 1);
   cell_t *res;
   if(s) {
-    res = pushl_nd(get(c->arg[0]), get(c->arg[1]));
+    res = pushl_nd(get_(c->arg[0]), get_(c->arg[1]));
   } else {
     res = alloca_cells(1);
     unref(c->arg[0]);
