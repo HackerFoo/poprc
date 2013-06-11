@@ -368,12 +368,8 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
   int i = 0;
   if(n && n_a) {
     cell_t *l = b->ptr[n-1];
-    if(!closure_is_ready(l)) {
-      //if(l->n) b = modify_copy(l, b);
-      do {
-	l = arg_nd(l, ref(a->ptr[i++]));
-      } while(!closure_is_ready(l) && i < n_a);
-      b->ptr[n-1] = l;
+    while(!closure_is_ready(l) && i < n_a) {
+      b = arg_nd(l, ref(a->ptr[i++]), b);
     }
   }
   cell_t *e = expand_nd(b, n_a - i);
@@ -480,33 +476,34 @@ void arg(cell_t *c, cell_t *a) {
   }
 }
 
-cell_t *arg_nd(cell_t *c, cell_t *a) {
-  assert(is_closure(c) && is_closure(a));
-  assert(!closure_is_ready(c));
-  if(c->n) { /* protect shared closures */
-    cell_t *t = copy(c);
-    t->n = 0;
-    int i, n = closure_args(c);
-    for(i = closure_next_child(c); i < n; ++i)
-      ref(c->arg[i]);
-    --c->n;
-    c = t;
-  }
-  int i = closure_next_child(c);
-  if(!is_data(c->arg[i])) {
-    c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
-    c->arg[i] = a;
-    if(i == 0) closure_set_ready(c, closure_is_ready(a));
-  } else {
-    c->arg[i] = arg_nd(c->arg[i], a);
-    if(closure_is_ready(c->arg[i])) {
-      if(i == 0) closure_set_ready(c, true);
-      else --*(intptr_t *)&c->arg[0]; // decrement offset
-    }
-  }
-  return c;
+cell_t *arg_nd(cell_t *c, cell_t *a, cell_t *r) {
+  cell_t *t = _arg_nd(c, a, r);
+  zero_alts(c);
+  zero_alts(r);
+  return t;
 }
 
+cell_t *_arg_nd(cell_t *c, cell_t *a, cell_t *r) {
+  cell_t *t;
+  assert(is_closure(c) && is_closure(a));
+  assert(!closure_is_ready(c));
+  int i = closure_next_child(c);
+  if(!is_data(c->arg[i])) {
+    t = modify_copy(c, r);
+    cell_t *_c = clear_ptr(c->alt ? c->alt : c);
+    _c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
+    _c->arg[i] = a;
+    if(i == 0) closure_set_ready(_c, closure_is_ready(a));
+  } else {
+    t = _arg_nd(c->arg[i], a, r);
+    cell_t *_c = clear_ptr(c->alt ? c->alt : c);
+    if(closure_is_ready(_c->arg[i])) {
+      if(i == 0) closure_set_ready(_c, true);
+      else --*(intptr_t *)&_c->arg[0]; // decrement offset
+    }
+  }
+  return t;
+}
 
 cell_t *copy(cell_t *c) {
   int size = closure_cells(c);
@@ -808,11 +805,7 @@ cell_t *pushl_nd(cell_t *a, cell_t *b) {
   if(n) {
     cell_t *l = b->ptr[n-1];
     if(!closure_is_ready(l)) {
-      if(l->n) {
-	b = modify_copy(l, b);
-      }
-      arg(b->ptr[n-1], a);
-      return b;
+      return arg_nd(l, a, b);
     }
   }
 
@@ -932,11 +925,14 @@ cell_t *modify_copy(cell_t *c, cell_t *r) {
   cell_t *new = _modify_copy1(c, r, true);
   if(new) {
     _modify_copy2(new);
-    zero_alts(r);
-    zero_alts(c);
-  } else new = r;
-  return new;
+    return new;
+  } else return r;
 }
+/*
+  zero_alts(r);
+  zero_alts(c);
+  return new;
+*/
 
 void zero_alts(cell_t *r) {
   int i, n;

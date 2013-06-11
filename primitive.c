@@ -97,7 +97,7 @@ bool func_compose(cell_t *c) {
   alt = closure_split(c, 2);
   s &= !bm_conflict(c->arg[0]->alt_set,
 		    c->arg[1]->alt_set);
-  cell_t *p = get(c->arg[0]), *q = get(c->arg[1]);
+  cell_t *p = get_(c->arg[0]), *q = get_(c->arg[1]);
   if(s) {
     res = compose_nd(p, q);
   } else {
