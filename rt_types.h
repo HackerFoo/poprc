@@ -42,7 +42,7 @@ struct __attribute__((packed)) cell {
     reduce_t *func;
     cell_t *alt;
   };
-  uint32_t n;
+  uintptr_t n;
   union {
     /* unevaluated */
     cell_t *arg[3];

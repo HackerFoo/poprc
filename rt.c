@@ -367,8 +367,8 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
   int n_a = list_size(a);
   int i = 0;
   if(n && n_a) {
-    cell_t *l = b->ptr[n-1];
-    while(!closure_is_ready(l) && i < n_a) {
+    cell_t *l;
+    while(!closure_is_ready(l = b->ptr[n-1]) && i < n_a) {
       b = arg_nd(l, ref(a->ptr[i++]), b);
     }
   }

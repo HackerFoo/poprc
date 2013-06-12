@@ -171,7 +171,7 @@ void graph_cell(FILE *f, cell_t *c) {
 	  node,
 	  function_name(c->func),
 	  closure_is_ready(c) ? "" : "*",
-	  c->n);
+	  (int)c->n);
   fprintf(f, "<tr><td port=\"alt\">alt: <font color=\"lightgray\">%p</font></td></tr>",
              c->alt);
   if(is_reduced(c)) {
