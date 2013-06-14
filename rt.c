@@ -46,12 +46,12 @@ bool is_closure(void *p) {
 
 bool closure_is_ready(cell_t *c) {
   assert(is_closure(c));
-  return !is_marked(c->func);
+  return !is_marked(c->func, 1);
 }
 
 void closure_set_ready(cell_t *c, bool r) {
   assert(is_closure(c));
-  c->func = (reduce_t *)set_mark(c->func, !r);
+  c->func = mark_ptr(clear_ptr(c->func, 1), r ? 0 : 1);
 }
 
 /* propagate alternatives down to root of expression tree */
@@ -72,7 +72,7 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
       for(j = 0; j < s; j++) {
 	cn->arg[j] = (1<<j) & i ?
 	  c->arg[j]->alt :
-	  mark_ptr(c->arg[j]);
+	  mark_ptr(c->arg[j], 1);
       }
       cn->alt = p;
       p = cn;
@@ -91,9 +91,9 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
   alt_mask = 0;
   while(i--) {
     alt_mask <<= 1;
-    if(is_marked(c->arg[i])) {
+    if(is_marked(c->arg[i], 1)) {
       /* clear marks as we go */
-      c->arg[i] = clear_ptr(c->arg[i]);
+      c->arg[i] = clear_ptr(c->arg[i], 1);
     } else if(c->arg[i] &&
 	      c->arg[i]->alt) {
       alt_mask |= 1;
@@ -132,7 +132,7 @@ cell_t *closure_split1(cell_t *c, int n) {
 }
 
 bool reduce(cell_t *c) {
-  c = clear_ptr(c);
+  c = clear_ptr(c, 1);
   if(!c) return false;
   assert(is_closure(c) &&
 	 closure_is_ready(c));
@@ -477,9 +477,12 @@ void arg(cell_t *c, cell_t *a) {
 }
 
 cell_t *arg_nd(cell_t *c, cell_t *a, cell_t *r) {
+  cell_t *alt = r->alt;
+  r->alt = 0;
   cell_t *t = _arg_nd(c, a, r);
   zero_alts(c);
   zero_alts(r);
+  r->alt = alt;
   return t;
 }
 
@@ -490,13 +493,13 @@ cell_t *_arg_nd(cell_t *c, cell_t *a, cell_t *r) {
   int i = closure_next_child(c);
   if(!is_data(c->arg[i])) {
     t = modify_copy(c, r);
-    cell_t *_c = clear_ptr(c->alt ? c->alt : c);
+    cell_t *_c = clear_ptr(c->alt, 3) ? clear_ptr(c->alt, 3) : c;
     _c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
     _c->arg[i] = a;
     if(i == 0) closure_set_ready(_c, closure_is_ready(a));
   } else {
     t = _arg_nd(c->arg[i], a, r);
-    cell_t *_c = clear_ptr(c->alt ? c->alt : c);
+    cell_t *_c = clear_ptr(c->alt, 3) ? clear_ptr(c->alt, 3) : c;
     if(closure_is_ready(_c->arg[i])) {
       if(i == 0) closure_set_ready(_c, true);
       else --*(intptr_t *)&_c->arg[0]; // decrement offset
@@ -608,22 +611,6 @@ cell_t *dup(cell_t *c) {
 
 bool is_nil(cell_t *c) {
   return !c;
-}
-
-void *clear_ptr(void *p) {
-  return (void *)((intptr_t)p & ~1);
-}
-
-void *mark_ptr(void *p) {
-  return (void *)((intptr_t)p | 1);
-}
-
-void *set_mark(void *p, bool f) {
-  return f ? mark_ptr(p) : clear_ptr(p);
-}
-
-bool is_marked(void *p) {
-  return (intptr_t)p & 1;
 }
 
 bool is_list(cell_t *c) {
@@ -937,7 +924,7 @@ cell_t *modify_copy(cell_t *c, cell_t *r) {
 void zero_alts(cell_t *r) {
   int i, n;
   if(!is_closure(r)) return;
-  if(!r->alt) return;
+  if(!is_marked(r->alt, 2)) return;
   r->alt = 0;
   if(is_reduced(r)) {
     if(r->type == T_INDIRECT) {
@@ -962,7 +949,8 @@ int nondep_n(cell_t *c) {
     int n = closure_args(c);
     while(n-- &&
 	  is_closure(c->arg[n]) &&
-	  is_dep(c->arg[n])) --nd;
+	  is_dep(c->arg[n]) &&
+	  c->arg[n] == c) --nd;
   }
   return nd;
 }
@@ -974,24 +962,24 @@ cell_t *_modify_copy1(cell_t *c, cell_t *r, bool up) {
   /* is r unique (okay to replace)? */
   bool u = up && !nd;
 
-  cell_t *new() {
-    if(r->alt > (cell_t *)1) _new = r->alt;
+  void new() {
+    if(clear_ptr(r->alt, 3)) _new = clear_ptr(r->alt, 3);
     else if(u) {
       _new = r;
     } else if(!_new) {
       _new = copy(r);
-      _new->alt = 0;
+      _new->alt = (cell_t *)3;
       _new->n = -1;
     }
-    return r->alt = _new;
+    r->alt = mark_ptr(_new, 3);
   }
 
   if(!is_closure(r)) return 0;
-  if(c == r) new();
   if(r->alt) {
-    if(r->alt == (cell_t *)1) return 0;
-    else return r->alt; // already been replaced
-  } else r->alt = (cell_t *)1;
+    /* already been replaced */
+    return clear_ptr(r->alt, 3);
+  } else r->alt = (cell_t *)3;
+  if(c == r) new();
   if(is_reduced(r)) {
     if(r->type == T_INDIRECT) {
       if(_modify_copy1(c, (cell_t *)r->val[0], u))
@@ -1015,46 +1003,61 @@ cell_t *_modify_copy1(cell_t *c, cell_t *r, bool up) {
   return _new;
 }
 
+cell_t *get_mod(cell_t *r) {
+  if(!r) return 0;
+  cell_t *a = r->alt;
+  if(is_marked(a, 2)) return clear_ptr(a, 3);
+  else return 0;
+}
+
 void _modify_copy2(cell_t *r) {
   int i, n;
   cell_t *t, *u, **p;
-  cell_t *a = clear_ptr(r->alt);
-  bool s = a || is_marked(r->alt);
+
+  /* r is modified in place */
+  bool s = r == clear_ptr(r->alt, 3);
 
   if(!is_closure(r)) return;
-  if(is_marked(r->alt)) return;
-  r->alt = mark_ptr(r->alt);
+  /* alread been here */
+  if(!is_marked(r->alt, 1)) return;
+  r->alt = clear_ptr(r->alt, 1);
   if(is_reduced(r)) {
     if(r->type == T_INDIRECT) {
       p = (cell_t **)&r->val[0];
-      u = *p;
-      if((t = clear_ptr((*p)->alt))) {
-	*p = ref(t);
+      u = clear_ptr(*p, 3);
+      if((t = get_mod(u))) {
+	if(!(s && t == u)) {
+	  *p = ref(t);
+	  if(s) unref(u);
+	}
 	_modify_copy2(t);
-      } else ref(*p);
-      if(s) unref(u);
+      } else if(!s) ref(u);
     } else if(is_list(r)) {
       n = list_size(r);
       for(i = 0; i < n; ++i) {
 	p = &r->ptr[i];
-	u = *p;
-	if(*p && (t = clear_ptr((*p)->alt))) {
-	  *p = ref(t);
+	u = clear_ptr(*p, 3);
+	if((t = get_mod(u))) {
+	  if(!(s && t == u)) {
+	    *p = ref(t);
+	    if(s) unref(u);
+	  }
 	  _modify_copy2(t);
-	} else ref(*p);
-	if(s) unref(u);
+	} else if(!s) ref(u);
       }
     }
   } else {
     n = closure_args(r);
     for(i = closure_next_child(r); i < n; ++i) {
       p = &r->arg[i];
-      u = *p;
-      if(*p && (t = clear_ptr((*p)->alt))) {
-	*p = ref(t);
+      u = clear_ptr(*p, 3);
+      if((t = get_mod(u))) {
+	if(!(s && t == u)) {
+	  *p = ref(t);
+	  if(s) unref(u);
+	}
 	_modify_copy2(t);
-      } else ref(*p);
-      if(s) unref(u);
+      } else if(!s) ref(u);
     }
   }
 }

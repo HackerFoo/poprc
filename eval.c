@@ -100,7 +100,7 @@ void print_sexpr(cell_t *r) {
 */
 
 char *function_name(reduce_t *f) {
-  f = clear_ptr(f);
+  f = clear_ptr(f, 1);
   //  int i;
 # define CASE(n) if(f == func_##n) return #n
   CASE(add);
@@ -132,7 +132,7 @@ char *function_name(reduce_t *f) {
 
 char *function_token(reduce_t *f) {
   int i;
-  f = clear_ptr(f);
+  f = clear_ptr(f, 1);
   FOREACH(word_table, i) {
     if(word_table[i].func == f)
       return word_table[i].name;
@@ -200,7 +200,7 @@ void graph_cell(FILE *f, cell_t *c) {
 
   /* print edges */
   if(c->alt) {
-    cell_t *alt = clear_ptr(c->alt);
+    cell_t *alt = clear_ptr(c->alt, 1);
     fprintf(f, "node%ld:alt -> node%ld:top;\n",
 	    node, alt - cells);
     graph_cell(f, c->alt);
@@ -220,7 +220,7 @@ void graph_cell(FILE *f, cell_t *c) {
     }
   } else {
     for(i = 0; i < n; i++) {
-      cell_t *arg = clear_ptr(c->arg[i]);
+      cell_t *arg = clear_ptr(c->arg[i], 1);
       if(is_closure(arg)) {
 	fprintf(f, "node%ld:arg%d -> node%ld:top;\n",
 		c - cells, i, arg - cells);
