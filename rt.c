@@ -1028,7 +1028,7 @@ void _modify_copy2(cell_t *r) {
       if((t = get_mod(u))) {
 	if(!(s && t == u)) {
 	  *p = ref(t);
-	  if(s) unref(u);
+	  if(s) drop(u);
 	}
 	_modify_copy2(t);
       } else if(!s) ref(u);
@@ -1040,7 +1040,7 @@ void _modify_copy2(cell_t *r) {
 	if((t = get_mod(u))) {
 	  if(!(s && t == u)) {
 	    *p = ref(t);
-	    if(s) unref(u);
+	    if(s) drop(u);
 	  }
 	  _modify_copy2(t);
 	} else if(!s) ref(u);
@@ -1054,7 +1054,7 @@ void _modify_copy2(cell_t *r) {
       if((t = get_mod(u))) {
 	if(!(s && t == u)) {
 	  *p = ref(t);
-	  if(s) unref(u);
+	  if(s) drop(u);
 	}
 	_modify_copy2(t);
       } else if(!s) ref(u);

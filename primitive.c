@@ -182,7 +182,7 @@ bool func_popr(cell_t *c) {
   cell_t *p = c->arg[0], *pr;
   cell_t *q = c->arg[1];
   if((sp = reduce(p) &&
-      list_size(p = get(p)) > 0) &&
+      list_size(p = get_(p)) > 0) &&
      reduce(p->ptr[0]) &&
      !bm_conflict(p->alt_set,
 		  p->ptr[0]->alt_set)) {
