@@ -110,4 +110,8 @@ typedef struct measure_t {
 #define mark_ptr(p, x) ((void *)((intptr_t)(p) | (x)))
 #define clear_ptr(p, x) ((void *)((intptr_t)(p) & ~(x)))
 
+#define ALT 1
+#define ARGS 2
+#define PTRS 4
+
 #endif

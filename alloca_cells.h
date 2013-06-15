@@ -18,7 +18,7 @@ cell_t *alloca_copy(cell_t *c) {
   int n = closure_cells(c);
   cell_t *new = alloca_cells(n);
   memcpy(new, c, sizeof(cell_t) * n);
-  return ref_reduced(new);
+  return traverse_ref(new, PTRS);
 }
 
 inline __attribute__((always_inline))
