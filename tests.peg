@@ -27,3 +27,6 @@
 : [dup] dup pushl
 
 : 1 [dup] dup . pushl popr
+
+@: [dup pushl popr] dup pushl popr
+@: [dup pushl popr swap drop] dup pushl popr swap drop

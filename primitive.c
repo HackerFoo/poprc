@@ -268,7 +268,8 @@ bool func_alt(cell_t *c) {
 
 bool func_assert(cell_t *c) {
   bool s = reduce(c->arg[0]);
-  s &= c->arg[0]->val[0] != 0;
+  cell_t *p = get(c->arg[0]);
+  s &= p->val[0] != 0;
   cell_t *res = alloca_copy_if(c->arg[0], s);
   res->alt = closure_split1(c, 0);
   unref(c->arg[0]);
