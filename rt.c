@@ -476,9 +476,52 @@ void arg(cell_t *c, cell_t *a) {
   }
 }
 
+bool is_indirect(cell_t *c) {
+  return c->type == T_INDIRECT;
+}
+
+void traverse(cell_t *r, void (*f)(cell_t **)) {
+  if(is_reduced(r)) {
+    if(is_indirect(r)) {
+      f((cell_t **)r->val);
+    } else if(is_list(r)) {
+      int i, n = list_size(r);
+      for(i = 0; i < n; ++i) {
+	f(r->ptr + i);
+      }
+    }
+  } else {
+    int i, n = closure_args(r);
+    for(i = closure_next_child(r); i < n; ++i) {
+      f(r->arg + i);
+    }
+  }
+}
+
+void traverse_mark_alt(cell_t *c) {
+  void f(cell_t **p) {
+    if(*p && !is_marked((*p)->alt, 1)) {
+      (*p)->alt = mark_ptr((*p)->alt, 1);
+      traverse_mark_alt(*p);
+    }
+  }
+  traverse(c, f);
+}
+
+void traverse_clear_alt(cell_t *c) {
+  void f(cell_t **p) {
+    if(*p && is_marked((*p)->alt, 1)) {
+      (*p)->alt = clear_ptr((*p)->alt, 1);
+      traverse_clear_alt(*p);
+    }
+  }
+  traverse(c, f);
+}
+
 cell_t *arg_nd(cell_t *c, cell_t *a, cell_t *r) {
   cell_t *alt = r->alt;
   r->alt = 0;
+  traverse_mark_alt(a);
   cell_t *t = _arg_nd(c, a, r);
   zero_alts(c);
   zero_alts(r);
@@ -490,9 +533,11 @@ cell_t *_arg_nd(cell_t *c, cell_t *a, cell_t *r) {
   cell_t *t;
   assert(is_closure(c) && is_closure(a));
   assert(!closure_is_ready(c));
+  assert(!is_marked(c->alt, 1));
   int i = closure_next_child(c);
   if(!is_data(c->arg[i])) {
     t = modify_copy(c, r);
+    traverse_clear_alt(a);
     cell_t *_c = clear_ptr(c->alt, 3) ? clear_ptr(c->alt, 3) : c;
     _c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
     _c->arg[i] = a;
@@ -956,8 +1001,9 @@ int nondep_n(cell_t *c) {
   return nd;
 }
 
+/* first sweep of modify_copy */
 cell_t *_modify_copy1(cell_t *c, cell_t *r, bool up) {
-  int i, n, nd = nondep_n(r);
+  int nd = nondep_n(r);
   cell_t *_new = 0;
 
   /* is r unique (okay to replace)? */
@@ -975,32 +1021,17 @@ cell_t *_modify_copy1(cell_t *c, cell_t *r, bool up) {
     r->alt = mark_ptr(_new, 3);
   }
 
+  void f(cell_t **p) {
+    if(_modify_copy1(c, *p, u)) new();
+  }
+
   if(!is_closure(r)) return 0;
   if(r->alt) {
     /* already been replaced */
     return clear_ptr(r->alt, 3);
   } else r->alt = (cell_t *)3;
   if(c == r) new();
-  if(is_reduced(r)) {
-    if(r->type == T_INDIRECT) {
-      if(_modify_copy1(c, (cell_t *)r->val[0], u))
-	new();
-    } else if(is_list(r)) {
-      n = list_size(r);
-      for(i = 0; i < n; ++i) {
-	if(_modify_copy1(c, r->ptr[i], u)) {
-	  new();
-	}
-      }
-    }
-  } else {
-    n = closure_args(r);
-    for(i = closure_next_child(r); i < n; ++i) {
-      if(_modify_copy1(c, r->arg[i], u)) {
-	new();
-      }
-    }
-  }
+  traverse(r, f);
   return _new;
 }
 
@@ -1011,54 +1042,26 @@ cell_t *get_mod(cell_t *r) {
   else return 0;
 }
 
+/* second sweep of modify copy */
 void _modify_copy2(cell_t *r) {
-  int i, n;
-  cell_t *t, *u, **p;
 
   /* r is modified in place */
   bool s = r == clear_ptr(r->alt, 3);
+
+  void f(cell_t **p) {
+    cell_t *t, *u = clear_ptr(*p, 3);
+    if((t = get_mod(u))) {
+      if(!(s && t == u)) {
+	*p = ref(t);
+	if(s) drop(u);
+      }
+      _modify_copy2(t);
+    } else if(!s) ref(u);
+  }
 
   if(!is_closure(r)) return;
   /* alread been here */
   if(!is_marked(r->alt, 1)) return;
   r->alt = clear_ptr(r->alt, 1);
-  if(is_reduced(r)) {
-    if(r->type == T_INDIRECT) {
-      p = (cell_t **)&r->val[0];
-      u = clear_ptr(*p, 3);
-      if((t = get_mod(u))) {
-	if(!(s && t == u)) {
-	  *p = ref(t);
-	  if(s) drop(u);
-	}
-	_modify_copy2(t);
-      } else if(!s) ref(u);
-    } else if(is_list(r)) {
-      n = list_size(r);
-      for(i = 0; i < n; ++i) {
-	p = &r->ptr[i];
-	u = clear_ptr(*p, 3);
-	if((t = get_mod(u))) {
-	  if(!(s && t == u)) {
-	    *p = ref(t);
-	    if(s) drop(u);
-	  }
-	  _modify_copy2(t);
-	} else if(!s) ref(u);
-      }
-    }
-  } else {
-    n = closure_args(r);
-    for(i = closure_next_child(r); i < n; ++i) {
-      p = &r->arg[i];
-      u = clear_ptr(*p, 3);
-      if((t = get_mod(u))) {
-	if(!(s && t == u)) {
-	  *p = ref(t);
-	  if(s) drop(u);
-	}
-	_modify_copy2(t);
-      } else if(!s) ref(u);
-    }
-  }
+  traverse(r, f);
 }
