@@ -23,7 +23,7 @@
 #include "alloca_cells.h"
 
 /* must be in ascending order */
-word_entry_t word_table[21] = {
+word_entry_t word_table[22] = {
   {"!", func_assert, 1, 1},
   //  {"$", func_apply, 2, 1}, // ***
   {"'", func_quote, 1, 1},
@@ -44,7 +44,7 @@ word_entry_t word_table[21] = {
   {"id", func_id, 1, 1},
   {"popr", func_popr, 1, 2},
   {"pushl", func_pushl, 2, 1},
-  //  {"pushr", func_pushr, 2, 1},
+  {"pushr", func_pushr, 2, 1},
   {"swap", func_swap, 2, 2},
   {"|", func_alt, 2, 1}
 };
@@ -151,25 +151,28 @@ bool func_pushl(cell_t *c) {
   return store_reduced(c, res, s);
 }
 
-/*
 bool func_pushr(cell_t *c) {
   bool s = reduce(c->arg[0]);
+  cell_t *res;
   cell_t *alt = closure_split1(c, 0);
-  cell_t *p = c->arg[0];
-  cell_t *q = c->arg[1];
-  int n = list_size(p);
-  p = expand_list(p, 1);
-  int i;
-  memmove(&p->ptr[1], &p->ptr[0], sizeof(cell_t *)*n);
-  p->ptr[0] = q;
+  cell_t *p = get_(c->arg[0]);
+  cell_t *q = get_(c->arg[1]);
+  uintptr_t alt_set = c->arg[0]->alt_set;
   if(s) {
-    res.ptr[0] = pushl(ref(p->ptr[0]), q); // ***
-    res.ptr[0]->alt_set = res.alt_set;
-  } else unref(q);
-  unref(p);
-  return store_reduced(c, &res, 1, s);
+    int n = list_size(p);
+    res = expand(p, 1);
+    memmove(res->ptr+1, res->ptr, sizeof(cell_t *)*n);
+    res->ptr[0] = q;
+  } else {
+    res = alloca_cells(1);
+    drop(p);
+    drop(q);
+  }
+  res->alt = alt;
+  res->alt_set = alt_set;
+  return store_reduced(c, res, s);
 }
-*/
+
 bool func_quote(cell_t *c) {
   cell_t res[2] = {{ .ptr = {c->arg[0]} }};
   return store_reduced(c, res, true);

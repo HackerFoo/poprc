@@ -336,6 +336,8 @@ cell_t *expand(cell_t *c, unsigned int s) {
   int cn_p = calculate_cells(n);
   int cn = calculate_cells(n + s);
   if(c && !c->n && cn == cn_p) {
+    unref(c->alt);
+    c->alt = 0;
     return c;
   } else {
     /* copy */
@@ -348,20 +350,6 @@ cell_t *expand(cell_t *c, unsigned int s) {
   }
 }
 
-cell_t *expand_nd(cell_t *c, unsigned int s) {
-  int n = closure_args(c);
-  int cn_p = calculate_cells(n);
-  int cn = calculate_cells(n + s);
-
-  /* copy */
-  cell_t *new = closure_alloc_cells(cn);
-  memcpy(new, c, cn_p * sizeof(cell_t));
-  new->n = 0;
-  traverse_ref(new, PTRS);
-  unref(c);
-  return new;
-}
-
 cell_t *compose_nd(cell_t *a, cell_t *b) {
   int n = list_size(b);
   int n_a = list_size(a);
@@ -372,7 +360,7 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
       b = arg_nd(l, ref(a->ptr[i++]), b);
     }
   }
-  cell_t *e = expand_nd(b, n_a - i);
+  cell_t *e = expand(b, n_a - i);
   int j;
   for(j = n; i < n_a; ++i, ++j) {
     e->ptr[j] = ref(a->ptr[i]);
@@ -527,8 +515,8 @@ cell_t *arg_nd(cell_t *c, cell_t *a, cell_t *r) {
   r->alt = 0;
   traverse_mark_alt(a);
   cell_t *t = _arg_nd(c, a, r);
-  zero_alts(c);
   zero_alts(r);
+  zero_alts(c);
   r->alt = alt;
   return t;
 }
@@ -817,7 +805,7 @@ cell_t *pushl_nd(cell_t *a, cell_t *b) {
     }
   }
 
-  cell_t *e = expand_nd(b, 1);
+  cell_t *e = expand(b, 1);
   e->ptr[n] = a;
   return e;
 }
@@ -947,10 +935,13 @@ void zero_alts(cell_t *r) {
     zero_alts(*p);
   }
 
+  r = clear_ptr(r, 3);
   if(!is_closure(r)) return;
-  if(!is_marked(r->alt, 2)) return;
+  if(!is_marked(r->alt, 3)) return;
+  cell_t *a = clear_ptr(r->alt, 3);
+  if(a) a->alt = 0;
   r->alt = 0;
-  traverse(r, f, ARGS | PTRS);
+  traverse(r, f, ALT | ARGS | PTRS);
 }
 
 int nondep_n(cell_t *c) {
