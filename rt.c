@@ -919,6 +919,7 @@ cell_t *get(cell_t *c) {
 
 cell_t *modify_copy(cell_t *c, cell_t *r) {
   cell_t *new = _modify_copy1(c, r, true);
+  if(new != r) ref(new);
   if(new) {
     _modify_copy2(new);
     return new;
