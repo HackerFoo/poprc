@@ -919,7 +919,10 @@ cell_t *get(cell_t *c) {
 
 cell_t *modify_copy(cell_t *c, cell_t *r) {
   cell_t *new = _modify_copy1(c, r, true);
-  if(new != r) ref(new);
+  if(new != r) {
+    ref(new);
+    unref(r);
+  }
   if(new) {
     _modify_copy2(new);
     return new;
@@ -939,10 +942,17 @@ void zero_alts(cell_t *r) {
   r = clear_ptr(r, 3);
   if(!is_closure(r)) return;
   if(!is_marked(r->alt, 3)) return;
+  //printf("zero_alts(&cells[%d])\n", r-cells);
   cell_t *a = clear_ptr(r->alt, 3);
-  if(a) a->alt = 0;
+  if(a) {
+    cell_t *aa = clear_ptr(a->alt, 3);
+    a->alt = 0;
+    unref(aa);
+  }
+  a = clear_ptr(r->alt, 3);
   r->alt = 0;
-  traverse(r, f, ALT | ARGS | PTRS);
+  unref(a);
+  traverse(r, f, ARGS | PTRS);
 }
 
 int nondep_n(cell_t *c) {
@@ -970,11 +980,11 @@ cell_t *_modify_copy1(cell_t *c, cell_t *r, bool up) {
   void new() {
     if(clear_ptr(r->alt, 3)) _new = clear_ptr(r->alt, 3);
     else if(u) {
-      _new = r;
+      _new = ref(r);
     } else if(!_new) {
       _new = copy(r);
       _new->alt = (cell_t *)3;
-      _new->n = -1;
+      _new->n = 0;
     }
     r->alt = mark_ptr(_new, 3);
   }
