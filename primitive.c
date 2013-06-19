@@ -288,7 +288,6 @@ cell_t *get_(cell_t *c) {
 bool func_id(cell_t *c) {
   cell_t *p = c->arg[0];
   bool s = reduce(p);
-  //p = get_(p);
   store_reduced(c, p, s);
   return s;
 }

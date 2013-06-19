@@ -928,11 +928,6 @@ cell_t *modify_copy(cell_t *c, cell_t *r) {
     return new;
   } else return r;
 }
-/*
-  zero_alts(r);
-  zero_alts(c);
-  return new;
-*/
 
 void zero_alts(cell_t *r) {
   void f(cell_t **p) {
@@ -943,9 +938,10 @@ void zero_alts(cell_t *r) {
   if(!is_closure(r)) return;
   if(!is_marked(r->alt, 3)) return;
   //printf("zero_alts(&cells[%d])\n", r-cells);
-  cell_t *a = clear_ptr(r->alt, 3);
+  cell_t *a = clear_ptr(r->alt, 3), *aa;
+
   if(a) {
-    cell_t *aa = clear_ptr(a->alt, 3);
+    aa = clear_ptr(a->alt, 3);
     a->alt = 0;
     unref(aa);
   }
@@ -964,7 +960,7 @@ int nondep_n(cell_t *c) {
     while(n-- &&
 	  is_closure(c->arg[n]) &&
 	  is_dep(c->arg[n]) &&
-	  c->arg[n] == c) --nd;
+	  c->arg[n]->arg[0] == c) --nd;
   }
   return nd;
 }
