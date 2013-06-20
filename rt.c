@@ -25,6 +25,10 @@
 cell_t cells[1<<16];
 cell_t *cells_ptr;
 uint8_t alt_cnt = 0;
+cell_t fail_cell = {
+  .func = func_reduced,
+  .type = T_FAIL
+};
 
 measure_t measure, saved_measure;
 

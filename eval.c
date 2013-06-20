@@ -250,6 +250,7 @@ bool reduce_list(cell_t *c) {
   while(*p && is_closure(*p)) {
     *p = reduce_alt(*p);
     b &= *p != 0;
+    if(*p == 0) *p = &fail_cell;
     ++p;
   }
   return b;
@@ -289,6 +290,8 @@ void show_one(cell_t *c) {
     show_val(c);
   } else if(c->type == T_INDIRECT) {
     show_one((cell_t *)c->val[0]);
+  } else if(c->type == T_FAIL) {
+    printf(" {}");
   } else if(is_list(c)) {
     show_list(c);
   } else {

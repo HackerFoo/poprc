@@ -30,3 +30,5 @@
 
 @: [dup pushl popr] dup pushl popr
 @: [dup pushl popr swap drop] dup pushl popr swap drop
+
+: [[2] [3]] [drop 0] [swap drop 1] | popr 1 == ! drop . popr
