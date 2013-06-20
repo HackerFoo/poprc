@@ -643,6 +643,8 @@ bool is_list(cell_t *c) {
     (c->type == 0 || c->type > 255);
 }
 
+/* be careful using this, need more thorough drop() */
+/* when dealing with lists because of unevaluated words */
 void unref(cell_t *c) {
   //return;
   void f(cell_t **p) {

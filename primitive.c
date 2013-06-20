@@ -97,19 +97,17 @@ bool func_compose(cell_t *c) {
   alt = closure_split(c, 2);
   s &= !bm_conflict(c->arg[0]->alt_set,
 		    c->arg[1]->alt_set);
-  cell_t *p = get_(c->arg[0]), *q = get_(c->arg[1]);
+  cell_t *p = get(c->arg[0]), *q = get(c->arg[1]);
   if(s) {
-    res = compose_nd(p, q);
+    res = compose_nd(ref(p), ref(q));
   } else {
     res = alloca_cells(1);
   }
+  drop(p);
+  drop(q);
   res->alt_set = c->arg[0]->alt_set | c->arg[1]->alt_set;
   res->alt = alt;
   store_reduced(c, res, s);
-  if(!s) {
-    unref(c->arg[0]);
-    unref(c->arg[1]);
-  }
   return s;
 }
 /*
@@ -141,12 +139,12 @@ bool func_pushl(cell_t *c) {
   cell_t *alt = closure_split1(c, 1);
   cell_t *res;
   if(s) {
-    res = pushl_nd(get_(c->arg[0]), get_(c->arg[1]));
+    res = pushl_nd(ref(get(c->arg[0])), ref(get(c->arg[1])));
   } else {
     res = alloca_cells(1);
-    unref(c->arg[0]);
-    unref(c->arg[1]);
   }
+  unref(c->arg[0]);
+  drop(c->arg[1]);
   res->alt = alt;
   return store_reduced(c, res, s);
 }
@@ -185,7 +183,7 @@ bool func_popr(cell_t *c) {
   cell_t *p = c->arg[0], *pr;
   cell_t *q = c->arg[1];
   if((sp = reduce(p) &&
-      list_size(p = get_(p)) > 0) &&
+      list_size(p = get(p)) > 0) &&
      reduce(p->ptr[0]) &&
      !bm_conflict(p->alt_set,
 		  p->ptr[0]->alt_set)) {
@@ -227,7 +225,7 @@ bool func_popr(cell_t *c) {
     res1->alt = ref(alt->arg[1]);
   }
 
-  unref(p);
+  drop(c->arg[0]);
   unref(q);
   unref(c); /* dump ref from tail to c */
   store_reduced(q, res1, s);
@@ -279,6 +277,7 @@ bool func_assert(cell_t *c) {
   return store_reduced(c, res, s);
 }
 
+/* this function is problematic */
 cell_t *get_(cell_t *c) {
   cell_t *p = ref(get(c));
   unref(c);
@@ -303,10 +302,10 @@ bool func_drop(cell_t *c) {
   res->alt_set = c->arg[0]->alt_set |
     c->arg[1]->alt_set;
   res->alt = alt;
-  unref(c->arg[1]);
+  drop(c->arg[1]);
   cell_t *t = c->arg[0];
   store_reduced(c, res, s);
-  unref(t);
+  drop(t);
   return s;
 }
 
