@@ -256,16 +256,110 @@ bool reduce_list(cell_t *c) {
   return b;
 }
 
+bool any_alt_overlap(cell_t **p, unsigned int size) {
+  int i;
+  uintptr_t t, as = 0;
+  for(i = 0; i < size; ++i) {
+    if((t = p[i]->alt_set) & as) return true;
+    as |= t;
+  }
+  return false;
+}
+
+bool any_conflicts(cell_t **p, unsigned int size) {
+  int i;
+  uintptr_t t, as = 0;
+  for(i = 0; i < size; ++i) {
+    if(bm_conflict(as, t = p[i]->alt_set)) return true;
+    as |= t;
+  }
+  return false;
+}
+
 void show_list(cell_t *c) {
   assert(c && is_list(c));
-  int n = list_size(c);
-  if(n) {
+  int n = list_size(c), i;
+  void print(cell_t *x) {
     printf(" [");
-    while(n--) show_alt(c->ptr[n]);
+    i = n; while(i--) show_one(x->ptr[i]);
     printf(" ]");
+  }
+  if(n) {
+    if(any_alt_overlap(c->ptr, n)) {
+      cell_t *p = 0, *m1 = 0, *m2 = 0;
+
+      /* find first match */
+      if(!any_conflicts(c->ptr, n)) {
+	m1 = c;
+      } else {
+	p = copy(c);
+	while(count(p->ptr, c->ptr, n) >= 0) {
+	  if(!any_conflicts(p->ptr, n)) {
+	    m1 = p;
+	    break;
+	  }
+	}
+      }
+      if(!m1) {
+	/* no matches */
+	printf(" []");
+	if(p) closure_free(p);
+      } else {
+	/* find second match */
+	p = copy(m1);
+	while(count(p->ptr, c->ptr, n) >= 0) {
+	  if(!any_conflicts(p->ptr, n)) {
+	    m2 = p;
+	    break;
+	  }
+	}
+	if(m2) printf(" {");
+	/* at least one match */
+	print(m1);
+	if(m1 != c) closure_free(m1);
+	if(m2) {
+	  /* second match */
+	  printf(" |"); print(m2);
+	  /* remaining matches */
+	  while(count(p->ptr, c->ptr, n) >= 0) {
+	    if(!any_conflicts(p->ptr, n)) {
+	      printf(" |"); print(p);
+	    }
+	  }
+	  printf(" }");
+	}
+	closure_free(p);
+      }
+    } else {
+      printf(" [");
+      i = n; while(i--) show_alt(c->ptr[i]);
+      printf(" ]");
+    }
   } else printf(" []");
 }
 
+int count(cell_t **cnt, cell_t **reset, int size) {
+  int i = size;
+  while(i--) {
+    if(!cnt[i]->alt) {
+      cnt[i] = reset[i];
+    } else {
+      cnt[i] = cnt[i]->alt;
+      break;
+    }
+  }
+  return i;
+}
+/*
+void test_count() {
+  int cnt[3];
+  int reset[3] = {2, 1, 3};
+  memcpy(cnt, reset, sizeof(reset));
+  do {
+    printf("%d %d %d\n", cnt[0], cnt[1], cnt[2]);
+  } while(count(cnt, reset, 3) >= 0);
+}
+*/
 void show_func(cell_t *c) {
   int n = closure_args(c), i;
   char *s = function_token(c->func);
