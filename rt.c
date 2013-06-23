@@ -985,6 +985,8 @@ cell_t *_modify_copy1(cell_t *c, cell_t *r, bool up) {
       _new = ref(r);
     } else if(!_new) {
       _new = copy(r);
+      if(clear_ptr(r->func, 1) == func_alt)
+	c->arg[2] = (cell_t *)(intptr_t)alt_cnt++;
       _new->alt = (cell_t *)3;
       _new->n = 0;
     }
