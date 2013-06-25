@@ -103,8 +103,8 @@ bool func_compose(cell_t *c) {
   } else {
     res = alloca_cells(1);
   }
-  drop(p);
-  drop(q);
+  drop(c->arg[0]);
+  drop(c->arg[1]);
   res->alt_set = c->arg[0]->alt_set | c->arg[1]->alt_set;
   res->alt = alt;
   store_reduced(c, res, s);
