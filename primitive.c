@@ -23,7 +23,7 @@
 #include "alloca_cells.h"
 
 /* must be in ascending order */
-word_entry_t word_table[22] = {
+word_entry_t word_table[23] = {
   {"!", func_assert, 1, 1},
   //  {"$", func_apply, 2, 1}, // ***
   {"'", func_quote, 1, 1},
@@ -42,6 +42,7 @@ word_entry_t word_table[22] = {
   {"drop", func_drop, 2, 1},
   {"dup", func_dup, 1, 2},
   {"id", func_id, 1, 1},
+  {"ifte", func_ifte, 3, 1},
   {"popr", func_popr, 1, 2},
   {"pushl", func_pushl, 2, 1},
   {"pushr", func_pushr, 2, 1},
@@ -343,24 +344,39 @@ bool func_dup(cell_t *c) {
 cell_t *build(char *str, unsigned int n);
 #define BUILD(x) build((x), sizeof(x))
 
+bool func_ifte(cell_t *c) {
+  bool s;
+  char code[] = "[] pushl pushl pushl"
+    "[0 == ! drop swap drop]"
+    "[1 == ! drop drop] | . popr swap drop";
+  cell_t *b = BUILD(code);
+  cell_t *p = ref(b->ptr[0]);
+  drop(b);
+  arg(p, c->arg[2]);
+  arg(p, c->arg[1]);
+  arg(p, c->arg[0]);
+  s = reduce(p);
+  return store_reduced(c, p, s);
+}
+
 bool func_dip11(cell_t *c) {
   bool s = true;
   cell_t *other = c->arg[3];
   char code[] = "swap pushr pushl popr "
     "swap popr swap drop swap";
-  cell_t *n = BUILD(code);
-  arg(n, c->arg[2]);
-  arg(n, c->arg[1]);
-  arg(n, c->arg[0]);
+  cell_t *b = BUILD(code);
+  cell_t *p = ref(b->ptr[1]);
+  cell_t *q = ref(b->ptr[0]);
+  drop(b);
+
+  arg(p, c->arg[2]);
+  arg(p, c->arg[1]);
+  arg(p, c->arg[0]);
   
-  s &= reduce(n);
-  cell_t *next = n->next;
-  n->next = 0;
-  s &= reduce(next);
-  store_reduced(other, n, s);
-  store_reduced(c, next, s);
-  unref(n);
-  unref(next);
+  s &= reduce(p);
+  s &= reduce(q);
+  store_reduced(c, p, s);
+  store_reduced(other, q, s);
   unref(c);
   unref(other);
   return s;
@@ -368,33 +384,28 @@ bool func_dip11(cell_t *c) {
 
 bool func_dip12(cell_t *c) {
   bool s = true;
-  cell_t *other1 = c->arg[3];
-  cell_t *other2 = c->arg[4];
-  char code[] = "swap pushr pushl popr "
-    "' swap . popr swap popr swap popr swap drop";
-  cell_t *n = BUILD(code);
-  arg(n, c->arg[2]);
-  arg(n, c->arg[1]);
-  arg(n, c->arg[0]);
+  cell_t *other2 = c->arg[3];
+  cell_t *other1 = c->arg[4];
+  char code[] = "swap pushr pushl popr swap pushl"
+    "[swap] . popr swap popr swap popr swap drop";
+  cell_t *b = BUILD(code);
+  cell_t *p = ref(b->ptr[2]);
+  cell_t *q = ref(b->ptr[1]);
+  cell_t *r = ref(b->ptr[0]);
+  drop(b);
+  arg(p, c->arg[2]);
+  arg(p, c->arg[1]);
+  arg(p, c->arg[0]);
   
-  s &= reduce(n);
-  cell_t *n2 = n->next;
-  n->next = 0;
+  s &= reduce(p);
+  s &= reduce(q);
+  s &= reduce(r);
 
-  s &= reduce(n2);
-  cell_t *n3 = n2->next;
-  n2->next = 0;
+  store_reduced(c, p, s);
+  store_reduced(other1, q, s);
+  store_reduced(other2, r, s);
 
-  s &= reduce(n3);
-
-  store_reduced(other2, n, s);
-  store_reduced(other1, n2, s);
-  store_reduced(c, n3, s);
-
-  unref(n);
-  unref(n2);
-  unref(n3);
-
+  unref(c);
   unref(c);
   unref(other1);
   unref(other2);
@@ -406,20 +417,21 @@ bool func_dip21(cell_t *c) {
   cell_t *other = c->arg[4];
   char code[] = "swap pushr pushl pushl popr "
     "swap popr swap drop swap";
-  cell_t *n = BUILD(code);
-  arg(n, c->arg[3]);
-  arg(n, c->arg[2]);
-  arg(n, c->arg[1]);
-  arg(n, c->arg[0]);
+  cell_t *b = BUILD(code);
+  cell_t *p = ref(b->ptr[1]);
+  cell_t *q = ref(b->ptr[0]);
+  drop(b);
+  arg(p, c->arg[3]);
+  arg(p, c->arg[2]);
+  arg(p, c->arg[1]);
+  arg(p, c->arg[0]);
   
-  s &= reduce(n);
-  cell_t *next = n->next;
-  n->next = 0;
-  s &= reduce(next);
-  store_reduced(other, n, s);
-  store_reduced(c, next, s);
-  unref(n);
-  unref(next);
+  s &= reduce(p);
+  s &= reduce(q);
+
+  store_reduced(c, p, s);
+  store_reduced(other, q, s);
+
   unref(c);
   unref(other);
   return s;

@@ -571,15 +571,18 @@ bool store_reduced(cell_t *c, cell_t *r, bool s) {
   r->func = func_reduced;
   int size = is_closure(r) ? closure_cells(r) : 0;
   if(!s) {
+    closure_shrink(c, 1);
     memcpy(c, r, sizeof(cell_t));
     if(is_cell(r)) ref(r->alt);
     c->type = T_FAIL;
     unref(r);
   } else if(size <= closure_cells(c)) {
+    closure_shrink(c, size);
     memcpy(c, r, sizeof(cell_t) * size);
     if(is_cell(r)) traverse_ref(r, ALT | ARGS | PTRS);
     unref(r);
   } else { /* TODO: must copy if not cell */
+    closure_shrink(c, 1);
     if(!is_cell(r)) {
       cell_t *t = closure_alloc_cells(size);
       memcpy(t, r, sizeof(cell_t) * size);
