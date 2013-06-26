@@ -572,6 +572,7 @@ bool store_reduced(cell_t *c, cell_t *r, bool s) {
   int size = is_closure(r) ? closure_cells(r) : 0;
   if(!s) {
     memcpy(c, r, sizeof(cell_t));
+    if(is_cell(r)) ref(r->alt);
     c->type = T_FAIL;
     unref(r);
   } else if(size <= closure_cells(c)) {
