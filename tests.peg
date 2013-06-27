@@ -35,3 +35,11 @@
 : [[2] [3]] [drop 0] [swap drop 1] | popr 1 == ! drop . popr
 : [[2] [3] 1] [0 == ! drop swap drop] [1 == ! drop drop] | . popr
 : [2] [3] 0 [] pushl pushl pushl [0 == ! drop swap drop] [1 == ! drop drop] | . popr swap drop
+@: [[] 0] [ dup 0 == ! drop ] [dup 0> ! drop 1- [dup] dip12 swap pushl pushl popr swap popr swap drop swap] | . popr swap popr swap drop swap
+
+@: [[[ dup 0 == ! drop ] [dup 0> ! drop 1- [dup] dip12 swap pushl pushl popr swap popr swap drop swap] | . popr swap popr swap drop swap] 0]  [ dup 0 == ! drop ] [dup 0> ! drop 1- [dup] dip12 swap pushl pushl popr swap popr swap drop swap] | . popr swap popr swap drop swap
+
+@: [dup 0 > [1- [dup] dip12 swap pushl pushl popr swap popr swap drop swap] [] ifte pushl pushl popr swap popr swap drop swap] 4 dup 0 > [1- [dup] dip12 swap pushl pushl popr swap popr swap drop swap] [] ifte pushl pushl popr swap popr swap drop swap
+
+@ infinite [1]'s
+: [dup pushl popr swap 1] dup pushl popr drop popr popr popr

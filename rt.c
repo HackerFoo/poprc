@@ -764,15 +764,14 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
   }
 
   b = expand(b, n);
-  --n;
-  b->ptr[bs+n] = a;
 
-  while(n) {
-    --n;
+  int i;
+  for(i = 0; i < n-1; ++i) {
     cell_t *d = dep(ref(a));
-    b->ptr[bs+n] = d;
+    b->ptr[bs+i] = d;
     arg(a, ref(d));
   }
+  b->ptr[bs+n-1] = a;
   return b;
 }
 

@@ -211,7 +211,7 @@ bool func_popr(cell_t *c) {
   }
 
   if(sp && p->ptr[0]->alt) {
-    cell_t *w = quote(ref(pr->alt));
+    cell_t *w = quote(ref(get(p->ptr[0])));
     p->alt = conc_alt(w, p->alt);
     w->alt_set = p->alt_set;
   }
@@ -346,7 +346,7 @@ cell_t *build(char *str, unsigned int n);
 
 bool func_ifte(cell_t *c) {
   bool s;
-  char code[] = "[] pushl pushl pushl"
+  char code[] = "[] pushl pushl swap pushr"
     "[0 == ! drop swap drop]"
     "[1 == ! drop drop] | . popr swap drop";
   cell_t *b = BUILD(code);
@@ -387,7 +387,7 @@ bool func_dip12(cell_t *c) {
   cell_t *other2 = c->arg[3];
   cell_t *other1 = c->arg[4];
   char code[] = "swap pushr pushl popr swap pushl"
-    "[swap] . popr swap popr swap popr swap drop";
+    "[swap] . popr swap popr swap popr swap drop swap";
   cell_t *b = BUILD(code);
   cell_t *p = ref(b->ptr[2]);
   cell_t *q = ref(b->ptr[1]);
