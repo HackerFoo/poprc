@@ -268,6 +268,21 @@ bool func_alt(cell_t *c) {
   return s;
 }
 
+/*
+bool func_assert(cell_t *c) {
+  bool s = reduce(c->arg[0]) & reduce(c->arg[1]);
+  s &= !bm_conflict(c->arg[0]->alt_set,
+		    c->arg[1]->alt_set);
+  cell_t *alt = closure_split(c, 2);
+  uintptr_t alt_set = c->arg[0]->alt_set | c->arg[1]->alt_set;
+  cell_t *p = get(c->arg[1]);
+  s &= p->type == T_INT && p->val[0] != 0;
+  unref(c->arg[1]);
+  cell_t *res = mod_alt(c->arg[0], alt, alt_set);
+  return store_reduced(c, res, s);
+}
+*/
+
 bool func_assert(cell_t *c) {
   bool s = reduce(c->arg[0]);
   cell_t *p = get(c->arg[0]);
@@ -292,6 +307,20 @@ bool func_id(cell_t *c) {
   return s;
 }
 
+/*
+bool func_force(cell_t *c) {
+  cell_t *other = c->arg[2];
+  bool s = reduce(c->arg[0]) & reduce(c->arg[1]);
+  cell_t *alt = closure_split(c, 2);
+  cell_t *p = c->arg[0], *q = c->arg[1];
+  s &= !bm_conflict(p->alt_set, q->alt_set);
+  cell_t alt_set = p->alt_set | q->alt_set;
+  cell_t *pi = ind(p), *qi = ind(q);
+  pi->alt = alt;
+  store_reduced(c, p, s);
+  return s;
+}
+*/
 bool func_drop(cell_t *c) {
   cell_t *res;
   bool s = reduce(c->arg[0]) &

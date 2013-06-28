@@ -41,5 +41,7 @@
 
 @: [dup 0 > [1- [dup] dip12 swap pushl pushl popr swap popr swap drop swap] [] ifte pushl pushl popr swap popr swap drop swap] 4 dup 0 > [1- [dup] dip12 swap pushl pushl popr swap popr swap drop swap] [] ifte pushl pushl popr swap popr swap drop swap
 
+@: [[] pushl pushl [! drop dup 0 swap pushl pushl] [0 == ! 1 - [] pushl pushl] | . popr swap drop popr swap popr swap drop swap] 1 [] pushl pushl [! drop dup 0 swap pushl pushl] [0 == ! 1 - [] pushl pushl] | . popr swap drop popr swap popr swap drop swap
+
 @ infinite [1]'s
 : [dup pushl popr swap 1] dup pushl popr drop popr popr popr

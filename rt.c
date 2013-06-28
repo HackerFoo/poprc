@@ -1040,3 +1040,22 @@ void _modify_copy2(cell_t *r) {
   r->alt = clear_ptr(r->alt, 1);
   traverse(r, f, ARGS | PTRS);
 }
+
+cell_t *mod_alt(cell_t *c, cell_t *alt, uintptr_t alt_set) {
+  cell_t *n;
+  if(!c->n) {
+    n = c;
+  } else {
+    int size = closure_cells(c);
+    --c->n;
+    if(size == 1) {
+      n = copy(c);
+      n->n = 0;
+    } else {
+      n = ind(c);
+    }
+  }
+  n->alt = alt;
+  n->alt_set = alt_set;
+  return n;
+}
