@@ -45,3 +45,7 @@
 
 @ infinite [1]'s
 : [dup pushl popr swap 1] dup pushl popr drop popr popr popr
+
+@: [[] 1] [! drop dup 0 swap pushl pushl] [0 == ! drop 0 force [] pushl pushl] | . popr swap drop popr
+
+: [1 2 | ] popr

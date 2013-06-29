@@ -23,7 +23,7 @@
 #include "alloca_cells.h"
 
 /* must be in ascending order */
-word_entry_t word_table[23] = {
+word_entry_t word_table[24] = {
   {"!", func_assert, 1, 1},
   //  {"$", func_apply, 2, 1}, // ***
   {"'", func_quote, 1, 1},
@@ -41,6 +41,7 @@ word_entry_t word_table[23] = {
   {"dip21", func_dip21, 4, 2},
   {"drop", func_drop, 2, 1},
   {"dup", func_dup, 1, 2},
+  {"force", func_force, 2, 2},
   {"id", func_id, 1, 1},
   {"ifte", func_ifte, 3, 1},
   {"popr", func_popr, 1, 2},
@@ -307,20 +308,21 @@ bool func_id(cell_t *c) {
   return s;
 }
 
-/*
 bool func_force(cell_t *c) {
   cell_t *other = c->arg[2];
   bool s = reduce(c->arg[0]) & reduce(c->arg[1]);
   cell_t *alt = closure_split(c, 2);
+  cell_t *other_alt = alt ? dep(alt) : 0;
   cell_t *p = c->arg[0], *q = c->arg[1];
   s &= !bm_conflict(p->alt_set, q->alt_set);
-  cell_t alt_set = p->alt_set | q->alt_set;
-  cell_t *pi = ind(p), *qi = ind(q);
-  pi->alt = alt;
-  store_reduced(c, p, s);
+  uintptr_t alt_set = p->alt_set | q->alt_set;
+  store_reduced(c, mod_alt(p, alt, alt_set), s);
+  store_reduced(other, mod_alt(q, other_alt, alt_set), s);
+  unref(c);
+  unref(other);
   return s;
 }
-*/
+
 bool func_drop(cell_t *c) {
   cell_t *res;
   bool s = reduce(c->arg[0]) &
