@@ -153,6 +153,21 @@ void make_graph(char *path, cell_t *c) {
   fclose(f);
 }
 
+void make_graph_all(char *path) {
+  int i;
+  FILE *f = fopen(path, "w");
+  fprintf(f, "digraph g {\n"
+	     "graph [\n"
+	     "rankdir = \"RL\"\n"
+	     "];\n");
+  zero(visited);
+  FOREACH(cells, i) {
+    graph_cell(f, &cells[i]);
+  }
+  fprintf(f, "}\n");
+  fclose(f);
+}
+
 uint8_t visited[(LENGTH(cells)+7)/8] = {0};
 
 void graph_cell(FILE *f, cell_t *c) {
@@ -161,9 +176,12 @@ void graph_cell(FILE *f, cell_t *c) {
   if(check_bit(visited, node)) return;
   set_bit(visited, node);
   int n = closure_args(c);
+  int i, s = calculate_cells(n);
+
   /* functions with extra args */
   if(c->func == func_alt) n++;
-  int i;
+
+  for(i = 0; i < s; ++i) set_bit(visited, node+i);
 
   /* print node attributes */
   fprintf(f, "node%ld [\nlabel =<", node);

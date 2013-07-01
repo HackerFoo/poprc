@@ -206,13 +206,14 @@ bool func_popr(cell_t *c) {
 
     res0->alt_set = res1->alt_set;
   } else {
+    pr = 0;
     s = false;
     res0 = alloca_cells(1);
     res1 = alloca_cells(1);
   }
 
-  if(sp && p->ptr[0]->alt) {
-    cell_t *w = quote(ref(get(p->ptr[0])));
+  if(sp && pr && pr->alt) {
+    cell_t *w = quote(ref(pr->alt));
     p->alt = conc_alt(w, p->alt);
     w->alt_set = p->alt_set;
   }
@@ -228,9 +229,9 @@ bool func_popr(cell_t *c) {
   }
 
   drop(c->arg[0]);
+  store_reduced(q, res1, s);
   unref(q);
   unref(c); /* dump ref from tail to c */
-  store_reduced(q, res1, s);
   return store_reduced(c, res0, s);
 }
 
@@ -324,20 +325,9 @@ bool func_force(cell_t *c) {
 }
 
 bool func_drop(cell_t *c) {
-  cell_t *res;
-  bool s = reduce(c->arg[0]) &
-    reduce(c->arg[1]);
-  cell_t *alt = closure_split(c, 2);
-  if(s) s = !bm_conflict(c->arg[0]->alt_set,
-			 c->arg[1]->alt_set);
-  res = alloca_copy_if(c->arg[0], s);
-  res->alt_set = c->arg[0]->alt_set |
-    c->arg[1]->alt_set;
-  res->alt = alt;
   drop(c->arg[1]);
-  cell_t *t = c->arg[0];
-  store_reduced(c, res, s);
-  drop(t);
+  bool s = reduce(c->arg[0]);
+  store_reduced(c, c->arg[0], s);
   return s;
 }
 
@@ -350,9 +340,10 @@ bool func_swap(cell_t *c) {
   other->arg[0] = c->arg[0];
   c->arg[0] = c->arg[1];
   c->arg[1] = 0;
-  unref(c);
-  unref(other);
-  return reduce_other || func_id(c);
+  bool s = reduce_other || func_id(c);
+  drop(c);
+  drop(other);
+  return s;
 }
 
 cell_t *id(cell_t *c) {
@@ -365,8 +356,8 @@ bool func_dup(cell_t *c) {
   cell_t *p = c->arg[0];
   bool s = reduce(p);
   p = get_(p);
-  unref(c->arg[1]);
   store_reduced(c->arg[1], ref(p), s);
+  unref(c->arg[1]);
   unref(c);
   store_reduced(c, p, s);
   return s;

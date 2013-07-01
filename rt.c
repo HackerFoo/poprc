@@ -679,16 +679,16 @@ void drop(cell_t *c) {
 
   if(!is_closure(c)) return;
   if(!c->n) {
-    traverse(c, f, ALT | ARGS | PTRS);
-    closure_free(c);
-  } else {
-    --c->n;
     /* break cycle in dep */
-    if(is_dep(c) && !c->n) {
+    if(is_dep(c)) {
       cell_t *p = c->arg[0];
       c->arg[0] = 0;
       drop(p);
     }
+    traverse(c, f, ALT | ARGS | PTRS);
+    closure_free(c);
+  } else {
+    --c->n;
   }
 }
 
