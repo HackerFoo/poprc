@@ -22,6 +22,23 @@
 #include "gen/primitive.h"
 #include "alloca_cells.h"
 
+   /*-----------------------------------------------*
+    *          VARIABLE NAME CONVENTIONS            *
+    *-----------------------------------------------*
+    *                                               *
+    *  cell_t *c = closure being reduced            *
+    *  cell_t *d = first dep                        *
+    *    (second closure returned, lower on stack)  *
+    *  cell_t *e = second dep                       *
+    *  cell_t *f = ...                              *
+    *  cell_t *p = arg[0], leftmost arg             *
+    *  cell_t *q = arg[1]                           *
+    *  bool s = success                             *
+    *  cell_t *res = result to be stored in c       *
+    *  cell_t *res_X = result to be stored in X     *
+    *                                               *
+    *-----------------------------------------------*/
+
 /* must be in ascending order */
 word_entry_t word_table[24] = {
   {"!", func_assert, 1, 1},
@@ -179,11 +196,11 @@ bool func_quote(cell_t *c) {
 }
 
 bool func_popr(cell_t *c) {
-  cell_t *res0, *res1;
-  int res0_n, elems;
+  cell_t *res, *res_d;
+  int res_n, elems;
   bool s, sp;
   cell_t *p = c->arg[0], *pr;
-  cell_t *q = c->arg[1];
+  cell_t *d = c->arg[1];
   if((sp = reduce(p) &&
       list_size(p = get(p)) > 0) &&
      reduce(p->ptr[0]) &&
@@ -191,25 +208,24 @@ bool func_popr(cell_t *c) {
 		  p->ptr[0]->alt_set)) {
     pr = get(p->ptr[0]);
     s = true;
-    res1 = alloca_cells(1);
-    res1->type = T_INDIRECT;
-    res1->val[0] = (intptr_t)ref(pr);
-    res1->alt_set = p->alt_set | pr->alt_set;
-
+    res_d = alloca_cells(1);
+    res_d->type = T_INDIRECT;
+    res_d->val[0] = (intptr_t)ref(pr);
+    res_d->alt_set = p->alt_set | pr->alt_set;
     /* drop the right list element */
     elems = list_size(p) - 1;
-    res0_n = calculate_list_size(elems);
-    res0 = closure_alloc_cells(res0_n);
+    res_n = calculate_list_size(elems);
+    res = closure_alloc_cells(res_n);
     int i;
     for(i = 0; i < elems; ++i)
-      res0->ptr[i] = ref(p->ptr[i+1]);
+      res->ptr[i] = ref(p->ptr[i+1]);
 
-    res0->alt_set = res1->alt_set;
+    res->alt_set = res_d->alt_set;
   } else {
     pr = 0;
     s = false;
-    res0 = alloca_cells(1);
-    res1 = alloca_cells(1);
+    res = alloca_cells(1);
+    res_d = alloca_cells(1);
   }
 
   if(sp && pr && pr->alt) {
@@ -224,15 +240,16 @@ bool func_popr(cell_t *c) {
     alt->func = func_popr;
     alt->arg[0] = ref(p->alt);
     alt->arg[1] = dep(alt);
-    res0->alt = ref(alt);
-    res1->alt = ref(alt->arg[1]);
+    res->alt = ref(alt);
+    res_d->alt = ref(alt->arg[1]);
   }
 
   drop(c->arg[0]);
-  store_reduced(q, res1, s);
-  unref(q);
-  unref(c); /* dump ref from tail to c */
-  return store_reduced(c, res0, s);
+  store_reduced(d, res_d, s);
+  store_reduced(c, res, s);
+  if(d->n) unref(c);
+  unref(d);
+  return s;
 }
 
 bool is_alt(cell_t *c) {
@@ -310,17 +327,17 @@ bool func_id(cell_t *c) {
 }
 
 bool func_force(cell_t *c) {
-  cell_t *other = c->arg[2];
+  cell_t *d = c->arg[2];
   bool s = reduce(c->arg[0]) & reduce(c->arg[1]);
   cell_t *alt = closure_split(c, 2);
-  cell_t *other_alt = alt ? dep(alt) : 0;
+  cell_t *d_alt = alt ? dep(alt) : 0;
   cell_t *p = c->arg[0], *q = c->arg[1];
   s &= !bm_conflict(p->alt_set, q->alt_set);
   uintptr_t alt_set = p->alt_set | q->alt_set;
   store_reduced(c, mod_alt(p, alt, alt_set), s);
-  store_reduced(other, mod_alt(q, other_alt, alt_set), s);
-  unref(c);
-  unref(other);
+  store_reduced(d, mod_alt(q, d_alt, alt_set), s);
+  if(d->n) unref(c);
+  unref(d);
   return s;
 }
 
@@ -332,17 +349,19 @@ bool func_drop(cell_t *c) {
 }
 
 bool func_swap(cell_t *c) {
-  cell_t *other = c->arg[2];
-  /* if other->arg[0] != c, then other is being reduced */
-  bool reduce_other = other->arg[0] != c;
+  cell_t *d = c->arg[2];
+  /* if d->arg[0] != c, then d is being reduced */
+  bool reduce_d = d->n && d->arg[0] != c;
   c->func = func_id;
-  other->func = func_id;
-  other->arg[0] = c->arg[0];
+  if(d->n) {
+    d->func = func_id;
+    d->arg[0] = c->arg[0];
+  } else drop(c->arg[0]);
   c->arg[0] = c->arg[1];
   c->arg[1] = 0;
-  bool s = reduce_other || func_id(c);
-  drop(c);
-  drop(other);
+  bool s = reduce_d || func_id(c);
+  if(d->n) drop(c);
+  drop(d);
   return s;
 }
 
@@ -353,13 +372,14 @@ cell_t *id(cell_t *c) {
 }
 
 bool func_dup(cell_t *c) {
+  cell_t *d = c->arg[1];
   cell_t *p = c->arg[0];
   bool s = reduce(p);
   p = get_(p);
-  store_reduced(c->arg[1], ref(p), s);
-  unref(c->arg[1]);
-  unref(c);
+  store_reduced(d, ref(p), s);
   store_reduced(c, p, s);
+  if(d->n) unref(c);
+  unref(d);
   return s;
 }
 
@@ -369,8 +389,8 @@ cell_t *build(char *str, unsigned int n);
 bool func_ifte(cell_t *c) {
   bool s;
   char code[] = "[] pushl pushl swap pushr"
-    "[0 == ! drop swap drop]"
-    "[1 == ! drop drop] | . popr swap drop";
+    "[0 == ! force drop swap force drop]"
+    "[1 == ! force drop force drop] | . popr swap drop";
   cell_t *b = BUILD(code);
   cell_t *p = ref(b->ptr[0]);
   drop(b);
@@ -383,7 +403,7 @@ bool func_ifte(cell_t *c) {
 
 bool func_dip11(cell_t *c) {
   bool s = true;
-  cell_t *other = c->arg[3];
+  cell_t *d = c->arg[3];
   char code[] = "swap pushr pushl popr "
     "swap popr swap drop swap";
   cell_t *b = BUILD(code);
@@ -398,9 +418,9 @@ bool func_dip11(cell_t *c) {
   s &= reduce(p);
   s &= reduce(q);
   store_reduced(c, p, s);
-  store_reduced(other, q, s);
-  unref(c);
-  unref(other);
+  store_reduced(d, q, s);
+  if(d->n) unref(c);
+  unref(d);
   return s;
 }
 
