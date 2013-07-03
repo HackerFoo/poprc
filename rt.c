@@ -72,7 +72,6 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
 	i = (i - 1) & mask) {
       cn = closure_alloc(s);
       cn->func = c->func;
-      //cn->n = c->n;
       for(j = 0; j < s; j++) {
 	cn->arg[j] = (1<<j) & i ?
 	  c->arg[j]->alt :
@@ -340,7 +339,7 @@ cell_t *expand(cell_t *c, unsigned int s) {
   int cn_p = calculate_cells(n);
   int cn = calculate_cells(n + s);
   if(c && !c->n && cn == cn_p) {
-    unref(c->alt);
+    drop(c->alt);
     c->alt = 0;
     return c;
   } else {
@@ -349,7 +348,7 @@ cell_t *expand(cell_t *c, unsigned int s) {
     memcpy(new, c, cn_p * sizeof(cell_t));
     new->n = 0;
     traverse_ref(new, PTRS);
-    unref(c);
+    drop(c);
     return new;
   }
 }
@@ -369,7 +368,7 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
   for(j = n; i < n_a; ++i, ++j) {
     e->ptr[j] = ref(a->ptr[i]);
   }
-  unref(a);
+  drop(a);
   return e;
 }
 
@@ -575,12 +574,12 @@ bool store_reduced(cell_t *c, cell_t *r, bool s) {
     memcpy(c, r, sizeof(cell_t));
     if(is_cell(r)) ref(r->alt);
     c->type = T_FAIL;
-    unref(r);
+    drop(r);
   } else if(size <= closure_cells(c)) {
     closure_shrink(c, size);
     memcpy(c, r, sizeof(cell_t) * size);
     if(is_cell(r)) traverse_ref(r, ALT | ARGS | PTRS);
-    unref(r);
+    drop(r);
   } else { /* TODO: must copy if not cell */
     closure_shrink(c, 1);
     if(!is_cell(r)) {
@@ -647,24 +646,6 @@ bool is_list(cell_t *c) {
     (c->type == 0 || c->type > 255);
 }
 
-/* be careful using this, need more thorough drop() */
-/* when dealing with lists because of unevaluated words */
-void unref(cell_t *c) {
-  //return;
-  void f(cell_t **p) {
-    unref(*p);
-  }
-  if(is_cell(c) && is_closure(c)) {
-    //assert(is_reduced(c));
-    //printf("UNREF(%d) to %d\n", (int)(c - &cells[0]), c->n);
-    if(!c->n) {
-      traverse(c, f, ALT | PTRS);
-      closure_free(c);
-    }
-    else --c->n;
-  }
-}
-
 void shallow_unref(cell_t *c) {
   if(is_closure(c)) {
     if(c->n) --c->n;
@@ -674,10 +655,11 @@ void shallow_unref(cell_t *c) {
 
 void drop(cell_t *c) {
   void f(cell_t **p) {
+    /* condition needed for drop during _modify_copy2 */
     if(!is_marked(*p, 3)) drop(*p);
   }
 
-  if(!is_closure(c)) return;
+  if(!is_cell(c) || !is_closure(c)) return;
   if(!c->n) {
     traverse(c, f, ALT | ARGS | PTRS);
     closure_free(c);
@@ -716,7 +698,7 @@ cell_t *dep(cell_t *c) {
 
 bool func_dep(cell_t *c) {
   /* rely on another cell for reduction */
-  /* don't need to unref arg, handled by other function */
+  /* don't need to drop arg, handled by other function */
   cell_t *p = c->arg[0];
   c->arg[0] = 0;
   return reduce(p) && c->func(c);
@@ -930,7 +912,7 @@ cell_t *modify_copy(cell_t *c, cell_t *r) {
   cell_t *new = _modify_copy1(c, r, true);
   if(new != r) {
     ref(new);
-    unref(r);
+    drop(r);
   }
   if(new) {
     _modify_copy2(new);
@@ -952,11 +934,11 @@ void zero_alts(cell_t *r) {
   if(a) {
     aa = clear_ptr(a->alt, 3);
     a->alt = 0;
-    unref(aa);
+    drop(aa);
   }
   a = clear_ptr(r->alt, 3);
   r->alt = 0;
-  unref(a);
+  drop(a);
   traverse(r, f, ARGS | PTRS);
 }
 
@@ -1045,6 +1027,7 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, uintptr_t alt_set) {
   cell_t *n;
   if(!c->n) {
     n = c;
+    drop(c->alt);
   } else {
     int size = closure_cells(c);
     --c->n;

@@ -126,6 +126,7 @@ char *function_name(reduce_t *f) {
   CASE(dup);
   CASE(swap);
   CASE(drop);
+  CASE(force);
   return "?";
 # undef CASE
 }
@@ -427,7 +428,7 @@ cell_t *reduce_alt(cell_t *c) {
       p = p->alt;
     } else {
       t = ref(p->alt);
-      unref(p);
+      drop(p);
       p = t;
     }
   }
@@ -465,7 +466,7 @@ void show_alt(cell_t *c) {
 void show_eval(cell_t *c) {
   printf("[");
   show_alt(reduce_alt(c));
-  unref(c);
+  drop(c);
   printf(" ]\n");
 }
 */

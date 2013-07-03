@@ -42,7 +42,6 @@
 /* must be in ascending order */
 word_entry_t word_table[24] = {
   {"!", func_assert, 1, 1},
-  //  {"$", func_apply, 2, 1}, // ***
   {"'", func_quote, 1, 1},
   {"*", func_mul, 2, 1},
   {"+", func_add, 2, 1},
@@ -95,8 +94,8 @@ word_entry_t word_table[24] = {
     res->alt_set = c->arg[0]->alt_set |		\
       c->arg[1]->alt_set;			\
     res->alt = alt;				\
-    unref(c->arg[0]);				\
-    unref(c->arg[1]);				\
+    drop(c->arg[0]);				\
+    drop(c->arg[1]);				\
     return store_reduced(c, res, s);		\
   } while(0)
 
@@ -129,30 +128,7 @@ bool func_compose(cell_t *c) {
   store_reduced(c, res, s);
   return s;
 }
-/*
-// *** broken
-bool func_apply(cell_t *c) {
-  cell_t res = { .val = {0} };
-  bool s = reduce(c->arg[1]);
-  res.alt = closure_split1(c, 1);
-  res.alt_set = c->arg[1]->alt_set;
-  if(s) {
-    cell_t *n = closure_alloc(3);
-    n->func = func_concat;
-    n->arg[0] = c->arg[0];
-    n->arg[1] = ref(c->arg[1]->ptr[0]);
-    n->arg[2] = (cell_t *)res.alt_set;
-    unref(c->arg[1]);
-    s = reduce(n);
-    //copy_val(&res, n);
-    unref(n);
-  } else {
-    unref(c->arg[0]); // ***
-    unref(c->arg[1]);
-  }
-  return store_reduced(c, &res, 1, s);
-}
-*/
+
 bool func_pushl(cell_t *c) {
   bool s = reduce(c->arg[1]);
   cell_t *alt = closure_split1(c, 1);
@@ -162,7 +138,7 @@ bool func_pushl(cell_t *c) {
   } else {
     res = alloca_cells(1);
   }
-  unref(c->arg[0]);
+  drop(c->arg[0]);
   drop(c->arg[1]);
   res->alt = alt;
   return store_reduced(c, res, s);
@@ -247,8 +223,8 @@ bool func_popr(cell_t *c) {
   drop(c->arg[0]);
   store_reduced(d, res_d, s);
   store_reduced(c, res, s);
-  if(d->n) unref(c);
-  unref(d);
+  if(d->n) drop(c);
+  drop(d);
   return s;
 }
 
@@ -283,24 +259,9 @@ bool func_alt(cell_t *c) {
     res->alt->arg[2] = c->arg[2];
   }
   store_reduced(c, res, s);
-  unref(p);
+  drop(p);
   return s;
 }
-
-/*
-bool func_assert(cell_t *c) {
-  bool s = reduce(c->arg[0]) & reduce(c->arg[1]);
-  s &= !bm_conflict(c->arg[0]->alt_set,
-		    c->arg[1]->alt_set);
-  cell_t *alt = closure_split(c, 2);
-  uintptr_t alt_set = c->arg[0]->alt_set | c->arg[1]->alt_set;
-  cell_t *p = get(c->arg[1]);
-  s &= p->type == T_INT && p->val[0] != 0;
-  unref(c->arg[1]);
-  cell_t *res = mod_alt(c->arg[0], alt, alt_set);
-  return store_reduced(c, res, s);
-}
-*/
 
 bool func_assert(cell_t *c) {
   bool s = reduce(c->arg[0]);
@@ -308,14 +269,14 @@ bool func_assert(cell_t *c) {
   s &= p->type == T_INT && p->val[0] != 0;
   cell_t *res = alloca_copy_if(c->arg[0], s);
   res->alt = closure_split1(c, 0);
-  unref(c->arg[0]);
+  drop(c->arg[0]);
   return store_reduced(c, res, s);
 }
 
 /* this function is problematic */
 cell_t *get_(cell_t *c) {
   cell_t *p = ref(get(c));
-  unref(c);
+  drop(c);
   return p;
 }
 
@@ -330,14 +291,14 @@ bool func_force(cell_t *c) {
   cell_t *d = c->arg[2];
   bool s = reduce(c->arg[0]) & reduce(c->arg[1]);
   cell_t *alt = closure_split(c, 2);
-  cell_t *d_alt = alt ? dep(alt) : 0;
+  cell_t *d_alt = alt ? alt->arg[2] = dep(alt) : 0;
   cell_t *p = c->arg[0], *q = c->arg[1];
   s &= !bm_conflict(p->alt_set, q->alt_set);
   uintptr_t alt_set = p->alt_set | q->alt_set;
-  store_reduced(c, mod_alt(p, alt, alt_set), s);
-  store_reduced(d, mod_alt(q, d_alt, alt_set), s);
-  if(d->n) unref(c);
-  unref(d);
+  store_reduced(c, mod_alt(p, ref(alt), alt_set), s);
+  store_reduced(d, mod_alt(q, ref(d_alt), alt_set), s);
+  if(d->n) drop(c);
+  drop(d);
   return s;
 }
 
@@ -378,8 +339,8 @@ bool func_dup(cell_t *c) {
   p = get_(p);
   store_reduced(d, ref(p), s);
   store_reduced(c, p, s);
-  if(d->n) unref(c);
-  unref(d);
+  if(d->n) drop(c);
+  drop(d);
   return s;
 }
 
@@ -419,8 +380,8 @@ bool func_dip11(cell_t *c) {
   s &= reduce(q);
   store_reduced(c, p, s);
   store_reduced(d, q, s);
-  if(d->n) unref(c);
-  unref(d);
+  if(d->n) drop(c);
+  drop(d);
   return s;
 }
 
@@ -447,10 +408,10 @@ bool func_dip12(cell_t *c) {
   store_reduced(other1, q, s);
   store_reduced(other2, r, s);
 
-  unref(c);
-  unref(c);
-  unref(other1);
-  unref(other2);
+  drop(c);
+  drop(c);
+  drop(other1);
+  drop(other2);
   return s;
 }
 
@@ -474,7 +435,7 @@ bool func_dip21(cell_t *c) {
   store_reduced(c, p, s);
   store_reduced(other, q, s);
 
-  unref(c);
-  unref(other);
+  drop(c);
+  drop(other);
   return s;
 }
