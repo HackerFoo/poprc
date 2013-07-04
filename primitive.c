@@ -150,7 +150,7 @@ bool func_pushr(cell_t *c) {
   cell_t *alt = closure_split1(c, 0);
   cell_t *p = get_(c->arg[0]);
   cell_t *q = get_(c->arg[1]);
-  uintptr_t alt_set = c->arg[0]->alt_set;
+  alt_set_t alt_set = c->arg[0]->alt_set;
   if(s) {
     int n = list_size(p);
     res = expand(p, 1);
@@ -171,23 +171,24 @@ bool func_quote(cell_t *c) {
   return store_reduced(c, res, true);
 }
 
+cell_t *collapse_id(cell_t *c) {
+  cell_t *p = c;
+  while(p->func == func_id) p = p->arg[0];
+  return p;
+}
+
 bool func_popr(cell_t *c) {
   cell_t *res, *res_d;
   int res_n, elems;
   cell_t *p = c->arg[0], *pr;
   cell_t *d = c->arg[1];
-  bool sp = reduce(p) &&
+  bool s = reduce(p) &&
     list_size(p = get(p)) > 0;
-  bool s = sp &&
-    reduce(p->ptr[0]) &&
-    !bm_conflict(p->alt_set,
-		 p->ptr[0]->alt_set);
   if(s) {
-    pr = get(p->ptr[0]);
-    res_d = alloca_cells(1);
-    res_d->type = T_INDIRECT;
-    res_d->val[0] = (intptr_t)ref(pr);
-    res_d->alt_set = p->alt_set | pr->alt_set;
+    d->func = func_id;
+    d->arg[0] = ref(p->ptr[0]);
+    d->arg[1] = (cell_t *)p->alt_set;
+
     /* drop the right list element */
     elems = list_size(p) - 1;
     res_n = calculate_list_size(elems);
@@ -196,31 +197,30 @@ bool func_popr(cell_t *c) {
     for(i = 0; i < elems; ++i)
       res->ptr[i] = ref(p->ptr[i+1]);
 
-    res->alt_set = res_d->alt_set;
+    res->alt_set = p->alt_set;
   } else {
-    pr = 0;
     res = alloca_cells(1);
     res_d = alloca_cells(1);
+    store_reduced(d, res_d, s);
   }
-
+  /*
   if(sp && pr && pr->alt) {
     cell_t *w = quote(ref(pr->alt));
     p->alt = conc_alt(w, p->alt);
     w->alt_set = p->alt_set;
   }
-
-  if(p->alt) {
+  */
+  if(c->arg[0]->alt) {
     cell_t *alt;
     alt = closure_alloc(2);
     alt->func = func_popr;
-    alt->arg[0] = ref(p->alt);
+    alt->arg[0] = ref(c->arg[0]->alt);
     alt->arg[1] = dep(alt);
     res->alt = ref(alt);
-    res_d->alt = ref(alt->arg[1]);
+    d->alt = conc_alt(ref(alt->arg[1]), d->alt);
   }
 
   drop(c->arg[0]);
-  store_reduced(d, res_d, s);
   store_reduced(c, res, s);
   if(d->n) drop(c);
   drop(d);
@@ -281,8 +281,10 @@ cell_t *get_(cell_t *c) {
 
 bool func_id(cell_t *c) {
   cell_t *p = c->arg[0];
-  bool s = reduce(p);
-  store_reduced(c, p, s);
+  alt_set_t alt_set = (alt_set_t)c->arg[1];
+  bool s = reduce(p) &&
+    !bm_conflict(alt_set, p->alt_set);
+  store_reduced(c, mod_alt(p, conc_alt(c->alt, p->alt), alt_set | p->alt_set), s);
   return s;
 }
 
@@ -293,7 +295,7 @@ bool func_force(cell_t *c) {
   cell_t *d_alt = alt ? alt->arg[2] = dep(alt) : 0;
   cell_t *p = c->arg[0], *q = c->arg[1];
   s &= !bm_conflict(p->alt_set, q->alt_set);
-  uintptr_t alt_set = p->alt_set | q->alt_set;
+  alt_set_t alt_set = p->alt_set | q->alt_set;
   store_reduced(c, mod_alt(p, ref(alt), alt_set), s);
   store_reduced(d, mod_alt(q, ref(d_alt), alt_set), s);
   if(d->n) drop(c);

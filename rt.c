@@ -809,20 +809,20 @@ intptr_t bm(int k, int v) {
     (((intptr_t)v & 1) << k);
 }
 
-uintptr_t bm_intersect(uintptr_t a, uintptr_t b) {
+alt_set_t bm_intersect(alt_set_t a, alt_set_t b) {
   return a & b;
 }
   
-uintptr_t bm_union(uintptr_t a, uintptr_t b) {
+alt_set_t bm_union(alt_set_t a, alt_set_t b) {
   return a | b;
 }
   
-uintptr_t bm_conflict(uintptr_t a, uintptr_t b) {
+alt_set_t bm_conflict(alt_set_t a, alt_set_t b) {
   return ((a & b) >> BM_SIZE) &
     ((a ^ b) & (((intptr_t)1<<BM_SIZE)-1));
 }
 
-uintptr_t bm_overlap(uintptr_t a, uintptr_t b) {
+alt_set_t bm_overlap(alt_set_t a, alt_set_t b) {
   return a | (b & (a >> BM_SIZE));
 }
 
@@ -1023,8 +1023,10 @@ void _modify_copy2(cell_t *r) {
   traverse(r, f, ARGS | PTRS);
 }
 
-cell_t *mod_alt(cell_t *c, cell_t *alt, uintptr_t alt_set) {
+cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
   cell_t *n;
+  if(c->alt == alt &&
+     c->alt_set == alt_set) return c;
   if(!c->n) {
     n = c;
     drop(c->alt);

@@ -36,6 +36,8 @@ typedef struct stack_frame {
   cell_t *cell;
 } stack_frame_t;
 
+typedef uintptr_t alt_set_t;
+
 typedef bool (reduce_t)(cell_t *cell);
 struct __attribute__((packed)) cell {
   struct __attribute__((packed)) {
@@ -48,7 +50,7 @@ struct __attribute__((packed)) cell {
     cell_t *arg[3];
     /* reduced */
     struct __attribute__((packed)) {
-      uintptr_t alt_set;
+      alt_set_t alt_set;
       union {
 	/* value */
 	struct __attribute__((packed)) {
