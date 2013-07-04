@@ -174,16 +174,16 @@ bool func_quote(cell_t *c) {
 bool func_popr(cell_t *c) {
   cell_t *res, *res_d;
   int res_n, elems;
-  bool s, sp;
   cell_t *p = c->arg[0], *pr;
   cell_t *d = c->arg[1];
-  if((sp = reduce(p) &&
-      list_size(p = get(p)) > 0) &&
-     reduce(p->ptr[0]) &&
-     !bm_conflict(p->alt_set,
-		  p->ptr[0]->alt_set)) {
+  bool sp = reduce(p) &&
+    list_size(p = get(p)) > 0;
+  bool s = sp &&
+    reduce(p->ptr[0]) &&
+    !bm_conflict(p->alt_set,
+		 p->ptr[0]->alt_set);
+  if(s) {
     pr = get(p->ptr[0]);
-    s = true;
     res_d = alloca_cells(1);
     res_d->type = T_INDIRECT;
     res_d->val[0] = (intptr_t)ref(pr);
@@ -199,7 +199,6 @@ bool func_popr(cell_t *c) {
     res->alt_set = res_d->alt_set;
   } else {
     pr = 0;
-    s = false;
     res = alloca_cells(1);
     res_d = alloca_cells(1);
   }
