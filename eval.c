@@ -412,17 +412,16 @@ void show_one(cell_t *c) {
   }
 }
 
-bool reduce_one(cell_t *c) {
-  if(!closure_is_ready(c)) return true;
-  return reduce(c); /* &&
-		       (!is_list(c) || reduce_list(c)); */
+bool reduce_one(cell_t **cp) {
+  if(!closure_is_ready(*cp)) return true;
+  return reduce(cp);
 }
 
 cell_t *reduce_alt(cell_t *c) {
   cell_t *r, *t, *p = c;
   cell_t **q = &r;
   while(p) {
-    if(reduce_one(p)) {
+    if(reduce_one(&p)) {
       *q = p;
       q = &p->alt;
       p = p->alt;

@@ -69,8 +69,9 @@ word_entry_t word_table[24] = {
 
 #define FUNC_OP2(__op__)			\
   do {						\
-    bool s = reduce(c->arg[0]) &		\
-      reduce(c->arg[1]);			\
+    cell_t *c = *cp;				\
+    bool s = reduce(&c->arg[0]) &		\
+      reduce(&c->arg[1]);			\
     cell_t *res;				\
     cell_t *alt = closure_split(c, 2);		\
     s &= !bm_conflict(c->arg[0]->alt_set,	\
@@ -96,22 +97,24 @@ word_entry_t word_table[24] = {
     res->alt = alt;				\
     drop(c->arg[0]);				\
     drop(c->arg[1]);				\
-    return store_reduced(c, res, s);		\
+    store_reduced(c, res, s);			\
+    return s ? r_success : r_fail;		\
   } while(0)
 
-bool func_add(cell_t *c) { FUNC_OP2(+); }
-bool func_mul(cell_t *c) { FUNC_OP2(*); }
-bool func_sub(cell_t *c) { FUNC_OP2(-); }
-bool func_gt(cell_t *c) { FUNC_OP2(>); }
-bool func_gte(cell_t *c) { FUNC_OP2(>=); }
-bool func_lt(cell_t *c) { FUNC_OP2(<); }
-bool func_lte(cell_t *c) { FUNC_OP2(<=); }
-bool func_eq(cell_t *c) { FUNC_OP2(==); }
+result_t func_add(cell_t **cp) { FUNC_OP2(+); }
+result_t func_mul(cell_t **cp) { FUNC_OP2(*); }
+result_t func_sub(cell_t **cp) { FUNC_OP2(-); }
+result_t func_gt(cell_t **cp) { FUNC_OP2(>); }
+result_t func_gte(cell_t **cp) { FUNC_OP2(>=); }
+result_t func_lt(cell_t **cp) { FUNC_OP2(<); }
+result_t func_lte(cell_t **cp) { FUNC_OP2(<=); }
+result_t func_eq(cell_t **cp) { FUNC_OP2(==); }
 
 
-bool func_compose(cell_t *c) {
+result_t func_compose(cell_t **cp) {
+  cell_t *c = *cp;
   cell_t *res, *alt;
-  bool s = reduce(c->arg[0]) & reduce(c->arg[1]);
+  bool s = reduce(&c->arg[0]) & reduce(&c->arg[1]);
   alt = closure_split(c, 2);
   s &= !bm_conflict(c->arg[0]->alt_set,
 		    c->arg[1]->alt_set);
@@ -126,11 +129,12 @@ bool func_compose(cell_t *c) {
   res->alt_set = c->arg[0]->alt_set | c->arg[1]->alt_set;
   res->alt = alt;
   store_reduced(c, res, s);
-  return s;
+  return s ? r_success : r_fail;
 }
 
-bool func_pushl(cell_t *c) {
-  bool s = reduce(c->arg[1]);
+result_t func_pushl(cell_t **cp) {
+  cell_t *c = *cp;
+  bool s = reduce(&c->arg[1]);
   cell_t *alt = closure_split1(c, 1);
   cell_t *res;
   if(s) {
@@ -141,11 +145,13 @@ bool func_pushl(cell_t *c) {
   drop(c->arg[0]);
   drop(c->arg[1]);
   res->alt = alt;
-  return store_reduced(c, res, s);
+  store_reduced(c, res, s);
+  return s ? r_success : r_fail;
 }
 
-bool func_pushr(cell_t *c) {
-  bool s = reduce(c->arg[0]);
+result_t func_pushr(cell_t **cp) {
+  cell_t *c = *cp;
+  bool s = reduce(&c->arg[0]);
   cell_t *res;
   cell_t *alt = closure_split1(c, 0);
   cell_t *p = get_(c->arg[0]);
@@ -163,12 +169,15 @@ bool func_pushr(cell_t *c) {
   }
   res->alt = alt;
   res->alt_set = alt_set;
-  return store_reduced(c, res, s);
+  store_reduced(c, res, s);
+  return s ? r_success : r_fail;
 }
 
-bool func_quote(cell_t *c) {
+result_t func_quote(cell_t **cp) {
+  cell_t *c = *cp;
   cell_t res[2] = {{ .ptr = {c->arg[0]} }};
-  return store_reduced(c, res, true);
+  store_reduced(c, res, true);
+  return r_success;
 }
 
 cell_t *collapse_id(cell_t *c) {
@@ -177,13 +186,14 @@ cell_t *collapse_id(cell_t *c) {
   return p;
 }
 
-bool func_popr(cell_t *c) {
+result_t func_popr(cell_t **cp) {
+  cell_t *c = *cp;
   cell_t *res, *res_d;
   int res_n, elems;
-  cell_t *p = c->arg[0], *pr;
+  cell_t *p;
   cell_t *d = c->arg[1];
-  bool s = reduce(p) &&
-    list_size(p = get(p)) > 0;
+  bool s = reduce(&c->arg[0]) &&
+    list_size(p = get(c->arg[0])) > 0;
   if(s) {
     d->func = func_id;
     d->arg[0] = ref(p->ptr[0]);
@@ -224,7 +234,7 @@ bool func_popr(cell_t *c) {
   store_reduced(c, res, s);
   if(d->n) drop(c);
   drop(d);
-  return s;
+  return s ? r_success : r_fail;
 }
 
 bool is_alt(cell_t *c) {
@@ -237,10 +247,11 @@ cell_t *alt() {
   return c;
 }
 
-bool func_alt(cell_t *c) {
+result_t func_alt(cell_t **cp) {
+  cell_t *c = *cp;
   cell_t *res;
+  bool s = reduce(&c->arg[0]);
   cell_t *p = c->arg[0];
-  bool s = reduce(p);
   uint8_t id = (intptr_t)c->arg[2];
   res = alloca_copy_if(get(p), s);
   res->alt_set = p->alt_set | bm(id, c->arg[1] ? 0 : 1);
@@ -259,17 +270,19 @@ bool func_alt(cell_t *c) {
   }
   store_reduced(c, res, s);
   drop(p);
-  return s;
+  return s ? r_success : r_fail;
 }
 
-bool func_assert(cell_t *c) {
-  bool s = reduce(c->arg[0]);
+result_t func_assert(cell_t **cp) {
+  cell_t *c = *cp;
+  bool s = reduce(&c->arg[0]);
   cell_t *p = get(c->arg[0]);
   s &= p->type == T_INT && p->val[0] != 0;
   cell_t *res = alloca_copy_if(c->arg[0], s);
   res->alt = closure_split1(c, 0);
   drop(c->arg[0]);
-  return store_reduced(c, res, s);
+  store_reduced(c, res, s);
+  return s ? r_success : r_fail;
 }
 
 /* this function is problematic */
@@ -279,18 +292,27 @@ cell_t *get_(cell_t *c) {
   return p;
 }
 
-bool func_id(cell_t *c) {
-  cell_t *p = c->arg[0];
+result_t func_id(cell_t **cp) {
+  cell_t *c = *cp;
   alt_set_t alt_set = (alt_set_t)c->arg[1];
-  bool s = reduce(p) &&
-    !bm_conflict(alt_set, p->alt_set);
-  store_reduced(c, mod_alt(p, conc_alt(c->alt, p->alt), alt_set | p->alt_set), s);
-  return s;
+  if(alt_set) {
+    bool s = reduce(&c->arg[0]) &&
+      !bm_conflict(alt_set, c->arg[0]->alt_set);
+    cell_t *p = c->arg[0];
+    store_reduced(c, mod_alt(p, conc_alt(c->alt, p->alt), alt_set | p->alt_set), s);
+    return s ? r_success : r_fail;
+  } else {
+    cell_t *p = ref(c->arg[0]);
+    drop(c);
+    *cp = p;
+    return r_retry;
+  }
 }
 
-bool func_force(cell_t *c) {
+result_t func_force(cell_t **cp) {
+  cell_t *c = *cp;
   cell_t *d = c->arg[2];
-  bool s = reduce(c->arg[0]) & reduce(c->arg[1]);
+  bool s = reduce(&c->arg[0]) & reduce(&c->arg[1]);
   cell_t *alt = closure_split(c, 2);
   cell_t *d_alt = alt ? alt->arg[2] = dep(alt) : 0;
   cell_t *p = c->arg[0], *q = c->arg[1];
@@ -300,17 +322,19 @@ bool func_force(cell_t *c) {
   store_reduced(d, mod_alt(q, ref(d_alt), alt_set), s);
   if(d->n) drop(c);
   drop(d);
-  return s;
+  return s ? r_success : r_fail;
 }
 
-bool func_drop(cell_t *c) {
+result_t func_drop(cell_t **cp) {
+  cell_t *c = *cp;
   drop(c->arg[1]);
-  bool s = reduce(c->arg[0]);
+  bool s = reduce(&c->arg[0]);
   store_reduced(c, c->arg[0], s);
-  return s;
+  return s ? r_success : r_fail;
 }
 
-bool func_swap(cell_t *c) {
+result_t func_swap(cell_t **cp) {
+  cell_t *c = *cp;
   cell_t *d = c->arg[2];
   /* if d->arg[0] != c, then d is being reduced */
   bool reduce_d = d->n && d->arg[0] != c;
@@ -321,10 +345,10 @@ bool func_swap(cell_t *c) {
   } else drop(c->arg[0]);
   c->arg[0] = c->arg[1];
   c->arg[1] = 0;
-  bool s = reduce_d || func_id(c);
+  bool s = reduce_d || func_id(cp);
   if(d->n) drop(c);
   drop(d);
-  return s;
+  return s ? r_success : r_fail;
 }
 
 cell_t *id(cell_t *c) {
@@ -333,22 +357,23 @@ cell_t *id(cell_t *c) {
   return i;
 }
 
-bool func_dup(cell_t *c) {
+result_t func_dup(cell_t **cp) {
+  cell_t *c = *cp;
   cell_t *d = c->arg[1];
-  cell_t *p = c->arg[0];
-  bool s = reduce(p);
-  p = get_(p);
+  bool s = reduce(&c->arg[0]);
+  cell_t *p = get_(c->arg[0]);
   store_reduced(d, ref(p), s);
   store_reduced(c, p, s);
   if(d->n) drop(c);
   drop(d);
-  return s;
+  return s ? r_success : r_fail;
 }
 
 cell_t *build(char *str, unsigned int n);
 #define BUILD(x) build((x), sizeof(x))
 
-bool func_ifte(cell_t *c) {
+result_t func_ifte(cell_t **cp) {
+  cell_t *c = *cp;
   bool s;
   char code[] = "[] pushl pushl swap pushr"
     "[0 == ! force drop swap force drop]"
@@ -359,11 +384,13 @@ bool func_ifte(cell_t *c) {
   arg(p, c->arg[2]);
   arg(p, c->arg[1]);
   arg(p, c->arg[0]);
-  s = reduce(p);
-  return store_reduced(c, p, s);
+  s = reduce(&p);
+  store_reduced(c, p, s);
+  return s ? r_success : r_fail;
 }
 
-bool func_dip11(cell_t *c) {
+result_t func_dip11(cell_t **cp) {
+  cell_t *c = *cp;
   bool s = true;
   cell_t *d = c->arg[3];
   char code[] = "swap pushr pushl popr "
@@ -377,16 +404,17 @@ bool func_dip11(cell_t *c) {
   arg(p, c->arg[1]);
   arg(p, c->arg[0]);
   
-  s &= reduce(p);
-  s &= reduce(q);
+  s &= reduce(&p);
+  s &= reduce(&q);
   store_reduced(c, p, s);
   store_reduced(d, q, s);
   if(d->n) drop(c);
   drop(d);
-  return s;
+  return s ? r_success : r_fail;
 }
 
-bool func_dip12(cell_t *c) {
+result_t func_dip12(cell_t **cp) {
+  cell_t *c = *cp;
   bool s = true;
   cell_t *other2 = c->arg[3];
   cell_t *other1 = c->arg[4];
@@ -401,9 +429,9 @@ bool func_dip12(cell_t *c) {
   arg(p, c->arg[1]);
   arg(p, c->arg[0]);
   
-  s &= reduce(p);
-  s &= reduce(q);
-  s &= reduce(r);
+  s &= reduce(&p);
+  s &= reduce(&q);
+  s &= reduce(&r);
 
   store_reduced(c, p, s);
   store_reduced(other1, q, s);
@@ -413,10 +441,11 @@ bool func_dip12(cell_t *c) {
   drop(c);
   drop(other1);
   drop(other2);
-  return s;
+  return s ? r_success : r_fail;
 }
 
-bool func_dip21(cell_t *c) {
+result_t func_dip21(cell_t **cp) {
+  cell_t *c = *cp;
   bool s = true;
   cell_t *other = c->arg[4];
   char code[] = "swap pushr pushl pushl popr "
@@ -430,13 +459,13 @@ bool func_dip21(cell_t *c) {
   arg(p, c->arg[1]);
   arg(p, c->arg[0]);
   
-  s &= reduce(p);
-  s &= reduce(q);
+  s &= reduce(&p);
+  s &= reduce(&q);
 
   store_reduced(c, p, s);
   store_reduced(other, q, s);
 
   drop(c);
   drop(other);
-  return s;
+  return s ? r_success : r_fail;
 }

@@ -29,16 +29,15 @@ typedef enum {
 } type_t;
 
 typedef struct cell cell_t;
-typedef struct stack_frame stack_frame_t;
-
-typedef struct stack_frame {
-  stack_frame_t *up;
-  cell_t *cell;
-} stack_frame_t;
 
 typedef uintptr_t alt_set_t;
+typedef enum result_t {
+  r_fail = 0,
+  r_success = 1,
+  r_retry = 2
+} result_t;
 
-typedef bool (reduce_t)(cell_t *cell);
+typedef result_t (reduce_t)(cell_t **cell);
 struct __attribute__((packed)) cell {
   struct __attribute__((packed)) {
     reduce_t *func;

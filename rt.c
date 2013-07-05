@@ -134,13 +134,21 @@ cell_t *closure_split1(cell_t *c, int n) {
   return a;
 }
 
-bool reduce(cell_t *c) {
-  c = clear_ptr(c, 1);
+bool reduce(cell_t **cp) {
+  cell_t *c;
+ retry:
+  c = clear_ptr(*cp, 1);
   if(!c) return false;
   assert(is_closure(c) &&
 	 closure_is_ready(c));
   measure.reduce_cnt++;
-  return c->func(c);
+  switch(c->func(cp)) {
+  case r_fail: return false;
+  case r_success: return true;
+  case r_retry: 
+    goto retry;
+  default: return false;
+  }
 }
 
 cell_t *cells_next() {
@@ -286,10 +294,11 @@ void closure_free(cell_t *c) {
   closure_shrink(c, 0);
 }
 
-bool func_reduced(cell_t *c) {
+result_t func_reduced(cell_t **cp) {
+  cell_t *c = *cp;
   assert(is_closure(c));
   measure.reduce_cnt--;
-  return c->type != T_FAIL;
+  return c->type != T_FAIL ? r_success : r_fail;
 }
 
 cell_t *val(intptr_t x) {
@@ -696,12 +705,13 @@ cell_t *dep(cell_t *c) {
   return n;
 }
 
-bool func_dep(cell_t *c) {
+result_t func_dep(cell_t **cp) {
+  cell_t *c = *cp;
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
   cell_t *p = c->arg[0];
   c->arg[0] = 0;
-  return reduce(p) && c->func(c);
+  return reduce(&p) ? r_retry : r_fail;
 }
 /*
 void copy_val(cell_t *dest, unsigned int size, cell_t *src) {
