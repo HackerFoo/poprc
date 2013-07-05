@@ -327,7 +327,6 @@ result_t func_force(cell_t **cp) {
 
 result_t func_drop(cell_t **cp) {
   cell_t *c = *cp;
-  drop(c->arg[1]);
   cell_t *p = ref(c->arg[0]);
   drop(c);
   *cp = p;
@@ -344,10 +343,10 @@ result_t func_swap(cell_t **cp) {
     d->func = func_id;
     d->arg[0] = c->arg[0];
   } else drop(c->arg[0]);
-  cell_t *q = c->arg[0] = ref(c->arg[1]);
+  cell_t *q = c->arg[0] = c->arg[1];
   c->arg[1] = c->arg[2] = 0;
+  *cp = ref(q);
   drop(c);
-  *cp = q;
   if(d->n) drop(c);
   drop(d);
   return reduce_d ? r_success : r_retry;

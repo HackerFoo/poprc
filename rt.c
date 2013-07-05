@@ -709,9 +709,11 @@ result_t func_dep(cell_t **cp) {
   cell_t *c = *cp;
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
-  cell_t *p = c->arg[0];
+  cell_t *p = ref(c->arg[0]);
   c->arg[0] = 0;
-  return reduce(&p) ? r_retry : r_fail;
+  bool s = reduce(&p);
+  drop(p);
+  return s ? r_retry : r_fail;
 }
 /*
 void copy_val(cell_t *dest, unsigned int size, cell_t *src) {
@@ -1045,6 +1047,7 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
     --c->n;
     if(size == 1) {
       n = copy(c);
+      traverse_ref(n, ARGS | PTRS);
       n->n = 0;
     } else {
       n = ind(c);
