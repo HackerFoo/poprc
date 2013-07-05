@@ -328,9 +328,10 @@ result_t func_force(cell_t **cp) {
 result_t func_drop(cell_t **cp) {
   cell_t *c = *cp;
   drop(c->arg[1]);
-  bool s = reduce(&c->arg[0]);
-  store_reduced(c, c->arg[0], s);
-  return s ? r_success : r_fail;
+  cell_t *p = ref(c->arg[0]);
+  drop(c);
+  *cp = p;
+  return r_retry;
 }
 
 result_t func_swap(cell_t **cp) {
@@ -343,12 +344,13 @@ result_t func_swap(cell_t **cp) {
     d->func = func_id;
     d->arg[0] = c->arg[0];
   } else drop(c->arg[0]);
-  c->arg[0] = c->arg[1];
-  c->arg[1] = 0;
-  bool s = reduce_d || func_id(cp);
+  cell_t *q = c->arg[0] = ref(c->arg[1]);
+  c->arg[1] = c->arg[2] = 0;
+  drop(c);
+  *cp = q;
   if(d->n) drop(c);
   drop(d);
-  return s ? r_success : r_fail;
+  return reduce_d ? r_success : r_retry;
 }
 
 cell_t *id(cell_t *c) {
