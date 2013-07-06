@@ -299,7 +299,7 @@ result_t func_id(cell_t **cp) {
     bool s = reduce(&c->arg[0]) &&
       !bm_conflict(alt_set, c->arg[0]->alt_set);
     cell_t *p = c->arg[0];
-    store_reduced(c, mod_alt(p, conc_alt(c->alt, p->alt), alt_set | p->alt_set), s);
+    store_reduced(c, mod_alt(p, conc_alt(c->alt, ref(p->alt)), alt_set | p->alt_set), s);
     return s ? r_success : r_fail;
   } else {
     cell_t *p = ref(c->arg[0]);
@@ -342,6 +342,7 @@ result_t func_swap(cell_t **cp) {
   if(d->n) {
     d->func = func_id;
     d->arg[0] = c->arg[0];
+    d->arg[1] = 0;
   } else drop(c->arg[0]);
   cell_t *q = c->arg[0] = c->arg[1];
   c->arg[1] = c->arg[2] = 0;

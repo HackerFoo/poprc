@@ -49,3 +49,7 @@
 @: [[] 1] [! drop dup 0 swap pushl pushl] [0 == ! drop 0 force [] pushl pushl] | . popr swap drop popr
 
 : [1 2 | ] popr
+
+@: [[[! force drop dup [0] pushl swap pushl popr swap drop] [0 == ! force drop [0] force pushl] | . popr swap drop] 1] [! force drop dup [0] pushl swap pushl popr swap drop] [0 == ! force drop [0] force pushl] | . popr swap drop
+
+: [[1 2 |][3 4|] |] popr popr
