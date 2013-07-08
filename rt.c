@@ -178,17 +178,18 @@ bool check_cycle() {
 
 void cells_init() {
   int i;
-  
+  const unsigned int n = LENGTH(cells)-1;
+
   // zero the cells
   bzero(&cells, sizeof(cells));
 
   // set up doubly-linked pointer ring
-  for(i = 0; i < LENGTH(cells); i++) {
+  for(i = 0; i < n; i++) {
     cells[i].prev = &cells[i-1];
     cells[i].next = &cells[i+1];
   }
-  cells[0].prev = &cells[LENGTH(cells)-1];
-  cells[LENGTH(cells)-1].next = &cells[0];
+  cells[0].prev = &cells[n-1];
+  cells[n-1].next = &cells[0];
 
   cells_ptr = &cells[0];
   assert(check_cycle());
@@ -421,7 +422,11 @@ int closure_args(cell_t *c) {
   assert(is_closure(c));
   cell_t **p = c->arg;
   int n = 0;
+
+  /* funcs with hidden args */
+  if(c->func == func_id) return 1;
   if(c->func == func_alt) return 2;
+
   if(is_reduced(c)) {
     if(is_list(c))
       return list_size(c) +
