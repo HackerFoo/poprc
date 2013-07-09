@@ -213,13 +213,7 @@ result_t func_popr(cell_t **cp) {
     res_d = alloca_cells(1);
     store_reduced(d, res_d, s);
   }
-  /*
-  if(sp && pr && pr->alt) {
-    cell_t *w = quote(ref(pr->alt));
-    p->alt = conc_alt(w, p->alt);
-    w->alt_set = p->alt_set;
-  }
-  */
+
   if(c->arg[0]->alt) {
     cell_t *alt;
     alt = closure_alloc(2);
@@ -295,11 +289,13 @@ cell_t *get_(cell_t *c) {
 result_t func_id(cell_t **cp) {
   cell_t *c = *cp;
   alt_set_t alt_set = (alt_set_t)c->arg[1];
-  if(alt_set) {
+  if(alt_set || c->alt) {
     bool s = reduce(&c->arg[0]) &&
       !bm_conflict(alt_set, c->arg[0]->alt_set);
+    cell_t *alt = closure_split1(c, 0);
+    if(alt) alt->arg[1] = (cell_t *)alt_set;
     cell_t *p = c->arg[0];
-    store_reduced(c, mod_alt(p, conc_alt(c->alt, ref(p->alt)), alt_set | p->alt_set), s);
+    store_reduced(c, mod_alt(p, alt, alt_set | p->alt_set), s);
     return s ? r_success : r_fail;
   } else {
     cell_t *p = ref(c->arg[0]);

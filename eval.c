@@ -721,9 +721,9 @@ cell_t *_build(char *str, char **p) {
 
 void eval(char *str, unsigned int n) {
   cell_t *c = build(str, n);
-  if(write_graph) make_graph(GRAPH_FILE, c);
+  if(write_graph) make_graph_all(GRAPH_FILE);
   reduce_list(c);
-  if(write_graph) make_graph(REDUCED_GRAPH_FILE, c);
+  if(write_graph) make_graph_all(REDUCED_GRAPH_FILE);
   if(!c) return;
   if(!closure_is_ready(c))
     printf("incomplete expression\n");
