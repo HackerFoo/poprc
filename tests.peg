@@ -53,7 +53,10 @@
 @: [[[! force drop dup [0] pushl swap pushl popr swap drop] [0 == ! force drop [0] force pushl] | . popr swap drop] 1] [! force drop dup [0] pushl swap pushl popr swap drop] [0 == ! force drop [0] force pushl] | . popr swap drop
 
 : [[1 2 |][3 4|] |] popr popr
+: [[[5]]] [[[4]] [[3] [2 1 |]|]|]| popr swap drop popr swap drop popr swap drop
 
 @: [[[! force 1- ' [dup] dip12 pushl swap pushl popr swap drop] [0 == ! force drop [0] force pushl] | . popr swap drop] 1] [! force 1- ' [dup] dip12 pushl swap pushl popr swap drop] [0 == ! force drop [0] force pushl] | . popr swap drop
 
 @: [[[! force 1- ' [dup] dip12 pushl swap pushl popr swap drop] [dup 0 == ! force drop [] force pushl force pushl] | . popr swap drop] 1] [! force 1- ' [dup] dip12 pushl swap pushl popr swap drop] [dup 0 == ! force drop [] force pushl force pushl] | . popr swap drop
+
+: (1 6) (2 7) | dup + dup +

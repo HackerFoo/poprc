@@ -55,7 +55,7 @@ void print_list_help(cell_t *c) {
   }
   // assert(is_cons(c));
   print_sexpr_help(c->arg[0]);
-  print_list_help(c->arg[1]); 
+  print_list_help(c->arg[1]);
 }
 
 void print_list(cell_t *c) {
@@ -434,7 +434,7 @@ cell_t *reduce_alt(cell_t *c) {
   *q = 0;
   return r;
 }
-    
+
 void show_alt(cell_t *c) {
   cell_t *p = c, *t;
 
@@ -493,7 +493,7 @@ void measure_display() {
 	 saved_measure.max_alloc_cnt * (int)sizeof(cell_t),
 	 saved_measure.reduce_cnt,
 	 saved_measure.alt_cnt);
- 
+
 }
 
 int main(int argc, char *argv[]) {
@@ -574,7 +574,7 @@ void completion(const char *buf, linenoiseCompletions *lc) {
     do {
       if(strnlen(e->name, sizeof_field(word_entry_t, name)) >
 	 tok_len) {
-	 
+
 	strncpy(tok, e->name, sizeof(e->name));
 	linenoiseAddCompletion(lc, comp);
       }
@@ -653,7 +653,7 @@ char *rtok(char *str, char *ptr) {
 
   /* move to start of token */
   char_class_t class = char_class(*ptr);
-  
+
   /* allow adjacent brackets to be seperately tokenized */
   if(class == CC_BRACKET) return ptr;
 

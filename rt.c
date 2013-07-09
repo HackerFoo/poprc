@@ -145,7 +145,7 @@ bool reduce(cell_t **cp) {
   switch(c->func(cp)) {
   case r_fail: return false;
   case r_success: return true;
-  case r_retry: 
+  case r_retry:
     goto retry;
   default: return false;
   }
@@ -296,7 +296,7 @@ void closure_free(cell_t *c) {
 }
 
 result_t func_reduced(cell_t **cp) {
-  cell_t *c = *cp;
+  cell_t *c = clear_ptr(*cp, 3);
   assert(is_closure(c));
   measure.reduce_cnt--;
   return c->type != T_FAIL ? r_success : r_fail;
@@ -711,7 +711,7 @@ cell_t *dep(cell_t *c) {
 }
 
 result_t func_dep(cell_t **cp) {
-  cell_t *c = *cp;
+  cell_t *c = clear_ptr(*cp, 3);
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
   cell_t *p = ref(c->arg[0]);
@@ -720,17 +720,6 @@ result_t func_dep(cell_t **cp) {
   drop(p);
   return s ? r_retry : r_fail;
 }
-/*
-void copy_val(cell_t *dest, unsigned int size, cell_t *src) {
-  src = data(src);
-  if(is_list(src)) {
-    dest->ptr = ref(src->ptr);
-  } else {
-    dest->type = src->type;
-    dest->val = src->val;
-  }
-}
-*/
 
 bool is_dep(cell_t *c) {
   return c->func == func_dep;
@@ -829,11 +818,11 @@ intptr_t bm(int k, int v) {
 alt_set_t bm_intersect(alt_set_t a, alt_set_t b) {
   return a & b;
 }
-  
+
 alt_set_t bm_union(alt_set_t a, alt_set_t b) {
   return a | b;
 }
-  
+
 alt_set_t bm_conflict(alt_set_t a, alt_set_t b) {
   return ((a & b) >> BM_SIZE) &
     ((a ^ b) & (((intptr_t)1<<BM_SIZE)-1));
