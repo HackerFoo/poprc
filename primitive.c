@@ -428,13 +428,17 @@ result_t func_dip12(cell_t **cp) {
   cell_t *q = ref(b->ptr[1]);
   cell_t *r = ref(b->ptr[0]);
   drop(b);
-  arg(p, c->arg[2]);
-  arg(p, c->arg[1]);
-  arg(p, c->arg[0]);
+  arg(p, ref(c->arg[2]));
+  arg(p, ref(c->arg[1]));
+  arg(p, ref(c->arg[0]));
 
   s &= reduce(&p);
   s &= reduce(&q);
   s &= reduce(&r);
+
+  drop(c->arg[0]);
+  drop(c->arg[1]);
+  drop(c->arg[2]);
 
   store_reduced(c, p, s);
   store_reduced(other1, q, s);
