@@ -10,3 +10,5 @@ _darcs
 /makeheaders/makeheaders
 /*.dot
 /notes.org
+/cov-int
+/myproject.tgz

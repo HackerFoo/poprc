@@ -172,7 +172,8 @@ void make_graph_all(char *path) {
 uint8_t visited[(LENGTH(cells)+7)/8] = {0};
 
 void graph_cell(FILE *f, cell_t *c) {
-  if(!is_closure(c)) return;
+  c = clear_ptr(c, 3);
+  if(!is_closure(c) || !is_cell(c)) return;
   long unsigned int node = c - cells;
   if(check_bit(visited, node)) return;
   set_bit(visited, node);
@@ -218,7 +219,7 @@ void graph_cell(FILE *f, cell_t *c) {
   fprintf(f, "</table>>\nshape = \"none\"\n];\n");
 
   /* print edges */
-  if(c->alt) {
+  if(c->alt && is_cell(c->alt) && is_closure(c)) {
     cell_t *alt = clear_ptr(c->alt, 1);
     fprintf(f, "node%ld:alt -> node%ld:top;\n",
 	    node, alt - cells);
@@ -228,19 +229,23 @@ void graph_cell(FILE *f, cell_t *c) {
     if(is_list(c)) {
       int n = list_size(c);
       while(n--) {
-	fprintf(f, "node%ld:ptr%d -> node%ld:top;\n",
-		node, n, c->ptr[n] - cells);
-	graph_cell(f, c->ptr[n]);
+	if(is_cell(c->ptr[n]) && is_closure(c)) {
+	  fprintf(f, "node%ld:ptr%d -> node%ld:top;\n",
+		  node, n, c->ptr[n] - cells);
+	  graph_cell(f, c->ptr[n]);
+	}
       }
     } else if(c->type == T_INDIRECT) {
-      fprintf(f, "node%ld:ind -> node%ld:top;\n",
-	      node, (cell_t *)c->val[0] - cells);
-      graph_cell(f, (cell_t *)c->val[0]);
+      if(is_cell((cell_t *)c->val[0]) && is_closure(c)) {
+	fprintf(f, "node%ld:ind -> node%ld:top;\n",
+		node, (cell_t *)c->val[0] - cells);
+	graph_cell(f, (cell_t *)c->val[0]);
+      }
     }
   } else {
     for(i = 0; i < n; i++) {
       cell_t *arg = clear_ptr(c->arg[i], 1);
-      if(is_closure(arg)) {
+      if(is_closure(arg) && is_cell(arg)) {
 	fprintf(f, "node%ld:arg%d -> node%ld:top;\n",
 		c - cells, i, arg - cells);
 	graph_cell(f, arg);
