@@ -345,10 +345,11 @@ cell_t *append(cell_t *a, cell_t *b) {
 }
 
 cell_t *expand(cell_t *c, unsigned int s) {
+  if(!c) return 0;
   int n = closure_args(c);
   int cn_p = calculate_cells(n);
   int cn = calculate_cells(n + s);
-  if(c && !c->n && cn == cn_p) {
+  if(!c->n && cn == cn_p) {
     drop(c->alt);
     c->alt = 0;
     return c;
@@ -726,7 +727,7 @@ bool is_dep(cell_t *c) {
 }
 
 cell_t *data(cell_t *c) {
-  if(!c->type == T_INDIRECT)
+  if(!(c->type == T_INDIRECT))
     return c;
   else return (cell_t *)c->val[0];
 }

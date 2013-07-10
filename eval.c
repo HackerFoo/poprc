@@ -744,16 +744,18 @@ void runTests(char *path) {
   char *line = 0;
   FILE *f = fopen(path, "r");
   while(getline(&line, &size, f) >= 0) {
-    if(line[0] == '@')
-      printf("%s", line);
-    else if(line[0] == ':') {
-      printf("%s", line);
-      cells_init();
-      eval(line, strlen(line));
-      check_free();
+    if(line) {
+      if(line[0] == '@')
+	printf("%s", line);
+      else if(line[0] == ':') {
+	printf("%s", line);
+	cells_init();
+	eval(line, strlen(line));
+	check_free();
+      }
+      free(line);
+      line = 0;
     }
-    if(line) free(line);
-    line = 0;
   }
   fclose(f);
 }
