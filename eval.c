@@ -246,8 +246,8 @@ void graph_cell(FILE *f, cell_t *c) {
     for(i = 0; i < n; i++) {
       cell_t *arg = clear_ptr(c->arg[i], 1);
       if(is_closure(arg) && is_cell(arg)) {
-	fprintf(f, "node%ld:arg%d -> node%ld:top;\n",
-		c - cells, i, arg - cells);
+	fprintf(f, "node%ld:arg%d -> node%ld:top%s;\n",
+		c - cells, i, arg - cells, is_weak(c, arg) ? " [color=lightgray]" : "");
 	graph_cell(f, arg);
       }
     }
