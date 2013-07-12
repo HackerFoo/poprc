@@ -139,10 +139,13 @@ result_t func_compose(cell_t **cp) {
 result_t func_pushl(cell_t **cp) {
   cell_t *c = clear_ptr(*cp, 3);
   bool s = reduce(&c->arg[1]);
+  cell_t *p = get(c->arg[0]);
+  cell_t *q = get(c->arg[1]);
+  s &= is_list(q);
   cell_t *alt = closure_split1(c, 1);
   cell_t *res;
   if(s) {
-    res = pushl_nd(ref(get(c->arg[0])), ref(get(c->arg[1])));
+    res = pushl_nd(ref(p), ref(q));
   } else {
     res = alloca_cells(1);
   }
@@ -198,7 +201,8 @@ result_t func_popr(cell_t **cp) {
   cell_t *p;
   cell_t *d = is_hole(c->arg[1]) ? 0 : c->arg[1];
   bool s = reduce(&c->arg[0]) &&
-    list_size(p = get(c->arg[0])) > 0;
+    is_list(p = get(c->arg[0])) &&
+    list_size(p) > 0;
   if(s) {
     if(d) {
       drop(c);
@@ -228,8 +232,8 @@ result_t func_popr(cell_t **cp) {
     alt = closure_alloc(2);
     alt->func = func_popr;
     alt->arg[0] = ref(c->arg[0]->alt);
-    alt->arg[1] = dep(alt);
-    res->alt = ref(alt);
+    alt->arg[1] = d ? dep(ref(alt)) : hole;
+    res->alt = alt;
     if(d) d->alt = conc_alt(alt->arg[1], d->alt);
   }
 

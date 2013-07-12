@@ -140,7 +140,7 @@ bool reduce(cell_t **cp) {
   cell_t *c;
  retry:
   c = clear_ptr(*cp, 1);
-  if(!c) return false;
+  if(!c || !closure_is_ready(c)) return false;
   assert(is_closure(c) &&
 	 closure_is_ready(c));
   measure.reduce_cnt++;
@@ -153,14 +153,14 @@ bool reduce(cell_t **cp) {
   }
 }
 
-void reduce_partial(cell_t **cp) {
+bool reduce_partial(cell_t **cp) {
   cell_t *c;
   c = clear_ptr(*cp, 1);
-  if(!c) return;
+  if(!c || !closure_is_ready(c)) return false;
   assert(is_closure(c) &&
 	 closure_is_ready(c));
   measure.reduce_cnt++;
-  c->func(cp);
+  return c->func(cp) != r_fail;
 }
 
 cell_t *cells_next() {
@@ -758,9 +758,9 @@ result_t func_dep(cell_t **cp) {
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
   cell_t *p = ref(c->arg[0]);
-  reduce_partial(&p);
+  bool s = reduce_partial(&p);
   drop(p);
-  return r_retry;
+  return s ? r_retry : r_fail;
 }
 
 bool is_dep(cell_t *c) {
