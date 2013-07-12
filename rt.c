@@ -29,7 +29,8 @@ cell_t fail_cell = {
   .func = func_reduced,
   .type = T_FAIL
 };
-cell_t *hole = (cell_t *)-1;
+cell_t _hole;
+cell_t *hole = &_hole;
 
 measure_t measure, saved_measure;
 
@@ -46,7 +47,7 @@ bool is_cell(void *p) {
 }
 
 bool is_closure(void *p) {
-  return is_data(p) && ((cell_t *)p)->func;
+  return is_data(p) && !is_hole(p) && ((cell_t *)p)->func;
 }
 
 bool closure_is_ready(cell_t *c) {
@@ -511,7 +512,7 @@ void traverse(cell_t *r, void (*f)(cell_t **, cell_t *), uint8_t flags) {
   } else if(flags & ARGS) {
     int i, n = closure_args(r);
     for(i = closure_next_child(r); i < n; ++i) {
-      f(r->arg + i, r);
+      if(!is_hole(r->arg[i])) f(r->arg + i, r);
     }
   }
   if(flags & ALT) {
