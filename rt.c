@@ -29,6 +29,7 @@ cell_t fail_cell = {
   .func = func_reduced,
   .type = T_FAIL
 };
+cell_t *hole = (cell_t *)-1;
 
 measure_t measure, saved_measure;
 
@@ -685,6 +686,10 @@ bool is_weak(cell_t *p, cell_t *c) {
   return c && is_dep(c) && (!c->arg[0] || c->arg[0] == p);
 }
 
+bool is_hole(cell_t *c) {
+  return c == hole;
+}
+
 void drop(cell_t *c) {
   void f(cell_t **p, cell_t *r) {
     cell_t *c = clear_ptr(*p, 3);
@@ -701,12 +706,12 @@ void drop(cell_t *c) {
   if(!c->n) {
     cell_t *p;
     traverse(c, f, ALT | ARGS | PTRS);
-    if(is_dep(c) && !is_reduced(p = c->arg[0])) {
+    if(is_dep(c) && !is_reduced(p = c->arg[0]) && is_closure(p)) {
       /* mark dep arg as gone */
       int n = closure_args(p);
       while(n--) {
 	if(p->arg[n] == c) {
-	  p->arg[n] = (cell_t *)1;
+	  p->arg[n] = hole;
 	  break;
 	}
       }
@@ -751,7 +756,9 @@ result_t func_dep(cell_t **cp) {
   cell_t *c = clear_ptr(*cp, 3);
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
-  reduce_partial(&c->arg[0]);
+  cell_t *p = ref(c->arg[0]);
+  reduce_partial(&p);
+  drop(p);
   return r_retry;
 }
 
@@ -1057,6 +1064,9 @@ void _modify_copy2(cell_t *r) {
       }
       _modify_copy2(t);
     } else if(!s) ref(u);
+    if((!s || t != u) && is_weak(r, *p)) {
+      --(*p)->n;
+    }
   }
 
   if(!is_closure(r)) return;
