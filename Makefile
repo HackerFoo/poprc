@@ -1,4 +1,11 @@
-CFLAGS=-Wall -g $(COPT)
+ifeq ($(CC),cc)
+	CC=clang
+endif
+ifeq ($(CC),gcc)
+	CFLAGS=-falign-functions=4 -Wall -g $(COPT)
+else
+	CFLAGS=-Wall -g $(COPT)
+endif
 OBJS := $(patsubst %.c, build/%.o, $(wildcard *.c))
 GEN := $(patsubst %.c, gen/%.h, $(wildcard *.c))
 
@@ -6,9 +13,6 @@ GEN := $(patsubst %.c, gen/%.h, $(wildcard *.c))
 all: eval
 
 include Makefile.gen
-
-CC = clang
-#CC = gcc -falign-functions=4
 
 debug:
 	echo $(OBJS:.o=.d)
@@ -34,6 +38,11 @@ build/%.o: %.c
 build/linenoise.o: linenoise/linenoise.c linenoise/linenoise.h
 	@mkdir -p build
 	$(CC) $(CFLAGS) -c linenoise/linenoise.c -o build/linenoise.o
+
+.PHONY: scan
+scan: clean
+	make build/linenoise.o
+	scan-build make
 
 # remove compilation products
 clean:

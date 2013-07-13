@@ -251,9 +251,11 @@ result_t func_popr(cell_t **cp) {
     store_reduced(c, res);
     return r_success;
   } else {
-    if(d) drop(c);
+    if(d) {
+      drop(c);
+      store_fail(d, d->alt);
+    }
     drop(c->arg[0]);
-    store_fail(d, d->alt);
     store_fail(c, alt);
     return r_fail;
   }
@@ -336,6 +338,7 @@ result_t func_id(cell_t **cp) {
       store_reduced(c, mod_alt(p, alt, alt_set | p->alt_set));
       return r_success;
     } else {
+      drop(p);
       store_fail(c, alt);
       return r_fail;
     }
@@ -357,11 +360,17 @@ result_t func_force(cell_t **cp) {
   s &= !bm_conflict(p->alt_set, q->alt_set);
   alt_set_t alt_set = p->alt_set | q->alt_set;
   if(s) store_reduced(c, mod_alt(p, ref(alt), alt_set));
-  else store_fail(c, alt);
+  else {
+    drop(p);
+    store_fail(c, alt);
+  }
   if(d) {
     drop(c);
     if(s) store_reduced(d, mod_alt(q, ref(d_alt), alt_set));
-    else store_fail(d, d_alt);
+    else {
+      drop(q);
+      store_fail(d, d_alt);
+    }
   } else drop(q);
   return s ? r_success : r_fail;
 }
@@ -411,6 +420,7 @@ result_t func_dup(cell_t **cp) {
     store_reduced(c, p);
     return r_success;
   } else {
+    drop(p);
     store_fail(c, c->alt);
     return r_fail;
   }

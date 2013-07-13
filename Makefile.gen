@@ -1,6 +1,5 @@
 # subset of Makefile used to generate headers on demand
 
-CC = clang
 OBJS := $(patsubst %.c, build/%.o, $(wildcard *.c))
 
 -include $(OBJS:.o=.d)

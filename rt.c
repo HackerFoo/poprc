@@ -390,7 +390,7 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
 }
 
 bool is_reduced(cell_t *c) {
-  return c->func == func_reduced;
+  return c && c->func == func_reduced;
 }
 
 // max offset is 255
@@ -591,6 +591,7 @@ cell_t *traverse_ref(cell_t *c, uint8_t flags) {
 
 void store_fail(cell_t *c, cell_t *alt) {
   closure_shrink(c, 1);
+  memset(c, 0, sizeof(cell_t));
   c->func = func_reduced;
   c->type = T_FAIL;
   c->alt = alt;
