@@ -355,7 +355,11 @@ result_t func_force(cell_t **cp) {
   cell_t *d = is_hole(c->arg[2]) ? 0 : c->arg[2];
   bool s = reduce(&c->arg[0]) & reduce(&c->arg[1]);
   cell_t *alt = closure_split(c, 2);
-  cell_t *d_alt = alt ? alt->arg[2] = dep(alt) : 0;
+  cell_t *d_alt = 0;
+  if(alt) {
+    if(d) d_alt = alt->arg[2] = dep(alt);
+    else alt->arg[2] = hole;
+  }
   cell_t *p = c->arg[0], *q = c->arg[1];
   s &= !bm_conflict(p->alt_set, q->alt_set);
   alt_set_t alt_set = p->alt_set | q->alt_set;
@@ -366,7 +370,7 @@ result_t func_force(cell_t **cp) {
   }
   if(d) {
     drop(c);
-    if(s) store_reduced(d, mod_alt(q, ref(d_alt), alt_set));
+    if(s) store_reduced(d, mod_alt(q, d_alt, alt_set));
     else {
       drop(q);
       store_fail(d, d_alt);
