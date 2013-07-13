@@ -591,7 +591,9 @@ cell_t *traverse_ref(cell_t *c, uint8_t flags) {
 
 void store_fail(cell_t *c, cell_t *alt) {
   closure_shrink(c, 1);
+  int n = c->n;
   memset(c, 0, sizeof(cell_t));
+  c->n = n;
   c->func = func_reduced;
   c->type = T_FAIL;
   c->alt = alt;
