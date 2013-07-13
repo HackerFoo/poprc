@@ -353,36 +353,26 @@ result_t func_id(cell_t **cp) {
 result_t func_force(cell_t **cp) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = is_hole(c->arg[2]) ? 0 : c->arg[2];
-  bool s = reduce(&c->arg[0]);
+  bool s = reduce(&c->arg[0]) & reduce(&c->arg[1]);
+  cell_t *alt = closure_split(c, 2);
+  cell_t *d_alt = alt ? alt->arg[2] = dep(alt) : 0;
   cell_t *p = c->arg[0], *q = c->arg[1];
-  cell_t *alt = 0, *d_alt = 0;
-  if(p->alt) {
-    alt = closure_alloc(3);
-    alt->func = func_force;
-    alt->arg[0] = ref(p->alt);
-    alt->arg[1] = ref(q);
-    alt->arg[2] = d_alt = dep(alt);
-  }
-  if(s) {
-    c->alt = alt;
-    store_reduced(c, p);
-  } else {
-    store_fail(c, c->alt);
+  s &= !bm_conflict(p->alt_set, q->alt_set);
+  alt_set_t alt_set = p->alt_set | q->alt_set;
+  if(s) store_reduced(c, mod_alt(p, ref(alt), alt_set));
+  else {
     drop(p);
+    store_fail(c, alt);
   }
   if(d) {
     drop(c);
-    if(s) {
-      d->func = func_id;
-      d->arg[0] = q;
-      d->arg[1] = (cell_t *)p->alt_set;
-      d->alt = d_alt;
-    } else {
-      store_fail(d, d_alt);
+    if(s) store_reduced(d, mod_alt(q, ref(d_alt), alt_set));
+    else {
       drop(q);
+      store_fail(d, d_alt);
     }
   } else drop(q);
-  return s ? r_retry : r_fail;
+  return s ? r_success : r_fail;
 }
 
 result_t func_drop(cell_t **cp) {
