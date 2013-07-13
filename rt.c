@@ -431,7 +431,8 @@ int closure_args(cell_t *c) {
   int n = 0;
 
   /* funcs with hidden args */
-  if(c->func == func_id) return 1;
+  if(c->func == func_id ||
+     c->func == func_dep) return 1;
   if(c->func == func_alt) return 2;
 
   if(is_reduced(c)) {
