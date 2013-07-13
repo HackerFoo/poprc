@@ -303,11 +303,6 @@ bool any_conflicts(cell_t **p, unsigned int size) {
 void show_list(cell_t *c) {
   assert(c && is_list(c));
   int n = list_size(c), i;
-  void print(cell_t *x) {
-    printf(" [");
-    i = n; while(i--) show_one(x->ptr[i]);
-    printf(" ]");
-  }
   if(n) {
     if(any_alt_overlap(c->ptr, n)) {
       cell_t *p = 0, *m1 = 0, *m2 = 0;
@@ -339,15 +334,21 @@ void show_list(cell_t *c) {
 	}
 	if(m2) printf(" {");
 	/* at least one match */
-	print(m1);
+ 	printf(" [");
+	i = n; while(i--) show_one(m1->ptr[i]);
+	printf(" ]");
 	if(m1 != c) closure_free(m1);
 	if(m2) {
 	  /* second match */
-	  printf(" |"); print(m2);
+	  printf(" | [");
+	  i = n; while(i--) show_one(m2->ptr[i]);
+	  printf(" ]");
 	  /* remaining matches */
 	  while(count(p->ptr, c->ptr, n) >= 0) {
 	    if(!any_conflicts(p->ptr, n)) {
-	      printf(" |"); print(p);
+	      printf(" | [");
+	      i = n; while(i--) show_one(p->ptr[i]);
+	      printf(" ]");
 	    }
 	  }
 	  printf(" }");

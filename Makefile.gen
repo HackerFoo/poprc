@@ -1,5 +1,6 @@
 # subset of Makefile used to generate headers on demand
 
+CC = clang
 OBJS := $(patsubst %.c, build/%.o, $(wildcard *.c))
 
 -include $(OBJS:.o=.d)
@@ -14,4 +15,4 @@ linenoise/linenoise.h:
 	git submodule update
 
 makeheaders/makeheaders: makeheaders/makeheaders.c
-	gcc -O -w makeheaders/makeheaders.c -o makeheaders/makeheaders
+	$(CC) -O -w makeheaders/makeheaders.c -o makeheaders/makeheaders

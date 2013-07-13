@@ -37,6 +37,9 @@ typedef enum result_t {
   r_retry = 2
 } result_t;
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Warray-bounds"
+#endif
 typedef result_t (reduce_t)(cell_t **cell);
 struct __attribute__((packed)) cell {
   struct __attribute__((packed)) {
@@ -67,7 +70,7 @@ struct __attribute__((packed)) cell {
       };
     };
   };
-};
+} __attribute__((aligned(4)));
 
 typedef struct word_entry_t {
   char name[64];
