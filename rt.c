@@ -548,6 +548,7 @@ cell_t *arg_nd(cell_t *c, cell_t *a, cell_t *r) {
   cell_t *t = _arg_nd(c, a, r);
   zero_alts(r);
   zero_alts(c);
+  check_alts();
   r->alt = alt;
   return t;
 }
@@ -953,6 +954,25 @@ cell_t *modify_copy(cell_t *c, cell_t *r) {
     _modify_copy2(new);
     return new;
   } else return r;
+}
+
+void check_alts() {
+  unsigned int i = 0;
+  cell_t *p;
+  while(i < LENGTH(cells)) {
+    p = &cells[i];
+    if(is_closure(p)) {
+
+      if(is_marked(p->alt, 3)) {
+	drop(clear_ptr(p->alt, 3));
+	p->alt = 0;
+	printf("<<%d>>\n", i);
+      }
+
+      //assert(!is_marked(p->alt, 3));
+      i += closure_cells(p);
+    } else ++i;
+  }
 }
 
 void zero_alts(cell_t *r) {
