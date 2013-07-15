@@ -219,7 +219,7 @@ void graph_cell(FILE *f, cell_t *c) {
   fprintf(f, "</table>>\nshape = \"none\"\n];\n");
 
   /* print edges */
-  if(c->alt && is_cell(c->alt) && is_closure(c)) {
+  if(is_cell(c->alt)) {
     cell_t *alt = clear_ptr(c->alt, 1);
     fprintf(f, "node%ld:alt -> node%ld:top;\n",
 	    node, alt - cells);
@@ -229,14 +229,14 @@ void graph_cell(FILE *f, cell_t *c) {
     if(is_list(c)) {
       int n = list_size(c);
       while(n--) {
-	if(is_cell(c->ptr[n]) && is_closure(c)) {
+	if(is_cell(c->ptr[n])) {
 	  fprintf(f, "node%ld:ptr%d -> node%ld:top;\n",
 		  node, n, c->ptr[n] - cells);
 	  graph_cell(f, c->ptr[n]);
 	}
       }
     } else if(c->type == T_INDIRECT) {
-      if(is_cell((cell_t *)c->val[0]) && is_closure(c)) {
+      if(is_cell((cell_t *)c->val[0])) {
 	fprintf(f, "node%ld:ind -> node%ld:top;\n",
 		node, (cell_t *)c->val[0] - cells);
 	graph_cell(f, (cell_t *)c->val[0]);
@@ -245,7 +245,7 @@ void graph_cell(FILE *f, cell_t *c) {
   } else {
     for(i = 0; i < n; i++) {
       cell_t *arg = clear_ptr(c->arg[i], 1);
-      if(is_closure(arg) && is_cell(arg)) {
+      if(is_cell(arg)) {
 	fprintf(f, "node%ld:arg%d -> node%ld:top%s;\n",
 		c - cells, i, arg - cells, is_weak(c, arg) ? " [color=lightgray]" : "");
 	graph_cell(f, arg);

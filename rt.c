@@ -542,14 +542,10 @@ void traverse_clear_alt(cell_t *c) {
 }
 
 cell_t *arg_nd(cell_t *c, cell_t *a, cell_t *r) {
-  cell_t *alt = r->alt;
-  r->alt = 0;
-  traverse_mark_alt(a);
   cell_t *t = _arg_nd(c, a, r);
-  zero_alts(r);
-  zero_alts(c);
-  check_alts();
-  r->alt = alt;
+  zero_tmps(r);
+  zero_tmps(c);
+  check_tmps();
   return t;
 }
 
@@ -560,15 +556,15 @@ cell_t *_arg_nd(cell_t *c, cell_t *a, cell_t *r) {
   //assert(!is_marked(c->alt, 1));
   int i = closure_next_child(c);
   if(!is_data(c->arg[i])) {
-    traverse_clear_alt(a);
+    //traverse_clear_alt(a);
     t = modify_copy(c, r);
-    cell_t *_c = clear_ptr(c->alt, 3) ? clear_ptr(c->alt, 3) : c;
+    cell_t *_c = clear_ptr(c->tmp, 3) ? clear_ptr(c->tmp, 3) : c;
     _c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
     _c->arg[i] = a;
     if(i == 0) closure_set_ready(_c, closure_is_ready(a));
   } else {
     t = _arg_nd(c->arg[i], a, r);
-    cell_t *_c = clear_ptr(c->alt, 3) ? clear_ptr(c->alt, 3) : c;
+    cell_t *_c = clear_ptr(c->tmp, 3) ? clear_ptr(c->tmp, 3) : c;
     if(closure_is_ready(_c->arg[i])) {
       if(i == 0) closure_set_ready(_c, true);
       else --*(intptr_t *)&_c->arg[0]; // decrement offset
@@ -956,42 +952,42 @@ cell_t *modify_copy(cell_t *c, cell_t *r) {
   } else return r;
 }
 
-void check_alts() {
+void check_tmps() {
   unsigned int i = 0;
   cell_t *p;
   while(i < LENGTH(cells)) {
     p = &cells[i];
     if(is_closure(p)) {
 
-      if(is_marked(p->alt, 3)) {
-	drop(clear_ptr(p->alt, 3));
-	p->alt = 0;
+      if(p->tmp) {
+	drop(clear_ptr(p->tmp, 3));
+	p->tmp = 0;
 	printf("<<%d>>\n", i);
       }
 
-      //assert(!is_marked(p->alt, 3));
+      //assert(!is_marked(p->tmp, 3));
       i += closure_cells(p);
     } else ++i;
   }
 }
 
-void zero_alts(cell_t *r) {
+void zero_tmps(cell_t *r) {
   r = clear_ptr(r, 3);
   if(!is_closure(r)) return;
-  if(!is_marked(r->alt, 3)) return;
-  //printf("zero_alts(&cells[%d])\n", r-cells);
-  cell_t *a = clear_ptr(r->alt, 3), *aa;
+  if(!r->tmp) return;
+  //printf("zero_tmps(&cells[%d])\n", r-cells);
+  cell_t *a = clear_ptr(r->tmp, 3), *aa;
 
   if(a) {
-    aa = clear_ptr(a->alt, 3);
-    a->alt = 0;
+    aa = clear_ptr(a->tmp, 3);
+    a->tmp = 0;
     drop(aa);
   }
-  a = clear_ptr(r->alt, 3);
-  r->alt = 0;
+  a = clear_ptr(r->tmp, 3);
+  r->tmp = 0;
   drop(a);
   traverse(r, {
-      zero_alts(*p);
+      zero_tmps(*p);
     }, ARGS | PTRS);
 }
 
@@ -1011,17 +1007,17 @@ int nondep_n(cell_t *c) {
 
 void _modify_new(cell_t *r, bool u) {
   cell_t *n;
-  if(clear_ptr(r->alt, 3)) return;
+  if(clear_ptr(r->tmp, 3)) return;
   else if(u) {
     n = ref(r);
   } else {
     n = copy(r);
     if(clear_ptr(r->func, 1) == func_alt)
       n->arg[2] = (cell_t *)(intptr_t)alt_cnt++;
-    n->alt = (cell_t *)3;
+    n->tmp = (cell_t *)3;
     n->n = 0;
   }
-  r->alt = mark_ptr(n, 3);
+  r->tmp = mark_ptr(n, 3);
 }
 
 /* first sweep of modify_copy */
@@ -1032,21 +1028,22 @@ cell_t *_modify_copy1(cell_t *c, cell_t *r, bool up) {
   bool u = up && !nd;
 
   if(!is_closure(r)) return 0;
-  if(r->alt) {
+  if(r->tmp) {
+    assert(is_marked(r->tmp, 3));
     /* already been replaced */
-    return clear_ptr(r->alt, 3);
-  } else r->alt = (cell_t *)3;
+    return clear_ptr(r->tmp, 3);
+  } else r->tmp = (cell_t *)3;
   if(c == r) _modify_new(r, u);
   traverse(r, {
       if(_modify_copy1(c, *p, u))
 	_modify_new(r, u);
-    }, ARGS | PTRS);
-  return clear_ptr(r->alt, 3);
+    }, ARGS | PTRS | ALT);
+  return clear_ptr(r->tmp, 3);
 }
 
 cell_t *get_mod(cell_t *r) {
   if(!r) return 0;
-  cell_t *a = r->alt;
+  cell_t *a = r->tmp;
   if(is_marked(a, 2)) return clear_ptr(a, 3);
   else return 0;
 }
@@ -1055,12 +1052,12 @@ cell_t *get_mod(cell_t *r) {
 void _modify_copy2(cell_t *r) {
 
   /* r is modified in place */
-  bool s = r == clear_ptr(r->alt, 3);
+  bool s = r == clear_ptr(r->tmp, 3);
 
   if(!is_closure(r)) return;
   /* alread been here */
-  if(!is_marked(r->alt, 1)) return;
-  r->alt = clear_ptr(r->alt, 1);
+  if(!is_marked(r->tmp, 1)) return;
+  r->tmp = clear_ptr(r->tmp, 1);
   traverse(r, {
       cell_t *u = clear_ptr(*p, 3);
       cell_t *t = get_mod(u);
@@ -1074,7 +1071,7 @@ void _modify_copy2(cell_t *r) {
       if((!s || t != u) && is_weak(r, *p)) {
 	--(*p)->n;
       }
-    }, ARGS | PTRS);
+    }, ARGS | PTRS | ALT);
 }
 
 cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
@@ -1089,7 +1086,7 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
     --c->n;
     if(size == 1) {
       n = copy(c);
-      traverse_ref(n, ARGS | PTRS);
+      traverse_ref(n, ARGS | PTRS | ALT);
       n->n = 0;
     } else {
       n = ind(c);

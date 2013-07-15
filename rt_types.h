@@ -45,6 +45,7 @@ struct __attribute__((packed)) cell {
   struct __attribute__((packed)) {
     reduce_t *func;
     cell_t *alt;
+    cell_t *tmp;
   };
   uintptr_t n;
   union {
