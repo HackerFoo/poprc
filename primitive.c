@@ -158,6 +158,7 @@ result_t func_pushl(cell_t **cp) {
   cell_t *res;
   if(s) {
     res = pushl_nd(ref(p), ref(q));
+    drop(res->alt);
     res->alt = alt;
     res->alt_set = c->arg[1]->alt_set;
     drop(c->arg[0]);

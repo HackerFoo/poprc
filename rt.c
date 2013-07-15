@@ -364,7 +364,7 @@ cell_t *expand(cell_t *c, unsigned int s) {
     cell_t *new = closure_alloc_cells(cn);
     memcpy(new, c, cn_p * sizeof(cell_t));
     new->n = 0;
-    traverse_ref(new, PTRS);
+    traverse_ref(new, PTRS | ALT);
     drop(c);
     return new;
   }
@@ -1014,6 +1014,7 @@ void _modify_new(cell_t *r, bool u) {
 
 /* first sweep of modify_copy */
 cell_t *_modify_copy1(cell_t *c, cell_t *r, bool up) {
+  r = clear_ptr(r, 3);
   int nd = nondep_n(r);
 
   /* is r unique (okay to replace)? */
@@ -1025,7 +1026,7 @@ cell_t *_modify_copy1(cell_t *c, cell_t *r, bool up) {
     /* already been replaced */
     return clear_ptr(r->tmp, 3);
   } else r->tmp = (cell_t *)3;
-  if(c == r) _modify_new(r, u);
+  if(c == r /*|| r->func == func_alt*/) _modify_new(r, u);
   traverse(r, {
       if(_modify_copy1(c, *p, u))
 	_modify_new(r, u);

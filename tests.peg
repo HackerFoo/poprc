@@ -62,3 +62,5 @@
 : (1 6) (2 7) | dup + dup +
 
 : 1 0 | dup force
+: 1 [1-!] [] | pushl
+: 1 [1- !] [1+ !] | force pushl popr
