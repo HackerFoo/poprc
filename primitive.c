@@ -276,7 +276,7 @@ result_t func_alt(cell_t **cp) {
   bool s = reduce(&c->arg[0]);
   cell_t *p = c->arg[0];
   uint8_t id = (intptr_t)c->arg[2];
-  alt_set_t alt_set = p->alt_set | bm(id, c->arg[1] ? 0 : 1);
+  alt_set_t alt_set = p->alt_set | bm(id, is_hole(c->arg[1]) ? 1 : 0);
   cell_t *alt = 0;
   if(p->alt) {
     alt = closure_alloc(3);
