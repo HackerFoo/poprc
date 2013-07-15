@@ -284,15 +284,15 @@ result_t func_alt(cell_t **cp) {
     alt->arg[0] = ref(p->alt);
     alt->arg[1] = c->arg[1];
     alt->arg[2] = c->arg[2];
-  } else if (c->arg[1]) {
+  } else if(!is_hole(c->arg[1])) {
     alt = closure_alloc(3);
     alt->func = func_alt;
     alt->arg[0] = c->arg[1];
-    alt->arg[1] = 0;
+    alt->arg[1] = hole;
     alt->arg[2] = c->arg[2];
   }
   if(s) {
-    store_reduced(c, mod_alt(get(p), alt, alt_set));
+    store_reduced(c, mod_alt(get_(p), alt, alt_set));
     return r_success;
   } else {
     drop(p);
@@ -357,13 +357,13 @@ result_t func_force(cell_t **cp) {
   cell_t *alt = closure_split(c, 2);
   cell_t *d_alt = 0;
   if(alt) {
-    if(d) d_alt = alt->arg[2] = dep(alt);
+    if(d) d_alt = alt->arg[2] = dep(ref(alt));
     else alt->arg[2] = hole;
   }
   cell_t *p = c->arg[0], *q = c->arg[1];
   s &= !bm_conflict(p->alt_set, q->alt_set);
   alt_set_t alt_set = p->alt_set | q->alt_set;
-  if(s) store_reduced(c, mod_alt(p, ref(alt), alt_set));
+  if(s) store_reduced(c, mod_alt(p, alt, alt_set));
   else {
     drop(p);
     store_fail(c, alt);

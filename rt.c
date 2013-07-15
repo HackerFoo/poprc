@@ -1086,7 +1086,7 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
     --c->n;
     if(size == 1) {
       n = copy(c);
-      traverse_ref(n, ARGS | PTRS | ALT);
+      traverse_ref(n, ARGS | PTRS);
       n->n = 0;
     } else {
       n = ind(c);
