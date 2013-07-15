@@ -544,8 +544,7 @@ void traverse_clear_alt(cell_t *c) {
 cell_t *arg_nd(cell_t *c, cell_t *a, cell_t *r) {
   cell_t *t = _arg_nd(c, a, r);
   zero_tmps(r);
-  zero_tmps(c);
-  check_tmps();
+  //check_tmps();
   return t;
 }
 
@@ -958,37 +957,30 @@ void check_tmps() {
   while(i < LENGTH(cells)) {
     p = &cells[i];
     if(is_closure(p)) {
-
+      /*
       if(p->tmp) {
+	printf("<<%d %d>>\n", i, (int)p->tmp);
 	drop(clear_ptr(p->tmp, 3));
 	p->tmp = 0;
-	printf("<<%d>>\n", i);
       }
-
-      //assert(!is_marked(p->tmp, 3));
+      */
+      assert(!p->tmp);
       i += closure_cells(p);
     } else ++i;
   }
 }
 
 void zero_tmps(cell_t *r) {
-  r = clear_ptr(r, 3);
-  if(!is_closure(r)) return;
-  if(!r->tmp) return;
-  //printf("zero_tmps(&cells[%d])\n", r-cells);
-  cell_t *a = clear_ptr(r->tmp, 3), *aa;
+  if(!r || !r->tmp) return;
 
-  if(a) {
-    aa = clear_ptr(a->tmp, 3);
-    a->tmp = 0;
-    drop(aa);
-  }
-  a = clear_ptr(r->tmp, 3);
+  cell_t *t = clear_ptr(r->tmp, 3);
   r->tmp = 0;
-  drop(a);
+  zero_tmps(t);
+  drop(t);
+
   traverse(r, {
       zero_tmps(*p);
-    }, ARGS | PTRS);
+    }, ARGS | PTRS | ALT);
 }
 
 int nondep_n(cell_t *c) {
