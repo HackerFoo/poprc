@@ -276,7 +276,7 @@ result_t func_alt(cell_t **cp) {
   cell_t *c = clear_ptr(*cp, 3);
   bool s = reduce(&c->arg[0]);
   cell_t *p = c->arg[0];
-  uint8_t id = (intptr_t)c->arg[2];
+  uint8_t id = is_hole(c->arg[2]) ? alt_cnt++ : (intptr_t)c->arg[2];
   alt_set_t alt_set = p->alt_set | bm(id, is_hole(c->arg[1]) ? 1 : 0);
   cell_t *alt = 0;
   if(p->alt) {
@@ -284,13 +284,13 @@ result_t func_alt(cell_t **cp) {
     alt->func = func_alt;
     alt->arg[0] = ref(p->alt);
     alt->arg[1] = c->arg[1];
-    alt->arg[2] = c->arg[2];
+    alt->arg[2] = (cell_t *)(intptr_t)id;
   } else if(!is_hole(c->arg[1])) {
     alt = closure_alloc(3);
     alt->func = func_alt;
     alt->arg[0] = c->arg[1];
     alt->arg[1] = hole;
-    alt->arg[2] = c->arg[2];
+    alt->arg[2] = (cell_t *)(intptr_t)id;
   }
   if(s) {
     store_reduced(c, mod_alt(get_(p), alt, alt_set));
@@ -333,7 +333,7 @@ result_t func_id(cell_t **cp) {
     bool s = reduce(&c->arg[0]) &&
       !bm_conflict(alt_set, c->arg[0]->alt_set);
     cell_t *alt = closure_split1(c, 0);
-    if(alt) alt->arg[1] = (cell_t *)alt_set;
+    //if(alt) alt->arg[1] = (cell_t *)alt_set;
     cell_t *p = c->arg[0];
     if(s) {
       store_reduced(c, mod_alt(p, alt, alt_set | p->alt_set));

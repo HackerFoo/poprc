@@ -1000,12 +1000,10 @@ int nondep_n(cell_t *c) {
 void _modify_new(cell_t *r, bool u) {
   cell_t *n;
   if(clear_ptr(r->tmp, 3)) return;
-  else if(u) {
+  if(u) {
     n = ref(r);
   } else {
     n = copy(r);
-    if(clear_ptr(r->func, 1) == func_alt)
-      n->arg[2] = (cell_t *)(intptr_t)alt_cnt++;
     n->tmp = (cell_t *)3;
     n->n = 0;
   }
@@ -1026,7 +1024,7 @@ cell_t *_modify_copy1(cell_t *c, cell_t *r, bool up) {
     /* already been replaced */
     return clear_ptr(r->tmp, 3);
   } else r->tmp = (cell_t *)3;
-  if(c == r /*|| r->func == func_alt*/) _modify_new(r, u);
+  if(c == r) _modify_new(r, u);
   traverse(r, {
       if(_modify_copy1(c, *p, u))
 	_modify_new(r, u);

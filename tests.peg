@@ -64,3 +64,4 @@
 : 1 0 | dup force
 : 1 [1-!] [] | pushl
 : 1 [1- !] [1+ !] | force pushl popr
+: [0 |] dup 4 swap pushl popr swap drop swap 3 swap pushl popr swap drop +

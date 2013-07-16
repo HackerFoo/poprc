@@ -624,7 +624,7 @@ cell_t *word_parse(char *w,
       return NULL;
     c = func(e->func, e->in + e->out - 1);
     if(e->func == func_alt)
-      c->arg[2] = (cell_t *)(intptr_t)alt_cnt++;
+      c->arg[2] = hole;
     *in = e->in;
     *out = e->out;
   }
