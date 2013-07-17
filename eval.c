@@ -209,7 +209,7 @@ void graph_cell(FILE *f, cell_t *c) {
     } else {
       int n = c->val_size;
       while(n--)
-	fprintf(f, "<tr><td bgcolor=\"yellow\">val: %ld</td></tr>", c->val[n]);
+	fprintf(f, "<tr><td bgcolor=\"yellow\">val: %ld</td></tr>", (long int)c->val[n]);
     }
   } else {
     for(i = 0; i < n; i++) {
@@ -222,7 +222,7 @@ void graph_cell(FILE *f, cell_t *c) {
   if(is_cell(c->alt)) {
     cell_t *alt = clear_ptr(c->alt, 1);
     fprintf(f, "node%ld:alt -> node%ld:top;\n",
-	    node, alt - cells);
+	    node, (long int)(alt - cells));
     graph_cell(f, c->alt);
   }
   if(is_reduced(c)) {
@@ -231,14 +231,14 @@ void graph_cell(FILE *f, cell_t *c) {
       while(n--) {
 	if(is_cell(c->ptr[n])) {
 	  fprintf(f, "node%ld:ptr%d -> node%ld:top;\n",
-		  node, n, c->ptr[n] - cells);
+		  node, n, (long int)(c->ptr[n] - cells));
 	  graph_cell(f, c->ptr[n]);
 	}
       }
     } else if(c->type == T_INDIRECT) {
       if(is_cell((cell_t *)c->val[0])) {
 	fprintf(f, "node%ld:ind -> node%ld:top;\n",
-		node, (cell_t *)c->val[0] - cells);
+		node, (long int)((cell_t *)c->val[0] - cells));
 	graph_cell(f, (cell_t *)c->val[0]);
       }
     }
@@ -247,7 +247,7 @@ void graph_cell(FILE *f, cell_t *c) {
       cell_t *arg = clear_ptr(c->arg[i], 1);
       if(is_cell(arg)) {
 	fprintf(f, "node%ld:arg%d -> node%ld:top%s;\n",
-		c - cells, i, arg - cells, is_weak(c, arg) ? " [color=lightgray]" : "");
+		(long int)(c - cells), i, (long int)(arg - cells), is_weak(c, arg) ? " [color=lightgray]" : "");
 	graph_cell(f, arg);
       }
     }
@@ -741,6 +741,9 @@ void eval(char *str, unsigned int n) {
 }
 
 void runTests(char *path) {
+#if defined(__ANDROID__)
+  printf("getline() missing on Android\n");
+#else
   size_t size;
   char *line = 0;
   FILE *f = fopen(path, "r");
@@ -759,4 +762,5 @@ void runTests(char *path) {
     }
   }
   fclose(f);
+#endif
 }

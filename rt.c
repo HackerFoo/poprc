@@ -36,10 +36,10 @@ measure_t measure, saved_measure;
 
 // #define CHECK_CYCLE
 
-extern char __data_start;
+//extern char __data_start;
 
 bool is_data(void *p) {
-  return p >= (void *)&__data_start;
+  return p >= (void *)&cells;
 }
 
 bool is_cell(void *p) {
@@ -187,7 +187,7 @@ void cells_init() {
   const unsigned int n = LENGTH(cells)-1;
 
   // zero the cells
-  bzero(&cells, sizeof(cells));
+  memset(&cells, 0, sizeof(cells));
 
   // set up doubly-linked pointer ring
   for(i = 0; i < n; i++) {
@@ -244,7 +244,7 @@ cell_t *closure_alloc_cells(int size) {
     cell_alloc(&c[i]);
   }
 
-  bzero(c, sizeof(cell_t)*size);
+  memset(c, 0, sizeof(cell_t)*size);
   assert(check_cycle());
   return c;
 }

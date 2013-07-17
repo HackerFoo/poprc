@@ -41,7 +41,7 @@ void check_free() {
   int i;
   for(i = 1; i < LENGTH(cells); i++) {
     if(is_closure(&cells[i])) {
-      printf("LEAK: %d (%ld)\n", i, cells[i].n);
+      printf("LEAK: %d (%ld)\n", i, (long int)cells[i].n);
       //print_sexpr(&cells[i]);
     }
   }
