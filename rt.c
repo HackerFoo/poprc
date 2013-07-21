@@ -433,8 +433,7 @@ int closure_args(cell_t *c) {
   /* funcs with hidden args */
   if(c->func == func_id ||
      c->func == func_dep) return 1;
-  if(c->func == func_alt ||
-     c->func == func_force) return 2;
+  if(c->func == func_alt) return 2;
 
   if(is_reduced(c)) {
     if(is_list(c))
@@ -1020,17 +1019,15 @@ cell_t *_modify_copy1(cell_t *c, cell_t *r, bool up) {
   r = clear_ptr(r, 3);
   int nd = nondep_n(r);
 
-  bool a = !c && is_alt(r) && is_hole(r->arg[2]);
-
   /* is r unique (okay to replace)? */
-  bool u = up && !nd && !a;
+  bool u = up && !nd;
 
   if(r->tmp) {
     assert(is_marked(r->tmp, 3));
     /* already been replaced */
     return clear_ptr(r->tmp, 3);
   } else r->tmp = (cell_t *)3;
-  if(a || c == r) _modify_new(r, u);
+  if(c == r) _modify_new(r, u);
   traverse(r, {
       if(_modify_copy1(c, *p, u))
 	_modify_new(r, u);
