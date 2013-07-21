@@ -38,7 +38,7 @@
     *-----------------------------------------------*/
 
 /* must be in ascending order */
-word_entry_t word_table[25] = {
+word_entry_t word_table[24] = {
   {"!", func_assert, 1, 1},
   {"'", func_quote, 1, 1},
   {"*", func_mul, 2, 1},
@@ -62,8 +62,8 @@ word_entry_t word_table[25] = {
   {"pushl", func_pushl, 2, 1},
   {"pushr", func_pushr, 2, 1},
   {"swap", func_swap, 2, 2},
-  {"|", func_alt, 2, 1},
-  {"||", func_alt2, 2, 1}
+  {"|", func_alt, 2, 1}
+  //  {"||", func_alt2, 2, 1}
 };
 
 result_t func_op2(cell_t **cp, intptr_t (*op)(intptr_t, intptr_t)) {
@@ -275,61 +275,26 @@ cell_t *alt() {
 
 result_t func_alt(cell_t **cp) {
   cell_t *c = clear_ptr(*cp, 3);
-  bool s = reduce(&c->arg[0]);
-  cell_t *p = c->arg[0];
-  uint8_t id = is_hole(c->arg[2]) ? alt_cnt++ : (intptr_t)c->arg[2];
-  alt_set_t alt_set = p->alt_set | bm(id, is_hole(c->arg[1]) ? 1 : 0);
-  cell_t *alt = 0;
-  if(p->alt) {
-    alt = closure_alloc(3);
-    alt->func = func_alt;
-    alt->arg[0] = ref(p->alt);
-    alt->arg[1] = c->arg[1];
-    alt->arg[2] = (cell_t *)(intptr_t)id;
-  } else if(!is_hole(c->arg[1])) {
-    alt = closure_alloc(3);
-    alt->func = func_alt;
-    alt->arg[0] = c->arg[1];
-    alt->arg[1] = hole;
-    alt->arg[2] = (cell_t *)(intptr_t)id;
-  }
-  if(s) {
-    store_reduced(c, mod_alt(get_(p), alt, alt_set));
-    return r_success;
-  } else {
-    drop(p);
-    store_fail(c, alt);
-    return r_fail;
-  }
+  uint8_t a = alt_cnt++;
+  cell_t *r0 = id(ref(c->arg[0]));
+  r0->arg[1] = (cell_t *)bm(a, 0);
+  cell_t *r1 = id(ref(c->arg[1]));
+  r1->arg[1] = (cell_t *)bm(a, 1);
+  r0->alt = r1;
+  *cp = r0;
+  drop(c);
+  return r_retry;
 }
-
+/*
 result_t func_alt2(cell_t **cp) {
   cell_t *c = clear_ptr(*cp, 3);
-  bool s = reduce(&c->arg[0]);
-  cell_t *p = c->arg[0];
-  alt_set_t alt_set = p->alt_set;
-  cell_t *alt = 0;
-  if(p->alt) {
-    alt = closure_alloc(3);
-    alt->func = func_alt;
-    alt->arg[0] = ref(p->alt);
-    alt->arg[1] = c->arg[1];
-  } else if(!is_hole(c->arg[1])) {
-    alt = closure_alloc(3);
-    alt->func = func_alt;
-    alt->arg[0] = c->arg[1];
-    alt->arg[1] = hole;
-  }
-  if(s) {
-    store_reduced(c, mod_alt(get_(p), alt, alt_set));
-    return r_success;
-  } else {
-    drop(p);
-    store_fail(c, alt);
-    return r_fail;
-  }
+  cell_t *r = id(ref(c->arg[0]));
+  r->alt = ref(c->arg[1]);
+  *cp = r;
+  drop(c);
+  return r_retry;
 }
-
+*/
 result_t func_assert(cell_t **cp) {
   cell_t *c = clear_ptr(*cp, 3);
   bool s = reduce(&c->arg[0]);
