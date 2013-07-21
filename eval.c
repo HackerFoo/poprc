@@ -187,7 +187,7 @@ void graph_cell(FILE *f, cell_t *c) {
 
   /* print node attributes */
   fprintf(f, "node%ld [\nlabel =<", node);
-  fprintf(f, "<table border=\"0\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>%ld: %s%s (%d)</b></font></td></tr>",
+  fprintf(f, "<table border=\"0\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%ld) %s%s (%d)</b></font></td></tr>",
 	  node,
 	  function_name(c->func),
 	  closure_is_ready(c) ? "" : "*",

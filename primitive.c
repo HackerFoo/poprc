@@ -234,8 +234,10 @@ result_t func_popr(cell_t **cp) {
     if(d) {
       drop(c);
       d->func = func_id;
-      d->arg[0] = ref(p->ptr[0]);
-      d->arg[1] = (cell_t *)p->alt_set;
+      cell_t *r = ref(p->ptr[0]);
+      d->arg[0] = modify_copy(0, r);
+      zero_tmps(r);
+      d->arg[1] = (cell_t *)c->arg[0]->alt_set;
     }
 
     /* drop the right list element */
@@ -268,7 +270,7 @@ bool is_alt(cell_t *c) {
 
 cell_t *alt() {
   cell_t *c = func(func_alt, 2);
-  c->arg[2] = (cell_t *)(intptr_t)alt_cnt++;
+  c->arg[2] = hole;
   return c;
 }
 
@@ -333,7 +335,7 @@ result_t func_id(cell_t **cp) {
     bool s = reduce(&c->arg[0]) &&
       !bm_conflict(alt_set, c->arg[0]->alt_set);
     cell_t *alt = closure_split1(c, 0);
-    //if(alt) alt->arg[1] = (cell_t *)alt_set;
+    //if(alt) alt->arg[1] = (cell_t *)0;
     cell_t *p = c->arg[0];
     if(s) {
       store_reduced(c, mod_alt(p, alt, alt_set | p->alt_set));

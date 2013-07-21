@@ -36,10 +36,11 @@ measure_t measure, saved_measure;
 
 // #define CHECK_CYCLE
 
-//extern char __data_start;
+#define data_start _DYNAMIC
+extern char data_start;
 
 bool is_data(void *p) {
-  return p >= (void *)&cells;
+  return p >= (void *)&data_start;
 }
 
 bool is_cell(void *p) {
@@ -141,8 +142,7 @@ bool reduce(cell_t **cp) {
   switch(c->func(cp)) {
   case r_fail: return false;
   case r_success: return true;
-  case r_retry:
-    goto retry;
+  case r_retry: goto retry;
   default: return false;
   }
 }
@@ -433,7 +433,8 @@ int closure_args(cell_t *c) {
   /* funcs with hidden args */
   if(c->func == func_id ||
      c->func == func_dep) return 1;
-  if(c->func == func_alt) return 2;
+  if(c->func == func_alt ||
+     c->func == func_force) return 2;
 
   if(is_reduced(c)) {
     if(is_list(c))
@@ -941,7 +942,7 @@ cell_t *get(cell_t *c) {
 
 cell_t *modify_copy(cell_t *c, cell_t *r) {
   cell_t *new = _modify_copy1(c, r, true);
-  if(new != r) {
+  if(new && new != r) {
     ref(new);
     drop(r);
   }
@@ -1011,20 +1012,25 @@ void _modify_new(cell_t *r, bool u) {
 }
 
 /* first sweep of modify_copy */
+/* c is the cell to be modified, or if 0, */
+/* alts will be modified */
 cell_t *_modify_copy1(cell_t *c, cell_t *r, bool up) {
+  if(!is_closure(r)) return 0;
+
   r = clear_ptr(r, 3);
   int nd = nondep_n(r);
 
-  /* is r unique (okay to replace)? */
-  bool u = up && !nd;
+  bool a = !c && is_alt(r) && is_hole(r->arg[2]);
 
-  if(!is_closure(r)) return 0;
+  /* is r unique (okay to replace)? */
+  bool u = up && !nd && !a;
+
   if(r->tmp) {
     assert(is_marked(r->tmp, 3));
     /* already been replaced */
     return clear_ptr(r->tmp, 3);
   } else r->tmp = (cell_t *)3;
-  if(c == r) _modify_new(r, u);
+  if(a || c == r) _modify_new(r, u);
   traverse(r, {
       if(_modify_copy1(c, *p, u))
 	_modify_new(r, u);
