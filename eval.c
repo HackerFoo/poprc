@@ -180,9 +180,6 @@ void graph_cell(FILE *f, cell_t *c) {
   int n = closure_args(c);
   int i, s = calculate_cells(n);
 
-  /* functions with extra args */
-  if(c->func == func_alt) n++;
-
   for(i = 0; i < s; ++i) set_bit(visited, node+i);
 
   /* print node attributes */
@@ -623,8 +620,6 @@ cell_t *word_parse(char *w,
        strnlen(e->name, sizeof_field(word_entry_t, name)))
       return NULL;
     c = func(e->func, e->in + e->out - 1);
-    if(e->func == func_alt)
-      c->arg[2] = hole;
     *in = e->in;
     *out = e->out;
   }

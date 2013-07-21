@@ -63,7 +63,6 @@ word_entry_t word_table[24] = {
   {"pushr", func_pushr, 2, 1},
   {"swap", func_swap, 2, 2},
   {"|", func_alt, 2, 1}
-  //  {"||", func_alt2, 2, 1}
 };
 
 result_t func_op2(cell_t **cp, intptr_t (*op)(intptr_t, intptr_t)) {
@@ -267,12 +266,6 @@ bool is_alt(cell_t *c) {
   return c->func == func_alt;
 }
 
-cell_t *alt() {
-  cell_t *c = func(func_alt, 2);
-  c->arg[2] = hole;
-  return c;
-}
-
 result_t func_alt(cell_t **cp) {
   cell_t *c = clear_ptr(*cp, 3);
   uint8_t a = alt_cnt++;
@@ -285,16 +278,7 @@ result_t func_alt(cell_t **cp) {
   drop(c);
   return r_retry;
 }
-/*
-result_t func_alt2(cell_t **cp) {
-  cell_t *c = clear_ptr(*cp, 3);
-  cell_t *r = id(ref(c->arg[0]));
-  r->alt = ref(c->arg[1]);
-  *cp = r;
-  drop(c);
-  return r_retry;
-}
-*/
+
 result_t func_assert(cell_t **cp) {
   cell_t *c = clear_ptr(*cp, 3);
   bool s = reduce(&c->arg[0]);
