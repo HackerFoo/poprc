@@ -31,6 +31,9 @@ cell_t fail_cell = {
 };
 cell_t _hole;
 cell_t *hole = &_hole;
+#define BM_SIZE (sizeof(intptr_t) * 4)
+#define ALT_SET_IDS BM_SIZE
+uintptr_t alt_live[sizeof(intptr_t) * 4];
 
 measure_t measure, saved_measure;
 
@@ -188,6 +191,7 @@ void cells_init() {
 
   // zero the cells
   memset(&cells, 0, sizeof(cells));
+  memset(&alt_live, 0, sizeof(alt_live));
 
   // set up doubly-linked pointer ring
   for(i = 0; i < n; i++) {
@@ -598,6 +602,7 @@ void store_fail(cell_t *c, cell_t *alt) {
 void store_reduced(cell_t *c, cell_t *r) {
   int n = c->n;
   r->func = func_reduced;
+  alt_set_ref(r->alt_set);
   int size = is_closure(r) ? closure_cells(r) : 0;
   if(size <= closure_cells(c)) {
     closure_shrink(c, size);
@@ -707,6 +712,7 @@ void drop(cell_t *c) {
 	}
       }
     }
+    if(is_reduced(c)) alt_set_drop(c->alt_set);
     closure_free(c);
   } else {
     --c->n;
@@ -830,8 +836,6 @@ cell_t *pushl_nd(cell_t *a, cell_t *b) {
   e->ptr[n] = a;
   return e;
 }
-
-#define BM_SIZE (sizeof(intptr_t) * 4)
 
 intptr_t bm(int k, int v) {
   assert(k < BM_SIZE);
@@ -1088,4 +1092,41 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
   n->alt = alt;
   n->alt_set = alt_set;
   return n;
+}
+
+alt_set_t alt_set_ref(alt_set_t alt_set) {
+  uintptr_t bit = (uintptr_t)1 << (sizeof(uintptr_t) * 4);
+  uintptr_t *live = alt_live;
+  while(bit) {
+    if(alt_set & bit) ++*live;
+    ++live;
+    bit <<= 1;
+  }
+  return alt_set;
+}
+
+alt_set_t alt_set_drop(alt_set_t alt_set) {
+  uintptr_t bit = (uintptr_t)1 << (sizeof(uintptr_t) * 4);
+  uintptr_t *live = alt_live;
+  while(bit) {
+    if(alt_set & bit) {
+      assert(*live);
+      --*live;
+    }
+    ++live;
+    bit <<= 1;
+  }
+  return alt_set;
+}
+
+uint8_t new_alt_id(uintptr_t n) {
+  uint8_t r = 0;
+  while(r < ALT_SET_IDS) {
+    if(alt_live[r]) ++r;
+    else {
+      alt_live[r] = n;
+      return r;
+    }
+  }
+  return -1;
 }

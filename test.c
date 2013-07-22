@@ -39,10 +39,15 @@ void alloc_test() {
 
 void check_free() {
   int i;
-  for(i = 1; i < LENGTH(cells); i++) {
+  for(i = 0; i < LENGTH(cells); i++) {
     if(is_closure(&cells[i])) {
       printf("LEAK: %d (%ld)\n", i, (long int)cells[i].n);
       //print_sexpr(&cells[i]);
+    }
+  }
+  FOREACH(alt_live, i) {
+    if(alt_live[i]) {
+      printf("ALT LEAK: %d (%ld)\n", i, (long int)alt_live[i]);
     }
   }
 }
