@@ -38,7 +38,7 @@
     *-----------------------------------------------*/
 
 /* must be in ascending order */
-word_entry_t word_table[24] = {
+word_entry_t word_table[25] = {
   {"!", func_assert, 1, 1},
   {"'", func_quote, 1, 1},
   {"*", func_mul, 2, 1},
@@ -50,6 +50,7 @@ word_entry_t word_table[24] = {
   {"==", func_eq, 2, 1},
   {">", func_gt, 2, 1},
   {">=", func_gte, 2, 1},
+  {"cut", func_cut, 1, 1},
   {"dip11", func_dip11, 3, 2},
   {"dip12", func_dip12, 3, 3},
   {"dip21", func_dip21, 4, 2},
@@ -85,8 +86,9 @@ result_t func_op2(cell_t **cp, intptr_t (*op)(intptr_t, intptr_t)) {
     for(i = 0; i < val_size; ++i)
       res->val[i] = op(p->val[i], q->val[i]);
     res->val_size = val_size;
-    res->alt_set = c->arg[0]->alt_set |
-      c->arg[1]->alt_set;
+    res->alt_set =
+      alt_set_ref(c->arg[0]->alt_set |
+		  c->arg[1]->alt_set);
     res->alt = alt;
     drop(c->arg[0]);
     drop(c->arg[1]);
@@ -134,7 +136,9 @@ result_t func_compose(cell_t **cp) {
   cell_t *p = get(c->arg[0]), *q = get(c->arg[1]);
   if(s) {
     res = compose_nd(ref(p), ref(q));
-    res->alt_set = c->arg[0]->alt_set | c->arg[1]->alt_set;
+    res->alt_set =
+      alt_set_ref(c->arg[0]->alt_set |
+		  c->arg[1]->alt_set);
     res->alt = alt;
     drop(c->arg[0]);
     drop(c->arg[1]);
@@ -160,7 +164,7 @@ result_t func_pushl(cell_t **cp) {
     res = pushl_nd(ref(p), ref(q));
     drop(res->alt);
     res->alt = alt;
-    res->alt_set = c->arg[1]->alt_set;
+    res->alt_set = alt_set_ref(c->arg[1]->alt_set);
     drop(c->arg[0]);
     drop(c->arg[1]);
     store_reduced(c, res);
@@ -182,6 +186,8 @@ result_t func_pushr(cell_t **cp) {
   cell_t *q = get_(c->arg[1]);
   alt_set_t alt_set = c->arg[0]->alt_set;
   if(s) {
+    alt_set_ref(alt_set);
+    alt_set_drop(p->alt_set);
     int n = list_size(p);
     res = expand(p, 1);
     memmove(res->ptr+1, res->ptr, sizeof(cell_t *)*n);
@@ -246,7 +252,7 @@ result_t func_popr(cell_t **cp) {
     for(i = 0; i < elems; ++i)
       res->ptr[i] = ref(p->ptr[i+1]);
 
-    res->alt_set = p->alt_set;
+    res->alt_set = alt_set_ref(p->alt_set);
     res->alt = alt;
     drop(c->arg[0]);
     store_reduced(c, res);
@@ -315,9 +321,11 @@ result_t func_id(cell_t **cp) {
     if(p->alt) alt_set_ref(alt_set);
     if(s) {
       store_reduced(c, mod_alt(p, alt, alt_set | p->alt_set));
+      alt_set_drop(alt_set);
       return r_success;
     } else {
       drop(p);
+      alt_set_drop(alt_set);
       store_fail(c, alt);
       return r_fail;
     }
@@ -520,4 +528,24 @@ result_t func_dip21(cell_t **cp) {
   }
   drop(b);
   return r_retry;
+}
+
+result_t func_cut(cell_t **cp) {
+  cell_t *c = *cp;
+  result_t r;
+  cell_t *t, *p = c->arg[0];
+  while((r = reduce(&p)) != r_success) {
+    if(r == r_fail) {
+      t = ref(p->alt);
+      drop(p);
+      if(!(p = t)) {
+	store_fail(c, 0);
+	return r_fail;
+      }
+    }
+  }
+  drop(p->alt);
+  p->alt = 0;
+  store_reduced(c, p);
+  return r_success;
 }

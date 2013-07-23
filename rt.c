@@ -697,7 +697,7 @@ void drop(cell_t *c) {
 	cell_t *x = clear_ptr(*p, 3);
 	/* !is_marked condition needed */
 	/* during _modify_copy2 */
-	if(!is_marked(*p, 3) &&
+	if(!is_marked(*p, 2) &&
 	   !is_weak(c, x)) {
 	  drop(x);
 	}
@@ -713,6 +713,7 @@ void drop(cell_t *c) {
       }
     }
     if(is_reduced(c)) alt_set_drop(c->alt_set);
+    if(c->func == func_id) alt_set_drop((alt_set_t)c->arg[1]);
     closure_free(c);
   } else {
     --c->n;
@@ -1078,6 +1079,7 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
   if(!c->n) {
     n = c;
     drop(c->alt);
+    alt_set_drop(c->alt_set);
   } else {
     int size = closure_cells(c);
     --c->n;
@@ -1090,6 +1092,7 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
     }
   }
   n->alt = alt;
+  alt_set_ref(alt_set);
   n->alt_set = alt_set;
   return n;
 }
@@ -1128,5 +1131,6 @@ uint8_t new_alt_id(uintptr_t n) {
       return r;
     }
   }
+  assert(false);
   return -1;
 }
