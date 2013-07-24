@@ -7,7 +7,7 @@ else
 	CFLAGS=-Wall $(COPT)
 endif
 ifeq ($(CC),emcc)
-	CFLAGS += -DNDEBUG
+	CFLAGS += -DNDEBUG -DEMSCRIPTEN
 endif
 
 OBJS := $(patsubst %.c, build/%.o, $(wildcard *.c))
@@ -31,6 +31,10 @@ debug:
 # link
 eval: $(OBJS)
 	$(CC) $(OBJS) -o eval
+
+eval.js:
+	make CC=emcc $(OBJS)
+	emcc $(OBJS) -o eval.js -s EXPORTED_FUNCTIONS="['_eval']"
 
 # pull in dependency info for *existing* .o files
 -include $(OBJS:.o=.d)

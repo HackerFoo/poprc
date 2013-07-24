@@ -445,6 +445,7 @@ void measure_display() {
 
 }
 
+#ifndef EMSCRIPTEN
 int main(int argc, char *argv[]) {
   unsigned int test_number;
   if(argc != 2) {
@@ -474,6 +475,7 @@ int main(int argc, char *argv[]) {
   measure_display();
   return 0;
 }
+#endif
 
 #define HISTORY_FILE ".pegc_history"
 #define GRAPH_FILE "cells.dot"
