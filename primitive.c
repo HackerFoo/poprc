@@ -38,7 +38,7 @@
     *-----------------------------------------------*/
 
 /* must be in ascending order */
-word_entry_t word_table[25] = {
+word_entry_t word_table[26] = {
   {"!", func_assert, 1, 1},
   {"'", func_quote, 1, 1},
   {"*", func_mul, 2, 1},
@@ -57,6 +57,7 @@ word_entry_t word_table[25] = {
   {"drop", func_drop, 2, 1},
   {"dup", func_dup, 1, 2},
   {"force", func_force, 2, 2},
+  {"head", func_head, 1, 1},
   {"id", func_id, 1, 1},
   {"ifte", func_ifte, 3, 1},
   {"popr", func_popr, 1, 2},
@@ -548,4 +549,20 @@ result_t func_cut(cell_t **cp) {
   p->alt = 0;
   store_reduced(c, p);
   return r_success;
+}
+
+result_t func_head(cell_t **cp) {
+  cell_t *c = clear_ptr(*cp, 3);
+  char code[] = "popr swap drop";
+  cell_t *b = BUILD(code);
+  cell_t *p = b->ptr[0];
+
+  arg(p, c->arg[0]);
+
+  closure_shrink(c, 1);
+  c->func = func_id;
+  c->arg[0] = ref(p);
+  c->arg[1] = 0;
+  drop(b);
+  return r_retry;
 }

@@ -67,3 +67,5 @@
 : [0 |] dup 4 swap pushl popr swap drop swap 3 swap pushl popr swap drop +
 : [1] [3] | popr pushr popr
 : [0 1 |] dup popr swap drop swap popr swap drop
+
+@: [1 [swap 1+ swap force dup pushl pushl popr swap drop]] [dup] . popr . popr
