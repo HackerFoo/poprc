@@ -4,8 +4,12 @@ endif
 ifeq ($(CC),gcc)
 	CFLAGS=-falign-functions=4 -Wall -g $(COPT)
 else
-	CFLAGS=-Wall -g $(COPT)
+	CFLAGS=-Wall $(COPT)
 endif
+ifeq ($(CC),emcc)
+	CFLAGS += -DNDEBUG
+endif
+
 OBJS := $(patsubst %.c, build/%.o, $(wildcard *.c))
 GEN := $(patsubst %.c, gen/%.h, $(wildcard *.c))
 
@@ -14,14 +18,19 @@ all: eval
 
 include Makefile.gen
 
+ifeq ($(USE_LINENOISE),y)
+	OBJS += build/linenoise.o
+	CFLAGS += -DUSE_LINENOISE
+endif
+
 debug:
 	echo $(OBJS:.o=.d)
 
 # modified from http://scottmcpeak.com/autodepend/autodepend.html
 
 # link
-eval: $(OBJS) build/linenoise.o
-	$(CC) $(OBJS) build/linenoise.o -o eval
+eval: $(OBJS)
+	$(CC) $(OBJS) -o eval
 
 # pull in dependency info for *existing* .o files
 -include $(OBJS:.o=.d)

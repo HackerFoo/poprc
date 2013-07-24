@@ -21,7 +21,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#ifdef USE_LINENOISE
 #include "linenoise/linenoise.h"
+#endif
 #include "gen/rt.h"
 #include "gen/eval.h"
 #include "gen/primitive.h"
@@ -44,60 +46,6 @@ char *show_alt_set(uintptr_t as) {
   *p++ = '\0';
   return out;
 }
-
-/*
-void print_sexpr_help(cell_t *);
-
-void print_list_help(cell_t *c) {
-  if(is_nil(c)) {
-    printf(" ] ");
-    return;
-  }
-  // assert(is_cons(c));
-  print_sexpr_help(c->arg[0]);
-  print_list_help(c->arg[1]);
-}
-
-void print_list(cell_t *c) {
-  printf(" [");
-  print_list_help(c);
-}
-
-void print_sexpr_help(cell_t *r) {
-  if(!is_closure(r)) {
-    printf(" 0x%.16x", (int)(intptr_t)r);
-  } else if(is_reduced(r)) {
-    if(r->type == T_INT) {
-      printf(" %d", (int)r->val);
-    } else if(is_cons(r)) {
-      printf(" [");
-      print_sexpr_help(r->ptr);
-      printf(" ]");
-    } else if(r->type == T_FAIL) {
-      printf(" (FAIL)");
-    }
-  } else if(r->func == func_dep) {
-    printf(" (dep)");
-  } else {
-
-    int i;
-    int args = closure_args(r);
-
-    printf(" (%s", function_name(r->func));
-
-    for(i = 0; i < args; i++) {
-      print_sexpr_help(r->arg[i]);
-    }
-
-    printf(")");
-  }
-}
-
-void print_sexpr(cell_t *r) {
-  print_sexpr_help(r);
-  printf("\n");
-}
-*/
 
 char *function_name(reduce_t *f) {
   f = clear_ptr(f, 1);
@@ -211,6 +159,10 @@ void graph_cell(FILE *f, cell_t *c) {
   } else {
     for(i = 0; i < n; i++) {
       fprintf(f, "<tr><td port=\"arg%d\"><font color=\"lightgray\">%p</font></td></tr>", i, c->arg[i]);
+    }
+    if(c->func == func_id) {
+      fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
+	      show_alt_set((alt_set_t)c->arg[1]));
     }
   }
   fprintf(f, "</table>>\nshape = \"none\"\n];\n");
@@ -421,18 +373,12 @@ bool reduce_one(cell_t **cp) {
 }
 
 cell_t *reduce_alt(cell_t *c) {
-  cell_t *r, *t, *p = c;
+  cell_t *r, *p = c;
   cell_t **q = &r;
-  while(p) {
-    if(reduce_one(&p)) {
-      *q = p;
-      q = &p->alt;
-      p = p->alt;
-    } else {
-      t = ref(p->alt);
-      drop(p);
-      p = t;
-    }
+  while(p && reduce_one(&p)) {
+    *q = p;
+    q = &p->alt;
+    p = p->alt;
   }
   *q = 0;
   return r;
@@ -533,6 +479,7 @@ int main(int argc, char *argv[]) {
 #define GRAPH_FILE "cells.dot"
 #define REDUCED_GRAPH_FILE "reduced.dot"
 bool write_graph = false;
+#ifdef USE_LINENOISE
 void run_eval() {
   char *line;
   linenoiseSetCompletionCallback(completion);
@@ -540,7 +487,7 @@ void run_eval() {
   while((line = linenoise(": "))) {
     if(line[0] == '\0') {
       free(line);
-      break;
+      continue;
     }
     if(strcmp(line, ":m") == 0) {
       measure_display();
@@ -550,6 +497,9 @@ void run_eval() {
     } else if(strncmp(line, ":t ", 3) == 0) {
       if(line[3])
 	runTests(&line[3]);
+    } else if(strcmp(line, ":q") == 0) {
+      free(line);
+      break;
     } else {
       linenoiseHistoryAdd(line);
       linenoiseHistorySave(HISTORY_FILE);
@@ -562,7 +512,40 @@ void run_eval() {
     free(line);
   }
 }
+#else
+void run_eval() {
+  char buf[1024];
+  char *line;
+  while(printf(": "),
+        (line = fgets(buf, sizeof(buf), stdin))) {
+    char *p = line;
+    while(*p && *p != '\n') ++p;
+    *p = 0;
+    if(line[0] == '\0') {
+      continue;
+    }
+    if(strcmp(line, ":m") == 0) {
+      measure_display();
+    } else if(strcmp(line, ":g") == 0) {
+      write_graph = !write_graph;
+      printf("graph %s\n", write_graph ? "ON" : "OFF");
+    } else if(strncmp(line, ":t ", 3) == 0) {
+      if(line[3])
+	runTests(&line[3]);
+    } else if(strcmp(line, ":q") == 0) {
+      break;
+    } else {
+      cells_init();
+      measure_start();
+      eval(line, strlen(line));
+      measure_stop();
+      check_free();
+    }
+  }
+}
+#endif
 
+#ifdef USE_LINENOISE
 void completion(const char *buf, linenoiseCompletions *lc) {
   int n = strlen(buf);
   char comp[n+sizeof_field(word_entry_t, name)];
@@ -585,6 +568,7 @@ void completion(const char *buf, linenoiseCompletions *lc) {
     } while(strncmp(e->name, tok, tok_len) == 0);
   }
 }
+#endif
 
 bool is_num(char *str) {
   return char_class(str[0]) == CC_NUMERIC ||
@@ -736,26 +720,19 @@ void eval(char *str, unsigned int n) {
 }
 
 void runTests(char *path) {
-#if defined(__ANDROID__)
-  printf("getline() missing on Android\n");
-#else
-  size_t size;
+  char buf[1024];
   char *line = 0;
   FILE *f = fopen(path, "r");
-  while(getline(&line, &size, f) >= 0) {
-    if(line) {
-      if(line[0] == '@')
-	printf("%s", line);
-      else if(line[0] == ':') {
-	printf("%s", line);
-	cells_init();
-	eval(line, strlen(line));
-	check_free();
-      }
-      free(line);
-      line = 0;
+  if(!f) return;
+  while((line = fgets(buf, sizeof(buf), f))) {
+    if(line[0] == '@')
+      printf("%s", line);
+    else if(line[0] == ':') {
+      printf("%s", line);
+      cells_init();
+      eval(line, strlen(line));
+      check_free();
     }
   }
   fclose(f);
-#endif
 }

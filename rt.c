@@ -22,6 +22,7 @@
 #include "gen/primitive.h"
 
 // make sure &cells > 255
+void *data_start;
 cell_t cells[1<<16];
 cell_t *cells_ptr;
 uint8_t alt_cnt = 0;
@@ -39,11 +40,8 @@ measure_t measure, saved_measure;
 
 // #define CHECK_CYCLE
 
-#define data_start _DYNAMIC
-extern char data_start;
-
 bool is_data(void *p) {
-  return p >= (void *)&data_start;
+  return p >= data_start;
 }
 
 bool is_cell(void *p) {
@@ -135,19 +133,24 @@ cell_t *closure_split1(cell_t *c, int n) {
 }
 
 bool reduce(cell_t **cp) {
-  cell_t *c;
- retry:
-  c = clear_ptr(*cp, 1);
-  if(!c || !closure_is_ready(c)) return false;
-  assert(is_closure(c) &&
-	 closure_is_ready(c));
-  measure.reduce_cnt++;
-  switch(c->func(cp)) {
-  case r_fail: return false;
-  case r_success: return true;
-  case r_retry: goto retry;
-  default: return false;
+  cell_t *c, *t;
+  while((c = clear_ptr(*cp, 1))) {
+    assert(is_closure(c));
+    if(!closure_is_ready(c)) return false;
+    measure.reduce_cnt++;
+    switch(c->func(cp)) {
+    case r_fail:
+      t = ref((*cp)->alt);
+      drop(*cp);
+      *cp = t;
+    case r_retry:
+      continue;
+    case r_success: return true;
+    default: return false;
+    }
   }
+  *cp = &fail_cell;
+  return false;
 }
 
 bool reduce_partial(cell_t **cp) {
@@ -186,6 +189,9 @@ bool check_cycle() {
 #endif
 
 void cells_init() {
+  data_start = (void *)cells;
+  if((void *)&fail_cell < data_start) data_start = &fail_cell;
+  if((void *)hole < data_start) data_start = hole;
   int i;
   const unsigned int n = LENGTH(cells)-1;
 
@@ -229,6 +235,7 @@ cell_t *closure_alloc_cells(int size) {
   cell_t *ptr = cells_next(), *c = ptr;
   cell_t *mark = ptr;
   int cnt = 0;
+  (void)mark;
 
   // search for contiguous chunk
   while(cnt < size) {
