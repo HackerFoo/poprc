@@ -990,7 +990,7 @@ void zero_tmps(cell_t *r) {
   drop(t);
 
   traverse(r, {
-      zero_tmps(*p);
+      zero_tmps(clear_ptr(*p, 3));
     }, ARGS | PTRS | ALT);
 }
 

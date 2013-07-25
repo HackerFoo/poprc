@@ -3,11 +3,12 @@ ifeq ($(CC),cc)
 endif
 ifeq ($(CC),gcc)
 	CFLAGS=-falign-functions=4 -Wall -g $(COPT)
-else
-	CFLAGS=-Wall $(COPT)
+endif
+ifeq ($(CC),clang)
+	CFLAGS=-Wall -g $(COPT)
 endif
 ifeq ($(CC),emcc)
-	CFLAGS += -DNDEBUG -DEMSCRIPTEN
+	CFLAGS = -Wall -DNDEBUG -DEMSCRIPTEN $(COPT)
 endif
 
 OBJS := $(patsubst %.c, build/%.o, $(wildcard *.c))
@@ -34,7 +35,7 @@ eval: $(OBJS)
 
 eval.js:
 	make CC=emcc $(OBJS)
-	emcc $(OBJS) -o eval.js -s EXPORTED_FUNCTIONS="['_eval']"
+	emcc $(OBJS) -o eval.js -s EXPORTED_FUNCTIONS="['_eval', '_cells_init']"
 
 # pull in dependency info for *existing* .o files
 -include $(OBJS:.o=.d)
@@ -59,5 +60,5 @@ scan: clean
 
 # remove compilation products
 clean:
-	rm -f eval
+	rm -f eval eval.js
 	rm -rf build gen

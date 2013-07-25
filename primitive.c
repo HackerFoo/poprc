@@ -38,7 +38,7 @@
     *-----------------------------------------------*/
 
 /* must be in ascending order */
-word_entry_t word_table[26] = {
+word_entry_t word_table[27] = {
   {"!", func_assert, 1, 1},
   {"'", func_quote, 1, 1},
   {"*", func_mul, 2, 1},
@@ -64,7 +64,8 @@ word_entry_t word_table[26] = {
   {"pushl", func_pushl, 2, 1},
   {"pushr", func_pushr, 2, 1},
   {"swap", func_swap, 2, 2},
-  {"|", func_alt, 2, 1}
+  {"|", func_alt, 2, 1},
+  {"||", func_alt2, 2, 1}
 };
 
 result_t func_op2(cell_t **cp, intptr_t (*op)(intptr_t, intptr_t)) {
@@ -280,6 +281,18 @@ result_t func_alt(cell_t **cp) {
   r0->arg[1] = (cell_t *)bm(a, 0);
   cell_t *r1 = id(ref(c->arg[1]));
   r1->arg[1] = (cell_t *)bm(a, 1);
+  r0->alt = r1;
+  *cp = r0;
+  drop(c);
+  return r_retry;
+}
+
+result_t func_alt2(cell_t **cp) {
+  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *r0 = id(ref(c->arg[0]));
+  r0->arg[1] = 0;
+  cell_t *r1 = id(ref(c->arg[1]));
+  r1->arg[1] = 0;
   r0->alt = r1;
   *cp = r0;
   drop(c);

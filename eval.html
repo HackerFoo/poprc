@@ -1,0 +1,40 @@
+<head>
+  <title>pegc</title>
+  <script src="js/jquery-1.7.1.min.js"></script>
+  <script src="js/jquery.terminal-min.js"></script>
+  <script>
+    var term;
+    var Module = {
+      'print' : function(str) { term.echo(str); }
+    };
+  </script>
+  <script src="eval.js"></script>
+  <link href="css/jquery.terminal.css" rel="stylesheet"/>
+</head>
+<body>
+
+</body>
+<script>
+  cells_init = Module.cwrap('cells_init', 'void', []);
+
+  function eval_peg(str) {
+    Module.ccall('eval', 'undefined', ['string', 'number'], [str, str.length]);
+  }
+
+  cells_init();
+
+  function interpret(command, term) {
+    eval_peg(command);
+  }
+
+  var termOptions = {
+    onInit: function(term) {
+    },
+    prompt: ': '
+  }
+
+  jQuery(document).ready(function($) {
+    term = $('body').terminal(interpret, termOptions);
+  });
+
+</script>
