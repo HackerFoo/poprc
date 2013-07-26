@@ -5,14 +5,21 @@
   <script>
     var term;
     var Module = {
-      'print' : function(str) { term.echo(str); }
+      'print' : function(str) { term.echo(str); },
+/*
+      'preRun' : function() {
+         var print = function(str) { term.echo(str) };
+         var printErr = function(str) { term.err(str) };
+         FS.init(undefined, print, printErr);
+      }
+*/
     };
   </script>
   <script src="eval.js"></script>
   <link href="css/jquery.terminal.css" rel="stylesheet"/>
 </head>
 <body>
-
+  <div id="term"></div>
 </body>
 <script>
   cells_init = Module.cwrap('cells_init', 'void', []);
@@ -24,17 +31,18 @@
   cells_init();
 
   function interpret(command, term) {
-    eval_peg(command);
+    if(command != '') {
+      eval_peg(command);
+    }
   }
 
   var termOptions = {
-    onInit: function(term) {
-    },
-    prompt: ': '
+    prompt: ': ',
+    greetings: "[[;#f00;;]Peg Interpreter\nCopyright 2013 Dustin DeWeese]\n"
   }
 
   jQuery(document).ready(function($) {
-    term = $('body').terminal(interpret, termOptions);
+    term = $('#term').terminal(interpret, termOptions);
   });
 
 </script>

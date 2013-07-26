@@ -355,7 +355,7 @@ result_t func_force(cell_t **cp) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = is_hole(c->arg[2]) ? 0 : c->arg[2];
   bool s = reduce(&c->arg[0]) & reduce(&c->arg[1]);
-  cell_t *alt = closure_split(c, 2);
+  cell_t *alt = s ? closure_split(c, 2) : 0;
   cell_t *d_alt = 0;
   if(alt) {
     if(d) d_alt = alt->arg[2] = dep(ref(alt));
