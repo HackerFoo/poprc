@@ -31,16 +31,11 @@ typedef enum {
 typedef struct cell cell_t;
 
 typedef uintptr_t alt_set_t;
-typedef enum result_t {
-  r_fail = 0,
-  r_success = 1,
-  r_retry = 2
-} result_t;
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Warray-bounds"
 #endif
-typedef result_t (reduce_t)(cell_t **cell);
+typedef bool (reduce_t)(cell_t **cell);
 struct __attribute__((packed)) cell {
   struct __attribute__((packed)) {
     reduce_t *func;
@@ -107,6 +102,7 @@ typedef struct measure_t {
 #define WIDTH(a) (sizeof((a)[0]))
 #define LENGTH(a) (sizeof(a) / WIDTH(a))
 #define FOREACH(a, i) for(i = 0; i < LENGTH(a); i++)
+#define sizeof_field(s, f) sizeof(((s *)0)->f)
 
 #define min(a, b) ((a) <= (b) ? (a) : (b))
 #define max(a, b) ((a) >= (b) ? (a) : (b))

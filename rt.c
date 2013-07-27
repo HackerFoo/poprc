@@ -133,21 +133,12 @@ cell_t *closure_split1(cell_t *c, int n) {
 }
 
 bool reduce(cell_t **cp) {
-  cell_t *c, *t;
+  cell_t *c;
   while((c = clear_ptr(*cp, 1))) {
     assert(is_closure(c));
     if(!closure_is_ready(c)) return false;
     measure.reduce_cnt++;
-    switch(c->func(cp)) {
-    case r_fail:
-      t = ref((*cp)->alt);
-      drop(*cp);
-      *cp = t;
-    case r_retry:
-      continue;
-    case r_success: return true;
-    default: return false;
-    }
+    if(c->func(cp)) return true;
   }
   *cp = &fail_cell;
   return false;
@@ -160,7 +151,7 @@ bool reduce_partial(cell_t **cp) {
   assert(is_closure(c) &&
 	 closure_is_ready(c));
   measure.reduce_cnt++;
-  return c->func(cp) != r_fail;
+  return c->func(cp);
 }
 
 cell_t *cells_next() {
@@ -312,11 +303,15 @@ void closure_free(cell_t *c) {
   closure_shrink(c, 0);
 }
 
-result_t func_reduced(cell_t **cp) {
+bool func_reduced(cell_t **cp) {
   cell_t *c = clear_ptr(*cp, 3);
   assert(is_closure(c));
   measure.reduce_cnt--;
-  return c->type != T_FAIL ? r_success : r_fail;
+  if(c->type != T_FAIL) return true;
+  else {
+    fail(cp);
+    return false;
+  }
 }
 
 cell_t *val(intptr_t x) {
@@ -598,12 +593,27 @@ cell_t *traverse_ref(cell_t *c, uint8_t flags) {
 
 void store_fail(cell_t *c, cell_t *alt) {
   closure_shrink(c, 1);
-  int n = c->n;
-  memset(c, 0, sizeof(cell_t));
-  c->n = n;
+  memset(c->arg, 0, sizeof(c->arg));
   c->func = func_reduced;
   c->type = T_FAIL;
   c->alt = alt;
+}
+
+void fail(cell_t **cp) {
+  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *alt = ref(c->alt);
+  drop(c);
+  if(c->func) {
+    traverse(c, {
+	cell_t *t = clear_ptr(*p, 3);
+	drop(t);
+      }, ARGS);
+    closure_shrink(c, 1);
+    memset(c->arg, 0, sizeof(c->arg));
+    c->func = func_reduced;
+    c->type = T_FAIL;
+  }
+  *cp = alt;
 }
 
 void store_reduced(cell_t *c, cell_t *r) {
@@ -749,14 +759,14 @@ cell_t *dep(cell_t *c) {
   return n;
 }
 
-result_t func_dep(cell_t **cp) {
+bool func_dep(cell_t **cp) {
   cell_t *c = clear_ptr(*cp, 3);
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
   cell_t *p = ref(c->arg[0]);
-  bool s = reduce_partial(&p);
+  reduce_partial(&p);
   drop(p);
-  return s ? r_retry : r_fail;
+  return c->func == func_reduced;
 }
 
 bool is_dep(cell_t *c) {
