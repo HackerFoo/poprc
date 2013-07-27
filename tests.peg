@@ -70,3 +70,4 @@
 @: [1 [swap 1+ swap force dup pushl pushl popr swap drop]] [dup] . popr . popr
 @: [5 [swap [! 1-] [0 == ! 0 force swap drop] | pushl head swap force dup pushl pushl head]] [dup] . popr . popr
 @: [1 [swap ! 1- swap force dup pushl pushl head] [swap 0 == ! 1- force swap] || ] [dup] . popr . popr
+@: [100 [swap ! cut 1- swap force dup pushl pushl popr swap popr swap drop swap] [swap 0 == ! cut 1- force swap] || ] [dup] . popr . [swap] . popr

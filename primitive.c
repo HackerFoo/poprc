@@ -73,11 +73,13 @@ bool func_op2(cell_t **cp, intptr_t (*op)(intptr_t, intptr_t)) {
   cell_t *c = clear_ptr(*cp, 3);
   if(!(reduce(&c->arg[0]) &&
        reduce(&c->arg[1]))) goto fail;
-    c->alt = closure_split(c, 2);
+  c->alt = closure_split(c, 2);
   if(bm_conflict(c->arg[0]->alt_set,
 		 c->arg[1]->alt_set)) goto fail;
   cell_t *p = get(c->arg[0]);
   cell_t *q = get(c->arg[1]);
+  if(p->type != T_INT ||
+     q->type != T_INT ) goto fail;
   int val_size = min(p->val_size,
 		     q->val_size);
   res = vector(val_size);

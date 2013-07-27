@@ -136,7 +136,10 @@ bool reduce(cell_t **cp) {
   cell_t *c;
   while((c = clear_ptr(*cp, 1))) {
     assert(is_closure(c));
-    if(!closure_is_ready(c)) return false;
+    if(!closure_is_ready(c)) {
+      fail(cp);
+      continue;
+    }
     measure.reduce_cnt++;
     if(c->func(cp)) return true;
   }
@@ -147,7 +150,10 @@ bool reduce(cell_t **cp) {
 bool reduce_partial(cell_t **cp) {
   cell_t *c;
   c = clear_ptr(*cp, 1);
-  if(!c || !closure_is_ready(c)) return false;
+  if(!c || !closure_is_ready(c)) {
+    fail(cp);
+    return false;
+  }
   assert(is_closure(c) &&
 	 closure_is_ready(c));
   measure.reduce_cnt++;
@@ -371,6 +377,7 @@ cell_t *expand(cell_t *c, unsigned int s) {
     memcpy(new, c, cn_p * sizeof(cell_t));
     new->n = 0;
     traverse_ref(new, PTRS | ALT);
+    if(is_reduced(c)) alt_set_ref(c->alt_set);
     drop(c);
     return new;
   }
@@ -605,8 +612,9 @@ void fail(cell_t **cp) {
   drop(c);
   if(c->func) {
     traverse(c, {
-	cell_t *t = clear_ptr(*p, 3);
-	drop(t);
+	cell_t *x = clear_ptr(*p, 3);
+	if(!is_weak(c, x))
+	  drop(x);
       }, ARGS);
     closure_shrink(c, 1);
     memset(c->arg, 0, sizeof(c->arg));
@@ -767,7 +775,8 @@ bool func_dep(cell_t **cp) {
   /* don't need to drop arg, handled by other function */
   cell_t *p = ref(c->arg[0]);
   reduce_partial(&p);
-  drop(p);
+  if(p) drop(p);
+  else fail(cp);
   return false;
 }
 
