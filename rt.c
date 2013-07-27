@@ -624,9 +624,11 @@ void store_reduced(cell_t *c, cell_t *r) {
   if(size <= closure_cells(c)) {
     closure_shrink(c, size);
     memcpy(c, r, sizeof(cell_t) * size);
-    if(is_cell(r)) traverse_ref(r, ALT | ARGS | PTRS);
-    drop(r);
-  } else { /* TODO: must copy if not cell */
+    if(is_cell(r)) {
+      traverse_ref(r, ALT | PTRS);
+      drop(r);
+    }
+   } else { /* TODO: must copy if not cell */
     closure_shrink(c, 1);
     if(!is_cell(r)) {
       cell_t *t = closure_alloc_cells(size);
@@ -766,7 +768,7 @@ bool func_dep(cell_t **cp) {
   cell_t *p = ref(c->arg[0]);
   reduce_partial(&p);
   drop(p);
-  return c->func == func_reduced;
+  return false;
 }
 
 bool is_dep(cell_t *c) {
@@ -1093,6 +1095,7 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
   cell_t *n;
   if(c->alt == alt &&
      c->alt_set == alt_set) return c;
+  alt_set_ref(alt_set);
   if(!c->n) {
     n = c;
     drop(c->alt);
@@ -1109,7 +1112,6 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
     }
   }
   n->alt = alt;
-  alt_set_ref(alt_set);
   n->alt_set = alt_set;
   return n;
 }
