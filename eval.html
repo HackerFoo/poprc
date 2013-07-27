@@ -38,7 +38,13 @@
 
   var termOptions = {
     prompt: ': ',
-    greetings: "[[;#f00;;]Peg Interpreter\nCopyright 2013 Dustin DeWeese]\n"
+    greetings: "        ,-----------------, \n" +
+               " ,------' Peg Interpreter '------,\n" +
+               " | [[;#f00;;]Copyright 2013 Dustin DeWeese] |\n" +
+               " '-------------------------------'\n",
+    onClear: function(term) {
+      term.echo(this.greetings);
+    }
   }
 
   jQuery(document).ready(function($) {
