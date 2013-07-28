@@ -177,8 +177,8 @@ bool func_pushr(cell_t **cp) {
   if(!reduce(&c->arg[0])) goto fail;
   cell_t *res;
   c->alt = closure_split1(c, 0);
-  cell_t *p = get_(c->arg[0]);
-  cell_t *q = get_(c->arg[1]);
+  cell_t *p = get(c->arg[0]);
+  cell_t *q = get(c->arg[1]);
   alt_set_t alt_set = c->arg[0]->alt_set;
   alt_set_ref(alt_set);
   alt_set_drop(p->alt_set);
@@ -298,13 +298,6 @@ bool func_assert(cell_t **cp) {
   return false;
 }
 
-/* this function is problematic */
-cell_t *get_(cell_t *c) {
-  cell_t *p = ref(get(c));
-  drop(c);
-  return p;
-}
-
 bool func_id(cell_t **cp) {
   cell_t *c = clear_ptr(*cp, 3);
   alt_set_t alt_set = (alt_set_t)c->arg[1];
@@ -393,7 +386,7 @@ bool func_dup(cell_t **cp) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = is_hole(c->arg[1]) ? 0 : c->arg[1];
   if(!reduce(&c->arg[0])) goto fail;
-  cell_t *p = get_(c->arg[0]);
+  cell_t *p = get(c->arg[0]);
   if(d) {
     drop(c);
     store_reduced(d, ref(p));
@@ -411,116 +404,6 @@ bool func_dup(cell_t **cp) {
   return false;
 }
 
-cell_t *build(char *str, unsigned int n);
-#define BUILD(x) build((x), sizeof(x))
-
-bool func_ifte(cell_t **cp) {
-  cell_t *c = clear_ptr(*cp, 3);
-  char code[] = "[] pushl pushl swap pushr"
-    "[0 == ! force drop swap force drop]"
-    "[1 == ! force drop force drop] | . popr swap drop";
-  cell_t *b = BUILD(code);
-  cell_t *p = ref(b->ptr[0]);
-  drop(b);
-  arg(p, c->arg[2]);
-  arg(p, c->arg[1]);
-  arg(p, c->arg[0]);
-  if(!reduce(&p)) goto fail;
-  store_reduced(c, p);
-  return true;
-
- fail:
-  fail(cp);
-  return false;
-}
-
-bool func_dip11(cell_t **cp) {
-  cell_t *c = clear_ptr(*cp, 3);
-  cell_t *d = is_hole(c->arg[3]) ? 0 : c->arg[3];
-  char code[] = "swap pushr pushl popr "
-    "swap popr swap drop swap";
-  cell_t *b = BUILD(code);
-  cell_t *p = b->ptr[1];
-
-  arg(p, c->arg[2]);
-  arg(p, c->arg[1]);
-  arg(p, c->arg[0]);
-
-  closure_shrink(c, 1);
-  c->func = func_id;
-  c->arg[0] = ref(p);
-  c->arg[1] = 0;
-  c->arg[2] = 0;
-  if(d) {
-    drop(c);
-    d->func = func_id;
-    d->arg[0] = ref(b->ptr[0]);
-    d->arg[1] = 0;
-  }
-  drop(b);
-  return false;
-}
-
-bool func_dip12(cell_t **cp) {
-  cell_t *c = clear_ptr(*cp, 3);
-  cell_t *other2 = is_hole(c->arg[3]) ? 0 : c->arg[3];
-  cell_t *other1 = is_hole(c->arg[4]) ? 0 : c->arg[4];
-  char code[] = "swap pushr pushl popr swap pushl"
-    "[swap] . popr swap popr swap popr swap drop swap";
-  cell_t *b = BUILD(code);
-  cell_t *p = b->ptr[2];
-  arg(p, c->arg[2]);
-  arg(p, c->arg[1]);
-  arg(p, c->arg[0]);
-
-  closure_shrink(c, 1);
-  c->func = func_id;
-  c->arg[0] = ref(p);
-  c->arg[1] = 0;
-  c->arg[2] = 0;
-  if(other1) {
-    drop(c);
-    other1->func = func_id;
-    other1->arg[0] = ref(b->ptr[1]);
-    other1->arg[1] = 0;
-  }
-  if(other2) {
-    drop(c);
-    other2->func = func_id;
-    other2->arg[0] = ref(b->ptr[0]);
-    other2->arg[1] = 0;
-  }
-  drop(b);
-  return false;
-}
-
-bool func_dip21(cell_t **cp) {
-  cell_t *c = clear_ptr(*cp, 3);
-  cell_t *other = is_hole(c->arg[4]) ? 0 : c->arg[4];
-  char code[] = "swap pushr pushl pushl popr "
-    "swap popr swap drop swap";
-  cell_t *b = BUILD(code);
-  cell_t *p = b->ptr[1];
-  arg(p, c->arg[3]);
-  arg(p, c->arg[2]);
-  arg(p, c->arg[1]);
-  arg(p, c->arg[0]);
-
-  closure_shrink(c, 1);
-  c->func = func_id;
-  c->arg[0] = ref(p);
-  c->arg[1] = 0;
-  c->arg[2] = 0;
-  if(other) {
-    drop(c);
-    other->func = func_id;
-    other->arg[0] = ref(b->ptr[0]);
-    other->arg[1] = 0;
-  }
-  drop(b);
-  return false;
-}
-
 bool func_cut(cell_t **cp) {
   cell_t *c = *cp;
   cell_t *p = c->arg[0];
@@ -535,18 +418,65 @@ bool func_cut(cell_t **cp) {
   return false;
 }
 
-bool func_head(cell_t **cp) {
-  cell_t *c = clear_ptr(*cp, 3);
-  char code[] = "popr swap drop";
-  cell_t *b = BUILD(code);
-  cell_t *p = b->ptr[0];
+cell_t *build(char *str, unsigned int n);
 
-  arg(p, c->arg[0]);
+bool peg_func(cell_t **cp, int N_IN, int N_OUT,
+	      char *src, size_t size) {
+  cell_t *c = clear_ptr(*cp, 3);   
+  cell_t *d[N_OUT-1];
+  int i;
+  FOREACH(d, i) {
+    d[i] = c->arg[N_IN+N_OUT-2-i];
+  }
+  cell_t *b = build(src, size);
+  cell_t *p = b->ptr[N_OUT-1];
+
+  i = N_IN;
+  while(i--) arg(p, c->arg[i]);
 
   closure_shrink(c, 1);
   c->func = func_id;
   c->arg[0] = ref(p);
   c->arg[1] = 0;
+  c->arg[2] = 0;
+  FOREACH(d, i) {
+    if(!is_hole(d[i])) {
+      drop(c);
+      d[i]->func = func_id;
+      d[i]->arg[0] = ref(b->ptr[i]);
+      d[i]->arg[1] = 0;
+    }
+  }
   drop(b);
   return false;
+}
+
+bool func_ifte(cell_t **cp) {
+  char src[] = "[] pushl pushl swap pushr"
+    "[0 == ! force drop swap force drop]"
+    "[1 == ! force drop force drop] | . popr swap drop";
+  return peg_func(cp, 3, 1, src, sizeof(src));
+}
+
+bool func_dip11(cell_t **cp) {
+  char src[] = "swap pushr pushl popr "
+    "swap popr swap drop swap";
+  return peg_func(cp, 3, 2, src, sizeof(src));
+}
+
+ bool func_dip12(cell_t **cp) {
+  char src[] = "swap pushr pushl popr swap pushl"
+    "[swap] . popr swap popr swap popr swap drop";
+  return peg_func(cp, 3, 3, src, sizeof(src));
+}
+
+bool func_dip21(cell_t **cp) {
+  char src[] = "swap pushr pushl pushl popr "
+    "swap popr swap drop swap";
+  return peg_func(cp, 4, 2, src, sizeof(src));
+}
+
+bool func_head(cell_t **cp) {
+  char src[] = "popr swap drop";
+  return peg_func(cp, 1, 1, src, sizeof(src));
 }

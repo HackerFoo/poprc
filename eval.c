@@ -57,12 +57,11 @@ char *function_name(reduce_t *f) {
   CASE(reduced);
   CASE(compose);
   CASE(pushl);
-  //  CASE(pushr);
+  CASE(pushr);
   CASE(quote);
   CASE(dep);
   CASE(popr);
   CASE(alt);
-  //  CASE(concat);
   CASE(assert);
   CASE(id);
   //  CASE(collect);
@@ -75,6 +74,13 @@ char *function_name(reduce_t *f) {
   CASE(swap);
   CASE(drop);
   CASE(force);
+  CASE(cut);
+  CASE(alt2);
+  CASE(ifte);
+  CASE(dip11);
+  CASE(dip12);
+  CASE(dip21);
+  CASE(head);
   return "?";
 # undef CASE
 }
@@ -410,14 +416,7 @@ void show_alt(cell_t *c) {
     printf(" {}");
   }
 }
-/*
-void show_eval(cell_t *c) {
-  printf("[");
-  show_alt(reduce_alt(c));
-  drop(c);
-  printf(" ]\n");
-}
-*/
+
 void measure_start() {
   bzero(&measure, sizeof(measure));
   measure.start = clock();
@@ -447,31 +446,7 @@ void measure_display() {
 
 #ifndef EMSCRIPTEN
 int main(int argc, char *argv[]) {
-  unsigned int test_number;
-  if(argc != 2) {
-    run_eval();
-  } else if(strcmp("all", argv[1]) == 0) {
-    int i;
-    FOREACH(tests, i) {
-      printf("_________________________________"
-	     "(( test %-3d ))"
-	     "_________________________________\n", i);
-      cells_init();
-      measure_start();
-      tests[i]();
-      measure_stop();
-      check_free();
-    }
-  } else {
-    test_number = atoi(argv[1]);
-    if(test_number >= LENGTH(tests)) return -2;
-    cells_init();
-    //alloc_test();
-    measure_start();
-    tests[test_number]();
-    measure_stop();
-    check_free();
-  }
+  run_eval();
   measure_display();
   return 0;
 }

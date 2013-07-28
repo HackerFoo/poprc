@@ -701,13 +701,6 @@ bool is_list(cell_t *c) {
     (c->type == 0 || c->type > 255);
 }
 
-void shallow_unref(cell_t *c) {
-  if(is_closure(c)) {
-    if(c->n) --c->n;
-    else closure_free(c);
-  }
-}
-
 bool is_weak(cell_t *p, cell_t *c) {
   return c && is_dep(c) && (!c->arg[0] || c->arg[0] == p);
 }
@@ -900,7 +893,8 @@ void clear_bit(uint8_t *m, unsigned int x) {
 bool check_bit(uint8_t *m, unsigned int x) {
   return m[x >> 3] & (1 << (x & 7));
 }
-cell_t *collect;
+
+//cell_t *collect;
 
 /* reassemble a fragmented cell */
 /*
@@ -926,26 +920,7 @@ bool func_collect(cell_t *c) {
   return store_reduced(c, collect, b);
 }
 */
-/*
-cell_t *func2(reduce_t *f, unsigned int args, unsigned int out) {
-  assert(out >= 1);
-  cell_t *c, *p, *n = func(f, args + out - 1);
-  if(out > 1) {
-    --out;
-    c = p = dep(n);
-    arg(n, ref(p));
-    while(--out) {
-      p->next = dep(ref(n));
-      p = p->next;
-      arg(n, ref(p));
-    }
-    p->next = n;
-  } else {
-    c = n;
-  }
-  return c;
-}
-*/
+
 void *lookup(void *table, unsigned int width, unsigned int rows, const char *key) {
   unsigned int low = 0, high = rows, pivot;
   int c;
