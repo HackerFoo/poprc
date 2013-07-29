@@ -38,7 +38,7 @@
     '-----------------------------------------------*/
 
 /* must be in ascending order */
-word_entry_t word_table[27] = {
+word_entry_t word_table[28] = {
   {"!", func_assert, 1, 1},
   {"'", func_quote, 1, 1},
   {"*", func_mul, 2, 1},
@@ -56,6 +56,7 @@ word_entry_t word_table[27] = {
   {"dip21", func_dip21, 4, 2},
   {"drop", func_drop, 2, 1},
   {"dup", func_dup, 1, 2},
+  {"fib", func_fib, 1, 1},
   {"force", func_force, 2, 2},
   {"head", func_head, 1, 1},
   {"id", func_id, 1, 1},
@@ -177,11 +178,12 @@ bool func_pushr(cell_t **cp) {
   if(!reduce(&c->arg[0])) goto fail;
   cell_t *res;
   c->alt = closure_split1(c, 0);
-  cell_t *p = get(c->arg[0]);
-  cell_t *q = get(c->arg[1]);
+  cell_t *p = ref(get(c->arg[0]));
+  drop(c->arg[0]);
+  cell_t *q = c->arg[1];
   alt_set_t alt_set = c->arg[0]->alt_set;
   alt_set_ref(alt_set);
-  alt_set_drop(p->alt_set);
+  alt_set_drop(c->arg[0]->alt_set);
   int n = list_size(p);
   res = expand(p, 1);
   memmove(res->ptr+1, res->ptr, sizeof(cell_t *)*n);
@@ -386,7 +388,7 @@ bool func_dup(cell_t **cp) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = is_hole(c->arg[1]) ? 0 : c->arg[1];
   if(!reduce(&c->arg[0])) goto fail;
-  cell_t *p = get(c->arg[0]);
+  cell_t *p = c->arg[0];
   if(d) {
     drop(c);
     store_reduced(d, ref(p));
@@ -454,7 +456,8 @@ bool peg_func(cell_t **cp, int N_IN, int N_OUT,
 bool func_ifte(cell_t **cp) {
   char src[] = "[] pushl pushl swap pushr"
     "[0 == ! force drop swap force drop]"
-    "[1 == ! force drop force drop] | . popr swap drop";
+    "[1 == ! force drop force drop] || . popr cut swap drop";
+  //  "[1 == ! force drop force drop] | . popr swap drop";
   return peg_func(cp, 3, 1, src, sizeof(src));
 }
 
@@ -464,7 +467,7 @@ bool func_dip11(cell_t **cp) {
   return peg_func(cp, 3, 2, src, sizeof(src));
 }
 
- bool func_dip12(cell_t **cp) {
+bool func_dip12(cell_t **cp) {
   char src[] = "swap pushr pushl popr swap pushl"
     "[swap] . popr swap popr swap popr swap drop";
   return peg_func(cp, 3, 3, src, sizeof(src));
@@ -478,5 +481,19 @@ bool func_dip21(cell_t **cp) {
 
 bool func_head(cell_t **cp) {
   char src[] = "popr swap drop";
+  return peg_func(cp, 1, 1, src, sizeof(src));
+}
+
+bool func_fib(cell_t **cp) {
+  char src[] = "dup 2 < "
+    "[1 swap drop] "
+    "[dup 1- fib swap 2- fib +] "
+    "ifte pushl head";
+    /*
+    "[dup 2 >= ! swap force dup 1- fib "
+    "swap 2- fib + force swap drop] "
+    "[dup 2 < ! force drop] "
+    "| pushl head cut";
+    */
   return peg_func(cp, 1, 1, src, sizeof(src));
 }

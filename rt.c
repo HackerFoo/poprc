@@ -1101,6 +1101,7 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
 }
 
 alt_set_t alt_set_ref(alt_set_t alt_set) {
+  /*
   uintptr_t bit = (uintptr_t)1 << (sizeof(uintptr_t) * 4);
   uintptr_t *live = alt_live;
   while(bit) {
@@ -1108,10 +1109,12 @@ alt_set_t alt_set_ref(alt_set_t alt_set) {
     ++live;
     bit <<= 1;
   }
+  */
   return alt_set;
 }
 
 alt_set_t alt_set_drop(alt_set_t alt_set) {
+  /*
   uintptr_t bit = (uintptr_t)1 << (sizeof(uintptr_t) * 4);
   uintptr_t *live = alt_live;
   while(bit) {
@@ -1122,10 +1125,12 @@ alt_set_t alt_set_drop(alt_set_t alt_set) {
     ++live;
     bit <<= 1;
   }
+  */
   return alt_set;
 }
 
 uint8_t new_alt_id(uintptr_t n) {
+  /*
   uint8_t r = 0;
   while(r < ALT_SET_IDS) {
     if(alt_live[r]) ++r;
@@ -1136,4 +1141,6 @@ uint8_t new_alt_id(uintptr_t n) {
   }
   assert(false);
   return -1;
+  */
+  return alt_cnt++;
 }
