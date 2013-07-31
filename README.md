@@ -3,6 +3,8 @@ Peg Compiler
 
 This project is to implement a compiler for the Peg language.  The language has changed somewhat to support efficient compilation and type checking.
 
+[Try it out in your browser!](http://hackerfoo.com.nyud.net/peg) (works in Firefox and Chrome)
+
 Here is a quick description of the language as it is currently:
 
     1 2 +   -->   3
@@ -37,10 +39,6 @@ Some other primitives.  `dup` duplicates a value; notice how it respects the con
      [1] 2 pushr       -->   [ [ 1 2 ] ]
 
 Some other functions.
-
-Try it out!
-
-<iframe src="http://hackerfoo.com.nyud.net/peg" width="800" height="600"></iframe>
 
 License
 =======
