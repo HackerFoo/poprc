@@ -453,6 +453,38 @@ bool peg_func(cell_t **cp, int N_IN, int N_OUT,
   return false;
 }
 
+bool peg_func2(cell_t **cp, int N_IN, int N_OUT, cell_t *f) {
+  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *d[N_OUT-1];
+  int i;
+  FOREACH(d, i) {
+    d[i] = c->arg[N_IN+N_OUT-2-i];
+  }
+
+  cell_t *b = f;
+
+  i = N_IN;
+  while(i--) {
+    b = arg_nd(b->ptr[N_OUT-1], c->arg[i], b);
+  }
+
+  closure_shrink(c, 1);
+  c->func = func_id;
+  c->arg[0] = ref(b->ptr[N_OUT-1]);
+  c->arg[1] = 0;
+  c->arg[2] = 0;
+  FOREACH(d, i) {
+    if(!is_hole(d[i])) {
+      drop(c);
+      d[i]->func = func_id;
+      d[i]->arg[0] = ref(b->ptr[i]);
+      d[i]->arg[1] = 0;
+    }
+  }
+  drop(b);
+  return false;
+}
+
 bool func_ifte(cell_t **cp) {
   char src[] = "[] pushl pushl swap pushr"
     "[0 == ! force drop swap force drop]"
@@ -464,7 +496,8 @@ bool func_ifte(cell_t **cp) {
 bool func_dip11(cell_t **cp) {
   char src[] = "swap pushr pushl popr "
     "swap popr swap drop swap";
-  return peg_func(cp, 3, 2, src, sizeof(src));
+  cell_t *f = build(src, sizeof(src));
+  return peg_func2(cp, 3, 2, f);
 }
 
 bool func_dip12(cell_t **cp) {
