@@ -512,6 +512,8 @@ void run_eval() {
 	runTests(&line[3]);
     } else if(strcmp(line, ":q") == 0) {
       break;
+    } else if(strcmp(line, ":r") == 0) {
+      print_trace();
     } else {
       cells_init();
       measure_start();
@@ -713,4 +715,26 @@ void runTests(char *path) {
     }
   }
   fclose(f);
+}
+
+void print_trace() {
+  cell_t *p = trace;
+  int i, n;
+  while(p < trace_ptr) {
+    cell_t *c = p->tmp;
+    n = closure_args(p);
+    /*
+    while(is_marked(p->arg[n-1], 1)) {
+      printf("%ld ", p->arg[n-1] - cells);
+      n--;
+    }
+    */
+    printf("%ld <- ", c - cells);
+    for(i = 0; i < n; i++) {
+      if(is_cell(p->arg[i])) printf("%ld ", p->arg[i] - cells);
+      else printf("X ");
+    }
+    printf("%s\n", function_name(p->func));
+    p += closure_cells(p);
+  }
 }

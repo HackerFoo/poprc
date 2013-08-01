@@ -38,6 +38,21 @@ uintptr_t alt_live[sizeof(intptr_t) * 4];
 
 measure_t measure, saved_measure;
 
+cell_t trace[sizeof(cells)];
+cell_t *trace_ptr;
+
+void trace_init() {
+  memset(trace, 0, sizeof(trace));
+  trace_ptr = trace;
+}
+
+void trace_store(cell_t *c) {
+  memcpy(trace_ptr, c, sizeof(cell_t) * closure_cells(c));
+  trace_ptr->tmp = c;
+  ++trace_ptr;
+  assert((void *)trace_ptr < (void *)(&trace + 1));
+}
+
 // #define CHECK_CYCLE
 
 bool is_data(void *p) {
@@ -207,6 +222,8 @@ void cells_init() {
   cells_ptr = &cells[0];
   assert(check_cycle());
   alt_cnt = 0;
+
+  trace_init();
 }
 
 void cell_alloc(cell_t *c) {
@@ -625,6 +642,7 @@ void fail(cell_t **cp) {
 }
 
 void store_reduced(cell_t *c, cell_t *r) {
+  trace_store(c);
   int n = c->n;
   r->func = func_reduced;
   alt_set_ref(r->alt_set);
