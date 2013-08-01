@@ -25,7 +25,8 @@
 typedef enum {
   T_FAIL = 1,
   T_INDIRECT,
-  T_INT
+  T_INT,
+  T_VAR
 } type_t;
 
 typedef struct cell cell_t;
@@ -84,7 +85,8 @@ typedef enum char_class_t {
   CC_NUMERIC,
   CC_ALPHA,
   CC_SYMBOL,
-  CC_BRACKET
+  CC_BRACKET,
+  CC_VAR
 } char_class_t;
 
 #define sizeof_field(s, f) sizeof(((s *)0)->f)

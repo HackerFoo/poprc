@@ -41,6 +41,8 @@ measure_t measure, saved_measure;
 cell_t trace[sizeof(cells)];
 cell_t *trace_ptr;
 
+uintptr_t var_cnt;
+
 void trace_init() {
   memset(trace, 0, sizeof(trace));
   trace_ptr = trace;
@@ -224,6 +226,7 @@ void cells_init() {
   alt_cnt = 0;
 
   trace_init();
+  var_cnt = 0;
 }
 
 void cell_alloc(cell_t *c) {
@@ -342,6 +345,16 @@ cell_t *val(intptr_t x) {
   c->func = func_reduced;
   c->type = T_INT;
   c->val[0] = x;
+  c->val_size = 1;
+  return c;
+}
+
+cell_t *var(intptr_t x) {
+  cell_t *c = closure_alloc(1);
+  c->func = func_reduced;
+  c->type = T_VAR;
+  c->val[0] = x;
+  if(x >= var_cnt) var_cnt = x+1;
   c->val_size = 1;
   return c;
 }

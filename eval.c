@@ -354,6 +354,11 @@ void show_func(cell_t *c) {
   printf(" %s", s);
 }
 
+void show_var(cell_t *c) {
+  assert(c->type == T_VAR);
+  printf(" ?%ld", c->val[0]);
+}
+
 void show_one(cell_t *c) {
   if(!c) {
     printf(" []");
@@ -365,6 +370,8 @@ void show_one(cell_t *c) {
     show_val(c);
   } else if(c->type == T_INDIRECT) {
     show_one((cell_t *)c->val[0]);
+  } else if(c->type == T_VAR) {
+    show_var(c);
   } else if(c->type == T_FAIL) {
     printf(" {}");
   } else if(is_list(c)) {
@@ -576,6 +583,10 @@ cell_t *word_parse(char *w,
     c = val(atoi(w));
     *in = 0;
     *out = 1;
+  } else if(w[0] == '?') {
+    c = var(atoi(w+1));
+    *in = 0;
+    *out = 1;
   } else {
     word_entry_t *e = lookup_word(w);
     /* disallow partial matches */
@@ -598,6 +609,7 @@ char_class_t char_class(char c) {
   if((c >= 'a' && c <= 'z') ||
      (c >= 'A' && c <= 'Z'))
     return CC_ALPHA;
+  if(c == '?') return CC_VAR;
   if(index("[](){}", c))
     return CC_BRACKET;
   return CC_SYMBOL;
@@ -625,8 +637,10 @@ char *rtok(char *str, char *ptr) {
   do {
     if(ptr > str) ptr--;
     else return ptr;
-    if(class == CC_NUMERIC && char_class(*ptr) == CC_ALPHA)
-      class = CC_ALPHA;
+    if(class == CC_NUMERIC) {
+      if(char_class(*ptr) == CC_ALPHA) class = CC_ALPHA;
+      if(*ptr == '?') class = CC_VAR;
+    }
   } while(char_class(*ptr) == class);
 
   /* handle negative numbers */
