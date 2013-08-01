@@ -79,17 +79,24 @@ bool func_op2(cell_t **cp, intptr_t (*op)(intptr_t, intptr_t)) {
 		 c->arg[1]->alt_set)) goto fail;
   cell_t *p = get(c->arg[0]);
   cell_t *q = get(c->arg[1]);
-  if(p->type != T_INT ||
-     q->type != T_INT ) goto fail;
-  int val_size = min(p->val_size,
-		     q->val_size);
-  res = vector(val_size);
-  res->type = T_INT;
-  res->func = func_reduced;
-  int i;
-  for(i = 0; i < val_size; ++i)
-    res->val[i] = op(p->val[i], q->val[i]);
-  res->val_size = val_size;
+  if(!(p->type == T_INT || p->type == T_VAR) ||
+     !(q->type == T_INT || q->type == T_VAR)) goto fail;
+  if(p->type == T_VAR ||
+     q->type == T_VAR) {
+    res = var();
+    if(!is_var(p)) trace_store(p);
+    if(!is_var(q)) trace_store(q);
+  } else {
+    int val_size = min(p->val_size,
+		       q->val_size);
+    res = vector(val_size);
+    res->type = T_INT;
+    res->func = func_reduced;
+    int i;
+    for(i = 0; i < val_size; ++i)
+      res->val[i] = op(p->val[i], q->val[i]);
+    res->val_size = val_size;
+  }
   res->alt_set =
     alt_set_ref(c->arg[0]->alt_set |
 		c->arg[1]->alt_set);
@@ -136,6 +143,7 @@ bool func_compose(cell_t **cp) {
   if(bm_conflict(c->arg[0]->alt_set,
 		 c->arg[1]->alt_set)) goto fail;
   cell_t *p = get(c->arg[0]), *q = get(c->arg[1]);
+  if(!is_list(p) || !is_list(q)) goto fail;
   res = compose_nd(ref(p), ref(q));
   res->alt_set =
     alt_set_ref(c->arg[0]->alt_set |
@@ -156,11 +164,16 @@ bool func_pushl(cell_t **cp) {
   if(!(reduce(&c->arg[1]))) goto fail;
   c->alt = closure_split1(c, 1);
   cell_t *q = get(c->arg[1]);
-  if(!is_list(q)) goto fail;
+  if(!(is_list(q) || is_var(q))) goto fail;
   cell_t *p = get(c->arg[0]);
   cell_t *res;
-  res = pushl_nd(ref(p), ref(q));
-  drop(res->alt);
+  if(is_var(q)) {
+    if(!is_var(p)) trace_store(p);
+    res = var();
+  } else {
+    res = pushl_nd(ref(p), ref(q));
+    drop(res->alt);
+  }
   res->alt = c->alt;
   res->alt_set = alt_set_ref(c->arg[1]->alt_set);
   drop(c->arg[0]);
@@ -255,10 +268,6 @@ bool func_popr(cell_t **cp) {
   c->arg[1] = 0;
   fail(cp);
   return false;
-}
-
-bool is_alt(cell_t *c) {
-  return c->func == func_alt;
 }
 
 bool func_alt(cell_t **cp) {

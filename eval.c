@@ -356,7 +356,7 @@ void show_func(cell_t *c) {
 
 void show_var(cell_t *c) {
   assert(c->type == T_VAR);
-  printf(" ?%ld", c->val[0]);
+  printf(" ?%ld", c - cells);
 }
 
 void show_one(cell_t *c) {
@@ -584,7 +584,7 @@ cell_t *word_parse(char *w,
     *in = 0;
     *out = 1;
   } else if(w[0] == '?') {
-    c = var(atoi(w+1));
+    c = var();
     *in = 0;
     *out = 1;
   } else {
@@ -632,14 +632,15 @@ char *rtok(char *str, char *ptr) {
   char_class_t class = char_class(*ptr);
 
   /* allow adjacent brackets to be seperately tokenized */
-  if(class == CC_BRACKET) return ptr;
+  if(class == CC_BRACKET ||
+     class == CC_VAR) return ptr;
 
   do {
     if(ptr > str) ptr--;
     else return ptr;
     if(class == CC_NUMERIC) {
       if(char_class(*ptr) == CC_ALPHA) class = CC_ALPHA;
-      if(*ptr == '?') class = CC_VAR;
+      //if(*ptr == '?') class = CC_VAR;
     }
   } while(char_class(*ptr) == class);
 
@@ -736,19 +737,19 @@ void print_trace() {
   int i, n;
   while(p < trace_ptr) {
     cell_t *c = p->tmp;
-    n = closure_args(p);
-    /*
-    while(is_marked(p->arg[n-1], 1)) {
-      printf("%ld ", p->arg[n-1] - cells);
-      n--;
+    printf("?%ld <-", c - cells);
+    if(is_reduced(p)) {
+      show_val(p);
+      printf("\n");
+    } else {
+      printf(" ");
+      n = closure_args(p);
+      for(i = 0; i < n; i++) {
+	if(is_cell(p->arg[i])) printf("?%ld ", p->arg[i] - cells);
+	else printf("?_ ");
+      }
+      printf("%s\n", function_name(p->func));
     }
-    */
-    printf("%ld <- ", c - cells);
-    for(i = 0; i < n; i++) {
-      if(is_cell(p->arg[i])) printf("%ld ", p->arg[i] - cells);
-      else printf("X ");
-    }
-    printf("%s\n", function_name(p->func));
     p += closure_cells(p);
   }
 }

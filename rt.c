@@ -41,8 +41,6 @@ measure_t measure, saved_measure;
 cell_t trace[sizeof(cells)];
 cell_t *trace_ptr;
 
-uintptr_t var_cnt;
-
 void trace_init() {
   memset(trace, 0, sizeof(trace));
   trace_ptr = trace;
@@ -226,7 +224,6 @@ void cells_init() {
   alt_cnt = 0;
 
   trace_init();
-  var_cnt = 0;
 }
 
 void cell_alloc(cell_t *c) {
@@ -349,13 +346,10 @@ cell_t *val(intptr_t x) {
   return c;
 }
 
-cell_t *var(intptr_t x) {
+cell_t *var() {
   cell_t *c = closure_alloc(1);
   c->func = func_reduced;
   c->type = T_VAR;
-  c->val[0] = x;
-  if(x >= var_cnt) var_cnt = x+1;
-  c->val_size = 1;
   return c;
 }
 
@@ -655,7 +649,7 @@ void fail(cell_t **cp) {
 }
 
 void store_reduced(cell_t *c, cell_t *r) {
-  trace_store(c);
+  if(r->type == T_VAR) trace_store(c);
   int n = c->n;
   r->func = func_reduced;
   alt_set_ref(r->alt_set);
@@ -730,6 +724,10 @@ bool is_nil(cell_t *c) {
 bool is_list(cell_t *c) {
   return c->func == func_reduced &&
     (c->type == 0 || c->type > 255);
+}
+
+bool is_var(cell_t *c) {
+  return c && is_reduced(c) && c->type == T_VAR;
 }
 
 bool is_weak(cell_t *p, cell_t *c) {
