@@ -630,6 +630,12 @@ void store_fail(cell_t *c, cell_t *alt) {
   c->alt = alt;
 }
 
+void store_var(cell_t *c) {
+  closure_shrink(c, 1);
+  c->func = func_reduced;
+  c->type = T_VAR;
+}
+
 void fail(cell_t **cp) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *alt = ref(c->alt);
@@ -649,7 +655,8 @@ void fail(cell_t **cp) {
 }
 
 void store_reduced(cell_t *c, cell_t *r) {
-  if(r->type == T_VAR) trace_store(c);
+  if(r->type == T_VAR &&
+     !is_dep(c)) trace_store(c);
   int n = c->n;
   r->func = func_reduced;
   alt_set_ref(r->alt_set);

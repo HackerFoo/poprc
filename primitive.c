@@ -192,7 +192,6 @@ bool func_pushr(cell_t **cp) {
   cell_t *res;
   c->alt = closure_split1(c, 0);
   cell_t *p = ref(get(c->arg[0]));
-  drop(c->arg[0]);
   cell_t *q = c->arg[1];
   alt_set_t alt_set = c->arg[0]->alt_set;
   alt_set_ref(alt_set);
@@ -203,6 +202,7 @@ bool func_pushr(cell_t **cp) {
   res->ptr[0] = q;
   res->alt = c->alt;
   res->alt_set = alt_set;
+  drop(c->arg[0]);
   store_reduced(c, res);
   return true;
 
@@ -236,23 +236,33 @@ bool func_popr(cell_t **cp) {
   }
 
   cell_t *p = get(c->arg[0]);
-  if(!(is_list(p) &&
-       list_size(p) > 0)) goto fail;
+  bool rvar = is_var(p);
+  if(!(rvar ||
+       (is_list(p) &&
+	list_size(p) > 0))) goto fail;
 
   if(d) {
     drop(c);
-    d->func = func_id;
-    d->arg[0] = ref(p->ptr[0]);
-    d->arg[1] = (cell_t *)alt_set_ref(c->arg[0]->alt_set);
+    if(rvar) {
+      store_var(d);
+    } else {
+      d->func = func_id;
+      d->arg[0] = ref(p->ptr[0]);
+      d->arg[1] = (cell_t *)alt_set_ref(c->arg[0]->alt_set);
+    }
   }
 
-  /* drop the right list element */
-  elems = list_size(p) - 1;
-  res_n = calculate_list_size(elems);
-  res = closure_alloc_cells(res_n);
-  int i;
-  for(i = 0; i < elems; ++i)
-    res->ptr[i] = ref(p->ptr[i+1]);
+  if(rvar) {
+    res = var();
+  } else {
+    /* drop the right list element */
+    elems = list_size(p) - 1;
+    res_n = calculate_list_size(elems);
+    res = closure_alloc_cells(res_n);
+    int i;
+    for(i = 0; i < elems; ++i)
+      res->ptr[i] = ref(p->ptr[i+1]);
+  }
 
   res->alt_set = alt_set_ref(p->alt_set);
   res->alt = c->alt;
@@ -300,7 +310,8 @@ bool func_assert(cell_t **cp) {
   if(!reduce(&c->arg[0])) goto fail;
   c->alt = closure_split1(c, 0);
   cell_t *p = get(c->arg[0]);
-  if(!p->type == T_INT || p->val[0] == 0) goto fail;
+  if(!((p->type == T_INT && p->val[0]) ||
+       is_var(p))) goto fail;
   store_reduced(c, mod_alt(c->arg[0], c->alt,
 			   c->arg[0]->alt_set));
   return true;
