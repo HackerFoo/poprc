@@ -2,9 +2,11 @@ ifeq ($(CC),cc)
 	CC=clang
 endif
 ifeq ($(CC),gcc)
+	CXX=g++
 	CFLAGS=-falign-functions=4 -Wall -g $(COPT)
 endif
 ifeq ($(CC),clang)
+	CXX=clang++
 	CFLAGS=-Wall -g $(COPT)
 endif
 ifeq ($(CC),emcc)
@@ -12,6 +14,7 @@ ifeq ($(CC),emcc)
 endif
 
 OBJS := $(patsubst %.c, build/%.o, $(wildcard *.c))
+OBJS += $(patsubst %.cpp, build/%.o, $(wildcard *.cpp))
 GEN := $(patsubst %.c, gen/%.h, $(wildcard *.c))
 
 .PHONY: all
@@ -24,6 +27,14 @@ ifeq ($(USE_LINENOISE),y)
 	CFLAGS += -DUSE_LINENOISE
 endif
 
+CXXFLAGS = $(CFLAGS)
+
+LLVM_COMPONENTS = core
+LLVM_CXXFLAGS = $(shell llvm-config --cxxflags)
+#LLVM_INCLUDE = $(shell llvm_include --includedir)
+LLVM_LDFLAGS = $(shell llvm-config --ldflags)
+LLVM_LIBS = $(shell llvm-config --libs $(LLVM_COMPONENTS))
+
 debug:
 	echo $(OBJS:.o=.d)
 
@@ -31,7 +42,7 @@ debug:
 
 # link
 eval: $(OBJS)
-	$(CC) $(OBJS) -o eval
+	$(CXX) $(OBJS) $(LLVM_LDFLAGS) $(LLVM_LIBS) -o eval
 
 eval.js:
 	make CC=emcc $(OBJS)
@@ -40,11 +51,15 @@ eval.js:
 # pull in dependency info for *existing* .o files
 -include $(OBJS:.o=.d)
 
+build/llvm.o: llvm.cpp llvm.h
+	@mkdir -p build
+	$(CXX) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -Igen llvm.cpp -o build/llvm.o
+
 # compile and generate dependency info;
 build/%.o: %.c
 	@mkdir -p build
 	@gcc -MM $(CFLAGS) -Igen $*.c -MG -MP -MT build/$*.o -MF build/$*.d
-	@make -f Makefile.gen build/$*.o > /dev/null
+	make -f Makefile.gen OBJS="$(OBJS)" build/$*.o > /dev/null
 	$(CC) -c $(CFLAGS) -Igen $*.c -o build/$*.o
 
 .SECONDARY: $(GEN)

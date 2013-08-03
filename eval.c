@@ -28,6 +28,7 @@
 #include "gen/eval.h"
 #include "gen/primitive.h"
 #include "gen/test.h"
+#include "llvm.h"
 
 char *show_alt_set(uintptr_t as) {
   static char out[sizeof(as)*4+1];
@@ -521,6 +522,8 @@ void run_eval() {
       break;
     } else if(strcmp(line, ":r") == 0) {
       print_trace();
+    } else if(strcmp(line, ":l") == 0) {
+      print_llvm_ir(0);
     } else {
       cells_init();
       measure_start();

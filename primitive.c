@@ -164,11 +164,12 @@ bool func_pushl(cell_t **cp) {
   if(!(reduce(&c->arg[1]))) goto fail;
   c->alt = closure_split1(c, 1);
   cell_t *q = get(c->arg[1]);
-  if(!(is_list(q) || is_var(q))) goto fail;
+  bool rvar = is_var(q);
+  if(!(rvar || is_list(q))) goto fail;
   cell_t *p = get(c->arg[0]);
   cell_t *res;
-  if(is_var(q)) {
-    if(!is_var(p)) trace_store(p);
+  if(rvar) {
+    //if(!is_var(p)) trace_store(p);
     res = var();
   } else {
     res = pushl_nd(ref(p), ref(q));
@@ -191,17 +192,25 @@ bool func_pushr(cell_t **cp) {
   if(!reduce(&c->arg[0])) goto fail;
   cell_t *res;
   c->alt = closure_split1(c, 0);
-  cell_t *p = ref(get(c->arg[0]));
-  cell_t *q = c->arg[1];
+  cell_t *p = get(c->arg[0]);
+  bool rvar = is_var(p);
+  if(!(rvar || is_list(p))) goto fail;
   alt_set_t alt_set = c->arg[0]->alt_set;
   alt_set_ref(alt_set);
   alt_set_drop(c->arg[0]->alt_set);
-  int n = list_size(p);
-  res = expand(p, 1);
-  memmove(res->ptr+1, res->ptr, sizeof(cell_t *)*n);
-  res->ptr[0] = q;
-  res->alt = c->alt;
-  res->alt_set = alt_set;
+
+  if(rvar) {
+    res = var();
+    /* should I trace unevaluated closures? */
+    drop(c->arg[1]);
+  } else {
+    int n = list_size(p);
+    res = expand(ref(p), 1);
+    memmove(res->ptr+1, res->ptr, sizeof(cell_t *)*n);
+    res->ptr[0] = c->arg[1];
+    res->alt = c->alt;
+    res->alt_set = alt_set;
+  }
   drop(c->arg[0]);
   store_reduced(c, res);
   return true;
@@ -311,6 +320,21 @@ bool func_assert(cell_t **cp) {
   c->alt = closure_split1(c, 0);
   cell_t *p = get(c->arg[0]);
   if(!((p->type == T_INT && p->val[0]) ||
+       is_var(p))) goto fail;
+  store_reduced(c, mod_alt(c->arg[0], c->alt,
+			   c->arg[0]->alt_set));
+  return true;
+ fail:
+  fail(cp);
+  return false;
+}
+
+bool type_check(cell_t **cp, type_t type) {
+  cell_t *c = clear_ptr(*cp, 3);
+  if(!reduce(&c->arg[0])) goto fail;
+  c->alt = closure_split1(c, 0);
+  cell_t *p = get(c->arg[0]);
+  if(!((p->type == type) ||
        is_var(p))) goto fail;
   store_reduced(c, mod_alt(c->arg[0], c->alt,
 			   c->arg[0]->alt_set));

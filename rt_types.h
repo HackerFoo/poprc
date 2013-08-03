@@ -26,7 +26,8 @@ typedef enum {
   T_FAIL = 1,
   T_INDIRECT,
   T_INT,
-  T_VAR
+  T_VAR,
+  T_IO
 } type_t;
 
 typedef struct cell cell_t;
