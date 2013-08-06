@@ -1180,3 +1180,87 @@ uint8_t new_alt_id(uintptr_t n) {
   */
   return alt_cnt++;
 }
+
+bool reduce_and_check(cell_t *c, int n, alt_set_t *alt_set) {
+
+  /* reduce all args until failure */
+  int i = n;
+  cell_t **p = c->arg;
+  while(i--) {
+    if(!reduce(p++)) return false;
+  }
+
+  /* generate alts */
+  c->alt = closure_split(c, n);
+
+  /* check for conflicting args */
+  i = n;
+  p = c->arg;
+  while(i--) {
+    alt_set_t p_as = (*p++)->alt_set;
+    if(bm_conflict(*alt_set, p_as))
+      return false;
+    *alt_set |= p_as;
+  }
+
+  return true;
+}
+
+void get_args(cell_t **dest, cell_t *const *src, int n) {
+  int i;
+  for(i = 0; i < n; i++) {
+    *dest++ = get(*src++);
+  }
+}
+
+bool handle_types(type_t *const types, cell_t **arg, cell_t **res, int n) {
+  int i;
+  cell_t **p = arg;
+  type_t *t = types;
+  bool contains_var = false;
+  for(i = 0; i < n; i++) {
+    cell_t *a = *p++;
+    type_t type = *t++;
+    if(a->type == type) continue;
+    if(a->type == T_VAR) {
+      contains_var = true;
+      continue;
+    }
+    return false;
+  }
+  if(contains_var) {
+    p = arg;
+    *res = var();
+    for(i = 0; i < n; i++) {
+      cell_t *a = *p++;
+      if(!is_var(a)) trace_store(a);
+    }
+  }
+  return true;
+}
+
+void drop_multi(cell_t **a, int n) {
+  int i;
+  for(i = 0; i < n; i++) drop(*a++);
+}
+
+bool function_preamble(cell_t *c,
+		       alt_set_t *alt_set,
+		       cell_t **arg,
+		       type_t *const types,
+		       cell_t **res,
+		       int n) {
+  return reduce_and_check(c, n, alt_set) &&
+    (get_args(arg, c->arg, n),
+     handle_types(types, arg, res, n));
+}
+
+void function_epilogue(cell_t *c,
+		       alt_set_t alt_set,
+		       cell_t *res,
+		       int n) {
+  res->alt_set = alt_set_ref(alt_set);
+  res->alt = c->alt;
+  drop_multi(c->arg, n);
+  store_reduced(c, res);
+}

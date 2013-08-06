@@ -70,40 +70,29 @@ word_entry_t word_table[28] = {
 };
 
 bool func_op2(cell_t **cp, intptr_t (*op)(intptr_t, intptr_t)) {
-  cell_t *res;
-  cell_t *c = clear_ptr(*cp, 3);
-  if(!(reduce(&c->arg[0]) &&
-       reduce(&c->arg[1]))) goto fail;
-  c->alt = closure_split(c, 2);
-  if(bm_conflict(c->arg[0]->alt_set,
-		 c->arg[1]->alt_set)) goto fail;
-  cell_t *p = get(c->arg[0]);
-  cell_t *q = get(c->arg[1]);
-  if(!(p->type == T_INT || p->type == T_VAR) ||
-     !(q->type == T_INT || q->type == T_VAR)) goto fail;
-  if(p->type == T_VAR ||
-     q->type == T_VAR) {
-    res = var();
-    if(!is_var(p)) trace_store(p);
-    if(!is_var(q)) trace_store(q);
-  } else {
-    int val_size = min(p->val_size,
-		       q->val_size);
+  cell_t *res = 0;
+  cell_t *const c = clear_ptr(*cp, 3);
+  alt_set_t alt_set = 0;
+  static const int n = 2;
+  cell_t *arg[2];
+  static const type_t types[2] = {T_INT, T_INT};
+
+  if(!function_preamble(c, &alt_set, arg, (type_t * const) types, &res, n))
+     goto fail;
+
+  if(!res) {
+    /* computation */
+    int val_size = min(arg[0]->val_size,
+		       arg[1]->val_size);
     res = vector(val_size);
-    res->type = T_INT;
-    res->func = func_reduced;
     int i;
     for(i = 0; i < val_size; ++i)
-      res->val[i] = op(p->val[i], q->val[i]);
+      res->val[i] = op(arg[0]->val[i],
+		       arg[1]->val[i]);
     res->val_size = val_size;
   }
-  res->alt_set =
-    alt_set_ref(c->arg[0]->alt_set |
-		c->arg[1]->alt_set);
-  res->alt = c->alt;
-  drop(c->arg[0]);
-  drop(c->arg[1]);
-  store_reduced(c, res);
+
+  function_epilogue(c, alt_set, res, n);
   return true;
 
  fail:

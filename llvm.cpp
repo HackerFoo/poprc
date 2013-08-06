@@ -18,14 +18,14 @@ void printModule(Module *mod) {
 }
 
 Module *makeModule(cell_t *p) {
+  /* function :: (cell_t *)[] --> cell_t * */
   LLVMContext &ctx = getGlobalContext();
   Module *mod = new Module("test", ctx);
-  Constant *c = mod->getOrInsertFunction("add3",
-		     /* return type */	 IntegerType::get(ctx, 64),
-		     /* arg types   */   IntegerType::get(ctx, 64),
-					 IntegerType::get(ctx, 64),
-					 IntegerType::get(ctx, 64),
-					 NULL);
+  IntegerType *i64 = IntegerType::get(ctx, 64);
+  std::vector<Type *> arg_types(3, i64);
+  ArrayRef<Type *> arg_types_ref(arg_types);
+  FunctionType *t = FunctionType::get(i64, arg_types_ref, false);
+  Constant *c = mod->getOrInsertFunction("add3", t);
   Function *add3 = cast<Function>(c);
   add3->setCallingConv(CallingConv::C);
 
