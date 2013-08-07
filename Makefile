@@ -30,10 +30,11 @@ endif
 CXXFLAGS = $(CFLAGS)
 
 LLVM_COMPONENTS = core
-LLVM_CXXFLAGS = $(shell llvm-config --cxxflags)
-#LLVM_INCLUDE = $(shell llvm_include --includedir)
-LLVM_LDFLAGS = $(shell llvm-config --ldflags)
-LLVM_LIBS = $(shell llvm-config --libs $(LLVM_COMPONENTS))
+LLVM_CONFIG = llvm-config-3.4
+LLVM_CXXFLAGS = $(shell $(LLVM_CONFIG) --cxxflags)
+#LLVM_INCLUDE = $(shell $(LLVM_CONFIG) --includedir)
+LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags)
+LLVM_LIBS = $(shell $(LLVM_CONFIG) --libs $(LLVM_COMPONENTS))
 
 debug:
 	echo $(OBJS:.o=.d)
