@@ -29,7 +29,7 @@ endif
 
 CXXFLAGS = $(CFLAGS)
 
-LLVM_COMPONENTS = core
+LLVM_COMPONENTS = core jit native
 LLVM_CONFIG = llvm-config-3.4
 LLVM_CXXFLAGS = $(shell $(LLVM_CONFIG) --cxxflags)
 #LLVM_INCLUDE = $(shell $(LLVM_CONFIG) --includedir)

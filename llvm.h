@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
   void print_llvm_ir(cell_t *c);
+  void llvm_jit_test();
 
 #ifdef __cplusplus
 }

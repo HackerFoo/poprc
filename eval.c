@@ -465,49 +465,28 @@ int main(int argc, char *argv[]) {
 #define GRAPH_FILE "cells.dot"
 #define REDUCED_GRAPH_FILE "reduced.dot"
 bool write_graph = false;
-#ifdef USE_LINENOISE
+
 void run_eval() {
   char *line;
+#ifdef USE_LINENOISE
   linenoiseSetCompletionCallback(completion);
   linenoiseHistoryLoad(HISTORY_FILE);
-  while((line = linenoise(": "))) {
-    if(line[0] == '\0') {
-      free(line);
-      continue;
-    }
-    if(strcmp(line, ":m") == 0) {
-      measure_display();
-    } else if(strcmp(line, ":g") == 0) {
-      write_graph = !write_graph;
-      printf("graph %s\n", write_graph ? "ON" : "OFF");
-    } else if(strncmp(line, ":t ", 3) == 0) {
-      if(line[3])
-	runTests(&line[3]);
-    } else if(strcmp(line, ":q") == 0) {
-      free(line);
-      break;
-    } else {
-      linenoiseHistoryAdd(line);
-      linenoiseHistorySave(HISTORY_FILE);
-      cells_init();
-      measure_start();
-      eval(line, strlen(line));
-      measure_stop();
-      check_free();
-    }
-    free(line);
-  }
-}
+  while((line = linenoise(": ")))
 #else
-void run_eval() {
   char buf[1024];
-  char *line;
   while(printf(": "),
-        (line = fgets(buf, sizeof(buf), stdin))) {
+        (line = fgets(buf, sizeof(buf), stdin)))
+#endif
+  {
+#ifndef USE_LINENOISE
     char *p = line;
     while(*p && *p != '\n') ++p;
     *p = 0;
+#endif
     if(line[0] == '\0') {
+#ifdef USE_LINENOISE
+      free(line);
+#endif
       continue;
     }
     if(strcmp(line, ":m") == 0) {
@@ -519,21 +498,33 @@ void run_eval() {
       if(line[3])
 	runTests(&line[3]);
     } else if(strcmp(line, ":q") == 0) {
+#ifdef USE_LINENOISE
+      free(line);
+#endif
       break;
     } else if(strcmp(line, ":r") == 0) {
       print_trace();
     } else if(strcmp(line, ":l") == 0) {
       print_llvm_ir(0);
+    } else if(strcmp(line, ":j") == 0) {
+      cells_init();
+      llvm_jit_test();
     } else {
+#ifdef USE_LINENOISE
+      linenoiseHistoryAdd(line);
+      linenoiseHistorySave(HISTORY_FILE);
+#endif
       cells_init();
       measure_start();
       eval(line, strlen(line));
       measure_stop();
       check_free();
     }
+#ifdef USE_LINENOISE
+    free(line);
+#endif
   }
 }
-#endif
 
 #ifdef USE_LINENOISE
 void completion(const char *buf, linenoiseCompletions *lc) {

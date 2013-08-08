@@ -15,12 +15,18 @@
 #include <llvm/IR/Module.h>
 #include <llvm/Support/FormattedStream.h>
 #include <llvm/Support/MathExtras.h>
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/ExecutionEngine/JIT.h>
+#include <llvm/Support/TargetSelect.h>
 #include <algorithm>
-/*
-#include <llvm/IRBuilder.h>
-#include <llvm/Support/raw_ostream.h>
-*/
+#include <iostream>
 #include "llvm.h"
+
+extern "C" {
+#include "gen/rt.h"
+#include "gen/eval.h"
+#include "stdio.h"
+}
 
 using namespace llvm;
 
@@ -34,12 +40,21 @@ void setup_CallInst(CallInst *i, unsigned int attrs) {
   if(attrs & NOUNWIND) i->addAttribute(-1, Attribute::NoUnwind);
 }
 
+StructType *StructTy_cell;
+ArrayType* ArrayTy_types;
+FunctionType* FuncTy_func_op2;
+ArrayType* ArrayTy_arg;
+PointerType* PointerTy_cell;
+Function* func_function_preamble;
+Function* func_val;
+Function* func_function_epilogue;
+Function* func_fail;
+PointerType* PointerTy_i64;
 
-Function* define_func_op2(Module *mod) {
-
+void define_types_and_stuff(Module *mod) {
   // Type Definitions
   std::vector<Type*>FuncTy_func_op2_args;
-  StructType *StructTy_cell = mod->getTypeByName("cell");
+  StructTy_cell = mod->getTypeByName("cell");
   if (!StructTy_cell) {
     StructTy_cell = StructType::create(mod->getContext(), "cell");
   }
@@ -55,7 +70,7 @@ Function* define_func_op2(Module *mod) {
   PointerType* PointerTy_empty = PointerType::get(StructTy_empty, 0);
 
   StructTy_cell_header_fields.push_back(PointerTy_empty);
-  PointerType* PointerTy_cell = PointerType::get(StructTy_cell, 0);
+  PointerTy_cell = PointerType::get(StructTy_cell, 0);
 
   StructTy_cell_header_fields.push_back(PointerTy_cell);
   StructTy_cell_header_fields.push_back(PointerTy_cell);
@@ -86,18 +101,18 @@ Function* define_func_op2(Module *mod) {
   PointerType* PointerTy_cell_ptr = PointerType::get(PointerTy_cell, 0);
 
   FuncTy_func_op2_args.push_back(PointerTy_cell_ptr);
-  FunctionType* FuncTy_func_op2 = FunctionType::get(
+  FuncTy_func_op2 = FunctionType::get(
 					     /*Result=*/IntegerType::get(mod->getContext(), 1),
 					     /*Params=*/FuncTy_func_op2_args,
 					     /*isVarArg=*/false);
 
-  PointerType* PointerTy_i64 = PointerType::get(IntegerType::get(mod->getContext(), 64), 0);
+  PointerTy_i64 = PointerType::get(IntegerType::get(mod->getContext(), 64), 0);
 
-  ArrayType* ArrayTy_arg = ArrayType::get(PointerTy_cell, 2);
+  ArrayTy_arg = ArrayType::get(PointerTy_cell, 2);
 
   PointerType* PointerTy_i32 = PointerType::get(IntegerType::get(mod->getContext(), 32), 0);
 
-  ArrayType* ArrayTy_types = ArrayType::get(IntegerType::get(mod->getContext(), 32), 2);
+  ArrayTy_types = ArrayType::get(IntegerType::get(mod->getContext(), 32), 2);
 
   std::vector<Type*>FuncTy_function_preamble_args;
   FuncTy_function_preamble_args.push_back(PointerTy_cell);
@@ -138,7 +153,7 @@ Function* define_func_op2(Module *mod) {
 
   // Function Declarations
 
-  Function* func_function_preamble = mod->getFunction("function_preamble");
+  func_function_preamble = mod->getFunction("function_preamble");
   if (!func_function_preamble) {
     func_function_preamble = Function::Create(
 					      /*Type=*/FuncTy_function_preamble,
@@ -148,7 +163,7 @@ Function* define_func_op2(Module *mod) {
   }
   func_function_preamble->addAttribute(0, Attribute::ZExt);
 
-  Function* func_val = mod->getFunction("val");
+  func_val = mod->getFunction("val");
   if (!func_val) {
     func_val = Function::Create(
 				/*Type=*/FuncTy_val,
@@ -157,7 +172,7 @@ Function* define_func_op2(Module *mod) {
     func_val->setCallingConv(CallingConv::C);
   }
 
-  Function* func_function_epilogue = mod->getFunction("function_epilogue");
+  func_function_epilogue = mod->getFunction("function_epilogue");
   if (!func_function_epilogue) {
     func_function_epilogue = Function::Create(
 					      /*Type=*/FuncTy_function_epilogue,
@@ -166,7 +181,7 @@ Function* define_func_op2(Module *mod) {
     func_function_epilogue->setCallingConv(CallingConv::C);
   }
 
-  Function* func_fail = mod->getFunction("fail");
+  func_fail = mod->getFunction("fail");
   if (!func_fail) {
     func_fail = Function::Create(
 				 /*Type=*/FuncTy_fail,
@@ -174,6 +189,10 @@ Function* define_func_op2(Module *mod) {
 				 /*Name=*/"fail", mod); // (external, no body)
     func_fail->setCallingConv(CallingConv::C);
   }
+}
+
+Function* define_func_op2(Module *mod) {
+
 
   // Global Variable Declarations
 
@@ -343,29 +362,7 @@ Module *makeModule(cell_t *p) {
   /* function :: (cell_t *)[] --> cell_t * */
   LLVMContext &ctx = getGlobalContext();
   Module *mod = new Module("test", ctx);
-  /*
-  IntegerType *i64 = IntegerType::get(ctx, 64);
-  std::vector<Type *> arg_types(3, i64);
-  ArrayRef<Type *> arg_types_ref(arg_types);
-  FunctionType *t = FunctionType::get(i64, arg_types_ref, false);
-  Constant *c = mod->getOrInsertFunction("add3", t);
-  Function *add3 = cast<Function>(c);
-  add3->setCallingConv(CallingConv::C);
-
-  Value *x, *y, *z;
-  Function::arg_iterator args = add3->arg_begin();
-  (x = args++)->setName("x");
-  (y = args++)->setName("y");
-  (z = args++)->setName("z");
-
-  BasicBlock *block = BasicBlock::Create(getGlobalContext(), "entry", add3);
-  IRBuilder<> builder(block);
-
-  Value *u, *v;
-  u = builder.CreateBinOp(Instruction::Add, x, y, "u");
-  v = builder.CreateBinOp(Instruction::Add, u, z, "v");
-  builder.CreateRet(v);
-  */
+  define_types_and_stuff(mod);
   define_func_op2(mod);
   return mod;
 }
@@ -374,4 +371,38 @@ void print_llvm_ir(cell_t *c) {
   Module *m = makeModule(c);
   printModule(m);
   free(m);
+}
+
+static ExecutionEngine *engine = 0;
+
+void llvm_jit_test() {
+  InitializeNativeTarget();
+  LLVMContext &ctx = getGlobalContext();
+  Module *mod = new Module("module", ctx);
+  define_types_and_stuff(mod);
+  Function *lf = define_func_op2(mod);
+  std::string err = "";
+  engine = EngineBuilder(mod)
+    .setErrorStr(&err)
+    .setEngineKind(EngineKind::JIT)
+    .create();
+
+  engine->addGlobalMapping(func_function_preamble, (void *)&function_preamble);
+  engine->addGlobalMapping(func_val, (void *)&val);
+  engine->addGlobalMapping(func_function_epilogue, (void *)&function_epilogue);
+  engine->addGlobalMapping(func_fail, (void *)&fail);
+
+  lf->dump();
+  if(!engine) {
+    std::cout << err << std::endl;
+    return;
+  }
+  reduce_t *f = (reduce_t *)engine->getPointerToFunction(lf);
+  cell_t *c = closure_alloc(2);
+  c->func = f;
+  c->arg[0] = val(1);
+  c->arg[1] = val(2);
+  reduce(&c);
+  show_one(c);
+  std::cout << std::endl;
 }
