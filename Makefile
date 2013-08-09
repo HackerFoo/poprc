@@ -4,10 +4,12 @@ endif
 ifeq ($(CC),gcc)
 	CXX=g++
 	CFLAGS=-falign-functions=4 -Wall -g $(COPT)
+	CXXFLAGS=-falign-functions=4 -Wall -g $(COPT)
 endif
 ifeq ($(CC),clang)
 	CXX=clang++
 	CFLAGS=-Wall -g $(COPT)
+	CXXFLAGS=-Wall -g -std=c++11
 endif
 ifeq ($(CC),emcc)
 	CFLAGS = -Wall -DNDEBUG -DEMSCRIPTEN $(COPT)
@@ -26,8 +28,6 @@ ifeq ($(USE_LINENOISE),y)
 	OBJS += build/linenoise.o
 	CFLAGS += -DUSE_LINENOISE
 endif
-
-CXXFLAGS = $(CFLAGS)
 
 LLVM_COMPONENTS = core jit native
 LLVM_CONFIG = llvm-config-3.4
