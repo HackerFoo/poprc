@@ -435,14 +435,12 @@ bool is_offset(cell_t *c) {
   return !((intptr_t)c & ~0xff);
 }
 
-// args must be >= 1
 cell_t *func(reduce_t *f, int args) {
   assert(args >= 0);
   cell_t *c = closure_alloc(args);
-  assert(c->func == 0);
   c->func = f;
-  c->arg[0] = (cell_t *)(intptr_t)(args - 1);
-  closure_set_ready(c, false);
+  if(args) c->arg[0] = (cell_t *)(intptr_t)(args - 1);
+  closure_set_ready(c, !args);
   return c;
 }
 

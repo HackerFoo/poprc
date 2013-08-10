@@ -369,10 +369,13 @@ Function* wrap_func(std::string name, Function *func) {
   // Block comp (label_comp)
   {
     std::vector<Value *> int64_arg_val;
-    int64_arg_val.push_back(get_val(ptr_arg0, label_comp));
 
-    for(int i = 1; i < n; i++) {
-      int64_arg_val.push_back(get_val(index(ptr_arg_array, i, label_comp), label_comp));
+    if(n) {
+      int64_arg_val.push_back(get_val(ptr_arg0, label_comp));
+
+      for(int i = 1; i < n; i++) {
+	int64_arg_val.push_back(get_val(index(ptr_arg_array, i, label_comp), label_comp));
+      }
     }
 
     auto int64_sum = CallInst::Create(func, int64_arg_val, "", label_comp);
