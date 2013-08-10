@@ -502,13 +502,9 @@ void run_eval() {
       free(line);
 #endif
       break;
-    } else if(strcmp(line, ":r") == 0) {
-      print_trace();
-    } else if(strcmp(line, ":l") == 0) {
-      print_llvm_ir(0);
-    } else if(strcmp(line, ":j") == 0) {
+    } else if(strncmp(line, ":c ", 3) == 0) {
       cells_init();
-      llvm_jit_test();
+      compile_expr(line+3, strlen(line+3));
     } else {
 #ifdef USE_LINENOISE
       linenoiseHistoryAdd(line);
@@ -687,6 +683,16 @@ cell_t *build(char *str, unsigned int n) {
   return _build(str, &p);
 }
 
+void fill_args(cell_t *r) {
+  int n = list_size(r);
+  cell_t *l = r->ptr[n-1];
+  while(!closure_is_ready(l)) {
+    cell_t *v = var();
+    arg(l, v);
+    trace_store(v);
+  }
+}
+
 cell_t *_build(char *str, char **p) {
   cell_t *r = empty_list();
   while((parse_word(str, p, &r)));
@@ -695,6 +701,7 @@ cell_t *_build(char *str, char **p) {
 
 void eval(char *str, unsigned int n) {
   cell_t *c = build(str, n);
+  fill_args(c);
   if(write_graph) make_graph_all(GRAPH_FILE);
   reduce_list(c);
   if(write_graph) make_graph_all(REDUCED_GRAPH_FILE);
@@ -702,10 +709,18 @@ void eval(char *str, unsigned int n) {
   if(!closure_is_ready(c))
     printf("incomplete expression\n");
   else {
+    print_trace();
     show_list(c);
     drop(c);
     printf("\n");
   }
+}
+
+void compile_expr(char *str, unsigned int n) {
+  cell_t *c = build(str, n);
+  if(!c) return;
+  word_entry_t *e = lookup_word("func");
+  e->func = compile(c, &e->in, &e->out);
 }
 
 void runTests(char *path) {
@@ -733,7 +748,11 @@ void print_trace() {
     cell_t *c = p->tmp;
     printf("?%ld <-", c - cells);
     if(is_reduced(p)) {
-      show_val(p);
+      if(is_var(p)) {
+	printf(" arg");
+      } else {
+	show_val(p);
+      }
       printf("\n");
     } else {
       printf(" ");

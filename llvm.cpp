@@ -25,6 +25,7 @@
 extern "C" {
 #include "gen/rt.h"
 #include "gen/eval.h"
+#include "gen/primitive.h"
 #include "stdio.h"
 }
 
@@ -175,6 +176,70 @@ Function *make_add(std::string name, unsigned int n, Module *mod) {
   return f;
 }
 
+Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned int *out, Module *mod) {
+  int out_n = list_size(c), in_n = 0;
+  cell_t *l = c->ptr[out_n-1];
+  while(!closure_is_ready(l)) {
+    cell_t *v = var();
+    arg(l, v);
+    trace_store(v);
+    ++in_n;
+  }
+
+  *in = in_n;
+  *out = out_n;
+
+  reduce_list(c);
+
+  LLVMContext &ctx = mod->getContext();
+  Function *f = make_reducer(name, IntegerType::get(ctx, 64), in_n, mod);
+
+  BasicBlock* b =
+    BasicBlock::Create(ctx, "entry", f, 0);
+  Function::arg_iterator args = f->arg_end();
+  std::map<unsigned int, Value *> regs;
+
+  cell_t *p = trace;
+  while(p < trace_ptr) {
+    cell_t *c = p->tmp;
+    unsigned int ix = c-cells;
+    if(is_reduced(p)) {
+      if(is_var(p)) {
+	regs[ix] = --args;
+      } else {
+	regs[ix] = ConstantInt::get(ctx, APInt(64, p->val[0]));
+      }
+    } else {
+      if(p->func == func_add) {
+	regs[ix] = BinaryOperator::Create(Instruction::Add,
+					  regs[p->arg[0] - cells],
+					  regs[p->arg[1] - cells],
+					  "",
+					  b);
+      } else if(p->func == func_mul) {
+	regs[ix] = BinaryOperator::Create(Instruction::Mul,
+					  regs[p->arg[0] - cells],
+					  regs[p->arg[1] - cells],
+					  "",
+					  b);
+      } else if(p->func == func_sub) {
+	regs[ix] = BinaryOperator::Create(Instruction::Sub,
+					  regs[p->arg[0] - cells],
+					  regs[p->arg[1] - cells],
+					  "",
+					  b);
+      } else if(p->func == func_dup) {
+	regs[ix] = regs[p->arg[0] - cells];
+	if(!is_hole(p->arg[1])) regs[p->arg[1] - cells] = regs[p->arg[0] - cells];
+      }
+    }
+    p += closure_cells(p);
+  }
+  if(c->ptr[0]->type == T_INT) regs[c->ptr[0] - cells] = ConstantInt::get(ctx, APInt(64, c->ptr[0]->val[0]));
+  ReturnInst::Create(ctx, regs[c->ptr[0] - cells], b);
+  return f;
+}
+
 void load_constants(LLVMContext &ctx, unsigned int bits, ConstantInt **arr, unsigned int n) {
   int i;
   for(i = 0; i < n; i++) {
@@ -213,7 +278,9 @@ Value *index(Value *ptr, int x, BasicBlock *b) {
 				   b);
 }
 
-Function* wrap_func(std::string name, Function *func, int n, Module *mod) {
+Function* wrap_func(std::string name, Function *func) {
+  Module *mod = func->getParent();
+  int n = func->getFunctionType()->getNumParams();
   Function* func_wrapper = mod->getFunction(name);
   if(func_wrapper) return func_wrapper;
   LLVMContext &ctx = mod->getContext();
@@ -224,12 +291,8 @@ Function* wrap_func(std::string name, Function *func, int n, Module *mod) {
   // Global Variable Declarations
   Constant* const_array_types = ConstantArray::get(ArrayTy_types, std::vector<Constant *>(n, ConstantInt::get(ctx, APInt(32, T_INT))));
 
-  GlobalVariable* gvar_array_wrapper_types = new GlobalVariable(/*Module=*/*mod,
-								 /*Type=*/ArrayTy_types,
-								 /*isConstant=*/true,
-								 /*Linkage=*/GlobalValue::InternalLinkage,
-								/*Initializer=*/const_array_types,
-								 /*Name=*/"wrapper.types");
+  GlobalVariable* gvar_array_wrapper_types =
+    new GlobalVariable(*mod, ArrayTy_types, true, GlobalValue::InternalLinkage, const_array_types, "wrapper.types");
   gvar_array_wrapper_types->setAlignment(4);
 
   // Constant Definitions
@@ -367,24 +430,19 @@ Module *makeModule(cell_t *p) {
   LLVMContext &ctx = getGlobalContext();
   Module *mod = new Module("test", ctx);
   define_types(mod);
-  wrap_func("wrapped_add3", make_add("add3", 3, mod), 3, mod);
+  wrap_func("wrapped_add3", make_add("add3", 3, mod));
   return mod;
-}
-
-void print_llvm_ir(cell_t *c) {
-  Module *m = makeModule(c);
-  printModule(m);
-  free(m);
 }
 
 static ExecutionEngine *engine = 0;
 
-void llvm_jit_test() {
+reduce_t *compile(cell_t *c, unsigned int *in, unsigned int *out) {
   InitializeNativeTarget();
   LLVMContext &ctx = getGlobalContext();
   Module *mod = new Module("module", ctx);
   define_types(mod);
-  Function *lf = wrap_func("wrapped_add3", make_add("add3", 3, mod), 3, mod);
+  Function *f = compile_simple("compiled_func", c, in, out, mod);
+  Function *lf = wrap_func("wrapped_compiled_func", f);
   std::string err = "";
   engine = EngineBuilder(mod)
     .setErrorStr(&err)
@@ -396,18 +454,12 @@ void llvm_jit_test() {
   engine->addGlobalMapping(func_function_epilogue(mod), (void *)&function_epilogue);
   engine->addGlobalMapping(func_fail(mod), (void *)&fail);
 
-  lf->dump();
+  f->dump();
+  //lf->dump();
+
   if(!engine) {
     std::cout << err << std::endl;
-    return;
+    return NULL;
   }
-  reduce_t *f = (reduce_t *)engine->getPointerToFunction(lf);
-  cell_t *c = closure_alloc(3);
-  c->func = f;
-  c->arg[0] = val(1);
-  c->arg[1] = val(2);
-  c->arg[2] = val(3);
-  reduce(&c);
-  show_one(c);
-  std::cout << std::endl;
+  return (reduce_t *)engine->getPointerToFunction(lf);
 }

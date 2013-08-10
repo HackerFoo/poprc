@@ -7,8 +7,7 @@
 extern "C" {
 #endif
 
-  void print_llvm_ir(cell_t *c);
-  void llvm_jit_test();
+  reduce_t *compile(cell_t *c, unsigned int *in, unsigned int *out);
 
 #ifdef __cplusplus
 }

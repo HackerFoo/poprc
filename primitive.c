@@ -38,7 +38,7 @@
     '-----------------------------------------------*/
 
 /* must be in ascending order */
-word_entry_t word_table[28] = {
+word_entry_t word_table[29] = {
   {"!", func_assert, 1, 1},
   {"'", func_quote, 1, 1},
   {"*", func_mul, 2, 1},
@@ -58,6 +58,7 @@ word_entry_t word_table[28] = {
   {"dup", func_dup, 1, 2},
   {"fib", func_fib, 1, 1},
   {"force", func_force, 2, 2},
+  {"func", func_id, 1, 1},
   {"head", func_head, 1, 1},
   {"id", func_id, 1, 1},
   {"ifte", func_ifte, 3, 1},
