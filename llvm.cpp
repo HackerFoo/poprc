@@ -45,8 +45,6 @@ ConstantInt* const_int##bits[n]; \
 load_constants(ctx, bits, const_int##bits, n);
 
 StructType *StructTy_cell;
-ArrayType* ArrayTy_types;
-ArrayType* ArrayTy_arg;
 PointerType* PointerTy_cell;
 PointerType* PointerTy_cell_ptr;
 PointerType* PointerTy_i64;
@@ -86,10 +84,12 @@ Function *func_function_epilogue(Module *mod) {
   LLVMContext &ctx = mod->getContext();
   FunctionType *ft =
     FunctionType::get(Type::getVoidTy(ctx),
-		      std::vector<Type *> { PointerTy_cell,
-			  IntegerType::get(ctx, 64),
-			  PointerTy_cell,
-			  IntegerType::get(ctx, 32) },
+		      std::vector<Type *> {
+			PointerTy_cell,
+			IntegerType::get(ctx, 64),
+			PointerTy_cell,
+			IntegerType::get(ctx, 32)
+		      },
 		      false);
   f  = Function::Create(ft, GlobalValue::ExternalLinkage, "function_epilogue", mod);
   f->setCallingConv(CallingConv::C);
@@ -143,14 +143,8 @@ void define_types(Module *mod) {
 
 
   PointerTy_cell_ptr = PointerType::get(PointerTy_cell, 0);
-
   PointerTy_i64 = PointerType::get(IntegerType::get(ctx, 64), 0);
-
-  ArrayTy_arg = ArrayType::get(PointerTy_cell, 2);
-
   PointerTy_i32 = PointerType::get(IntegerType::get(ctx, 32), 0);
-
-  ArrayTy_types = ArrayType::get(IntegerType::get(ctx, 32), 2);
 }
 
 Function *make_reducer(std::string name, Type *type, unsigned int n, Module *mod) {
@@ -158,23 +152,27 @@ Function *make_reducer(std::string name, Type *type, unsigned int n, Module *mod
   if (!func) {
     std::vector<Type*> args(n, type);
     FunctionType* ft = FunctionType::get(type, args, false);
-    func = Function::Create(ft, GlobalValue::InternalLinkage, name, mod);
+    func = Function::Create(ft, GlobalValue::ExternalLinkage, name, mod);
     func->setCallingConv(CallingConv::C);
   }
   return func;
 }
 
-Function *make_add2(Module *mod) {
-  LLVMContext &ctx = mod->getContext();
-  Function *fn_add2 = make_reducer("add2", IntegerType::get(ctx, 64), 2, mod);
+Function *make_add(std::string name, unsigned int n, Module *mod) {
+  if(n < 1) return NULL;
 
-  Function::arg_iterator args = fn_add2->arg_begin();
-  Value *x = args++, *y = args++;
+  LLVMContext &ctx = mod->getContext();
+  Function *f = make_reducer(name, IntegerType::get(ctx, 64), n, mod);
+
   BasicBlock* b =
-    BasicBlock::Create(ctx, "entry", fn_add2, 0);
-  BinaryOperator *sum = BinaryOperator::Create(Instruction::Add, x, y, "", b);
+    BasicBlock::Create(ctx, "entry", f, 0);
+  Function::arg_iterator args = f->arg_begin();
+  Value *sum = args++;
+  for(int i = 1; i < n; i++) {
+    sum = BinaryOperator::Create(Instruction::Add, sum, args++, "", b);
+  }
   ReturnInst::Create(ctx, sum, b);
-  return fn_add2;
+  return f;
 }
 
 void load_constants(LLVMContext &ctx, unsigned int bits, ConstantInt **arr, unsigned int n) {
@@ -184,7 +182,7 @@ void load_constants(LLVMContext &ctx, unsigned int bits, ConstantInt **arr, unsi
   }
 }
 
-LoadInst *get_val(Instruction *ptr, BasicBlock *b) {
+Value *get_val(Value *ptr, BasicBlock *b) {
   LLVMContext &ctx = b->getContext();
   LoadInst* p = new LoadInst(ptr, "", false, b);
   p->setAlignment(16);
@@ -204,10 +202,10 @@ LoadInst *get_val(Instruction *ptr, BasicBlock *b) {
   return r;
 }
 
-Instruction *index(AllocaInst *ptr, int x, BasicBlock *b) {
+Value *index(Value *ptr, int x, BasicBlock *b) {
   LLVMContext &ctx = b->getContext();
   return GetElementPtrInst::Create(ptr,
-				   std::vector<Value *> { 
+				   std::vector<Value *> {
 				     ConstantInt::get(ctx, APInt(64, 0)),
 				     ConstantInt::get(ctx, APInt(64, x))
 				   },
@@ -215,49 +213,46 @@ Instruction *index(AllocaInst *ptr, int x, BasicBlock *b) {
 				   b);
 }
 
-Function* wrap_func(/*Function *func, int n,*/ Module *mod) {
-
+Function* wrap_func(std::string name, Function *func, int n, Module *mod) {
+  Function* func_wrapper = mod->getFunction(name);
+  if(func_wrapper) return func_wrapper;
   LLVMContext &ctx = mod->getContext();
 
+  ArrayType *ArrayTy_arg = ArrayType::get(PointerTy_cell, n);
+  ArrayType *ArrayTy_types = ArrayType::get(IntegerType::get(ctx, 32), n);
+
   // Global Variable Declarations
+  Constant* const_array_types = ConstantArray::get(ArrayTy_types, std::vector<Constant *>(n, ConstantInt::get(ctx, APInt(32, T_INT))));
 
   GlobalVariable* gvar_array_wrapper_types = new GlobalVariable(/*Module=*/*mod,
 								 /*Type=*/ArrayTy_types,
 								 /*isConstant=*/true,
 								 /*Linkage=*/GlobalValue::InternalLinkage,
-								 /*Initializer=*/0, // has initializer, specified below
+								/*Initializer=*/const_array_types,
 								 /*Name=*/"wrapper.types");
   gvar_array_wrapper_types->setAlignment(4);
 
   // Constant Definitions
 
-  const_int(64, 3);
-  const_int(32, 4);
+  const_int(64, 1);
   const_int(1, 2);
 
   ConstantInt* const_int64_not_3 = ConstantInt::get(ctx, APInt(64, ~3));
-  ConstantInt* const_int32_n = ConstantInt::get(ctx, APInt(32, 2));
+  ConstantInt* const_int32_n = ConstantInt::get(ctx, APInt(32, n));
 
   ConstantPointerNull* const_ptr_cell_null = ConstantPointerNull::get(PointerTy_cell);
-
-  Constant* const_ptr_types = ConstantExpr::getGetElementPtr(gvar_array_wrapper_types, std::vector<Constant *>(2, const_int64[0]));
-  Constant* const_array_types = ConstantArray::get(ArrayTy_types, std::vector<Constant *>(2, const_int32[T_INT]));
+  Constant* const_ptr_types = ConstantExpr::getGetElementPtr(gvar_array_wrapper_types,
+							     std::vector<Constant *>(2, const_int64[0]));
 
   // Global Variable Definitions
-  gvar_array_wrapper_types->setInitializer(const_array_types);
 
   FunctionType *FuncTy_wrapper = FunctionType::get(IntegerType::get(ctx, 1),
 						   std::vector<Type *> { PointerTy_cell_ptr },
 				                   false);
 
-  Function* func_wrapper = mod->getFunction("wrapper");
-  if (!func_wrapper) {
-    func_wrapper = Function::Create(
-				     /*Type=*/FuncTy_wrapper,
-				     /*Linkage=*/GlobalValue::ExternalLinkage,
-				     /*Name=*/"wrapper", mod);
-    func_wrapper->setCallingConv(CallingConv::C);
-  }
+  // function definition
+  func_wrapper = Function::Create(FuncTy_wrapper, GlobalValue::ExternalLinkage, name, mod);
+  func_wrapper->setCallingConv(CallingConv::C);
   func_wrapper->addAttribute(0, Attribute::ZExt);
   func_wrapper->addAttribute(-1, Attribute::NoUnwind);
 
@@ -273,93 +268,90 @@ Function* wrap_func(/*Function *func, int n,*/ Module *mod) {
   BasicBlock* label_finish = BasicBlock::Create(ctx, "finish",func_wrapper,0);
 
   // Block  (label_entry)
-  AllocaInst* ptr_res = new AllocaInst(PointerTy_cell, "res", label_entry);
-  ptr_res->setAlignment(8);
-  AllocaInst* ptr_alt_set = new AllocaInst(IntegerType::get(ctx, 64), "alt_set", label_entry);
-  ptr_alt_set->setAlignment(8);
-  AllocaInst* ptr_arg = new AllocaInst(ArrayTy_arg, "arg", label_entry);
-  ptr_arg->setAlignment(16);
-  (new StoreInst(const_ptr_cell_null, ptr_res, false, label_entry))->setAlignment(8);
-  LoadInst* ptr_cp_deref = new LoadInst(ptr_cp, "", false, label_entry);
-  ptr_cp_deref->setAlignment(8);
-  CastInst* int64_c = new PtrToIntInst(ptr_cp_deref, IntegerType::get(ctx, 64), "", label_entry);
-  BinaryOperator* int64_c_and_not_3 = BinaryOperator::Create(Instruction::And, int64_c, const_int64_not_3, "", label_entry);
-  CastInst* ptr_c = new IntToPtrInst(int64_c_and_not_3, PointerTy_cell, "c", label_entry);
-  (new StoreInst(const_int64[0], ptr_alt_set, false, label_entry))->setAlignment(8);
-  Instruction* ptr_arg0 = index(ptr_arg, 0, label_entry);
-  CallInst* int1_function_preamble_call =
-    CallInst::Create(func_function_preamble(mod), 
-		     std::vector<Value *> {
-		       ptr_c,
-		       ptr_alt_set,
-		       ptr_arg0,
-		       const_ptr_types,
-		       ptr_res,
-		       const_int32_n,
-		     },
-		     "",
-		     label_entry);
-  setup_CallInst(int1_function_preamble_call, ZEXT | NOUNWIND);
-
-  BranchInst::Create(label_if_test, label_fail, int1_function_preamble_call, label_entry);
+  Value *ptr_res, *ptr_arg_array, *ptr_alt_set, *ptr_c, *ptr_arg0;
+  {
+    ptr_res = new AllocaInst(PointerTy_cell, "res", label_entry);
+    ptr_alt_set = new AllocaInst(IntegerType::get(ctx, 64), "alt_set", label_entry);
+    ptr_arg_array = new AllocaInst(ArrayTy_arg, "arg", label_entry);
+    new StoreInst(const_ptr_cell_null, ptr_res, false, label_entry);
+    auto ptr_cp_deref = new LoadInst(ptr_cp, "", false, label_entry);
+    auto int64_c = new PtrToIntInst(ptr_cp_deref, IntegerType::get(ctx, 64), "", label_entry);
+    auto int64_c_and_not_3 = BinaryOperator::Create(Instruction::And, int64_c, const_int64_not_3, "", label_entry);
+    ptr_c = new IntToPtrInst(int64_c_and_not_3, PointerTy_cell, "c", label_entry);
+    new StoreInst(const_int64[0], ptr_alt_set, false, label_entry);
+    ptr_arg0 = index(ptr_arg_array, 0, label_entry);
+    auto int1_function_preamble_call =
+      CallInst::Create(func_function_preamble(mod),
+		       std::vector<Value *> {
+			 ptr_c,
+			   ptr_alt_set,
+			   ptr_arg0,
+			   const_ptr_types,
+			   ptr_res,
+			   const_int32_n,
+			   },
+		       "",
+		       label_entry);
+    setup_CallInst(int1_function_preamble_call, ZEXT | NOUNWIND);
+    BranchInst::Create(label_if_test, label_fail, int1_function_preamble_call, label_entry);
+  }
 
   // Block if_test (label_if_test)
-  LoadInst* ptr_41 = new LoadInst(ptr_res, "", false, label_if_test);
-  ptr_41->setAlignment(8);
-  ICmpInst* int1_42 = new ICmpInst(*label_if_test, ICmpInst::ICMP_EQ, ptr_41, const_ptr_cell_null, "");
-  BranchInst::Create(label_comp, label_epilogue, int1_42, label_if_test);
+  {
+    auto res = new LoadInst(ptr_res, "", false, label_if_test);
+    auto b = new ICmpInst(*label_if_test, ICmpInst::ICMP_EQ, res, const_ptr_cell_null, "");
+    BranchInst::Create(label_comp, label_epilogue, b, label_if_test);
+  }
 
   // Block comp (label_comp)
-  LoadInst* int64_arg0_val = get_val(ptr_arg0, label_comp);
-  Instruction* ptr_arg1 = index(ptr_arg, 1, label_comp);
-  LoadInst* int64_arg1_val = get_val(ptr_arg1, label_comp);
+  {
+    std::vector<Value *> int64_arg_val;
+    int64_arg_val.push_back(get_val(ptr_arg0, label_comp));
 
-  Function *fn_add2 = make_add2(mod);
-  CallInst *int64_sum =
-    CallInst::Create(fn_add2,
-		     std::vector<Value *> {
-		       int64_arg0_val,
-		       int64_arg1_val
-		     },
-		     "",
-		     label_comp);
+    for(int i = 1; i < n; i++) {
+      int64_arg_val.push_back(get_val(index(ptr_arg_array, i, label_comp), label_comp));
+    }
 
-  CallInst* ptr_func_val_call = CallInst::Create(func_val(mod), int64_sum, "", label_comp);
-  setup_CallInst(ptr_func_val_call, NOUNWIND);
-  (new StoreInst(ptr_func_val_call, ptr_res, false, label_comp))->setAlignment(8);
-  BranchInst::Create(label_epilogue, label_comp);
+    auto int64_sum = CallInst::Create(func, int64_arg_val, "", label_comp);
+    auto ptr_func_val_call = CallInst::Create(func_val(mod), int64_sum, "", label_comp);
+    setup_CallInst(ptr_func_val_call, NOUNWIND);
+    new StoreInst(ptr_func_val_call, ptr_res, false, label_comp);
+    BranchInst::Create(label_epilogue, label_comp);
+  }
 
   // Block epilogue (label_epilogue)
-  LoadInst* int64_altset = new LoadInst(ptr_alt_set, "", false, label_epilogue);
-  int64_altset->setAlignment(8);
-  LoadInst* ptr_res_deref = new LoadInst(ptr_res, "", false, label_epilogue);
-  ptr_res_deref->setAlignment(8);
-  CallInst* void_function_epilogue_call =
-    CallInst::Create(func_function_epilogue(mod),
-		     std::vector<Value *> {
-		       ptr_c,
-		       int64_altset,
-		       ptr_res_deref,
-		       const_int32_n
-		     },
-		     "",
-		     label_epilogue);
-  setup_CallInst(void_function_epilogue_call, NOUNWIND);
-
-  BranchInst::Create(label_finish, label_epilogue);
+  {
+    auto int64_altset = new LoadInst(ptr_alt_set, "", false, label_epilogue);
+    auto ptr_res_deref = new LoadInst(ptr_res, "", false, label_epilogue);
+    auto void_function_epilogue_call =
+      CallInst::Create(func_function_epilogue(mod),
+		       std::vector<Value *> {
+			 ptr_c,
+			 int64_altset,
+			 ptr_res_deref,
+			 const_int32_n
+		       },
+		       "",
+		       label_epilogue);
+    setup_CallInst(void_function_epilogue_call, NOUNWIND);
+    BranchInst::Create(label_finish, label_epilogue);
+  }
 
   // Block fail (label_fail)
-  CallInst* void_fail_call = CallInst::Create(func_fail(mod), ptr_cp, "", label_fail);
-  setup_CallInst(void_fail_call, NOUNWIND);
-
-  BranchInst::Create(label_finish, label_fail);
+  {
+    auto void_fail_call = CallInst::Create(func_fail(mod), ptr_cp, "", label_fail);
+    setup_CallInst(void_fail_call, NOUNWIND);
+    BranchInst::Create(label_finish, label_fail);
+  }
 
   // Block finish (label_finish)
-  PHINode* int1__0 = PHINode::Create(IntegerType::get(ctx, 1), 2, ".0", label_finish);
-  int1__0->addIncoming(const_int1[1], label_epilogue);
-  int1__0->addIncoming(const_int1[0], label_fail);
+  {
+    PHINode* ret_phi = PHINode::Create(IntegerType::get(ctx, 1), 2, ".0", label_finish);
+    ret_phi->addIncoming(const_int1[1], label_epilogue);
+    ret_phi->addIncoming(const_int1[0], label_fail);
+    ReturnInst::Create(ctx, ret_phi, label_finish);
+  }
 
-  ReturnInst::Create(ctx, int1__0, label_finish);
   return func_wrapper;
 }
 
@@ -375,7 +367,7 @@ Module *makeModule(cell_t *p) {
   LLVMContext &ctx = getGlobalContext();
   Module *mod = new Module("test", ctx);
   define_types(mod);
-  wrap_func(mod);
+  wrap_func("wrapped_add3", make_add("add3", 3, mod), 3, mod);
   return mod;
 }
 
@@ -392,7 +384,7 @@ void llvm_jit_test() {
   LLVMContext &ctx = getGlobalContext();
   Module *mod = new Module("module", ctx);
   define_types(mod);
-  Function *lf = wrap_func(mod);
+  Function *lf = wrap_func("wrapped_add3", make_add("add3", 3, mod), 3, mod);
   std::string err = "";
   engine = EngineBuilder(mod)
     .setErrorStr(&err)
@@ -410,10 +402,11 @@ void llvm_jit_test() {
     return;
   }
   reduce_t *f = (reduce_t *)engine->getPointerToFunction(lf);
-  cell_t *c = closure_alloc(2);
+  cell_t *c = closure_alloc(3);
   c->func = f;
   c->arg[0] = val(1);
   c->arg[1] = val(2);
+  c->arg[2] = val(3);
   reduce(&c);
   show_one(c);
   std::cout << std::endl;

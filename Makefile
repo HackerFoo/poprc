@@ -9,7 +9,7 @@ endif
 ifeq ($(CC),clang)
 	CXX=clang++
 	CFLAGS=-Wall -g $(COPT)
-	CXXFLAGS=-Wall -g -std=c++11
+	CXXFLAGS=-Wall -g -std=c++11 $(COPT)
 endif
 ifeq ($(CC),emcc)
 	CFLAGS = -Wall -DNDEBUG -DEMSCRIPTEN $(COPT)
