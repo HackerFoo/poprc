@@ -70,7 +70,7 @@ word_entry_t word_table[29] = {
   {"||", func_alt2, 2, 1}
 };
 
-bool func_op2(cell_t **cp, intptr_t (*op)(intptr_t, intptr_t)) {
+bool func_op2(cell_t **cp, type_rep_t t, intptr_t (*op)(intptr_t, intptr_t)) {
   cell_t *res = 0;
   cell_t *const c = clear_ptr(*cp, 3);
   alt_set_t alt_set = 0;
@@ -102,33 +102,34 @@ bool func_op2(cell_t **cp, intptr_t (*op)(intptr_t, intptr_t)) {
 }
 
 intptr_t add_op(intptr_t x, intptr_t y) { return x + y; }
-bool func_add(cell_t **cp) { return func_op2(cp, add_op); }
+bool func_add(cell_t **cp, type_rep_t t) { return func_op2(cp, t, add_op); }
 
 intptr_t mul_op(intptr_t x, intptr_t y) { return x * y; }
-bool func_mul(cell_t **cp) { return func_op2(cp, mul_op); }
+bool func_mul(cell_t **cp, type_rep_t t) { return func_op2(cp, t, mul_op); }
 
 intptr_t sub_op(intptr_t x, intptr_t y) { return x - y; }
-bool func_sub(cell_t **cp) { return func_op2(cp, sub_op); }
+bool func_sub(cell_t **cp, type_rep_t t) { return func_op2(cp, t, sub_op); }
 
 intptr_t gt_op(intptr_t x, intptr_t y) { return x > y; }
-bool func_gt(cell_t **cp) { return func_op2(cp, gt_op); }
+bool func_gt(cell_t **cp, type_rep_t t) { return func_op2(cp, t, gt_op); }
 
 intptr_t gte_op(intptr_t x, intptr_t y) { return x >= y; }
-bool func_gte(cell_t **cp) { return func_op2(cp, gte_op); }
+bool func_gte(cell_t **cp, type_rep_t t) { return func_op2(cp, t, gte_op); }
 
 intptr_t lt_op(intptr_t x, intptr_t y) { return x < y; }
-bool func_lt(cell_t **cp) { return func_op2(cp, lt_op); }
+bool func_lt(cell_t **cp, type_rep_t t) { return func_op2(cp, t, lt_op); }
 
 intptr_t lte_op(intptr_t x, intptr_t y) { return x <= y; }
-bool func_lte(cell_t **cp) { return func_op2(cp, lte_op); }
+bool func_lte(cell_t **cp, type_rep_t t) { return func_op2(cp, t, lte_op); }
 
 intptr_t eq_op(intptr_t x, intptr_t y) { return x == y; }
-bool func_eq(cell_t **cp) { return func_op2(cp, eq_op); }
+bool func_eq(cell_t **cp, type_rep_t t) { return func_op2(cp, t, eq_op); }
 
-bool func_compose(cell_t **cp) {
+bool func_compose(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *res;
-  if(!(reduce(&c->arg[0]) && reduce(&c->arg[1]))) goto fail;
+  if(!(reduce(&c->arg[0], T_LIST) &&
+       reduce(&c->arg[1], T_LIST))) goto fail;
   c->alt = closure_split(c, 2);
   if(bm_conflict(c->arg[0]->alt_set,
 		 c->arg[1]->alt_set)) goto fail;
@@ -149,9 +150,9 @@ bool func_compose(cell_t **cp) {
   return false;
 }
 
-bool func_pushl(cell_t **cp) {
+bool func_pushl(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
-  if(!(reduce(&c->arg[1]))) goto fail;
+  if(!(reduce(&c->arg[1], T_LIST))) goto fail;
   c->alt = closure_split1(c, 1);
   cell_t *q = get(c->arg[1]);
   bool rvar = is_var(q);
@@ -160,7 +161,7 @@ bool func_pushl(cell_t **cp) {
   cell_t *res;
   if(rvar) {
     //if(!is_var(p)) trace_store(p);
-    res = var();
+    res = var(T_LIST);
   } else {
     res = pushl_nd(ref(p), ref(q));
     drop(res->alt);
@@ -177,9 +178,9 @@ bool func_pushl(cell_t **cp) {
     return false;
 }
 
-bool func_pushr(cell_t **cp) {
+bool func_pushr(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
-  if(!reduce(&c->arg[0])) goto fail;
+  if(!reduce(&c->arg[0], T_LIST)) goto fail;
   cell_t *res;
   c->alt = closure_split1(c, 0);
   cell_t *p = get(c->arg[0]);
@@ -190,7 +191,7 @@ bool func_pushr(cell_t **cp) {
   alt_set_drop(c->arg[0]->alt_set);
 
   if(rvar) {
-    res = var();
+    res = var(T_LIST);
     /* should I trace unevaluated closures? */
     drop(c->arg[1]);
   } else {
@@ -210,20 +211,20 @@ bool func_pushr(cell_t **cp) {
   return false;
 }
 
-bool func_quote(cell_t **cp) {
+bool func_quote(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t res[2] = {{ .ptr = {c->arg[0]} }};
   store_reduced(c, res);
   return true;
 }
 
-bool func_popr(cell_t **cp) {
+bool func_popr(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *res;
   int res_n, elems;
   cell_t *alt = 0;
   cell_t *d = is_hole(c->arg[1]) ? 0 : c->arg[1];
-  if(!reduce(&c->arg[0])) goto fail;
+  if(!reduce(&c->arg[0], T_LIST)) goto fail;
 
   if(c->arg[0]->alt) {
     alt = closure_alloc(2);
@@ -252,7 +253,7 @@ bool func_popr(cell_t **cp) {
   }
 
   if(rvar) {
-    res = var();
+    res = var(T_LIST);
   } else {
     /* drop the right list element */
     elems = list_size(p) - 1;
@@ -279,7 +280,7 @@ bool func_popr(cell_t **cp) {
   return false;
 }
 
-bool func_alt(cell_t **cp) {
+bool func_alt(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   uint8_t a = new_alt_id(2);
   cell_t *r0 = id(ref(c->arg[0]));
@@ -292,7 +293,7 @@ bool func_alt(cell_t **cp) {
   return false;
 }
 
-bool func_alt2(cell_t **cp) {
+bool func_alt2(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *r0 = id(ref(c->arg[0]));
   r0->arg[1] = 0;
@@ -304,9 +305,9 @@ bool func_alt2(cell_t **cp) {
   return false;
 }
 
-bool func_assert(cell_t **cp) {
+bool func_assert(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
-  if(!reduce(&c->arg[0])) goto fail;
+  if(!reduce(&c->arg[0], T_INT)) goto fail;
   c->alt = closure_split1(c, 0);
   cell_t *p = get(c->arg[0]);
   if(!((p->type == T_INT && p->val[0]) ||
@@ -318,10 +319,10 @@ bool func_assert(cell_t **cp) {
   fail(cp);
   return false;
 }
-
+/*
 bool type_check(cell_t **cp, type_t type) {
   cell_t *c = clear_ptr(*cp, 3);
-  if(!reduce(&c->arg[0])) goto fail;
+  if(!reduce(&c->arg[0], type)) goto fail;
   c->alt = closure_split1(c, 0);
   cell_t *p = get(c->arg[0]);
   if(!((p->type == type) ||
@@ -333,12 +334,12 @@ bool type_check(cell_t **cp, type_t type) {
   fail(cp);
   return false;
 }
-
-bool func_id(cell_t **cp) {
+*/
+bool func_id(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   alt_set_t alt_set = (alt_set_t)c->arg[1];
   if(alt_set || c->alt) {
-    if(!reduce(&c->arg[0])) goto fail;
+    if(!reduce(&c->arg[0], t)) goto fail;
     c->alt = closure_split1(c, 0);
     cell_t *p = c->arg[0];
     if(p->alt) alt_set_ref(alt_set);
@@ -358,10 +359,10 @@ bool func_id(cell_t **cp) {
   return false;
 }
 
-bool func_force(cell_t **cp) {
+bool func_force(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = is_hole(c->arg[2]) ? 0 : c->arg[2];
-  if(!(reduce(&c->arg[0]) & reduce(&c->arg[1]))) goto fail;
+  if(!(reduce(&c->arg[0], t) & reduce(&c->arg[1], T_ANY))) goto fail;
   cell_t *alt = c->alt = closure_split(c, 2);
   if(alt) {
     if(d) d->alt = alt->arg[2] = dep(ref(alt));
@@ -387,7 +388,7 @@ bool func_force(cell_t **cp) {
   return false;
 }
 
-bool func_drop(cell_t **cp) {
+bool func_drop(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *p = ref(c->arg[0]);
   drop(c);
@@ -395,7 +396,7 @@ bool func_drop(cell_t **cp) {
   return false;
 }
 
-bool func_swap(cell_t **cp) {
+bool func_swap(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = is_hole(c->arg[2]) ? 0 : c->arg[2];
   c->func = func_id;
@@ -418,10 +419,10 @@ cell_t *id(cell_t *c) {
   return i;
 }
 
-bool func_dup(cell_t **cp) {
+bool func_dup(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = is_hole(c->arg[1]) ? 0 : c->arg[1];
-  if(!reduce(&c->arg[0])) goto fail;
+  if(!reduce(&c->arg[0], t)) goto fail;
   cell_t *p = c->arg[0];
   if(d) {
     drop(c);
@@ -440,10 +441,10 @@ bool func_dup(cell_t **cp) {
   return false;
 }
 
-bool func_cut(cell_t **cp) {
+bool func_cut(cell_t **cp, type_rep_t t) {
   cell_t *c = *cp;
   cell_t *p = c->arg[0];
-  if(!reduce(&p)) goto fail;
+  if(!reduce(&p, t)) goto fail;
   drop(p->alt);
   p->alt = 0;
   store_reduced(c, p);
@@ -519,7 +520,7 @@ bool peg_func2(cell_t **cp, int N_IN, int N_OUT, cell_t *f) {
   return false;
 }
 
-bool func_ifte(cell_t **cp) {
+bool func_ifte(cell_t **cp, type_rep_t t) {
   char src[] = "[] pushl pushl swap pushr"
     "[0 == ! force drop swap force drop]"
     "[1 == ! force drop force drop] || . popr cut swap drop";
@@ -527,31 +528,31 @@ bool func_ifte(cell_t **cp) {
   return peg_func(cp, 3, 1, src, sizeof(src));
 }
 
-bool func_dip11(cell_t **cp) {
+bool func_dip11(cell_t **cp, type_rep_t t) {
   char src[] = "swap pushr pushl popr "
     "swap popr swap drop swap";
   cell_t *f = build(src, sizeof(src));
   return peg_func2(cp, 3, 2, f);
 }
 
-bool func_dip12(cell_t **cp) {
+bool func_dip12(cell_t **cp, type_rep_t t) {
   char src[] = "swap pushr pushl popr swap pushl"
     "[swap] . popr swap popr swap popr swap drop";
   return peg_func(cp, 3, 3, src, sizeof(src));
 }
 
-bool func_dip21(cell_t **cp) {
+bool func_dip21(cell_t **cp, type_rep_t t) {
   char src[] = "swap pushr pushl pushl popr "
     "swap popr swap drop swap";
   return peg_func(cp, 4, 2, src, sizeof(src));
 }
 
-bool func_head(cell_t **cp) {
+bool func_head(cell_t **cp, type_rep_t t) {
   char src[] = "popr swap drop";
   return peg_func(cp, 1, 1, src, sizeof(src));
 }
 
-bool func_fib(cell_t **cp) {
+bool func_fib(cell_t **cp, type_rep_t t) {
   char src[] = "dup 2 < "
     "[1 swap drop] "
     "[dup 1- fib swap 2- fib +] "

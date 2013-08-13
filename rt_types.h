@@ -23,12 +23,22 @@
 #include <time.h>
 
 typedef enum {
-  T_FAIL = 1,
+  T_ANY = 1,
+  T_FAIL,
   T_INDIRECT,
   T_INT,
   T_VAR,
-  T_IO
+  T_IO,
+  T_LIST = -1
 } type_t;
+
+#define TN_INT 'I'
+/*
+typedef char type_node_t;
+typedef type_node_t *type_rep_t;
+*/
+
+typedef type_t type_rep_t;
 
 typedef struct cell cell_t;
 
@@ -37,7 +47,7 @@ typedef uintptr_t alt_set_t;
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Warray-bounds"
 #endif
-typedef bool (reduce_t)(cell_t **cell);
+typedef bool (reduce_t)(cell_t **cell, type_rep_t type);
 struct __attribute__((packed)) cell {
   struct __attribute__((packed)) {
     reduce_t *func;

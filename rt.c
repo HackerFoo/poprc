@@ -147,7 +147,7 @@ cell_t *closure_split1(cell_t *c, int n) {
   return a;
 }
 
-bool reduce(cell_t **cp) {
+bool reduce(cell_t **cp, type_rep_t t) {
   cell_t *c;
   while((c = clear_ptr(*cp, 1))) {
     assert(is_closure(c));
@@ -156,7 +156,7 @@ bool reduce(cell_t **cp) {
       continue;
     }
     measure.reduce_cnt++;
-    if(c->func(cp)) return true;
+    if(c->func(cp, t)) return true;
   }
   *cp = &fail_cell;
   return false;
@@ -172,7 +172,7 @@ bool reduce_partial(cell_t **cp) {
   assert(is_closure(c) &&
 	 closure_is_ready(c));
   measure.reduce_cnt++;
-  return c->func(cp);
+  return c->func(cp, T_ANY);
 }
 
 cell_t *cells_next() {
@@ -326,11 +326,21 @@ void closure_free(cell_t *c) {
   closure_shrink(c, 0);
 }
 
-bool func_reduced(cell_t **cp) {
+bool type_match(type_t a, type_t b) {
+  if(a > 255) a = T_LIST;
+  if(b > 255) b = T_LIST;
+  return
+    a == T_ANY ||
+    b == T_ANY ||
+    a == b;
+}
+
+bool func_reduced(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   assert(is_closure(c));
   measure.reduce_cnt--;
-  if(c->type != T_FAIL) return true;
+  if(c->type != T_FAIL &&
+     type_match(t, c->type)) return true;
   else {
     fail(cp);
     return false;
@@ -346,10 +356,11 @@ cell_t *val(intptr_t x) {
   return c;
 }
 
-cell_t *var() {
+cell_t *var(type_t t) {
   cell_t *c = closure_alloc(1);
   c->func = func_reduced;
   c->type = T_VAR;
+  c->val[0] = t;
   return c;
 }
 
@@ -796,7 +807,7 @@ cell_t *dep(cell_t *c) {
   return n;
 }
 
-bool func_dep(cell_t **cp) {
+bool func_dep(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
@@ -1179,13 +1190,13 @@ uint8_t new_alt_id(uintptr_t n) {
   return alt_cnt++;
 }
 
-bool reduce_and_check(cell_t *c, int n, alt_set_t *alt_set) {
+bool reduce_and_check(cell_t *c, type_t *const types, int n, alt_set_t *alt_set) {
 
   /* reduce all args until failure */
   int i = n;
   cell_t **p = c->arg;
   while(i--) {
-    if(!reduce(p++)) return false;
+    if(!reduce(p++, types[i])) return false; //***
   }
 
   /* generate alts */
@@ -1228,7 +1239,7 @@ bool handle_types(type_t *const types, cell_t **arg, cell_t **res, int n) {
   }
   if(contains_var) {
     p = arg;
-    *res = var();
+    *res = var(T_ANY); //***
     for(i = 0; i < n; i++) {
       cell_t *a = *p++;
       if(!is_var(a)) trace_store(a);
@@ -1248,7 +1259,7 @@ bool function_preamble(cell_t *c,
 		       type_t *const types,
 		       cell_t **res,
 		       int n) {
-  return reduce_and_check(c, n, alt_set) &&
+  return reduce_and_check(c, types, n, alt_set) &&
     (get_args(arg, c->arg, n),
      handle_types(types, arg, res, n));
 }
@@ -1262,3 +1273,21 @@ void function_epilogue(cell_t *c,
   drop_multi(c->arg, n);
   store_reduced(c, res);
 }
+/*
+type_rep_t tr_next(type_rep_t t) {
+  type_rep_t p = t;
+  int level = 0;
+  do {
+    if(!*p) return NULL;
+    level += *p++ == '.' ? -1 : 1;
+  } while(level > 0);
+  return p;
+}
+
+type_rep_t tr_arg(type_rep_t t, unsigned int n) {
+  if(!t[0] || t[0] == '.') return NULL;
+  type_rep_t p = t + 1;
+  while(n--) p = tr_next(p);
+  return p;
+}
+*/

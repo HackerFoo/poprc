@@ -384,7 +384,7 @@ void show_one(cell_t *c) {
 
 bool reduce_one(cell_t **cp) {
   if(!closure_is_ready(*cp)) return true;
-  return reduce(cp);
+  return reduce(cp, T_ANY);
 }
 
 cell_t *reduce_alt(cell_t *c) {
@@ -574,7 +574,7 @@ cell_t *word_parse(char *w,
     *in = 0;
     *out = 1;
   } else if(w[0] == '?') {
-    c = var();
+    c = var(T_ANY);
     *in = 0;
     *out = 1;
   } else {
@@ -687,7 +687,7 @@ void fill_args(cell_t *r) {
   int n = list_size(r);
   cell_t *l = r->ptr[n-1];
   while(!closure_is_ready(l)) {
-    cell_t *v = var();
+    cell_t *v = var(T_ANY);
     arg(l, v);
     trace_store(v);
   }
