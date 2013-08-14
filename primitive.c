@@ -76,7 +76,7 @@ bool func_op2(cell_t **cp, type_rep_t t, intptr_t (*op)(intptr_t, intptr_t)) {
   alt_set_t alt_set = 0;
   static const int n = 2;
   cell_t *arg[2];
-  static const type_t types[2] = {T_INT, T_INT};
+  static const type_t types[3] = {T_INT, T_INT, T_INT};
 
   if(!function_preamble(c, &alt_set, arg, (type_t * const) types, &res, n))
      goto fail;
@@ -244,7 +244,7 @@ bool func_popr(cell_t **cp, type_rep_t t) {
   if(d) {
     drop(c);
     if(rvar) {
-      store_var(d);
+      store_var(d, T_ANY);
     } else {
       d->func = func_id;
       d->arg[0] = ref(p->ptr[0]);

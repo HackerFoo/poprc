@@ -357,7 +357,7 @@ void show_func(cell_t *c) {
 
 void show_var(cell_t *c) {
   assert(c->type == T_VAR);
-  printf(" ?%ld", c - cells);
+  printf(" ?%c%ld", type_char(c->val[0]), c - cells);
 }
 
 void show_one(cell_t *c) {
@@ -686,10 +686,10 @@ cell_t *build(char *str, unsigned int n) {
 void fill_args(cell_t *r) {
   int n = list_size(r);
   cell_t *l = r->ptr[n-1];
+  int i = 0;
   while(!closure_is_ready(l)) {
-    cell_t *v = var(T_ANY);
+    cell_t *v = var(T_ANY | ++i << 8);
     arg(l, v);
-    trace_store(v);
   }
 }
 
@@ -741,15 +741,42 @@ void runTests(char *path) {
   fclose(f);
 }
 
+char *show_type(type_rep_t t) {
+#define case(x) case x: return #x
+  switch(t) {
+  case(T_ANY);
+  case(T_FAIL);
+  case(T_INDIRECT);
+  case(T_INT);
+  case(T_VAR);
+  case(T_IO);
+  case(T_LIST);
+  }
+  return "???";
+}
+
+char type_char(type_rep_t t) {
+  switch(t) {
+  case T_ANY: return '_';
+  case T_FAIL: return 'x';
+  case T_INDIRECT: return 'z';
+  case T_INT: return 'i';
+  case T_VAR: return 'v';
+  case T_IO: return 'w';
+  case T_LIST: return 'l';
+  }
+  return '?';
+}
+
 void print_trace() {
   cell_t *p = trace;
   int i, n;
   while(p < trace_ptr) {
     cell_t *c = p->tmp;
-    printf("?%ld <-", c - cells);
+    printf("?%c%ld <-", type_char(p->n), c - cells);
     if(is_reduced(p)) {
       if(is_var(p)) {
-	printf(" arg");
+	printf(" arg(%d)", (int)(p->val[0] >> 8)-1);
       } else {
 	show_val(p);
       }

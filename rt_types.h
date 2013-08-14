@@ -32,8 +32,9 @@ typedef enum {
   T_LIST = -1
 } type_t;
 
-#define TN_INT 'I'
 /*
+#define TN_INT 'I'
+
 typedef char type_node_t;
 typedef type_node_t *type_rep_t;
 */

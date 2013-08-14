@@ -46,9 +46,10 @@ void trace_init() {
   trace_ptr = trace;
 }
 
-void trace_store(cell_t *c) {
+void trace_store(cell_t *c, type_rep_t t) {
   memcpy(trace_ptr, c, sizeof(cell_t) * closure_cells(c));
   trace_ptr->tmp = c;
+  trace_ptr->n = t;
   ++trace_ptr;
   assert((void *)trace_ptr < (void *)(&trace + 1));
 }
@@ -326,21 +327,25 @@ void closure_free(cell_t *c) {
   closure_shrink(c, 0);
 }
 
-bool type_match(type_t a, type_t b) {
-  if(a > 255) a = T_LIST;
-  if(b > 255) b = T_LIST;
+bool type_match(type_t t, cell_t *c) {
+  if(t == T_ANY) return true;
+  type_t tc = get_type(c);
   return
-    a == T_ANY ||
-    b == T_ANY ||
-    a == b;
+    tc == T_ANY ||
+    tc == t;
 }
 
 bool func_reduced(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   assert(is_closure(c));
   measure.reduce_cnt--;
-  if(c->type != T_FAIL &&
-     type_match(t, c->type)) return true;
+  cell_t *p = get(c);
+  if(p->type == T_VAR && (p->val[0] & 0xff) == T_ANY) {
+    p->val[0] = (p->val[0] & ~0xff) | t;
+    trace_store(p, t);
+  }
+  if(p->type != T_FAIL &&
+     type_match(t, p)) return true;
   else {
     fail(cp);
     return false;
@@ -639,10 +644,11 @@ void store_fail(cell_t *c, cell_t *alt) {
   c->alt = alt;
 }
 
-void store_var(cell_t *c) {
+void store_var(cell_t *c, type_rep_t t) {
   closure_shrink(c, 1);
   c->func = func_reduced;
   c->type = T_VAR;
+  c->val[0] = t;
 }
 
 void fail(cell_t **cp) {
@@ -663,9 +669,15 @@ void fail(cell_t **cp) {
   *cp = alt;
 }
 
+type_rep_t get_type(cell_t *c) {
+  cell_t *p = get(c);
+  type_rep_t t = is_var(p) ? p->val[0] & 0xff : p->type;
+  return t == 0 || (unsigned int)t > 255 ? T_LIST : t;
+}
+
 void store_reduced(cell_t *c, cell_t *r) {
   if(r->type == T_VAR &&
-     !is_dep(c)) trace_store(c);
+     !is_dep(c)) trace_store(c, get_type(r));
   int n = c->n;
   r->func = func_reduced;
   alt_set_ref(r->alt_set);
@@ -785,20 +797,14 @@ void drop(cell_t *c) {
   }
 }
 
-#define APPEND(field)				\
-  do {						\
-    if(!a) return b;				\
-    if(!b) return a;				\
-						\
-    cell_t *p = a, *r;				\
-    while((r = p->field)) p = r;		\
-    p->field = b;				\
-    return a;					\
-  } while(0)
-
-cell_t *conc_alt(cell_t *a, cell_t *b) { APPEND(alt); }
-/* append is destructive to a! */
-//cell_t *append(cell_t *a, cell_t *b) { APPEND(next); }
+cell_t *conc_alt(cell_t *a, cell_t *b) {
+  if(!a) return b;
+  if(!b) return a;
+  cell_t *p = a, *r;
+  while((r = p->alt)) p = r;
+  p->alt = b;
+  return a;
+}
 
 cell_t *dep(cell_t *c) {
   cell_t *n = closure_alloc(1);
@@ -1195,8 +1201,9 @@ bool reduce_and_check(cell_t *c, type_t *const types, int n, alt_set_t *alt_set)
   /* reduce all args until failure */
   int i = n;
   cell_t **p = c->arg;
-  while(i--) {
+  while(i) {
     if(!reduce(p++, types[i])) return false; //***
+    --i;
   }
 
   /* generate alts */
@@ -1225,7 +1232,7 @@ void get_args(cell_t **dest, cell_t *const *src, int n) {
 bool handle_types(type_t *const types, cell_t **arg, cell_t **res, int n) {
   int i;
   cell_t **p = arg;
-  type_t *t = types;
+  type_t *t = types + 1;
   bool contains_var = false;
   for(i = 0; i < n; i++) {
     cell_t *a = *p++;
@@ -1239,10 +1246,12 @@ bool handle_types(type_t *const types, cell_t **arg, cell_t **res, int n) {
   }
   if(contains_var) {
     p = arg;
-    *res = var(T_ANY); //***
+    *res = var(types[0]);
+    t = types + 1;
     for(i = 0; i < n; i++) {
       cell_t *a = *p++;
-      if(!is_var(a)) trace_store(a);
+      type_t type = *t++;
+      if(!is_var(a)) trace_store(a, type);
     }
   }
   return true;
