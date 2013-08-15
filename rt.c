@@ -243,7 +243,9 @@ void cell_alloc(cell_t *c) {
 }
 
 cell_t *closure_alloc(int args) {
-  return closure_alloc_cells(calculate_cells(args));
+  cell_t *c = closure_alloc_cells(calculate_cells(args));
+  c->size = args;
+  return c;
 }
 
 cell_t *closure_alloc_cells(int size) {
@@ -342,7 +344,7 @@ bool func_reduced(cell_t **cp, type_rep_t t) {
   cell_t *p = get(c);
   if(p->type == T_VAR && (p->val[0] & 0xff) == T_ANY) {
     p->val[0] = (p->val[0] & ~0xff) | t;
-    trace_store(p, t);
+    if(p->val[0] >> 8) trace_store(p, t);
   }
   if(p->type != T_FAIL &&
      type_match(t, p)) return true;
@@ -353,16 +355,15 @@ bool func_reduced(cell_t **cp, type_rep_t t) {
 }
 
 cell_t *val(intptr_t x) {
-  cell_t *c = closure_alloc(1);
+  cell_t *c = closure_alloc(2);
   c->func = func_reduced;
   c->type = T_INT;
   c->val[0] = x;
-  c->val_size = 1;
   return c;
 }
 
 cell_t *var(type_t t) {
-  cell_t *c = closure_alloc(1);
+  cell_t *c = closure_alloc(2);
   c->func = func_reduced;
   c->type = T_VAR;
   c->val[0] = t;
@@ -370,10 +371,9 @@ cell_t *var(type_t t) {
 }
 
 cell_t *vector(uint32_t n) {
-  cell_t *c = closure_alloc_cells(calculate_val_size(n));
+  cell_t *c = closure_alloc(n+1);
   c->func = func_reduced;
   c->type = T_INT;
-  c->val_size = n;
   return c;
 }
 
@@ -408,13 +408,15 @@ cell_t *expand(cell_t *c, unsigned int s) {
   int cn_p = calculate_cells(n);
   int cn = calculate_cells(n + s);
   if(!c->n && cn == cn_p) {
-    drop(c->alt);
+    drop(c->alt); //***
     c->alt = 0;
+    c->size = n + s;
     return c;
   } else {
     /* copy */
-    cell_t *new = closure_alloc_cells(cn);
+    cell_t *new = closure_alloc(n + s);
     memcpy(new, c, cn_p * sizeof(cell_t));
+    new->size = n + s;
     new->n = 0;
     traverse_ref(new, PTRS | ALT);
     if(is_reduced(c)) alt_set_ref(c->alt_set);
@@ -463,47 +465,16 @@ cell_t *func(reduce_t *f, int args) {
 #define cell_offset(f) ((cell_t **)&(((cell_t *)0)->f))
 
 int list_size(cell_t *c) {
-  int i = 0;
-  cell_t **p = c->ptr;
-  while(*p && is_data(*p)) {
-    ++p;
-    ++i;
-  }
-  return i;
+  return c->size ? c->size - 1 : 0;
 }
 
 int val_size(cell_t *c) {
-  return c->val_size;
+  return c->size ? c->size - 1 : 0;
 }
 
 int closure_args(cell_t *c) {
   assert(is_closure(c));
-  cell_t **p = c->arg;
-  int n = 0;
-
-  /* funcs with hidden args */
-  if(c->func == func_id ||
-     c->func == func_dep) return 1;
-
-  if(is_reduced(c)) {
-    if(is_list(c))
-      return list_size(c) +
-	cell_offset(ptr[0]) -
-	cell_offset(arg[0]);
-    else return val_size(c) +
-	   cell_offset(val[0]) -
-	   cell_offset(arg[0]);
-  } else if(is_offset(*p)) {
-    intptr_t o = (intptr_t)(*p) + 1;
-    p += o;
-    n += o;
-  }
-  /* args must be data ptrs */
-  while(is_data(*p)) {
-    p++;
-    n++;
-  }
-  return n;
+  return c->size;
 }
 
 int closure_next_child(cell_t *c) {
@@ -676,8 +647,10 @@ type_rep_t get_type(cell_t *c) {
 }
 
 void store_reduced(cell_t *c, cell_t *r) {
-  if(r->type == T_VAR &&
-     !is_dep(c)) trace_store(c, get_type(r));
+  if(r->type == T_VAR) {
+    if(!is_dep(c)) trace_store(c, get_type(r));
+    r->val[0] &= 0xff;
+  }
   int n = c->n;
   r->func = func_reduced;
   alt_set_ref(r->alt_set);
@@ -867,7 +840,7 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
 }
 
 cell_t *pushl_val(intptr_t x, cell_t *c) {
-  int n = c->val_size++;
+  int n = val_size(c);
   c = expand(c, 1);
   c->val[n] = x;
   return c;

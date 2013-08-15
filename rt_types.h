@@ -29,7 +29,7 @@ typedef enum {
   T_INT,
   T_VAR,
   T_IO,
-  T_LIST = -1
+  T_LIST
 } type_t;
 
 /*
@@ -50,12 +50,15 @@ typedef uintptr_t alt_set_t;
 #endif
 typedef bool (reduce_t)(cell_t **cell, type_rep_t type);
 struct __attribute__((packed)) cell {
-  struct __attribute__((packed)) {
-    reduce_t *func;
-    cell_t *alt;
-    cell_t *tmp;
+  reduce_t *func;
+  cell_t *alt;
+  cell_t *tmp;
+  uint32_t n;
+  uint16_t size;
+  union {
+    uint16_t type;
+    uint16_t out;
   };
-  uintptr_t n;
   union {
     /* unevaluated */
     cell_t *arg[3];
@@ -63,20 +66,13 @@ struct __attribute__((packed)) cell {
     struct __attribute__((packed)) {
       alt_set_t alt_set;
       union {
-	/* value */
-	struct __attribute__((packed)) {
-	  /* type must overlap low bytes of ptr[0] */
-	  uint32_t type, val_size;
-	  intptr_t val[1];
-	};
-	/* list */
-	struct __attribute__((packed)) {
-	  cell_t *ptr[2];
-	};
-	struct __attribute__((packed)) {
-	  cell_t *prev, *next;
-	};
+	intptr_t val[2]; /* value */
+	cell_t *ptr[2];  /* list */
       };
+    };
+    /* unallocated */
+    struct __attribute__((packed)) {
+      cell_t *prev, *next;
     };
   };
 } __attribute__((aligned(4)));

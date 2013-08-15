@@ -160,7 +160,7 @@ void graph_cell(FILE *f, cell_t *c) {
     } else if(c->type == T_INDIRECT) {
       fprintf(f, "<tr><td port=\"ind\">ind: <font color=\"lightgray\">%p</font></td></tr>", (cell_t *)c->val[0]);
     } else {
-      int n = c->val_size;
+      int n = val_size(c);
       while(n--)
 	fprintf(f, "<tr><td bgcolor=\"yellow\">val: %ld</td></tr>", (long int)c->val[n]);
     }
@@ -213,7 +213,7 @@ void graph_cell(FILE *f, cell_t *c) {
 
 void show_val(cell_t *c) {
   assert(c && c->type == T_INT);
-  int n = c->val_size;
+  int n = val_size(c);
   switch(n) {
   case 0: printf(" ()"); break;
   case 1: printf(" %d", (int)c->val[0]); break;

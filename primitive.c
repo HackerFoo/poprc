@@ -83,14 +83,14 @@ bool func_op2(cell_t **cp, type_rep_t t, intptr_t (*op)(intptr_t, intptr_t)) {
 
   if(!res) {
     /* computation */
-    int val_size = min(arg[0]->val_size,
-		       arg[1]->val_size);
-    res = vector(val_size);
+    int size = min(val_size(arg[0]),
+		   val_size(arg[1]));
+    res = vector(size);
     int i;
-    for(i = 0; i < val_size; ++i)
+    for(i = 0; i < size; ++i)
       res->val[i] = op(arg[0]->val[i],
 		       arg[1]->val[i]);
-    res->val_size = val_size;
+    res->size = size + 1;
   }
 
   function_epilogue(c, alt_set, res, n);
@@ -221,7 +221,7 @@ bool func_quote(cell_t **cp, type_rep_t t) {
 bool func_popr(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *res;
-  int res_n, elems;
+  int elems;
   cell_t *alt = 0;
   cell_t *d = is_hole(c->arg[1]) ? 0 : c->arg[1];
   if(!reduce(&c->arg[0], T_LIST)) goto fail;
@@ -256,9 +256,8 @@ bool func_popr(cell_t **cp, type_rep_t t) {
     res = var(T_LIST);
   } else {
     /* drop the right list element */
-    elems = list_size(p) - 1;
-    res_n = calculate_list_size(elems);
-    res = closure_alloc_cells(res_n);
+    res = closure_alloc(closure_args(p)-1);
+    elems = list_size(res);
     int i;
     for(i = 0; i < elems; ++i)
       res->ptr[i] = ref(p->ptr[i+1]);
