@@ -180,9 +180,9 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
   int out_n = list_size(c), in_n = 0;
   cell_t *l = c->ptr[out_n-1];
   while(!closure_is_ready(l)) {
-    cell_t *v = var();
+    cell_t *v = var(T_ANY);
     arg(l, v);
-    trace_store(v);
+    trace_store(v, T_ANY);
     ++in_n;
   }
 
@@ -230,7 +230,7 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
 					  b);
       } else if(p->func == func_dup) {
 	regs[ix] = regs[p->arg[0] - cells];
-	if(!is_hole(p->arg[1])) regs[p->arg[1] - cells] = regs[p->arg[0] - cells];
+	if(p->arg[1]) regs[p->arg[1] - cells] = regs[p->arg[0] - cells];
       }
     }
     p += closure_cells(p);
