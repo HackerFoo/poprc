@@ -30,8 +30,6 @@ cell_t fail_cell = {
   .func = func_reduced,
   .type = T_FAIL
 };
-cell_t _hole;
-cell_t *hole = &_hole;
 #define BM_SIZE (sizeof(intptr_t) * 4)
 #define ALT_SET_IDS BM_SIZE
 uintptr_t alt_live[sizeof(intptr_t) * 4];
@@ -65,7 +63,7 @@ bool is_cell(void *p) {
 }
 
 bool is_closure(void *p) {
-  return is_data(p) && !is_hole(p) && ((cell_t *)p)->func;
+  return is_data(p) && ((cell_t *)p)->func;
 }
 
 bool closure_is_ready(cell_t *c) {
@@ -204,7 +202,6 @@ bool check_cycle() {
 void cells_init() {
   data_start = (void *)cells;
   if((void *)&fail_cell < data_start) data_start = &fail_cell;
-  if((void *)hole < data_start) data_start = hole;
   int i;
   const unsigned int n = LENGTH(cells)-1;
 
@@ -453,9 +450,11 @@ bool is_offset(cell_t *c) {
   return !((intptr_t)c & ~0xff);
 }
 
-cell_t *func(reduce_t *f, int args) {
-  assert(args >= 0);
+cell_t *func(reduce_t *f, unsigned int in, unsigned int out) {
+  assert(out > 0);
+  unsigned int args = in + out - 1;
   cell_t *c = closure_alloc(args);
+  c->out = out - 1;
   c->func = f;
   if(args) c->arg[0] = (cell_t *)(intptr_t)(args - 1);
   closure_set_ready(c, !args);
@@ -475,6 +474,16 @@ int val_size(cell_t *c) {
 int closure_args(cell_t *c) {
   assert(is_closure(c));
   return c->size;
+}
+
+int closure_in(cell_t *c) {
+  assert(is_closure(c) && !is_reduced(c));
+  return c->size - c->out;
+}
+
+int closure_out(cell_t *c) {
+  assert(is_closure(c) && !is_reduced(c));
+  return c->out;
 }
 
 int closure_next_child(cell_t *c) {
@@ -529,13 +538,13 @@ bool is_indirect(cell_t *c) {
 	  action					\
 	}						\
       }							\
-    } else if((flags) & ARGS) {				\
-      int i, n = closure_args(r);			\
+    } else if((flags) & (ARGS | ARGS_IN)) {		\
+      int i, n = ((flags) & ARGS_IN) ?			\
+	closure_in(r) :					\
+	closure_args(r);				\
       for(i = closure_next_child(r); i < n; ++i) {	\
-	if(!is_hole((r)->arg[i])) {			\
-	  p = (r)->arg + i;				\
-	  action					\
-	}						\
+	p = (r)->arg + i;				\
+	if(*p) {action}					\
       }							\
     }							\
     if((flags) & ALT) {					\
@@ -629,9 +638,8 @@ void fail(cell_t **cp) {
   if(c->func) {
     traverse(c, {
 	cell_t *x = clear_ptr(*p, 3);
-	if(!is_weak(c, x))
-	  drop(x);
-      }, ARGS);
+	drop(x);
+      }, ARGS_IN);
     closure_shrink(c, 1);
     memset(c->arg, 0, sizeof(c->arg));
     c->func = func_reduced;
@@ -648,7 +656,7 @@ type_rep_t get_type(cell_t *c) {
 
 void store_reduced(cell_t *c, cell_t *r) {
   if(r->type == T_VAR) {
-    if(!is_dep(c)) trace_store(c, get_type(r));
+    trace_store(c, get_type(r));
     r->val[0] &= 0xff;
   }
   int n = c->n;
@@ -735,10 +743,6 @@ bool is_weak(cell_t *p, cell_t *c) {
   return c && is_dep(c) && (!c->arg[0] || c->arg[0] == p);
 }
 
-bool is_hole(cell_t *c) {
-  return c == hole;
-}
-
 void drop(cell_t *c) {
   if(!is_cell(c) || !is_closure(c)) return;
   if(!c->n) {
@@ -747,17 +751,16 @@ void drop(cell_t *c) {
 	cell_t *x = clear_ptr(*p, 3);
 	/* !is_marked condition needed */
 	/* during _modify_copy2 */
-	if(!is_marked(*p, 2) &&
-	   !is_weak(c, x)) {
+	if(!is_marked(*p, 2)) {
 	  drop(x);
 	}
-      }, ALT | ARGS | PTRS);
+      }, ALT | ARGS_IN | PTRS);
     if(is_dep(c) && !is_reduced(p = c->arg[0]) && is_closure(p)) {
       /* mark dep arg as gone */
       int n = closure_args(p);
       while(n--) {
 	if(p->arg[n] == c) {
-	  p->arg[n] = hole;
+	  p->arg[n] = 0;
 	  break;
 	}
       }
@@ -1014,6 +1017,7 @@ void zero_tmps(cell_t *r) {
     }, ARGS | PTRS | ALT);
 }
 
+/* ref count not from deps */
 int nondep_n(cell_t *c) {
   if(!is_closure(c)) return 0;
   int nd = c->n;

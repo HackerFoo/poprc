@@ -223,14 +223,14 @@ bool func_popr(cell_t **cp, type_rep_t t) {
   cell_t *res;
   int elems;
   cell_t *alt = 0;
-  cell_t *d = is_hole(c->arg[1]) ? 0 : c->arg[1];
+  cell_t *d = c->arg[1];
   if(!reduce(&c->arg[0], T_LIST)) goto fail;
 
   if(c->arg[0]->alt) {
     alt = closure_alloc(2);
     alt->func = func_popr;
     alt->arg[0] = ref(c->arg[0]->alt);
-    alt->arg[1] = d ? dep(ref(alt)) : hole;
+    alt->arg[1] = d ? dep(ref(alt)) : 0;
     c->alt = alt;
     if(d) d->alt = conc_alt(alt->arg[1], d->alt);
   }
@@ -360,12 +360,12 @@ bool func_id(cell_t **cp, type_rep_t t) {
 
 bool func_force(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
-  cell_t *d = is_hole(c->arg[2]) ? 0 : c->arg[2];
+  cell_t *d = c->arg[2];
   if(!(reduce(&c->arg[0], t) & reduce(&c->arg[1], T_ANY))) goto fail;
   cell_t *alt = c->alt = closure_split(c, 2);
   if(alt) {
     if(d) d->alt = alt->arg[2] = dep(ref(alt));
-    else alt->arg[2] = hole;
+    else alt->arg[2] = 0;
   }
   cell_t *p = c->arg[0], *q = c->arg[1];
   if(bm_conflict(p->alt_set, q->alt_set)) goto fail;
@@ -397,7 +397,7 @@ bool func_drop(cell_t **cp, type_rep_t t) {
 
 bool func_swap(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
-  cell_t *d = is_hole(c->arg[2]) ? 0 : c->arg[2];
+  cell_t *d = c->arg[2];
   c->func = func_id;
   if(d) {
     drop(c);
@@ -413,14 +413,14 @@ bool func_swap(cell_t **cp, type_rep_t t) {
 }
 
 cell_t *id(cell_t *c) {
-  cell_t *i = func(func_id, 1);
+  cell_t *i = func(func_id, 1, 1);
   arg(i, c);
   return i;
 }
 
 bool func_dup(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
-  cell_t *d = is_hole(c->arg[1]) ? 0 : c->arg[1];
+  cell_t *d = c->arg[1];
   if(!reduce(&c->arg[0], t)) goto fail;
   cell_t *p = c->arg[0];
   if(d) {
@@ -476,7 +476,7 @@ bool peg_func(cell_t **cp, int N_IN, int N_OUT,
   c->arg[1] = 0;
   c->arg[2] = 0;
   FOREACH(d, i) {
-    if(!is_hole(d[i])) {
+    if(d[i]) {
       drop(c);
       d[i]->func = func_id;
       d[i]->arg[0] = ref(b->ptr[i]);
@@ -508,7 +508,7 @@ bool peg_func2(cell_t **cp, int N_IN, int N_OUT, cell_t *f) {
   c->arg[1] = 0;
   c->arg[2] = 0;
   FOREACH(d, i) {
-    if(!is_hole(d[i])) {
+    if(d[i]) {
       drop(c);
       d[i]->func = func_id;
       d[i]->arg[0] = ref(b->ptr[i]);

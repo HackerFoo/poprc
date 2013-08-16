@@ -29,7 +29,7 @@ void alloc_test() {
   cell_t *a[30];
   for(j = 0; j < 50; j++) {
     for(i = 0; i < LENGTH(a); i++) {
-      a[i] = func(func_add, 9);
+      a[i] = func(func_add, 9, 1);
     }
     for(i = 0; i < LENGTH(a); i++) {
       closure_free(a[i]);

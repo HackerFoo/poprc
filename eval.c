@@ -140,10 +140,12 @@ void graph_cell(FILE *f, cell_t *c) {
 
   /* print node attributes */
   fprintf(f, "node%ld [\nlabel =<", node);
-  fprintf(f, "<table border=\"0\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%ld) %s%s (%d)</b></font></td></tr>",
+  fprintf(f, "<table border=\"0\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%ld) %s%s %d %d (%d)</b></font></td></tr>",
 	  node,
 	  function_name(c->func),
 	  closure_is_ready(c) ? "" : "*",
+	  (int)c->size,
+	  (int)c->out,
 	  (int)c->n);
   fprintf(f, "<tr><td port=\"alt\">alt: <font color=\"lightgray\">%p</font></td></tr>",
              c->alt);
@@ -584,7 +586,7 @@ cell_t *word_parse(char *w,
     if(strnlen(w, sizeof_field(word_entry_t, name)) !=
        strnlen(e->name, sizeof_field(word_entry_t, name)))
       return NULL;
-    c = func(e->func, e->in + e->out - 1);
+    c = func(e->func, e->in, e->out);
     *in = e->in;
     *out = e->out;
   }
@@ -773,8 +775,8 @@ void print_trace() {
   int i, n;
   while(p < trace_ptr) {
     cell_t *c = p->tmp;
-    printf("?%c%ld <-", type_char(p->n), c - cells);
     if(is_reduced(p)) {
+      printf("?%c%ld <-", type_char(p->n), c - cells);
       if(is_var(p)) {
 	printf(" arg(%d)", (int)(p->val[0] >> 8)-1);
       } else {
@@ -782,8 +784,11 @@ void print_trace() {
       }
       printf("\n");
     } else {
-      printf(" ");
       n = closure_args(p);
+      i = closure_out(p);
+      printf("?%c%ld ", type_char(p->n), c - cells);
+      while(i--) printf("?%ld ", p->arg[--n] - cells);
+      printf("<- ");
       for(i = 0; i < n; i++) {
 	if(is_cell(p->arg[i])) printf("?%ld ", p->arg[i] - cells);
 	else printf("?_ ");

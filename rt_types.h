@@ -123,6 +123,7 @@ typedef struct measure_t {
 
 #define ALT 1
 #define ARGS 2
-#define PTRS 4
+#define ARGS_IN 4
+#define PTRS 8
 
 #endif
