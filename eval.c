@@ -758,7 +758,7 @@ char *show_type(type_rep_t t) {
 }
 
 char type_char(type_rep_t t) {
-  switch(t) {
+  switch(t & 0xff) {
   case T_ANY: return '_';
   case T_FAIL: return 'x';
   case T_INDIRECT: return 'z';
@@ -778,11 +778,17 @@ void print_trace() {
     if(is_reduced(p)) {
       printf("?%c%ld <-", type_char(p->n), c - cells);
       if(is_var(p)) {
-	printf(" arg(%d)", (int)(p->val[0] >> 8)-1);
+	if(p->val[0] >> 8) {
+	  printf(" arg(%d)", (int)(p->val[0] >> 8)-1);
+	} else {
+	  printf(" type");
+	}
       } else {
 	show_val(p);
       }
       printf("\n");
+    } else if(is_dep(p)) {
+      printf("?%c%ld <- type\n", type_char(p->n), c - cells);
     } else {
       n = closure_args(p);
       i = closure_out(p);

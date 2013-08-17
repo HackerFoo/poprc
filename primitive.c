@@ -75,9 +75,10 @@ bool func_op2(cell_t **cp, type_rep_t t, intptr_t (*op)(intptr_t, intptr_t)) {
   cell_t *const c = clear_ptr(*cp, 3);
   alt_set_t alt_set = 0;
   static const int n = 2;
-  cell_t *arg[2];
-  static const type_t types[3] = {T_INT, T_INT, T_INT};
+  cell_t *arg[n];
+  static const type_t types[n+1] = {T_INT, T_INT, T_INT};
 
+  if(t != T_ANY && t != types[0]) goto fail; //***
   if(!function_preamble(c, &alt_set, arg, (type_t * const) types, &res, n))
      goto fail;
 
@@ -213,8 +214,8 @@ bool func_pushr(cell_t **cp, type_rep_t t) {
 
 bool func_quote(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
-  cell_t res[2] = {{ .ptr = {c->arg[0]} }};
-  store_reduced(c, res);
+  cell_t res = { .size = 2, .ptr = {c->arg[0]} };
+  store_reduced(c, &res);
   return true;
 }
 

@@ -341,7 +341,7 @@ bool func_reduced(cell_t **cp, type_rep_t t) {
   cell_t *p = get(c);
   if(p->type == T_VAR && (p->val[0] & 0xff) == T_ANY) {
     p->val[0] = (p->val[0] & ~0xff) | t;
-    if(p->val[0] >> 8) trace_store(p, t);
+    trace_store(p, t);
   }
   if(p->type != T_FAIL &&
      type_match(t, p)) return true;
