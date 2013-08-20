@@ -126,4 +126,16 @@ typedef struct measure_t {
 #define ARGS_IN 4
 #define PTRS 8
 
+typedef struct two_cells_t {
+  cell_t *a, *b;
+} two_cells_t;
+
+typedef struct three_cells_t {
+  cell_t *a, *b, *c;
+} three_cells_t;
+
+typedef struct four_cells_t {
+  cell_t *a, *b, *c, *d;
+} four_cells_t;
+
 #endif

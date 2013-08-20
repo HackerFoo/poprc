@@ -1214,12 +1214,8 @@ bool handle_types(type_t *const types, cell_t **arg, cell_t **res, int n) {
   for(i = 0; i < n; i++) {
     cell_t *a = *p++;
     type_t type = *t++;
-    if(a->type == type) continue;
-    if(a->type == T_VAR) {
-      contains_var = true;
-      continue;
-    }
-    return false;
+    if(!type_match(type, a)) return false;
+    if(a->type == T_VAR) contains_var = true;
   }
   if(contains_var) {
     p = arg;
