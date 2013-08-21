@@ -682,19 +682,11 @@ bool func_dip21(cell_t **cp, type_rep_t t) {
 }
 
 bool func_head(cell_t **cp, type_rep_t t) {
-  /*
-  char src[] = "popr swap drop";
-  return peg_func(cp, 1, 1, src, sizeof(src));
-  */
   cell_t *c = clear_ptr(*cp, 3);
   two_cells_t a = build_popr(c->arg[0]);
   drop(a.a);
-  if(!reduce(&a.b, t)) {
-    fail(cp);
-    return false;
-  }
-  store_reduced(c, a.b);
-  return true;
+  store_lazy(c, a.b);
+  return false;
 }
 
 bool func_fib(cell_t **cp, type_rep_t t) {

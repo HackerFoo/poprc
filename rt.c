@@ -1255,6 +1255,16 @@ void function_epilogue(cell_t *c,
   drop_multi(c->arg, n);
   store_reduced(c, res);
 }
+
+void store_lazy(cell_t *c, cell_t *r) {
+  closure_shrink(c, 1);
+  c->func = func_id;
+  c->size = 2;
+  c->out = 0;
+  c->arg[0] = r;
+  c->arg[1] = 0;
+}
+
 /*
 type_rep_t tr_next(type_rep_t t) {
   type_rep_t p = t;

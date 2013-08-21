@@ -45,12 +45,12 @@ void setup_CallInst(CallInst *i, unsigned int attrs) {
 ConstantInt* const_int##bits[n]; \
 load_constants(ctx, bits, const_int##bits, n);
 
-StructType *StructTy_cell;
-PointerType* PointerTy_cell;
-PointerType* PointerTy_cell_ptr;
-PointerType* PointerTy_i64;
-PointerType* PointerTy_i32;
-
+StructType *cell_type;
+PointerType* cell_ptr_type;
+PointerType* cell_ptr_ptr_type;
+PointerType* i64_ptr_type;
+PointerType* i32_ptr_type;
+/*
 Function* func_function_preamble(Module *mod) {
   Function *f = mod->getFunction("function_preamble");
   if(f) return f;
@@ -58,26 +58,26 @@ Function* func_function_preamble(Module *mod) {
   LLVMContext &ctx = mod->getContext();
   FunctionType* ft =
     FunctionType::get(IntegerType::get(ctx, 1),
-		      std::vector<Type *> { PointerTy_cell, PointerTy_i64, PointerTy_cell_ptr,
-			PointerTy_i32, PointerTy_cell_ptr, IntegerType::get(ctx, 32) },
+		      std::vector<Type *> { cell_ptr_type, i64_ptr_type, cell_ptr_ptr_type,
+			i32_ptr_type, cell_ptr_type_ptr, IntegerType::get(ctx, 32) },
 		      false);
   f = Function::Create(ft, GlobalValue::ExternalLinkage, "function_preamble", mod);
   f->setCallingConv(CallingConv::C);
   f->addAttribute(0, Attribute::ZExt);
   return f;
 }
-
+*/
 Function *func_val(Module *mod) {
   Function *f = mod->getFunction("val");
   if(f) return f;
 
   LLVMContext &ctx = mod->getContext();
-  FunctionType* ft = FunctionType::get(PointerTy_cell, {IntegerType::get(ctx, 64)}, false);
+  FunctionType* ft = FunctionType::get(cell_ptr_type, {IntegerType::get(ctx, 64)}, false);
   f = Function::Create(ft, GlobalValue::ExternalLinkage, "val", mod);
   f->setCallingConv(CallingConv::C);
   return f;
 }
-
+/*
 Function *func_function_epilogue(Module *mod) {
   Function *f = mod->getFunction("function_epilogue");
   if(f) return f;
@@ -86,9 +86,9 @@ Function *func_function_epilogue(Module *mod) {
   FunctionType *ft =
     FunctionType::get(Type::getVoidTy(ctx),
 		      std::vector<Type *> {
-			PointerTy_cell,
+			cell_ptr_type,
 			IntegerType::get(ctx, 64),
-			PointerTy_cell,
+			cell_ptr_type,
 			IntegerType::get(ctx, 32)
 		      },
 		      false);
@@ -96,7 +96,7 @@ Function *func_function_epilogue(Module *mod) {
   f->setCallingConv(CallingConv::C);
   return f;
 }
-
+*/
 Function *func_fail(Module *mod) {
   Function *f = mod->getFunction("fail");
   if(f) return f;
@@ -104,7 +104,7 @@ Function *func_fail(Module *mod) {
   LLVMContext &ctx = mod->getContext();
   FunctionType* ft =
     FunctionType::get(Type::getVoidTy(ctx),
-		      std::vector<Type *> { PointerTy_cell_ptr },
+		      std::vector<Type *> { cell_ptr_ptr_type },
 		      false);
   f = Function::Create(ft, GlobalValue::ExternalLinkage, "fail", mod);
   f->setCallingConv(CallingConv::C);
@@ -114,66 +114,55 @@ Function *func_fail(Module *mod) {
 void define_types(Module *mod) {
   LLVMContext &ctx = mod->getContext();
   // Type Definitions
+  StructType *void_type = StructType::get(ctx, std::vector<Type *> {}, false);
+  PointerType *void_ptr_type = PointerType::get(void_type, 0);
 
-  StructTy_cell = mod->getTypeByName("cell");
-  if(!StructTy_cell) StructTy_cell = StructType::create(ctx, "cell");
-  StructType *StructTy_cell_header = mod->getTypeByName("cell_header");
-  if(!StructTy_cell_header) StructTy_cell_header = StructType::create(ctx, "cell_header");
-  StructType *StructTy_empty = StructType::get(ctx, std::vector<Type *> {}, /*isPacked=*/false);
-
-  PointerType* PointerTy_empty = PointerType::get(StructTy_empty, 0);
-
-  PointerTy_cell = PointerType::get(StructTy_cell, 0);
-
-  if(StructTy_cell_header->isOpaque()) {
-    StructTy_cell_header->setBody(std::vector<Type *> { PointerTy_empty, PointerTy_cell, PointerTy_cell } , true);
+  if(!(cell_type = mod->getTypeByName("cell_t"))) {
+    cell_type = StructType::create(ctx, "cell_t");
+    cell_ptr_type = PointerType::get(cell_type, 0);
+    cell_type->setBody(std::vector<Type *> {
+	void_ptr_type,
+	cell_ptr_type,
+	cell_ptr_type,
+	IntegerType::get(ctx, 32),
+	IntegerType::get(ctx, 16),
+	IntegerType::get(ctx, 16),
+	ArrayType::get(cell_ptr_type, 3)
+      },
+      true);
+    cell_ptr_ptr_type = PointerType::get(cell_ptr_type, 0);
   }
 
-  StructType *StructTy_cell_args = mod->getTypeByName("cell_args");
-  if (!StructTy_cell_args) {
-    StructTy_cell_args = StructType::create(ctx, "cell_args");
-  }
-
-  if (StructTy_cell_args->isOpaque()) {
-    StructTy_cell_args->setBody(std::vector<Type *> { ArrayType::get(PointerTy_cell, 3) }, false);
-  }
-
-  if (StructTy_cell->isOpaque()) {
-    StructTy_cell->setBody(std::vector<Type *> { StructTy_cell_header, IntegerType::get(ctx, 64), StructTy_cell_args }, /*isPacked=*/true);
-  }
-
-
-  PointerTy_cell_ptr = PointerType::get(PointerTy_cell, 0);
-  PointerTy_i64 = PointerType::get(IntegerType::get(ctx, 64), 0);
-  PointerTy_i32 = PointerType::get(IntegerType::get(ctx, 32), 0);
+  i64_ptr_type = PointerType::get(IntegerType::get(ctx, 64), 0);
+  i32_ptr_type = PointerType::get(IntegerType::get(ctx, 32), 0);
 }
 
-Function *make_reducer(std::string name, Type *type, unsigned int n, Module *mod) {
+Type *cell_func_return_type(unsigned int n, LLVMContext &ctx) {
+  if(n == 0) {
+    return Type::getVoidTy(ctx);
+  } else if(n == 1) {
+    return cell_ptr_type;
+  } else {
+    return StructType::get(ctx, std::vector<Type *>(n, cell_ptr_type), true);
+  }
+}
+
+Function *get_cell_func(std::string name, unsigned int in, unsigned int out, Module *mod) {
   Function *func = mod->getFunction(name);
   if (!func) {
-    std::vector<Type*> args(n, type);
-    FunctionType* ft = FunctionType::get(type, args, false);
+    std::vector<Type*> args(in, cell_ptr_type);
+    FunctionType* ft = FunctionType::get(cell_func_return_type(out, mod->getContext()), std::vector<Type *>(in, cell_ptr_type), false);
     func = Function::Create(ft, GlobalValue::ExternalLinkage, name, mod);
     func->setCallingConv(CallingConv::C);
   }
   return func;
 }
 
-Function *make_add(std::string name, unsigned int n, Module *mod) {
-  if(n < 1) return NULL;
-
-  LLVMContext &ctx = mod->getContext();
-  Function *f = make_reducer(name, IntegerType::get(ctx, 64), n, mod);
-
-  BasicBlock* b =
-    BasicBlock::Create(ctx, "entry", f, 0);
-  Function::arg_iterator args = f->arg_begin();
-  Value *sum = args++;
-  for(int i = 1; i < n; i++) {
-    sum = BinaryOperator::Create(Instruction::Add, sum, args++, "", b);
-  }
-  ReturnInst::Create(ctx, sum, b);
-  return f;
+Function *get_builder(cell_t *p, Module *mod) {
+  auto name = "build_" + std::string(function_name(p->func));
+  auto f = mod->getFunction(name);
+  if(f) return f;
+  else return get_cell_func(name, p->size - p->out, p->out + 1, mod);
 }
 
 Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned int *out, Module *mod) {
@@ -192,11 +181,13 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
   reduce_list(c);
 
   LLVMContext &ctx = mod->getContext();
-  Function *f = make_reducer(name, IntegerType::get(ctx, 64), in_n, mod);
+  Function *f = get_cell_func(name, in_n, out_n, mod);
 
   BasicBlock* b =
     BasicBlock::Create(ctx, "entry", f, 0);
-  Function::arg_iterator args = f->arg_end();
+  std::vector<Value *> args;
+  for(auto i = f->arg_begin(); i != f->arg_end(); ++i)
+    args.push_back(i);
   std::map<unsigned int, Value *> regs;
 
   cell_t *p = trace;
@@ -205,38 +196,31 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
     unsigned int ix = c-cells;
     if(is_reduced(p)) {
       if(is_var(p)) {
-	regs[ix] = --args;
+	unsigned int n = p->val[0] >> 8;
+	if(n) regs[ix] = args[n-1];
       } else {
-	regs[ix] = ConstantInt::get(ctx, APInt(64, p->val[0]));
+	auto call = CallInst::Create(func_val(mod), ConstantInt::get(ctx, APInt(64, p->val[0])), "", b);
+	setup_CallInst(call, NOUNWIND);
+	regs[ix] = call;
       }
     } else {
-      if(p->func == func_add) {
-	regs[ix] = BinaryOperator::Create(Instruction::Add,
-					  regs[p->arg[0] - cells],
-					  regs[p->arg[1] - cells],
-					  "",
-					  b);
-      } else if(p->func == func_mul) {
-	regs[ix] = BinaryOperator::Create(Instruction::Mul,
-					  regs[p->arg[0] - cells],
-					  regs[p->arg[1] - cells],
-					  "",
-					  b);
-      } else if(p->func == func_sub) {
-	regs[ix] = BinaryOperator::Create(Instruction::Sub,
-					  regs[p->arg[0] - cells],
-					  regs[p->arg[1] - cells],
-					  "",
-					  b);
-      } else if(p->func == func_dup) {
-	regs[ix] = regs[p->arg[0] - cells];
-	if(p->arg[1]) regs[p->arg[1] - cells] = regs[p->arg[0] - cells];
+      auto f = get_builder(p, mod);
+      std::vector<Value *> f_args;
+      int f_in = p->size - p->out;
+      for(int i = 0; i < f_in; ++i) f_args.push_back(regs[p->arg[i] - cells]);
+      auto call = CallInst::Create(f, f_args, "", b);
+      if(p->out) {
+	regs[ix] = ExtractValueInst::Create(call, std::vector<unsigned>{0}, "", b);
+	for(unsigned int i = 0; i < p->out; ++i)
+	  regs[p->arg[p->size - i - 1] - cells] =
+	    ExtractValueInst::Create(call, std::vector<unsigned>{i}, "", b);
+      } else {
+	regs[ix] = call;
       }
     }
     p += closure_cells(p);
   }
-  if(c->ptr[0]->type == T_INT) regs[c->ptr[0] - cells] = ConstantInt::get(ctx, APInt(64, c->ptr[0]->val[0]));
-  ReturnInst::Create(ctx, regs[c->ptr[0] - cells], b);
+  ReturnInst::Create(ctx, regs[c->ptr[0] - cells], b); //***
   return f;
 }
 
@@ -261,7 +245,7 @@ Value *get_val(Value *ptr, BasicBlock *b) {
 			      },
 			      "",
 			      b);
-  CastInst* q = new BitCastInst(v, PointerTy_i64, "", b);
+  CastInst* q = new BitCastInst(v, i64_ptr_type, "", b);
   LoadInst* r = new LoadInst(q, "cell_val", false, b);
   r->setAlignment(1);
   return r;
@@ -277,7 +261,7 @@ Value *index(Value *ptr, int x, BasicBlock *b) {
 				   "index",
 				   b);
 }
-
+/*
 Function* wrap_func(std::string name, Function *func) {
   Module *mod = func->getParent();
   int n = func->getFunctionType()->getNumParams();
@@ -285,7 +269,7 @@ Function* wrap_func(std::string name, Function *func) {
   if(func_wrapper) return func_wrapper;
   LLVMContext &ctx = mod->getContext();
 
-  ArrayType *ArrayTy_arg = ArrayType::get(PointerTy_cell, n);
+  ArrayType *ArrayTy_arg = ArrayType::get(cell_ptr_type, n);
   ArrayType *ArrayTy_types = ArrayType::get(IntegerType::get(ctx, 32), n);
 
   // Global Variable Declarations
@@ -303,14 +287,14 @@ Function* wrap_func(std::string name, Function *func) {
   ConstantInt* const_int64_not_3 = ConstantInt::get(ctx, APInt(64, ~3));
   ConstantInt* const_int32_n = ConstantInt::get(ctx, APInt(32, n));
 
-  ConstantPointerNull* const_ptr_cell_null = ConstantPointerNull::get(PointerTy_cell);
+  ConstantPointerNull* const_ptr_cell_null = ConstantPointerNull::get(cell_ptr_type);
   Constant* const_ptr_types = ConstantExpr::getGetElementPtr(gvar_array_wrapper_types,
 							     std::vector<Constant *>(2, const_int64[0]));
 
   // Global Variable Definitions
 
   FunctionType *FuncTy_wrapper = FunctionType::get(IntegerType::get(ctx, 1),
-						   std::vector<Type *> { PointerTy_cell_ptr },
+						   std::vector<Type *> { cell_ptr_ptr_type },
 				                   false);
 
   // function definition
@@ -333,14 +317,14 @@ Function* wrap_func(std::string name, Function *func) {
   // Block  (label_entry)
   Value *ptr_res, *ptr_arg_array, *ptr_alt_set, *ptr_c, *ptr_arg0;
   {
-    ptr_res = new AllocaInst(PointerTy_cell, "res", label_entry);
+    ptr_res = new AllocaInst(cell_ptr_type, "res", label_entry);
     ptr_alt_set = new AllocaInst(IntegerType::get(ctx, 64), "alt_set", label_entry);
     ptr_arg_array = new AllocaInst(ArrayTy_arg, "arg", label_entry);
     new StoreInst(const_ptr_cell_null, ptr_res, false, label_entry);
     auto ptr_cp_deref = new LoadInst(ptr_cp, "", false, label_entry);
     auto int64_c = new PtrToIntInst(ptr_cp_deref, IntegerType::get(ctx, 64), "", label_entry);
     auto int64_c_and_not_3 = BinaryOperator::Create(Instruction::And, int64_c, const_int64_not_3, "", label_entry);
-    ptr_c = new IntToPtrInst(int64_c_and_not_3, PointerTy_cell, "c", label_entry);
+    ptr_c = new IntToPtrInst(int64_c_and_not_3, cell_ptr_type, "c", label_entry);
     new StoreInst(const_int64[0], ptr_alt_set, false, label_entry);
     ptr_arg0 = index(ptr_arg_array, 0, label_entry);
     auto int1_function_preamble_call =
@@ -420,21 +404,12 @@ Function* wrap_func(std::string name, Function *func) {
 
   return func_wrapper;
 }
-
+*/
 void printModule(Module *mod) {
   verifyModule(*mod, PrintMessageAction);
   PassManager PM;
   PM.add(createPrintModulePass(&outs()));
   PM.run(*mod);
-}
-
-Module *makeModule(cell_t *p) {
-  /* function :: (cell_t *)[] --> cell_t * */
-  LLVMContext &ctx = getGlobalContext();
-  Module *mod = new Module("test", ctx);
-  define_types(mod);
-  wrap_func("wrapped_add3", make_add("add3", 3, mod));
-  return mod;
 }
 
 static ExecutionEngine *engine = 0;
@@ -445,6 +420,7 @@ reduce_t *compile(cell_t *c, unsigned int *in, unsigned int *out) {
   Module *mod = new Module("module", ctx);
   define_types(mod);
   Function *f = compile_simple("compiled_func", c, in, out, mod);
+  /*
   Function *lf = wrap_func("wrapped_compiled_func", f);
   std::string err = "";
   engine = EngineBuilder(mod)
@@ -456,13 +432,15 @@ reduce_t *compile(cell_t *c, unsigned int *in, unsigned int *out) {
   engine->addGlobalMapping(func_val(mod), (void *)&val);
   engine->addGlobalMapping(func_function_epilogue(mod), (void *)&function_epilogue);
   engine->addGlobalMapping(func_fail(mod), (void *)&fail);
-
+  */
   f->dump();
   //lf->dump();
-
+  /*
   if(!engine) {
     std::cout << err << std::endl;
     return NULL;
   }
   return (reduce_t *)engine->getPointerToFunction(lf);
+  */
+  return func_id;
 }
