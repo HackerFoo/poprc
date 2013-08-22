@@ -168,8 +168,9 @@ Function *get_builder(cell_t *p, Module *mod) {
 Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned int *out, Module *mod) {
   int out_n = list_size(c), in_n = 0;
   cell_t *l = c->ptr[out_n-1];
+  intptr_t i = 0;
   while(!closure_is_ready(l)) {
-    cell_t *v = var(T_ANY);
+    cell_t *v = var((type_t)((intptr_t)T_ANY | ++i << 8));
     arg(l, v);
     trace_store(v, T_ANY);
     ++in_n;
@@ -213,14 +214,22 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
 	regs[ix] = ExtractValueInst::Create(call, std::vector<unsigned>{0}, "", b);
 	for(unsigned int i = 0; i < p->out; ++i)
 	  regs[p->arg[p->size - i - 1] - cells] =
-	    ExtractValueInst::Create(call, std::vector<unsigned>{i}, "", b);
+	    ExtractValueInst::Create(call, std::vector<unsigned>{i+1}, "", b);
       } else {
 	regs[ix] = call;
       }
     }
     p += closure_cells(p);
   }
-  ReturnInst::Create(ctx, regs[c->ptr[0] - cells], b); //***
+  if(out_n > 1) {
+    Value *agg = UndefValue::get(f->getReturnType());
+    for(unsigned int i = 0; i < out_n; ++i) {
+      agg = InsertValueInst::Create(agg, regs[c->ptr[i] - cells], std::vector<unsigned>{i}, "", b);
+    }
+    ReturnInst::Create(ctx, agg, b);
+  } else {
+    ReturnInst::Create(ctx, regs[c->ptr[0] - cells], b);
+  }
   return f;
 }
 
