@@ -19,6 +19,8 @@ OBJS := $(patsubst %.c, build/%.o, $(wildcard *.c))
 OBJS += $(patsubst %.cpp, build/%.o, $(wildcard *.cpp))
 GEN := $(patsubst %.c, gen/%.h, $(wildcard *.c))
 
+CFLAGS += -fPIC -shared
+
 .PHONY: all
 all: eval
 
@@ -54,7 +56,7 @@ eval.js:
 
 build/llvm.o: llvm.cpp llvm.h
 	@mkdir -p build
-	$(CXX) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -Igen llvm.cpp -o build/llvm.o
+	$(CXX) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -O0 -Igen llvm.cpp -o build/llvm.o
 
 # compile and generate dependency info;
 build/%.o: %.c

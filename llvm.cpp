@@ -111,6 +111,34 @@ Function *func_fail(Module *mod) {
   return f;
 }
 
+Function *func_store_lazy(Module *mod) {
+  Function *f = mod->getFunction("store_lazy");
+  if(f) return f;
+
+  LLVMContext &ctx = mod->getContext();
+  FunctionType* ft =
+    FunctionType::get(Type::getVoidTy(ctx),
+		      std::vector<Type *> { cell_ptr_type, cell_ptr_type },
+		      false);
+  f = Function::Create(ft, GlobalValue::ExternalLinkage, "store_lazy", mod);
+  f->setCallingConv(CallingConv::C);
+  return f;
+}
+
+Function *func_drop(Module *mod) {
+  Function *f = mod->getFunction("drop");
+  if(f) return f;
+
+  LLVMContext &ctx = mod->getContext();
+  FunctionType* ft =
+    FunctionType::get(Type::getVoidTy(ctx),
+		      std::vector<Type *> { cell_ptr_type },
+		      false);
+  f = Function::Create(ft, GlobalValue::ExternalLinkage, "drop", mod);
+  f->setCallingConv(CallingConv::C);
+  return f;
+}
+
 void define_types(Module *mod) {
   LLVMContext &ctx = mod->getContext();
   // Type Definitions
@@ -172,7 +200,7 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
   while(!closure_is_ready(l)) {
     cell_t *v = var((type_t)((intptr_t)T_ANY | ++i << 8));
     arg(l, v);
-    trace_store(v, T_ANY);
+    //trace_store(v, T_ANY);
     ++in_n;
   }
 
@@ -204,6 +232,8 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
 	setup_CallInst(call, NOUNWIND);
 	regs[ix] = call;
       }
+    } else if(p->func == func_dep) {
+      // do nothing
     } else {
       auto f = get_builder(p, mod);
       std::vector<Value *> f_args;
@@ -256,54 +286,36 @@ Value *get_val(Value *ptr, BasicBlock *b) {
 			      b);
   CastInst* q = new BitCastInst(v, i64_ptr_type, "", b);
   LoadInst* r = new LoadInst(q, "cell_val", false, b);
-  r->setAlignment(1);
+  r->setAlignment(4);
   return r;
 }
 
-Value *index(Value *ptr, int x, BasicBlock *b) {
+Value *get_arg(Value *ptr, int x, BasicBlock *b) {
   LLVMContext &ctx = b->getContext();
-  return GetElementPtrInst::Create(ptr,
-				   std::vector<Value *> {
-				     ConstantInt::get(ctx, APInt(64, 0)),
-				     ConstantInt::get(ctx, APInt(64, x))
-				   },
-				   "index",
-				   b);
+  auto p = GetElementPtrInst::Create(ptr,
+				     std::vector<Value *> {
+				       ConstantInt::get(ctx, APInt(64, 0)),
+				       ConstantInt::get(ctx, APInt(32, 6)),
+				       ConstantInt::get(ctx, APInt(32, 0)),
+				       ConstantInt::get(ctx, APInt(64, x))
+				     },
+				     "",
+				     b);
+  return new LoadInst(p, "", false, b);
 }
-/*
-Function* wrap_func(std::string name, Function *func) {
+
+Function* wrap_func(Function *func) {
+  std::string name = "wrapped_" + func->getName().str();
   Module *mod = func->getParent();
-  int n = func->getFunctionType()->getNumParams();
+  int in = func->getFunctionType()->getNumParams();
+  int out = func->getReturnType()->isStructTy() ? func->getReturnType()->getStructNumElements() : 1;
   Function* func_wrapper = mod->getFunction(name);
   if(func_wrapper) return func_wrapper;
   LLVMContext &ctx = mod->getContext();
 
-  ArrayType *ArrayTy_arg = ArrayType::get(cell_ptr_type, n);
-  ArrayType *ArrayTy_types = ArrayType::get(IntegerType::get(ctx, 32), n);
-
-  // Global Variable Declarations
-  Constant* const_array_types = ConstantArray::get(ArrayTy_types, std::vector<Constant *>(n, ConstantInt::get(ctx, APInt(32, T_INT))));
-
-  GlobalVariable* gvar_array_wrapper_types =
-    new GlobalVariable(*mod, ArrayTy_types, true, GlobalValue::InternalLinkage, const_array_types, "wrapper.types");
-  gvar_array_wrapper_types->setAlignment(4);
-
-  // Constant Definitions
-
-  const_int(64, 1);
-  const_int(1, 2);
-
-  ConstantInt* const_int64_not_3 = ConstantInt::get(ctx, APInt(64, ~3));
-  ConstantInt* const_int32_n = ConstantInt::get(ctx, APInt(32, n));
-
-  ConstantPointerNull* const_ptr_cell_null = ConstantPointerNull::get(cell_ptr_type);
-  Constant* const_ptr_types = ConstantExpr::getGetElementPtr(gvar_array_wrapper_types,
-							     std::vector<Constant *>(2, const_int64[0]));
-
   // Global Variable Definitions
-
   FunctionType *FuncTy_wrapper = FunctionType::get(IntegerType::get(ctx, 1),
-						   std::vector<Type *> { cell_ptr_ptr_type },
+						   std::vector<Type *> { cell_ptr_ptr_type, IntegerType::get(ctx, 32) },
 				                   false);
 
   // function definition
@@ -315,105 +327,49 @@ Function* wrap_func(std::string name, Function *func) {
   Function::arg_iterator args = func_wrapper->arg_begin();
   Value* ptr_cp = args++;
   ptr_cp->setName("cp");
+  Value* type_arg = args++;
+  type_arg->setName("type");
 
-  BasicBlock* label_entry = BasicBlock::Create(ctx, "entry",func_wrapper,0);
-  BasicBlock* label_if_test = BasicBlock::Create(ctx, "if_test",func_wrapper,0);
-  BasicBlock* label_comp = BasicBlock::Create(ctx, "comp",func_wrapper,0);
-  BasicBlock* label_epilogue = BasicBlock::Create(ctx, "epilogue",func_wrapper,0);
-  BasicBlock* label_fail = BasicBlock::Create(ctx, "fail",func_wrapper,0);
-  BasicBlock* label_finish = BasicBlock::Create(ctx, "finish",func_wrapper,0);
+  BasicBlock* label_entry = BasicBlock::Create(ctx, "entry", func_wrapper, 0);
 
   // Block  (label_entry)
-  Value *ptr_res, *ptr_arg_array, *ptr_alt_set, *ptr_c, *ptr_arg0;
   {
-    ptr_res = new AllocaInst(cell_ptr_type, "res", label_entry);
-    ptr_alt_set = new AllocaInst(IntegerType::get(ctx, 64), "alt_set", label_entry);
-    ptr_arg_array = new AllocaInst(ArrayTy_arg, "arg", label_entry);
-    new StoreInst(const_ptr_cell_null, ptr_res, false, label_entry);
     auto ptr_cp_deref = new LoadInst(ptr_cp, "", false, label_entry);
     auto int64_c = new PtrToIntInst(ptr_cp_deref, IntegerType::get(ctx, 64), "", label_entry);
-    auto int64_c_and_not_3 = BinaryOperator::Create(Instruction::And, int64_c, const_int64_not_3, "", label_entry);
-    ptr_c = new IntToPtrInst(int64_c_and_not_3, cell_ptr_type, "c", label_entry);
-    new StoreInst(const_int64[0], ptr_alt_set, false, label_entry);
-    ptr_arg0 = index(ptr_arg_array, 0, label_entry);
-    auto int1_function_preamble_call =
-      CallInst::Create(func_function_preamble(mod),
-		       std::vector<Value *> {
-			 ptr_c,
-			   ptr_alt_set,
-			   ptr_arg0,
-			   const_ptr_types,
-			   ptr_res,
-			   const_int32_n,
-			   },
-		       "",
-		       label_entry);
-    setup_CallInst(int1_function_preamble_call, ZEXT | NOUNWIND);
-    BranchInst::Create(label_if_test, label_fail, int1_function_preamble_call, label_entry);
-  }
+    auto int64_c_and_not_3 = BinaryOperator::Create(Instruction::And, int64_c,
+						    ConstantInt::get(ctx, APInt(64, ~3)), "", label_entry);
+    auto ptr_c = new IntToPtrInst(int64_c_and_not_3, cell_ptr_type, "c", label_entry);
 
-  // Block if_test (label_if_test)
-  {
-    auto res = new LoadInst(ptr_res, "", false, label_if_test);
-    auto b = new ICmpInst(*label_if_test, ICmpInst::ICMP_EQ, res, const_ptr_cell_null, "");
-    BranchInst::Create(label_comp, label_epilogue, b, label_if_test);
-  }
+    std::vector<Value *> builder_args;
 
-  // Block comp (label_comp)
-  {
-    std::vector<Value *> int64_arg_val;
+    for(int i = 0; i < in; i++) {
+      builder_args.push_back(get_arg(ptr_c, i, label_entry));
+    }
 
-    if(n) {
-      int64_arg_val.push_back(get_val(ptr_arg0, label_comp));
+    auto call = CallInst::Create(func, builder_args, "", label_entry);
 
-      for(int i = 1; i < n; i++) {
-	int64_arg_val.push_back(get_val(index(ptr_arg_array, i, label_comp), label_comp));
+    std::vector<Value *> builder_results;
+
+    auto f_store_lazy = func_store_lazy(mod);
+
+    if(out == 1) {
+      CallInst::Create(f_store_lazy, std::vector<Value *> {ptr_c, call}, "", label_entry);
+    } else {
+      auto x = ExtractValueInst::Create(call, ArrayRef<unsigned>(0), "", label_entry);
+      CallInst::Create(f_store_lazy, std::vector<Value *> {ptr_c, x}, "", label_entry);
+      for(int i = 1; i < out; i++) {
+	auto x = ExtractValueInst::Create(call, ArrayRef<unsigned>(i), "", label_entry);
+	auto d = get_arg(ptr_c, in + i - 1, label_entry);
+	CallInst::Create(f_store_lazy, std::vector<Value *> {d, x}, "", label_entry);
       }
     }
 
-    auto int64_sum = CallInst::Create(func, int64_arg_val, "", label_comp);
-    auto ptr_func_val_call = CallInst::Create(func_val(mod), int64_sum, "", label_comp);
-    setup_CallInst(ptr_func_val_call, NOUNWIND);
-    new StoreInst(ptr_func_val_call, ptr_res, false, label_comp);
-    BranchInst::Create(label_epilogue, label_comp);
-  }
-
-  // Block epilogue (label_epilogue)
-  {
-    auto int64_altset = new LoadInst(ptr_alt_set, "", false, label_epilogue);
-    auto ptr_res_deref = new LoadInst(ptr_res, "", false, label_epilogue);
-    auto void_function_epilogue_call =
-      CallInst::Create(func_function_epilogue(mod),
-		       std::vector<Value *> {
-			 ptr_c,
-			 int64_altset,
-			 ptr_res_deref,
-			 const_int32_n
-		       },
-		       "",
-		       label_epilogue);
-    setup_CallInst(void_function_epilogue_call, NOUNWIND);
-    BranchInst::Create(label_finish, label_epilogue);
-  }
-
-  // Block fail (label_fail)
-  {
-    auto void_fail_call = CallInst::Create(func_fail(mod), ptr_cp, "", label_fail);
-    setup_CallInst(void_fail_call, NOUNWIND);
-    BranchInst::Create(label_finish, label_fail);
-  }
-
-  // Block finish (label_finish)
-  {
-    PHINode* ret_phi = PHINode::Create(IntegerType::get(ctx, 1), 2, ".0", label_finish);
-    ret_phi->addIncoming(const_int1[1], label_epilogue);
-    ret_phi->addIncoming(const_int1[0], label_fail);
-    ReturnInst::Create(ctx, ret_phi, label_finish);
+    ReturnInst::Create(ctx, ConstantInt::get(ctx, APInt(1, 0)), label_entry);
   }
 
   return func_wrapper;
 }
-*/
+
 void printModule(Module *mod) {
   verifyModule(*mod, PrintMessageAction);
   PassManager PM;
@@ -429,14 +385,13 @@ reduce_t *compile(cell_t *c, unsigned int *in, unsigned int *out) {
   Module *mod = new Module("module", ctx);
   define_types(mod);
   Function *f = compile_simple("compiled_func", c, in, out, mod);
-  /*
-  Function *lf = wrap_func("wrapped_compiled_func", f);
+  Function *lf = wrap_func(f);
   std::string err = "";
   engine = EngineBuilder(mod)
     .setErrorStr(&err)
     .setEngineKind(EngineKind::JIT)
     .create();
-
+  /*
   engine->addGlobalMapping(func_function_preamble(mod), (void *)&function_preamble);
   engine->addGlobalMapping(func_val(mod), (void *)&val);
   engine->addGlobalMapping(func_function_epilogue(mod), (void *)&function_epilogue);
