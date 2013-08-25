@@ -41,32 +41,12 @@ void setup_CallInst(CallInst *i, unsigned int attrs) {
   if(attrs & NOUNWIND) i->addAttribute(-1, Attribute::NoUnwind);
 }
 
-#define const_int(bits, n) \
-ConstantInt* const_int##bits[n]; \
-load_constants(ctx, bits, const_int##bits, n);
-
 StructType *cell_type;
 PointerType* cell_ptr_type;
 PointerType* cell_ptr_ptr_type;
 PointerType* i64_ptr_type;
 PointerType* i32_ptr_type;
-/*
-Function* func_function_preamble(Module *mod) {
-  Function *f = mod->getFunction("function_preamble");
-  if(f) return f;
 
-  LLVMContext &ctx = mod->getContext();
-  FunctionType* ft =
-    FunctionType::get(IntegerType::get(ctx, 1),
-		      std::vector<Type *> { cell_ptr_type, i64_ptr_type, cell_ptr_ptr_type,
-			i32_ptr_type, cell_ptr_type_ptr, IntegerType::get(ctx, 32) },
-		      false);
-  f = Function::Create(ft, GlobalValue::ExternalLinkage, "function_preamble", mod);
-  f->setCallingConv(CallingConv::C);
-  f->addAttribute(0, Attribute::ZExt);
-  return f;
-}
-*/
 Function *func_val(Module *mod) {
   Function *f = mod->getFunction("val");
   if(f) return f;
@@ -77,26 +57,7 @@ Function *func_val(Module *mod) {
   f->setCallingConv(CallingConv::C);
   return f;
 }
-/*
-Function *func_function_epilogue(Module *mod) {
-  Function *f = mod->getFunction("function_epilogue");
-  if(f) return f;
 
-  LLVMContext &ctx = mod->getContext();
-  FunctionType *ft =
-    FunctionType::get(Type::getVoidTy(ctx),
-		      std::vector<Type *> {
-			cell_ptr_type,
-			IntegerType::get(ctx, 64),
-			cell_ptr_type,
-			IntegerType::get(ctx, 32)
-		      },
-		      false);
-  f  = Function::Create(ft, GlobalValue::ExternalLinkage, "function_epilogue", mod);
-  f->setCallingConv(CallingConv::C);
-  return f;
-}
-*/
 Function *func_fail(Module *mod) {
   Function *f = mod->getFunction("fail");
   if(f) return f;
@@ -316,13 +277,6 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
     ReturnInst::Create(ctx, regs[c->ptr[0] - cells], b);
   }
   return f;
-}
-
-void load_constants(LLVMContext &ctx, unsigned int bits, ConstantInt **arr, unsigned int n) {
-  int i;
-  for(i = 0; i < n; i++) {
-    arr[i] = ConstantInt::get(ctx, APInt(bits, i));
-  }
 }
 
 Value *get_val(Value *ptr, BasicBlock *b) {
