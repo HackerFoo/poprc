@@ -125,6 +125,20 @@ Function *func_store_lazy(Module *mod) {
   return f;
 }
 
+Function *func_store_lazy_dep(Module *mod) {
+  Function *f = mod->getFunction("store_lazy_dep");
+  if(f) return f;
+
+  LLVMContext &ctx = mod->getContext();
+  FunctionType* ft =
+    FunctionType::get(Type::getVoidTy(ctx),
+		      std::vector<Type *> { cell_ptr_type, cell_ptr_type, cell_ptr_type },
+		      false);
+  f = Function::Create(ft, GlobalValue::ExternalLinkage, "store_lazy_dep", mod);
+  f->setCallingConv(CallingConv::C);
+  return f;
+}
+
 Function *func_drop(Module *mod) {
   Function *f = mod->getFunction("drop");
   if(f) return f;
@@ -135,6 +149,20 @@ Function *func_drop(Module *mod) {
 		      std::vector<Type *> { cell_ptr_type },
 		      false);
   f = Function::Create(ft, GlobalValue::ExternalLinkage, "drop", mod);
+  f->setCallingConv(CallingConv::C);
+  return f;
+}
+
+Function *func_refn(Module *mod) {
+  Function *f = mod->getFunction("refn");
+  if(f) return f;
+
+  LLVMContext &ctx = mod->getContext();
+  FunctionType* ft =
+    FunctionType::get(Type::getVoidTy(ctx),
+		      std::vector<Type *> { cell_ptr_type, IntegerType::get(ctx, 32) },
+		      false);
+  f = Function::Create(ft, GlobalValue::ExternalLinkage, "refn", mod);
   f->setCallingConv(CallingConv::C);
   return f;
 }
@@ -218,6 +246,7 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
   for(auto i = f->arg_begin(); i != f->arg_end(); ++i)
     args.push_back(i);
   std::map<unsigned int, Value *> regs;
+  std::map<unsigned int, int> cnt;
 
   cell_t *p = trace;
   while(p < trace_ptr) {
@@ -226,7 +255,10 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
     if(is_reduced(p)) {
       if(is_var(p)) {
 	unsigned int n = p->val[0] >> 8;
-	if(n) regs[ix] = args[n-1];
+	if(n && regs.find(ix) == regs.end()) {
+	  regs[ix] = args[n-1];
+	  cnt[ix] = 1;
+	}
       } else {
 	auto call = CallInst::Create(func_val(mod), ConstantInt::get(ctx, APInt(64, p->val[0])), "", b);
 	setup_CallInst(call, NOUNWIND);
@@ -238,23 +270,46 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
       auto f = get_builder(p, mod);
       std::vector<Value *> f_args;
       int f_in = p->size - p->out;
-      for(int i = 0; i < f_in; ++i) f_args.push_back(regs[p->arg[i] - cells]);
+      for(int i = 0; i < f_in; ++i) {
+	unsigned int a = p->arg[i] - cells;
+	f_args.push_back(regs[a]);
+	--cnt[a];
+      }
       auto call = CallInst::Create(f, f_args, "", b);
       if(p->out) {
 	regs[ix] = ExtractValueInst::Create(call, std::vector<unsigned>{0}, "", b);
-	for(unsigned int i = 0; i < p->out; ++i)
-	  regs[p->arg[p->size - i - 1] - cells] =
-	    ExtractValueInst::Create(call, std::vector<unsigned>{i+1}, "", b);
+	cnt[ix] = 1;
+	for(unsigned int i = 0; i < p->out; ++i) {
+	  unsigned int a = p->arg[p->size - i - 1] - cells;
+	  regs[a] = ExtractValueInst::Create(call, std::vector<unsigned>{i+1}, "", b);
+	  cnt[a] = 1;
+	}
       } else {
 	regs[ix] = call;
+	cnt[ix] = 1;
       }
     }
     p += closure_cells(p);
   }
+  for(int i = 0; i < out_n; ++i) {
+    --cnt[c->ptr[i] - cells];
+  }
+  for(auto i = cnt.begin(); i != cnt.end(); ++i) {
+    if(i->second < 0) {
+      CallInst::Create(func_refn(mod),
+		       std::vector<Value *> {
+			 regs[i->first],
+			 ConstantInt::get(ctx, APInt(32, -i->second))
+		       }, "", b);
+    } else if(i->second > 0) {
+      CallInst::Create(func_drop(mod), ArrayRef<Value *>(regs[i->first]), "", b);
+    }
+  }
   if(out_n > 1) {
     Value *agg = UndefValue::get(f->getReturnType());
     for(unsigned int i = 0; i < out_n; ++i) {
-      agg = InsertValueInst::Create(agg, regs[c->ptr[i] - cells], std::vector<unsigned>{i}, "", b);
+      unsigned int a = c->ptr[i] - cells;
+      agg = InsertValueInst::Create(agg, regs[a], std::vector<unsigned>{i}, "", b);
     }
     ReturnInst::Create(ctx, agg, b);
   } else {
@@ -296,7 +351,7 @@ Value *get_arg(Value *ptr, int x, BasicBlock *b) {
 				     std::vector<Value *> {
 				       ConstantInt::get(ctx, APInt(64, 0)),
 				       ConstantInt::get(ctx, APInt(32, 6)),
-				       ConstantInt::get(ctx, APInt(32, 0)),
+					 //ConstantInt::get(ctx, APInt(32, 0)),
 				       ConstantInt::get(ctx, APInt(64, x))
 				     },
 				     "",
@@ -351,6 +406,7 @@ Function* wrap_func(Function *func) {
     std::vector<Value *> builder_results;
 
     auto f_store_lazy = func_store_lazy(mod);
+    auto f_store_lazy_dep = func_store_lazy_dep(mod);
 
     if(out == 1) {
       CallInst::Create(f_store_lazy, std::vector<Value *> {ptr_c, call}, "", label_entry);
@@ -360,7 +416,7 @@ Function* wrap_func(Function *func) {
       for(int i = 1; i < out; i++) {
 	auto x = ExtractValueInst::Create(call, ArrayRef<unsigned>(i), "", label_entry);
 	auto d = get_arg(ptr_c, in + i - 1, label_entry);
-	CallInst::Create(f_store_lazy, std::vector<Value *> {d, x}, "", label_entry);
+	CallInst::Create(f_store_lazy_dep, std::vector<Value *> {ptr_c, d, x}, "", label_entry);
       }
     }
 
@@ -391,20 +447,27 @@ reduce_t *compile(cell_t *c, unsigned int *in, unsigned int *out) {
     .setErrorStr(&err)
     .setEngineKind(EngineKind::JIT)
     .create();
-  /*
-  engine->addGlobalMapping(func_function_preamble(mod), (void *)&function_preamble);
+
+  engine->addGlobalMapping(func_store_lazy(mod), (void *)&store_lazy);
+  engine->addGlobalMapping(func_store_lazy_dep(mod), (void *)&store_lazy_dep);
   engine->addGlobalMapping(func_val(mod), (void *)&val);
-  engine->addGlobalMapping(func_function_epilogue(mod), (void *)&function_epilogue);
   engine->addGlobalMapping(func_fail(mod), (void *)&fail);
-  */
+  engine->addGlobalMapping(func_drop(mod), (void *)&drop);
+  engine->addGlobalMapping(func_refn(mod), (void *)&refn);
+  for(int i = 0; i < builder_table_length; ++i) {
+    engine->addGlobalMapping(get_cell_func("build_" + std::string(builder_table[i].name), 
+					   builder_table[i].in,
+					   builder_table[i].out,
+					   mod),
+			     builder_table[i].func);
+  }
+
   f->dump();
-  //lf->dump();
-  /*
+  lf->dump();
+
   if(!engine) {
     std::cout << err << std::endl;
     return NULL;
   }
   return (reduce_t *)engine->getPointerToFunction(lf);
-  */
-  return func_id;
 }

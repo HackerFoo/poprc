@@ -83,6 +83,12 @@ typedef struct word_entry_t {
   unsigned int in, out;
 } word_entry_t;
 
+typedef struct builder_entry_t {
+  char name[64];
+  void *func;
+  unsigned int in, out;
+} builder_entry_t;
+
 typedef struct parse_tok_t {
   cell_t *c;
   unsigned int out;

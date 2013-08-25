@@ -38,7 +38,7 @@
     '-----------------------------------------------*/
 
 /* must be in ascending order */
-word_entry_t word_table[29] = {
+word_entry_t word_table[] = {
   {"!", func_assert, 1, 1},
   {"'", func_quote, 1, 1},
   {"*", func_mul, 2, 1},
@@ -69,6 +69,30 @@ word_entry_t word_table[29] = {
   {"|", func_alt, 2, 1},
   {"||", func_alt2, 2, 1}
 };
+const int word_table_length = LENGTH(word_table);
+
+builder_entry_t builder_table[] = {
+  {"add", build_add, 2, 1},
+  {"mul", build_mul, 2, 1},
+  {"sub", build_sub, 2, 1},
+  {"gt", build_gt, 2, 1},
+  {"gte", build_gte, 2, 1},
+  {"lt", build_lt, 2, 1},
+  {"lte", build_lte, 2, 1},
+  {"eq", build_eq, 2, 1},
+  {"compose", build_compose, 2, 1},
+  {"pushl", build_pushl, 2, 1},
+  {"pushr", build_pushr, 2, 1},
+  {"popr", build_popr, 1, 2},
+  {"quote", build_quote, 1, 1},
+  {"alt", build_alt, 2, 1},
+  {"alt2", build_alt2, 2, 1},
+  {"assert", build_assert, 1, 1},
+  {"id", build_id, 1, 1},
+  {"cut", build_cut, 1, 1}
+};
+
+const int builder_table_length = LENGTH(builder_table);
 
 static const type_t _op2_types[] = {T_INT, T_INT, T_INT};
 cell_t *_op2(intptr_t (*op)(intptr_t, intptr_t), cell_t *x, cell_t *y) {

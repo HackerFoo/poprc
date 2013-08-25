@@ -1265,6 +1265,17 @@ void store_lazy(cell_t *c, cell_t *r) {
   c->arg[1] = 0;
 }
 
+void store_lazy_dep(cell_t *c, cell_t *d, cell_t *r) {
+  if(d) {
+    --c->n;
+    d->func = func_id;
+    d->size = 2;
+    d->out = 0;
+    d->arg[0] = r;
+    d->arg[1] = 0;
+  }
+}
+
 /*
 type_rep_t tr_next(type_rep_t t) {
   type_rep_t p = t;

@@ -19,8 +19,6 @@ OBJS := $(patsubst %.c, build/%.o, $(wildcard *.c))
 OBJS += $(patsubst %.cpp, build/%.o, $(wildcard *.cpp))
 GEN := $(patsubst %.c, gen/%.h, $(wildcard *.c))
 
-CFLAGS += -fPIC -shared
-
 .PHONY: all
 all: eval
 

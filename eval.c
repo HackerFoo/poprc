@@ -90,7 +90,7 @@ char *function_name(reduce_t *f) {
 char *function_token(reduce_t *f) {
   int i;
   f = clear_ptr(f, 1);
-  FOREACH(word_table, i) {
+  for(i = 0; i < word_table_length; ++i) {
     if(word_table[i].func == f)
       return word_table[i].name;
   }
@@ -558,7 +558,7 @@ word_entry_t *lookup_word(const char *w) {
     return
       lookup(word_table,
 	     WIDTH(word_table),
-	     LENGTH(word_table),
+	     word_table_length,
 	     w);
 }
 
