@@ -308,7 +308,7 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
   if(out_n > 1) {
     Value *agg = UndefValue::get(f->getReturnType());
     for(unsigned int i = 0; i < out_n; ++i) {
-      unsigned int a = c->ptr[i] - cells;
+      unsigned int a = c->ptr[out_n - 1 - i] - cells;
       agg = InsertValueInst::Create(agg, regs[a], std::vector<unsigned>{i}, "", b);
     }
     ReturnInst::Create(ctx, agg, b);
@@ -411,14 +411,14 @@ Function* wrap_func(Function *func) {
     if(out == 1) {
       CallInst::Create(f_store_lazy, std::vector<Value *> {ptr_c, call}, "", label_entry);
     } else {
-      auto x = ExtractValueInst::Create(call, ArrayRef<unsigned>(0), "", label_entry);
-      CallInst::Create(f_store_lazy, std::vector<Value *> {ptr_c, x}, "", label_entry);
-      for(int i = 1; i < out; i++) {
+       for(int i = 1; i < out; i++) {
 	auto x = ExtractValueInst::Create(call, ArrayRef<unsigned>(i), "", label_entry);
 	auto d = get_arg(ptr_c, in + i - 1, label_entry);
 	CallInst::Create(f_store_lazy_dep, std::vector<Value *> {ptr_c, d, x}, "", label_entry);
       }
-    }
+      auto x = ExtractValueInst::Create(call, ArrayRef<unsigned>(0), "", label_entry);
+      CallInst::Create(f_store_lazy, std::vector<Value *> {ptr_c, x}, "", label_entry);
+   }
 
     ReturnInst::Create(ctx, ConstantInt::get(ctx, APInt(1, 0)), label_entry);
   }
