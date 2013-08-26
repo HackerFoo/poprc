@@ -578,22 +578,8 @@ cell_t *id(cell_t *c) {
 bool func_dup(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = c->arg[1];
-  if(!reduce(&c->arg[0], t)) goto fail;
-  cell_t *p = c->arg[0];
-  if(d) {
-    drop(c);
-    store_reduced(d, ref(p));
-  }
-  store_reduced(c, p);
-  return true;
-
- fail:
-  if(d) {
-    drop(c);
-    store_fail(d, d->alt);
-  }
-  c->arg[1] = 0;
-  fail(cp);
+  if(d) store_lazy_dep(c, d, ref(c->arg[0]));
+  store_lazy(c, c->arg[0]);
   return false;
 }
 
