@@ -79,7 +79,7 @@ Function *func_store_lazy(Module *mod) {
   LLVMContext &ctx = mod->getContext();
   FunctionType* ft =
     FunctionType::get(Type::getVoidTy(ctx),
-		      std::vector<Type *> { cell_ptr_type, cell_ptr_type },
+		      std::vector<Type *> { cell_ptr_ptr_type, cell_ptr_type, cell_ptr_type },
 		      false);
   f = Function::Create(ft, GlobalValue::ExternalLinkage, "store_lazy", mod);
   f->setCallingConv(CallingConv::C);
@@ -363,7 +363,7 @@ Function* wrap_func(Function *func) {
     auto f_store_lazy_dep = func_store_lazy_dep(mod);
 
     if(out == 1) {
-      CallInst::Create(f_store_lazy, std::vector<Value *> {ptr_c, call}, "", label_entry);
+      CallInst::Create(f_store_lazy, std::vector<Value *> {ptr_cp, ptr_c, call}, "", label_entry);
     } else {
        for(int i = 1; i < out; i++) {
 	auto x = ExtractValueInst::Create(call, ArrayRef<unsigned>(i), "", label_entry);
@@ -371,7 +371,7 @@ Function* wrap_func(Function *func) {
 	CallInst::Create(f_store_lazy_dep, std::vector<Value *> {ptr_c, d, x}, "", label_entry);
       }
       auto x = ExtractValueInst::Create(call, ArrayRef<unsigned>(0), "", label_entry);
-      CallInst::Create(f_store_lazy, std::vector<Value *> {ptr_c, x}, "", label_entry);
+      CallInst::Create(f_store_lazy, std::vector<Value *> {ptr_cp, ptr_c, x}, "", label_entry);
    }
 
     ReturnInst::Create(ctx, ConstantInt::get(ctx, APInt(1, 0)), label_entry);

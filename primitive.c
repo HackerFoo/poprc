@@ -89,6 +89,7 @@ builder_entry_t builder_table[] = {
   {"alt2", build_alt2, 2, 1},
   {"assert", build_assert, 1, 1},
   {"id", build_id, 1, 1},
+  {"force", build_force, 2, 2},
   {"cut", build_cut, 1, 1}
 };
 
@@ -426,13 +427,12 @@ two_cells_t build_popr(cell_t *x) {
 bool func_alt(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   uint8_t a = new_alt_id(2);
-  cell_t *r0 = id(ref(c->arg[0]));
+  cell_t *r0 = id(c->arg[0]);
   r0->arg[1] = (cell_t *)bm(a, 0);
-  cell_t *r1 = id(ref(c->arg[1]));
+  cell_t *r1 = id(c->arg[1]);
   r1->arg[1] = (cell_t *)bm(a, 1);
   r0->alt = r1;
-  *cp = r0;
-  drop(c);
+  store_lazy(cp, c, r0);
   return false;
 }
 cell_t *build_alt(cell_t *x, cell_t *y) {
@@ -518,20 +518,15 @@ cell_t *build_id(cell_t *x) {
 bool func_force(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = c->arg[2];
-  if(!(reduce(&c->arg[0], t) & reduce(&c->arg[1], T_ANY))) goto fail;
-  cell_t *alt = c->alt = closure_split(c, 2);
-  if(alt) {
-    if(d) d->alt = alt->arg[2] = dep(ref(alt));
-    else alt->arg[2] = 0;
+  if(!reduce(&c->arg[0], t)) goto fail;
+  c->alt = closure_split1(c, 0);
+  store_lazy_dep(c, d, c->arg[1]);
+  if(d) d->arg[1] = (cell_t *)c->arg[0]->alt_set;
+  if(c->alt) {
+    if (d) d->alt = c->alt->arg[2];
+    else drop(c->alt->arg[2]);
   }
-  cell_t *p = c->arg[0], *q = c->arg[1];
-  if(bm_conflict(p->alt_set, q->alt_set)) goto fail;
-  alt_set_t alt_set = p->alt_set | q->alt_set;
-  store_reduced(c, mod_alt(p, alt, alt_set));
-  if(d) {
-    drop(c);
-    store_reduced(d, mod_alt(q, d->alt, alt_set));
-  } else drop(q);
+  store_reduced(c, mod_alt(c->arg[0], c->alt, c->arg[0]->alt_set));
   return true;
 
  fail:
@@ -542,6 +537,10 @@ bool func_force(cell_t **cp, type_rep_t t) {
   c->arg[2] = 0;
   fail(cp);
   return false;
+}
+
+two_cells_t build_force(cell_t *x, cell_t *y) {
+  return build22(func_force, x, y);
 }
 
 bool func_drop(cell_t **cp, type_rep_t t) {
@@ -579,7 +578,7 @@ bool func_dup(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = c->arg[1];
   if(d) store_lazy_dep(c, d, ref(c->arg[0]));
-  store_lazy(c, c->arg[0]);
+  store_lazy(cp, c, c->arg[0]);
   return false;
 }
 
@@ -695,7 +694,7 @@ bool func_head(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   two_cells_t a = build_popr(c->arg[0]);
   drop(a.a);
-  store_lazy(c, a.b);
+  store_lazy(cp, c, a.b);
   return false;
 }
 

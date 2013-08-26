@@ -136,12 +136,16 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
 }
 
 cell_t *closure_split1(cell_t *c, int n) {
+  int i;
   if(!c->arg[n]->alt) return c->alt;
   cell_t *a = copy(c);
   a->arg[n] = 0;
-  traverse_ref(a, ARGS);
+  traverse_ref(a, ARGS_IN);
+  for(i = c->size - c->out; i < c->size; ++i) {
+    a->arg[i] = dep(a);
+  }
   a->arg[n] = ref(c->arg[n]->alt);
-  a->n = 0;
+  a->n = c->out;
   a->alt = c->alt;
   return a;
 }
@@ -1256,24 +1260,28 @@ void function_epilogue(cell_t *c,
   store_reduced(c, res);
 }
 
-void store_lazy(cell_t *c, cell_t *r) {
-  closure_shrink(c, 1);
-  c->func = func_id;
-  c->size = 2;
-  c->out = 0;
-  c->arg[0] = r;
-  c->arg[1] = 0;
+void store_lazy(cell_t **cp, cell_t *c, cell_t *r) {
+  if(c->n) {
+    --c->n;
+    closure_shrink(c, 1);
+    c->func = func_id;
+    c->size = 1;
+    c->out = 0;
+    c->arg[0] = ref(r);
+    c->arg[1] = 0;
+  } else closure_free(c);
+  *cp = r;
 }
 
 void store_lazy_dep(cell_t *c, cell_t *d, cell_t *r) {
   if(d) {
     --c->n;
     d->func = func_id;
-    d->size = 2;
+    d->size = 1;
     d->out = 0;
     d->arg[0] = r;
     d->arg[1] = 0;
-  }
+  } else drop(r);
 }
 
 /*
