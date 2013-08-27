@@ -74,7 +74,7 @@ char *function_name(reduce_t *f) {
   CASE(dup);
   CASE(swap);
   CASE(drop);
-  CASE(force);
+  //CASE(force);
   CASE(cut);
   CASE(alt2);
   CASE(ifte);
@@ -784,7 +784,7 @@ void print_trace() {
 	  printf(" type");
 	}
       } else {
-	show_val(p);
+	show_one(p);
       }
       printf("\n");
     } else if(is_dep(p)) {

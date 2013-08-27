@@ -224,6 +224,7 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
 	auto call = CallInst::Create(func_val(mod), ConstantInt::get(ctx, APInt(64, p->val[0])), "", b);
 	setup_CallInst(call, NOUNWIND);
 	regs[ix] = call;
+	cnt[ix] = 1;
       }
     } else if(p->func == func_dep) {
       // do nothing

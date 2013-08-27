@@ -39,7 +39,7 @@
 
 /* must be in ascending order */
 word_entry_t word_table[] = {
-  {"!", func_assert, 1, 1},
+  {"!", func_assert, 2, 1},
   {"'", func_quote, 1, 1},
   {"*", func_mul, 2, 1},
   {"+", func_add, 2, 1},
@@ -57,7 +57,7 @@ word_entry_t word_table[] = {
   {"drop", func_drop, 2, 1},
   {"dup", func_dup, 1, 2},
   {"fib", func_fib, 1, 1},
-  {"force", func_force, 2, 2},
+  //{"force", func_force, 2, 2},
   {"func", func_id, 1, 1},
   {"head", func_head, 1, 1},
   {"id", func_id, 1, 1},
@@ -87,9 +87,9 @@ builder_entry_t builder_table[] = {
   {"quote", build_quote, 1, 1},
   {"alt", build_alt, 2, 1},
   {"alt2", build_alt2, 2, 1},
-  {"assert", build_assert, 1, 1},
+  {"assert", build_assert, 2, 1},
   {"id", build_id, 1, 1},
-  {"force", build_force, 2, 2},
+  //{"force", build_force, 2, 2},
   {"cut", build_cut, 1, 1}
 };
 
@@ -456,20 +456,25 @@ cell_t *build_alt2(cell_t *x, cell_t *y) {
 
 bool func_assert(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
-  if(!reduce(&c->arg[0], T_INT)) goto fail;
-  c->alt = closure_split1(c, 0);
-  cell_t *p = get(c->arg[0]);
+  if(!(reduce(&c->arg[1], T_INT) &&
+       reduce(&c->arg[0], t))) goto fail;
+  c->alt = closure_split(c, 2);
+  cell_t *p = get(c->arg[1]);
   if(!((p->type == T_INT && p->val[0]) ||
        is_var(p))) goto fail;
+  if(bm_conflict(c->arg[0]->alt_set,
+		 c->arg[1]->alt_set)) goto fail;
   store_reduced(c, mod_alt(c->arg[0], c->alt,
-			   c->arg[0]->alt_set));
+			   c->arg[0]->alt_set |
+			   c->arg[1]->alt_set));
+  drop(p);
   return true;
  fail:
   fail(cp);
   return false;
 }
-cell_t *build_assert(cell_t *x) {
-  return build11(func_assert, x);
+cell_t *build_assert(cell_t *x, cell_t *y) {
+  return build21(func_assert, x, y);
 }
 
 /*
@@ -512,9 +517,9 @@ bool func_id(cell_t **cp, type_rep_t t) {
   return false;
 }
 cell_t *build_id(cell_t *x) {
-  return x;
+  return build11(func_id, x);
 }
-
+/*
 bool func_force(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = c->arg[2];
@@ -542,7 +547,7 @@ bool func_force(cell_t **cp, type_rep_t t) {
 two_cells_t build_force(cell_t *x, cell_t *y) {
   return build22(func_force, x, y);
 }
-
+*/
 bool func_drop(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *p = ref(c->arg[0]);
