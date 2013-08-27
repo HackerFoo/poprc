@@ -182,6 +182,17 @@ Function *get_builder(cell_t *p, Module *mod) {
   else return get_cell_func(name, p->size - p->out, p->out + 1, mod);
 }
 
+Value *wrap_alts(cell_t *c,
+		 std::map<unsigned int, Value *> regs,
+		 BasicBlock *b,
+		 Module *mod) {
+  unsigned int ix = c - cells;
+  if(!c->alt) return regs[ix];
+  auto f_alt = mod->getFunction("build_alt2");
+  if(!f_alt) f_alt = get_cell_func("build_alt2", 2, 1, mod);
+  return CallInst::Create(f_alt, std::vector<Value *> { wrap_alts(c->alt, regs, b, mod), regs[ix] }, "", b);
+}
+
 Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned int *out, Module *mod) {
   int out_n = list_size(c), in_n = 0;
   cell_t *l = c->ptr[out_n-1];
@@ -254,7 +265,11 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
     p += closure_cells(p);
   }
   for(int i = 0; i < out_n; ++i) {
-    --cnt[c->ptr[i] - cells];
+    cell_t *p = c->ptr[i];
+    while(p) {
+      --cnt[p - cells];
+      p = p->alt;
+    }
   }
   for(auto i = cnt.begin(); i != cnt.end(); ++i) {
     if(i->second < 0) {
@@ -275,7 +290,7 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
     }
     ReturnInst::Create(ctx, agg, b);
   } else {
-    ReturnInst::Create(ctx, regs[c->ptr[0] - cells], b);
+    ReturnInst::Create(ctx, wrap_alts(c->ptr[0], regs, b, mod), b);
   }
   return f;
 }
