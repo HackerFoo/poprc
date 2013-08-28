@@ -971,6 +971,17 @@ void *lookup(void *table, unsigned int width, unsigned int rows, const char *key
   return ret;
 }
 
+void *lookup_linear(void *table, unsigned int width, unsigned int rows, const char *key) {
+  void *entry = table;
+  unsigned int rows_left = rows;
+  int key_length = strnlen(key, width);
+  while(rows_left-- && *(uint8_t *)entry) {
+    if(!strncmp(key, entry, key_length)) return entry;
+    entry += width;
+  }
+  return NULL;
+}
+
 cell_t *get(cell_t *c) {
   if(c->type == T_INDIRECT)
     return get((cell_t *)c->val[0]);

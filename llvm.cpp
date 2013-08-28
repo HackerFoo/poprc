@@ -190,7 +190,7 @@ Value *wrap_alts(cell_t *c,
   if(!c->alt) return regs[ix];
   auto f_alt = mod->getFunction("build_alt2");
   if(!f_alt) f_alt = get_cell_func("build_alt2", 2, 1, mod);
-  return CallInst::Create(f_alt, std::vector<Value *> { wrap_alts(c->alt, regs, b, mod), regs[ix] }, "", b);
+  return CallInst::Create(f_alt, std::vector<Value *> { regs[ix], wrap_alts(c->alt, regs, b, mod) }, "", b);
 }
 
 Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned int *out, Module *mod) {
@@ -216,7 +216,7 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
     BasicBlock::Create(ctx, "entry", f, 0);
   std::vector<Value *> args;
   for(auto i = f->arg_begin(); i != f->arg_end(); ++i)
-    args.push_back(i);
+    args.insert(args.begin(), i);
   std::map<unsigned int, Value *> regs;
   std::map<unsigned int, int> cnt;
 

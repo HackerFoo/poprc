@@ -30,6 +30,10 @@
 #include "gen/test.h"
 #include "llvm.h"
 
+word_entry_t user_word_table[64] = {{""}};
+const int user_word_table_length = LENGTH(user_word_table);
+word_entry_t *new_user_word_entry = user_word_table;
+
 char *show_alt_set(uintptr_t as) {
   static char out[sizeof(as)*4+1];
   char *p = out;
@@ -469,28 +473,30 @@ int main(int argc, char *argv[]) {
 bool write_graph = false;
 
 void run_eval() {
-  char *line;
+  char *line_raw, *line;
 #ifdef USE_LINENOISE
   linenoiseSetCompletionCallback(completion);
   linenoiseHistoryLoad(HISTORY_FILE);
-  while((line = linenoise(": ")))
+  while((line_raw = linenoise(": ")))
 #else
   char buf[1024];
   while(printf(": "),
-        (line = fgets(buf, sizeof(buf), stdin)))
+        (line_raw = fgets(buf, sizeof(buf), stdin)))
 #endif
   {
 #ifndef USE_LINENOISE
-    char *p = line;
+    char *p = line_raw;
     while(*p && *p != '\n') ++p;
     *p = 0;
 #endif
-    if(line[0] == '\0') {
+    if(line_raw[0] == '\0') {
 #ifdef USE_LINENOISE
-      free(line);
+      free(line_raw);
 #endif
       continue;
     }
+    line = line_raw;
+    while(*line == ' ') ++line;
     if(strcmp(line, ":m") == 0) {
       measure_display();
     } else if(strcmp(line, ":g") == 0) {
@@ -501,12 +507,17 @@ void run_eval() {
 	runTests(&line[3]);
     } else if(strcmp(line, ":q") == 0) {
 #ifdef USE_LINENOISE
-      free(line);
+      free(line_raw);
 #endif
       break;
     } else if(strncmp(line, ":c ", 3) == 0) {
       cells_init();
-      compile_expr(line+3, strlen(line+3));
+      line += 3;
+      while(*line == ' ') ++line;
+      char *name = line;
+      while(*line != ' ') ++line;
+      *line++ = 0;
+      compile_expr(name, line, strlen(line));
     } else {
 #ifdef USE_LINENOISE
       linenoiseHistoryAdd(line);
@@ -519,7 +530,7 @@ void run_eval() {
       check_free();
     }
 #ifdef USE_LINENOISE
-    free(line);
+    free(line_raw);
 #endif
   }
 }
@@ -555,11 +566,17 @@ bool is_num(char *str) {
 }
 
 word_entry_t *lookup_word(const char *w) {
-    return
-      lookup(word_table,
-	     WIDTH(word_table),
-	     word_table_length,
-	     w);
+  word_entry_t *res =
+    lookup(word_table,
+	   WIDTH(word_table),
+	   word_table_length,
+	   w);
+  if(!res) res =
+    lookup_linear(user_word_table,
+		  WIDTH(user_word_table),
+		  user_word_table_length,
+		  w);
+  return res;
 }
 
 cell_t *word(char *w) {
@@ -718,10 +735,18 @@ void eval(char *str, unsigned int n) {
   }
 }
 
-void compile_expr(char *str, unsigned int n) {
+void compile_expr(char *name, char *str, unsigned int n) {
   cell_t *c = build(str, n);
   if(!c) return;
-  word_entry_t *e = lookup_word("func");
+  word_entry_t *e = 
+    lookup_linear(user_word_table,
+		  WIDTH(user_word_table),
+		  user_word_table_length,
+		  name);
+  if(!e) {
+    e = new_user_word_entry++;
+    strcpy(e->name, name);
+  }
   e->func = compile(c, &e->in, &e->out);
 }
 

@@ -58,7 +58,7 @@ word_entry_t word_table[] = {
   {"dup", func_dup, 1, 2},
   {"fib", func_fib, 1, 1},
   //{"force", func_force, 2, 2},
-  {"func", func_id, 1, 1},
+  //{"func", func_id, 1, 1},
   {"head", func_head, 1, 1},
   {"id", func_id, 1, 1},
   {"ifte", func_ifte, 3, 1},
