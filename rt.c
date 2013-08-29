@@ -495,16 +495,6 @@ int closure_next_child(cell_t *c) {
   return is_offset(c->arg[0]) ? (intptr_t)c->arg[0] : 0;
 }
 
-/* protect against destructive modification */
-cell_t *protect(cell_t *c) {
-  if(c->n) {
-    --c->n;
-    c = dup(c);
-    c->n = 0;
-  }
-  return c;
-}
-
 /* arg is destructive to c */
 void arg(cell_t *c, cell_t *a) {
   assert(is_closure(c) && is_closure(a));
@@ -700,34 +690,6 @@ cell_t *refn(cell_t *c, unsigned int n) {
     c->n += n;
   }
   return c;
-}
-
-cell_t *dup(cell_t *c) {
-  assert(is_closure(c));
-  if(closure_is_ready(c)) {
-    if(is_list(c)) {
-      int n = list_size(c);
-      cell_t *l = c->ptr[n-1];
-      if(!closure_is_ready(l)) {
-	cell_t *tmp = copy(c);
-	int i;
-	for(i = 0; i < n-1; ++i)
-	  tmp->ptr[i] = ref(tmp->ptr[i]);
-	tmp->ptr[n-1] = dup(tmp->ptr[n-1]);
-	return tmp;
-      }
-    }
-    return ref(c);
-  }
-  int args = closure_args(c);
-  cell_t *tmp = copy(c);
-  /* c->arg[<i] are empty and c->arg[>i] are ready, *
-   * so no need to copy                             *
-   * c->arg[i] only needs copied if filled          */
-  int i = closure_next_child(c);
-  if(is_closure(c->arg[i])) tmp->arg[i] = dup(c->arg[i]);
-  while(++i < args) tmp->arg[i] = ref(c->arg[i]);
-  return tmp;
 }
 
 bool is_nil(cell_t *c) {

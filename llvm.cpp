@@ -217,6 +217,7 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
   std::vector<Value *> args;
   for(auto i = f->arg_begin(); i != f->arg_end(); ++i)
     args.insert(args.begin(), i);
+  std::vector<bool> args_used(in_n, false);
   std::map<unsigned int, Value *> regs;
   std::map<unsigned int, int> cnt;
 
@@ -229,6 +230,7 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
 	unsigned int n = p->val[0] >> 8;
 	if(n && regs.find(ix) == regs.end()) {
 	  regs[ix] = args[n-1];
+	  args_used[n-1] = true;
 	  cnt[ix] = 1;
 	}
       } else {
@@ -237,6 +239,11 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
 	regs[ix] = call;
 	cnt[ix] = 1;
       }
+    } else if(p->func == func_cut) {
+      unsigned int a = p->arg[0] - cells;
+      regs[ix] = regs[a];
+      cnt[ix] = 1;
+      --cnt[a];
     } else if(p->func == func_dep) {
       // do nothing
     } else {
@@ -281,6 +288,10 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
     } else if(i->second > 0) {
       CallInst::Create(func_drop(mod), ArrayRef<Value *>(regs[i->first]), "", b);
     }
+  }
+  for(unsigned int i = 0; i < in_n; ++i) {
+    if(!args_used[i])
+      CallInst::Create(func_drop(mod), ArrayRef<Value *>(args[i]), "", b);
   }
   if(out_n > 1) {
     Value *agg = UndefValue::get(f->getReturnType());
@@ -433,7 +444,7 @@ reduce_t *compile(cell_t *c, unsigned int *in, unsigned int *out) {
   }
 
   f->dump();
-  lf->dump();
+  //lf->dump();
 
   if(!engine) {
     std::cout << err << std::endl;

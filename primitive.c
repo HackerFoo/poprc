@@ -370,6 +370,7 @@ bool func_popr(cell_t **cp, type_rep_t t) {
 
   if(c->arg[0]->alt) {
     alt = closure_alloc(2);
+    alt->out = 1;
     alt->func = func_popr;
     alt->arg[0] = ref(c->arg[0]->alt);
     alt->arg[1] = d ? dep(ref(alt)) : 0;
@@ -587,12 +588,15 @@ bool func_dup(cell_t **cp, type_rep_t t) {
   return false;
 }
 
+// make select function [| cut] for compilation
 bool func_cut(cell_t **cp, type_rep_t t) {
   cell_t *c = *cp;
+  if(!reduce(&c->arg[0], t)) goto fail;
   cell_t *p = c->arg[0];
-  if(!reduce(&p, t)) goto fail;
+  if(is_var(p)) reduce(&p->alt, t); // ***
   drop(p->alt);
   p->alt = 0;
+  // store a select to trace instead
   store_reduced(c, p);
   return true;
 
