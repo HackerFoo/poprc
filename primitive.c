@@ -590,16 +590,9 @@ bool func_dup(cell_t **cp, type_rep_t t) {
   return false;
 }
 
-bool func_cut(cell_t **cp, type_rep_t t) {
-  cell_t *c = *cp;
-  if(!reduce(&c->arg[0], t)) goto fail;
-  cell_t *p = c->arg[0], *x = p;
-  // *** forces code generation until first successful reduction
-  trace_var(c, p);
-  while(is_var(x) &&
-	reduce(&x->alt, t)) {
-    x = x->alt;
-    if(!x) break;
+void trace_expand_select(cell_t *c, cell_t *x, type_t t) {
+  while(reduce(&x, t)) {
+    if(!is_var(x)) trace_store(x, t);
     cell_t *tr = trace_ptr++;
     tr->func = func_select;
     tr->arg[0] = c;
@@ -608,7 +601,18 @@ bool func_cut(cell_t **cp, type_rep_t t) {
     tr->size = 2;
     tr->out = 0;
     tr->n = t;
+    if(!is_var(x)) break;
+    x = x->alt;
   }
+}
+
+bool func_cut(cell_t **cp, type_rep_t t) {
+  cell_t *c = *cp;
+  if(!reduce(&c->arg[0], t)) goto fail;
+  cell_t *p = c->arg[0];
+  // *** forces code generation until first successful reduction
+  trace_var(c, p);
+  if(is_var(p)) trace_expand_select(c, p->alt, t);
   drop(p->alt);
   p->alt = 0;
   store_reduced_nt(c, p);
@@ -622,14 +626,22 @@ cell_t *build_cut(cell_t *x) {
   return build11(func_cut, x);
 }
 
+/* args w/alts not handled correctly, */
+/* should probably cut them, or hide select */
 bool func_select(cell_t **cp, type_rep_t t) {
   cell_t *c = *cp;
   cell_t *p;
   if(reduce(&c->arg[0], t)) {
     p = c->arg[0];
+    if(is_var(p) && reduce(&c->arg[1], t)) {
+      if(!is_var(c->arg[1]))
+	trace_store(c->arg[1], t);
+    }
     drop(c->arg[1]);
   } else if(reduce(&c->arg[1], t)) {
     p = c->arg[1];
+    c->func = func_id;
+    c->size = 1;
     drop(c->arg[0]);
   } else goto fail;
 
