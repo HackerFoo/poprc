@@ -87,6 +87,7 @@ char *function_name(reduce_t *f) {
   CASE(dip21);
   CASE(head);
   CASE(fib);
+  CASE(select);
   return "?";
 # undef CASE
 }

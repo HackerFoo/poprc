@@ -239,7 +239,8 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
 	regs[ix] = call;
 	cnt[ix] = 1;
       }
-    } else if(p->func == func_cut) {
+    } else if(p->func == func_cut ||
+	      p->func == func_id) {
       unsigned int a = p->arg[0] - cells;
       regs[ix] = regs[a];
       cnt[ix] = 1;

@@ -45,10 +45,11 @@ void trace_init() {
 }
 
 void trace_store(cell_t *c, type_rep_t t) {
-  memcpy(trace_ptr, c, sizeof(cell_t) * closure_cells(c));
+  unsigned int n = closure_cells(c);
+  memcpy(trace_ptr, c, sizeof(cell_t) * n);
   trace_ptr->tmp = c;
   trace_ptr->n = t;
-  ++trace_ptr;
+  trace_ptr += n;
   assert((void *)trace_ptr < (void *)(&trace + 1));
 }
 
@@ -648,11 +649,19 @@ type_rep_t get_type(cell_t *c) {
   return t == 0 || (unsigned int)t > 255 ? T_LIST : t;
 }
 
-void store_reduced(cell_t *c, cell_t *r) {
+void trace_var(cell_t *c, cell_t *r) {
   if(r->type == T_VAR) {
     trace_store(c, get_type(r));
     r->val[0] &= 0xff;
   }
+}
+
+void store_reduced(cell_t *c, cell_t *r) {
+  trace_var(c, r);
+  store_reduced_nt(c, r);
+}
+
+void store_reduced_nt(cell_t *c, cell_t *r) {
   int n = c->n;
   r->func = func_reduced;
   alt_set_ref(r->alt_set);

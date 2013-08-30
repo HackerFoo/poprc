@@ -65,6 +65,7 @@ word_entry_t word_table[] = {
   {"popr", func_popr, 1, 2},
   {"pushl", func_pushl, 2, 1},
   {"pushr", func_pushr, 2, 1},
+  {"select", func_select, 2, 1},
   {"swap", func_swap, 2, 2},
   {"|", func_alt, 2, 1},
   {"||", func_alt2, 2, 1}
@@ -90,7 +91,8 @@ builder_entry_t builder_table[] = {
   {"assert", build_assert, 2, 1},
   {"id", build_id, 1, 1},
   //{"force", build_force, 2, 2},
-  {"cut", build_cut, 1, 1}
+  {"cut", build_cut, 1, 1},
+  {"select", build_select, 2, 1},
 };
 
 const int builder_table_length = LENGTH(builder_table);
@@ -588,16 +590,28 @@ bool func_dup(cell_t **cp, type_rep_t t) {
   return false;
 }
 
-// make select function [| cut] for compilation
 bool func_cut(cell_t **cp, type_rep_t t) {
   cell_t *c = *cp;
   if(!reduce(&c->arg[0], t)) goto fail;
-  cell_t *p = c->arg[0];
-  if(is_var(p)) reduce(&p->alt, t); // ***
+  cell_t *p = c->arg[0], *x = p;
+  // *** forces code generation until first successful reduction
+  trace_var(c, p);
+  while(is_var(x) &&
+	reduce(&x->alt, t)) {
+    x = x->alt;
+    if(!x) break;
+    cell_t *tr = trace_ptr++;
+    tr->func = func_select;
+    tr->arg[0] = c;
+    tr->arg[1] = x;
+    tr->tmp = c;
+    tr->size = 2;
+    tr->out = 0;
+    tr->n = t;
+  }
   drop(p->alt);
   p->alt = 0;
-  // store a select to trace instead
-  store_reduced(c, p);
+  store_reduced_nt(c, p);
   return true;
 
  fail:
@@ -606,6 +620,28 @@ bool func_cut(cell_t **cp, type_rep_t t) {
 }
 cell_t *build_cut(cell_t *x) {
   return build11(func_cut, x);
+}
+
+bool func_select(cell_t **cp, type_rep_t t) {
+  cell_t *c = *cp;
+  cell_t *p;
+  if(reduce(&c->arg[0], t)) {
+    p = c->arg[0];
+    drop(c->arg[1]);
+  } else if(reduce(&c->arg[1], t)) {
+    p = c->arg[1];
+    drop(c->arg[0]);
+  } else goto fail;
+
+  store_reduced(c, p);
+  return true;
+
+ fail:
+  fail(cp);
+  return false;
+}
+cell_t *build_select(cell_t *x, cell_t *y) {
+  return build21(func_select, x, y);
 }
 
 cell_t *build(char *str, unsigned int n);
