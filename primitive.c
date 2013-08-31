@@ -51,17 +51,10 @@ word_entry_t word_table[] = {
   {">", func_gt, 2, 1},
   {">=", func_gte, 2, 1},
   {"cut", func_cut, 1, 1},
-  {"dip11", func_dip11, 3, 2},
-  {"dip12", func_dip12, 3, 3},
-  {"dip21", func_dip21, 4, 2},
   {"drop", func_drop, 2, 1},
   {"dup", func_dup, 1, 2},
   {"fib", func_fib, 1, 1},
-  //{"force", func_force, 2, 2},
-  //{"func", func_id, 1, 1},
-  {"head", func_head, 1, 1},
   {"id", func_id, 1, 1},
-  {"ifte", func_ifte, 3, 1},
   {"popr", func_popr, 1, 2},
   {"pushl", func_pushl, 2, 1},
   {"pushr", func_pushr, 2, 1},
@@ -717,41 +710,6 @@ bool peg_func2(cell_t **cp, int N_IN, int N_OUT, cell_t *f) {
     }
   }
   drop(b);
-  return false;
-}
-
-bool func_ifte(cell_t **cp, type_rep_t t) {
-  char src[] = "[] pushl pushl swap pushr"
-    "[0 == ! force drop swap force drop]"
-    "[1 == ! force drop force drop] || . popr cut swap drop";
-  //  "[1 == ! force drop force drop] | . popr swap drop";
-  return peg_func(cp, 3, 1, src, sizeof(src));
-}
-
-bool func_dip11(cell_t **cp, type_rep_t t) {
-  char src[] = "swap pushr pushl popr "
-    "swap popr swap drop swap";
-  cell_t *f = build(src, sizeof(src));
-  return peg_func2(cp, 3, 2, f);
-}
-
-bool func_dip12(cell_t **cp, type_rep_t t) {
-  char src[] = "swap pushr pushl popr swap pushl"
-    "[swap] . popr swap popr swap popr swap drop";
-  return peg_func(cp, 3, 3, src, sizeof(src));
-}
-
-bool func_dip21(cell_t **cp, type_rep_t t) {
-  char src[] = "swap pushr pushl pushl popr "
-    "swap popr swap drop swap";
-  return peg_func(cp, 4, 2, src, sizeof(src));
-}
-
-bool func_head(cell_t **cp, type_rep_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
-  two_cells_t a = build_popr(c->arg[0]);
-  drop(a.a);
-  store_lazy(cp, c, a.b);
   return false;
 }
 

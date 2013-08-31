@@ -78,14 +78,8 @@ char *function_name(reduce_t *f) {
   CASE(dup);
   CASE(swap);
   CASE(drop);
-  //CASE(force);
   CASE(cut);
   CASE(alt2);
-  CASE(ifte);
-  CASE(dip11);
-  CASE(dip12);
-  CASE(dip21);
-  CASE(head);
   CASE(fib);
   CASE(select);
   return "?";
@@ -391,7 +385,9 @@ void show_one(cell_t *c) {
 
 bool reduce_one(cell_t **cp) {
   if(!closure_is_ready(*cp)) return true;
-  return reduce(cp, T_ANY);
+  bool b = reduce(cp, T_ANY);
+  //if(is_list(*cp)) reduce_list(*cp);
+  return b;
 }
 
 cell_t *reduce_alt(cell_t *c) {
@@ -503,9 +499,9 @@ void run_eval() {
     } else if(strcmp(line, ":g") == 0) {
       write_graph = !write_graph;
       printf("graph %s\n", write_graph ? "ON" : "OFF");
-    } else if(strncmp(line, ":t ", 3) == 0) {
+    } else if(strncmp(line, ":l ", 3) == 0) {
       if(line[3])
-	runTests(&line[3]);
+	loadSource(&line[3]);
     } else if(strcmp(line, ":q") == 0) {
 #ifdef USE_LINENOISE
       free(line_raw);
@@ -737,8 +733,6 @@ void eval(char *str, unsigned int n) {
 }
 
 void compile_expr(char *name, char *str, unsigned int n) {
-  cell_t *c = build(str, n);
-  if(!c) return;
   word_entry_t *e = 
     lookup_linear(user_word_table,
 		  WIDTH(user_word_table),
@@ -747,11 +741,19 @@ void compile_expr(char *name, char *str, unsigned int n) {
   if(!e) {
     e = new_user_word_entry++;
     strcpy(e->name, name);
+    e->func = func_id;
+    e->in = 1;
+    e->out = 1;
+  }
+  cell_t *c = build(str, n);
+  if(!c) {
+    --new_user_word_entry;
+    return;
   }
   e->func = compile(c, &e->in, &e->out);
 }
 
-void runTests(char *path) {
+void loadSource(char *path) {
   char buf[1024];
   char *line = 0;
   FILE *f = fopen(path, "r");
@@ -762,8 +764,20 @@ void runTests(char *path) {
     else if(line[0] == ':') {
       printf("%s", line);
       cells_init();
-      eval(line, strlen(line));
+      eval(line+1, strlen(line));
       check_free();
+    } else if(line[0] == '=') {
+      printf("%s", line);
+      ++line;
+      while(*line == ' ') ++line;
+      char *name = line;
+      while(*line != ' ') ++line;
+      *line++ = 0;
+      char *x = line;
+      while(*x && *x != '\n') ++x;
+      *x = 0;
+      cells_init();
+      compile_expr(name, line, strlen(line));
     }
   }
   fclose(f);
