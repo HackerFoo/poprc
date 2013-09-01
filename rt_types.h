@@ -22,22 +22,17 @@
 #include <stdint.h>
 #include <time.h>
 
-typedef enum {
-  T_ANY = 1,
-  T_FAIL,
-  T_INDIRECT,
-  T_INT,
-  T_VAR,
-  T_IO,
-  T_LIST
-} type_t;
+typedef uint16_t type_t;
 
-/*
-#define TN_INT 'I'
-
-typedef char type_node_t;
-typedef type_node_t *type_rep_t;
-*/
+#define T_ANY       0x0000
+#define T_INT       0x0001
+#define T_IO        0x0002
+#define T_LIST      0x0003
+#define T_FAIL      0x1000
+#define T_INDIRECT  0x2000
+#define T_ARG       0x4000
+#define T_VAR       0x8000
+#define T_EXCLUSIVE 0x00FF
 
 typedef type_t type_rep_t;
 

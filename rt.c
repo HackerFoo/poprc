@@ -38,10 +38,14 @@ measure_t measure, saved_measure;
 
 cell_t trace[sizeof(cells)];
 cell_t *trace_ptr;
+cell_t *trace_args[64];
+cell_t **trace_args_ptr;
 
 void trace_init() {
   memset(trace, 0, sizeof(trace));
   trace_ptr = trace;
+  memset(trace_args, 0, sizeof(trace_args));
+  trace_args_ptr = trace_args;
 }
 
 void trace_store(cell_t *c, type_rep_t t) {
@@ -332,11 +336,9 @@ void closure_free(cell_t *c) {
 }
 
 bool type_match(type_t t, cell_t *c) {
-  if(t == T_ANY) return true;
-  type_t tc = get_type(c);
-  return
-    tc == T_ANY ||
-    tc == t;
+  type_t ta = t & T_EXCLUSIVE;
+  type_t tb = c->type & T_EXCLUSIVE;
+  return ta == T_ANY || tb == T_ANY || ta == tb;
 }
 
 bool func_reduced(cell_t **cp, type_rep_t t) {
@@ -344,8 +346,8 @@ bool func_reduced(cell_t **cp, type_rep_t t) {
   assert(is_closure(c));
   measure.reduce_cnt--;
   cell_t *p = get(c);
-  if(p->type == T_VAR && (p->val[0] & 0xff) == T_ANY) {
-    p->val[0] = (p->val[0] & ~0xff) | t;
+  if(is_var(p) && is_any(p)) {
+    p->type |= t;
     trace_store(p, t);
   }
   if(p->type != T_FAIL &&
@@ -365,10 +367,9 @@ cell_t *val(intptr_t x) {
 }
 
 cell_t *var(type_t t) {
-  cell_t *c = closure_alloc(2);
+  cell_t *c = closure_alloc(1);
   c->func = func_reduced;
-  c->type = T_VAR;
-  c->val[0] = t;
+  c->type = T_VAR | t;
   return c;
 }
 
@@ -380,19 +381,26 @@ cell_t *vector(uint32_t n) {
 }
 
 cell_t *quote(cell_t *x) {
-  cell_t *c = closure_alloc(1);
+  cell_t *c = closure_alloc(2);
   c->func = func_reduced;
+  c->type = T_LIST;
   c->ptr[0] = x;
   return c;
 }
 
 cell_t *empty_list() {
-  return quote(0);
+  cell_t *c = closure_alloc(1);
+  c->func = func_reduced;
+  c->type = T_LIST;
+  return c;
 }
 
 cell_t *ind(cell_t *x) {
+  assert(is_reduced(x));
   cell_t *c = val((intptr_t)x);
-  c->type = T_INDIRECT;
+  c->type = T_INDIRECT | x->type;
+  c->alt = ref(x->alt);
+  c->alt_set = x->alt_set;
   return c;
 }
 
@@ -515,7 +523,19 @@ void arg(cell_t *c, cell_t *a) {
 }
 
 bool is_indirect(cell_t *c) {
-  return c->type == T_INDIRECT;
+  return (c->type & T_INDIRECT) != 0;
+}
+
+bool is_fail(cell_t *c) {
+  return (c->type & T_FAIL) != 0;
+}
+
+bool is_any(cell_t *c) {
+  return (c->type & T_EXCLUSIVE) == T_ANY;
+}
+
+bool is_arg(cell_t *c) {
+  return (c->type & T_ARG) != 0;
 }
 
 #define traverse(r, action, flags) 			\
@@ -622,8 +642,8 @@ void store_fail(cell_t *c, cell_t *alt) {
 void store_var(cell_t *c, type_rep_t t) {
   closure_shrink(c, 1);
   c->func = func_reduced;
-  c->type = T_VAR;
-  c->val[0] = t;
+  c->type = T_VAR | t;
+  c->size = 0;
 }
 
 void fail(cell_t **cp) {
@@ -643,15 +663,9 @@ void fail(cell_t **cp) {
   *cp = alt;
 }
 
-type_rep_t get_type(cell_t *c) {
-  cell_t *p = get(c);
-  type_rep_t t = is_var(p) ? p->val[0] & 0xff : p->type;
-  return t == 0 || (unsigned int)t > 255 ? T_LIST : t;
-}
-
 void trace_var(cell_t *c, cell_t *r) {
-  if(r->type == T_VAR) {
-    trace_store(c, get_type(r));
+  if(is_var(r)) {
+    trace_store(c, r->type);
     r->val[0] &= 0xff;
   }
 }
@@ -680,7 +694,7 @@ void store_reduced_nt(cell_t *c, cell_t *r) {
       memcpy(t, r, sizeof(cell_t) * size);
       r = t;
     }
-    c->type = T_INDIRECT;
+    c->type = T_INDIRECT | r->type;
     c->alt = ref(r->alt);
     c->alt_set = r->alt_set;
     c->val[0] = (intptr_t)r;
@@ -706,12 +720,11 @@ bool is_nil(cell_t *c) {
 }
 
 bool is_list(cell_t *c) {
-  return c->func == func_reduced &&
-    (c->type == 0 || c->type > 255);
+  return c && is_reduced(c) && (c->type & T_LIST) != 0;
 }
 
 bool is_var(cell_t *c) {
-  return c && is_reduced(c) && c->type == T_VAR;
+  return c && is_reduced(c) && (c->type & T_VAR) != 0;
 }
 
 bool is_weak(cell_t *p, cell_t *c) {
@@ -777,12 +790,6 @@ bool func_dep(cell_t **cp, type_rep_t t) {
 
 bool is_dep(cell_t *c) {
   return c->func == func_dep;
-}
-
-cell_t *data(cell_t *c) {
-  if(!(c->type == T_INDIRECT))
-    return c;
-  else return (cell_t *)c->val[0];
 }
 
 // *** fix arg()'s
@@ -954,7 +961,7 @@ void *lookup_linear(void *table, unsigned int width, unsigned int rows, const ch
 }
 
 cell_t *get(cell_t *c) {
-  if(c->type == T_INDIRECT)
+  if(is_indirect(c))
     return get((cell_t *)c->val[0]);
   else return c;
 }
@@ -1201,7 +1208,7 @@ bool handle_types(type_t *const types, cell_t **arg, cell_t **res, int n) {
     cell_t *a = *p++;
     type_t type = *t++;
     if(!type_match(type, a)) return false;
-    if(a->type == T_VAR) contains_var = true;
+    if(is_var(a)) contains_var = true;
   }
   if(contains_var) {
     p = arg;

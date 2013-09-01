@@ -396,6 +396,7 @@ bool func_popr(cell_t **cp, type_rep_t t) {
     /* drop the right list element */
     res = closure_alloc(closure_args(p)-1);
     elems = list_size(res);
+    res->type = T_LIST;
     int i;
     for(i = 0; i < elems; ++i)
       res->ptr[i] = ref(p->ptr[i+1]);
@@ -456,7 +457,7 @@ bool func_assert(cell_t **cp, type_rep_t t) {
        reduce(&c->arg[0], t))) goto fail;
   c->alt = closure_split(c, 2);
   cell_t *p = get(c->arg[1]);
-  if(!((p->type == T_INT && p->val[0]) ||
+  if(!((type_match(T_INT, p) && p->val[0]) ||
        is_var(p))) goto fail;
   if(bm_conflict(c->arg[0]->alt_set,
 		 c->arg[1]->alt_set)) goto fail;

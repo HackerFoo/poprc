@@ -194,15 +194,7 @@ Value *wrap_alts(cell_t *c,
 }
 
 Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned int *out, Module *mod) {
-  int out_n = list_size(c), in_n = 0;
-  cell_t *l = c->ptr[out_n-1];
-  intptr_t i = 0;
-  while(!closure_is_ready(l)) {
-    cell_t *v = var((type_t)((intptr_t)T_ANY | ++i << 8));
-    arg(l, v);
-    //trace_store(v, T_ANY);
-    ++in_n;
-  }
+  int out_n = list_size(c), in_n = fill_args(c);
 
   *in = in_n;
   *out = out_n;
@@ -217,9 +209,14 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
   std::vector<Value *> args;
   for(auto i = f->arg_begin(); i != f->arg_end(); ++i)
     args.insert(args.begin(), i);
-  std::vector<bool> args_used(in_n, false);
   std::map<unsigned int, Value *> regs;
   std::map<unsigned int, int> cnt;
+
+  for(int i = 0; i < in_n; ++i) {
+    unsigned int ix = trace_args[i] - cells;
+    regs[ix] = args[i];
+    cnt[ix] = 1;
+  }
 
   cell_t *p = trace;
   while(p < trace_ptr) {
@@ -227,12 +224,16 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
     unsigned int ix = c-cells;
     if(is_reduced(p)) {
       if(is_var(p)) {
-	unsigned int n = p->val[0] >> 8;
-	if(n && regs.find(ix) == regs.end()) {
-	  regs[ix] = args[n-1];
-	  args_used[n-1] = true;
-	  cnt[ix] = 1;
+	/*
+	if(p->n & T_ARG) {
+	  unsigned int n = p->val[0];
+	  if(regs.find(ix) == regs.end()) {
+	    regs[ix] = args[n];
+	    args_used[n] = true;
+	    cnt[ix] = 1;
+	  }
 	}
+	*/
       } else {
 	auto call = CallInst::Create(func_val(mod), ConstantInt::get(ctx, APInt(64, p->val[0])), "", b);
 	setup_CallInst(call, NOUNWIND);
@@ -289,10 +290,6 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
     } else if(i->second > 0) {
       CallInst::Create(func_drop(mod), ArrayRef<Value *>(regs[i->first]), "", b);
     }
-  }
-  for(unsigned int i = 0; i < in_n; ++i) {
-    if(!args_used[i])
-      CallInst::Create(func_drop(mod), ArrayRef<Value *>(args[i]), "", b);
   }
   if(out_n > 1) {
     Value *agg = UndefValue::get(f->getReturnType());

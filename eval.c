@@ -156,9 +156,9 @@ void graph_cell(FILE *f, cell_t *c) {
       while(n--)
 	fprintf(f, "<tr><td port=\"ptr%d\">ptr: <font color=\"lightgray\">%p</font></td></tr>",
 		n, c->ptr[n]);
-    } else if(c->type == T_FAIL) {
+    } else if(is_fail(c)) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
-    } else if(c->type == T_INDIRECT) {
+    } else if(is_indirect(c)) {
       fprintf(f, "<tr><td port=\"ind\">ind: <font color=\"lightgray\">%p</font></td></tr>", (cell_t *)c->val[0]);
     } else {
       int n = val_size(c);
@@ -193,7 +193,7 @@ void graph_cell(FILE *f, cell_t *c) {
 	  graph_cell(f, c->ptr[n]);
 	}
       }
-    } else if(c->type == T_INDIRECT) {
+    } else if(is_indirect(c)) {
       if(is_cell((cell_t *)c->val[0])) {
 	fprintf(f, "node%ld:ind -> node%ld:top;\n",
 		node, (long int)((cell_t *)c->val[0] - cells));
@@ -213,7 +213,7 @@ void graph_cell(FILE *f, cell_t *c) {
 }
 
 void show_val(cell_t *c) {
-  assert(c && c->type == T_INT);
+  assert(c && type_match(T_INT, c));
   int n = val_size(c);
   switch(n) {
   case 0: printf(" ()"); break;
@@ -357,7 +357,7 @@ void show_func(cell_t *c) {
 }
 
 void show_var(cell_t *c) {
-  assert(c->type == T_VAR);
+  assert(is_var(c));
   printf(" ?%c%ld", type_char(c->val[0]), c - cells);
 }
 
@@ -368,15 +368,15 @@ void show_one(cell_t *c) {
     printf(" ?");
   } else if(!is_reduced(c)) {
     show_func(c);
-  } else if(c->type == T_INT) {
-    show_val(c);
-  } else if(c->type == T_INDIRECT) {
-    show_one((cell_t *)c->val[0]);
-  } else if(c->type == T_VAR) {
-    show_var(c);
-  } else if(c->type == T_FAIL) {
+  } else if(is_fail(c)) {
     printf(" {}");
-  } else if(is_list(c)) {
+  } else if(is_indirect(c)) {
+    show_one((cell_t *)c->val[0]);
+  } else if(is_var(c)) {
+    show_var(c);
+  } else if(type_match(T_INT, c)) {
+    show_val(c);
+  } else if(type_match(T_LIST, c)) {
     show_list(c);
   } else {
     printf(" ?");
@@ -699,14 +699,19 @@ cell_t *build(char *str, unsigned int n) {
   return _build(str, &p);
 }
 
-void fill_args(cell_t *r) {
+unsigned int fill_args(cell_t *r) {
   int n = list_size(r);
+  if(n < 1) return 0;
   cell_t *l = r->ptr[n-1];
-  int i = 0;
+  unsigned int i = 0;
   while(!closure_is_ready(l)) {
-    cell_t *v = var(T_ANY | ++i << 8);
+    cell_t *v = var(T_ANY);
+    v->val[0] = i++;
+    if(trace_args_ptr < (cell_t **)(&trace_args+1))
+      *trace_args_ptr++ = v;
     arg(l, v);
   }
+  return i;
 }
 
 cell_t *_build(char *str, char **p) {
@@ -785,25 +790,19 @@ void loadSource(char *path) {
 
 char *show_type(type_rep_t t) {
 #define case(x) case x: return #x
-  switch(t) {
+  switch(t & T_EXCLUSIVE) {
   case(T_ANY);
-  case(T_FAIL);
-  case(T_INDIRECT);
   case(T_INT);
-  case(T_VAR);
   case(T_IO);
   case(T_LIST);
+  default: return "???";
   }
-  return "???";
 }
 
 char type_char(type_rep_t t) {
-  switch(t & 0xff) {
+  switch(t & T_EXCLUSIVE) {
   case T_ANY: return '_';
-  case T_FAIL: return 'x';
-  case T_INDIRECT: return 'z';
   case T_INT: return 'i';
-  case T_VAR: return 'v';
   case T_IO: return 'w';
   case T_LIST: return 'l';
   }
@@ -812,14 +811,21 @@ char type_char(type_rep_t t) {
 
 void print_trace() {
   cell_t *p = trace;
+  cell_t **a = trace_args;
   int i, n;
+  printf("args: [ ");
+  while(a < trace_args_ptr) {
+    printf("%ld ", *a-cells);
+    ++a;
+  }
+  printf("]\n");
   while(p < trace_ptr) {
     cell_t *c = p->tmp;
     if(is_reduced(p)) {
       printf("?%c%ld <-", type_char(p->n), c - cells);
       if(is_var(p)) {
-	if(p->val[0] >> 8) {
-	  printf(" arg(%d)", (int)(p->val[0] >> 8)-1);
+	if(p->n & T_ARG) {
+	  printf(" arg(%d)", (int)p->val[0]);
 	} else {
 	  printf(" type");
 	}
