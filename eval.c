@@ -139,7 +139,7 @@ void graph_cell(FILE *f, cell_t *c) {
 
   /* print node attributes */
   fprintf(f, "node%ld [\nlabel =<", node);
-  fprintf(f, "<table border=\"0\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%ld) %s%s %d %d (%d)</b></font></td></tr>",
+  fprintf(f, "<table border=\"0\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%ld) %s%s %x %x (%d)</b></font></td></tr>",
 	  node,
 	  function_name(c->func),
 	  closure_is_ready(c) ? "" : "*",
@@ -824,11 +824,7 @@ void print_trace() {
     if(is_reduced(p)) {
       printf("?%c%ld <-", type_char(p->n), c - cells);
       if(is_var(p)) {
-	if(p->n & T_ARG) {
-	  printf(" arg(%d)", (int)p->val[0]);
-	} else {
-	  printf(" type");
-	}
+	printf(" type");
       } else {
 	show_one(p);
       }

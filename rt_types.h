@@ -30,7 +30,7 @@ typedef uint16_t type_t;
 #define T_LIST      0x0003
 #define T_FAIL      0x1000
 #define T_INDIRECT  0x2000
-#define T_ARG       0x4000
+#define T_ROW       0x4000
 #define T_VAR       0x8000
 #define T_EXCLUSIVE 0x00FF
 

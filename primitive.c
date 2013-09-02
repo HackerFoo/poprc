@@ -315,24 +315,20 @@ bool func_pushr(cell_t **cp, type_rep_t t) {
   cell_t *res;
   c->alt = closure_split1(c, 0);
   cell_t *p = get(c->arg[0]);
-  bool rvar = is_var(p);
-  if(!(rvar || is_list(p))) goto fail;
+  if(!type_match(T_LIST, p)) goto fail;
+  //bool rvar = is_var(p);
+  p->type |= T_LIST;
   alt_set_t alt_set = c->arg[0]->alt_set;
   alt_set_ref(alt_set);
   alt_set_drop(c->arg[0]->alt_set);
 
-  if(rvar) {
-    res = var(T_LIST);
-    /* should I trace unevaluated closures? */
-    drop(c->arg[1]);
-  } else {
-    int n = list_size(p);
-    res = expand(ref(p), 1);
-    memmove(res->ptr+1, res->ptr, sizeof(cell_t *)*n);
-    res->ptr[0] = c->arg[1];
-    res->alt = c->alt;
-    res->alt_set = alt_set;
-  }
+  int n = list_size(p);
+  res = expand(ref(p), 1);
+  memmove(res->ptr+1, res->ptr, sizeof(cell_t *)*n);
+  res->ptr[0] = c->arg[1];
+  res->alt = c->alt;
+  res->alt_set = alt_set;
+
   drop(c->arg[0]);
   store_reduced(c, res);
   return true;
@@ -375,32 +371,27 @@ bool func_popr(cell_t **cp, type_rep_t t) {
 
   cell_t *p = get(c->arg[0]);
   bool rvar = is_var(p);
-  if(!(rvar ||
-       (is_list(p) &&
-	list_size(p) > 0))) goto fail;
+  if(!is_list(p)) goto fail;
+  if(list_size(p) == 0) {
+    if(!rvar) goto fail;
+    ++p->size;
+    p->ptr[0] = var(T_ROW);
+  }
 
   if(d) {
     drop(c);
-    if(rvar) {
-      store_var(d, T_ANY);
-    } else {
-      d->func = func_id;
-      d->arg[0] = ref(p->ptr[0]);
-      d->arg[1] = (cell_t *)alt_set_ref(c->arg[0]->alt_set);
-    }
+    d->func = func_id;
+    d->arg[0] = ref(p->ptr[0]);
+    d->arg[1] = (cell_t *)alt_set_ref(c->arg[0]->alt_set);
   }
 
-  if(rvar) {
-    res = var(T_LIST);
-  } else {
-    /* drop the right list element */
-    res = closure_alloc(closure_args(p)-1);
-    elems = list_size(res);
-    res->type = T_LIST;
-    int i;
-    for(i = 0; i < elems; ++i)
-      res->ptr[i] = ref(p->ptr[i+1]);
-  }
+  /* drop the right list element */
+  res = closure_alloc(closure_args(p)-1);
+  elems = list_size(res);
+  res->type = T_LIST | rvar ? T_VAR : 0;
+  int i;
+  for(i = 0; i < elems; ++i)
+    res->ptr[i] = ref(p->ptr[i+1]);
 
   res->alt_set = alt_set_ref(p->alt_set);
   res->alt = c->alt;

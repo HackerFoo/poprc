@@ -534,10 +534,6 @@ bool is_any(cell_t *c) {
   return (c->type & T_EXCLUSIVE) == T_ANY;
 }
 
-bool is_arg(cell_t *c) {
-  return (c->type & T_ARG) != 0;
-}
-
 #define traverse(r, action, flags) 			\
   do {							\
     cell_t **p;						\
@@ -666,11 +662,11 @@ void fail(cell_t **cp) {
 void trace_var(cell_t *c, cell_t *r) {
   if(is_var(r)) {
     trace_store(c, r->type);
-    r->val[0] &= 0xff;
   }
 }
 
 void store_reduced(cell_t *c, cell_t *r) {
+  r->func = func_reduced;
   trace_var(c, r);
   store_reduced_nt(c, r);
 }
