@@ -358,7 +358,7 @@ void show_func(cell_t *c) {
 
 void show_var(cell_t *c) {
   assert(is_var(c));
-  printf(" ?%c%ld", type_char(c->val[0]), c - cells);
+  printf(" ?%c%ld", type_char(c->type), c - cells);
 }
 
 void show_one(cell_t *c) {
@@ -703,13 +703,13 @@ unsigned int fill_args(cell_t *r) {
   int n = list_size(r);
   if(n < 1) return 0;
   cell_t *l = r->ptr[n-1];
-  unsigned int i = 0;
+  uintptr_t i = 0;
   while(!closure_is_ready(l)) {
     cell_t *v = var(T_ANY);
-    v->val[0] = i++;
-    if(trace_args_ptr < (cell_t **)(&trace_args+1))
-      *trace_args_ptr++ = v;
+    v->val[0] = i;
+    trace(v, (cell_t *)i, tt_arg);
     arg(l, v);
+    ++i;
   }
   return i;
 }
@@ -722,6 +722,7 @@ cell_t *_build(char *str, char **p) {
 
 void eval(char *str, unsigned int n) {
   cell_t *c = build(str, n);
+  set_trace(print_trace);
   fill_args(c);
   if(write_graph) make_graph_all(GRAPH_FILE);
   reduce_list(c);
@@ -730,7 +731,6 @@ void eval(char *str, unsigned int n) {
   if(!closure_is_ready(c))
     printf("incomplete expression\n");
   else {
-    print_trace();
     show_list(c);
     drop(c);
     printf("\n");
@@ -809,40 +809,39 @@ char type_char(type_rep_t t) {
   return '?';
 }
 
-void print_trace() {
-  cell_t *p = trace;
-  cell_t **a = trace_args;
-  int i, n;
-  printf("args: [ ");
-  while(a < trace_args_ptr) {
-    printf("%ld ", *a-cells);
-    ++a;
-  }
-  printf("]\n");
-  while(p < trace_ptr) {
-    cell_t *c = p->tmp;
-    if(is_reduced(p)) {
-      printf("?%c%ld <-", type_char(p->n), c - cells);
-      if(is_var(p)) {
-	printf(" type");
-      } else {
-	show_one(p);
-      }
-      printf("\n");
-    } else if(is_dep(p)) {
-      printf("?%c%ld <- type\n", type_char(p->n), c - cells);
+void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
+  switch(tt) {
+  case tt_reduction:
+    if(is_reduced(c) || !is_var(r)) break;
+    if(is_dep(c)) {
+      printf("?%c%ld <- type\n", type_char(r->type), c - cells);
     } else {
-      n = closure_args(p);
-      i = closure_out(p);
-      printf("?%c%ld ", type_char(p->n), c - cells);
-      while(i--) printf("?%ld ", p->arg[--n] - cells);
+      int i, n = closure_args(c), in = closure_in(c), out = closure_out(c);
+      for(i = 0; i < in; ++i) trace(c->arg[i], 0, tt_force);
+      printf("?%c%ld ", type_char(r->type), c - cells);
+      for(i = 0; i < out; ++i) printf("?%ld ", c->arg[n-i-1] - cells);
       printf("<- ");
-      for(i = 0; i < n; i++) {
-	if(is_cell(p->arg[i])) printf("?%ld ", p->arg[i] - cells);
+      for(i = 0; i < in; ++i) {
+	if(is_cell(c->arg[i])) printf("?%ld ", c->arg[i] - cells);
 	else printf("?_ ");
       }
-      printf("%s\n", function_name(p->func));
+      printf("%s\n", function_name(c->func));
     }
-    p += closure_cells(p);
+    r->type |= T_TRACED;
+    break;
+  case tt_touched:
+    if(!is_var(c)) break;
+  case tt_force:
+    if(!is_reduced(c)) break;
+    if(c->type & T_TRACED) return;
+    printf("?%c%ld <-", type_char(c->type), c - cells);
+    if(is_var(c)) printf(" type");
+    else show_one(c);
+    printf("\n");
+    c->type |= T_TRACED;
+    break;
+  case tt_arg:
+    printf("?_%ld <- arg %ld\n", c-cells, (uintptr_t)r);
+    break;
   }
 }

@@ -28,6 +28,7 @@ typedef uint16_t type_t;
 #define T_INT       0x0001
 #define T_IO        0x0002
 #define T_LIST      0x0003
+#define T_TRACED    0x0800
 #define T_FAIL      0x1000
 #define T_INDIRECT  0x2000
 #define T_ROW       0x4000
@@ -138,5 +139,12 @@ typedef struct three_cells_t {
 typedef struct four_cells_t {
   cell_t *a, *b, *c, *d;
 } four_cells_t;
+
+typedef enum trace_type_t {
+  tt_reduction,
+  tt_touched,
+  tt_force,
+  tt_arg
+} trace_type_t;
 
 #endif

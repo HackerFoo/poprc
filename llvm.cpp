@@ -211,7 +211,7 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
     args.insert(args.begin(), i);
   std::map<unsigned int, Value *> regs;
   std::map<unsigned int, int> cnt;
-
+  #if 0
   for(int i = 0; i < in_n; ++i) {
     unsigned int ix = trace_args[i] - cells;
     regs[ix] = args[i];
@@ -301,6 +301,7 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
   } else {
     ReturnInst::Create(ctx, wrap_alts(c->ptr[0], regs, b, mod), b);
   }
+  #endif
   return f;
 }
 

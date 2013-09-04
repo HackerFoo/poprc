@@ -36,25 +36,11 @@ uintptr_t alt_live[sizeof(intptr_t) * 4];
 
 measure_t measure, saved_measure;
 
-cell_t trace[sizeof(cells)];
-cell_t *trace_ptr;
-cell_t *trace_args[64];
-cell_t **trace_args_ptr;
+void trace_noop(cell_t *c, cell_t *r, trace_type_t tt) {};
+void (*trace)(cell_t *, cell_t *, trace_type_t) = trace_noop;
 
-void trace_init() {
-  memset(trace, 0, sizeof(trace));
-  trace_ptr = trace;
-  memset(trace_args, 0, sizeof(trace_args));
-  trace_args_ptr = trace_args;
-}
-
-void trace_store(cell_t *c, type_rep_t t) {
-  unsigned int n = closure_cells(c);
-  memcpy(trace_ptr, c, sizeof(cell_t) * n);
-  trace_ptr->tmp = c;
-  trace_ptr->n = t;
-  trace_ptr += n;
-  assert((void *)trace_ptr < (void *)(&trace + 1));
+void set_trace(void (*t)(cell_t *, cell_t *, trace_type_t)) {
+  trace = t ? t : trace_noop;
 }
 
 // #define CHECK_CYCLE
@@ -229,8 +215,6 @@ void cells_init() {
   cells_ptr = &cells[0];
   assert(check_cycle());
   alt_cnt = 0;
-
-  trace_init();
 }
 
 void cell_alloc(cell_t *c) {
@@ -345,13 +329,12 @@ bool func_reduced(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   assert(is_closure(c));
   measure.reduce_cnt--;
-  cell_t *p = get(c);
-  if(is_var(p) && is_any(p)) {
-    p->type |= t;
-    trace_store(p, t);
+  if(c->type != T_FAIL &&
+     type_match(t, c)) {
+    c->type |= t;
+    trace(c, 0, tt_touched);
+    return true;
   }
-  if(p->type != T_FAIL &&
-     type_match(t, p)) return true;
   else {
     fail(cp);
     return false;
@@ -659,21 +642,11 @@ void fail(cell_t **cp) {
   *cp = alt;
 }
 
-void trace_var(cell_t *c, cell_t *r) {
-  if(is_var(r)) {
-    trace_store(c, r->type);
-  }
-}
-
 void store_reduced(cell_t *c, cell_t *r) {
-  r->func = func_reduced;
-  trace_var(c, r);
-  store_reduced_nt(c, r);
-}
-
-void store_reduced_nt(cell_t *c, cell_t *r) {
   int n = c->n;
   r->func = func_reduced;
+  trace(c, r, tt_reduction);
+  drop_multi(c->arg, closure_in(c));
   alt_set_ref(r->alt_set);
   int size = is_closure(r) ? closure_cells(r) : 0;
   if(size <= closure_cells(c)) {
@@ -716,7 +689,7 @@ bool is_nil(cell_t *c) {
 }
 
 bool is_list(cell_t *c) {
-  return c && is_reduced(c) && (c->type & T_LIST) != 0;
+  return c && is_reduced(c) && (c->type & T_EXCLUSIVE) == T_LIST;
 }
 
 bool is_var(cell_t *c) {
@@ -1207,14 +1180,7 @@ bool handle_types(type_t *const types, cell_t **arg, cell_t **res, int n) {
     if(is_var(a)) contains_var = true;
   }
   if(contains_var) {
-    p = arg;
     *res = var(types[0]);
-    t = types + 1;
-    for(i = 0; i < n; i++) {
-      cell_t *a = *p++;
-      type_t type = *t++;
-      if(!is_var(a)) trace_store(a, type);
-    }
   }
   return true;
 }
@@ -1241,7 +1207,6 @@ void function_epilogue(cell_t *c,
 		       int n) {
   res->alt_set = alt_set_ref(alt_set);
   res->alt = c->alt;
-  drop_multi(c->arg, n);
   store_reduced(c, res);
 }
 
