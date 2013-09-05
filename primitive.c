@@ -372,7 +372,7 @@ bool func_popr(cell_t **cp, type_rep_t t) {
   if(list_size(p) == 0) {
     if(!rvar) goto fail;
     ++p->size;
-    p->ptr[0] = var(T_ROW);
+    p->ptr[0] = var(0);
   }
 
   if(d) {
@@ -380,6 +380,7 @@ bool func_popr(cell_t **cp, type_rep_t t) {
     d->func = func_id;
     d->arg[0] = ref(p->ptr[0]);
     d->arg[1] = (cell_t *)alt_set_ref(c->arg[0]->alt_set);
+    c->arg[1] = p->ptr[0];
   }
 
   /* drop the right list element */
@@ -569,33 +570,26 @@ bool func_dup(cell_t **cp, type_rep_t t) {
   store_lazy(cp, c, c->arg[0]);
   return false;
 }
-/*
+
 void trace_expand_select(cell_t *c, cell_t *x, type_t t) {
   while(reduce(&x, t)) {
-    if(!is_var(x)) trace_store(x, t);
-    cell_t *tr = trace_ptr++;
-    tr->func = func_select;
-    tr->arg[0] = c;
-    tr->arg[1] = x;
-    tr->tmp = c;
-    tr->size = 2;
-    tr->out = 0;
-    tr->n = t;
+    if(!is_var(x)) trace(c, 0, tt_touched);
+    trace(c, x, tt_select);
     if(!is_var(x)) break;
     x = x->alt;
   }
 }
-*/
+
 bool func_cut(cell_t **cp, type_rep_t t) {
   cell_t *c = *cp;
   if(!reduce(&c->arg[0], t)) goto fail;
   cell_t *p = c->arg[0];
-  // *** forces code generation until first successful reduction
-  //trace_var(c, p);
-  //if(is_var(p)) trace_expand_select(c, p->alt, t);
-  drop(p->alt);
+  bool v = is_var(p);
+  cell_t *alt = p->alt;
   p->alt = 0;
   store_reduced(c, ref(p));
+  if(v) trace_expand_select(c, alt, t);
+  drop(alt);
   return true;
 
  fail:

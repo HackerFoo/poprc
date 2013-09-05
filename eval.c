@@ -833,12 +833,16 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     if(!is_var(c)) break;
   case tt_force:
     if(!is_reduced(c)) break;
-    if(c->type & T_TRACED) return;
+    if(c->type & T_TRACED) break;
+    if(is_any(c)) break;
     printf("?%c%ld <-", type_char(c->type), c - cells);
     if(is_var(c)) printf(" type");
     else show_one(c);
     printf("\n");
     c->type |= T_TRACED;
+    break;
+  case tt_select:
+    printf("?%c%ld <- ?%ld ?%ld select\n", type_char(c->type), c-cells, c-cells, r-cells);
     break;
   case tt_arg:
     printf("?_%ld <- arg %ld\n", c-cells, (uintptr_t)r);

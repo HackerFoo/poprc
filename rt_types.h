@@ -144,6 +144,7 @@ typedef enum trace_type_t {
   tt_reduction,
   tt_touched,
   tt_force,
+  tt_select,
   tt_arg
 } trace_type_t;
 
