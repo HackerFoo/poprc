@@ -128,6 +128,18 @@ Function *func_refn(Module *mod) {
   return f;
 }
 
+Function *func_build_select(Module *mod) {
+  Function *f = mod->getFunction("build_select");
+  if(f) return f;
+
+  FunctionType* ft = FunctionType::get(cell_ptr_type,
+				       std::vector<Type *>{ cell_ptr_type, cell_ptr_type },
+				       false);
+  f = Function::Create(ft, GlobalValue::ExternalLinkage, "build_select", mod);
+  f->setCallingConv(CallingConv::C);
+  return f;
+}
+
 void define_types(Module *mod) {
   LLVMContext &ctx = mod->getContext();
   // Type Definitions
@@ -193,86 +205,125 @@ Value *wrap_alts(cell_t *c,
   return CallInst::Create(f_alt, std::vector<Value *> { regs[ix], wrap_alts(c->alt, regs, b, mod) }, "", b);
 }
 
+typedef struct compile_simple_data_t {
+  std::vector<unsigned int> *args;
+  std::map<unsigned int, Value *> *regs;
+  std::map<unsigned int, int> *cnt;
+  BasicBlock *block;
+  Module *mod;
+} compile_simple_data_t;
+
+compile_simple_data_t *compile_simple_data;
+
+void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
+  unsigned int ix = c - cells;
+  std::map<unsigned int, Value *> *regs = compile_simple_data->regs;
+  std::map<unsigned int, int> *cnt = compile_simple_data->cnt;
+  Module *mod = compile_simple_data->mod;
+  LLVMContext &ctx = mod->getContext();
+  BasicBlock *block = compile_simple_data->block;
+
+  switch(tt) {
+  case tt_reduction:
+    if(is_reduced(c) || !is_var(r)) break;
+    if(is_dep(c)) {
+      printf("?%c%ld <- type\n", type_char(r->type), c - cells);
+    } else {
+      int i, in = closure_in(c);
+      for(i = 0; i < in; ++i) trace(c->arg[i], 0, tt_force);
+
+      if(c->func == func_cut ||
+	 c->func == func_id) {
+	unsigned int a = c->arg[0] - cells;
+	(*regs)[ix] = (*regs)[a];
+	(*cnt)[ix] = 1;
+	--(*cnt)[a];
+      } else if(c->func == func_dep) {
+	// do nothing
+      } else {
+	auto f = get_builder(c, mod);
+	std::vector<Value *> f_args;
+	for(int i = 0; i < in; ++i) {
+	  unsigned int a = c->arg[i] - cells;
+	  f_args.push_back((*regs)[a]);
+	  --(*cnt)[a];
+	}
+	auto call = CallInst::Create(f, f_args, "", block);
+	if(c->out) {
+	  (*regs)[ix] = ExtractValueInst::Create(call, std::vector<unsigned>{0}, "", block);
+	  (*cnt)[ix] = 1;
+	  for(unsigned int i = 0; i < c->out; ++i) {
+	    unsigned int a = c->arg[c->size - i - 1] - cells;
+	    (*regs)[a] = ExtractValueInst::Create(call, std::vector<unsigned>{i+1}, "", block);
+	    (*cnt)[a] = 1;
+	  }
+	} else {
+	  (*regs)[ix] = call;
+	  (*cnt)[ix] = 1;
+	}
+      }
+    }
+    r->type |= T_TRACED;
+    break;
+  case tt_touched:
+    if(!is_var(c)) break;
+  case tt_force:
+    if(!is_reduced(c)) break;
+    if(c->type & T_TRACED) break;
+    if(is_any(c)) break;
+    if(!is_var(c)) {
+      auto call = CallInst::Create(func_val(mod), ConstantInt::get(ctx, APInt(64, c->val[0])), "", block);
+	setup_CallInst(call, NOUNWIND);
+	(*regs)[ix] = call;
+	(*cnt)[ix] = 1;
+    }
+    c->type |= T_TRACED;
+    break;
+  case tt_select:
+    unsigned int a = r - cells;
+    --(*cnt)[a];
+    auto f = func_build_select(mod);
+    auto call = CallInst::Create(f, std::vector<Value *> { (*regs)[ix], (*regs)[a] }, "", block);
+    (*regs)[ix] = call;
+    break;
+  }
+}
+
+void compile_simple_arg(cell_t *c, int x) {
+  auto args = compile_simple_data->args;
+  args->insert(args->begin(), c - cells);
+}
+
 Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned int *out, Module *mod) {
-  int out_n = list_size(c), in_n = fill_args(c);
+  LLVMContext &ctx = mod->getContext();
+  std::vector<unsigned int> args;
+  std::map<unsigned int, Value *> regs;
+  std::map<unsigned int, int> cnt;
+
+  set_trace(compile_simple_trace);
+  compile_simple_data_t data = {&args, &regs, &cnt, NULL, mod};
+  compile_simple_data = &data;
+
+  int out_n = list_size(c), in_n = fill_args(c, compile_simple_arg);
 
   *in = in_n;
   *out = out_n;
 
-  reduce_list(c);
-
-  LLVMContext &ctx = mod->getContext();
   Function *f = get_cell_func(name, in_n, out_n, mod);
 
   BasicBlock* b =
     BasicBlock::Create(ctx, "entry", f, 0);
-  std::vector<Value *> args;
-  for(auto i = f->arg_begin(); i != f->arg_end(); ++i)
-    args.insert(args.begin(), i);
-  std::map<unsigned int, Value *> regs;
-  std::map<unsigned int, int> cnt;
-  #if 0
-  for(int i = 0; i < in_n; ++i) {
-    unsigned int ix = trace_args[i] - cells;
-    regs[ix] = args[i];
-    cnt[ix] = 1;
+  data.block = b;
+  auto j = args.begin();
+  for(auto i = f->arg_begin();
+      i != f->arg_end() && j != args.end();
+      ++i, ++j) {
+    regs[*j] = i;
+    cnt[*j] = 1;
   }
 
-  cell_t *p = trace;
-  while(p < trace_ptr) {
-    cell_t *c = p->tmp;
-    unsigned int ix = c-cells;
-    if(is_reduced(p)) {
-      if(is_var(p)) {
-	/*
-	if(p->n & T_ARG) {
-	  unsigned int n = p->val[0];
-	  if(regs.find(ix) == regs.end()) {
-	    regs[ix] = args[n];
-	    args_used[n] = true;
-	    cnt[ix] = 1;
-	  }
-	}
-	*/
-      } else {
-	auto call = CallInst::Create(func_val(mod), ConstantInt::get(ctx, APInt(64, p->val[0])), "", b);
-	setup_CallInst(call, NOUNWIND);
-	regs[ix] = call;
-	cnt[ix] = 1;
-      }
-    } else if(p->func == func_cut ||
-	      p->func == func_id) {
-      unsigned int a = p->arg[0] - cells;
-      regs[ix] = regs[a];
-      cnt[ix] = 1;
-      --cnt[a];
-    } else if(p->func == func_dep) {
-      // do nothing
-    } else {
-      auto f = get_builder(p, mod);
-      std::vector<Value *> f_args;
-      int f_in = p->size - p->out;
-      for(int i = 0; i < f_in; ++i) {
-	unsigned int a = p->arg[i] - cells;
-	f_args.push_back(regs[a]);
-	--cnt[a];
-      }
-      auto call = CallInst::Create(f, f_args, "", b);
-      if(p->out) {
-	regs[ix] = ExtractValueInst::Create(call, std::vector<unsigned>{0}, "", b);
-	cnt[ix] = 1;
-	for(unsigned int i = 0; i < p->out; ++i) {
-	  unsigned int a = p->arg[p->size - i - 1] - cells;
-	  regs[a] = ExtractValueInst::Create(call, std::vector<unsigned>{i+1}, "", b);
-	  cnt[a] = 1;
-	}
-      } else {
-	regs[ix] = call;
-	cnt[ix] = 1;
-      }
-    }
-    p += closure_cells(p);
-  }
+  reduce_list(c);
+
   for(int i = 0; i < out_n; ++i) {
     cell_t *p = c->ptr[i];
     while(p) {
@@ -280,6 +331,7 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
       p = p->alt;
     }
   }
+
   for(auto i = cnt.begin(); i != cnt.end(); ++i) {
     if(i->second < 0) {
       CallInst::Create(func_refn(mod),
@@ -301,7 +353,6 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
   } else {
     ReturnInst::Create(ctx, wrap_alts(c->ptr[0], regs, b, mod), b);
   }
-  #endif
   return f;
 }
 

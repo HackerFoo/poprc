@@ -607,18 +607,12 @@ bool func_select(cell_t **cp, type_rep_t t) {
   cell_t *p;
   if(reduce(&c->arg[0], t)) {
     p = c->arg[0];
-    /*
-    if(is_var(p) && reduce(&c->arg[1], t)) {
-      if(!is_var(c->arg[1]))
-	trace_store(c->arg[1], t);
-    }
-    */
-    //drop(c->arg[1]);
   } else if(reduce(&c->arg[1], t)) {
+    drop(c->arg[0]);
     p = c->arg[1];
     c->func = func_id;
     c->size = 1;
-    drop(c->arg[0]);
+    c->arg[0] = p;
   } else goto fail;
 
   store_reduced(c, ref(p));

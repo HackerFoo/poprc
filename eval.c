@@ -699,16 +699,16 @@ cell_t *build(char *str, unsigned int n) {
   return _build(str, &p);
 }
 
-unsigned int fill_args(cell_t *r) {
+unsigned int fill_args(cell_t *r, void (*argf)(cell_t *, int)) {
   int n = list_size(r);
   if(n < 1) return 0;
   cell_t *l = r->ptr[n-1];
-  uintptr_t i = 0;
+  int i = 0;
   while(!closure_is_ready(l)) {
     cell_t *v = var(T_ANY);
     v->val[0] = i;
-    trace(v, (cell_t *)i, tt_arg);
     arg(l, v);
+    argf(v, i);
     ++i;
   }
   return i;
@@ -720,10 +720,14 @@ cell_t *_build(char *str, char **p) {
   return r;
 }
 
+void print_arg(cell_t *c, int i) {
+  printf("?_%ld <- arg(%d)\n", c-cells, i);
+}
+
 void eval(char *str, unsigned int n) {
   cell_t *c = build(str, n);
   set_trace(print_trace);
-  fill_args(c);
+  fill_args(c, print_arg);
   if(write_graph) make_graph_all(GRAPH_FILE);
   reduce_list(c);
   if(write_graph) make_graph_all(REDUCED_GRAPH_FILE);
@@ -843,9 +847,6 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     break;
   case tt_select:
     printf("?%c%ld <- ?%ld ?%ld select\n", type_char(c->type), c-cells, c-cells, r-cells);
-    break;
-  case tt_arg:
-    printf("?_%ld <- arg %ld\n", c-cells, (uintptr_t)r);
     break;
   }
 }
