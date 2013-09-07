@@ -358,7 +358,12 @@ void show_func(cell_t *c) {
 
 void show_var(cell_t *c) {
   assert(is_var(c));
-  printf(" ?%c%ld", type_char(c->type), c - cells);
+  if(type_match(T_LIST, c)) {
+    printf(" ?l%ld =", c-cells);
+    show_list(c);
+  } else {
+    printf(" ?%c%ld", type_char(c->type), c - cells);
+  }
 }
 
 void show_one(cell_t *c) {
@@ -386,7 +391,7 @@ void show_one(cell_t *c) {
 bool reduce_one(cell_t **cp) {
   if(!closure_is_ready(*cp)) return true;
   bool b = reduce(cp, T_ANY);
-  //if(is_list(*cp)) reduce_list(*cp);
+  if(is_list(*cp)) reduce_list(*cp); // *** hack to force things that might be needed later
   return b;
 }
 

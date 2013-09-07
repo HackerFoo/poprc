@@ -284,16 +284,10 @@ bool func_pushl(cell_t **cp, type_rep_t t) {
   c->alt = closure_split1(c, 1);
   cell_t *q = get(c->arg[1]);
   bool rvar = is_var(q);
-  if(!(rvar || is_list(q))) goto fail;
-  cell_t *p = get(c->arg[0]);
   cell_t *res;
-  if(rvar) {
-    //if(!is_var(p)) trace_store(p);
-    res = var(T_LIST);
-  } else {
-    res = pushl_nd(ref(p), ref(q));
-    drop(res->alt);
-  }
+  res = pushl_nd(ref(c->arg[0]), ref(q));
+  if(rvar) res->type |= T_VAR;
+  drop(res->alt);
   res->alt = c->alt;
   res->alt_set = alt_set_ref(c->arg[1]->alt_set);
   store_reduced(c, res);
@@ -314,7 +308,7 @@ bool func_pushr(cell_t **cp, type_rep_t t) {
   c->alt = closure_split1(c, 0);
   cell_t *p = get(c->arg[0]);
   if(!type_match(T_LIST, p)) goto fail;
-  //bool rvar = is_var(p);
+  //if(is_var(p)) reduce(&c->arg[1], T_ANY); // *** hack to force argument since it might be needed later
   p->type |= T_LIST;
   alt_set_t alt_set = c->arg[0]->alt_set;
   alt_set_ref(alt_set);
@@ -703,3 +697,8 @@ bool func_fib(cell_t **cp, type_rep_t t) {
     */
   return peg_func(cp, 1, 1, src, sizeof(src));
 }
+
+/* need to build a placeholder function
+ * has infinite inputs and outputs, incremements inputs for each arg pushl'ed in,
+ * and increments outputs for each dep popr'ed off
+ * forces all inputs if any output is forced */
