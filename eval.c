@@ -358,7 +358,7 @@ void show_func(cell_t *c) {
 
 void show_var(cell_t *c) {
   assert(is_var(c));
-  if(type_match(T_LIST, c)) {
+  if(is_list(c)) {
     printf(" ?l%ld =", c-cells);
     show_list(c);
   } else {

@@ -50,6 +50,7 @@ word_entry_t word_table[] = {
   {"==", func_eq, 2, 1},
   {">", func_gt, 2, 1},
   {">=", func_gte, 2, 1},
+  {"_", func_placeholder, 0, 1},
   {"cut", func_cut, 1, 1},
   {"drop", func_drop, 2, 1},
   {"dup", func_dup, 1, 2},
@@ -702,3 +703,31 @@ bool func_fib(cell_t **cp, type_rep_t t) {
  * has infinite inputs and outputs, incremements inputs for each arg pushl'ed in,
  * and increments outputs for each dep popr'ed off
  * forces all inputs if any output is forced */
+
+bool func_placeholder(cell_t **cp, type_t t) {
+  cell_t *c = clear_ptr(*cp, 3);
+  int i, in = closure_in(c), n = closure_args(c);
+  for(i = 0; i < in; ++i) {
+    reduce(&c->arg[i], T_ANY);
+    drop(c->arg[i]);
+  }
+  for(i = in; i < n; ++i) {
+    cell_t *d = c->arg[i];
+    if(!d) continue;
+    drop(d->arg[0]);
+    d->func = func_reduced;
+    d->size = 1;
+    d->alt_set = 0;
+    d->type = T_VAR;
+  }
+  closure_shrink(c, 1);
+  c->func = func_reduced;
+  c->size = 1;
+  c->alt_set = 0;
+  c->type = T_VAR;
+  return true;
+}
+
+bool is_placeholder(cell_t *c) {
+  return c && clear_ptr(c->func, 3) == func_placeholder;
+}

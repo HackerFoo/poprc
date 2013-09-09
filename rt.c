@@ -453,7 +453,7 @@ cell_t *func(reduce_t *f, unsigned int in, unsigned int out) {
   c->out = out - 1;
   c->func = f;
   if(args) c->arg[0] = (cell_t *)(intptr_t)(args - 1);
-  closure_set_ready(c, !args);
+  closure_set_ready(c, false /*!args*/);
   return c;
 }
 
@@ -492,14 +492,21 @@ void arg(cell_t *c, cell_t *a) {
   assert(is_closure(c) && is_closure(a));
   assert(!closure_is_ready(c));
   int i = closure_next_child(c);
-  if(!is_data(c->arg[i])) {
+  // *** shift args if placeholder
+  if(is_placeholder(c) &&
+     (c->size == 0 ||
+      closure_is_ready(c->arg[0]))) {
+    expand(c, 1);
+    memmove(c->arg+1, c->arg, (c->size - 1) * sizeof(cell_t));
+    c->arg[0] = a;
+  } else if(!is_data(c->arg[i])) {
     c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
     c->arg[i] = a;
-    if(i == 0) closure_set_ready(c, closure_is_ready(a));
+    if(i == 0 && !is_placeholder(c)) closure_set_ready(c, closure_is_ready(a));
   } else {
     arg(c->arg[i], a);
     if(closure_is_ready(c->arg[i])) {
-      if(i == 0) closure_set_ready(c, true);
+      if(i == 0 && !is_placeholder(c)) closure_set_ready(c, true);
       else --*(intptr_t *)&c->arg[0]; // decrement offset
     }
   }
@@ -578,6 +585,7 @@ cell_t *_arg_nd(cell_t *c, cell_t *a, cell_t *r) {
   assert(!closure_is_ready(c));
   //assert(!is_marked(c->alt, 1));
   int i = closure_next_child(c);
+  if(is_placeholder(c) && i >= closure_in(c)) expand(c, 1);
   if(!is_data(c->arg[i])) {
     //traverse_clear_alt(a);
     t = modify_copy(c, r);
@@ -769,7 +777,7 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
   int bs = list_size(b);
   if(bs) {
     cell_t *l = b->ptr[bs-1];
-    while(n-1 && !closure_is_ready(l)) {
+    while(n > 1 && !closure_is_ready(l)) {
       cell_t *d = dep(ref(a));
       arg(l, d);
       arg(a, d);
