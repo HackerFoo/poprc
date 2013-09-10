@@ -411,7 +411,7 @@ cell_t *expand(cell_t *c, unsigned int s) {
     memcpy(new, c, cn_p * sizeof(cell_t));
     new->size = n + s;
     new->n = 0;
-    traverse_ref(new, PTRS | ALT);
+    traverse_ref(new, ARGS_IN | PTRS | ALT);
     if(is_reduced(c)) alt_set_ref(c->alt_set);
     drop(c);
     return new;
@@ -488,7 +488,8 @@ int closure_next_child(cell_t *c) {
 }
 
 /* arg is destructive to c */
-void arg(cell_t *c, cell_t *a) {
+void arg(cell_t **cp, cell_t *a) {
+  cell_t *c = *cp;
   assert(is_closure(c) && is_closure(a));
   assert(!closure_is_ready(c));
   int i = closure_next_child(c);
@@ -496,20 +497,21 @@ void arg(cell_t *c, cell_t *a) {
   if(is_placeholder(c) &&
      (c->size == 0 ||
       closure_is_ready(c->arg[0]))) {
-    expand(c, 1);
-    memmove(c->arg+1, c->arg, (c->size - 1) * sizeof(cell_t));
+    c = expand(c, 1);
+    memmove(&c->arg[1], &c->arg[0], (c->size - 1) * sizeof(cell_t *));
     c->arg[0] = a;
   } else if(!is_data(c->arg[i])) {
     c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
     c->arg[i] = a;
     if(i == 0 && !is_placeholder(c)) closure_set_ready(c, closure_is_ready(a));
   } else {
-    arg(c->arg[i], a);
+    arg(&c->arg[i], a);
     if(closure_is_ready(c->arg[i])) {
       if(i == 0 && !is_placeholder(c)) closure_set_ready(c, true);
       else --*(intptr_t *)&c->arg[0]; // decrement offset
     }
   }
+  *cp = c;
 }
 
 bool is_indirect(cell_t *c) {
@@ -774,28 +776,41 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
   assert(is_closure(a) &&
 	 is_closure(b) && is_list(b));
   assert(n);
-  int bs = list_size(b);
+  int i, bs = list_size(b);
   if(bs) {
-    cell_t *l = b->ptr[bs-1];
-    while(n > 1 && !closure_is_ready(l)) {
-      cell_t *d = dep(ref(a));
+    cell_t **l = &b->ptr[bs-1];
+    if(is_placeholder(a)) n = -1; // *** hack
+    cell_t *d = 0;
+    int nd = 0;
+    while(n > 1 && !closure_is_ready(*l)) {
+      d = dep(d);
       arg(l, d);
-      arg(a, d);
+      //arg(&a, d);
       --n;
+      ++nd;
     }
-    if(!closure_is_ready(l)) {
+    i = a->size;
+    a = expand(a, nd);
+    while(d) {
+      cell_t *n = d->arg[0];
+      a->arg[i++] = d;
+      d->arg[0] = a;
+      d = n;
+    }
+    refn(a, nd);
+    if(!closure_is_ready(*l)) {
       arg(l, a);
       return b;
     }
   }
 
+  if(is_placeholder(a)) n = 1; // *** hack
   b = expand(b, n);
 
-  int i;
   for(i = 0; i < n-1; ++i) {
     cell_t *d = dep(ref(a));
     b->ptr[bs+i] = d;
-    arg(a, d);
+    arg(&a, d);
   }
   b->ptr[bs+n-1] = a;
   return b;
@@ -815,8 +830,8 @@ cell_t *pushl(cell_t *a, cell_t *b) {
 
   int n = list_size(b);
   if(n) {
-    cell_t *l = b->ptr[n - 1];
-    if(!closure_is_ready(l)) {
+    cell_t **l = &b->ptr[n - 1];
+    if(!closure_is_ready(*l)) {
       arg(l, a);
       return b;
     }

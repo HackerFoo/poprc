@@ -82,6 +82,7 @@ char *function_name(reduce_t *f) {
   CASE(alt2);
   CASE(fib);
   CASE(select);
+  CASE(placeholder);
   return "?";
 # undef CASE
 }
@@ -707,14 +708,16 @@ cell_t *build(char *str, unsigned int n) {
 unsigned int fill_args(cell_t *r, void (*argf)(cell_t *, int)) {
   int n = list_size(r);
   if(n < 1) return 0;
-  cell_t *l = r->ptr[n-1];
+  cell_t **l = &r->ptr[n-1];
   int i = 0;
-  while(!closure_is_ready(l)) {
-    cell_t *v = var(T_ANY);
-    v->val[0] = i;
-    arg(l, v);
-    argf(v, i);
-    ++i;
+  if(!is_placeholder(*l)) { // *** might need to check for placeholders further in
+    while(!closure_is_ready(*l)) {
+      cell_t *v = var(T_ANY);
+      v->val[0] = i;
+      arg(l, v);
+      argf(v, i);
+      ++i;
+    }
   }
   return i;
 }

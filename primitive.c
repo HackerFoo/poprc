@@ -554,7 +554,7 @@ bool func_swap(cell_t **cp, type_rep_t t) {
 
 cell_t *id(cell_t *c) {
   cell_t *i = func(func_id, 1, 1);
-  arg(i, c);
+  arg(&i, c);
   return i;
 }
 
@@ -635,7 +635,7 @@ bool peg_func(cell_t **cp, int N_IN, int N_OUT,
   cell_t *p = b->ptr[N_OUT-1];
 
   i = N_IN;
-  while(i--) arg(p, c->arg[i]);
+  while(i--) arg(&p, c->arg[i]);
 
   closure_shrink(c, 1);
   c->func = func_id;
@@ -666,7 +666,7 @@ bool peg_func2(cell_t **cp, int N_IN, int N_OUT, cell_t *f) {
   cell_t *p = b->ptr[N_OUT-1];
 
   i = N_IN;
-  while(i--) arg(p, c->arg[i]);
+  while(i--) arg(&p, c->arg[i]);
 
   closure_shrink(c, 1);
   c->func = func_id;
