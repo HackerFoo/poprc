@@ -676,20 +676,13 @@ cell_t *parse_vector(char *str, char **p) {
 }
 
 bool parse_word(char *str, char **p, cell_t **r) {
-  unsigned int in = 0, out = 0;
-  cell_t *c;
+  unsigned int in = 0, out = 1;
   char *tok = *p = rtok(str, *p);
   if(!tok || strcmp(tok, "[") == 0) return false;
-  if(strcmp(tok, "]") == 0) {
-    c = _build(str, p);
-    *r = pushl(c, *r);
-  } else if(strcmp(tok, ")") == 0) {
-    c = parse_vector(str, p);
-    *r = pushl(c, *r);
-  } else {
-    c = word_parse(tok, &in, &out);
-    if(c) *r = compose_expand(c, out, *r);
-  }
+  cell_t *c = strcmp(tok, "]") == 0 ? _build(str, p) :
+    strcmp(tok, ")") == 0 ? parse_vector(str, p) :
+    word_parse(tok, &in, &out);
+  if(c) *r = compose_expand(c, out, *r);
   return true;
 }
 
