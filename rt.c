@@ -420,7 +420,7 @@ cell_t *expand(cell_t *c, unsigned int s) {
   }
 }
 
-cell_t *expand_placeholder_in(cell_t *c, unsigned int s) {
+cell_t *expand_inplace(cell_t *c, unsigned int s) {
   uintptr_t n = c->n;
   c->n = 0;
   c = expand(c, s);
@@ -432,12 +432,6 @@ cell_t *expand_placeholder_in(cell_t *c, unsigned int s) {
   for(i = c->size - c->out; i < c->size; ++i) {
     if(c->arg[i]) c->arg[i]->arg[0] = c;
   }
-  return c;
-}
-
-cell_t *expand_placeholder_out(cell_t *c, unsigned int s) {
-  c = expand_placeholder_in(c, s);
-  c->out += s;
   return c;
 }
 
@@ -520,7 +514,7 @@ void arg(cell_t **cp, cell_t *a) {
   if(is_placeholder(c) &&
      (c->size == 0 ||
       closure_is_ready(c->arg[0]))) {
-    c = expand_placeholder_in(c, 1);
+    c = expand_inplace(c, 1);
     c->arg[0] = a;
   } else if(!is_data(c->arg[i])) {
     c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
@@ -614,7 +608,7 @@ cell_t *_arg_nd(cell_t *c, cell_t *a, cell_t *r) {
       closure_is_ready(c->arg[0]))) {
     t = modify_copy(c, r);
     cell_t *_c = clear_ptr(c->tmp, 3) ? clear_ptr(c->tmp, 3) : c;
-    _c = expand_placeholder_in(_c, 1);
+    _c = expand_inplace(_c, 1); // ***
     _c->arg[0] = a;
   } else if(!is_data(c->arg[i])) {
     t = modify_copy(c, r);
@@ -808,24 +802,14 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
     cell_t **l = &b->ptr[bs-1];
     if(is_placeholder(a)) n = -1; // *** hack
     cell_t *d = 0;
-    int nd = 0;
     while(n > 1 && !closure_is_ready(*l)) {
-      d = dep(d);
+      d = dep(NULL);
       arg(l, d);
-      //arg(&a, d);
+      arg(&a, d);
+      d->arg[0] = ref(a);
+      ++a->out;
       --n;
-      ++nd;
     }
-    i = a->size;
-    a = expand(a, nd);
-    while(d) {
-      cell_t *n = d->arg[0];
-      a->arg[i++] = d;
-      d->arg[0] = a;
-      d = n;
-    }
-    refn(a, nd);
-    a->out += nd;
     if(!closure_is_ready(*l)) {
       arg(l, a);
       // *** messy
