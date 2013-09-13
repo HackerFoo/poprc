@@ -348,6 +348,7 @@ void show_func(cell_t *c) {
   int n = closure_args(c), i;
   char *s = function_token(c->func);
   if(!s) return;
+  if(is_placeholder(c)) printf(" ?%ld =", c - cells);
   for(i = 0; i < n; ++i) {
     cell_t *arg = c->arg[i];
     if(is_closure(arg)) {
@@ -360,7 +361,7 @@ void show_func(cell_t *c) {
 void show_var(cell_t *c) {
   assert(is_var(c));
   if(is_list(c)) {
-    printf(" ?l%ld =", c-cells);
+    //printf(" ?l%ld =", c-cells);
     show_list(c);
   } else {
     printf(" ?%c%ld", type_char(c->type), c - cells);
@@ -818,13 +819,15 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   switch(tt) {
   case tt_reduction:
     if(is_reduced(c) || !is_var(r)) break;
+    if(c->func == func_pushl ||
+       c->func == func_pushr ||
+       c->func == func_popr) break;
     if(is_dep(c)) {
       printf("?%c%ld <- type\n", type_char(r->type), c - cells);
     } else {
       int i, n = closure_args(c), in = closure_in(c), out = closure_out(c);
-      // *** hack
-      // for(i = 0; i < in; ++i) trace(c->arg[i], 0, tt_force);
-      printf("?%c%ld ", type_char(r->type), c - cells);
+      //for(i = 0; i < in; ++i) trace(c->arg[i], 0, tt_force);
+      if(!is_placeholder(c)) printf("?%c%ld ", type_char(r->type), c - cells);
       for(i = 0; i < out; ++i) {
 	cell_t *a = c->arg[n - i - 1];
 	if(a) printf("?%ld ", a - cells);
@@ -835,7 +838,11 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
 	if(is_cell(c->arg[i])) printf("?%ld ", c->arg[i] - cells);
 	else printf("?_ ");
       }
-      printf("%s\n", function_name(c->func));
+      if(is_placeholder(c)) {
+	printf("f[?%ld]\n", c-cells);
+      } else {
+	printf("%s\n", function_name(c->func));
+      }
     }
     r->type |= T_TRACED;
     break;
@@ -845,14 +852,20 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     if(!is_reduced(c)) break;
     if(c->type & T_TRACED) break;
     if(is_any(c)) break;
-    printf("?%c%ld <-", type_char(c->type), c - cells);
-    if(is_var(c)) printf(" type");
-    else show_one(c);
-    printf("\n");
+    if(is_list(c) && is_placeholder(c->ptr[0])) {
+      printf("?f%ld <- ?l%ld head\n", c->ptr[0]-cells, c-cells);
+    } else {
+      printf("?%c%ld <-", type_char(c->type), c-cells);
+      if(is_var(c)) printf(" type");
+      else show_one(c);
+      printf("\n");
+    }
     c->type |= T_TRACED;
     break;
   case tt_select:
     printf("?%c%ld <- ?%ld ?%ld select\n", type_char(c->type), c-cells, c-cells, r-cells);
     break;
+  case tt_copy:
+    printf("?f%ld <- ?%ld\n", c-cells, r-cells);
   }
 }

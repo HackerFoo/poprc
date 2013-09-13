@@ -369,8 +369,7 @@ bool func_popr(cell_t **cp, type_rep_t t) {
   }
   if(is_placeholder(p->ptr[0])) {
     ++p->size;
-    cell_t *h = expand_inplace(p->ptr[0], 1);
-    ++p->ptr[0]->out;
+    cell_t *h = expand_inplace_dep(p->ptr[0], 1); // *** no shift here
     p->ptr[0] = h->arg[closure_in(h)] = dep(ref(h));
     p->ptr[1] = h;
   }

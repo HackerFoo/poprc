@@ -339,9 +339,9 @@ bool func_reduced(cell_t **cp, type_rep_t t) {
 	c->ptr[0] = func(func_placeholder, 0, 1);
 	c->size = 2;
       }
+      c->type |= t;
+      trace(c, 0, tt_touched);
     }
-    c->type |= t;
-    trace(c, 0, tt_touched);
     return true;
   }
   else {
@@ -437,6 +437,23 @@ cell_t *expand_inplace(cell_t *c, unsigned int s) {
   memmove(&c->arg[s], &c->arg[0], (c->size - 1) * sizeof(cell_t *));
   unsigned int i;
   for(i = c->size - c->out; i < c->size; ++i) {
+    if(c->arg[i]) c->arg[i]->arg[0] = c;
+  }
+  return c;
+}
+
+cell_t *expand_inplace_dep(cell_t *c, unsigned int s) {
+  uintptr_t n = c->n;
+  unsigned int in = closure_in(c);
+  c->n = 0;
+  c = expand(c, s);
+  c->n = n;
+
+  // shift and update deps
+  memmove(&c->arg[in+s], &c->arg[in], c->out * sizeof(cell_t *));
+  c->out += s;
+  unsigned int i;
+  for(i = c->size - c->out + s; i < c->size; ++i) {
     if(c->arg[i]) c->arg[i]->arg[0] = c;
   }
   return c;
@@ -859,7 +876,9 @@ cell_t *pushl_nd(cell_t *a, cell_t *b) {
   if(n) {
     cell_t *l = b->ptr[n-1];
     if(!closure_is_ready(l)) {
-      return arg_nd(l, a, b);
+      cell_t *_b = arg_nd(l, a, b);
+      if(is_placeholder(l)) trace(_b->ptr[n-1], l, tt_copy);
+      return _b;
     }
   }
 
@@ -1289,6 +1308,7 @@ bool func_placeholder(cell_t **cp, type_t t) {
   int i, in = closure_in(c), n = closure_args(c);
   for(i = 0; i < in; ++i) {
     reduce(&c->arg[i], T_ANY);
+    trace(c->arg[i], 0, tt_force);
   }
   for(i = in; i < n; ++i) {
     cell_t *d = c->arg[i];
