@@ -333,6 +333,13 @@ bool func_reduced(cell_t **cp, type_rep_t t) {
   measure.reduce_cnt--;
   if(c->type != T_FAIL &&
      type_match(t, c)) {
+    if(is_any(c)) {
+      /* create placeholder */
+      if(t & T_LIST) {
+	c->ptr[0] = func(func_placeholder, 0, 1);
+	c->size = 2;
+      }
+    }
     c->type |= t;
     trace(c, 0, tt_touched);
     return true;
@@ -797,17 +804,20 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
   assert(is_closure(a) &&
 	 is_closure(b) && is_list(b));
   assert(n);
+  bool ph_a = is_placeholder(a);
   int i, bs = list_size(b);
   if(bs) {
     cell_t **l = &b->ptr[bs-1];
-    if(is_placeholder(a)) n = -1; // *** hack
+    if(ph_a) n = -1; // *** hack
     cell_t *d = 0;
+    int nd = 0;
     while(n > 1 && !closure_is_ready(*l)) {
       d = dep(NULL);
       arg(l, d);
       arg(&a, d);
       d->arg[0] = ref(a);
-      ++a->out;
+      ++nd;
+      if(ph_a) ++a->out;
       --n;
     }
     if(!closure_is_ready(*l)) {
@@ -821,7 +831,7 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
     }
   }
 
-  if(is_placeholder(a)) n = 1; // *** hack
+  if(ph_a) n = 1; // *** hack
   b = expand(b, n);
 
   for(i = 0; i < n-1; ++i) {

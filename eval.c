@@ -822,9 +822,14 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
       printf("?%c%ld <- type\n", type_char(r->type), c - cells);
     } else {
       int i, n = closure_args(c), in = closure_in(c), out = closure_out(c);
-      for(i = 0; i < in; ++i) trace(c->arg[i], 0, tt_force);
+      // *** hack
+      // for(i = 0; i < in; ++i) trace(c->arg[i], 0, tt_force);
       printf("?%c%ld ", type_char(r->type), c - cells);
-      for(i = 0; i < out; ++i) printf("?%ld ", c->arg[n-i-1] - cells);
+      for(i = 0; i < out; ++i) {
+	cell_t *a = c->arg[n - i - 1];
+	if(a) printf("?%ld ", a - cells);
+	else printf("__ ");
+      }
       printf("<- ");
       for(i = 0; i < in; ++i) {
 	if(is_cell(c->arg[i])) printf("?%ld ", c->arg[i] - cells);

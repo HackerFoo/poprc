@@ -285,8 +285,7 @@ bool func_pushl(cell_t **cp, type_rep_t t) {
   c->alt = closure_split1(c, 1);
   cell_t *q = get(c->arg[1]);
   bool rvar = is_var(q);
-  cell_t *res;
-  res = pushl_nd(ref(c->arg[0]), ref(q));
+  cell_t *res = pushl_nd(ref(c->arg[0]), ref(q));
   if(rvar) res->type |= T_VAR;
   drop(res->alt);
   res->alt = c->alt;
@@ -309,7 +308,6 @@ bool func_pushr(cell_t **cp, type_rep_t t) {
   c->alt = closure_split1(c, 0);
   cell_t *p = get(c->arg[0]);
   if(!type_match(T_LIST, p)) goto fail;
-  //if(is_var(p)) reduce(&c->arg[1], T_ANY); // *** hack to force argument since it might be needed later
   p->type |= T_LIST;
   alt_set_t alt_set = c->arg[0]->alt_set;
   alt_set_ref(alt_set);
