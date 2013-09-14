@@ -4,6 +4,6 @@
 
 =head popr swap drop
 
-@=dip11 swap pushr pushl popr swap popr swap drop swap
+=dip11 swap pushr pushl popr swap popr swap drop swap
 @=dip12 swap pushr pushl popr swap pushl [swap] . popr swap popr swap popr swap drop
-@=dip21 swap pushr pushl pushl popr swap popr swap drop swap
+=dip21 swap pushr pushl pushl popr swap popr swap drop swap

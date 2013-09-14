@@ -128,18 +128,6 @@ Function *func_refn(Module *mod) {
   return f;
 }
 
-Function *func_build_select(Module *mod) {
-  Function *f = mod->getFunction("build_select");
-  if(f) return f;
-
-  FunctionType* ft = FunctionType::get(cell_ptr_type,
-				       std::vector<Type *>{ cell_ptr_type, cell_ptr_type },
-				       false);
-  f = Function::Create(ft, GlobalValue::ExternalLinkage, "build_select", mod);
-  f->setCallingConv(CallingConv::C);
-  return f;
-}
-
 void define_types(Module *mod) {
   LLVMContext &ctx = mod->getContext();
   // Type Definitions
@@ -189,9 +177,7 @@ Function *get_cell_func(std::string name, unsigned int in, unsigned int out, Mod
 
 Function *get_builder(cell_t *p, Module *mod) {
   auto name = "build_" + std::string(function_name(p->func));
-  auto f = mod->getFunction(name);
-  if(f) return f;
-  else return get_cell_func(name, p->size - p->out, p->out + 1, mod);
+  return get_cell_func(name, p->size - p->out, p->out + 1, mod);
 }
 
 Value *wrap_alts(cell_t *c,
@@ -215,6 +201,34 @@ typedef struct compile_simple_data_t {
 
 compile_simple_data_t *compile_simple_data;
 
+void apply_list(cell_t *c) {
+  unsigned int ix = c - cells;
+  std::map<unsigned int, Value *> *regs = compile_simple_data->regs;
+  std::map<unsigned int, int> *cnt = compile_simple_data->cnt;
+  Module *mod = compile_simple_data->mod;
+  BasicBlock *block = compile_simple_data->block;
+
+  unsigned int in = closure_in(c);
+  unsigned int out = closure_out(c);
+  int i = in;
+  Value *p = (*regs)[ix];
+  --(*cnt)[ix];
+  while(i--) {
+    unsigned int a = c->arg[i] - cells;
+    --(*cnt)[a];
+    p = CallInst::Create(get_cell_func("build_pushl", 2, 1, mod), std::vector<Value *> { (*regs)[a], p }, "", block);
+  }
+  i = out;
+  while(i--) {
+    unsigned int a = c->arg[i+in] - cells;
+    auto call = CallInst::Create(get_cell_func("build_popr", 1, 2, mod), std::vector<Value *> { p }, "", block);
+    p = ExtractValueInst::Create(call, std::vector<unsigned>{0}, "", block); 
+    (*regs)[a] = ExtractValueInst::Create(call, std::vector<unsigned>{1}, "", block);
+    (*cnt)[a] = 1;
+  }
+  CallInst::Create(func_drop(mod), ArrayRef<Value *>(p), "", block);
+}
+
 void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   unsigned int ix = c - cells;
   std::map<unsigned int, Value *> *regs = compile_simple_data->regs;
@@ -224,68 +238,84 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   BasicBlock *block = compile_simple_data->block;
 
   switch(tt) {
-  case tt_reduction:
+  case tt_reduction: {
     if(is_reduced(c) || !is_var(r)) break;
-    if(is_dep(c)) {
-      printf("?%c%ld <- type\n", type_char(r->type), c - cells);
-    } else {
-      int i, in = closure_in(c);
-      for(i = 0; i < in; ++i) trace(c->arg[i], 0, tt_force);
+    if(c->func == func_pushl ||
+       c->func == func_pushr ||
+       c->func == func_popr) break;
+    if(is_dep(c)) break;
+    int i, in = closure_in(c);
+    for(i = 0; i < in; ++i) trace(c->arg[i], 0, tt_force);
 
-      if(c->func == func_cut ||
-	 c->func == func_id) {
-	unsigned int a = c->arg[0] - cells;
-	(*regs)[ix] = (*regs)[a];
-	(*cnt)[ix] = 1;
+    if(c->func == func_cut ||
+       c->func == func_id) {
+      unsigned int a = c->arg[0] - cells;
+      (*regs)[ix] = (*regs)[a];
+      (*cnt)[ix] = 1;
+      --(*cnt)[a];
+    } else if(c->func == func_dep) {
+      // do nothing
+    } else if(c->func == func_placeholder) {
+      apply_list(c);
+    } else {
+      auto f = get_builder(c, mod);
+      std::vector<Value *> f_args;
+      for(int i = 0; i < in; ++i) {
+	unsigned int a = c->arg[i] - cells;
+	f_args.push_back((*regs)[a]);
 	--(*cnt)[a];
-      } else if(c->func == func_dep) {
-	// do nothing
+      }
+      auto call = CallInst::Create(f, f_args, "", block);
+      if(c->out) {
+	(*regs)[ix] = ExtractValueInst::Create(call, std::vector<unsigned>{0}, "", block);
+	(*cnt)[ix] = 1;
+	for(unsigned int i = 0; i < c->out; ++i) {
+	  unsigned int a = c->arg[c->size - i - 1] - cells;
+	  (*regs)[a] = ExtractValueInst::Create(call, std::vector<unsigned>{i+1}, "", block);
+	  (*cnt)[a] = 1;
+	}
       } else {
-	auto f = get_builder(c, mod);
-	std::vector<Value *> f_args;
-	for(int i = 0; i < in; ++i) {
-	  unsigned int a = c->arg[i] - cells;
-	  f_args.push_back((*regs)[a]);
-	  --(*cnt)[a];
-	}
-	auto call = CallInst::Create(f, f_args, "", block);
-	if(c->out) {
-	  (*regs)[ix] = ExtractValueInst::Create(call, std::vector<unsigned>{0}, "", block);
-	  (*cnt)[ix] = 1;
-	  for(unsigned int i = 0; i < c->out; ++i) {
-	    unsigned int a = c->arg[c->size - i - 1] - cells;
-	    (*regs)[a] = ExtractValueInst::Create(call, std::vector<unsigned>{i+1}, "", block);
-	    (*cnt)[a] = 1;
-	  }
-	} else {
-	  (*regs)[ix] = call;
-	  (*cnt)[ix] = 1;
-	}
+	(*regs)[ix] = call;
+	(*cnt)[ix] = 1;
       }
     }
     r->type |= T_TRACED;
     break;
+  }
   case tt_touched:
     if(!is_var(c)) break;
-  case tt_force:
+  case tt_force: {
     if(!is_reduced(c)) break;
     if(c->type & T_TRACED) break;
     if(is_any(c)) break;
-    if(!is_var(c)) {
+    if(is_list(c) && is_placeholder(c->ptr[0])) {
+      unsigned int a = c->ptr[0]-cells;
+      (*regs)[a] = (*regs)[ix];
+      (*cnt)[a] = 1;
+      --(*cnt)[ix];
+    } else if(!is_var(c)) {
       auto call = CallInst::Create(func_val(mod), ConstantInt::get(ctx, APInt(64, c->val[0])), "", block);
-	setup_CallInst(call, NOUNWIND);
-	(*regs)[ix] = call;
-	(*cnt)[ix] = 1;
+      setup_CallInst(call, NOUNWIND);
+      (*regs)[ix] = call;
+      (*cnt)[ix] = 1;
     }
     c->type |= T_TRACED;
     break;
-  case tt_select:
+  }
+  case tt_select: {
     unsigned int a = r - cells;
     --(*cnt)[a];
-    auto f = func_build_select(mod);
-    auto call = CallInst::Create(f, std::vector<Value *> { (*regs)[ix], (*regs)[a] }, "", block);
+    auto call = CallInst::Create(get_cell_func("build_select", 2, 1, mod), std::vector<Value *> { (*regs)[ix], (*regs)[a] }, "", block);
     (*regs)[ix] = call;
     break;
+  }
+  case tt_copy: {
+    unsigned int a = r-cells;
+    (*regs)[ix] = (*regs)[a];
+    (*cnt)[ix] = 1;
+    --(*cnt)[a];
+    break;
+  }
   }
 }
 
