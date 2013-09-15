@@ -256,19 +256,18 @@ cell_t *build_eq(cell_t *x, cell_t *y) {
 
 type_t _compose_types[] = {T_LIST, T_LIST, T_LIST};
 bool func_compose(cell_t **cp, type_rep_t t) {
-  cell_t *res = 0;
   cell_t *const c = clear_ptr(*cp, 3);
-  alt_set_t alt_set = 0;
-  static const int n = 2;
-  cell_t *arg[n];
 
-  if(t != T_ANY && t != _compose_types[0]) goto fail;
-  if(!function_preamble(c, &alt_set, arg, (type_t * const)_compose_types, &res, n))
-    goto fail;
-
-  if(!res) res = compose_nd(ref(arg[0]), ref(arg[1]));
-
-  function_epilogue(c, alt_set, res, n);
+  if(!(reduce(&c->arg[0], T_LIST) &&
+       reduce(&c->arg[1], T_LIST))) goto fail;
+  c->alt = closure_split(c, 2);
+  if(bm_conflict(c->arg[0]->alt_set,
+		 c->arg[1]->alt_set)) goto fail;
+  cell_t *res = compose_nd(ref(c->arg[0]), ref(c->arg[1]));
+  res->alt_set = alt_set_ref(c->arg[0]->alt_set |
+			     c->arg[1]->alt_set);
+  res->alt = c->alt;
+  store_reduced(c, res);
   return true;
 
  fail:
