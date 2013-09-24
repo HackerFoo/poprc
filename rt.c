@@ -144,12 +144,14 @@ cell_t *closure_split1(cell_t *c, int n) {
 bool reduce(cell_t **cp, type_rep_t t) {
   cell_t *c;
   while((c = clear_ptr(*cp, 1))) {
-    if(is_placeholder(c)) closure_set_ready(c, true);
+    /*if(is_placeholder(c))*/ closure_set_ready(c, true);
     assert(is_closure(c));
+    /*
     if(!closure_is_ready(c)) {
       fail(cp);
       continue;
     }
+    */
     measure.reduce_cnt++;
     if(c->func(cp, t)) return true;
   }
@@ -160,13 +162,13 @@ bool reduce(cell_t **cp, type_rep_t t) {
 bool reduce_partial(cell_t **cp) {
   cell_t *c;
   c = clear_ptr(*cp, 1);
-  if(is_placeholder(c)) closure_set_ready(c, true);
-  if(!c || !closure_is_ready(c)) {
+  /*if(is_placeholder(c))*/ closure_set_ready(c, true);
+  if(!c /*|| !closure_is_ready(c)*/) {
     fail(cp);
     return false;
   }
-  assert(is_closure(c) &&
-	 closure_is_ready(c));
+  assert(is_closure(c) /*&&
+			 closure_is_ready(c)*/);
   measure.reduce_cnt++;
   return c->func(cp, T_ANY);
 }
@@ -335,7 +337,7 @@ bool func_reduced(cell_t **cp, type_rep_t t) {
      type_match(t, c)) {
     if(is_any(c)) {
       /* create placeholder */
-      if(t & T_LIST) {
+      if((t & T_EXCLUSIVE) == T_LIST) {
 	c->ptr[0] = func(func_placeholder, 0, 1);
 	c->size = 2;
       }
@@ -718,6 +720,7 @@ void store_reduced(cell_t *c, cell_t *r) {
       memcpy(t, r, sizeof(cell_t) * size);
       r = t;
     }
+    c->size = 2;
     c->type = T_INDIRECT | r->type;
     c->alt = ref(r->alt);
     c->alt_set = r->alt_set;
@@ -1132,7 +1135,7 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
       traverse_ref(n, ARGS | PTRS);
       n->n = 0;
     } else {
-      n = ind(c);
+      n = ind(ref(c));
     }
   }
   n->alt = alt;
