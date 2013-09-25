@@ -159,8 +159,6 @@ void graph_cell(FILE *f, cell_t *c) {
 		n, c->ptr[n]);
     } else if(is_fail(c)) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
-    } else if(is_indirect(c)) {
-      fprintf(f, "<tr><td port=\"ind\">ind: <font color=\"lightgray\">%p</font></td></tr>", (cell_t *)c->val[0]);
     } else {
       int n = val_size(c);
       while(n--)
@@ -193,12 +191,6 @@ void graph_cell(FILE *f, cell_t *c) {
 		  node, n, (long int)(c->ptr[n] - cells));
 	  graph_cell(f, c->ptr[n]);
 	}
-      }
-    } else if(is_indirect(c)) {
-      if(is_cell((cell_t *)c->val[0])) {
-	fprintf(f, "node%ld:ind -> node%ld:top;\n",
-		node, (long int)((cell_t *)c->val[0] - cells));
-	graph_cell(f, (cell_t *)c->val[0]);
       }
     }
   } else {
@@ -377,8 +369,6 @@ void show_one(cell_t *c) {
     show_func(c);
   } else if(is_fail(c)) {
     printf(" {}");
-  } else if(is_indirect(c)) {
-    show_one((cell_t *)c->val[0]);
   } else if(is_var(c)) {
     show_var(c);
   } else if(type_match(T_INT, c)) {

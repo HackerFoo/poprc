@@ -117,7 +117,7 @@ bool func_op2(cell_t **cp, type_rep_t t, intptr_t (*op)(intptr_t, intptr_t)) {
 
   if(!res) res = _op2(op, arg[0], arg[1]);
 
-  function_epilogue(c, alt_set, res, n);
+  function_epilogue(cp, alt_set, res, n);
   return true;
 
  fail:
@@ -266,8 +266,9 @@ bool func_compose(cell_t **cp, type_rep_t t) {
   cell_t *res = compose_nd(ref(c->arg[0]), ref(c->arg[1]));
   res->alt_set = alt_set_ref(c->arg[0]->alt_set |
 			     c->arg[1]->alt_set);
+  drop(res->alt);
   res->alt = c->alt;
-  store_reduced(c, res);
+  store_reduced(cp, res);
   return true;
 
  fail:
@@ -282,14 +283,14 @@ bool func_pushl(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   if(!(reduce(&c->arg[1], T_LIST))) goto fail;
   c->alt = closure_split1(c, 1);
-  cell_t *q = get(c->arg[1]);
+  cell_t *q = c->arg[1];
   bool rvar = is_var(q);
   cell_t *res = pushl_nd(ref(c->arg[0]), ref(q));
   if(rvar) res->type |= T_VAR;
   drop(res->alt);
   res->alt = c->alt;
   res->alt_set = alt_set_ref(c->arg[1]->alt_set);
-  store_reduced(c, res);
+  store_reduced(cp, res);
   return true;
 
   fail:
@@ -305,7 +306,7 @@ bool func_pushr(cell_t **cp, type_rep_t t) {
   if(!reduce(&c->arg[0], T_LIST)) goto fail;
   cell_t *res;
   c->alt = closure_split1(c, 0);
-  cell_t *p = get(c->arg[0]);
+  cell_t *p = c->arg[0];
   if(!type_match(T_LIST, p)) goto fail;
   p->type |= T_LIST;
   alt_set_t alt_set = c->arg[0]->alt_set;
@@ -319,7 +320,7 @@ bool func_pushr(cell_t **cp, type_rep_t t) {
   res->alt = c->alt;
   res->alt_set = alt_set;
 
-  store_reduced(c, res);
+  store_reduced(cp, res);
   return true;
 
  fail:
@@ -333,7 +334,7 @@ cell_t *build_pushr(cell_t *x, cell_t *y) {
 bool func_quote(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t res = { .size = 2, .ptr = {ref(c->arg[0])} };
-  store_reduced(c, &res);
+  store_reduced(cp, &res);
   return true;
 }
 cell_t *build_quote(cell_t *x) {
@@ -358,7 +359,7 @@ bool func_popr(cell_t **cp, type_rep_t t) {
     if(d) d->alt = conc_alt(alt->arg[1], d->alt);
   }
 
-  cell_t *p = get(c->arg[0]);
+  cell_t *p = c->arg[0];
   bool rvar = is_var(p);
   if(!is_list(p)) goto fail;
   if(list_size(p) == 0) {
@@ -391,7 +392,7 @@ bool func_popr(cell_t **cp, type_rep_t t) {
 
   res->alt_set = alt_set_ref(p->alt_set);
   res->alt = c->alt;
-  store_reduced(c, res);
+  store_reduced(cp, res);
   return true;
 
  fail:
@@ -440,16 +441,16 @@ cell_t *build_alt2(cell_t *x, cell_t *y) {
 bool func_assert(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   if(!reduce(&c->arg[1], T_INT)) goto fail;
-  cell_t *p = get(c->arg[1]);
+  cell_t *p = c->arg[1];
   if(!((type_match(T_INT, p) && p->val[0]) ||
        is_var(p))) goto fail;
   if(!reduce(&c->arg[0], t)) goto fail;
   c->alt = closure_split(c, 2);
   if(bm_conflict(c->arg[0]->alt_set,
 		 c->arg[1]->alt_set)) goto fail;
-  store_reduced(c, mod_alt(ref(c->arg[0]), c->alt,
-			   c->arg[0]->alt_set |
-			   c->arg[1]->alt_set));
+  store_reduced(cp, mod_alt(ref(c->arg[0]), c->alt,
+			    c->arg[0]->alt_set |
+			    c->arg[1]->alt_set));
   return true;
  fail:
   fail(cp);
@@ -484,7 +485,7 @@ bool func_id(cell_t **cp, type_rep_t t) {
     cell_t *p = c->arg[0];
     if(p->alt) alt_set_ref(alt_set);
     if(bm_conflict(alt_set, c->arg[0]->alt_set)) goto fail;
-    store_reduced(c, mod_alt(ref(p), c->alt, alt_set | p->alt_set));
+    store_reduced(cp, mod_alt(ref(p), c->alt, alt_set | p->alt_set));
     alt_set_drop(alt_set);
     return true;
   } else {
@@ -585,7 +586,7 @@ bool func_cut(cell_t **cp, type_rep_t t) {
   bool v = is_var(p);
   cell_t *alt = p->alt;
   p->alt = 0;
-  store_reduced(c, ref(p));
+  store_reduced(cp, ref(p));
   if(v) trace_expand_select(c, alt, t);
   drop(alt);
   return true;
@@ -613,7 +614,7 @@ bool func_select(cell_t **cp, type_rep_t t) {
     c->arg[0] = p;
   } else goto fail;
 
-  store_reduced(c, ref(p));
+  store_reduced(cp, ref(p));
   return true;
 
  fail:

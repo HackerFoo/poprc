@@ -389,15 +389,6 @@ cell_t *empty_list() {
   return c;
 }
 
-cell_t *ind(cell_t *x) {
-  assert(is_reduced(x));
-  cell_t *c = val((intptr_t)x);
-  c->type = T_INDIRECT | x->type;
-  c->alt = ref(x->alt);
-  c->alt_set = x->alt_set;
-  return c;
-}
-
 cell_t *append(cell_t *a, cell_t *b) {
   int n = list_size(b);
   int n_a = list_size(a);
@@ -556,10 +547,6 @@ void arg(cell_t **cp, cell_t *a) {
   *cp = c;
 }
 
-bool is_indirect(cell_t *c) {
-  return (c->type & T_INDIRECT) != 0;
-}
-
 bool is_fail(cell_t *c) {
   return (c->type & T_FAIL) != 0;
 }
@@ -572,10 +559,7 @@ bool is_any(cell_t *c) {
   do {							\
     cell_t **p;						\
     if(is_reduced(r)) {					\
-      if(is_indirect(r)) {				\
-	p = (cell_t **)(r)->val;			\
-        action						\
-      } else if(((flags) & PTRS) &&			\
+      if(((flags) & PTRS) &&				\
 		is_list(r)) {				\
 	int i, n = list_size(r);			\
 	for(i = 0; i < n; ++i) {			\
@@ -699,7 +683,8 @@ void fail(cell_t **cp) {
   *cp = alt;
 }
 
-void store_reduced(cell_t *c, cell_t *r) {
+void store_reduced(cell_t **cp, cell_t *r) {
+  cell_t *c = clear_ptr(*cp, 3);
   int n = c->n;
   r->func = func_reduced;
   trace(c, r, tt_reduction);
@@ -713,21 +698,15 @@ void store_reduced(cell_t *c, cell_t *r) {
       traverse_ref(r, ALT | PTRS);
       drop(r);
     }
+    c->n = n;
    } else { /* TODO: must copy if not cell */
-    closure_shrink(c, 1);
     if(!is_cell(r)) {
       cell_t *t = closure_alloc_cells(size);
       memcpy(t, r, sizeof(cell_t) * size);
       r = t;
     }
-    c->size = 2;
-    c->type = T_INDIRECT | r->type;
-    c->alt = ref(r->alt);
-    c->alt_set = r->alt_set;
-    c->val[0] = (intptr_t)r;
+    store_lazy(cp, c, r);
   }
-  c->n = n;
-  c->func = func_reduced;
 }
 
 cell_t *ref(cell_t *c) {
@@ -982,12 +961,6 @@ void *lookup_linear(void *table, unsigned int width, unsigned int rows, const ch
   return NULL;
 }
 
-cell_t *get(cell_t *c) {
-  if(is_indirect(c))
-    return get((cell_t *)c->val[0]);
-  else return c;
-}
-
 cell_t *modify_copy(cell_t *c, cell_t *r) {
   cell_t *new = _modify_copy1(c, r, true);
   if(new && new != r) {
@@ -1128,15 +1101,10 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
     drop(c->alt);
     alt_set_drop(c->alt_set);
   } else {
-    int size = closure_cells(c);
     --c->n;
-    if(size == 1) {
-      n = copy(c);
-      traverse_ref(n, ARGS | PTRS);
-      n->n = 0;
-    } else {
-      n = ind(ref(c));
-    }
+    n = copy(c);
+    traverse_ref(n, ARGS | PTRS);
+    n->n = 0;
   }
   n->alt = alt;
   n->alt_set = alt_set;
@@ -1217,7 +1185,7 @@ bool reduce_and_check(cell_t *c, type_t *const types, int n, alt_set_t *alt_set)
 void get_args(cell_t **dest, cell_t *const *src, int n) {
   int i;
   for(i = 0; i < n; i++) {
-    *dest++ = get(*src++);
+    *dest++ = *src++;
   }
 }
 
@@ -1254,13 +1222,13 @@ bool function_preamble(cell_t *c,
      handle_types(types, arg, res, n));
 }
 
-void function_epilogue(cell_t *c,
+void function_epilogue(cell_t **cp,
 		       alt_set_t alt_set,
 		       cell_t *res,
 		       int n) {
   res->alt_set = alt_set_ref(alt_set);
-  res->alt = c->alt;
-  store_reduced(c, res);
+  res->alt = (*cp)->alt;
+  store_reduced(cp, res);
 }
 
 void store_lazy(cell_t **cp, cell_t *c, cell_t *r) {
@@ -1322,7 +1290,7 @@ bool func_placeholder(cell_t **cp, type_t t) {
     d->alt_set = 0;
     d->type = T_VAR;
   }
-  store_reduced(c, var(T_ANY));
+  store_reduced(cp, var(T_ANY));
   return true;
 }
 
