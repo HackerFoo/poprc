@@ -254,7 +254,8 @@ cell_t *build_eq(cell_t *x, cell_t *y) {
   return build21(func_eq, x, y);
 }
 
-type_t _compose_types[] = {T_LIST, T_LIST, T_LIST};
+/* compose doesn't handle placeholders correctly */
+/* [_] [+] . popr */
 bool func_compose(cell_t **cp, type_rep_t t) {
   cell_t *const c = clear_ptr(*cp, 3);
 
@@ -360,13 +361,8 @@ bool func_popr(cell_t **cp, type_rep_t t) {
   }
 
   cell_t *p = c->arg[0];
-  bool rvar = is_var(p);
-  if(!is_list(p)) goto fail;
-  if(list_size(p) == 0) {
-    if(!rvar) goto fail;
-    ++p->size;
-    p->ptr[0] = func(func_placeholder, 0, 1);
-  }
+  if(!is_list(p) ||
+     list_size(p) == 0) goto fail;
   if(is_placeholder(p->ptr[0])) {
     ++p->size;
     cell_t *h = expand_inplace_dep(p->ptr[0], 1); // *** no shift here
@@ -385,7 +381,7 @@ bool func_popr(cell_t **cp, type_rep_t t) {
   /* drop the right list element */
   res = closure_alloc(closure_args(p)-1);
   elems = list_size(res);
-  res->type = T_LIST | (rvar ? T_VAR : 0);
+  res->type = T_LIST;
   int i;
   for(i = 0; i < elems; ++i)
     res->ptr[i] = ref(p->ptr[i+1]);

@@ -144,14 +144,12 @@ cell_t *closure_split1(cell_t *c, int n) {
 bool reduce(cell_t **cp, type_rep_t t) {
   cell_t *c;
   while((c = clear_ptr(*cp, 1))) {
-    /*if(is_placeholder(c))*/ closure_set_ready(c, true);
+    if(!closure_is_ready(c)) close_placeholders(c);
     assert(is_closure(c));
-    /*
     if(!closure_is_ready(c)) {
       fail(cp);
       continue;
     }
-    */
     measure.reduce_cnt++;
     if(c->func(cp, t)) return true;
   }
@@ -162,13 +160,13 @@ bool reduce(cell_t **cp, type_rep_t t) {
 bool reduce_partial(cell_t **cp) {
   cell_t *c;
   c = clear_ptr(*cp, 1);
-  /*if(is_placeholder(c))*/ closure_set_ready(c, true);
-  if(!c /*|| !closure_is_ready(c)*/) {
+  if(!closure_is_ready(c)) close_placeholders(c);
+  if(!c || !closure_is_ready(c)) {
     fail(cp);
     return false;
   }
-  assert(is_closure(c) /*&&
-			 closure_is_ready(c)*/);
+  assert(is_closure(c) &&
+	 closure_is_ready(c));
   measure.reduce_cnt++;
   return c->func(cp, T_ANY);
 }
@@ -545,6 +543,16 @@ void arg(cell_t **cp, cell_t *a) {
     }
   }
   *cp = c;
+}
+
+void close_placeholders(cell_t *c) {
+  assert(is_closure(c) &&
+	 !closure_is_ready(c));
+  if(is_placeholder(c)) {
+    closure_set_ready(c, true);
+  } else if(is_data(c->arg[0])) {
+    close_placeholders(c->arg[0]);
+  }
 }
 
 bool is_fail(cell_t *c) {
