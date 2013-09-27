@@ -809,9 +809,13 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   switch(tt) {
   case tt_reduction:
     if(is_reduced(c) || !is_var(r)) break;
+    /*
     if(c->func == func_pushl ||
        c->func == func_pushr ||
-       c->func == func_popr) break;
+       c->func == func_popr  ||
+       c->func == func_compose) break;
+    */
+    if(is_list(r)) break;
     if(is_dep(c)) {
       printf("?%c%ld <- type\n", type_char(r->type), c - cells);
     } else {
@@ -857,5 +861,10 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     break;
   case tt_copy:
     printf("?f%ld <- ?%ld\n", c-cells, r-cells);
+  case tt_compose_placeholders:
+    printf("?f%ld <- ?%ld ?%ld compose_placeholders\n",
+	   c-cells,
+	   ((cell_t **)r)[0]-cells,
+	   ((cell_t **)r)[1]-cells);
   }
 }

@@ -145,7 +145,8 @@ typedef enum trace_type_t {
   tt_touched,
   tt_force,
   tt_select,
-  tt_copy
+  tt_copy,
+  tt_compose_placeholders
 } trace_type_t;
 
 #endif

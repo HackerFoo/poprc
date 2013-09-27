@@ -451,6 +451,24 @@ cell_t *expand_inplace_dep(cell_t *c, unsigned int s) {
   return c;
 }
 
+cell_t *compose_placeholders(cell_t *a, cell_t *b) {
+  unsigned int i;
+  unsigned int b_in = closure_in(b);
+  unsigned int b_out = closure_out(b);
+  cell_t *c = expand(b, a->size);
+  memmove(c->arg + a->size + b_in,
+	  c->arg + b_in,
+	  b_out * sizeof(cell_t *));
+  for(i = 0; i < closure_in(a); ++i)
+    c->arg[b_in + i] = ref(a->arg[i]);
+  for(; i < a->size; ++i)
+    c->arg[b_in + i] = a->arg[i];
+  drop(a);
+  cell_t *ab[] = {a, b};
+  trace(c, ab, tt_compose_placeholders);
+  return c;
+}
+
 cell_t *compose_nd(cell_t *a, cell_t *b) {
   int n = list_size(b);
   int n_a = list_size(a);
@@ -462,6 +480,11 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
     while(!closure_is_ready(l = b->ptr[n-1]) && i < n_a) {
       cell_t *x = a->ptr[i];
       if(is_placeholder(x)) {
+	if(is_placeholder(l)) {
+	  b->ptr[n-1] = compose_placeholders(x, l);
+	  ++i;
+	  break;
+	}
 	a->ptr[i] = x = expand_inplace_dep(x, 1);
 	b = arg_nd(l, x->arg[closure_in(x)] = dep(ref(x)), b);
       } else {
