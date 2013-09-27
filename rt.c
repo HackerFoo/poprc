@@ -409,6 +409,7 @@ cell_t *expand(cell_t *c, unsigned int s) {
     /* copy */
     cell_t *new = closure_alloc(n + s);
     memcpy(new, c, cn_p * sizeof(cell_t));
+    if(is_placeholder(c)) trace(new, c, tt_copy);
     new->n = 0;
     traverse_ref(new, ARGS_IN | PTRS | ALT);
     new->size = n + s;
@@ -456,8 +457,17 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
   int i = 0;
   if(n && n_a) {
     cell_t *l;
+    // will loop forever on [_] [_] .
+    // (A -> B) . (A' -> B') = (A' A -> B B') for placeholders
     while(!closure_is_ready(l = b->ptr[n-1]) && i < n_a) {
-      b = arg_nd(l, ref(a->ptr[i++]), b);
+      cell_t *x = a->ptr[i];
+      if(is_placeholder(x)) {
+	a->ptr[i] = x = expand_inplace_dep(x, 1);
+	b = arg_nd(l, x->arg[closure_in(x)] = dep(ref(x)), b);
+      } else {
+	b = arg_nd(l, ref(x), b);
+	++i;
+      }
     }
   }
   cell_t *e = expand(b, n_a - i);
