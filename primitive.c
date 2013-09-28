@@ -318,6 +318,7 @@ bool func_pushr(cell_t **cp, type_rep_t t) {
   res = expand(ref(p), 1);
   memmove(res->ptr+1, res->ptr, sizeof(cell_t *)*n);
   res->ptr[0] = ref(c->arg[1]);
+  drop(res->alt);
   res->alt = c->alt;
   res->alt_set = alt_set;
 
@@ -498,35 +499,7 @@ bool func_id(cell_t **cp, type_rep_t t) {
 cell_t *build_id(cell_t *x) {
   return build11(func_id, x);
 }
-/*
-bool func_force(cell_t **cp, type_rep_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
-  cell_t *d = c->arg[2];
-  if(!reduce(&c->arg[0], t)) goto fail;
-  c->alt = closure_split1(c, 0);
-  store_lazy_dep(c, d, c->arg[1]);
-  if(d) d->arg[1] = (cell_t *)c->arg[0]->alt_set;
-  if(c->alt) {
-    if (d) d->alt = c->alt->arg[2];
-    else drop(c->alt->arg[2]);
-  }
-  store_reduced(c, mod_alt(c->arg[0], c->alt, c->arg[0]->alt_set));
-  return true;
 
- fail:
-  if(d) {
-    drop(c);
-    store_fail(d, d->alt);
-  }
-  c->arg[2] = 0;
-  fail(cp);
-  return false;
-}
-
-two_cells_t build_force(cell_t *x, cell_t *y) {
-  return build22(func_force, x, y);
-}
-*/
 bool func_drop(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *p = ref(c->arg[0]);
