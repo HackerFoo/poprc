@@ -465,7 +465,7 @@ cell_t *compose_placeholders(cell_t *a, cell_t *b) {
     c->arg[b_in + i] = a->arg[i];
   drop(a);
   cell_t *ab[] = {a, b};
-  trace(c, ab, tt_compose_placeholders);
+  trace(c, (cell_t *)ab, tt_compose_placeholders);
   return c;
 }
 
@@ -570,8 +570,9 @@ void arg(cell_t **cp, cell_t *a) {
     if(i == 0 && !is_placeholder(c)) closure_set_ready(c, closure_is_ready(a));
   } else {
     arg(&c->arg[i], a);
-    if(closure_is_ready(c->arg[i])) {
-      if(i == 0 && !is_placeholder(c)) closure_set_ready(c, true);
+    if(!is_placeholder(c) &&
+       closure_is_ready(c->arg[i])) {
+      if(i == 0) closure_set_ready(c, true);
       else --*(intptr_t *)&c->arg[0]; // decrement offset
     }
   }
@@ -661,6 +662,8 @@ cell_t *_arg_nd(cell_t *c, cell_t *a, cell_t *r) {
     cell_t *_c = clear_ptr(c->tmp, 3) ? clear_ptr(c->tmp, 3) : c;
     _c = expand_inplace(_c, 1); // ***
     _c->arg[0] = a;
+    cell_t *rt = clear_ptr(r->tmp, 3);
+    rt->ptr[list_size(rt)-1] = c->tmp = _c; // ***
   } else if(!is_data(c->arg[i])) {
     t = modify_copy(c, r);
     cell_t *_c = clear_ptr(c->tmp, 3) ? clear_ptr(c->tmp, 3) : c;
@@ -670,8 +673,9 @@ cell_t *_arg_nd(cell_t *c, cell_t *a, cell_t *r) {
   } else {
     t = _arg_nd(c->arg[i], a, r);
     cell_t *_c = clear_ptr(c->tmp, 3) ? clear_ptr(c->tmp, 3) : c;
-    if(closure_is_ready(_c->arg[i])) {
-      if(i == 0 && !is_placeholder(c)) closure_set_ready(_c, true);
+    if(!is_placeholder(c) &&
+       closure_is_ready(_c->arg[i])) {
+      if(i == 0) closure_set_ready(_c, true);
       else --*(intptr_t *)&_c->arg[0]; // decrement offset
     }
   }

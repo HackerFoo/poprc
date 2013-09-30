@@ -861,10 +861,12 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     break;
   case tt_copy:
     printf("?f%ld <- ?%ld\n", c-cells, r-cells);
+    break;
   case tt_compose_placeholders:
     printf("?f%ld <- ?%ld ?%ld compose_placeholders\n",
 	   c-cells,
 	   ((cell_t **)r)[0]-cells,
 	   ((cell_t **)r)[1]-cells);
+    break;
   }
 }
