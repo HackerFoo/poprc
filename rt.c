@@ -560,7 +560,7 @@ void arg(cell_t **cp, cell_t *a) {
   int i = closure_next_child(c);
   // *** shift args if placeholder
   if(is_placeholder(c) &&
-     (c->size == 0 ||
+     (closure_in(c) == 0 ||
       closure_is_ready(c->arg[0]))) {
     c = expand_inplace(c, 1);
     c->arg[0] = a;
@@ -579,11 +579,30 @@ void arg(cell_t **cp, cell_t *a) {
   *cp = c;
 }
 
+void arg_noexpand(cell_t **cp, cell_t *a) {
+  cell_t *c = *cp;
+  assert(is_closure(c) && is_closure(a));
+  assert(!closure_is_ready(c));
+  int i = closure_next_child(c);
+  if(!is_data(c->arg[i])) {
+    c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
+    c->arg[i] = a;
+    if(i == 0) closure_set_ready(c, closure_is_ready(a));
+  } else {
+    arg_noexpand(&c->arg[i], a);
+    if(closure_is_ready(c->arg[i])) {
+      if(i == 0) closure_set_ready(c, true);
+      else --*(intptr_t *)&c->arg[0]; // decrement offset
+    }
+  }
+  *cp = c;
+}
+
 void close_placeholders(cell_t *c) {
-  assert(is_closure(c) &&
-	 !closure_is_ready(c));
+  if(!is_closure(c) ||
+     closure_is_ready(c)) return;
   if(is_placeholder(c)) {
-    closure_set_ready(c, true);
+    closure_set_ready(c, closure_is_ready(c->arg[0]));
   } else if(is_data(c->arg[0])) {
     close_placeholders(c->arg[0]);
   }
@@ -656,7 +675,7 @@ cell_t *_arg_nd(cell_t *c, cell_t *a, cell_t *r) {
   int i = closure_next_child(c);
   // *** shift args if placeholder
   if(is_placeholder(c) &&
-     (c->size == 0 ||
+     (closure_in(c) == 0 ||
       closure_is_ready(c->arg[0]))) {
     t = modify_copy(c, r);
     cell_t *_c = clear_ptr(c->tmp, 3) ? clear_ptr(c->tmp, 3) : c;
@@ -1323,7 +1342,7 @@ bool func_placeholder(cell_t **cp, type_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   int i, in = closure_in(c), n = closure_args(c);
   for(i = 0; i < in; ++i) {
-    reduce(&c->arg[i], T_ANY);
+    if(!reduce(&c->arg[i], T_ANY)) goto fail;
     trace(c->arg[i], 0, tt_force);
   }
   for(i = in; i < n; ++i) {
@@ -1337,6 +1356,10 @@ bool func_placeholder(cell_t **cp, type_t t) {
   }
   store_reduced(cp, var(T_ANY));
   return true;
+
+ fail:
+  fail(cp);
+  return false;
 }
 
 bool is_placeholder(cell_t *c) {

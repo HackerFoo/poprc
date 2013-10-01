@@ -694,14 +694,13 @@ unsigned int fill_args(cell_t *r, void (*argf)(cell_t *, int)) {
   if(n < 1) return 0;
   cell_t **l = &r->ptr[n-1];
   int i = 0;
-  if(!is_placeholder(*l)) { // *** might need to check for placeholders further in
-    while(!closure_is_ready(*l)) {
-      cell_t *v = var(T_ANY);
-      v->val[0] = i;
-      arg(l, v);
-      argf(v, i);
-      ++i;
-    }
+  close_placeholders(*l);
+  while(!closure_is_ready(*l)) {
+    cell_t *v = var(T_ANY);
+    v->val[0] = i;
+    arg_noexpand(l, v);
+    argf(v, i);
+    ++i;
   }
   return i;
 }
@@ -820,7 +819,7 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
       printf("?%c%ld <- type\n", type_char(r->type), c - cells);
     } else {
       int i, n = closure_args(c), in = closure_in(c), out = closure_out(c);
-      //for(i = 0; i < in; ++i) trace(c->arg[i], 0, tt_force);
+      for(i = 0; i < in; ++i) trace(c->arg[i], 0, tt_force); // ***
       if(!is_placeholder(c)) printf("?%c%ld ", type_char(r->type), c - cells);
       for(i = 0; i < out; ++i) {
 	cell_t *a = c->arg[n - i - 1];
