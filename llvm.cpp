@@ -316,6 +316,9 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     --(*cnt)[a];
     break;
   }
+  case tt_compose_placeholders: {
+    /* to do *** */
+  }
   }
 }
 

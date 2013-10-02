@@ -475,8 +475,6 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
   int i = 0;
   if(n && n_a) {
     cell_t *l;
-    // will loop forever on [_] [_] .
-    // (A -> B) . (A' -> B') = (A' A -> B B') for placeholders
     while(!closure_is_ready(l = b->ptr[n-1]) && i < n_a) {
       cell_t *x = a->ptr[i];
       if(is_placeholder(x)) {
@@ -602,7 +600,7 @@ void close_placeholders(cell_t *c) {
   if(!is_closure(c) ||
      closure_is_ready(c)) return;
   if(is_placeholder(c)) {
-    closure_set_ready(c, closure_is_ready(c->arg[0]));
+    closure_set_ready(c, closure_in(c) == 0 ? true : closure_is_ready(c->arg[0]));
   } else if(is_data(c->arg[0])) {
     close_placeholders(c->arg[0]);
   }
@@ -871,17 +869,21 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
   int i, bs = list_size(b);
   if(bs) {
     cell_t **l = &b->ptr[bs-1];
-    if(ph_a) n = -1; // *** hack
     cell_t *d = 0;
     int nd = 0;
-    while(n > 1 && !closure_is_ready(*l)) {
+    if(ph_a && is_placeholder(*l)) {
+      *l = compose_placeholders(a, *l);
+      return b;
+    }
+    while((ph_a || n > 1) &&
+	  !closure_is_ready(*l)) {
       d = dep(NULL);
       arg(l, d);
       arg(&a, d);
       d->arg[0] = ref(a);
       ++nd;
       if(ph_a) ++a->out;
-      --n;
+      else --n;
     }
     if(!closure_is_ready(*l)) {
       arg(l, a);
@@ -894,7 +896,6 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
     }
   }
 
-  if(ph_a) n = 1; // *** hack
   b = expand(b, n);
 
   for(i = 0; i < n-1; ++i) {
@@ -1339,6 +1340,30 @@ type_rep_t tr_arg(type_rep_t t, unsigned int n) {
 */
 
 bool func_placeholder(cell_t **cp, type_t t) {
+  cell_t *c = clear_ptr(*cp, 3);
+  int i, in = closure_in(c), n = closure_args(c);
+  for(i = 0; i < in; ++i) {
+    if(!reduce(&c->arg[i], T_ANY)) goto fail;
+    trace(c->arg[i], 0, tt_force);
+  }
+  for(i = in; i < n; ++i) {
+    cell_t *d = c->arg[i];
+    if(!d) continue;
+    drop(d->arg[0]);
+    d->func = func_reduced;
+    d->size = 1;
+    d->alt_set = 0;
+    d->type = T_VAR;
+  }
+  store_reduced(cp, var(T_ANY));
+  return true;
+
+ fail:
+  fail(cp);
+  return false;
+}
+
+bool func_self(cell_t **cp, type_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   int i, in = closure_in(c), n = closure_args(c);
   for(i = 0; i < in; ++i) {

@@ -512,6 +512,13 @@ void run_eval() {
       while(*line != ' ') ++line;
       *line++ = 0;
       compile_expr(name, line, strlen(line));
+    } else if(strncmp(line, ":a ", 3) == 0) {
+      unsigned int in, out;
+      cells_init();
+      line += 3;
+      if(get_arity(line, strlen(line), &in, &out)) {
+	printf("%d -> %d\n", in, out);
+      }
     } else {
 #ifdef USE_LINENOISE
       linenoiseHistoryAdd(line);
@@ -593,13 +600,18 @@ cell_t *word_parse(char *w,
   } else {
     word_entry_t *e = lookup_word(w);
     /* disallow partial matches */
-    if(!e) return NULL;
-    if(strnlen(w, sizeof_field(word_entry_t, name)) !=
-       strnlen(e->name, sizeof_field(word_entry_t, name)))
-      return NULL;
-    c = func(e->func, e->in, e->out);
-    *in = e->in;
-    *out = e->out;
+    if(!e ||
+       strnlen(w, sizeof_field(word_entry_t, name)) !=
+       strnlen(e->name, sizeof_field(word_entry_t, name))) {
+      // trace the name ***
+      c = func(func_placeholder, 0, 1);
+      *in = 0;
+      *out = 1;
+    } else {
+      c = func(e->func, e->in, e->out);
+      *in = e->in;
+      *out = e->out;
+    }
   }
   return c;
 }
@@ -689,7 +701,9 @@ cell_t *build(char *str, unsigned int n) {
   return _build(str, &p);
 }
 
+void argf_noop(cell_t *c, int i) {}
 unsigned int fill_args(cell_t *r, void (*argf)(cell_t *, int)) {
+  if(!argf) argf = argf_noop;
   int n = list_size(r);
   if(n < 1) return 0;
   cell_t **l = &r->ptr[n-1];
@@ -732,6 +746,22 @@ void eval(char *str, unsigned int n) {
   }
 }
 
+bool get_arity(char *str, unsigned int n, unsigned int *in, unsigned int *out) {
+  set_trace(NULL);
+  cell_t *c = build(str, n);
+  *in = fill_args(c, NULL);
+  reduce_list(c);
+  if(!c) return false;
+  if(!closure_is_ready(c)) {
+    printf("incomplete expression\n");
+    return false;
+  } else {
+    *out = list_size(c);
+    drop(c);
+    return true;
+  }
+}
+
 void compile_expr(char *name, char *str, unsigned int n) {
   word_entry_t *e = 
     lookup_linear(user_word_table,
@@ -741,10 +771,15 @@ void compile_expr(char *name, char *str, unsigned int n) {
   if(!e) {
     e = new_user_word_entry++;
     strcpy(e->name, name);
-    e->func = func_id;
+    e->func = func_placeholder;
     e->in = 1;
-    e->out = 1;
+    e->out = 0;
   }
+  char *s = malloc(n);
+  memcpy(s, str, n);
+  get_arity(s, n, &e->in, &e->out);
+  free(s);
+  e->func = func_self;
   cell_t *c = build(str, n);
   if(!c) {
     --new_user_word_entry;
