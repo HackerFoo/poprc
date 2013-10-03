@@ -1355,7 +1355,7 @@ bool func_placeholder(cell_t **cp, type_t t) {
     d->alt_set = 0;
     d->type = T_VAR;
   }
-  store_reduced(cp, var(T_ANY));
+  store_reduced(cp, var(T_ROW));
   return true;
 
  fail:

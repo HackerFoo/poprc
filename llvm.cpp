@@ -327,6 +327,7 @@ void compile_simple_arg(cell_t *c, int x) {
   args->insert(args->begin(), c - cells);
 }
 
+// need to convert to not use builders, i.e. build directly
 Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned int *out, Module *mod) {
   LLVMContext &ctx = mod->getContext();
   std::vector<unsigned int> args;

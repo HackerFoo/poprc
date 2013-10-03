@@ -83,6 +83,7 @@ char *function_name(reduce_t *f) {
   CASE(fib);
   CASE(select);
   CASE(placeholder);
+  CASE(self);
   return "?";
 # undef CASE
 }
@@ -740,6 +741,7 @@ void eval(char *str, unsigned int n) {
   if(!closure_is_ready(c))
     printf("incomplete expression\n");
   else {
+    c = remove_row(c);
     show_list(c);
     drop(c);
     printf("\n");
@@ -756,7 +758,8 @@ bool get_arity(char *str, unsigned int n, unsigned int *in, unsigned int *out) {
     printf("incomplete expression\n");
     return false;
   } else {
-    *out = list_size(c);
+    c = remove_row(c);
+    *out = max(1, list_size(c));
     drop(c);
     return true;
   }
@@ -772,8 +775,8 @@ void compile_expr(char *name, char *str, unsigned int n) {
     e = new_user_word_entry++;
     strcpy(e->name, name);
     e->func = func_placeholder;
-    e->in = 1;
-    e->out = 0;
+    e->in = 0;
+    e->out = 1;
   }
   char *s = malloc(n);
   memcpy(s, str, n);
@@ -786,6 +789,26 @@ void compile_expr(char *name, char *str, unsigned int n) {
     return;
   }
   e->func = compile(c, &e->in, &e->out);
+}
+
+cell_t *remove_row(cell_t *c) {
+  assert(is_list(c));
+  unsigned int n = list_size(c);
+  if(n == 0 || !c->ptr[n-1]->type & T_ROW) return c;
+  return remove_left(c);
+}
+
+cell_t *remove_left(cell_t *c) {
+  assert(is_list(c));
+  unsigned int n = list_size(c);
+  assert(n > 0);
+  unsigned int size = calculate_cells(c->size - 1);
+  cell_t *new = closure_alloc_cells(size);
+  memcpy(new, c, sizeof(cell_t) * size);
+  --new->size;
+  traverse_ref(new, PTRS | ALT);
+  drop(c);
+  return new;
 }
 
 void loadSource(char *path) {
