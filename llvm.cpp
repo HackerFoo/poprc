@@ -49,6 +49,7 @@ void set_arg(Value *ptr, int x, Value *val, BasicBlock *b);
 void build_closure(Function *f,
 		   std::vector<unsigned int> in,
 		   std::vector<unsigned int> out);
+Function* declare_wrap_func(Function *func);
 
 void setup_CallInst(CallInst *i, unsigned int attrs) {
   i->setCallingConv(CallingConv::C);
@@ -438,7 +439,7 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
   *out = out_n;
 
   Function *f = get_cell_func(name, in_n, out_n, mod);
-  compile_simple_data->self = f;
+  compile_simple_data->self = declare_wrap_func(f);
 
   BasicBlock* b =
     BasicBlock::Create(ctx, "entry", f, 0);
@@ -511,26 +512,51 @@ void set_arg(Value *ptr, int x, Value *val, BasicBlock *b) {
   new StoreInst(val, p, b);
 }
 
+Function* declare_wrap_func(Function *func) {
+  std::string name = "wrapped_" + func->getName().str();
+  Module *mod = func->getParent();
+  LLVMContext &ctx = mod->getContext();
+
+  Function* func_wrapper = mod->getFunction(name);
+  if(!func_wrapper) {
+
+    // Global Variable Definitions
+    FunctionType *FuncTy_wrapper = FunctionType::get(IntegerType::get(ctx, 1),
+						     std::vector<Type *> { cell_ptr_ptr_type, IntegerType::get(ctx, 32) },
+						     false);
+
+    // function definition
+    func_wrapper = Function::Create(FuncTy_wrapper, GlobalValue::ExternalLinkage, name, mod);
+    func_wrapper->setCallingConv(CallingConv::C);
+    func_wrapper->addAttribute(0, Attribute::ZExt);
+    func_wrapper->addAttribute(-1, Attribute::NoUnwind);
+  }
+
+  return func_wrapper;
+}
+
 Function* wrap_func(Function *func) {
   std::string name = "wrapped_" + func->getName().str();
   Module *mod = func->getParent();
-  int in = func->getFunctionType()->getNumParams();
-  int out = func->getReturnType()->isStructTy() ? func->getReturnType()->getStructNumElements() : 1;
-  Function* func_wrapper = mod->getFunction(name);
-  if(func_wrapper) return func_wrapper;
   LLVMContext &ctx = mod->getContext();
 
-  // Global Variable Definitions
-  FunctionType *FuncTy_wrapper = FunctionType::get(IntegerType::get(ctx, 1),
-						   std::vector<Type *> { cell_ptr_ptr_type, IntegerType::get(ctx, 32) },
-				                   false);
+  Function* func_wrapper = mod->getFunction(name);
+  if(!func_wrapper) {
 
-  // function definition
-  func_wrapper = Function::Create(FuncTy_wrapper, GlobalValue::ExternalLinkage, name, mod);
-  func_wrapper->setCallingConv(CallingConv::C);
-  func_wrapper->addAttribute(0, Attribute::ZExt);
-  func_wrapper->addAttribute(-1, Attribute::NoUnwind);
+    // Global Variable Definitions
+    FunctionType *FuncTy_wrapper = FunctionType::get(IntegerType::get(ctx, 1),
+						     std::vector<Type *> { cell_ptr_ptr_type, IntegerType::get(ctx, 32) },
+						     false);
 
+    // function definition
+    func_wrapper = Function::Create(FuncTy_wrapper, GlobalValue::ExternalLinkage, name, mod);
+    func_wrapper->setCallingConv(CallingConv::C);
+    func_wrapper->addAttribute(0, Attribute::ZExt);
+    func_wrapper->addAttribute(-1, Attribute::NoUnwind);
+  }
+
+  int in = func->getFunctionType()->getNumParams();
+  int out = func->getReturnType()->isStructTy() ? func->getReturnType()->getStructNumElements() : 1;
   Function::arg_iterator args = func_wrapper->arg_begin();
   Value* ptr_cp = args++;
   ptr_cp->setName("cp");
