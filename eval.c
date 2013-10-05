@@ -771,13 +771,11 @@ void compile_expr(char *name, char *str, unsigned int n) {
 		  WIDTH(user_word_table),
 		  user_word_table_length,
 		  name);
-  if(!e) {
-    e = new_user_word_entry++;
-    strcpy(e->name, name);
-    e->func = func_placeholder;
-    e->in = 0;
-    e->out = 1;
-  }
+  if(!e) e = new_user_word_entry++;
+  strcpy(e->name, name);
+  e->func = func_placeholder;
+  e->in = 0;
+  e->out = 1;
   char *s = malloc(n);
   memcpy(s, str, n);
   get_arity(s, n, &e->in, &e->out);
@@ -794,7 +792,7 @@ void compile_expr(char *name, char *str, unsigned int n) {
 cell_t *remove_row(cell_t *c) {
   assert(is_list(c));
   unsigned int n = list_size(c);
-  if(n == 0 || !c->ptr[n-1]->type & T_ROW) return c;
+  if(n == 0 || !(c->ptr[n-1]->type & T_ROW)) return c;
   return remove_left(c);
 }
 

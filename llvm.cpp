@@ -421,8 +421,15 @@ void build_closure(Function *f,
 		block);
 
 }
-
-// need to convert to not use builders, i.e. build directly
+/*
+Value *build_result(cell_t *c) {
+  std::map<unsigned int, Value *> *regs = compile_simple_data->regs;
+  std::map<unsigned int, int> *cnt = compile_simple_data->cnt;
+  Module *mod = compile_simple_data->mod;
+  LLVMContext &ctx = mod->getContext();
+  BasicBlock *block = compile_simple_data->block;
+}
+*/
 Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned int *out, Module *mod) {
   LLVMContext &ctx = mod->getContext();
   std::vector<unsigned int> args;
