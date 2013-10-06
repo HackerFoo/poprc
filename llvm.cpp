@@ -86,6 +86,17 @@ Function *func_closure_alloc(Module *mod) {
   return f;
 }
 
+Function *func_make_list(Module *mod) {
+  Function *f = mod->getFunction("make_list");
+  if(f) return f;
+
+  LLVMContext &ctx = mod->getContext();
+  FunctionType* ft = FunctionType::get(cell_ptr_type, {IntegerType::get(ctx, 32)}, false);
+  f = Function::Create(ft, GlobalValue::ExternalLinkage, "make_list", mod);
+  f->setCallingConv(CallingConv::C);
+  return f;
+}
+
 Function *func_fail(Module *mod) {
   Function *f = mod->getFunction("fail");
   if(f) return f;
@@ -93,7 +104,7 @@ Function *func_fail(Module *mod) {
   LLVMContext &ctx = mod->getContext();
   FunctionType* ft =
     FunctionType::get(Type::getVoidTy(ctx),
-		      std::vector<Type *> { cell_ptr_ptr_type },
+		      { cell_ptr_ptr_type },
 		      false);
   f = Function::Create(ft, GlobalValue::ExternalLinkage, "fail", mod);
   f->setCallingConv(CallingConv::C);
@@ -135,7 +146,7 @@ Function *func_drop(Module *mod) {
   LLVMContext &ctx = mod->getContext();
   FunctionType* ft =
     FunctionType::get(Type::getVoidTy(ctx),
-		      std::vector<Type *> { cell_ptr_type },
+		      { cell_ptr_type },
 		      false);
   f = Function::Create(ft, GlobalValue::ExternalLinkage, "drop", mod);
   f->setCallingConv(CallingConv::C);
@@ -221,7 +232,7 @@ Function *get_builder(cell_t *p, Module *mod) {
   auto name = "build_" + std::string(function_name(p->func));
   return get_cell_func(name, p->size - p->out, p->out + 1, mod);
 }
-
+/*
 Value *wrap_alts(cell_t *c,
 		 std::map<unsigned int, Value *> regs,
 		 BasicBlock *b,
@@ -232,7 +243,7 @@ Value *wrap_alts(cell_t *c,
   if(!f_alt) f_alt = get_cell_func("build_alt2", 2, 1, mod);
   return CallInst::Create(f_alt, std::vector<Value *> { regs[ix], wrap_alts(c->alt, regs, b, mod) }, "", b);
 }
-
+*/
 typedef struct compile_simple_data_t {
   std::vector<unsigned int> *args;
   std::map<unsigned int, Value *> *regs;
@@ -264,9 +275,9 @@ void apply_list(cell_t *c) {
   i = out;
   while(i--) {
     unsigned int a = c->arg[i+in] - cells;
-    auto call = CallInst::Create(get_cell_func("build_popr", 1, 2, mod), std::vector<Value *> { p }, "", block);
-    p = ExtractValueInst::Create(call, std::vector<unsigned>{0}, "", block); 
-    (*regs)[a] = ExtractValueInst::Create(call, std::vector<unsigned>{1}, "", block);
+    auto call = CallInst::Create(get_cell_func("build_popr", 1, 2, mod), {p}, "", block);
+    p = ExtractValueInst::Create(call, {0}, "", block);
+    (*regs)[a] = ExtractValueInst::Create(call, {1}, "", block);
     (*cnt)[a] = 1;
   }
   CallInst::Create(func_drop(mod), ArrayRef<Value *>(p), "", block);
@@ -319,11 +330,11 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
       }
       auto call = CallInst::Create(f, f_args, "", block);
       if(c->out) {
-	(*regs)[ix] = ExtractValueInst::Create(call, std::vector<unsigned>{0}, "", block);
+	(*regs)[ix] = ExtractValueInst::Create(call, {0}, "", block);
 	(*cnt)[ix] = 1;
 	for(unsigned int i = 0; i < c->out; ++i) {
 	  unsigned int a = c->arg[c->size - i - 1] - cells;
-	  (*regs)[a] = ExtractValueInst::Create(call, std::vector<unsigned>{i+1}, "", block);
+	  (*regs)[a] = ExtractValueInst::Create(call, {i+1}, "", block);
 	  (*cnt)[a] = 1;
 	}
       } else {
@@ -421,15 +432,41 @@ void build_closure(Function *f,
 		block);
 
 }
-/*
-Value *build_result(cell_t *c) {
+
+Value *build_tree(cell_t *c) {
   std::map<unsigned int, Value *> *regs = compile_simple_data->regs;
   std::map<unsigned int, int> *cnt = compile_simple_data->cnt;
   Module *mod = compile_simple_data->mod;
   LLVMContext &ctx = mod->getContext();
   BasicBlock *block = compile_simple_data->block;
+  unsigned int ix = c - cells;
+  {
+    auto it = regs->find(ix);
+    if(it != regs->end()) return it->second;
+  }
+  if(is_reduced(c)) {
+    if(is_list(c)) {
+      auto call = CallInst::Create(func_make_list(mod), ConstantInt::get(ctx, APInt(32, list_size(c))), "", block);
+      setup_CallInst(call, NOUNWIND);
+      (*regs)[ix] = call;
+      (*cnt)[ix] = 1;
+      for(int i = 0; i < list_size(c); ++i) {
+	set_arg(call, i+1, build_tree(c->ptr[i]), block);
+	--(*cnt)[c->ptr[i] - cells];
+      }
+      return call;
+    } else if(c->type & T_INT) {
+      auto call = CallInst::Create(func_val(mod), ConstantInt::get(ctx, APInt(64, c->val[0])), "", block);
+      setup_CallInst(call, NOUNWIND);
+      (*regs)[ix] = call;
+      (*cnt)[ix] = 1;
+      return call;
+    }
+  } else {
+    // to be continued...
+  }
 }
-*/
+
 Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned int *out, Module *mod) {
   LLVMContext &ctx = mod->getContext();
   std::vector<unsigned int> args;
@@ -461,6 +498,18 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
 
   reduce_list(c);
 
+  Value *ret;
+  if(out_n > 1) {
+    Value *agg = UndefValue::get(f->getReturnType());
+    for(unsigned int i = 0; i < out_n; ++i) {
+      unsigned int a = c->ptr[out_n - 1 - i] - cells;
+      agg = InsertValueInst::Create(agg, regs[a], {i}, "", b);
+    }
+    ret = agg;
+  } else {
+    ret = build_tree(c->ptr[0]); //wrap_alts(c->ptr[0], regs, b, mod);
+  }
+
   for(int i = 0; i < out_n; ++i) {
     cell_t *p = c->ptr[i];
     while(p) {
@@ -469,6 +518,7 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
     }
   }
 
+  // adjust reference counts
   for(auto i = cnt.begin(); i != cnt.end(); ++i) {
     if(i->second < 0) {
       CallInst::Create(func_refn(mod),
@@ -480,16 +530,8 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
       CallInst::Create(func_drop(mod), ArrayRef<Value *>(regs[i->first]), "", b);
     }
   }
-  if(out_n > 1) {
-    Value *agg = UndefValue::get(f->getReturnType());
-    for(unsigned int i = 0; i < out_n; ++i) {
-      unsigned int a = c->ptr[out_n - 1 - i] - cells;
-      agg = InsertValueInst::Create(agg, regs[a], std::vector<unsigned>{i}, "", b);
-    }
-    ReturnInst::Create(ctx, agg, b);
-  } else {
-    ReturnInst::Create(ctx, wrap_alts(c->ptr[0], regs, b, mod), b);
-  }
+
+  ReturnInst::Create(ctx, ret, b);
   return f;
 }
 
@@ -641,6 +683,7 @@ reduce_t *compile(cell_t *c, unsigned int *in, unsigned int *out) {
   engine->addGlobalMapping(func_refn(mod), (void *)&refn);
   engine->addGlobalMapping(func_closure_alloc(mod), (void *)&closure_alloc);
   engine->addGlobalMapping(function_dep(mod), (void *)&dep);
+  engine->addGlobalMapping(func_make_list(mod), (void *)&make_list);
 
   for(int i = 0; i < builder_table_length; ++i) {
     engine->addGlobalMapping(get_cell_func("build_" + std::string(builder_table[i].name), 

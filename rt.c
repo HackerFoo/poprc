@@ -387,6 +387,13 @@ cell_t *empty_list() {
   return c;
 }
 
+cell_t *make_list(unsigned int n) {
+  cell_t *c = closure_alloc(n + 1);
+  c->func = func_reduced;
+  c->type = T_LIST;
+  return c;
+}
+
 cell_t *append(cell_t *a, cell_t *b) {
   int n = list_size(b);
   int n_a = list_size(a);
