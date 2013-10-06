@@ -46,10 +46,12 @@ using namespace llvm;
 
 Value *get_arg(Value *ptr, int x, BasicBlock *b);
 void set_arg(Value *ptr, int x, Value *val, BasicBlock *b);
+void set_field(Value *ptr, int f, Value *val, BasicBlock *b);
 void build_closure(Function *f,
 		   std::vector<unsigned int> in,
 		   std::vector<unsigned int> out);
 Function* declare_wrap_func(Function *func);
+Value *build_tree(cell_t *c);
 
 void setup_CallInst(CallInst *i, unsigned int attrs) {
   i->setCallingConv(CallingConv::C);
@@ -63,6 +65,8 @@ PointerType* cell_ptr_type;
 PointerType* cell_ptr_ptr_type;
 PointerType* i64_ptr_type;
 PointerType* i32_ptr_type;
+StructType *void_type;
+PointerType *void_ptr_type;
 
 Function *func_val(Module *mod) {
   Function *f = mod->getFunction("val");
@@ -93,6 +97,17 @@ Function *func_make_list(Module *mod) {
   LLVMContext &ctx = mod->getContext();
   FunctionType* ft = FunctionType::get(cell_ptr_type, {IntegerType::get(ctx, 32)}, false);
   f = Function::Create(ft, GlobalValue::ExternalLinkage, "make_list", mod);
+  f->setCallingConv(CallingConv::C);
+  return f;
+}
+
+Function *func_closure_set_ready(Module *mod) {
+  Function *f = mod->getFunction("closure_set_ready");
+  if(f) return f;
+
+  LLVMContext &ctx = mod->getContext();
+  FunctionType* ft = FunctionType::get(cell_ptr_type, std::vector<Type *> {cell_ptr_type, IntegerType::get(ctx, 1)}, false);
+  f = Function::Create(ft, GlobalValue::ExternalLinkage, "closure_set_ready", mod);
   f->setCallingConv(CallingConv::C);
   return f;
 }
@@ -184,8 +199,8 @@ Function *function_dep(Module *mod) {
 void define_types(Module *mod) {
   LLVMContext &ctx = mod->getContext();
   // Type Definitions
-  StructType *void_type = StructType::get(ctx, std::vector<Type *> {}, false);
-  PointerType *void_ptr_type = PointerType::get(void_type, 0);
+  void_type = StructType::get(ctx, std::vector<Type *> {}, false);
+  void_ptr_type = PointerType::get(void_type, 0);
 
   if(!(cell_type = mod->getTypeByName("cell_t"))) {
     cell_type = StructType::create(ctx, "cell_t");
@@ -232,7 +247,7 @@ Function *get_builder(cell_t *p, Module *mod) {
   auto name = "build_" + std::string(function_name(p->func));
   return get_cell_func(name, p->size - p->out, p->out + 1, mod);
 }
-/*
+
 Value *wrap_alts(cell_t *c,
 		 std::map<unsigned int, Value *> regs,
 		 BasicBlock *b,
@@ -243,7 +258,7 @@ Value *wrap_alts(cell_t *c,
   if(!f_alt) f_alt = get_cell_func("build_alt2", 2, 1, mod);
   return CallInst::Create(f_alt, std::vector<Value *> { regs[ix], wrap_alts(c->alt, regs, b, mod) }, "", b);
 }
-*/
+
 typedef struct compile_simple_data_t {
   std::vector<unsigned int> *args;
   std::map<unsigned int, Value *> *regs;
@@ -433,6 +448,54 @@ void build_closure(Function *f,
 
 }
 
+Value *build_closure_from_cell(cell_t *r) {
+  std::map<unsigned int, Value *> *regs = compile_simple_data->regs;
+  std::map<unsigned int, int> *cnt = compile_simple_data->cnt;
+  Module *mod = compile_simple_data->mod;
+  LLVMContext &ctx = mod->getContext();
+  BasicBlock *block = compile_simple_data->block;
+  Value *c = CallInst::Create(func_closure_alloc(mod), ConstantInt::get(ctx, APInt(32, r->size)), "", block);
+  unsigned int ix = r - cells;
+  (*regs)[ix] = c;
+  (*cnt)[ix] = 1;
+  for(int i = closure_next_child(r); i < r->size; ++i) {
+    if(!r->arg[i]) continue;
+    set_arg(c, i, build_tree(r->arg[i]), block);
+    --(*cnt)[r->arg[i] - cells];
+  }
+  if(!closure_is_ready(r)) {
+    if(!is_data(r->arg[0])) {
+      set_arg(c, 0, new IntToPtrInst(ConstantInt::get(ctx, APInt(64, (intptr_t)r->arg[0])),
+				     cell_ptr_type, "", block), block);
+    }
+  }
+  new StoreInst(ConstantInt::get(ctx, APInt(16, r->out)),
+		GetElementPtrInst::Create(c,
+		  std::vector<Value *> {
+		    ConstantInt::get(ctx, APInt(64, 0)),
+		    ConstantInt::get(ctx, APInt(32, CELL_OUT))
+		  },
+		  "",
+		  block),
+		block);
+  new StoreInst(new IntToPtrInst(ConstantInt::get(ctx, APInt(64, (intptr_t)r->func)), void_ptr_type, "", block), // ***
+		GetElementPtrInst::Create(c,
+		  std::vector<Value *> {
+		    ConstantInt::get(ctx, APInt(64, 0)),
+		    ConstantInt::get(ctx, APInt(32, CELL_FUNC))
+		  },
+		  "",
+		  block),
+		block);
+  if(!closure_is_ready(r)) {
+    CallInst::Create(func_closure_set_ready(mod),
+		     std::vector<Value *> {c, ConstantInt::get(ctx, APInt(1, 1))},
+		     "",
+		     block);
+  }
+  return c;
+}
+
 Value *build_tree(cell_t *c) {
   std::map<unsigned int, Value *> *regs = compile_simple_data->regs;
   std::map<unsigned int, int> *cnt = compile_simple_data->cnt;
@@ -444,6 +507,7 @@ Value *build_tree(cell_t *c) {
     auto it = regs->find(ix);
     if(it != regs->end()) return it->second;
   }
+  Value *r = NULL;
   if(is_reduced(c)) {
     if(is_list(c)) {
       auto call = CallInst::Create(func_make_list(mod), ConstantInt::get(ctx, APInt(32, list_size(c))), "", block);
@@ -454,17 +518,21 @@ Value *build_tree(cell_t *c) {
 	set_arg(call, i+1, build_tree(c->ptr[i]), block);
 	--(*cnt)[c->ptr[i] - cells];
       }
-      return call;
+      r = call;
     } else if(c->type & T_INT) {
       auto call = CallInst::Create(func_val(mod), ConstantInt::get(ctx, APInt(64, c->val[0])), "", block);
       setup_CallInst(call, NOUNWIND);
       (*regs)[ix] = call;
       (*cnt)[ix] = 1;
-      return call;
+      r = call;
     }
   } else {
-    // to be continued...
+    r = build_closure_from_cell(c);
   }
+  if(c->alt) {
+    set_field(r, CELL_ALT, build_tree(c->alt), block);
+  }
+  return r;
 }
 
 Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned int *out, Module *mod) {
@@ -502,12 +570,11 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
   if(out_n > 1) {
     Value *agg = UndefValue::get(f->getReturnType());
     for(unsigned int i = 0; i < out_n; ++i) {
-      unsigned int a = c->ptr[out_n - 1 - i] - cells;
-      agg = InsertValueInst::Create(agg, regs[a], {i}, "", b);
+      agg = InsertValueInst::Create(agg, wrap_alts(c->ptr[out_n - 1 - i], regs, b, mod), {i}, "", b);
     }
     ret = agg;
   } else {
-    ret = build_tree(c->ptr[0]); //wrap_alts(c->ptr[0], regs, b, mod);
+    ret = wrap_alts(c->ptr[0], regs, b, mod);
   }
 
   for(int i = 0; i < out_n; ++i) {
@@ -555,6 +622,18 @@ void set_arg(Value *ptr, int x, Value *val, BasicBlock *b) {
 	       ConstantInt::get(ctx, APInt(64, 0)),
 	       ConstantInt::get(ctx, APInt(32, CELL_ARG)),
 	       ConstantInt::get(ctx, APInt(64, x))
+	     },
+	     "",
+	     b);
+  new StoreInst(val, p, b);
+}
+
+void set_field(Value *ptr, int f, Value *val, BasicBlock *b) {
+  LLVMContext &ctx = b->getContext();
+  auto p = GetElementPtrInst::Create(ptr,
+	     std::vector<Value *> {
+	       ConstantInt::get(ctx, APInt(64, 0)),
+	       ConstantInt::get(ctx, APInt(32, f))
 	     },
 	     "",
 	     b);
@@ -684,6 +763,7 @@ reduce_t *compile(cell_t *c, unsigned int *in, unsigned int *out) {
   engine->addGlobalMapping(func_closure_alloc(mod), (void *)&closure_alloc);
   engine->addGlobalMapping(function_dep(mod), (void *)&dep);
   engine->addGlobalMapping(func_make_list(mod), (void *)&make_list);
+  engine->addGlobalMapping(func_closure_set_ready(mod), (void *)&closure_set_ready);
 
   for(int i = 0; i < builder_table_length; ++i) {
     engine->addGlobalMapping(get_cell_func("build_" + std::string(builder_table[i].name), 
