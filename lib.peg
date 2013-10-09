@@ -1,6 +1,6 @@
 =max [] pushl pushl dup . dup popr drop | [<= !] . popr swap drop cut
 
-=ifte [] pushl pushl pushl [swap drop 1 == !] [0 == !] | . popr swap drop cut
+=ifte [] pushl pushl swap pushr [swap drop 1 == !] [0 == !] | . popr swap drop cut
 
 =head popr swap drop
 
@@ -12,3 +12,5 @@
 
 @ recursive call test
 =mod5 [dup 5 >= swap 5- mod5 swap !] [dup 5 < !] | pushl popr cut swap drop
+@=fib dup 2 < [1 swap drop] [dup 1- fib swap 2- fib +] ifte pushl head
+=loop dup 1 > [1- loop] [] ifte pushl head

@@ -52,6 +52,7 @@ void build_closure(Function *f,
 		   std::vector<unsigned int> out);
 Function* declare_wrap_func(Function *func);
 Value *build_tree(cell_t *c);
+Value *assert_find(std::map<unsigned int, Value *> &m, unsigned int ix);
 
 void setup_CallInst(CallInst *i, unsigned int attrs) {
   i->setCallingConv(CallingConv::C);
@@ -249,14 +250,14 @@ Function *get_builder(cell_t *p, Module *mod) {
 }
 
 Value *wrap_alts(cell_t *c,
-		 std::map<unsigned int, Value *> regs,
+		 std::map<unsigned int, Value *> &regs,
 		 BasicBlock *b,
 		 Module *mod) {
   unsigned int ix = c - cells;
-  if(!c->alt) return regs[ix];
+  if(!c->alt) return assert_find(regs, ix);
   auto f_alt = mod->getFunction("build_alt2");
   if(!f_alt) f_alt = get_cell_func("build_alt2", 2, 1, mod);
-  return CallInst::Create(f_alt, std::vector<Value *> { regs[ix], wrap_alts(c->alt, regs, b, mod) }, "", b);
+  return CallInst::Create(f_alt, std::vector<Value *> { assert_find(regs, ix), wrap_alts(c->alt, regs, b, mod) }, "", b);
 }
 
 typedef struct compile_simple_data_t {
@@ -280,12 +281,14 @@ void apply_list(cell_t *c) {
   unsigned int in = closure_in(c);
   unsigned int out = closure_out(c);
   int i = in;
-  Value *p = (*regs)[ix];
+  Value *p = assert_find(*regs, ix);
   --(*cnt)[ix];
   while(i--) {
     unsigned int a = c->arg[i] - cells;
     --(*cnt)[a];
-    p = CallInst::Create(get_cell_func("build_pushl", 2, 1, mod), std::vector<Value *> { (*regs)[a], p }, "", block);
+    Value *x = assert_find(*regs, a);
+    Function *f = get_cell_func("build_pushl", 2, 1, mod);
+    p = CallInst::Create(f, std::vector<Value *> { x, p }, "", block);
   }
   i = out;
   while(i--) {
@@ -296,6 +299,12 @@ void apply_list(cell_t *c) {
     (*cnt)[a] = 1;
   }
   CallInst::Create(func_drop(mod), ArrayRef<Value *>(p), "", block);
+}
+
+Value *assert_find(std::map<unsigned int, Value *> &m, unsigned int ix) {
+  auto it = m.find(ix);
+  assert(it != m.end());
+  return it->second;
 }
 
 void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
@@ -319,7 +328,7 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     if(c->func == func_cut ||
        c->func == func_id) {
       unsigned int a = c->arg[0] - cells;
-      (*regs)[ix] = (*regs)[a];
+      (*regs)[ix] = assert_find(*regs, a);
       (*cnt)[ix] = 1;
       --(*cnt)[a];
     } else if(c->func == func_dep) {
@@ -336,11 +345,13 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
 	out.push_back(c->arg[i] - cells);
       build_closure(compile_simple_data->self, in, out);
     } else {
+      for(int i = 0; i < closure_in(c); ++i) trace(c->arg[i], 0, tt_force); // ***
+
       auto f = get_builder(c, mod);
       std::vector<Value *> f_args;
       for(int i = 0; i < in; ++i) {
 	unsigned int a = c->arg[i] - cells;
-	f_args.push_back((*regs)[a]);
+	f_args.push_back(assert_find(*regs,a));
 	--(*cnt)[a];
       }
       auto call = CallInst::Create(f, f_args, "", block);
@@ -368,7 +379,7 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     if(is_any(c)) break;
     if(is_list(c) && is_placeholder(c->ptr[0])) {
       unsigned int a = c->ptr[0]-cells;
-      (*regs)[a] = (*regs)[ix];
+      (*regs)[a] = assert_find(*regs, ix);
       (*cnt)[a] = 1;
       --(*cnt)[ix];
     } else if(!is_var(c)) {
@@ -383,13 +394,13 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   case tt_select: {
     unsigned int a = r - cells;
     --(*cnt)[a];
-    auto call = CallInst::Create(get_cell_func("build_select", 2, 1, mod), std::vector<Value *> { (*regs)[ix], (*regs)[a] }, "", block);
+    auto call = CallInst::Create(get_cell_func("build_select", 2, 1, mod), std::vector<Value *> { assert_find(*regs, ix), assert_find(*regs, a) }, "", block);
     (*regs)[ix] = call;
     break;
   }
   case tt_copy: {
     unsigned int a = r-cells;
-    (*regs)[ix] = (*regs)[a];
+    (*regs)[ix] = assert_find(*regs, a);
     (*cnt)[ix] = 1;
     --(*cnt)[a];
     break;
@@ -415,7 +426,7 @@ void build_closure(Function *f,
   BasicBlock *block = compile_simple_data->block;
   Value *c = CallInst::Create(func_closure_alloc(mod), ConstantInt::get(ctx, APInt(32, in.size() + out.size() - 1)), "", block);
   for(int i = 0; i < in.size(); ++i) {
-    set_arg(c, i, (*regs)[in[i]], block);
+    set_arg(c, i, assert_find(*regs, in[i]), block);
     --(*cnt)[in[i]];
   }
   (*regs)[out[0]] = c;
@@ -590,11 +601,11 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
     if(i->second < 0) {
       CallInst::Create(func_refn(mod),
 		       std::vector<Value *> {
-			 regs[i->first],
+			 assert_find(regs, i->first),
 			 ConstantInt::get(ctx, APInt(32, -i->second))
 		       }, "", b);
     } else if(i->second > 0) {
-      CallInst::Create(func_drop(mod), ArrayRef<Value *>(regs[i->first]), "", b);
+      CallInst::Create(func_drop(mod), ArrayRef<Value *>(assert_find(regs, i->first)), "", b);
     }
   }
 

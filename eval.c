@@ -80,7 +80,7 @@ char *function_name(reduce_t *f) {
   CASE(drop);
   CASE(cut);
   CASE(alt2);
-  CASE(fib);
+  //CASE(fib);
   CASE(select);
   CASE(placeholder);
   CASE(self);

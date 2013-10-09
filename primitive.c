@@ -54,7 +54,7 @@ word_entry_t word_table[] = {
   {"cut", func_cut, 1, 1},
   {"drop", func_drop, 2, 1},
   {"dup", func_dup, 1, 2},
-  {"fib", func_fib, 1, 1},
+  //{"fib", func_fib, 1, 1},
   {"id", func_id, 1, 1},
   {"popr", func_popr, 1, 2},
   {"pushl", func_pushl, 2, 1},
@@ -541,7 +541,7 @@ bool func_dup(cell_t **cp, type_rep_t t) {
 
 void trace_expand_select(cell_t *c, cell_t *x, type_t t) {
   while(reduce(&x, t)) {
-    if(!is_var(x)) trace(c, 0, tt_touched);
+    if(!is_var(x)) trace(x, 0, tt_force);
     trace(c, x, tt_select);
     if(!is_var(x)) break;
     x = x->alt;
@@ -657,7 +657,7 @@ bool peg_func2(cell_t **cp, int N_IN, int N_OUT, cell_t *f) {
   drop(b);
   return false;
 }
-
+#if 0
 bool func_fib(cell_t **cp, type_rep_t t) {
   char src[] = "dup 2 < "
     "[1 swap drop] "
@@ -671,4 +671,4 @@ bool func_fib(cell_t **cp, type_rep_t t) {
     */
   return peg_func(cp, 1, 1, src, sizeof(src));
 }
-
+#endif
