@@ -52,7 +52,11 @@ eval.js:
 # pull in dependency info for *existing* .o files
 -include $(OBJS:.o=.d)
 
-build/llvm.o: llvm.cpp llvm.h
+build/llvm_ext.o: llvm_ext.cpp llvm_ext.h
+	@mkdir -p build
+	$(CXX) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -O0 -Igen llvm_ext.cpp -o build/llvm_ext.o
+
+build/llvm.o: llvm.cpp llvm.h llvm_ext.h rt_types.h
 	@mkdir -p build
 	$(CXX) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -O0 -Igen llvm.cpp -o build/llvm.o
 

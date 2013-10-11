@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <iostream>
 #include "llvm.h"
+#include "llvm_ext.h"
 
 extern "C" {
 #include "gen/rt.h"
@@ -44,6 +45,27 @@ using namespace llvm;
 #define CELL_OUT  5
 #define CELL_ARG  6
 
+class FunctionBuilder {
+public:
+  FunctionBuilder(std::string name, cell_t *root, unsigned int in, unsigned int out, Module *mod);
+  void call(cell_t *c);
+  Function *get_cell_func(std::string name, unsigned int in, unsigned int out);
+  Function *get_builder(cell_t *p);
+  Value *wrap_alts(cell_t *c, std::map<unsigned int, Value *> &regs);
+
+  std::string name;
+  cell_t *root;
+  unsigned int in, out;
+  Module *module;
+  std::vector<unsigned int> args;
+  std::map<unsigned int, Value *> regs;
+  std::map<unsigned int, int> cnt;
+  BasicBlock *block;
+  Function *self;
+};  
+
+FunctionBuilder::FunctionBuilder(std::string name, cell_t *root, unsigned int in, unsigned int out, Module *mod) : name(name), root(root), in(in), out(out), module(mod) {};
+
 Value *get_arg(Value *ptr, int x, BasicBlock *b);
 void set_arg(Value *ptr, int x, Value *val, BasicBlock *b);
 void set_field(Value *ptr, int f, Value *val, BasicBlock *b);
@@ -53,6 +75,28 @@ void build_closure(Function *f,
 Function* declare_wrap_func(Function *func);
 Value *build_tree(cell_t *c);
 Value *assert_find(std::map<unsigned int, Value *> &m, unsigned int ix);
+Function *get_builder(cell_t *p, Module *mod);
+
+void FunctionBuilder::call(cell_t *c) {
+  unsigned int ix = c - cells;
+  auto f = get_builder(c, module);
+  std::vector<Value *> f_args;
+  for(int i = 0; i < closure_in(c); ++i) {
+    unsigned int a = c->arg[i] - cells;
+    f_args.push_back(assert_find(regs, a));
+    --cnt[a];
+  }
+  auto call = CallInst::Create(f, f_args, "", block);
+  if(c->out) {
+    regs[ix] = ExtractValueInst::Create(call, {0}, "", block);
+    cnt[ix] = 1;
+    for(unsigned int i = 0; i < c->out; ++i) {
+      unsigned int a = c->arg[c->size - i - 1] - cells;
+      regs[a] = ExtractValueInst::Create(call, {i+1}, "", block);
+      cnt[a] = 1;
+    }
+  }
+}
 
 void setup_CallInst(CallInst *i, unsigned int attrs) {
   i->setCallingConv(CallingConv::C);
@@ -61,203 +105,31 @@ void setup_CallInst(CallInst *i, unsigned int attrs) {
   if(attrs & NOUNWIND) i->addAttribute(-1, Attribute::NoUnwind);
 }
 
-StructType *cell_type;
-PointerType* cell_ptr_type;
-PointerType* cell_ptr_ptr_type;
-PointerType* i64_ptr_type;
-PointerType* i32_ptr_type;
-StructType *void_type;
-PointerType *void_ptr_type;
-
-Function *func_val(Module *mod) {
-  Function *f = mod->getFunction("val");
-  if(f) return f;
-
-  LLVMContext &ctx = mod->getContext();
-  FunctionType* ft = FunctionType::get(cell_ptr_type, {IntegerType::get(ctx, 64)}, false);
-  f = Function::Create(ft, GlobalValue::ExternalLinkage, "val", mod);
-  f->setCallingConv(CallingConv::C);
-  return f;
-}
-
-Function *func_closure_alloc(Module *mod) {
-  Function *f = mod->getFunction("closure_alloc");
-  if(f) return f;
-
-  LLVMContext &ctx = mod->getContext();
-  FunctionType* ft = FunctionType::get(cell_ptr_type, {IntegerType::get(ctx, 32)}, false);
-  f = Function::Create(ft, GlobalValue::ExternalLinkage, "closure_alloc", mod);
-  f->setCallingConv(CallingConv::C);
-  return f;
-}
-
-Function *func_make_list(Module *mod) {
-  Function *f = mod->getFunction("make_list");
-  if(f) return f;
-
-  LLVMContext &ctx = mod->getContext();
-  FunctionType* ft = FunctionType::get(cell_ptr_type, {IntegerType::get(ctx, 32)}, false);
-  f = Function::Create(ft, GlobalValue::ExternalLinkage, "make_list", mod);
-  f->setCallingConv(CallingConv::C);
-  return f;
-}
-
-Function *func_closure_set_ready(Module *mod) {
-  Function *f = mod->getFunction("closure_set_ready");
-  if(f) return f;
-
-  LLVMContext &ctx = mod->getContext();
-  FunctionType* ft = FunctionType::get(cell_ptr_type, std::vector<Type *> {cell_ptr_type, IntegerType::get(ctx, 1)}, false);
-  f = Function::Create(ft, GlobalValue::ExternalLinkage, "closure_set_ready", mod);
-  f->setCallingConv(CallingConv::C);
-  return f;
-}
-
-Function *func_fail(Module *mod) {
-  Function *f = mod->getFunction("fail");
-  if(f) return f;
-
-  LLVMContext &ctx = mod->getContext();
-  FunctionType* ft =
-    FunctionType::get(Type::getVoidTy(ctx),
-		      { cell_ptr_ptr_type },
-		      false);
-  f = Function::Create(ft, GlobalValue::ExternalLinkage, "fail", mod);
-  f->setCallingConv(CallingConv::C);
-  return f;
-}
-
-Function *func_store_lazy(Module *mod) {
-  Function *f = mod->getFunction("store_lazy");
-  if(f) return f;
-
-  LLVMContext &ctx = mod->getContext();
-  FunctionType* ft =
-    FunctionType::get(Type::getVoidTy(ctx),
-		      std::vector<Type *> { cell_ptr_ptr_type, cell_ptr_type, cell_ptr_type },
-		      false);
-  f = Function::Create(ft, GlobalValue::ExternalLinkage, "store_lazy", mod);
-  f->setCallingConv(CallingConv::C);
-  return f;
-}
-
-Function *func_store_lazy_dep(Module *mod) {
-  Function *f = mod->getFunction("store_lazy_dep");
-  if(f) return f;
-
-  LLVMContext &ctx = mod->getContext();
-  FunctionType* ft =
-    FunctionType::get(Type::getVoidTy(ctx),
-		      std::vector<Type *> { cell_ptr_type, cell_ptr_type, cell_ptr_type },
-		      false);
-  f = Function::Create(ft, GlobalValue::ExternalLinkage, "store_lazy_dep", mod);
-  f->setCallingConv(CallingConv::C);
-  return f;
-}
-
-Function *func_drop(Module *mod) {
-  Function *f = mod->getFunction("drop");
-  if(f) return f;
-
-  LLVMContext &ctx = mod->getContext();
-  FunctionType* ft =
-    FunctionType::get(Type::getVoidTy(ctx),
-		      { cell_ptr_type },
-		      false);
-  f = Function::Create(ft, GlobalValue::ExternalLinkage, "drop", mod);
-  f->setCallingConv(CallingConv::C);
-  return f;
-}
-
-Function *func_refn(Module *mod) {
-  Function *f = mod->getFunction("refn");
-  if(f) return f;
-
-  LLVMContext &ctx = mod->getContext();
-  FunctionType* ft =
-    FunctionType::get(Type::getVoidTy(ctx),
-		      std::vector<Type *> { cell_ptr_type, IntegerType::get(ctx, 32) },
-		      false);
-  f = Function::Create(ft, GlobalValue::ExternalLinkage, "refn", mod);
-  f->setCallingConv(CallingConv::C);
-  return f;
-}
-
-Function *function_dep(Module *mod) {
-  Function *f = mod->getFunction("dep");
-  if(f) return f;
-
-  LLVMContext &ctx = mod->getContext();
-  FunctionType* ft =
-    FunctionType::get(Type::getVoidTy(ctx),
-		      cell_ptr_type,
-		      false);
-  f = Function::Create(ft, GlobalValue::ExternalLinkage, "dep", mod);
-  f->setCallingConv(CallingConv::C);
-  return f;
-}
-
-void define_types(Module *mod) {
-  LLVMContext &ctx = mod->getContext();
-  // Type Definitions
-  void_type = StructType::get(ctx, std::vector<Type *> {}, false);
-  void_ptr_type = PointerType::get(void_type, 0);
-
-  if(!(cell_type = mod->getTypeByName("cell_t"))) {
-    cell_type = StructType::create(ctx, "cell_t");
-    cell_ptr_type = PointerType::get(cell_type, 0);
-    cell_type->setBody(std::vector<Type *> {
-	void_ptr_type,
-	cell_ptr_type,
-	cell_ptr_type,
-	IntegerType::get(ctx, 32),
-	IntegerType::get(ctx, 16),
-	IntegerType::get(ctx, 16),
-	ArrayType::get(cell_ptr_type, 3)
-      },
-      true);
-    cell_ptr_ptr_type = PointerType::get(cell_ptr_type, 0);
-  }
-
-  i64_ptr_type = PointerType::get(IntegerType::get(ctx, 64), 0);
-  i32_ptr_type = PointerType::get(IntegerType::get(ctx, 32), 0);
-}
-
-Type *cell_func_return_type(unsigned int n, LLVMContext &ctx) {
-  if(n == 0) {
-    return Type::getVoidTy(ctx);
-  } else if(n == 1) {
-    return cell_ptr_type;
-  } else {
-    return StructType::get(ctx, std::vector<Type *>(n, cell_ptr_type), true);
-  }
-}
-
-Function *get_cell_func(std::string name, unsigned int in, unsigned int out, Module *mod) {
-  Function *func = mod->getFunction(name);
-  if (!func) {
-    std::vector<Type*> args(in, cell_ptr_type);
-    FunctionType* ft = FunctionType::get(cell_func_return_type(out, mod->getContext()), std::vector<Type *>(in, cell_ptr_type), false);
-    func = Function::Create(ft, GlobalValue::ExternalLinkage, name, mod);
-    func->setCallingConv(CallingConv::C);
-  }
+Function *FunctionBuilder::get_cell_func(std::string name, unsigned int in, unsigned int out) {
+  Function *func = module->getFunction(name);
+  if (func) return func;
+  LLVMContext &ctx = module->getContext();
+  Type* rt =
+    out == 0 ? Type::getVoidTy(ctx) :
+    out == 1 ? (Type *)ext::cell_ptr_type :
+    (Type *)StructType::get(ctx, std::vector<Type *>(out, ext::cell_ptr_type), true);
+  FunctionType* ft = FunctionType::get(rt, std::vector<Type *>(in, ext::cell_ptr_type), false);
+  func = Function::Create(ft, GlobalValue::ExternalLinkage, name, module);
+  func->setCallingConv(CallingConv::C);
   return func;
 }
 
-Function *get_builder(cell_t *p, Module *mod) {
+Function *FunctionBuilder::get_builder(cell_t *p) {
   auto name = "build_" + std::string(function_name(p->func));
-  return get_cell_func(name, p->size - p->out, p->out + 1, mod);
+  return get_cell_func(name, p->size - p->out, p->out + 1, module);
 }
 
-Value *wrap_alts(cell_t *c,
-		 std::map<unsigned int, Value *> &regs,
-		 BasicBlock *b,
-		 Module *mod) {
+Value *FunctionBuilder::wrap_alts(cell_t *c, std::map<unsigned int, Value *> &regs) {
   unsigned int ix = c - cells;
   if(!c->alt) return assert_find(regs, ix);
-  auto f_alt = mod->getFunction("build_alt2");
-  if(!f_alt) f_alt = get_cell_func("build_alt2", 2, 1, mod);
-  return CallInst::Create(f_alt, std::vector<Value *> { assert_find(regs, ix), wrap_alts(c->alt, regs, b, mod) }, "", b);
+  auto f_alt = module->getFunction("build_alt2");
+  if(!f_alt) f_alt = get_cell_func("build_alt2", 2, 1, module);
+  return CallInst::Create(f_alt, std::vector<Value *> { assert_find(regs, ix), wrap_alts(c->alt, regs, b, module) }, "", block);
 }
 
 typedef struct compile_simple_data_t {
@@ -298,7 +170,7 @@ void apply_list(cell_t *c) {
     (*regs)[a] = ExtractValueInst::Create(call, {1}, "", block);
     (*cnt)[a] = 1;
   }
-  CallInst::Create(func_drop(mod), ArrayRef<Value *>(p), "", block);
+  CallInst::Create(ext::drop(mod), ArrayRef<Value *>(p), "", block);
 }
 
 Value *assert_find(std::map<unsigned int, Value *> &m, unsigned int ix) {
@@ -383,7 +255,7 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
       (*cnt)[a] = 1;
       --(*cnt)[ix];
     } else if(!is_var(c)) {
-      auto call = CallInst::Create(func_val(mod), ConstantInt::get(ctx, APInt(64, c->val[0])), "", block);
+      auto call = CallInst::Create(ext::val(mod), ConstantInt::get(ctx, APInt(64, c->val[0])), "", block);
       setup_CallInst(call, NOUNWIND);
       (*regs)[ix] = call;
       (*cnt)[ix] = 1;
@@ -424,7 +296,7 @@ void build_closure(Function *f,
   Module *mod = compile_simple_data->mod;
   LLVMContext &ctx = mod->getContext();
   BasicBlock *block = compile_simple_data->block;
-  Value *c = CallInst::Create(func_closure_alloc(mod), ConstantInt::get(ctx, APInt(32, in.size() + out.size() - 1)), "", block);
+  Value *c = CallInst::Create(ext::closure_alloc(mod), ConstantInt::get(ctx, APInt(32, in.size() + out.size() - 1)), "", block);
   for(int i = 0; i < in.size(); ++i) {
     set_arg(c, i, assert_find(*regs, in[i]), block);
     --(*cnt)[in[i]];
@@ -432,7 +304,7 @@ void build_closure(Function *f,
   (*regs)[out[0]] = c;
   (*cnt)[out[0]] = 1;
   for(int i = 1; i < out.size(); ++i) {
-    auto d = CallInst::Create(function_dep(mod), c, "", block);
+    auto d = CallInst::Create(ext::dep(mod), c, "", block);
     set_arg(c, i + in.size(), d, block);
     (*regs)[out[i]] = d;
     (*cnt)[out[i]] = 1;
@@ -465,7 +337,7 @@ Value *build_closure_from_cell(cell_t *r) {
   Module *mod = compile_simple_data->mod;
   LLVMContext &ctx = mod->getContext();
   BasicBlock *block = compile_simple_data->block;
-  Value *c = CallInst::Create(func_closure_alloc(mod), ConstantInt::get(ctx, APInt(32, r->size)), "", block);
+  Value *c = CallInst::Create(ext::closure_alloc(mod), ConstantInt::get(ctx, APInt(32, r->size)), "", block);
   unsigned int ix = r - cells;
   (*regs)[ix] = c;
   (*cnt)[ix] = 1;
@@ -477,7 +349,7 @@ Value *build_closure_from_cell(cell_t *r) {
   if(!closure_is_ready(r)) {
     if(!is_data(r->arg[0])) {
       set_arg(c, 0, new IntToPtrInst(ConstantInt::get(ctx, APInt(64, (intptr_t)r->arg[0])),
-				     cell_ptr_type, "", block), block);
+				     ext::cell_ptr_type, "", block), block);
     }
   }
   new StoreInst(ConstantInt::get(ctx, APInt(16, r->out)),
@@ -489,7 +361,7 @@ Value *build_closure_from_cell(cell_t *r) {
 		  "",
 		  block),
 		block);
-  new StoreInst(new IntToPtrInst(ConstantInt::get(ctx, APInt(64, (intptr_t)r->func)), void_ptr_type, "", block), // ***
+  new StoreInst(new IntToPtrInst(ConstantInt::get(ctx, APInt(64, (intptr_t)r->func)), ext::void_ptr_type, "", block), // ***
 		GetElementPtrInst::Create(c,
 		  std::vector<Value *> {
 		    ConstantInt::get(ctx, APInt(64, 0)),
@@ -499,7 +371,7 @@ Value *build_closure_from_cell(cell_t *r) {
 		  block),
 		block);
   if(!closure_is_ready(r)) {
-    CallInst::Create(func_closure_set_ready(mod),
+    CallInst::Create(ext::closure_set_ready(mod),
 		     std::vector<Value *> {c, ConstantInt::get(ctx, APInt(1, 1))},
 		     "",
 		     block);
@@ -521,7 +393,7 @@ Value *build_tree(cell_t *c) {
   Value *r = NULL;
   if(is_reduced(c)) {
     if(is_list(c)) {
-      auto call = CallInst::Create(func_make_list(mod), ConstantInt::get(ctx, APInt(32, list_size(c))), "", block);
+      auto call = CallInst::Create(ext::make_list(mod), ConstantInt::get(ctx, APInt(32, list_size(c))), "", block);
       setup_CallInst(call, NOUNWIND);
       (*regs)[ix] = call;
       (*cnt)[ix] = 1;
@@ -531,7 +403,7 @@ Value *build_tree(cell_t *c) {
       }
       r = call;
     } else if(c->type & T_INT) {
-      auto call = CallInst::Create(func_val(mod), ConstantInt::get(ctx, APInt(64, c->val[0])), "", block);
+      auto call = CallInst::Create(ext::val(mod), ConstantInt::get(ctx, APInt(64, c->val[0])), "", block);
       setup_CallInst(call, NOUNWIND);
       (*regs)[ix] = call;
       (*cnt)[ix] = 1;
@@ -599,13 +471,13 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
   // adjust reference counts
   for(auto i = cnt.begin(); i != cnt.end(); ++i) {
     if(i->second < 0) {
-      CallInst::Create(func_refn(mod),
+      CallInst::Create(ext::refn(mod),
 		       std::vector<Value *> {
 			 assert_find(regs, i->first),
 			 ConstantInt::get(ctx, APInt(32, -i->second))
 		       }, "", b);
     } else if(i->second > 0) {
-      CallInst::Create(func_drop(mod), ArrayRef<Value *>(assert_find(regs, i->first)), "", b);
+      CallInst::Create(ext::drop(mod), ArrayRef<Value *>(assert_find(regs, i->first)), "", b);
     }
   }
 
@@ -661,7 +533,7 @@ Function* declare_wrap_func(Function *func) {
 
     // Global Variable Definitions
     FunctionType *FuncTy_wrapper = FunctionType::get(IntegerType::get(ctx, 1),
-						     std::vector<Type *> { cell_ptr_ptr_type, IntegerType::get(ctx, 32) },
+						     std::vector<Type *> { ext::cell_ptr_ptr_type, IntegerType::get(ctx, 32) },
 						     false);
 
     // function definition
@@ -684,7 +556,7 @@ Function* wrap_func(Function *func) {
 
     // Global Variable Definitions
     FunctionType *FuncTy_wrapper = FunctionType::get(IntegerType::get(ctx, 1),
-						     std::vector<Type *> { cell_ptr_ptr_type, IntegerType::get(ctx, 32) },
+						     std::vector<Type *> { ext::cell_ptr_ptr_type, IntegerType::get(ctx, 32) },
 						     false);
 
     // function definition
@@ -710,7 +582,7 @@ Function* wrap_func(Function *func) {
     auto int64_c = new PtrToIntInst(ptr_cp_deref, IntegerType::get(ctx, 64), "", label_entry);
     auto int64_c_and_not_3 = BinaryOperator::Create(Instruction::And, int64_c,
 						    ConstantInt::get(ctx, APInt(64, ~3)), "", label_entry);
-    auto ptr_c = new IntToPtrInst(int64_c_and_not_3, cell_ptr_type, "c", label_entry);
+    auto ptr_c = new IntToPtrInst(int64_c_and_not_3, ext::cell_ptr_type, "c", label_entry);
 
     std::vector<Value *> builder_args;
 
@@ -722,8 +594,8 @@ Function* wrap_func(Function *func) {
 
     std::vector<Value *> builder_results;
 
-    auto f_store_lazy = func_store_lazy(mod);
-    auto f_store_lazy_dep = func_store_lazy_dep(mod);
+    auto f_store_lazy = ext::store_lazy(mod);
+    auto f_store_lazy_dep = ext::store_lazy_dep(mod);
 
     if(out == 1) {
       CallInst::Create(f_store_lazy, std::vector<Value *> {ptr_cp, ptr_c, call}, "", label_entry);
@@ -756,7 +628,7 @@ reduce_t *compile(cell_t *c, unsigned int *in, unsigned int *out) {
   InitializeNativeTarget();
   LLVMContext &ctx = getGlobalContext();
   Module *mod = new Module("module", ctx);
-  define_types(mod);
+  ext::define_types(mod);
   Function *f = compile_simple("compiled_func", c, in, out, mod);
   Function *lf = wrap_func(f);
   std::string err = "";
@@ -765,16 +637,16 @@ reduce_t *compile(cell_t *c, unsigned int *in, unsigned int *out) {
     .setEngineKind(EngineKind::JIT)
     .create();
 
-  engine->addGlobalMapping(func_store_lazy(mod), (void *)&store_lazy);
-  engine->addGlobalMapping(func_store_lazy_dep(mod), (void *)&store_lazy_dep);
-  engine->addGlobalMapping(func_val(mod), (void *)&val);
-  engine->addGlobalMapping(func_fail(mod), (void *)&fail);
-  engine->addGlobalMapping(func_drop(mod), (void *)&drop);
-  engine->addGlobalMapping(func_refn(mod), (void *)&refn);
-  engine->addGlobalMapping(func_closure_alloc(mod), (void *)&closure_alloc);
-  engine->addGlobalMapping(function_dep(mod), (void *)&dep);
-  engine->addGlobalMapping(func_make_list(mod), (void *)&make_list);
-  engine->addGlobalMapping(func_closure_set_ready(mod), (void *)&closure_set_ready);
+  engine->addGlobalMapping(ext::store_lazy(mod), (void *)&store_lazy);
+  engine->addGlobalMapping(ext::store_lazy_dep(mod), (void *)&store_lazy_dep);
+  engine->addGlobalMapping(ext::val(mod), (void *)&val);
+  engine->addGlobalMapping(ext::fail(mod), (void *)&fail);
+  engine->addGlobalMapping(ext::drop(mod), (void *)&drop);
+  engine->addGlobalMapping(ext::refn(mod), (void *)&refn);
+  engine->addGlobalMapping(ext::closure_alloc(mod), (void *)&closure_alloc);
+  engine->addGlobalMapping(ext::dep(mod), (void *)&dep);
+  engine->addGlobalMapping(ext::make_list(mod), (void *)&make_list);
+  engine->addGlobalMapping(ext::closure_set_ready(mod), (void *)&closure_set_ready);
 
   for(int i = 0; i < builder_table_length; ++i) {
     engine->addGlobalMapping(get_cell_func("build_" + std::string(builder_table[i].name), 
