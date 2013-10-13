@@ -47,11 +47,24 @@ using namespace llvm;
 
 class FunctionBuilder {
 public:
-  FunctionBuilder(std::string name, cell_t *root, unsigned int in, unsigned int out, Module *mod);
+  FunctionBuilder(std::string name,
+		  cell_t *root,
+		  unsigned int in,
+		  unsigned int out,
+		  Module *mod);
   void call(cell_t *c);
-  Function *get_cell_func(std::string name, unsigned int in, unsigned int out);
+  Function *get_cell_func(std::string name,
+			  unsigned int in, unsigned int out);
   Function *get_builder(cell_t *p);
-  Value *wrap_alts(cell_t *c, std::map<unsigned int, Value *> &regs);
+  Value *wrap_alts(cell_t *c);
+  void apply_list(cell_t *c);
+  void assign(cell_t *a, cell_t *b);
+  Value *reg(unsigned int ix);
+  void build_closure (Function *f,
+		      std::vector<unsigned int> in,
+		      std::vector<unsigned int> out);
+  Value build_closure_from_cell(cell_t *r);
+  Value *build_tree(cell_t *c);
 
   std::string name;
   cell_t *root;
@@ -74,7 +87,6 @@ void build_closure(Function *f,
 		   std::vector<unsigned int> out);
 Function* declare_wrap_func(Function *func);
 Value *build_tree(cell_t *c);
-Value *assert_find(std::map<unsigned int, Value *> &m, unsigned int ix);
 Function *get_builder(cell_t *p, Module *mod);
 
 void FunctionBuilder::call(cell_t *c) {
@@ -83,7 +95,7 @@ void FunctionBuilder::call(cell_t *c) {
   std::vector<Value *> f_args;
   for(int i = 0; i < closure_in(c); ++i) {
     unsigned int a = c->arg[i] - cells;
-    f_args.push_back(assert_find(regs, a));
+    f_args.push_back(reg(a));
     --cnt[a];
   }
   auto call = CallInst::Create(f, f_args, "", block);
@@ -124,41 +136,26 @@ Function *FunctionBuilder::get_builder(cell_t *p) {
   return get_cell_func(name, p->size - p->out, p->out + 1, module);
 }
 
-Value *FunctionBuilder::wrap_alts(cell_t *c, std::map<unsigned int, Value *> &regs) {
+Value *FunctionBuilder::wrap_alts(cell_t *c) {
   unsigned int ix = c - cells;
-  if(!c->alt) return assert_find(regs, ix);
+  if(!c->alt) return reg(ix);
   auto f_alt = module->getFunction("build_alt2");
   if(!f_alt) f_alt = get_cell_func("build_alt2", 2, 1, module);
-  return CallInst::Create(f_alt, std::vector<Value *> { assert_find(regs, ix), wrap_alts(c->alt, regs, b, module) }, "", block);
+  return CallInst::Create(f_alt, std::vector<Value *> { reg(ix), wrap_alts(c->alt, regs, b, module) }, "", block);
 }
 
-typedef struct compile_simple_data_t {
-  std::vector<unsigned int> *args;
-  std::map<unsigned int, Value *> *regs;
-  std::map<unsigned int, int> *cnt;
-  BasicBlock *block;
-  Module *mod;
-  Function *self;
-} compile_simple_data_t;
-
-compile_simple_data_t *compile_simple_data;
-
-void apply_list(cell_t *c) {
+void FunctionBuilder::apply_list(cell_t *c) {
   unsigned int ix = c - cells;
-  std::map<unsigned int, Value *> *regs = compile_simple_data->regs;
-  std::map<unsigned int, int> *cnt = compile_simple_data->cnt;
-  Module *mod = compile_simple_data->mod;
-  BasicBlock *block = compile_simple_data->block;
 
   unsigned int in = closure_in(c);
   unsigned int out = closure_out(c);
   int i = in;
-  Value *p = assert_find(*regs, ix);
-  --(*cnt)[ix];
+  Value *p = reg(ix);
+  --cnt[ix];
   while(i--) {
     unsigned int a = c->arg[i] - cells;
-    --(*cnt)[a];
-    Value *x = assert_find(*regs, a);
+    --cnt[a];
+    Value *x = reg(a);
     Function *f = get_cell_func("build_pushl", 2, 1, mod);
     p = CallInst::Create(f, std::vector<Value *> { x, p }, "", block);
   }
@@ -167,25 +164,29 @@ void apply_list(cell_t *c) {
     unsigned int a = c->arg[i+in] - cells;
     auto call = CallInst::Create(get_cell_func("build_popr", 1, 2, mod), {p}, "", block);
     p = ExtractValueInst::Create(call, {0}, "", block);
-    (*regs)[a] = ExtractValueInst::Create(call, {1}, "", block);
-    (*cnt)[a] = 1;
+    regs[a] = ExtractValueInst::Create(call, {1}, "", block);
+    cnt[a] = 1;
   }
   CallInst::Create(ext::drop(mod), ArrayRef<Value *>(p), "", block);
 }
 
-Value *assert_find(std::map<unsigned int, Value *> &m, unsigned int ix) {
-  auto it = m.find(ix);
-  assert(it != m.end());
+Value * FunctionBuilder::reg(unsigned int ix) {
+  auto it = regs.find(ix);
+  assert(it != regs.end());
   return it->second;
+}
+
+void FunctionBuilder::assign(cell_t *a, cell_t *b) {
+  unsigned int
+    ai = a - cells,
+    bi = b - cells;
+  regs[ai] = reg(bi);
+  cnt[ai] = 1;
+  --cnt[bi];
 }
 
 void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   unsigned int ix = c - cells;
-  std::map<unsigned int, Value *> *regs = compile_simple_data->regs;
-  std::map<unsigned int, int> *cnt = compile_simple_data->cnt;
-  Module *mod = compile_simple_data->mod;
-  LLVMContext &ctx = mod->getContext();
-  BasicBlock *block = compile_simple_data->block;
 
   switch(tt) {
   case tt_reduction: {
@@ -199,10 +200,7 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
 
     if(c->func == func_cut ||
        c->func == func_id) {
-      unsigned int a = c->arg[0] - cells;
-      (*regs)[ix] = assert_find(*regs, a);
-      (*cnt)[ix] = 1;
-      --(*cnt)[a];
+      fb->assign(c, c->arg[0]);
     } else if(c->func == func_dep) {
       // do nothing
     } else if(c->func == func_placeholder) {
@@ -217,13 +215,11 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
 	out.push_back(c->arg[i] - cells);
       build_closure(compile_simple_data->self, in, out);
     } else {
-      for(int i = 0; i < closure_in(c); ++i) trace(c->arg[i], 0, tt_force); // ***
-
       auto f = get_builder(c, mod);
       std::vector<Value *> f_args;
       for(int i = 0; i < in; ++i) {
 	unsigned int a = c->arg[i] - cells;
-	f_args.push_back(assert_find(*regs,a));
+	f_args.push_back(reg(a));
 	--(*cnt)[a];
       }
       auto call = CallInst::Create(f, f_args, "", block);
@@ -250,10 +246,7 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     if(c->type & T_TRACED) break;
     if(is_any(c)) break;
     if(is_list(c) && is_placeholder(c->ptr[0])) {
-      unsigned int a = c->ptr[0]-cells;
-      (*regs)[a] = assert_find(*regs, ix);
-      (*cnt)[a] = 1;
-      --(*cnt)[ix];
+      fb->assign(c, c->ptr[0]);
     } else if(!is_var(c)) {
       auto call = CallInst::Create(ext::val(mod), ConstantInt::get(ctx, APInt(64, c->val[0])), "", block);
       setup_CallInst(call, NOUNWIND);
@@ -266,19 +259,17 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   case tt_select: {
     unsigned int a = r - cells;
     --(*cnt)[a];
-    auto call = CallInst::Create(get_cell_func("build_select", 2, 1, mod), std::vector<Value *> { assert_find(*regs, ix), assert_find(*regs, a) }, "", block);
+    auto call = CallInst::Create(get_cell_func("build_select", 2, 1, mod), std::vector<Value *> { reg(ix), reg(a) }, "", block);
     (*regs)[ix] = call;
     break;
   }
   case tt_copy: {
-    unsigned int a = r-cells;
-    (*regs)[ix] = assert_find(*regs, a);
-    (*cnt)[ix] = 1;
-    --(*cnt)[a];
+    fb->assign(c, r);
     break;
   }
   case tt_compose_placeholders: {
     /* to do *** */
+    break;
   }
   }
 }
@@ -288,26 +279,24 @@ void compile_simple_arg(cell_t *c, int x) {
   args->insert(args->begin(), c - cells);
 }
 
-void build_closure(Function *f,
-		   std::vector<unsigned int> in,
-		   std::vector<unsigned int> out) {
-  std::map<unsigned int, Value *> *regs = compile_simple_data->regs;
-  std::map<unsigned int, int> *cnt = compile_simple_data->cnt;
-  Module *mod = compile_simple_data->mod;
-  LLVMContext &ctx = mod->getContext();
-  BasicBlock *block = compile_simple_data->block;
-  Value *c = CallInst::Create(ext::closure_alloc(mod), ConstantInt::get(ctx, APInt(32, in.size() + out.size() - 1)), "", block);
+void FunctionBuilder::build_closure
+    (Function *f,
+     std::vector<unsigned int> in,
+     std::vector<unsigned int> out) {
+  Value *c = CallInst::Create(ext::closure_alloc(module),
+			      ConstantInt::get(ctx, APInt(32, in.size() + out.size() - 1)),
+			      "", block);
   for(int i = 0; i < in.size(); ++i) {
-    set_arg(c, i, assert_find(*regs, in[i]), block);
-    --(*cnt)[in[i]];
+    set_arg(c, i, reg(in[i]), block);
+    --cnt[in[i]];
   }
-  (*regs)[out[0]] = c;
-  (*cnt)[out[0]] = 1;
+  regs[out[0]] = c;
+  cnt[out[0]] = 1;
   for(int i = 1; i < out.size(); ++i) {
-    auto d = CallInst::Create(ext::dep(mod), c, "", block);
+    auto d = CallInst::Create(ext::dep(module), c, "", block);
     set_arg(c, i + in.size(), d, block);
-    (*regs)[out[i]] = d;
-    (*cnt)[out[i]] = 1;
+    regs[out[i]] = d;
+    cnt[out[i]] = 1;
   }
   new StoreInst(ConstantInt::get(ctx,
 				 APInt(16, out.size() - 1)),
@@ -328,19 +317,13 @@ void build_closure(Function *f,
 		  "",
 		  block),
 		block);
-
 }
 
-Value *build_closure_from_cell(cell_t *r) {
-  std::map<unsigned int, Value *> *regs = compile_simple_data->regs;
-  std::map<unsigned int, int> *cnt = compile_simple_data->cnt;
-  Module *mod = compile_simple_data->mod;
-  LLVMContext &ctx = mod->getContext();
-  BasicBlock *block = compile_simple_data->block;
+Value FunctionBuilder::build_closure_from_cell(cell_t *r) {
   Value *c = CallInst::Create(ext::closure_alloc(mod), ConstantInt::get(ctx, APInt(32, r->size)), "", block);
   unsigned int ix = r - cells;
-  (*regs)[ix] = c;
-  (*cnt)[ix] = 1;
+  regs[ix] = c;
+  cnt[ix] = 1;
   for(int i = closure_next_child(r); i < r->size; ++i) {
     if(!r->arg[i]) continue;
     set_arg(c, i, build_tree(r->arg[i]), block);
@@ -379,34 +362,29 @@ Value *build_closure_from_cell(cell_t *r) {
   return c;
 }
 
-Value *build_tree(cell_t *c) {
-  std::map<unsigned int, Value *> *regs = compile_simple_data->regs;
-  std::map<unsigned int, int> *cnt = compile_simple_data->cnt;
-  Module *mod = compile_simple_data->mod;
-  LLVMContext &ctx = mod->getContext();
-  BasicBlock *block = compile_simple_data->block;
+Value *FunctionBuilder::build_tree(cell_t *c) {
   unsigned int ix = c - cells;
   {
-    auto it = regs->find(ix);
-    if(it != regs->end()) return it->second;
+    auto it = regs.find(ix);
+    if(it != regs.end()) return it->second;
   }
   Value *r = NULL;
   if(is_reduced(c)) {
     if(is_list(c)) {
-      auto call = CallInst::Create(ext::make_list(mod), ConstantInt::get(ctx, APInt(32, list_size(c))), "", block);
+      auto call = CallInst::Create(ext::make_list(module), ConstantInt::get(ctx, APInt(32, list_size(c))), "", block);
       setup_CallInst(call, NOUNWIND);
-      (*regs)[ix] = call;
-      (*cnt)[ix] = 1;
+      regs[ix] = call;
+      cnt[ix] = 1;
       for(int i = 0; i < list_size(c); ++i) {
 	set_arg(call, i+1, build_tree(c->ptr[i]), block);
-	--(*cnt)[c->ptr[i] - cells];
+	--cnt[c->ptr[i] - cells];
       }
       r = call;
     } else if(c->type & T_INT) {
-      auto call = CallInst::Create(ext::val(mod), ConstantInt::get(ctx, APInt(64, c->val[0])), "", block);
+      auto call = CallInst::Create(ext::val(module), ConstantInt::get(ctx, APInt(64, c->val[0])), "", block);
       setup_CallInst(call, NOUNWIND);
-      (*regs)[ix] = call;
-      (*cnt)[ix] = 1;
+      regs[ix] = call;
+      cnt[ix] = 1;
       r = call;
     }
   } else {
@@ -418,27 +396,15 @@ Value *build_tree(cell_t *c) {
   return r;
 }
 
-Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned int *out, Module *mod) {
-  LLVMContext &ctx = mod->getContext();
-  std::vector<unsigned int> args;
-  std::map<unsigned int, Value *> regs;
-  std::map<unsigned int, int> cnt;
-
+Function *FunctionBuilder::compile_simple() {
   set_trace(compile_simple_trace);
-  compile_simple_data_t data = {&args, &regs, &cnt, NULL, mod};
-  compile_simple_data = &data;
+  fb = this;
 
-  int out_n = list_size(c), in_n = fill_args(c, compile_simple_arg);
+  Function *f = get_cell_func(name, in, out);
+  fill_args(root, compile_simple_arg);
+  self = declare_wrap_func(f);
+  block = BasicBlock::Create(ctx, "entry", f, 0);
 
-  *in = in_n;
-  *out = out_n;
-
-  Function *f = get_cell_func(name, in_n, out_n, mod);
-  compile_simple_data->self = declare_wrap_func(f);
-
-  BasicBlock* b =
-    BasicBlock::Create(ctx, "entry", f, 0);
-  data.block = b;
   auto j = args.begin();
   for(auto i = f->arg_begin();
       i != f->arg_end() && j != args.end();
@@ -447,7 +413,7 @@ Function *compile_simple(std::string name, cell_t *c, unsigned int *in, unsigned
     cnt[*j] = 1;
   }
 
-  reduce_list(c);
+  reduce_list(root);
 
   Value *ret;
   if(out_n > 1) {
