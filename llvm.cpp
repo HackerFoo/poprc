@@ -45,6 +45,16 @@ using namespace llvm;
 #define CELL_OUT  5
 #define CELL_ARG  6
 
+Value *get_arg(Value *ptr, int x, BasicBlock *b);
+void set_arg(Value *ptr, int x, Value *val, BasicBlock *b);
+void set_field(Value *ptr, int f, Value *val, BasicBlock *b);
+void build_closure(Function *f,
+		   std::vector<unsigned int> in,
+		   std::vector<unsigned int> out);
+Function* declare_wrap_func(Function *func);
+Value *build_tree(cell_t *c);
+Function *get_builder(cell_t *p, Module *mod);
+
 class FunctionBuilder {
 public:
   FunctionBuilder(std::string name,
@@ -63,8 +73,12 @@ public:
   void build_closure (Function *f,
 		      std::vector<unsigned int> in,
 		      std::vector<unsigned int> out);
-  Value build_closure_from_cell(cell_t *r);
+  Value *build_closure_from_cell(cell_t *r);
   Value *build_tree(cell_t *c);
+  void callSelf(cell_t *c);
+  void select(cell_t *a, cell_t *b);
+  void val(cell_t *c);
+  Function *compile_simple();
 
   std::string name;
   cell_t *root;
@@ -77,21 +91,13 @@ public:
   Function *self;
 };  
 
-FunctionBuilder::FunctionBuilder(std::string name, cell_t *root, unsigned int in, unsigned int out, Module *mod) : name(name), root(root), in(in), out(out), module(mod) {};
+FunctionBuilder *fb = NULL;
 
-Value *get_arg(Value *ptr, int x, BasicBlock *b);
-void set_arg(Value *ptr, int x, Value *val, BasicBlock *b);
-void set_field(Value *ptr, int f, Value *val, BasicBlock *b);
-void build_closure(Function *f,
-		   std::vector<unsigned int> in,
-		   std::vector<unsigned int> out);
-Function* declare_wrap_func(Function *func);
-Value *build_tree(cell_t *c);
-Function *get_builder(cell_t *p, Module *mod);
+FunctionBuilder::FunctionBuilder(std::string name, cell_t *root, unsigned int in, unsigned int out, Module *mod) : name(name), root(root), in(in), out(out), module(mod) {};
 
 void FunctionBuilder::call(cell_t *c) {
   unsigned int ix = c - cells;
-  auto f = get_builder(c, module);
+  auto f = get_builder(c);
   std::vector<Value *> f_args;
   for(int i = 0; i < closure_in(c); ++i) {
     unsigned int a = c->arg[i] - cells;
@@ -107,7 +113,22 @@ void FunctionBuilder::call(cell_t *c) {
       regs[a] = ExtractValueInst::Create(call, {i+1}, "", block);
       cnt[a] = 1;
     }
+  } else {
+    regs[ix] = call;
+    cnt[ix] = 1;
   }
+}
+
+void FunctionBuilder::callSelf(cell_t *c) {
+  unsigned int ix = c - cells;
+  std::vector<unsigned int> in, out;
+  int i = 0;
+  for(; i < closure_in(c); ++i)
+    in.push_back(c->arg[i] - cells);
+  out.push_back(ix);
+  for(; i < closure_args(c); ++i)
+    out.push_back(c->arg[i] - cells);
+  build_closure(self, in, out);
 }
 
 void setup_CallInst(CallInst *i, unsigned int attrs) {
@@ -123,8 +144,8 @@ Function *FunctionBuilder::get_cell_func(std::string name, unsigned int in, unsi
   LLVMContext &ctx = module->getContext();
   Type* rt =
     out == 0 ? Type::getVoidTy(ctx) :
-    out == 1 ? (Type *)ext::cell_ptr_type :
-    (Type *)StructType::get(ctx, std::vector<Type *>(out, ext::cell_ptr_type), true);
+    out == 1 ? static_cast<Type *>(ext::cell_ptr_type) :
+    static_cast<Type *>(StructType::get(ctx, std::vector<Type *>(out, ext::cell_ptr_type), true));
   FunctionType* ft = FunctionType::get(rt, std::vector<Type *>(in, ext::cell_ptr_type), false);
   func = Function::Create(ft, GlobalValue::ExternalLinkage, name, module);
   func->setCallingConv(CallingConv::C);
@@ -133,15 +154,15 @@ Function *FunctionBuilder::get_cell_func(std::string name, unsigned int in, unsi
 
 Function *FunctionBuilder::get_builder(cell_t *p) {
   auto name = "build_" + std::string(function_name(p->func));
-  return get_cell_func(name, p->size - p->out, p->out + 1, module);
+  return get_cell_func(name, p->size - p->out, p->out + 1);
 }
 
 Value *FunctionBuilder::wrap_alts(cell_t *c) {
   unsigned int ix = c - cells;
   if(!c->alt) return reg(ix);
   auto f_alt = module->getFunction("build_alt2");
-  if(!f_alt) f_alt = get_cell_func("build_alt2", 2, 1, module);
-  return CallInst::Create(f_alt, std::vector<Value *> { reg(ix), wrap_alts(c->alt, regs, b, module) }, "", block);
+  if(!f_alt) f_alt = get_cell_func("build_alt2", 2, 1);
+  return CallInst::Create(f_alt, std::vector<Value *> { reg(ix), wrap_alts(c->alt) }, "", block);
 }
 
 void FunctionBuilder::apply_list(cell_t *c) {
@@ -156,18 +177,19 @@ void FunctionBuilder::apply_list(cell_t *c) {
     unsigned int a = c->arg[i] - cells;
     --cnt[a];
     Value *x = reg(a);
-    Function *f = get_cell_func("build_pushl", 2, 1, mod);
+    Function *f = get_cell_func("build_pushl", 2, 1);
     p = CallInst::Create(f, std::vector<Value *> { x, p }, "", block);
   }
   i = out;
   while(i--) {
     unsigned int a = c->arg[i+in] - cells;
-    auto call = CallInst::Create(get_cell_func("build_popr", 1, 2, mod), {p}, "", block);
+    Function *f = get_cell_func("build_popr", 1, 2);
+    auto call = CallInst::Create(f, std::vector<Value *>{p}, "", block);
     p = ExtractValueInst::Create(call, {0}, "", block);
     regs[a] = ExtractValueInst::Create(call, {1}, "", block);
     cnt[a] = 1;
   }
-  CallInst::Create(ext::drop(mod), ArrayRef<Value *>(p), "", block);
+  CallInst::Create(ext::drop(module), ArrayRef<Value *>(p), "", block);
 }
 
 Value * FunctionBuilder::reg(unsigned int ix) {
@@ -185,8 +207,25 @@ void FunctionBuilder::assign(cell_t *a, cell_t *b) {
   --cnt[bi];
 }
 
+void FunctionBuilder::select(cell_t *a, cell_t *b) {
+    unsigned int 
+      ai = a - cells,
+      bi = b - cells;
+    --cnt[bi];
+    auto call = CallInst::Create(get_cell_func("build_select", 2, 1), std::vector<Value *> { reg(ai), reg(bi) }, "", block);
+    regs[ai] = call;
+}
+
+void FunctionBuilder::val(cell_t *c) {
+  unsigned int ci = c - cells;
+  LLVMContext &ctx = module->getContext();
+  auto call = CallInst::Create(ext::val(module), ConstantInt::get(ctx, APInt(64, c->val[0])), "", block);
+  setup_CallInst(call, NOUNWIND);
+  regs[ci] = call;
+  cnt[ci] = 1;
+}
+
 void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
-  unsigned int ix = c - cells;
 
   switch(tt) {
   case tt_reduction: {
@@ -204,37 +243,11 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     } else if(c->func == func_dep) {
       // do nothing
     } else if(c->func == func_placeholder) {
-      apply_list(c);
+      fb->apply_list(c);
     } else if(c->func == func_self) {
-      std::vector<unsigned int> in, out;
-      int i = 0;
-      for(; i < closure_in(c); ++i)
-	in.push_back(c->arg[i] - cells);
-      out.push_back(ix);
-      for(; i < closure_args(c); ++i)
-	out.push_back(c->arg[i] - cells);
-      build_closure(compile_simple_data->self, in, out);
+      fb->callSelf(c);
     } else {
-      auto f = get_builder(c, mod);
-      std::vector<Value *> f_args;
-      for(int i = 0; i < in; ++i) {
-	unsigned int a = c->arg[i] - cells;
-	f_args.push_back(reg(a));
-	--(*cnt)[a];
-      }
-      auto call = CallInst::Create(f, f_args, "", block);
-      if(c->out) {
-	(*regs)[ix] = ExtractValueInst::Create(call, {0}, "", block);
-	(*cnt)[ix] = 1;
-	for(unsigned int i = 0; i < c->out; ++i) {
-	  unsigned int a = c->arg[c->size - i - 1] - cells;
-	  (*regs)[a] = ExtractValueInst::Create(call, {i+1}, "", block);
-	  (*cnt)[a] = 1;
-	}
-      } else {
-	(*regs)[ix] = call;
-	(*cnt)[ix] = 1;
-      }
+      fb->call(c);
     }
     r->type |= T_TRACED;
     break;
@@ -248,19 +261,13 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     if(is_list(c) && is_placeholder(c->ptr[0])) {
       fb->assign(c, c->ptr[0]);
     } else if(!is_var(c)) {
-      auto call = CallInst::Create(ext::val(mod), ConstantInt::get(ctx, APInt(64, c->val[0])), "", block);
-      setup_CallInst(call, NOUNWIND);
-      (*regs)[ix] = call;
-      (*cnt)[ix] = 1;
+      fb->val(c);
     }
     c->type |= T_TRACED;
     break;
   }
   case tt_select: {
-    unsigned int a = r - cells;
-    --(*cnt)[a];
-    auto call = CallInst::Create(get_cell_func("build_select", 2, 1, mod), std::vector<Value *> { reg(ix), reg(a) }, "", block);
-    (*regs)[ix] = call;
+    fb->select(c, r);
     break;
   }
   case tt_copy: {
@@ -275,14 +282,15 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
 }
 
 void compile_simple_arg(cell_t *c, int x) {
-  auto args = compile_simple_data->args;
-  args->insert(args->begin(), c - cells);
+  auto &args = fb->args;
+  args.insert(args.begin(), c - cells);
 }
 
 void FunctionBuilder::build_closure
     (Function *f,
      std::vector<unsigned int> in,
      std::vector<unsigned int> out) {
+  LLVMContext &ctx = module->getContext();
   Value *c = CallInst::Create(ext::closure_alloc(module),
 			      ConstantInt::get(ctx, APInt(32, in.size() + out.size() - 1)),
 			      "", block);
@@ -319,15 +327,16 @@ void FunctionBuilder::build_closure
 		block);
 }
 
-Value FunctionBuilder::build_closure_from_cell(cell_t *r) {
-  Value *c = CallInst::Create(ext::closure_alloc(mod), ConstantInt::get(ctx, APInt(32, r->size)), "", block);
+Value *FunctionBuilder::build_closure_from_cell(cell_t *r) {
+  LLVMContext &ctx = module->getContext();
+  Value *c = CallInst::Create(ext::closure_alloc(module), ConstantInt::get(ctx, APInt(32, r->size)), "", block);
   unsigned int ix = r - cells;
   regs[ix] = c;
   cnt[ix] = 1;
   for(int i = closure_next_child(r); i < r->size; ++i) {
     if(!r->arg[i]) continue;
     set_arg(c, i, build_tree(r->arg[i]), block);
-    --(*cnt)[r->arg[i] - cells];
+    --cnt[r->arg[i] - cells];
   }
   if(!closure_is_ready(r)) {
     if(!is_data(r->arg[0])) {
@@ -354,7 +363,7 @@ Value FunctionBuilder::build_closure_from_cell(cell_t *r) {
 		  block),
 		block);
   if(!closure_is_ready(r)) {
-    CallInst::Create(ext::closure_set_ready(mod),
+    CallInst::Create(ext::closure_set_ready(module),
 		     std::vector<Value *> {c, ConstantInt::get(ctx, APInt(1, 1))},
 		     "",
 		     block);
@@ -363,6 +372,7 @@ Value FunctionBuilder::build_closure_from_cell(cell_t *r) {
 }
 
 Value *FunctionBuilder::build_tree(cell_t *c) {
+  LLVMContext &ctx = module->getContext();
   unsigned int ix = c - cells;
   {
     auto it = regs.find(ix);
@@ -397,6 +407,7 @@ Value *FunctionBuilder::build_tree(cell_t *c) {
 }
 
 Function *FunctionBuilder::compile_simple() {
+  LLVMContext &ctx = module->getContext();
   set_trace(compile_simple_trace);
   fb = this;
 
@@ -416,18 +427,18 @@ Function *FunctionBuilder::compile_simple() {
   reduce_list(root);
 
   Value *ret;
-  if(out_n > 1) {
+  if(out > 1) {
     Value *agg = UndefValue::get(f->getReturnType());
-    for(unsigned int i = 0; i < out_n; ++i) {
-      agg = InsertValueInst::Create(agg, wrap_alts(c->ptr[out_n - 1 - i], regs, b, mod), {i}, "", b);
+    for(unsigned int i = 0; i < out; ++i) {
+      agg = InsertValueInst::Create(agg, wrap_alts(root->ptr[out - 1 - i]), {i}, "", block);
     }
     ret = agg;
   } else {
-    ret = wrap_alts(c->ptr[0], regs, b, mod);
+    ret = wrap_alts(root->ptr[0]);
   }
 
-  for(int i = 0; i < out_n; ++i) {
-    cell_t *p = c->ptr[i];
+  for(int i = 0; i < out; ++i) {
+    cell_t *p = root->ptr[i];
     while(p) {
       --cnt[p - cells];
       p = p->alt;
@@ -437,17 +448,17 @@ Function *FunctionBuilder::compile_simple() {
   // adjust reference counts
   for(auto i = cnt.begin(); i != cnt.end(); ++i) {
     if(i->second < 0) {
-      CallInst::Create(ext::refn(mod),
+      CallInst::Create(ext::refn(module),
 		       std::vector<Value *> {
-			 assert_find(regs, i->first),
+			 reg(i->first),
 			 ConstantInt::get(ctx, APInt(32, -i->second))
-		       }, "", b);
+		       }, "", block);
     } else if(i->second > 0) {
-      CallInst::Create(ext::drop(mod), ArrayRef<Value *>(assert_find(regs, i->first)), "", b);
+      CallInst::Create(ext::drop(module), ArrayRef<Value *>(reg(i->first)), "", block);
     }
   }
 
-  ReturnInst::Create(ctx, ret, b);
+  ReturnInst::Create(ctx, ret, block);
   return f;
 }
 
@@ -581,21 +592,15 @@ Function* wrap_func(Function *func) {
   return func_wrapper;
 }
 
-void printModule(Module *mod) {
-  verifyModule(*mod, PrintMessageAction);
-  PassManager PM;
-  PM.add(createPrintModulePass(&outs()));
-  PM.run(*mod);
-}
-
 static ExecutionEngine *engine = 0;
 
-reduce_t *compile(cell_t *c, unsigned int *in, unsigned int *out) {
+reduce_t *compile(cell_t *c, unsigned int in, unsigned int out) {
   InitializeNativeTarget();
   LLVMContext &ctx = getGlobalContext();
   Module *mod = new Module("module", ctx);
   ext::define_types(mod);
-  Function *f = compile_simple("compiled_func", c, in, out, mod);
+  FunctionBuilder fb("compiled_func", c, in, out, mod);
+  Function *f = fb.compile_simple();
   Function *lf = wrap_func(f);
   std::string err = "";
   engine = EngineBuilder(mod)
@@ -615,11 +620,11 @@ reduce_t *compile(cell_t *c, unsigned int *in, unsigned int *out) {
   engine->addGlobalMapping(ext::closure_set_ready(mod), (void *)&closure_set_ready);
 
   for(int i = 0; i < builder_table_length; ++i) {
-    engine->addGlobalMapping(get_cell_func("build_" + std::string(builder_table[i].name), 
-					   builder_table[i].in,
-					   builder_table[i].out,
-					   mod),
-			     builder_table[i].func);
+    engine->addGlobalMapping(
+      fb.get_cell_func("build_" + std::string(builder_table[i].name), 
+		       builder_table[i].in,
+		       builder_table[i].out),
+      builder_table[i].func);
   }
 
   f->dump();

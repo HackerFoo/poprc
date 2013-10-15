@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-  reduce_t *compile(cell_t *c, unsigned int *in, unsigned int *out);
+  reduce_t *compile(cell_t *c, unsigned int in, unsigned int out);
 
 #ifdef __cplusplus
 }

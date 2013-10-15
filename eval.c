@@ -786,7 +786,7 @@ void compile_expr(char *name, char *str, unsigned int n) {
     --new_user_word_entry;
     return;
   }
-  e->func = compile(c, &e->in, &e->out);
+  e->func = compile(c, e->in, e->out);
 }
 
 cell_t *remove_row(cell_t *c) {
