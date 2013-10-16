@@ -23,6 +23,10 @@
 #include "llvm.h"
 #include "llvm_ext.h"
 
+// ***
+#undef NDEBUG
+#include <cassert>
+
 extern "C" {
 #include "gen/rt.h"
 #include "gen/eval.h"
@@ -184,7 +188,7 @@ void FunctionBuilder::apply_list(cell_t *c) {
   while(i--) {
     unsigned int a = c->arg[i+in] - cells;
     Function *f = get_cell_func("build_popr", 1, 2);
-    auto call = CallInst::Create(f, std::vector<Value *>{p}, "", block);
+    auto call = CallInst::Create(f, {p}, "", block);
     p = ExtractValueInst::Create(call, {0}, "", block);
     regs[a] = ExtractValueInst::Create(call, {1}, "", block);
     cnt[a] = 1;
@@ -192,7 +196,7 @@ void FunctionBuilder::apply_list(cell_t *c) {
   CallInst::Create(ext::drop(module), ArrayRef<Value *>(p), "", block);
 }
 
-Value * FunctionBuilder::reg(unsigned int ix) {
+Value *FunctionBuilder::reg(unsigned int ix) {
   auto it = regs.find(ix);
   assert(it != regs.end());
   return it->second;
@@ -226,7 +230,6 @@ void FunctionBuilder::val(cell_t *c) {
 }
 
 void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
-
   switch(tt) {
   case tt_reduction: {
     if(is_reduced(c) || !is_var(r)) break;
@@ -259,7 +262,7 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     if(c->type & T_TRACED) break;
     if(is_any(c)) break;
     if(is_list(c) && is_placeholder(c->ptr[0])) {
-      fb->assign(c, c->ptr[0]);
+      fb->assign(c->ptr[0], c); // ***
     } else if(!is_var(c)) {
       fb->val(c);
     }
