@@ -751,9 +751,8 @@ void eval(char *str, unsigned int n) {
 bool get_arity(char *str, unsigned int n, unsigned int *in, unsigned int *out) {
   set_trace(NULL);
   cell_t *c = build(str, n);
-  *in = fill_args(c, NULL);
-  reduce_list(c);
   if(!c) return false;
+  *in = fill_args(c, NULL);
   if(!closure_is_ready(c)) {
     printf("incomplete expression\n");
     return false;
@@ -776,8 +775,8 @@ void compile_expr(char *name, char *str, unsigned int n) {
   e->func = func_placeholder;
   e->in = 0;
   e->out = 1;
-  char *s = malloc(n);
-  memcpy(s, str, n);
+  char *s = malloc(n+1);
+  memcpy(s, str, n+1);
   get_arity(s, n, &e->in, &e->out);
   free(s);
   e->func = func_self;

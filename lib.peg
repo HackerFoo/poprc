@@ -9,6 +9,7 @@
 =dip21 swap pushr pushl pushl popr swap popr swap drop swap
 
 =rot [] swap pushr swap pushr pushl popr swap popr swap popr swap drop
+@=ifte rot [swap drop 1 == !] [0 == !] | pushl pushl pushl popr swap drop cut
 
 @ recursive call test
 =mod5 [dup 5 >= swap 5- mod5 swap !] [dup 5 < !] | pushl popr cut swap drop
