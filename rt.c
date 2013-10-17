@@ -523,7 +523,7 @@ cell_t *func(reduce_t *f, unsigned int in, unsigned int out) {
   c->out = out - 1;
   c->func = f;
   if(args) c->arg[0] = (cell_t *)(intptr_t)(args - 1);
-  closure_set_ready(c, false /*!args*/);
+  closure_set_ready(c, !args && f != func_placeholder);
   return c;
 }
 

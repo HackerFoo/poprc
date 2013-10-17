@@ -309,6 +309,7 @@ void FunctionBuilder::build_closure
     regs[out[i]] = d;
     cnt[out[i]] = 1;
   }
+  // c->out = out.size() - 1
   new StoreInst(ConstantInt::get(ctx,
 				 APInt(16, out.size() - 1)),
 		GetElementPtrInst::Create(c,
@@ -319,6 +320,7 @@ void FunctionBuilder::build_closure
 		  "",
 		  block),
 		block);
+  // c->func = f
   new StoreInst(f,
 		GetElementPtrInst::Create(c,
 		  std::vector<Value *> {
@@ -347,6 +349,7 @@ Value *FunctionBuilder::build_closure_from_cell(cell_t *r) {
 				     ext::cell_ptr_type, "", block), block);
     }
   }
+  // c->out = r->out
   new StoreInst(ConstantInt::get(ctx, APInt(16, r->out)),
 		GetElementPtrInst::Create(c,
 		  std::vector<Value *> {
@@ -356,6 +359,7 @@ Value *FunctionBuilder::build_closure_from_cell(cell_t *r) {
 		  "",
 		  block),
 		block);
+  // c->func = (intptr_t)r->func
   new StoreInst(new IntToPtrInst(ConstantInt::get(ctx, APInt(64, (intptr_t)r->func)), ext::void_ptr_type, "", block), // ***
 		GetElementPtrInst::Create(c,
 		  std::vector<Value *> {
@@ -386,19 +390,17 @@ Value *FunctionBuilder::build_tree(cell_t *c) {
     if(is_list(c)) {
       auto call = CallInst::Create(ext::make_list(module), ConstantInt::get(ctx, APInt(32, list_size(c))), "", block);
       setup_CallInst(call, NOUNWIND);
-      regs[ix] = call;
+      regs[ix] = r = call;
       cnt[ix] = 1;
       for(int i = 0; i < list_size(c); ++i) {
 	set_arg(call, i+1, build_tree(c->ptr[i]), block);
 	--cnt[c->ptr[i] - cells];
       }
-      r = call;
     } else if(c->type & T_INT) {
       auto call = CallInst::Create(ext::val(module), ConstantInt::get(ctx, APInt(64, c->val[0])), "", block);
       setup_CallInst(call, NOUNWIND);
-      regs[ix] = call;
+      regs[ix] = r = call;
       cnt[ix] = 1;
-      r = call;
     }
   } else {
     r = build_closure_from_cell(c);
@@ -433,10 +435,12 @@ Function *FunctionBuilder::compile_simple() {
   if(out > 1) {
     Value *agg = UndefValue::get(f->getReturnType());
     for(unsigned int i = 0; i < out; ++i) {
+      build_tree(root->ptr[out - 1 - i]);
       agg = InsertValueInst::Create(agg, wrap_alts(root->ptr[out - 1 - i]), {i}, "", block);
     }
     ret = agg;
   } else {
+    build_tree(root->ptr[0]);
     ret = wrap_alts(root->ptr[0]);
   }
 
