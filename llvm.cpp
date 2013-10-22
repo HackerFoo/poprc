@@ -93,7 +93,7 @@ public:
   std::map<unsigned int, int> cnt;
   BasicBlock *block;
   Function *self;
-};  
+};
 
 FunctionBuilder *fb = NULL;
 
@@ -615,6 +615,11 @@ reduce_t *compile(cell_t *c, unsigned int in, unsigned int out) {
     .setEngineKind(EngineKind::JIT)
     .create();
 
+  if(!engine) {
+    std::cout << err << std::endl;
+    return NULL;
+  }
+
   engine->addGlobalMapping(ext::store_lazy(mod), (void *)&store_lazy);
   engine->addGlobalMapping(ext::store_lazy_dep(mod), (void *)&store_lazy_dep);
   engine->addGlobalMapping(ext::val(mod), (void *)&val);
@@ -637,9 +642,5 @@ reduce_t *compile(cell_t *c, unsigned int in, unsigned int out) {
   f->dump();
   //lf->dump();
 
-  if(!engine) {
-    std::cout << err << std::endl;
-    return NULL;
-  }
   return (reduce_t *)engine->getPointerToFunction(lf);
 }

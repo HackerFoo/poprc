@@ -56,6 +56,7 @@ word_entry_t word_table[] = {
   {"dup", func_dup, 1, 2},
   //{"fib", func_fib, 1, 1},
   {"id", func_id, 1, 1},
+  {"ift", func_ift, 3, 1},
   {"popr", func_popr, 1, 2},
   {"pushl", func_pushl, 2, 1},
   {"pushr", func_pushr, 2, 1},
@@ -84,7 +85,7 @@ builder_entry_t builder_table[] = {
   {"alt2", build_alt2, 2, 1},
   {"assert", build_assert, 2, 1},
   {"id", build_id, 1, 1},
-  //{"force", build_force, 2, 2},
+  {"ift", build_ift, 3, 1},
   {"cut", build_cut, 1, 1},
   {"select", build_select, 2, 1},
 };
@@ -161,6 +162,16 @@ two_cells_t build22(reduce_t f, cell_t *x, cell_t *y) {
   r.a->arg[1] = y;
   r.a->arg[2] = r.b;
   r.a->out = 1;
+  return r;
+}
+
+cell_t *build31(reduce_t f, cell_t *x, cell_t *y, cell_t *z) {
+  cell_t *r;
+  r = closure_alloc(4);
+  r->func = f;
+  r->arg[0] = x;
+  r->arg[1] = y;
+  r->arg[2] = z;
   return r;
 }
 
@@ -657,6 +668,34 @@ bool peg_func2(cell_t **cp, int N_IN, int N_OUT, cell_t *f) {
   drop(b);
   return false;
 }
+
+bool func_ift(cell_t **cp, type_rep_t t) {
+  cell_t *c = clear_ptr(*cp, 3);
+  if(!reduce(&c->arg[0], T_INT) ||
+     c->arg[0]->val[0] > 1) {
+    fail(cp);
+    return false;
+  }
+  if(is_var(c->arg[0])) {
+    drop(c->arg[0]); // need to add assertions
+    cell_t *res = id(c->arg[1]);
+    res->alt = id(c->arg[2]);
+    store_lazy(cp, c, res); // ***
+  } else if(c->arg[0]->val[0]) {
+    drop(c->arg[0]);
+    drop(c->arg[2]);
+    store_lazy(cp, c, c->arg[1]);
+  } else {
+    drop(c->arg[0]);
+    drop(c->arg[1]);
+    store_lazy(cp, c, c->arg[2]);
+  }
+  return false;
+}
+cell_t *build_ift(cell_t *x, cell_t *y, cell_t *z) {
+  return build31(func_ift, x, y, z);
+}
+
 #if 0
 bool func_fib(cell_t **cp, type_rep_t t) {
   char src[] = "dup 2 < "
