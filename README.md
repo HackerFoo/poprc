@@ -7,12 +7,12 @@ Here is a quick description of the language as it is currently:
 
     1 2 +   -->   [ 3 ]
 
-Popr is a postfix concatenative language.  `+` is an operator that takes two integers and returns one.  There are several similar operators, with the same meaning as in C: `-`, `*`, `<`, `<=`, `==`, `>`, `>=`.  Booleans are currently represented as integers, non-zero for true, zero for false.
+Popr is a post-fix concatenative language.  `+` is an operator that takes two integers and returns one.  There are several similar operators, with the same meaning as in C: `-`, `*`, `<`, `<=`, `==`, `>`, `>=`.  Booleans are currently represented as integers, non-zero for true, zero for false.
 
     1 2 | 3 +     -->   [ { 4 | 5 } ]
     2 5 | dup 2 - !   -->   [ 5 ]
 
-`|` creates alternative execution paths.  `!` takes two values.  If the secode argument is 0, the it fails, otherwise the first value is returned.  These primitives provide a more general mechanism than if/else, similar to speculative execution, or Prolog inference.
+`|` creates alternative execution paths.  `!` takes two values.  If the second argument is 0, the it fails, otherwise the first value is returned.  These primitives provide a more general mechanism than if/else, similar to speculative execution, or Prolog inference.
 
     [ 1 2 + 3 4 + ] popr   -->   [ [ 1 2 + ] 7 ]
     1 [ 2 + ] pushl        -->   [ [ 1 2 + ] ]
