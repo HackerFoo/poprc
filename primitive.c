@@ -92,7 +92,6 @@ builder_entry_t builder_table[] = {
 
 const int builder_table_length = LENGTH(builder_table);
 
-static const type_t _op2_types[] = {T_INT, T_INT, T_INT};
 cell_t *_op2(intptr_t (*op)(intptr_t, intptr_t), cell_t *x, cell_t *y) {
   int size = min(val_size(x),
 		 val_size(y));
@@ -109,16 +108,26 @@ bool func_op2(cell_t **cp, type_rep_t t, intptr_t (*op)(intptr_t, intptr_t)) {
   cell_t *res = 0;
   cell_t *const c = clear_ptr(*cp, 3);
   alt_set_t alt_set = 0;
-  static const int n = 2;
-  cell_t *arg[n];
 
-  if(t != T_ANY && t != _op2_types[0]) goto fail; //***
-  if(!function_preamble(c, &alt_set, arg, (type_t * const)_op2_types, &res, n))
-     goto fail;
+  if(t == T_ANY || t == T_INT) t = T_INT;
+  else goto fail;
 
-  if(!res) res = _op2(op, arg[0], arg[1]);
+  if(!reduce(&c->arg[0], t) ||
+     !reduce(&c->arg[1], t)) goto fail;
+  c->alt = closure_split(c, 2);
+  cell_t *p = c->arg[0], *q = c->arg[1];
+  if(bm_conflict(p->alt_set,
+		 q->alt_set)) goto fail;
+  alt_set = p->alt_set | q->alt_set;
 
-  function_epilogue(cp, alt_set, res, n);
+  if(is_var(p) || is_var(q)) {
+    res = var(t);
+  } else {
+    res = _op2(op, p, q);
+  }
+  res->alt_set = alt_set_ref(alt_set);
+  res->alt = c->alt;
+  store_reduced(cp, res);
   return true;
 
  fail:
@@ -450,16 +459,16 @@ bool func_assert(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   if(!reduce(&c->arg[1], T_INT)) goto fail;
   cell_t *p = c->arg[1];
+  c->alt = closure_split1(c, 1);
   if(!((type_match(T_INT, p) && p->val[0]) ||
        is_var(p))) goto fail;
   if(!reduce(&c->arg[0], t)) goto fail;
-  c->alt = closure_split(c, 2);
-  if(bm_conflict(c->arg[0]->alt_set,
-		 c->arg[1]->alt_set)) goto fail;
-  store_reduced(cp, mod_alt(ref(c->arg[0]), c->alt,
-			    c->arg[0]->alt_set |
-			    c->arg[1]->alt_set));
-  return true;
+
+  c->func = func_id;
+  c->size = 1;
+  c->arg[1] = (cell_t *)alt_set_ref(p->alt_set);
+  drop(p);
+  return false;
  fail:
   fail(cp);
   return false;

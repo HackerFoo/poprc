@@ -49,7 +49,7 @@
 
 : (1 6) (2 7) | dup + dup +
 
-: 1 0 | dup force
+: 1 0 | dup
 : 1 [1- dup !] [1+ dup !] | pushl popr
 : [0 |] dup 4 swap pushl popr swap drop swap 3 swap pushl popr swap drop +
 : [1] [3] | popr pushr popr
@@ -61,3 +61,5 @@
 @: [100 [swap ! cut 1- swap force dup pushl pushl popr swap popr swap drop swap] [swap 0 == ! cut 1- force swap] || ] [dup] . popr . [swap] . head cut
 
 @: =loop 6 [dup 0 > swap 5- loop swap !] [dup 0 <= !] | pushl
+
+: 0 1 | dup !
