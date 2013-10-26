@@ -67,76 +67,62 @@ void closure_set_ready(cell_t *c, bool r) {
   c->func = mark_ptr(clear_ptr(c->func, 1), r ? 0 : 1);
 }
 
-/* propagate alternatives down to root of expression tree */
-/* [TODO] distribute splitting into args */
-/* or combine reduce and split, so each arg is reduced */
-/* just before split, and alts are stored then zeroed */
+cell_t *dup_modify(cell_t *c, unsigned int n, cell_t *b) {
+  unsigned int i = 0, in = closure_in(c), out = 0;
+  assert(n < in);
+  cell_t *a = copy(c);
+
+  // ref args
+  for(; i < in; ++i) {
+    if(i != n) ref(a->arg[i]);
+  }
+
+  // update deps
+  for(; i < c->size; ++i) {
+    if(a->arg[i]) a->arg[i] = dep(a);
+    ++out;
+  }
+
+  a->arg[n] = b;
+  a->n = out;
+  a->alt = 0;
+  return a;
+}
+
+void split_arg(cell_t *c, unsigned int n) {
+  cell_t
+    *a = c->arg[n],
+    *p = c,
+    **pa, *q;
+  if(!a || !a->alt || is_marked(a, 1)) return;
+  do {
+    pa = &p->arg[n];
+    if(*pa == a) {
+      // insert a copy with the alt arg
+      q = dup_modify(p, n, ref((*pa)->alt));
+      q->alt = p->alt;
+      p->alt = q;
+      p = q->alt;
+      // mark the arg
+      *pa = mark_ptr(*pa, 1);
+    } else p = p->alt;
+  } while(p);
+}
+
 cell_t *closure_split(cell_t *c, unsigned int s) {
-  assert(is_closure(c) && closure_is_ready(c));
-  unsigned int i, j, n = 0;
-  unsigned int alt_mask = 0;
-
-  cell_t *cn, *p = c->alt;
-
-  /* calculate a mask for args with alts */
-  i = s;
-  alt_mask = 0;
-  while(i--) {
-    alt_mask <<= 1;
-    if(is_marked(c->arg[i], 1)) {
-      /* clear marks as we go */
-      c->arg[i] = clear_ptr(c->arg[i], 1);
-    } else if(c->arg[i] &&
-	      c->arg[i]->alt) {
-      alt_mask |= 1;
-      n++;
-    }
+  int i;
+  for(i = 0; i < s; ++i) {
+    split_arg(c, i);
   }
-
-  if(n == 0) return p;
-
-  p = c->alt;
-
-  for(i = alt_mask;
-      i != 0;
-      i = (i - 1) & alt_mask) {
-    cn = closure_alloc(s);
-    cn->func = c->func;
-    for(j = 0; j < s; j++) {
-      cn->arg[j] = (1<<j) & i ?
-	c->arg[j]->alt :
-	mark_ptr(c->arg[j], 1);
-    }
-    cn->alt = p;
-    p = cn;
+  for(i = 0; i < s; ++i) {
+    c->arg[i] = clear_ptr(c->arg[i], 1);
   }
-
-  unsigned int nref_alt_alt = 1 << (n-1);
-  unsigned int nref_alt = nref_alt_alt - 1;
-  unsigned int nref_noalt = (1 << n) - 1;
-  for(i = 0; i < s; i++) {
-    if((1<<i) & alt_mask) {
-      c->arg[i]->alt->n += nref_alt_alt;
-      c->arg[i]->n += nref_alt;
-    } else {
-      c->arg[i]->n += nref_noalt;
-    }
-  }
-
-  return p;
+  return c->alt;
 }
 
 cell_t *closure_split1(cell_t *c, int n) {
-  int i;
   if(!c->arg[n]->alt) return c->alt;
-  cell_t *a = copy(c);
-  a->arg[n] = 0;
-  traverse_ref(a, ARGS_IN);
-  for(i = c->size - c->out; i < c->size; ++i) {
-    a->arg[i] = dep(a);
-  }
-  a->arg[n] = ref(c->arg[n]->alt);
-  a->n = c->out;
+  cell_t *a = dup_modify(c, n, ref(c->arg[n]->alt));
   a->alt = c->alt;
   return a;
 }
@@ -783,6 +769,7 @@ cell_t *ref(cell_t *c) {
 }
 
 cell_t *refn(cell_t *c, unsigned int n) {
+  c = clear_ptr(c, 3);
   if(c) {
     assert(is_closure(c));
     c->n += n;
@@ -1327,3 +1314,11 @@ bool func_self(cell_t **cp, type_t t) {
 bool is_placeholder(cell_t *c) {
   return c && clear_ptr(c->func, 3) == func_placeholder;
 }
+
+bool entangle(cell_t *c, cell_t *a) {
+  return !bm_conflict(c->alt_set, a->alt_set) &&
+    (c->alt_set |= a->alt_set, true);
+}
+
+// note - write new reduce(c, n, t) that reduces c->arg[n], splits it, and entangles it,
+// returning the arg if successful, otherwise NULL

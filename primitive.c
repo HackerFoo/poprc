@@ -107,7 +107,6 @@ cell_t *_op2(intptr_t (*op)(intptr_t, intptr_t), cell_t *x, cell_t *y) {
 bool func_op2(cell_t **cp, type_rep_t t, intptr_t (*op)(intptr_t, intptr_t)) {
   cell_t *res = 0;
   cell_t *const c = clear_ptr(*cp, 3);
-  alt_set_t alt_set = 0;
 
   if(t == T_ANY || t == T_INT) t = T_INT;
   else goto fail;
@@ -116,21 +115,15 @@ bool func_op2(cell_t **cp, type_rep_t t, intptr_t (*op)(intptr_t, intptr_t)) {
      !reduce(&c->arg[1], t)) goto fail;
   c->alt = closure_split(c, 2);
   cell_t *p = c->arg[0], *q = c->arg[1];
-  if(bm_conflict(p->alt_set,
-		 q->alt_set)) goto fail;
-  alt_set = p->alt_set | q->alt_set;
-
-  if(is_var(p) || is_var(q)) {
-    res = var(t);
-  } else {
-    res = _op2(op, p, q);
-  }
-  res->alt_set = alt_set_ref(alt_set);
+  res = is_var(p) || is_var(q) ? var(t) : _op2(op, p, q);
+  if(!entangle(res, p) ||
+     !entangle(res, q)) goto fail;
   res->alt = c->alt;
   store_reduced(cp, res);
   return true;
 
  fail:
+  drop(res);
   fail(cp);
   return false;
 }
