@@ -67,7 +67,7 @@ void closure_set_ready(cell_t *c, bool r) {
   c->func = mark_ptr(clear_ptr(c->func, 1), r ? 0 : 1);
 }
 
-cell_t *dup_modify(cell_t *c, unsigned int n, cell_t *b) {
+cell_t *dup_alt(cell_t *c, unsigned int n, cell_t *b) {
   unsigned int i = 0, in = closure_in(c), out = 0;
   assert(n < in);
   cell_t *a = copy(c);
@@ -80,12 +80,13 @@ cell_t *dup_modify(cell_t *c, unsigned int n, cell_t *b) {
   // update deps
   for(; i < c->size; ++i) {
     if(a->arg[i]) a->arg[i] = dep(a);
+    c->arg[i]->alt = conc_alt(a->arg[i], c->arg[i]->alt);
     ++out;
   }
 
   a->arg[n] = b;
   a->n = out;
-  a->alt = 0;
+  c->alt = a;
   return a;
 }
 
@@ -93,20 +94,26 @@ void split_arg(cell_t *c, unsigned int n) {
   cell_t
     *a = c->arg[n],
     *p = c,
-    **pa, *q;
+    **pa;
   if(!a || !a->alt || is_marked(a, 1)) return;
   do {
     pa = &p->arg[n];
     if(*pa == a) {
       // insert a copy with the alt arg
-      q = dup_modify(p, n, ref((*pa)->alt));
-      q->alt = p->alt;
-      p->alt = q;
-      p = q->alt;
+      p = dup_alt(p, n, ref((*pa)->alt))->alt;
       // mark the arg
       *pa = mark_ptr(*pa, 1);
     } else p = p->alt;
   } while(p);
+}
+
+bool reduce_arg(cell_t *c,
+		unsigned int n,
+		alt_set_t *as,
+		type_t t) {
+  bool r = reduce(&c->arg[n], t);
+  split_arg(c, n);
+  return r && entangle(as, clear_ptr(c->arg[n], 1));
 }
 
 cell_t *closure_split(cell_t *c, unsigned int s) {
@@ -120,11 +127,16 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
   return c->alt;
 }
 
+void clear_flags(cell_t *c) {
+  int i = 0;
+  for(; i < c->size; ++i) {
+    c->arg[i] = clear_ptr(c->arg[i], 3);
+  }
+}
+
 cell_t *closure_split1(cell_t *c, int n) {
   if(!c->arg[n]->alt) return c->alt;
-  cell_t *a = dup_modify(c, n, ref(c->arg[n]->alt));
-  a->alt = c->alt;
-  return a;
+  return dup_alt(c, n, ref(c->arg[n]->alt));
 }
 
 bool reduce(cell_t **cp, type_rep_t t) {
@@ -1315,10 +1327,7 @@ bool is_placeholder(cell_t *c) {
   return c && clear_ptr(c->func, 3) == func_placeholder;
 }
 
-bool entangle(cell_t *c, cell_t *a) {
-  return !bm_conflict(c->alt_set, a->alt_set) &&
-    (c->alt_set |= a->alt_set, true);
+bool entangle(alt_set_t *as, cell_t *c) {
+  return !bm_conflict(*as, c->alt_set) &&
+    (*as |= c->alt_set, true);
 }
-
-// note - write new reduce(c, n, t) that reduces c->arg[n], splits it, and entangles it,
-// returning the arg if successful, otherwise NULL

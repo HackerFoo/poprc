@@ -107,18 +107,18 @@ cell_t *_op2(intptr_t (*op)(intptr_t, intptr_t), cell_t *x, cell_t *y) {
 bool func_op2(cell_t **cp, type_rep_t t, intptr_t (*op)(intptr_t, intptr_t)) {
   cell_t *res = 0;
   cell_t *const c = clear_ptr(*cp, 3);
+  alt_set_t alt_set = 0;
 
   if(t == T_ANY || t == T_INT) t = T_INT;
   else goto fail;
 
-  if(!reduce(&c->arg[0], t) ||
-     !reduce(&c->arg[1], t)) goto fail;
-  c->alt = closure_split(c, 2);
+  if(!reduce_arg(c, 0, &alt_set, t) ||
+     !reduce_arg(c, 1, &alt_set, t)) goto fail;
+  clear_flags(c);
   cell_t *p = c->arg[0], *q = c->arg[1];
   res = is_var(p) || is_var(q) ? var(t) : _op2(op, p, q);
-  if(!entangle(res, p) ||
-     !entangle(res, q)) goto fail;
   res->alt = c->alt;
+  res->alt_set = alt_set_ref(alt_set);
   store_reduced(cp, res);
   return true;
 
@@ -267,19 +267,15 @@ cell_t *build_eq(cell_t *x, cell_t *y) {
   return build21(func_eq, x, y);
 }
 
-/* compose doesn't handle placeholders correctly */
-/* [_] [+] . popr */
 bool func_compose(cell_t **cp, type_rep_t t) {
   cell_t *const c = clear_ptr(*cp, 3);
+  alt_set_t alt_set = 0;
 
-  if(!(reduce(&c->arg[0], T_LIST) &&
-       reduce(&c->arg[1], T_LIST))) goto fail;
-  c->alt = closure_split(c, 2);
-  if(bm_conflict(c->arg[0]->alt_set,
-		 c->arg[1]->alt_set)) goto fail;
+  if(!(reduce_arg(c, 0, &alt_set, T_LIST) &&
+       reduce_arg(c, 1, &alt_set, T_LIST))) goto fail;
+  clear_flags(c);
   cell_t *res = compose_nd(ref(c->arg[0]), ref(c->arg[1]));
-  res->alt_set = alt_set_ref(c->arg[0]->alt_set |
-			     c->arg[1]->alt_set);
+  res->alt_set = alt_set_ref(alt_set);
   drop(res->alt);
   res->alt = c->alt;
   store_reduced(cp, res);
@@ -295,15 +291,16 @@ cell_t *build_compose(cell_t *x, cell_t *y) {
 
 bool func_pushl(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
-  if(!(reduce(&c->arg[1], T_LIST))) goto fail;
-  c->alt = closure_split1(c, 1);
+  alt_set_t alt_set = 0;
+  if(!reduce_arg(c, 1, &alt_set, T_LIST)) goto fail;
+  clear_flags(c);
   cell_t *q = c->arg[1];
   bool rvar = is_var(q);
   cell_t *res = pushl_nd(ref(c->arg[0]), ref(q));
   if(rvar) res->type |= T_VAR;
   drop(res->alt);
   res->alt = c->alt;
-  res->alt_set = alt_set_ref(c->arg[1]->alt_set);
+  res->alt_set = alt_set_ref(alt_set);
   store_reduced(cp, res);
   return true;
 
@@ -317,23 +314,18 @@ cell_t *build_pushl(cell_t *x, cell_t *y) {
 
 bool func_pushr(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
-  if(!reduce(&c->arg[0], T_LIST)) goto fail;
-  cell_t *res;
-  c->alt = closure_split1(c, 0);
+  alt_set_t alt_set = 0;
+  if(!reduce_arg(c, 0, &alt_set, T_LIST)) goto fail;
+  clear_flags(c);
   cell_t *p = c->arg[0];
-  if(!type_match(T_LIST, p)) goto fail;
-  p->type |= T_LIST;
-  alt_set_t alt_set = c->arg[0]->alt_set;
-  alt_set_ref(alt_set);
-  alt_set_drop(c->arg[0]->alt_set);
 
   int n = list_size(p);
-  res = expand(ref(p), 1);
+  cell_t *res = expand(ref(p), 1);
   memmove(res->ptr+1, res->ptr, sizeof(cell_t *)*n);
   res->ptr[0] = ref(c->arg[1]);
+  res->alt_set = alt_set_ref(alt_set);
   drop(res->alt);
   res->alt = c->alt;
-  res->alt_set = alt_set;
 
   store_reduced(cp, res);
   return true;
@@ -358,25 +350,12 @@ cell_t *build_quote(cell_t *x) {
 
 bool func_popr(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
-  cell_t *res;
-  int elems;
-  cell_t *alt = 0;
   cell_t *d = c->arg[1];
-  if(!reduce(&c->arg[0], T_LIST)) goto fail;
-
-  if(c->arg[0]->alt) {
-    alt = closure_alloc(2);
-    alt->out = 1;
-    alt->func = func_popr;
-    alt->arg[0] = ref(c->arg[0]->alt);
-    alt->arg[1] = d ? dep(ref(alt)) : 0;
-    c->alt = alt;
-    if(d) d->alt = conc_alt(alt->arg[1], d->alt);
-  }
-
+  alt_set_t alt_set = 0;
+  if(!reduce_arg(c, 0, &alt_set, T_LIST)) goto fail;
+  clear_flags(c);
   cell_t *p = c->arg[0];
-  if(!is_list(p) ||
-     list_size(p) == 0) goto fail;
+  if(list_size(p) == 0) goto fail;
   if(is_placeholder(p->ptr[0])) {
     ++p->size;
     cell_t *h = expand_inplace_dep(p->ptr[0], 1); // *** no shift here
@@ -388,19 +367,19 @@ bool func_popr(cell_t **cp, type_rep_t t) {
     drop(c);
     d->func = func_id;
     d->arg[0] = ref(p->ptr[0]);
-    d->arg[1] = (cell_t *)alt_set_ref(c->arg[0]->alt_set);
+    d->arg[1] = (cell_t *)alt_set_ref(alt_set);
     c->arg[1] = p->ptr[0];
   }
 
   /* drop the right list element */
-  res = closure_alloc(closure_args(p)-1);
-  elems = list_size(res);
+  cell_t *res = closure_alloc(closure_args(p)-1);
+  int elems = list_size(res);
   res->type = T_LIST;
   int i;
   for(i = 0; i < elems; ++i)
     res->ptr[i] = ref(p->ptr[i+1]);
 
-  res->alt_set = alt_set_ref(p->alt_set);
+  res->alt_set = alt_set_ref(alt_set);
   res->alt = c->alt;
   store_reduced(cp, res);
   return true;
@@ -450,16 +429,14 @@ cell_t *build_alt2(cell_t *x, cell_t *y) {
 
 bool func_assert(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
-  if(!reduce(&c->arg[1], T_INT)) goto fail;
+  alt_set_t alt_set = 0;
+  if(!reduce_arg(c, 1, &alt_set, T_INT)) goto fail;
+  clear_flags(c);  
   cell_t *p = c->arg[1];
-  c->alt = closure_split1(c, 1);
-  if(!((type_match(T_INT, p) && p->val[0]) ||
-       is_var(p))) goto fail;
-  if(!reduce(&c->arg[0], t)) goto fail;
-
+  if(is_var(p) || !p->val[0]) goto fail;
   c->func = func_id;
   c->size = 1;
-  c->arg[1] = (cell_t *)alt_set_ref(p->alt_set);
+  c->arg[1] = (cell_t *)alt_set_ref(alt_set);
   drop(p);
   return false;
  fail:
@@ -490,12 +467,11 @@ bool func_id(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   alt_set_t alt_set = (alt_set_t)c->arg[1];
   if(alt_set || c->alt) {
-    if(!reduce(&c->arg[0], t)) goto fail;
-    c->alt = closure_split1(c, 0);
+    if(!reduce_arg(c, 0, &alt_set, t)) goto fail;
+    clear_flags(c);
     cell_t *p = c->arg[0];
     if(p->alt) alt_set_ref(alt_set);
-    if(bm_conflict(alt_set, c->arg[0]->alt_set)) goto fail;
-    store_reduced(cp, mod_alt(ref(p), c->alt, alt_set | p->alt_set));
+    store_reduced(cp, mod_alt(ref(p), c->alt, alt_set));
     alt_set_drop(alt_set);
     return true;
   } else {
@@ -563,7 +539,9 @@ void trace_expand_select(cell_t *c, cell_t *x, type_t t) {
 
 bool func_cut(cell_t **cp, type_rep_t t) {
   cell_t *c = *cp;
-  if(!reduce(&c->arg[0], t)) goto fail;
+  alt_set_t alt_set = 0;
+  if(!reduce_arg(c, 0, &alt_set, t)) goto fail;
+  clear_flags(c);
   cell_t *p = c->arg[0];
   bool v = is_var(p);
   cell_t *alt = p->alt;
@@ -586,16 +564,18 @@ cell_t *build_cut(cell_t *x) {
 bool func_select(cell_t **cp, type_rep_t t) {
   cell_t *c = *cp;
   cell_t *p;
-  if(reduce(&c->arg[0], t)) {
+  alt_set_t alt_set = 0;
+  if(reduce_arg(c, 0, &alt_set, t)) {
+    clear_flags(c);
     p = c->arg[0];
-  } else if(reduce(&c->arg[1], t)) {
+  } else if(reduce_arg(c, 1, &alt_set, t)) {
+    clear_flags(c);
     drop(c->arg[0]);
     p = c->arg[1];
     c->func = func_id;
     c->size = 1;
     c->arg[0] = p;
   } else goto fail;
-
   store_reduced(cp, ref(p));
   return true;
 
@@ -607,77 +587,12 @@ cell_t *build_select(cell_t *x, cell_t *y) {
   return build21(func_select, x, y);
 }
 
-cell_t *build(char *str, unsigned int n);
-
-bool peg_func(cell_t **cp, int N_IN, int N_OUT,
-	      char *src, size_t size) {
-  cell_t *c = clear_ptr(*cp, 3);   
-  cell_t *d[N_OUT-1];
-  int i;
-  FOREACH(d, i) {
-    d[i] = c->arg[N_IN+N_OUT-2-i];
-  }
-  cell_t *b = build(src, size);
-  cell_t *p = b->ptr[N_OUT-1];
-
-  i = N_IN;
-  while(i--) arg(&p, c->arg[i]);
-
-  closure_shrink(c, 1);
-  c->func = func_id;
-  c->arg[0] = ref(p);
-  c->arg[1] = 0;
-  c->arg[2] = 0;
-  FOREACH(d, i) {
-    if(d[i]) {
-      drop(c);
-      d[i]->func = func_id;
-      d[i]->arg[0] = ref(b->ptr[i]);
-      d[i]->arg[1] = 0;
-    }
-  }
-  drop(b);
-  return false;
-}
-
-bool peg_func2(cell_t **cp, int N_IN, int N_OUT, cell_t *f) {
-  cell_t *c = clear_ptr(*cp, 3);
-  cell_t *d[N_OUT-1];
-  int i;
-  FOREACH(d, i) {
-    d[i] = c->arg[N_IN+N_OUT-2-i];
-  }
-
-  cell_t *b = f;
-  cell_t *p = b->ptr[N_OUT-1];
-
-  i = N_IN;
-  while(i--) arg(&p, c->arg[i]);
-
-  closure_shrink(c, 1);
-  c->func = func_id;
-  c->arg[0] = ref(b->ptr[N_OUT-1]);
-  c->arg[1] = 0;
-  c->arg[2] = 0;
-  FOREACH(d, i) {
-    if(d[i]) {
-      drop(c);
-      d[i]->func = func_id;
-      d[i]->arg[0] = ref(b->ptr[i]);
-      d[i]->arg[1] = 0;
-    }
-  }
-  drop(b);
-  return false;
-}
-
 bool func_ift(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
-  if(!reduce(&c->arg[0], T_INT) ||
-     c->arg[0]->val[0] > 1) {
-    fail(cp);
-    return false;
-  }
+  alt_set_t alt_set = 0;
+  if(!reduce_arg(c, 0, &alt_set, T_INT)) goto fail;
+  clear_flags(c);
+  if(c->arg[0]->val[0] > 1) goto fail;
   if(is_var(c->arg[0])) {
     drop(c->arg[0]); // need to add assertions
     cell_t *res = id(c->arg[1]);
@@ -693,23 +608,10 @@ bool func_ift(cell_t **cp, type_rep_t t) {
     store_lazy(cp, c, c->arg[2]);
   }
   return false;
+ fail:
+  fail(cp);
+  return false;
 }
 cell_t *build_ift(cell_t *x, cell_t *y, cell_t *z) {
   return build31(func_ift, x, y, z);
 }
-
-#if 0
-bool func_fib(cell_t **cp, type_rep_t t) {
-  char src[] = "dup 2 < "
-    "[1 swap drop] "
-    "[dup 1- fib swap 2- fib +] "
-    "ifte pushl head";
-    /*
-    "[dup 2 >= ! swap force dup 1- fib "
-    "swap 2- fib + force swap drop] "
-    "[dup 2 < ! force drop] "
-    "| pushl head cut";
-    */
-  return peg_func(cp, 1, 1, src, sizeof(src));
-}
-#endif
