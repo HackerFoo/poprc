@@ -433,7 +433,7 @@ bool func_assert(cell_t **cp, type_rep_t t) {
   if(!reduce_arg(c, 1, &alt_set, T_INT)) goto fail;
   clear_flags(c);  
   cell_t *p = c->arg[1];
-  if(is_var(p) || !p->val[0]) goto fail;
+  if(!(is_var(p) || p->val[0])) goto fail;
   c->func = func_id;
   c->size = 1;
   c->arg[1] = (cell_t *)alt_set_ref(alt_set);
