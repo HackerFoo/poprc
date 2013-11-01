@@ -1,3 +1,11 @@
+ifndef $(USE_LINENOISE)
+#	USE_LINENOISE=y
+endif
+
+ifndef $(USE_LLVM)
+#	USE_LLVM=y
+endif
+
 ifeq ($(CC),cc)
 	CC=clang
 endif
@@ -13,10 +21,11 @@ ifeq ($(CC),clang)
 endif
 ifeq ($(CC),emcc)
 	CFLAGS = -Wall -DNDEBUG -DEMSCRIPTEN $(COPT)
+	USE_LINENOISE=n
+	USE_LLVM=n
 endif
 
 OBJS := $(patsubst %.c, build/%.o, $(wildcard *.c))
-OBJS += $(patsubst %.cpp, build/%.o, $(wildcard *.cpp))
 GEN := $(patsubst %.c, gen/%.h, $(wildcard *.c))
 
 .PHONY: all
@@ -29,10 +38,14 @@ ifeq ($(USE_LINENOISE),y)
 	CFLAGS += -DUSE_LINENOISE
 endif
 
+ifeq ($(USE_LLVM),y)
+	OBJS += build/llvm.o build/llvm_ext.o
+	CFLAGS += -DUSE_LLVM
+endif
+
 LLVM_COMPONENTS = core jit native
 LLVM_CONFIG = llvm-config-3.4
 LLVM_CXXFLAGS = $(shell $(LLVM_CONFIG) --cxxflags)
-#LLVM_INCLUDE = $(shell $(LLVM_CONFIG) --includedir)
 LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags)
 LLVM_LIBS = $(shell $(LLVM_CONFIG) --libs $(LLVM_COMPONENTS))
 

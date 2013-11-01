@@ -149,4 +149,8 @@ typedef enum trace_type_t {
   tt_compose_placeholders
 } trace_type_t;
 
+#ifdef EMSCRIPTEN
+#define strnlen(s, n) strlen(s)
+#endif
+
 #endif

@@ -28,7 +28,9 @@
 #include "gen/eval.h"
 #include "gen/primitive.h"
 #include "gen/test.h"
+#ifdef USE_LLVM
 #include "llvm.h"
+#endif
 
 word_entry_t user_word_table[64] = {{""}};
 const int user_word_table_length = LENGTH(user_word_table);
@@ -341,7 +343,7 @@ void show_func(cell_t *c) {
   int n = closure_args(c), i;
   char *s = function_token(c->func);
   if(!s) return;
-  if(is_placeholder(c)) printf(" ?%ld =", c - cells);
+  if(is_placeholder(c)) printf(" ?%ld =", (long int)(c - cells));
   for(i = 0; i < n; ++i) {
     cell_t *arg = c->arg[i];
     if(is_closure(arg)) {
@@ -357,7 +359,7 @@ void show_var(cell_t *c) {
     //printf(" ?l%ld =", c-cells);
     show_list(c);
   } else {
-    printf(" ?%c%ld", type_char(c->type), c - cells);
+    printf(" ?%c%ld", type_char(c->type), (long int)(c - cells));
   }
 }
 
@@ -506,6 +508,7 @@ void run_eval() {
 #endif
       break;
     } else if(strncmp(line, ":c ", 3) == 0) {
+#ifdef USE_LLVM
       cells_init();
       line += 3;
       while(*line == ' ') ++line;
@@ -513,6 +516,9 @@ void run_eval() {
       while(*line != ' ') ++line;
       *line++ = 0;
       compile_expr(name, line, strlen(line));
+#else
+      printf("Compilation is not supported.\n");
+#endif
     } else if(strncmp(line, ":a ", 3) == 0) {
       unsigned int in, out;
       cells_init();
@@ -727,7 +733,7 @@ cell_t *_build(char *str, char **p) {
 }
 
 void print_arg(cell_t *c, int i) {
-  printf("?_%ld <- arg(%d)\n", c-cells, i);
+  printf("?_%ld <- arg(%d)\n", (long int)(c - cells), i);
 }
 
 void eval(char *str, unsigned int n) {
@@ -764,6 +770,7 @@ bool get_arity(char *str, unsigned int n, unsigned int *in, unsigned int *out) {
   }
 }
 
+#ifdef USE_LLVM
 void compile_expr(char *name, char *str, unsigned int n) {
   word_entry_t *e = 
     lookup_linear(user_word_table,
@@ -787,6 +794,7 @@ void compile_expr(char *name, char *str, unsigned int n) {
   }
   e->func = compile(c, e->in, e->out);
 }
+#endif
 
 cell_t *remove_row(cell_t *c) {
   assert(is_list(c));
@@ -797,8 +805,7 @@ cell_t *remove_row(cell_t *c) {
 
 cell_t *remove_left(cell_t *c) {
   assert(is_list(c));
-  unsigned int n = list_size(c);
-  assert(n > 0);
+  assert(list_size(c) > 0);
   unsigned int size = calculate_cells(c->size - 1);
   cell_t *new = closure_alloc_cells(size);
   memcpy(new, c, sizeof(cell_t) * size);
@@ -822,6 +829,7 @@ void loadSource(char *path) {
       eval(line+1, strlen(line));
       check_free();
     } else if(line[0] == '=') {
+#ifdef USE_LLVM
       printf("%s", line);
       ++line;
       while(*line == ' ') ++line;
@@ -833,6 +841,9 @@ void loadSource(char *path) {
       *x = 0;
       cells_init();
       compile_expr(name, line, strlen(line));
+#else
+      printf("Compilation is not supported.\n");
+#endif
     }
   }
   fclose(f);
@@ -871,23 +882,23 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     */
     if(is_list(r)) break;
     if(is_dep(c)) {
-      printf("?%c%ld <- type\n", type_char(r->type), c - cells);
+      printf("?%c%ld <- type\n", type_char(r->type), (long int)(c - cells));
     } else {
       int i, n = closure_args(c), in = closure_in(c), out = closure_out(c);
       for(i = 0; i < in; ++i) trace(c->arg[i], 0, tt_force); // ***
-      if(!is_placeholder(c)) printf("?%c%ld ", type_char(r->type), c - cells);
+      if(!is_placeholder(c)) printf("?%c%ld ", type_char(r->type), (long int)(c - cells));
       for(i = 0; i < out; ++i) {
 	cell_t *a = c->arg[n - i - 1];
-	if(a) printf("?%ld ", a - cells);
+	if(a) printf("?%ld ", (long int)(a - cells));
 	else printf("__ ");
       }
       printf("<- ");
       for(i = 0; i < in; ++i) {
-	if(is_cell(c->arg[i])) printf("?%ld ", c->arg[i] - cells);
+	if(is_cell(c->arg[i])) printf("?%ld ", (long int)(c->arg[i] - cells));
 	else printf("?_ ");
       }
       if(is_placeholder(c)) {
-	printf("f[?%ld]\n", c-cells);
+	printf("f[?%ld]\n", (long int)(c - cells));
       } else {
 	printf("%s\n", function_name(c->func));
       }
@@ -901,9 +912,9 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     if(c->type & T_TRACED) break;
     if(is_any(c)) break;
     if(is_list(c) && is_placeholder(c->ptr[0])) {
-      printf("?f%ld <- ?l%ld head\n", c->ptr[0]-cells, c-cells);
+      printf("?f%ld <- ?l%ld head\n", (long int)(c->ptr[0] - cells), (long int)(c - cells));
     } else {
-      printf("?%c%ld <-", type_char(c->type), c-cells);
+      printf("?%c%ld <-", type_char(c->type), (long int)(c - cells));
       if(is_var(c)) printf(" type");
       else show_one(c);
       printf("\n");
@@ -911,16 +922,20 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     c->type |= T_TRACED;
     break;
   case tt_select:
-    printf("?%c%ld <- ?%ld ?%ld select\n", type_char(c->type), c-cells, c-cells, r-cells);
+    printf("?%c%ld <- ?%ld ?%ld select\n",
+	   type_char(c->type),
+	   (long int)(c - cells),
+	   (long int)(c - cells),
+	   (long int)(r - cells));
     break;
   case tt_copy:
-    printf("?f%ld <- ?%ld\n", c-cells, r-cells);
+    printf("?f%ld <- ?%ld\n", (long int)(c - cells), (long int)(r - cells));
     break;
   case tt_compose_placeholders:
     printf("?f%ld <- ?%ld ?%ld compose_placeholders\n",
-	   c-cells,
-	   ((cell_t **)r)[0]-cells,
-	   ((cell_t **)r)[1]-cells);
+	   (long int)(c - cells),
+	   (long int)(((cell_t **)r)[0] - cells),
+	   (long int)(((cell_t **)r)[1] - cells));
     break;
   }
 }

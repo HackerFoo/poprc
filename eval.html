@@ -1,5 +1,5 @@
 <head>
-  <title>pegc</title>
+  <title>popr</title>
   <script src="js/jquery-1.7.1.min.js"></script>
   <script src="js/jquery.terminal-min.js"></script>
   <script>
@@ -24,7 +24,7 @@
 <script>
   cells_init = Module.cwrap('cells_init', 'void', []);
 
-  function eval_peg(str) {
+  function eval_popr(str) {
     Module.ccall('eval', 'undefined', ['string', 'number'], [str, str.length]);
   }
 
@@ -32,14 +32,14 @@
 
   function interpret(command, term) {
     if(command != '') {
-      eval_peg(command);
+      eval_popr(command);
     }
   }
 
   var termOptions = {
     prompt: ': ',
-    greetings: "        ,-----------------, \n" +
-               " ,------' Peg Interpreter '------,\n" +
+    greetings: "       ,------------------,\n" +
+               " ,-----' Popr Interpreter '------,\n" +
                " | [[;#f00;;]Copyright 2013 Dustin DeWeese] |\n" +
                " '-------------------------------'\n",
     onClear: function(term) {
