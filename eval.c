@@ -224,8 +224,9 @@ void show_val(cell_t *c) {
 
 bool reduce_list(cell_t *c) {
   bool b = true;
+  unsigned int n = list_size(c);
   cell_t **p = c->ptr;
-  while(*p && is_closure(*p)) {
+  while(n--) {
     *p = reduce_alt(*p);
     b &= *p != 0;
     if(*p == 0) *p = &fail_cell;

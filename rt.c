@@ -22,7 +22,6 @@
 #include "gen/primitive.h"
 
 // make sure &cells > 255
-void *data_start;
 #ifdef EMSCRIPTEN
 cell_t cells[1<<10] = {};
 #else
@@ -50,7 +49,7 @@ void set_trace(void (*t)(cell_t *, cell_t *, trace_type_t)) {
 // #define CHECK_CYCLE
 
 bool is_data(void *p) {
-  return p >= data_start;
+  return (intptr_t)p > 255;
 }
 
 bool is_cell(void *p) {
@@ -199,8 +198,6 @@ bool check_cycle() {
 #endif
 
 void cells_init() {
-  data_start = (void *)cells;
-  if((void *)&fail_cell < data_start) data_start = &fail_cell;
   int i;
   const unsigned int n = LENGTH(cells)-1;
 
@@ -217,7 +214,6 @@ void cells_init() {
   cells[n-1].next = &cells[0];
 
   cells_ptr = &cells[0];
-  assert(check_cycle());
   alt_cnt = 0;
 }
 
@@ -233,7 +229,6 @@ void cell_alloc(cell_t *c) {
   measure.alloc_cnt++;
   if(++measure.current_alloc_cnt > measure.max_alloc_cnt)
     measure.max_alloc_cnt = measure.current_alloc_cnt;
-  assert(check_cycle());
 }
 
 cell_t *closure_alloc(int args) {
@@ -267,7 +262,6 @@ cell_t *closure_alloc_cells(int size) {
   }
 
   memset(c, 0, sizeof(cell_t)*size);
-  assert(check_cycle());
   return c;
 }
 
@@ -314,7 +308,6 @@ void closure_shrink(cell_t *c, int s) {
     cells_ptr->prev->next = &c[s];
     c[size-1].next = cells_ptr;
     cells_ptr->prev = &c[size-1];
-    assert(check_cycle());
     measure.current_alloc_cnt -= size - s;
   }
 }
@@ -410,8 +403,6 @@ cell_t *expand(cell_t *c, unsigned int s) {
   int cn_p = calculate_cells(n);
   int cn = calculate_cells(n + s);
   if(!c->n && cn == cn_p) {
-    //drop(c->alt); //***
-    //c->alt = 0;
     c->size += s;
     return c;
   } else {
@@ -559,7 +550,7 @@ int closure_next_child(cell_t *c) {
   return is_offset(c->arg[0]) ? (intptr_t)c->arg[0] : 0;
 }
 
-/* arg is destructive to c */
+/* arg is destructive to *cp */
 void arg(cell_t **cp, cell_t *a) {
   cell_t *c = *cp;
   assert(is_closure(c) && is_closure(a));
@@ -572,9 +563,11 @@ void arg(cell_t **cp, cell_t *a) {
     c = expand_inplace(c, 1);
     c->arg[0] = a;
   } else if(!is_data(c->arg[i])) {
-    c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
+    c->arg[0] = (cell_t *)(intptr_t)
+      (i - (closure_is_ready(a) ? 1 : 0));
     c->arg[i] = a;
-    if(i == 0 && !is_placeholder(c)) closure_set_ready(c, closure_is_ready(a));
+    if(i == 0 && !is_placeholder(c))
+      closure_set_ready(c, closure_is_ready(a));
   } else {
     arg(&c->arg[i], a);
     if(!is_placeholder(c) &&
@@ -924,7 +917,6 @@ cell_t *pushl_val(intptr_t x, cell_t *c) {
   return c;
 }
 
-/* b is a list, a is a closure */
 cell_t *pushl_nd(cell_t *a, cell_t *b) {
   assert(is_closure(a) &&
 	 is_closure(b) && is_list(b));
@@ -1109,8 +1101,6 @@ void _modify_new(cell_t *r, bool u) {
 }
 
 /* first sweep of modify_copy */
-/* c is the cell to be modified, or if 0, */
-/* alts will be modified */
 cell_t *_modify_copy1(cell_t *c, cell_t *r, bool up) {
   if(!is_closure(r)) return 0;
 
