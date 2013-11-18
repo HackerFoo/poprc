@@ -33,8 +33,8 @@ cell_t fail_cell = {
   .func = func_reduced,
   .type = T_FAIL
 };
-#define BM_SIZE (sizeof(intptr_t) * 4)
-#define ALT_SET_IDS BM_SIZE
+#define AS_SIZE (sizeof(intptr_t) * 4)
+#define ALT_SET_IDS AS_SIZE
 uintptr_t alt_live[sizeof(intptr_t) * 4];
 
 measure_t measure, saved_measure;
@@ -936,27 +936,27 @@ cell_t *pushl_nd(cell_t *a, cell_t *b) {
   return e;
 }
 
-intptr_t bm(int k, int v) {
-  assert(k < BM_SIZE);
-  return ((intptr_t)1 << (k + BM_SIZE)) |
-    (((intptr_t)v & 1) << k);
+alt_set_t as(unsigned int k, unsigned int v) {
+  assert(k < AS_SIZE);
+  return ((alt_set_t)1 << (k + AS_SIZE)) |
+    (((alt_set_t)v & 1) << k);
 }
 
-alt_set_t bm_intersect(alt_set_t a, alt_set_t b) {
+alt_set_t as_intersect(alt_set_t a, alt_set_t b) {
   return a & b;
 }
 
-alt_set_t bm_union(alt_set_t a, alt_set_t b) {
+alt_set_t as_union(alt_set_t a, alt_set_t b) {
   return a | b;
 }
 
-alt_set_t bm_conflict(alt_set_t a, alt_set_t b) {
-  return ((a & b) >> BM_SIZE) &
-    ((a ^ b) & (((intptr_t)1<<BM_SIZE)-1));
+alt_set_t as_conflict(alt_set_t a, alt_set_t b) {
+  return ((a & b) >> AS_SIZE) &
+    ((a ^ b) & (((alt_set_t)1<<AS_SIZE)-1));
 }
 
-alt_set_t bm_overlap(alt_set_t a, alt_set_t b) {
-  return a | (b & (a >> BM_SIZE));
+alt_set_t as_overlap(alt_set_t a, alt_set_t b) {
+  return a | (b & (a >> AS_SIZE));
 }
 
 void set_bit(uint8_t *m, unsigned int x) {
@@ -1322,6 +1322,6 @@ bool is_placeholder(cell_t *c) {
 }
 
 bool entangle(alt_set_t *as, cell_t *c) {
-  return !bm_conflict(*as, c->alt_set) &&
+  return !as_conflict(*as, c->alt_set) &&
     (*as |= c->alt_set, true);
 }

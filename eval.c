@@ -249,7 +249,7 @@ bool any_conflicts(cell_t **p, unsigned int size) {
   int i;
   uintptr_t t, as = 0;
   for(i = 0; i < size; ++i) {
-    if(bm_conflict(as, t = p[i]->alt_set)) return true;
+    if(as_conflict(as, t = p[i]->alt_set)) return true;
     as |= t;
   }
   return false;

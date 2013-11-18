@@ -401,9 +401,9 @@ bool func_alt(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   uint8_t a = new_alt_id(2);
   cell_t *r0 = id(c->arg[0]);
-  r0->arg[1] = (cell_t *)bm(a, 0);
+  r0->arg[1] = (cell_t *)as(a, 0);
   cell_t *r1 = id(c->arg[1]);
-  r1->arg[1] = (cell_t *)bm(a, 1);
+  r1->arg[1] = (cell_t *)as(a, 1);
   r0->alt = r1;
   store_lazy(cp, c, r0);
   return false;
