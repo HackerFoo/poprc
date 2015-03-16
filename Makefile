@@ -41,13 +41,12 @@ endif
 ifeq ($(USE_LLVM),y)
 	OBJS += build/llvm.o build/llvm_ext.o
 	CFLAGS += -DUSE_LLVM
+	LLVM_COMPONENTS = core mcjit native
+	LLVM_CONFIG = llvm-config
+	LLVM_CXXFLAGS = $(shell $(LLVM_CONFIG) --cxxflags)
+	LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags)
+	LLVM_LIBS = $(shell $(LLVM_CONFIG) --libs $(LLVM_COMPONENTS)) -lz -lcurses
 endif
-
-LLVM_COMPONENTS = core jit native
-LLVM_CONFIG = llvm-config-3.4
-LLVM_CXXFLAGS = $(shell $(LLVM_CONFIG) --cxxflags)
-LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags)
-LLVM_LIBS = $(shell $(LLVM_CONFIG) --libs $(LLVM_COMPONENTS))
 
 debug:
 	echo $(OBJS:.o=.d)

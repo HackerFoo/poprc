@@ -32,14 +32,14 @@
 #include "llvm.h"
 #endif
 
-word_entry_t user_word_table[64] = {{""}};
-const int user_word_table_length = LENGTH(user_word_table);
+word_entry_t user_word_table[64] = {{"", NULL, 0, 0}};
+const unsigned int user_word_table_length = LENGTH(user_word_table);
 word_entry_t *new_user_word_entry = user_word_table;
 
 char *show_alt_set(uintptr_t as) {
   static char out[sizeof(as)*4+1];
   char *p = out;
-  int n = sizeof(as)*4;
+  unsigned int n = sizeof(as)*4;
   uintptr_t set_mask = 1l << (sizeof(as) * 8 - 1);
   uintptr_t val_mask = 1l << (sizeof(as) * 4 - 1);
   while(!(as & set_mask) && n) {
@@ -91,9 +91,8 @@ char *function_name(reduce_t *f) {
 }
 
 char *function_token(reduce_t *f) {
-  int i;
   f = clear_ptr(f, 1);
-  for(i = 0; i < word_table_length; ++i) {
+  for(unsigned int i = 0; i < word_table_length; ++i) {
     if(word_table[i].func == f)
       return word_table[i].name;
   }
@@ -114,7 +113,7 @@ void make_graph(char *path, cell_t *c) {
 }
 
 void make_graph_all(char *path) {
-  int i;
+  unsigned int i;
   FILE *f = fopen(path, "w");
   fprintf(f, "digraph g {\n"
 	     "graph [\n"
@@ -136,10 +135,10 @@ void graph_cell(FILE *f, cell_t *c) {
   long unsigned int node = c - cells;
   if(check_bit(visited, node)) return;
   set_bit(visited, node);
-  int n = closure_args(c);
-  int i, s = calculate_cells(n);
+  unsigned int n = closure_args(c);
+  unsigned int s = calculate_cells(n);
 
-  for(i = 0; i < s; ++i) set_bit(visited, node+i);
+  for(unsigned int i = 0; i < s; ++i) set_bit(visited, node+i);
 
   /* print node attributes */
   fprintf(f, "node%ld [\nlabel =<", node);
@@ -168,7 +167,7 @@ void graph_cell(FILE *f, cell_t *c) {
 	fprintf(f, "<tr><td bgcolor=\"yellow\">val: %ld</td></tr>", (long int)c->val[n]);
     }
   } else {
-    for(i = 0; i < n; i++) {
+    for(unsigned int i = 0; i < n; i++) {
       fprintf(f, "<tr><td port=\"arg%d\"><font color=\"lightgray\">%p</font></td></tr>", i, c->arg[i]);
     }
     if(c->func == func_id) {
@@ -197,7 +196,7 @@ void graph_cell(FILE *f, cell_t *c) {
       }
     }
   } else {
-    for(i = 0; i < n; i++) {
+    for(unsigned int i = 0; i < n; i++) {
       cell_t *arg = clear_ptr(c->arg[i], 1);
       if(is_cell(arg)) {
 	fprintf(f, "node%ld:arg%d -> node%ld:top%s;\n",
@@ -236,9 +235,8 @@ bool reduce_list(cell_t *c) {
 }
 
 bool any_alt_overlap(cell_t **p, unsigned int size) {
-  int i;
   uintptr_t t, as = 0;
-  for(i = 0; i < size; ++i) {
+  for(unsigned int i = 0; i < size; ++i) {
     if((t = p[i]->alt_set) & as) return true;
     as |= t;
   }
@@ -246,9 +244,8 @@ bool any_alt_overlap(cell_t **p, unsigned int size) {
 }
 
 bool any_conflicts(cell_t **p, unsigned int size) {
-  int i;
   uintptr_t t, as = 0;
-  for(i = 0; i < size; ++i) {
+  for(unsigned int i = 0; i < size; ++i) {
     if(as_conflict(as, t = p[i]->alt_set)) return true;
     as |= t;
   }

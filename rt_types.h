@@ -103,7 +103,7 @@ typedef enum char_class_t {
 
 typedef struct measure_t {
   unsigned int reduce_cnt, alloc_cnt, max_alloc_cnt;
-  signed int current_alloc_cnt;
+  unsigned int current_alloc_cnt;
   clock_t start, stop;
   uint8_t alt_cnt;
 } measure_t;

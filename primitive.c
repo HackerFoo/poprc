@@ -65,7 +65,7 @@ word_entry_t word_table[] = {
   {"|", func_alt, 2, 1},
   {"||", func_alt2, 2, 1}
 };
-const int word_table_length = LENGTH(word_table);
+const unsigned int word_table_length = LENGTH(word_table);
 
 builder_entry_t builder_table[] = {
   {"add", build_add, 2, 1},
@@ -90,14 +90,13 @@ builder_entry_t builder_table[] = {
   {"select", build_select, 2, 1},
 };
 
-const int builder_table_length = LENGTH(builder_table);
+const unsigned int builder_table_length = LENGTH(builder_table);
 
 cell_t *_op2(intptr_t (*op)(intptr_t, intptr_t), cell_t *x, cell_t *y) {
-  int size = min(val_size(x),
+  unsigned int size = min(val_size(x),
 		 val_size(y));
   cell_t *res = vector(size);
-  int i;
-  for(i = 0; i < size; ++i)
+  for(unsigned int i = 0; i < size; ++i)
     res->val[i] = op(x->val[i],
 		     y->val[i]);
   res->size = size + 1;
@@ -373,10 +372,9 @@ bool func_popr(cell_t **cp, type_rep_t t) {
 
   /* drop the right list element */
   cell_t *res = closure_alloc(closure_args(p)-1);
-  int elems = list_size(res);
+  unsigned int elems = list_size(res);
   res->type = T_LIST;
-  int i;
-  for(i = 0; i < elems; ++i)
+  for(unsigned int i = 0; i < elems; ++i)
     res->ptr[i] = ref(p->ptr[i+1]);
 
   res->alt_set = alt_set_ref(alt_set);
