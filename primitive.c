@@ -39,55 +39,55 @@
 
 /* must be in ascending order */
 word_entry_t word_table[] = {
-  {"!", func_assert, 2, 1},
-  {"'", func_quote, 1, 1},
-  {"*", func_mul, 2, 1},
-  {"+", func_add, 2, 1},
-  {"-", func_sub, 2, 1},
-  {".", func_compose, 2, 1},
-  {"<", func_lt, 2, 1},
-  {"<=", func_lte, 2, 1},
-  {"==", func_eq, 2, 1},
-  {">", func_gt, 2, 1},
-  {">=", func_gte, 2, 1},
-  {"_", func_placeholder, 0, 1},
-  {"cut", func_cut, 1, 1},
-  {"drop", func_drop, 2, 1},
-  {"dup", func_dup, 1, 2},
-  //{"fib", func_fib, 1, 1},
-  {"id", func_id, 1, 1},
-  {"ift", func_ift, 3, 1},
-  {"popr", func_popr, 1, 2},
-  {"pushl", func_pushl, 2, 1},
-  {"pushr", func_pushr, 2, 1},
-  {"select", func_select, 2, 1},
-  {"swap", func_swap, 2, 2},
-  {"|", func_alt, 2, 1},
-  {"||", func_alt2, 2, 1}
+  {"!",      func_assert,      2, 1},
+  {"'",      func_quote,       1, 1},
+  {"*",      func_mul,         2, 1},
+  {"+",      func_add,         2, 1},
+  {"-",      func_sub,         2, 1},
+  {".",      func_compose,     2, 1},
+  {"<",      func_lt,          2, 1},
+  {"<=",     func_lte,         2, 1},
+  {"==",     func_eq,          2, 1},
+  {">",      func_gt,          2, 1},
+  {">=",     func_gte,         2, 1},
+  {"_",      func_placeholder, 0, 1},
+  {"cut",    func_cut,         1, 1},
+  {"drop",   func_drop,        2, 1},
+  {"dup",    func_dup,         1, 2},
+  //{"fib",  func_fib,         1, 1},
+  {"id",     func_id,          1, 1},
+  {"ift",    func_ift,         3, 1},
+  {"popr",   func_popr,        1, 2},
+  {"pushl",  func_pushl,       2, 1},
+  {"pushr",  func_pushr,       2, 1},
+  {"select", func_select,      2, 1},
+  {"swap",   func_swap,        2, 2},
+  {"|",      func_alt,         2, 1},
+  {"||",     func_alt2,        2, 1}
 };
 const unsigned int word_table_length = LENGTH(word_table);
 
 builder_entry_t builder_table[] = {
-  {"add", build_add, 2, 1},
-  {"mul", build_mul, 2, 1},
-  {"sub", build_sub, 2, 1},
-  {"gt", build_gt, 2, 1},
-  {"gte", build_gte, 2, 1},
-  {"lt", build_lt, 2, 1},
-  {"lte", build_lte, 2, 1},
-  {"eq", build_eq, 2, 1},
-  {"compose", build_compose, 2, 1},
-  {"pushl", build_pushl, 2, 1},
-  {"pushr", build_pushr, 2, 1},
-  {"popr", build_popr, 1, 2},
-  {"quote", build_quote, 1, 1},
-  {"alt", build_alt, 2, 1},
-  {"alt2", build_alt2, 2, 1},
-  {"assert", build_assert, 2, 1},
-  {"id", build_id, 1, 1},
-  {"ift", build_ift, 3, 1},
-  {"cut", build_cut, 1, 1},
-  {"select", build_select, 2, 1},
+  {"add",     (void *)build_add,     2, 1},
+  {"mul",     (void *)build_mul,     2, 1},
+  {"sub",     (void *)build_sub,     2, 1},
+  {"gt",      (void *)build_gt,      2, 1},
+  {"gte",     (void *)build_gte,     2, 1},
+  {"lt",      (void *)build_lt,      2, 1},
+  {"lte",     (void *)build_lte,     2, 1},
+  {"eq",      (void *)build_eq,      2, 1},
+  {"compose", (void *)build_compose, 2, 1},
+  {"pushl",   (void *)build_pushl,   2, 1},
+  {"pushr",   (void *)build_pushr,   2, 1},
+  {"popr",    (void *)build_popr,    1, 2},
+  {"quote",   (void *)build_quote,   1, 1},
+  {"alt",     (void *)build_alt,     2, 1},
+  {"alt2",    (void *)build_alt2,    2, 1},
+  {"assert",  (void *)build_assert,  2, 1},
+  {"id",      (void *)build_id,      1, 1},
+  {"ift",     (void *)build_ift,     3, 1},
+  {"cut",     (void *)build_cut,     1, 1},
+  {"select",  (void *)build_select,  2, 1},
 };
 
 const unsigned int builder_table_length = LENGTH(builder_table);
@@ -266,7 +266,7 @@ cell_t *build_eq(cell_t *x, cell_t *y) {
   return build21(func_eq, x, y);
 }
 
-bool func_compose(cell_t **cp, type_rep_t t) {
+bool func_compose(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *const c = clear_ptr(*cp, 3);
   alt_set_t alt_set = 0;
 
@@ -288,7 +288,7 @@ cell_t *build_compose(cell_t *x, cell_t *y) {
   return build21(func_compose, x, y);
 }
 
-bool func_pushl(cell_t **cp, type_rep_t t) {
+bool func_pushl(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   alt_set_t alt_set = 0;
   if(!reduce_arg(c, 1, &alt_set, T_LIST)) goto fail;
@@ -311,7 +311,7 @@ cell_t *build_pushl(cell_t *x, cell_t *y) {
   return build21(func_pushl, x, y);
 }
 
-bool func_pushr(cell_t **cp, type_rep_t t) {
+bool func_pushr(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   alt_set_t alt_set = 0;
   if(!reduce_arg(c, 0, &alt_set, T_LIST)) goto fail;
@@ -337,7 +337,7 @@ cell_t *build_pushr(cell_t *x, cell_t *y) {
   return build21(func_pushr, x, y);
 }
 
-bool func_quote(cell_t **cp, type_rep_t t) {
+bool func_quote(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t res = { .size = 2, .ptr = {ref(c->arg[0])} };
   store_reduced(cp, &res);
@@ -347,7 +347,7 @@ cell_t *build_quote(cell_t *x) {
   return build11(func_quote, x);
 }
 
-bool func_popr(cell_t **cp, type_rep_t t) {
+bool func_popr(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = c->arg[1];
   alt_set_t alt_set = 0;
@@ -395,7 +395,7 @@ two_cells_t build_popr(cell_t *x) {
   return build12(func_popr, x);
 }
 
-bool func_alt(cell_t **cp, type_rep_t t) {
+bool func_alt(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   uint8_t a = new_alt_id(2);
   cell_t *r0 = id(c->arg[0]);
@@ -410,7 +410,7 @@ cell_t *build_alt(cell_t *x, cell_t *y) {
   return build21(func_alt, x, y);
 }
 
-bool func_alt2(cell_t **cp, type_rep_t t) {
+bool func_alt2(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *r0 = id(ref(c->arg[0]));
   r0->arg[1] = 0;
@@ -425,7 +425,7 @@ cell_t *build_alt2(cell_t *x, cell_t *y) {
   return build21(func_alt2, x, y);
 }
 
-bool func_assert(cell_t **cp, type_rep_t t) {
+bool func_assert(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   alt_set_t alt_set = 0;
   if(!reduce_arg(c, 1, &alt_set, T_INT)) goto fail;
@@ -487,7 +487,7 @@ cell_t *build_id(cell_t *x) {
   return build11(func_id, x);
 }
 
-bool func_drop(cell_t **cp, type_rep_t t) {
+bool func_drop(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *p = ref(c->arg[0]);
   drop(c);
@@ -495,7 +495,7 @@ bool func_drop(cell_t **cp, type_rep_t t) {
   return false;
 }
 
-bool func_swap(cell_t **cp, type_rep_t t) {
+bool func_swap(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = c->arg[2];
   c->func = func_id;
@@ -518,7 +518,7 @@ cell_t *id(cell_t *c) {
   return i;
 }
 
-bool func_dup(cell_t **cp, type_rep_t t) {
+bool func_dup(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = c->arg[1];
   if(d) store_lazy_dep(c, d, ref(c->arg[0]));
@@ -585,7 +585,7 @@ cell_t *build_select(cell_t *x, cell_t *y) {
   return build21(func_select, x, y);
 }
 
-bool func_ift(cell_t **cp, type_rep_t t) {
+bool func_ift(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   alt_set_t alt_set = 0;
   if(!reduce_arg(c, 0, &alt_set, T_INT)) goto fail;

@@ -55,7 +55,7 @@ char *show_alt_set(uintptr_t as) {
 }
 
 char *function_name(reduce_t *f) {
-  f = clear_ptr(f, 1);
+  f = (reduce_t *)clear_ptr(f, 1);
   //  int i;
 # define CASE(n) if(f == func_##n) return #n
   CASE(add);
@@ -91,7 +91,7 @@ char *function_name(reduce_t *f) {
 }
 
 char *function_token(reduce_t *f) {
-  f = clear_ptr(f, 1);
+  f = (reduce_t *)clear_ptr(f, 1);
   for(unsigned int i = 0; i < word_table_length; ++i) {
     if(word_table[i].func == f)
       return word_table[i].name;
@@ -455,7 +455,7 @@ void measure_display() {
 }
 
 #ifndef EMSCRIPTEN
-int main(int argc, char *argv[]) {
+int main(UNUSED int argc, UNUSED char *argv[]) {
   run_eval();
   measure_display();
   return 0;
@@ -543,12 +543,12 @@ void run_eval() {
 
 #ifdef USE_LINENOISE
 void completion(const char *buf, linenoiseCompletions *lc) {
-  int n = strlen(buf);
+  unsigned int n = strlen(buf);
   char comp[n+sizeof_field(word_entry_t, name)];
   char *insert = comp + n;
   strncpy(comp, buf, sizeof(comp));
   char *tok = rtok(comp, insert);
-  int tok_len = strnlen(tok, sizeof_field(word_entry_t, name));
+  unsigned int tok_len = strnlen(tok, sizeof_field(word_entry_t, name));
   if(!tok) return;
   word_entry_t *e = lookup_word(tok);
   if(e) {
@@ -706,7 +706,7 @@ cell_t *build(char *str, unsigned int n) {
   return _build(str, &p);
 }
 
-void argf_noop(cell_t *c, int i) {}
+void argf_noop(UNUSED cell_t *c, UNUSED int i) {}
 unsigned int fill_args(cell_t *r, void (*argf)(cell_t *, int)) {
   if(!argf) argf = argf_noop;
   int n = list_size(r);
@@ -848,12 +848,12 @@ void loadSource(char *path) {
 }
 
 char *show_type(type_rep_t t) {
-#define case(x) case x: return #x
+#define _case(x) case x: return #x
   switch(t & T_EXCLUSIVE) {
-  case(T_ANY);
-  case(T_INT);
-  case(T_IO);
-  case(T_LIST);
+  _case(T_ANY);
+  _case(T_INT);
+  _case(T_IO);
+  _case(T_LIST);
   default: return "???";
   }
 }

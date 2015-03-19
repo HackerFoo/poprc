@@ -153,4 +153,6 @@ typedef enum trace_type_t {
 #define strnlen(s, n) strlen(s)
 #endif
 
+#define UNUSED __attribute__((unused))
+
 #endif

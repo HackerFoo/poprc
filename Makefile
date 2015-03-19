@@ -1,9 +1,9 @@
 ifndef $(USE_LINENOISE)
-#	USE_LINENOISE=y
+	USE_LINENOISE=y
 endif
 
 ifndef $(USE_LLVM)
-#	USE_LLVM=y
+	USE_LLVM=y
 endif
 
 ifeq ($(CC),cc)
@@ -25,7 +25,9 @@ ifeq ($(CC),emcc)
 	USE_LLVM=n
 endif
 
-OBJS := $(patsubst %.c, build/%.o, $(wildcard *.c))
+BUILD := build/$(CC)
+
+OBJS := $(patsubst %.c, $(BUILD)/%.o, $(wildcard *.c))
 GEN := $(patsubst %.c, gen/%.h, $(wildcard *.c))
 
 .PHONY: all
@@ -34,12 +36,12 @@ all: eval
 include Makefile.gen
 
 ifeq ($(USE_LINENOISE),y)
-	OBJS += build/linenoise.o
+	OBJS += $(BUILD)/linenoise.o
 	CFLAGS += -DUSE_LINENOISE
 endif
 
 ifeq ($(USE_LLVM),y)
-	OBJS += build/llvm.o build/llvm_ext.o
+	OBJS += $(BUILD)/llvm.o $(BUILD)/llvm_ext.o
 	CFLAGS += -DUSE_LLVM
 	LLVM_COMPONENTS = core mcjit native
 	LLVM_CONFIG = llvm-config
@@ -57,37 +59,38 @@ debug:
 eval: $(OBJS)
 	$(CXX) $(OBJS) $(LLVM_LDFLAGS) $(LLVM_LIBS) -o eval
 
+eval.js: EMCC_OBJS := $(patsubst %.c, build/emcc/%.o, $(wildcard *.c))
 eval.js:
-	make CC=emcc $(OBJS)
-	emcc $(OBJS) -o eval.js -s EXPORTED_FUNCTIONS="['_eval', '_cells_init']"
+	make CC=emcc $(EMCC_OBJS)
+	emcc $(EMCC_OBJS) -o eval.js -s EXPORTED_FUNCTIONS="['_eval', '_cells_init']"
 
 # pull in dependency info for *existing* .o files
 -include $(OBJS:.o=.d)
 
-build/llvm_ext.o: llvm_ext.cpp llvm_ext.h
-	@mkdir -p build
-	$(CXX) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -O0 -Igen llvm_ext.cpp -o build/llvm_ext.o
+$(BUILD)/llvm_ext.o: llvm_ext.cpp llvm_ext.h
+	@mkdir -p $(BUILD)
+	$(CXX) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -O0 llvm_ext.cpp -o $(BUILD)/llvm_ext.o
 
-build/llvm.o: llvm.cpp llvm.h llvm_ext.h rt_types.h
-	@mkdir -p build
-	$(CXX) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -O0 -Igen llvm.cpp -o build/llvm.o
+$(BUILD)/llvm.o: llvm.cpp llvm.h llvm_ext.h rt_types.h
+	@mkdir -p $(BUILD)
+	$(CXX) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -O0 llvm.cpp -o $(BUILD)/llvm.o
 
 # compile and generate dependency info;
-build/%.o: %.c
-	@mkdir -p build
-	@gcc -MM $(CFLAGS) -Igen $*.c -MG -MP -MT build/$*.o -MF build/$*.d
-	make -f Makefile.gen OBJS="$(OBJS)" build/$*.o > /dev/null
-	$(CC) -c $(CFLAGS) -Igen $*.c -o build/$*.o
+$(BUILD)/%.o: %.c
+	@mkdir -p $(BUILD)
+	@gcc -MM $(CFLAGS) $*.c -MG -MP -MT $(BUILD)/$*.o -MF $(BUILD)/$*.d
+	make -f Makefile.gen OBJS="$(OBJS)" $(BUILD)/$*.o > /dev/null
+	$(CC) -c $(CFLAGS) $*.c -o $(BUILD)/$*.o
 
 .SECONDARY: $(GEN)
 
-build/linenoise.o: linenoise/linenoise.c linenoise/linenoise.h
-	@mkdir -p build
-	$(CC) $(CFLAGS) -c linenoise/linenoise.c -o build/linenoise.o
+$(BUILD)/linenoise.o: linenoise/linenoise.c linenoise/linenoise.h
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -c linenoise/linenoise.c -o $(BUILD)/linenoise.o
 
 .PHONY: scan
 scan: clean
-	make build/linenoise.o
+	make $(BUILD)/linenoise.o
 	scan-build make
 
 # remove compilation products

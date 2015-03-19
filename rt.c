@@ -39,7 +39,7 @@ uintptr_t alt_live[sizeof(intptr_t) * 4];
 
 measure_t measure, saved_measure;
 
-void trace_noop(cell_t *c, cell_t *r, trace_type_t tt) {};
+void trace_noop(UNUSED cell_t *c, UNUSED cell_t *r, UNUSED trace_type_t tt) {}
 void (*trace)(cell_t *, cell_t *, trace_type_t) = trace_noop;
 
 void set_trace(void (*t)(cell_t *, cell_t *, trace_type_t)) {
@@ -67,7 +67,7 @@ bool closure_is_ready(cell_t *c) {
 
 void closure_set_ready(cell_t *c, bool r) {
   assert(is_closure(c));
-  c->func = mark_ptr(clear_ptr(c->func, 1), r ? 0 : 1);
+  c->func = (reduce_t *)mark_ptr(clear_ptr(c->func, 1), r ? 0 : 1);
 }
 
 cell_t *dup_alt(cell_t *c, unsigned int n, cell_t *b) {
@@ -845,7 +845,7 @@ cell_t *dep(cell_t *c) {
   return n;
 }
 
-bool func_dep(cell_t **cp, type_rep_t t) {
+bool func_dep(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
@@ -1001,7 +1001,7 @@ void *lookup(void *table, unsigned int width, unsigned int rows, const char *key
   int key_length = strnlen(key, width);
   while(high > low) {
     pivot = low + ((high - low) >> 1);
-    entry = table + width * pivot;
+    entry = (uint8_t *)table + width * pivot;
     int c = strncmp(key, entry, key_length);
     if(c == 0) {
       /* keep looking for a lower key */
@@ -1014,11 +1014,11 @@ void *lookup(void *table, unsigned int width, unsigned int rows, const char *key
 }
 
 void *lookup_linear(void *table, unsigned int width, unsigned int rows, const char *key) {
-  void *entry = table;
+  uint8_t *entry = table;
   unsigned int rows_left = rows;
   unsigned int key_length = strnlen(key, width);
-  while(rows_left-- && *(uint8_t *)entry) {
-    if(!strncmp(key, entry, key_length)) return entry;
+  while(rows_left-- && *entry) {
+    if(!strncmp(key, (void *)entry, key_length)) return entry;
     entry += width;
   }
   return NULL;
@@ -1201,7 +1201,7 @@ alt_set_t alt_set_drop(alt_set_t alt_set) {
   return alt_set;
 }
 
-uint8_t new_alt_id(uintptr_t n) {
+uint8_t new_alt_id(UNUSED uintptr_t n) {
   /*
   uint8_t r = 0;
   while(r < ALT_SET_IDS) {
@@ -1264,7 +1264,7 @@ type_rep_t tr_arg(type_rep_t t, unsigned int n) {
 }
 */
 
-bool func_placeholder(cell_t **cp, type_t t) {
+bool func_placeholder(cell_t **cp, UNUSED type_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   unsigned int in = closure_in(c), n = closure_args(c);
   for(unsigned int i = 0; i < in; ++i) {
@@ -1288,7 +1288,7 @@ bool func_placeholder(cell_t **cp, type_t t) {
   return false;
 }
 
-bool func_self(cell_t **cp, type_t t) {
+bool func_self(cell_t **cp, UNUSED type_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   unsigned int in = closure_in(c), n = closure_args(c);
   for(unsigned int i = 0; i < in; ++i) {
@@ -1313,7 +1313,7 @@ bool func_self(cell_t **cp, type_t t) {
 }
 
 bool is_placeholder(cell_t *c) {
-  return c && clear_ptr(c->func, 3) == func_placeholder;
+  return c && clear_ptr(c->func, 3) == (void *)func_placeholder;
 }
 
 bool entangle(alt_set_t *as, cell_t *c) {
