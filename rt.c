@@ -1024,6 +1024,8 @@ void *lookup_linear(void *table, unsigned int width, unsigned int rows, const ch
   return NULL;
 }
 
+// return a copy of c rooted at r that can be modified without
+// affecting else while sharing as much as possible
 cell_t *modify_copy(cell_t *c, cell_t *r) {
   cell_t *new = _modify_copy1(c, r, true);
   if(new && new != r) {

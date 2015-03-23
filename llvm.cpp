@@ -1,3 +1,8 @@
+#include <string>
+#include <vector>
+#include <map>
+
+
 #include <llvm/Pass.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/ADT/SmallVector.h>
@@ -103,7 +108,7 @@ void FunctionBuilder::call(cell_t *c) {
   unsigned int ix = c - cells;
   auto f = get_builder(c);
   std::vector<Value *> f_args;
-  for(int i = 0; i < closure_in(c); ++i) {
+  for(unsigned int i = 0; i < closure_in(c); ++i) {
     unsigned int a = c->arg[i] - cells;
     f_args.push_back(reg(a));
     --cnt[a];
@@ -126,7 +131,7 @@ void FunctionBuilder::call(cell_t *c) {
 void FunctionBuilder::callSelf(cell_t *c) {
   unsigned int ix = c - cells;
   std::vector<unsigned int> in, out;
-  int i = 0;
+  unsigned int i = 0;
   for(; i < closure_in(c); ++i)
     in.push_back(c->arg[i] - cells);
   out.push_back(ix);
@@ -284,7 +289,7 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   }
 }
 
-void compile_simple_arg(cell_t *c, int x) {
+void compile_simple_arg(cell_t *c, UNUSED int x) {
   auto &args = fb->args;
   args.insert(args.begin(), c - cells);
 }
@@ -297,13 +302,13 @@ void FunctionBuilder::build_closure
   Value *c = CallInst::Create(ext::closure_alloc(module),
 			      ConstantInt::get(ctx, APInt(32, in.size() + out.size() - 1)),
 			      "", block);
-  for(int i = 0; i < in.size(); ++i) {
+  for(unsigned int i = 0; i < in.size(); ++i) {
     set_arg(c, i, reg(in[i]), block);
     --cnt[in[i]];
   }
   regs[out[0]] = c;
   cnt[out[0]] = 1;
-  for(int i = 1; i < out.size(); ++i) {
+  for(unsigned int i = 1; i < out.size(); ++i) {
     auto d = CallInst::Create(ext::dep(module), c, "", block);
     set_arg(c, i + in.size(), d, block);
     regs[out[i]] = d;
@@ -392,7 +397,7 @@ Value *FunctionBuilder::build_tree(cell_t *c) {
       setup_CallInst(call, NOUNWIND);
       regs[ix] = r = call;
       cnt[ix] = 1;
-      for(int i = 0; i < list_size(c); ++i) {
+      for(unsigned int i = 0; i < list_size(c); ++i) {
 	set_arg(call, i+1, build_tree(c->ptr[i]), block);
 	--cnt[c->ptr[i] - cells];
       }
@@ -444,7 +449,7 @@ Function *FunctionBuilder::compile_simple() {
     ret = wrap_alts(root->ptr[0]);
   }
 
-  for(int i = 0; i < out; ++i) {
+  for(unsigned int i = 0; i < out; ++i) {
     cell_t *p = root->ptr[i];
     while(p) {
       --cnt[p - cells];
@@ -633,7 +638,7 @@ reduce_t *compile(cell_t *c, unsigned int in, unsigned int out) {
   engine->addGlobalMapping(ext::make_list(mod), (void *)&make_list);
   engine->addGlobalMapping(ext::closure_set_ready(mod), (void *)&closure_set_ready);
 
-  for(int i = 0; i < builder_table_length; ++i) {
+  for(unsigned int i = 0; i < builder_table_length; ++i) {
     engine->addGlobalMapping(
       fb.get_cell_func("build_" + std::string(builder_table[i].name), 
 		       builder_table[i].in,

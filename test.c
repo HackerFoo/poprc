@@ -25,7 +25,7 @@
 #include "gen/primitive.h"
 
 void alloc_test() {
-  int i, j;
+  unsigned int i, j;
   cell_t *a[30];
   for(j = 0; j < 50; j++) {
     for(i = 0; i < LENGTH(a); i++) {
@@ -38,7 +38,7 @@ void alloc_test() {
 }
 
 void check_free() {
-  int i;
+  unsigned int i;
   for(i = 0; i < LENGTH(cells); i++) {
     if(is_closure(&cells[i])) {
       printf("LEAK: %d (%ld)\n", i, (long int)cells[i].n);

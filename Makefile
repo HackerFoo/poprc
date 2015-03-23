@@ -10,14 +10,12 @@ ifeq ($(CC),cc)
 	CC=clang
 endif
 ifeq ($(CC),gcc)
-	CXX=g++
-	CFLAGS=-falign-functions=4 -Wall -g $(COPT)
-	CXXFLAGS=-falign-functions=4 -Wall -g $(COPT)
+	CFLAGS = -falign-functions=4 -Wall -g $(COPT)
+	CXXFLAGS = -xc++ -falign-functions=4 -Wall -g $(COPT)
 endif
 ifeq ($(CC),clang)
-	CXX=clang++
-	CFLAGS=-Wall -g $(COPT)
-	CXXFLAGS=-Wall -g -std=c++11 $(COPT)
+	CFLAGS = -Wall -Wextra -pedantic -g -std=c11 $(COPT)
+	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -g -std=c++11 $(COPT)
 endif
 ifeq ($(CC),emcc)
 	CFLAGS = -Wall -DNDEBUG -DEMSCRIPTEN $(COPT)
@@ -45,8 +43,8 @@ ifeq ($(USE_LLVM),y)
 	CFLAGS += -DUSE_LLVM
 	LLVM_COMPONENTS = core mcjit native
 	LLVM_CONFIG = llvm-config
-	LLVM_CXXFLAGS = $(shell $(LLVM_CONFIG) --cxxflags)
-	LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags)
+	LLVM_CXXFLAGS = $(shell $(LLVM_CONFIG) --cxxflags | sed -e s/-I/-isystem\ /g)
+	LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags) -stdlib=libc++ -lstdc++
 	LLVM_LIBS = $(shell $(LLVM_CONFIG) --libs $(LLVM_COMPONENTS)) -lz -lcurses
 endif
 
@@ -57,7 +55,7 @@ debug:
 
 # link
 eval: $(OBJS)
-	$(CXX) $(OBJS) $(LLVM_LDFLAGS) $(LLVM_LIBS) -o eval
+	$(CC) $(OBJS) $(LLVM_LDFLAGS) $(LLVM_LIBS) -o eval
 
 eval.js: EMCC_OBJS := $(patsubst %.c, build/emcc/%.o, $(wildcard *.c))
 eval.js:
@@ -69,16 +67,16 @@ eval.js:
 
 $(BUILD)/llvm_ext.o: llvm_ext.cpp llvm_ext.h
 	@mkdir -p $(BUILD)
-	$(CXX) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -O0 llvm_ext.cpp -o $(BUILD)/llvm_ext.o
+	$(CC) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -O0 llvm_ext.cpp -o $(BUILD)/llvm_ext.o
 
 $(BUILD)/llvm.o: llvm.cpp llvm.h llvm_ext.h rt_types.h
 	@mkdir -p $(BUILD)
-	$(CXX) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -O0 llvm.cpp -o $(BUILD)/llvm.o
+	$(CC) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -O0 llvm.cpp -o $(BUILD)/llvm.o
 
 # compile and generate dependency info;
 $(BUILD)/%.o: %.c
 	@mkdir -p $(BUILD)
-	@gcc -MM $(CFLAGS) $*.c -MG -MP -MT $(BUILD)/$*.o -MF $(BUILD)/$*.d
+	@$(CC) -MM $(CFLAGS) $*.c -MG -MP -MT $(BUILD)/$*.o -MF $(BUILD)/$*.d
 	make -f Makefile.gen OBJS="$(OBJS)" $(BUILD)/$*.o > /dev/null
 	$(CC) -c $(CFLAGS) $*.c -o $(BUILD)/$*.o
 
