@@ -4,7 +4,6 @@
 
 
 #include <llvm/Pass.h>
-#include <llvm/IR/LegacyPassManager.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/Verifier.h>
 //#include <llvm/Assembly/PrintModulePass.h>
@@ -21,7 +20,7 @@
 #include <llvm/Support/FormattedStream.h>
 #include <llvm/Support/MathExtras.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
-#include <llvm/ExecutionEngine/JIT.h>
+#include <llvm/ExecutionEngine/MCJIT.h>
 #include <llvm/Support/TargetSelect.h>
 #include <algorithm>
 #include <iostream>
@@ -609,15 +608,16 @@ static ExecutionEngine *engine = 0;
 reduce_t *compile(cell_t *c, unsigned int in, unsigned int out) {
   InitializeNativeTarget();
   InitializeNativeTargetAsmPrinter();
+  InitializeNativeTargetAsmParser();
   LLVMContext &ctx = getGlobalContext();
   Module *mod = new Module("module", ctx);
-  //std::unique_ptr<Module> pmod(mod);
+  std::unique_ptr<Module> pmod(mod);
   ext::define_types(mod);
   FunctionBuilder fb("compiled_func", c, in, out, mod);
   Function *f = fb.compile_simple();
   Function *lf = wrap_func(f);
   std::string err = "";
-  engine = EngineBuilder(mod)
+  engine = EngineBuilder(std::move(pmod))
     .setErrorStr(&err)
     .setEngineKind(EngineKind::JIT)
     .create();
@@ -648,6 +648,8 @@ reduce_t *compile(cell_t *c, unsigned int in, unsigned int out) {
 
   f->dump();
   //lf->dump();
+
+  engine->finalizeObject();
 
   return (reduce_t *)engine->getPointerToFunction(lf);
 }

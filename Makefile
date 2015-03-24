@@ -41,7 +41,7 @@ endif
 ifeq ($(USE_LLVM),y)
 	OBJS += $(BUILD)/llvm.o $(BUILD)/llvm_ext.o
 	CFLAGS += -DUSE_LLVM
-	LLVM_COMPONENTS = core jit native
+	LLVM_COMPONENTS = core mcjit native
 	LLVM_CONFIG = llvm-config
 	LLVM_CXXFLAGS = $(shell $(LLVM_CONFIG) --cxxflags | sed -e s/-I/-isystem\ /g)
 	LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags)
