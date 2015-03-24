@@ -21,7 +21,7 @@
 #include <llvm/Support/FormattedStream.h>
 #include <llvm/Support/MathExtras.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
-#include <llvm/ExecutionEngine/MCJIT.h>
+#include <llvm/ExecutionEngine/JIT.h>
 #include <llvm/Support/TargetSelect.h>
 #include <algorithm>
 #include <iostream>
@@ -611,13 +611,13 @@ reduce_t *compile(cell_t *c, unsigned int in, unsigned int out) {
   InitializeNativeTargetAsmPrinter();
   LLVMContext &ctx = getGlobalContext();
   Module *mod = new Module("module", ctx);
-  std::unique_ptr<Module> pmod(mod);
+  //std::unique_ptr<Module> pmod(mod);
   ext::define_types(mod);
   FunctionBuilder fb("compiled_func", c, in, out, mod);
   Function *f = fb.compile_simple();
   Function *lf = wrap_func(f);
   std::string err = "";
-  engine = EngineBuilder(std::move(pmod))
+  engine = EngineBuilder(mod)
     .setErrorStr(&err)
     .setEngineKind(EngineKind::JIT)
     .create();
