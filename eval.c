@@ -21,13 +21,21 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
-#ifdef USE_LINENOISE
+
+#if defined(USE_READLINE)
+#include <readline/readline.h>
+#include <readline/history.h>
+#elif defined(USE_LINENOISE)
 #include "linenoise/linenoise.h"
+#else
+#define RAW_LINE
 #endif
+
 #include "gen/rt.h"
 #include "gen/eval.h"
 #include "gen/primitive.h"
 #include "gen/test.h"
+
 #ifdef USE_LLVM
 #include "llvm.h"
 #endif
@@ -473,19 +481,22 @@ void run_eval() {
   linenoiseSetCompletionCallback(completion);
   linenoiseHistoryLoad(HISTORY_FILE);
   while((line_raw = linenoise(": ")))
+#elif USE_READLINE
+  initialize_readline();
+  while((line_raw = readline(": ")))
 #else
   char buf[1024];
   while(printf(": "),
         (line_raw = fgets(buf, sizeof(buf), stdin)))
 #endif
   {
-#ifndef USE_LINENOISE
+#ifdef RAW_LINE
     char *p = line_raw;
     while(*p && *p != '\n') ++p;
     *p = 0;
 #endif
     if(line_raw[0] == '\0') {
-#ifdef USE_LINENOISE
+#ifndef RAW_LINE
       free(line_raw);
 #endif
       continue;
@@ -501,7 +512,7 @@ void run_eval() {
       if(line[3])
 	loadSource(&line[3]);
     } else if(strcmp(line, ":q") == 0) {
-#ifdef USE_LINENOISE
+#ifndef RAW_LINE
       free(line_raw);
 #endif
       break;
@@ -525,9 +536,11 @@ void run_eval() {
 	printf("%d -> %d\n", in, out);
       }
     } else {
-#ifdef USE_LINENOISE
+#if defined(USE_LINENOISE)
       linenoiseHistoryAdd(line);
       linenoiseHistorySave(HISTORY_FILE);
+#elif defined(USE_READLINE)
+      add_history(line);
 #endif
       cells_init();
       measure_start();
@@ -535,7 +548,7 @@ void run_eval() {
       measure_stop();
       check_free();
     }
-#ifdef USE_LINENOISE
+#ifndef RAW_LINE
     free(line_raw);
 #endif
   }
@@ -564,6 +577,62 @@ void completion(const char *buf, linenoiseCompletions *lc) {
     } while(strncmp(e->name, tok, tok_len) == 0);
   }
 }
+#endif
+
+#ifdef USE_READLINE
+char **completion(char *buf, UNUSED int start, UNUSED int end)
+{
+    unsigned int current_match = 1;
+    char **matches = NULL;
+
+    unsigned int n = strlen(buf);
+    char *comp = malloc(n + sizeof_field(word_entry_t, name) + 1);
+    memcpy(comp, buf, n);
+    char *insert = comp + n;
+    *insert = 0;
+    char *tok = rtok(comp, insert);
+    if(tok) {
+        word_entry_t *e = lookup_word(tok);
+        if(e) {
+            matches = malloc(sizeof(char *) * 16);
+            memset(matches, 0, sizeof(char *) * 16);
+
+            unsigned int tok_len = strnlen(tok, sizeof_field(word_entry_t, name));
+            char *copy = malloc(sizeof_field(word_entry_t, name));
+            memcpy(copy, tok, tok_len+1);
+            matches[0] = copy;
+
+            /* add completions */
+            do {
+                unsigned int entry_len = strnlen(e->name, sizeof_field(word_entry_t, name));
+                if(entry_len > tok_len) {
+                    memcpy(tok, e->name, entry_len);
+                    comp[entry_len] = 0;
+
+                    char *copy = malloc(sizeof_field(word_entry_t, name));
+                    memcpy(copy, comp, entry_len+1);
+                    matches[current_match++] = copy;
+                }
+                e++;
+            } while(strncmp(e->name, tok, tok_len) == 0 && current_match < 16);
+
+            /* if there is just one match, make it the substitute */
+            if(current_match == 2) {
+                strncpy(matches[0], matches[1], sizeof_field(word_entry_t, name));
+            }
+        }
+    }
+
+    free(comp);
+    return matches;
+}
+
+void initialize_readline()
+{
+  rl_readline_name = "Poprc";
+  rl_attempted_completion_function = (CPPFunction *)completion;
+}
+
 #endif
 
 bool is_num(char *str) {

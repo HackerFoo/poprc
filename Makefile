@@ -33,6 +33,11 @@ all: eval
 
 include Makefile.gen
 
+ifeq ($(USE_READLINE),y)
+	LIBS += -lreadline
+	CFLAGS += -DUSE_READLINE
+endif
+
 ifeq ($(USE_LINENOISE),y)
 	OBJS += $(BUILD)/linenoise.o
 	CFLAGS += -DUSE_LINENOISE
@@ -44,8 +49,8 @@ ifeq ($(USE_LLVM),y)
 	LLVM_COMPONENTS = core mcjit native
 	LLVM_CONFIG = llvm-config
 	LLVM_CXXFLAGS = $(shell $(LLVM_CONFIG) --cxxflags | sed -e s/-I/-isystem\ /g)
-	LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags)
-	LLVM_LIBS = $(shell $(LLVM_CONFIG) --libs --system-libs $(LLVM_COMPONENTS)) -lstdc++
+	LDFLAGS += $(shell $(LLVM_CONFIG) --ldflags)
+	LIBS += $(shell $(LLVM_CONFIG) --libs --system-libs $(LLVM_COMPONENTS)) -lstdc++
 endif
 
 debug:
@@ -55,7 +60,7 @@ debug:
 
 # link
 eval: $(OBJS)
-	$(CC) $(OBJS) $(LLVM_LDFLAGS) $(LLVM_LIBS) -o eval
+	$(CC) $(OBJS) $(LDFLAGS) $(LIBS) -o eval
 
 eval.js: EMCC_OBJS := $(patsubst %.c, build/emcc/%.o, $(wildcard *.c))
 eval.js:
