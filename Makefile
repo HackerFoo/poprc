@@ -1,5 +1,9 @@
 ifndef $(USE_LINENOISE)
-	USE_LINENOISE=y
+	USE_LINENOISE=n
+endif
+
+ifndef $(USE_READLINE)
+	USE_READLINE=y
 endif
 
 ifndef $(USE_LLVM)
@@ -32,6 +36,10 @@ GEN := $(patsubst %.c, gen/%.h, $(wildcard *.c))
 all: eval
 
 include Makefile.gen
+
+ifneq "$(wildcard /opt/local/lib)" ""
+	LIBS += -L/opt/local/lib
+endif
 
 ifeq ($(USE_READLINE),y)
 	LIBS += -lreadline
