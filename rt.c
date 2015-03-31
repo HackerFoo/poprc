@@ -48,19 +48,19 @@ void set_trace(void (*t)(cell_t *, cell_t *, trace_type_t)) {
 
 // #define CHECK_CYCLE
 
-bool is_data(void *p) {
+bool is_data(void const *p) {
   return (intptr_t)p > 255;
 }
 
-bool is_cell(void *p) {
+bool is_cell(void const *p) {
   return p >= (void *)&cells && p < (void *)(&cells+1);
 }
 
-bool is_closure(void *p) {
+bool is_closure(void const *p) {
   return is_data(p) && ((cell_t *)p)->func;
 }
 
-bool closure_is_ready(cell_t *c) {
+bool closure_is_ready(cell_t const *c) {
   assert(is_closure(c));
   return !is_marked(c->func, 1);
 }
@@ -198,7 +198,7 @@ bool check_cycle() {
 #endif
 
 void cells_init() {
-  const unsigned int n = LENGTH(cells)-1;
+  unsigned int const n = LENGTH(cells)-1;
 
   // zero the cells
   memset(&cells, 0, sizeof(cells));
@@ -280,7 +280,7 @@ unsigned int calculate_val_size(unsigned int n) {
   return calc_size(val, n);
 }
 
-unsigned int closure_cells(cell_t *c) {
+unsigned int closure_cells(cell_t const *c) {
   return calculate_cells(closure_args(c));
 }
 
@@ -314,7 +314,7 @@ void closure_free(cell_t *c) {
   closure_shrink(c, 0);
 }
 
-bool type_match(type_t t, cell_t *c) {
+bool type_match(type_t t, cell_t const *c) {
   type_t ta = t & T_EXCLUSIVE;
   type_t tb = c->type & T_EXCLUSIVE;
   return ta == T_ANY || tb == T_ANY || ta == tb;
@@ -497,12 +497,12 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
   return e;
 }
 
-bool is_reduced(cell_t *c) {
+bool is_reduced(cell_t const *c) {
   return c && c->func == func_reduced;
 }
 
 // max offset is 255
-bool is_offset(cell_t *c) {
+bool is_offset(cell_t const *c) {
   return !((uintptr_t)c & ~0xff);
 }
 
@@ -519,15 +519,15 @@ cell_t *func(reduce_t *f, unsigned int in, unsigned int out) {
 
 #define cell_offset(f) ((cell_t **)&(((cell_t *)0)->f))
 
-unsigned int list_size(cell_t *c) {
+unsigned int list_size(cell_t const *c) {
   return c->size ? c->size - 1 : 0;
 }
 
-unsigned int val_size(cell_t *c) {
+unsigned int val_size(cell_t const *c) {
   return c->size ? c->size - 1 : 0;
 }
 
-unsigned int closure_args(cell_t *c) {
+unsigned int closure_args(cell_t const *c) {
   assert(is_closure(c));
   return c->size;
 }
@@ -605,11 +605,11 @@ void close_placeholders(cell_t *c) {
   }
 }
 
-bool is_fail(cell_t *c) {
+bool is_fail(cell_t const *c) {
   return (c->type & T_FAIL) != 0;
 }
 
-bool is_any(cell_t *c) {
+bool is_any(cell_t const *c) {
   return (c->type & T_EXCLUSIVE) == T_ANY;
 }
 
@@ -698,7 +698,7 @@ cell_t *_arg_nd(cell_t *c, cell_t *a, cell_t *r) {
   return t;
 }
 
-cell_t *copy(cell_t *c) {
+cell_t *copy(cell_t const *c) {
   unsigned int size = closure_cells(c);
   cell_t *new = closure_alloc_cells(size);
   memcpy(new, c, size * sizeof(cell_t));
@@ -783,19 +783,19 @@ cell_t *refn(cell_t *c, unsigned int n) {
   return c;
 }
 
-bool is_nil(cell_t *c) {
+bool is_nil(cell_t const *c) {
   return !c;
 }
 
-bool is_list(cell_t *c) {
+bool is_list(cell_t const *c) {
   return c && is_reduced(c) && (c->type & T_EXCLUSIVE) == T_LIST;
 }
 
-bool is_var(cell_t *c) {
+bool is_var(cell_t const *c) {
   return c && is_reduced(c) && (c->type & T_VAR) != 0;
 }
 
-bool is_weak(cell_t *p, cell_t *c) {
+bool is_weak(cell_t const *p, cell_t const *c) {
   return c && is_dep(c) && (!c->arg[0] || c->arg[0] == p);
 }
 
@@ -856,7 +856,7 @@ bool func_dep(cell_t **cp, UNUSED type_rep_t t) {
   return false;
 }
 
-bool is_dep(cell_t *c) {
+bool is_dep(cell_t const *c) {
   return c->func == func_dep;
 }
 
@@ -995,7 +995,7 @@ bool func_collect(cell_t *c) {
 }
 */
 
-void *lookup(void *table, unsigned int width, unsigned int rows, const char *key) {
+void *lookup(void *table, unsigned int width, unsigned int rows, char const *key) {
   unsigned int low = 0, high = rows, pivot;
   void *entry, *ret = 0;
   int key_length = strnlen(key, width);
@@ -1013,7 +1013,7 @@ void *lookup(void *table, unsigned int width, unsigned int rows, const char *key
   return ret;
 }
 
-void *lookup_linear(void *table, unsigned int width, unsigned int rows, const char *key) {
+void *lookup_linear(void *table, unsigned int width, unsigned int rows, char const *key) {
   uint8_t *entry = table;
   unsigned int rows_left = rows;
   unsigned int key_length = strnlen(key, width);
@@ -1314,7 +1314,7 @@ bool func_self(cell_t **cp, UNUSED type_t t) {
   return false;
 }
 
-bool is_placeholder(cell_t *c) {
+bool is_placeholder(cell_t const *c) {
   return c && clear_ptr(c->func, 3) == (void *)func_placeholder;
 }
 

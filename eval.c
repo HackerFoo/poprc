@@ -41,10 +41,10 @@
 #endif
 
 word_entry_t user_word_table[64] = {{"", NULL, 0, 0}};
-const unsigned int user_word_table_length = LENGTH(user_word_table);
+unsigned int const user_word_table_length = LENGTH(user_word_table);
 word_entry_t *new_user_word_entry = user_word_table;
 
-char *show_alt_set(uintptr_t as) {
+char const *show_alt_set(uintptr_t as) {
   static char out[sizeof(as)*4+1];
   char *p = out;
   unsigned int n = sizeof(as)*4;
@@ -62,7 +62,7 @@ char *show_alt_set(uintptr_t as) {
   return out;
 }
 
-char *function_name(reduce_t *f) {
+char const *function_name(reduce_t *f) {
   f = (reduce_t *)clear_ptr(f, 1);
   //  int i;
 # define CASE(n) if(f == func_##n) return #n
@@ -98,7 +98,7 @@ char *function_name(reduce_t *f) {
 # undef CASE
 }
 
-char *function_token(reduce_t *f) {
+char const *function_token(reduce_t *f) {
   f = (reduce_t *)clear_ptr(f, 1);
   for(unsigned int i = 0; i < word_table_length; ++i) {
     if(word_table[i].func == f)
@@ -108,7 +108,7 @@ char *function_token(reduce_t *f) {
 }
 
 /* Graphviz graph generation */
-void make_graph(char *path, cell_t *c) {
+void make_graph(char const *path, cell_t const *c) {
   FILE *f = fopen(path, "w");
   fprintf(f, "digraph g {\n"
 	     "graph [\n"
@@ -120,11 +120,11 @@ void make_graph(char *path, cell_t *c) {
   fclose(f);
 }
 
-void make_graph_all(char *path) {
+void make_graph_all(char const *path) {
   unsigned int i;
   FILE *f = fopen(path, "w");
   fprintf(f, "digraph g {\n"
-	     "graph [\n"
+          "graph [\n"
 	     "rankdir = \"RL\"\n"
 	     "];\n");
   zero(visited);
@@ -137,7 +137,7 @@ void make_graph_all(char *path) {
 
 uint8_t visited[(LENGTH(cells)+7)/8] = {0};
 
-void graph_cell(FILE *f, cell_t *c) {
+void graph_cell(FILE *f, cell_t const *c) {
   c = clear_ptr(c, 3);
   if(!is_closure(c) || !is_cell(c)) return;
   long unsigned int node = c - cells;
@@ -215,7 +215,7 @@ void graph_cell(FILE *f, cell_t *c) {
   }
 }
 
-void show_val(cell_t *c) {
+void show_val(cell_t const *c) {
   assert(c && type_match(T_INT, c));
   int n = val_size(c);
   switch(n) {
@@ -242,7 +242,7 @@ bool reduce_list(cell_t *c) {
   return b;
 }
 
-bool any_alt_overlap(cell_t **p, unsigned int size) {
+bool any_alt_overlap(cell_t const *const *p, unsigned int size) {
   uintptr_t t, as = 0;
   for(unsigned int i = 0; i < size; ++i) {
     if((t = p[i]->alt_set) & as) return true;
@@ -251,7 +251,7 @@ bool any_alt_overlap(cell_t **p, unsigned int size) {
   return false;
 }
 
-bool any_conflicts(cell_t **p, unsigned int size) {
+bool any_conflicts(cell_t const *const *p, unsigned int size) {
   uintptr_t t, as = 0;
   for(unsigned int i = 0; i < size; ++i) {
     if(as_conflict(as, t = p[i]->alt_set)) return true;
@@ -260,21 +260,23 @@ bool any_conflicts(cell_t **p, unsigned int size) {
   return false;
 }
 
-void show_list(cell_t *c) {
+void show_list(cell_t const *c) {
   assert(c && is_list(c));
   int n = list_size(c), i;
   if(n) {
-    if(any_alt_overlap(c->ptr, n)) {
-      cell_t *p = 0, *m1 = 0, *m2 = 0;
+    if(any_alt_overlap((cell_t const *const *)c->ptr, n)) {
+      cell_t *p = 0, *free_this = 0;
+      cell_t const *m1 = 0, *m2 = 0;
 
       /* find first match */
-      if(!any_conflicts(c->ptr, n)) {
+      if(!any_conflicts((cell_t const *const *)c->ptr, n)) {
 	m1 = c;
       } else {
 	p = copy(c);
-	while(count(p->ptr, c->ptr, n) >= 0) {
-	  if(!any_conflicts(p->ptr, n)) {
+	while(count((cell_t const **)p->ptr, (cell_t const *const *)c->ptr, n) >= 0) {
+	  if(!any_conflicts((cell_t const *const *)p->ptr, n)) {
 	    m1 = p;
+            free_this = p;
 	    break;
 	  }
 	}
@@ -286,8 +288,8 @@ void show_list(cell_t *c) {
       } else {
 	/* find second match */
 	p = copy(m1);
-	while(count(p->ptr, c->ptr, n) >= 0) {
-	  if(!any_conflicts(p->ptr, n)) {
+	while(count((cell_t const **)p->ptr, (cell_t const *const *)c->ptr, n) >= 0) {
+	  if(!any_conflicts((cell_t const *const *)p->ptr, n)) {
 	    m2 = p;
 	    break;
 	  }
@@ -297,15 +299,15 @@ void show_list(cell_t *c) {
  	printf(" [");
 	i = n; while(i--) show_one(m1->ptr[i]);
 	printf(" ]");
-	if(m1 != c) closure_free(m1);
+	closure_free(free_this);
 	if(m2) {
 	  /* second match */
 	  printf(" | [");
 	  i = n; while(i--) show_one(m2->ptr[i]);
 	  printf(" ]");
 	  /* remaining matches */
-	  while(count(p->ptr, c->ptr, n) >= 0) {
-	    if(!any_conflicts(p->ptr, n)) {
+	  while(count((cell_t const **)p->ptr, (cell_t const *const *)c->ptr, n) >= 0) {
+	    if(!any_conflicts((cell_t const *const *)p->ptr, n)) {
 	      printf(" | [");
 	      i = n; while(i--) show_one(p->ptr[i]);
 	      printf(" ]");
@@ -323,7 +325,7 @@ void show_list(cell_t *c) {
   } else printf(" []");
 }
 
-int count(cell_t **cnt, cell_t **reset, int size) {
+int count(cell_t const **cnt, cell_t const *const *reset, int size) {
   int i = size;
   while(i--) {
     if(!cnt[i]->alt) {
@@ -345,9 +347,9 @@ void test_count() {
   } while(count(cnt, reset, 3) >= 0);
 }
 */
-void show_func(cell_t *c) {
+void show_func(cell_t const *c) {
   int n = closure_args(c), i;
-  char *s = function_token(c->func);
+  char const *s = function_token(c->func);
   if(!s) return;
   if(is_placeholder(c)) printf(" ?%ld =", (long int)(c - cells));
   for(i = 0; i < n; ++i) {
@@ -359,7 +361,7 @@ void show_func(cell_t *c) {
   printf(" %s", s);
 }
 
-void show_var(cell_t *c) {
+void show_var(cell_t const *c) {
   assert(is_var(c));
   if(is_list(c)) {
     //printf(" ?l%ld =", c-cells);
@@ -369,7 +371,7 @@ void show_var(cell_t *c) {
   }
 }
 
-void show_one(cell_t *c) {
+void show_one(cell_t const *c) {
   if(!c) {
     printf(" []");
   } else if(!is_closure(c)) {
@@ -408,8 +410,8 @@ cell_t *reduce_alt(cell_t *c) {
   return r;
 }
 
-void show_alt(cell_t *c) {
-  cell_t *p = c, *t;
+void show_alt(cell_t const *c) {
+  cell_t const *p = c, *t;
 
   if(p) {
     if(!p->alt) {
@@ -555,7 +557,7 @@ void run_eval() {
 }
 
 #ifdef USE_LINENOISE
-void completion(const char *buf, linenoiseCompletions *lc) {
+void completion(char const *buf, linenoiseCompletions *lc) {
   unsigned int n = strlen(buf);
   char comp[n+sizeof_field(word_entry_t, name)];
   char *insert = comp + n;
@@ -635,12 +637,12 @@ void initialize_readline()
 
 #endif
 
-bool is_num(char *str) {
+bool is_num(char const *str) {
   return char_class(str[0]) == CC_NUMERIC ||
     (str[0] == '-' && char_class(str[1]) == CC_NUMERIC);
 }
 
-word_entry_t *lookup_word(const char *w) {
+word_entry_t *lookup_word(char const *w) {
   word_entry_t *res =
     lookup(word_table,
 	   WIDTH(word_table),
@@ -654,12 +656,12 @@ word_entry_t *lookup_word(const char *w) {
   return res;
 }
 
-cell_t *word(char *w) {
+cell_t *word(char const *w) {
   unsigned int in, out;
   return word_parse(w, &in, &out);
 }
 
-cell_t *word_parse(char *w,
+cell_t *word_parse(char const *w,
 		   unsigned int *in,
 		   unsigned int *out) {
   cell_t *c;
@@ -775,8 +777,8 @@ cell_t *build(char *str, unsigned int n) {
   return _build(str, &p);
 }
 
-void argf_noop(UNUSED cell_t *c, UNUSED int i) {}
-unsigned int fill_args(cell_t *r, void (*argf)(cell_t *, int)) {
+void argf_noop(UNUSED cell_t const *c, UNUSED int i) {}
+unsigned int fill_args(cell_t *r, void (*argf)(cell_t const *, int)) {
   if(!argf) argf = argf_noop;
   int n = list_size(r);
   if(n < 1) return 0;
@@ -799,7 +801,7 @@ cell_t *_build(char *str, char **p) {
   return r;
 }
 
-void print_arg(cell_t *c, int i) {
+void print_arg(cell_t const *c, int i) {
   printf("?_%ld <- arg(%d)\n", (long int)(c - cells), i);
 }
 
@@ -838,7 +840,7 @@ bool get_arity(char *str, unsigned int n, unsigned int *in, unsigned int *out) {
 }
 
 #ifdef USE_LLVM
-void compile_expr(char *name, char *str, unsigned int n) {
+void compile_expr(char const *name, char *str, unsigned int n) {
   word_entry_t *e = 
     lookup_linear(user_word_table,
 		  WIDTH(user_word_table),
