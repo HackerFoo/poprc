@@ -288,7 +288,7 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   }
 }
 
-void compile_simple_arg(cell_t *c, UNUSED int x) {
+void compile_simple_arg(cell_t const *c, UNUSED int x) {
   auto &args = fb->args;
   args.insert(args.begin(), c - cells);
 }
