@@ -632,7 +632,11 @@ char **completion(char *buf, UNUSED int start, UNUSED int end)
 void initialize_readline()
 {
   rl_readline_name = "Poprc";
+#if defined(__clang__)
   rl_attempted_completion_function = (CPPFunction *)completion;
+#else
+  rl_attempted_completion_function = (rl_completion_func_t *)completion;
+#endif
 }
 
 #endif

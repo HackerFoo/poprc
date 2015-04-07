@@ -14,8 +14,8 @@ ifeq ($(CC),cc)
 	CC=clang
 endif
 ifeq ($(CC),gcc)
-	CFLAGS = -falign-functions=4 -Wall -g $(COPT)
-	CXXFLAGS = -xc++ -falign-functions=4 -Wall -g $(COPT)
+	CFLAGS = -falign-functions=4 -Wall -g -std=c11 $(COPT)
+	CXXFLAGS = -xc++ -falign-functions=4 -Wall -g -std=c++11 $(COPT)
 endif
 ifeq ($(CC),clang)
 	CFLAGS = -Wall -Wextra -pedantic -g -std=c11 $(COPT)
@@ -25,6 +25,7 @@ ifeq ($(CC),emcc)
 	CFLAGS = -Wall -DNDEBUG -DEMSCRIPTEN $(COPT)
 	USE_LINENOISE=n
 	USE_LLVM=n
+	USE_READLINE=n
 endif
 
 BUILD := build/$(CC)
@@ -54,11 +55,12 @@ endif
 ifeq ($(USE_LLVM),y)
 	OBJS += $(BUILD)/llvm.o $(BUILD)/llvm_ext.o
 	CFLAGS += -DUSE_LLVM
-	LLVM_COMPONENTS = core mcjit native
+	LLVM_COMPONENTS = engine #core mcjit native
 	LLVM_CONFIG = llvm-config
 	LLVM_CXXFLAGS = $(shell $(LLVM_CONFIG) --cxxflags | sed -e s/-I/-isystem\ /g)
 	LDFLAGS += $(shell $(LLVM_CONFIG) --ldflags)
-	LIBS += $(shell $(LLVM_CONFIG) --libs --system-libs $(LLVM_COMPONENTS)) -lstdc++
+	LIBS += $(shell $(LLVM_CONFIG) --libs --system-libs $(LLVM_COMPONENTS)) -lc++
+	CXXFLAGS += -isystem $(shell llvm-config --includedir)/c++/v1
 endif
 
 debug:
