@@ -809,13 +809,17 @@ void print_arg(cell_t const *c, int i) {
   printf("?_%ld <- arg(%d)\n", (long int)(c - cells), i);
 }
 
+void reduce_root(cell_t *c) {
+  if(write_graph) make_graph_all(GRAPH_FILE);
+  reduce_list(c);
+  if(write_graph) make_graph_all(REDUCED_GRAPH_FILE);
+}
+
 void eval(char *str, unsigned int n) {
   cell_t *c = build(str, n);
   set_trace(print_trace);
   fill_args(c, print_arg);
-  if(write_graph) make_graph_all(GRAPH_FILE);
-  reduce_list(c);
-  if(write_graph) make_graph_all(REDUCED_GRAPH_FILE);
+  reduce_root(c);
   if(!c) return;
   if(!closure_is_ready(c))
     printf("incomplete expression\n");

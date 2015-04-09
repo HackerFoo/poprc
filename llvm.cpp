@@ -433,7 +433,7 @@ Function *FunctionBuilder::compile_simple() {
     cnt[*j] = 1;
   }
 
-  reduce_list(root);
+  reduce_root(root);
 
   Value *ret;
   if(out > 1) {
