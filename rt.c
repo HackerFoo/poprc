@@ -21,55 +21,76 @@
 #include "gen/rt.h"
 #include "gen/primitive.h"
 
-// make sure &cells > 255
+
+// Cell storage array
+// NOTE: make sure &cells > 255
 #ifdef EMSCRIPTEN
 cell_t cells[1<<10] = {};
 #else
 cell_t cells[1<<16];
 #endif
 cell_t *cells_ptr;
+
+// Counter of used alt ids
 uint8_t alt_cnt = 0;
+
+// Predefined failure cell
 cell_t fail_cell = {
   .func = func_reduced,
   .type = T_FAIL
 };
+
+// Maximum number of alts
 #define AS_SIZE (sizeof(intptr_t) * 4)
 #define ALT_SET_IDS AS_SIZE
+
+// OBSOLETE Array for tracking 'live' alt ids
 uintptr_t alt_live[sizeof(intptr_t) * 4];
 
+// Structs for storing statistics
 measure_t measure, saved_measure;
 
+// Default tracing function that does nothing
 void trace_noop(UNUSED cell_t *c, UNUSED cell_t *r, UNUSED trace_type_t tt) {}
+
+// Pointer to tracing function
 void (*trace)(cell_t *, cell_t *, trace_type_t) = trace_noop;
 
+// Set the tracing function
 void set_trace(void (*t)(cell_t *, cell_t *, trace_type_t)) {
   trace = t ? t : trace_noop;
 }
 
 // #define CHECK_CYCLE
 
+// Is `p` a pointer?
 bool is_data(void const *p) {
   return (intptr_t)p > 255;
 }
 
+// Is `p` a pointer to a cell in the cell storage array?
 bool is_cell(void const *p) {
   return p >= (void *)&cells && p < (void *)(&cells+1);
 }
 
+// Is `p` a prointer to a closure (i.e. allocated cell)?
 bool is_closure(void const *p) {
   return is_data(p) && ((cell_t *)p)->func;
 }
 
+// Is the closure `c` ready to reduce?
 bool closure_is_ready(cell_t const *c) {
   assert(is_closure(c));
   return !is_marked(c->func, 1);
 }
 
+// Set the readiness of closure `c` to state `r`
 void closure_set_ready(cell_t *c, bool r) {
   assert(is_closure(c));
   c->func = (reduce_t *)mark_ptr(clear_ptr(c->func, 1), r ? 0 : 1);
 }
 
+// Duplicate c to c->alt and return it
 cell_t *dup_alt(cell_t *c, unsigned int n, cell_t *b) {
   unsigned int i = 0, in = closure_in(c), out = 0;
   assert(n < in);
@@ -93,6 +114,7 @@ cell_t *dup_alt(cell_t *c, unsigned int n, cell_t *b) {
   return a;
 }
 
+// Lift alternates from c->arg[n] to c
 void split_arg(cell_t *c, unsigned int n) {
   cell_t
     *a = c->arg[n],
@@ -110,6 +132,7 @@ void split_arg(cell_t *c, unsigned int n) {
   } while(p);
 }
 
+// Reduce then split c->arg[n]
 bool reduce_arg(cell_t *c,
 		unsigned int n,
 		alt_set_t *as,
@@ -119,6 +142,7 @@ bool reduce_arg(cell_t *c,
   return r && entangle(as, clear_ptr(c->arg[n], 1));
 }
 
+// Lift alternates from all args
 cell_t *closure_split(cell_t *c, unsigned int s) {
   unsigned int i;
   for(i = 0; i < s; ++i) {
@@ -130,6 +154,7 @@ cell_t *closure_split(cell_t *c, unsigned int s) {
   return c->alt;
 }
 
+// Clear the flags bits in args
 void clear_flags(cell_t *c) {
   int i = 0;
   for(; i < c->size; ++i) {
@@ -142,6 +167,7 @@ cell_t *closure_split1(cell_t *c, int n) {
   return dup_alt(c, n, ref(c->arg[n]->alt));
 }
 
+// Reduce *cp with type t
 bool reduce(cell_t **cp, type_rep_t t) {
   cell_t *c;
   while((c = clear_ptr(*cp, 1))) {
@@ -158,6 +184,7 @@ bool reduce(cell_t **cp, type_rep_t t) {
   return false;
 }
 
+// Perform one reduction step on *cp
 bool reduce_partial(cell_t **cp) {
   cell_t *c;
   c = clear_ptr(*cp, 1);
