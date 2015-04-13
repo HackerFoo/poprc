@@ -1016,3 +1016,118 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     break;
   }
 }
+
+// find the median of 3 integers
+unsigned int median3(uint32_t *array, unsigned int lo, unsigned int hi) {
+  unsigned int mid = lo + (hi - lo) / 2;
+  uint32_t
+    a = array[lo],
+    b = array[mid],
+    c = array[hi];
+  if(a < b) {
+    if(a < c) {
+      if (b < c) {
+        return mid;
+      } else { // b >= c
+        return hi;
+      }
+    } else { // a >= c
+      return lo;
+    }
+  } else { // a >= b
+    if(a < c) {
+      return lo;
+    } else { // a >= c
+      if(b < c) {
+        return hi;
+      } else {
+        return mid;
+      }
+    }
+  }
+}
+
+void swap(uint32_t *x, uint32_t *y) {
+  uint32_t tmp = *x;
+  *x = *y;
+  *y = tmp;
+}
+
+//uint32_t test_sort[8] = {3, 7, 2, 2, 500, 0, 8, 4};
+
+void quicksort(uint32_t *array, unsigned int size) {
+  if(size <= 1) return;
+
+  unsigned int lo = 0, hi = size-1;
+  struct frame {
+    unsigned int lo, hi;
+  } stack[size-1];
+  struct frame *top = stack;
+
+  for(;;) {
+    uint32_t
+      *pivot = &array[median3(array, lo, hi)],
+      *right = &array[hi],
+      *left = &array[lo],
+      *x = left;
+    uint32_t pivot_value = *pivot;
+    *pivot = *right;
+    unsigned int fill_index = lo;
+
+    for(unsigned int i = lo; i < hi; i++, x++) {
+      if(*x < pivot_value) {
+        swap(x, left);
+        left++;
+        fill_index++;
+      }
+    }
+    *right = *left;
+
+    *left = pivot_value;
+
+    if(hi > fill_index + 1) {
+      top->lo = fill_index+1;
+      top->hi = hi;
+      top++;
+    }
+
+    if(fill_index > lo + 1) {
+      hi = fill_index-1;
+    } else if(top > stack) {
+      top--;
+      lo = top->lo;
+      hi = top->hi;
+    } else break;
+  }
+}
+
+// find the index of a value in a sorted array
+int find(uint32_t *array, unsigned int size, uint32_t val) {
+  unsigned int low = 0, high = size;
+  while(high > low) {
+    const unsigned int pivot = low + ((high - low) / 2);
+    const uint32_t pivot_val = array[pivot];
+    if(pivot_val == val) {
+      return pivot;
+    } else if(pivot_val < val) {
+      low = pivot + 1;
+    } else {
+      high = pivot;
+    }
+  }
+  return -1;
+}
+
+// copy tree c --> d, replacing internal links with integer offsets
+void compact_copy(cell_t *c, cell_t *d) {
+  (void)c;
+  (void)d;
+}
+
+// build tree from trace
+void eval_trace(cell_t *t) {
+
+  (void)t;
+  // ???
+
+}
