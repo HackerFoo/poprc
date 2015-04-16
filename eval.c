@@ -1018,12 +1018,12 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
 }
 
 // find the median of 3 integers
-unsigned int median3(uint32_t *array, unsigned int lo, unsigned int hi) {
+unsigned int median3(struct pair *array, unsigned int lo, unsigned int hi) {
   unsigned int mid = lo + (hi - lo) / 2;
   uint32_t
-    a = array[lo],
-    b = array[mid],
-    c = array[hi];
+    a = array[lo].first,
+    b = array[mid].first,
+    c = array[hi].first;
   if(a < b) {
     if(a < c) {
       if (b < c) {
@@ -1047,15 +1047,15 @@ unsigned int median3(uint32_t *array, unsigned int lo, unsigned int hi) {
   }
 }
 
-void swap(uint32_t *x, uint32_t *y) {
-  uint32_t tmp = *x;
+void swap(struct pair *x, struct pair *y) {
+  struct pair tmp = *x;
   *x = *y;
   *y = tmp;
 }
 
-//uint32_t test_sort[8] = {3, 7, 2, 2, 500, 0, 8, 4};
+struct pair test_sort[8] = {{3, 0}, {7, 1}, {2, 2}, {4, 3}, {500, 4}, {0, 5}, {8, 6}, {4, 7}};
 
-void quicksort(uint32_t *array, unsigned int size) {
+void quicksort(struct pair *array, unsigned int size) {
   if(size <= 1) return;
 
   unsigned int lo = 0, hi = size-1;
@@ -1065,17 +1065,17 @@ void quicksort(uint32_t *array, unsigned int size) {
   struct frame *top = stack;
 
   for(;;) {
-    uint32_t
+    struct pair
       *pivot = &array[median3(array, lo, hi)],
       *right = &array[hi],
       *left = &array[lo],
       *x = left;
-    uint32_t pivot_value = *pivot;
+    struct pair pivot_value = *pivot;
     *pivot = *right;
     unsigned int fill_index = lo;
 
     for(unsigned int i = lo; i < hi; i++, x++) {
-      if(*x < pivot_value) {
+      if(x->first < pivot_value.first) {
         swap(x, left);
         left++;
         fill_index++;
@@ -1102,14 +1102,14 @@ void quicksort(uint32_t *array, unsigned int size) {
 }
 
 // find the index of a value in a sorted array
-int find(uint32_t *array, unsigned int size, uint32_t val) {
+int find(struct pair *array, unsigned int size, uint32_t key) {
   unsigned int low = 0, high = size;
   while(high > low) {
     const unsigned int pivot = low + ((high - low) / 2);
-    const uint32_t pivot_val = array[pivot];
-    if(pivot_val == val) {
+    const uint32_t pivot_key = array[pivot].first;
+    if(pivot_key == key) {
       return pivot;
-    } else if(pivot_val < val) {
+    } else if(pivot_key < key) {
       low = pivot + 1;
     } else {
       high = pivot;

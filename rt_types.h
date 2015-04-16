@@ -157,4 +157,8 @@ typedef enum trace_type_t {
 
 #define UNUSED __attribute__((unused))
 
+struct pair {
+  uint32_t first, second;
+};
+
 #endif
