@@ -34,7 +34,7 @@ OBJS := $(patsubst %.c, $(BUILD)/%.o, $(wildcard *.c))
 GEN := $(patsubst %.c, gen/%.h, $(wildcard *.c))
 
 .PHONY: all
-all: eval
+all: test
 
 include Makefile.gen
 
@@ -105,6 +105,10 @@ $(BUILD)/linenoise.o: linenoise/linenoise.c linenoise/linenoise.h
 scan: clean
 	make $(BUILD)/linenoise.o
 	scan-build make
+
+.PHONY: test
+test: eval
+	./eval -t test
 
 # remove compilation products
 clean:

@@ -24,7 +24,7 @@
 #include "gen/eval.h"
 #include "gen/primitive.h"
 
-void alloc_test() {
+int test_alloc(UNUSED char *name) {
   unsigned int i, j;
   cell_t *a[30];
   for(j = 0; j < 50; j++) {
@@ -35,18 +35,24 @@ void alloc_test() {
       closure_free(a[i]);
     }
   }
+  return check_free() ? 0 : -1;
 }
+static TEST(test_alloc);
 
-void check_free() {
+bool check_free() {
   unsigned int i;
+  bool leak = false;
   for(i = 0; i < LENGTH(cells); i++) {
     if(is_closure(&cells[i])) {
       printf("LEAK: %d (%ld)\n", i, (long int)cells[i].n);
+      leak = true;
     }
   }
   FOREACH(alt_live, i) {
     if(alt_live[i]) {
       printf("ALT LEAK: %d (%ld)\n", i, (long int)alt_live[i]);
+      leak = true;
     }
   }
+  return !leak;
 }

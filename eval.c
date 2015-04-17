@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <unistd.h>
 
 #if defined(USE_READLINE)
 #include <readline/readline.h>
@@ -337,16 +338,28 @@ int count(cell_t const **cnt, cell_t const *const *reset, int size) {
   }
   return i;
 }
-/*
-void test_count() {
-  int cnt[3];
-  int reset[3] = {2, 1, 3};
+
+int test_count(UNUSED char *name) {
+  cell_t test[] = {
+    [0] = { .alt = &test[1] },
+    [1] = { .alt = 0 },
+    [2] = { .alt = 0 },
+    [3] = { .alt = &test[4] },
+    [4] = { .alt = &test[5] },
+    [5] = { .alt = 0 }
+  };
+  cell_t *cnt[3];
+  cell_t const *reset[3] = {&test[0], &test[2], &test[3]};
   memcpy(cnt, reset, sizeof(reset));
+  int n = 0;
   do {
-    printf("%d %d %d\n", cnt[0], cnt[1], cnt[2]);
-  } while(count(cnt, reset, 3) >= 0);
+    n++;
+    printf("%d %d %d\n", (int)(cnt[0]-test), (int)(cnt[1]-test), (int)(cnt[2]-test));
+  } while(count((const cell_t **)cnt, reset, 3) >= 0);
+  return n == 6 ? 0 : -1;
 }
-*/
+static TEST(test_count);
+
 void show_func(cell_t const *c) {
   int n = closure_args(c), i;
   char const *s = function_token(c->func);
@@ -464,8 +477,30 @@ void measure_display() {
 
 }
 
+void usage() {
+  printf("usage: eval [-t <test name>]\n");
+}
+
 #ifndef EMSCRIPTEN
 int main(UNUSED int argc, UNUSED char *argv[]) {
+  int ch;
+
+  while ((ch = getopt(argc, argv, "t:")) != -1) {
+    switch (ch) {
+    case 't':
+      cells_init();
+      return test_run(optarg, test_log);
+      break;
+    case '?':
+    default:
+      usage();
+      return 0;
+      break;
+    }
+  }
+  argc -= optind;
+  argv += optind;
+
   run_eval();
   measure_display();
   return 0;
@@ -518,6 +553,12 @@ void run_eval() {
       free(line_raw);
 #endif
       break;
+    } else if(strncmp(line, ":t ", 3) == 0) {
+      cells_init();
+      line += 3;
+      while(*line == ' ') ++line;
+      char *name = line;
+      test_run(name, test_log);
     } else if(strncmp(line, ":c ", 3) == 0) {
 #ifdef USE_LLVM
       cells_init();
@@ -1053,7 +1094,30 @@ void swap(struct pair *x, struct pair *y) {
   *y = tmp;
 }
 
-struct pair test_sort[8] = {{3, 0}, {7, 1}, {2, 2}, {4, 3}, {500, 4}, {0, 5}, {8, 6}, {4, 7}};
+
+int test_sort(UNUSED char *name) {
+  struct pair array[] = {{3, 0}, {7, 1}, {2, 2}, {4, 3}, {500, 4}, {0, 5}, {8, 6}, {4, 7}};
+  quicksort(array, LENGTH(array));
+  uintptr_t last = array[0].first;
+  printf("{{%d, %d}", (int)array[0].first, (int)array[0].second);
+  for(unsigned int i = 1; i < LENGTH(array); i++) {
+    printf(", {%d, %d}", (int)array[i].first, (int)array[i].second);
+    if(array[i].first < last) {
+      printf(" <- ERROR\n");
+      return -1;
+    }
+  }
+  printf("}\n");
+
+  int i1 = find(array, LENGTH(array), 7);
+  bool r1 = i1 > 0 && array[i1].second == 1;
+  printf("index find existing: %s\n", r1 ? "PASS" : "FAIL");
+  bool r2 = find(array, LENGTH(array), 5);
+  printf("index find missing: %s\n", r2 ? "PASS" : "FAIL");
+
+  return r1 && r2 ? 0 : -1;
+}
+static TEST(test_sort);
 
 void quicksort(struct pair *array, unsigned int size) {
   if(size <= 1) return;
@@ -1102,11 +1166,11 @@ void quicksort(struct pair *array, unsigned int size) {
 }
 
 // find the index of a value in a sorted array
-int find(struct pair *array, unsigned int size, uint32_t key) {
+int find(struct pair *array, unsigned int size, uintptr_t key) {
   unsigned int low = 0, high = size;
   while(high > low) {
     const unsigned int pivot = low + ((high - low) / 2);
-    const uint32_t pivot_key = array[pivot].first;
+    const uintptr_t pivot_key = array[pivot].first;
     if(pivot_key == key) {
       return pivot;
     } else if(pivot_key < key) {
@@ -1130,4 +1194,42 @@ void eval_trace(cell_t *t) {
   (void)t;
   // ???
 
+}
+
+#define MAX_TESTS 128
+#define MAX_NAME_SIZE 128
+
+struct test_registry_entry {
+  int (*func)(char *name);
+  char *name;
+};
+
+static struct test_registry_entry test_registry[MAX_TESTS];
+static unsigned int __test_count = 0;
+
+void test_register(int (*func)(char *name), char *name) {
+  if(__test_count < MAX_TESTS) {
+    struct test_registry_entry *entry = &test_registry[__test_count++];
+    entry->func = func;
+    entry->name = name;
+  }
+}
+
+int test_run(char *name, void (*logger)(char *name, int result)) {
+  int name_size = strnlen(name, MAX_NAME_SIZE);
+  int fail = 0;
+  for(unsigned int i = 0; i < __test_count; i++) {
+    struct test_registry_entry *entry = &test_registry[i];
+    int entry_name_size = strnlen(entry->name, MAX_NAME_SIZE);
+    if(strncmp(name, entry->name, min(name_size, entry_name_size)) == 0) {
+      int result = entry->func(name);
+      if((uintptr_t)logger > 1) logger(entry->name, result);
+      if(result && !fail) fail = result;
+    }
+  }
+  return fail;
+}
+
+void test_log(char *name, int result) {
+  printf("%s => %d\n", name, result);
 }

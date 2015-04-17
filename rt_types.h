@@ -158,7 +158,16 @@ typedef enum trace_type_t {
 #define UNUSED __attribute__((unused))
 
 struct pair {
-  uint32_t first, second;
+  uintptr_t first, second;
 };
+
+// declare a test function
+// must preceed with 'static' to prevent makeheaders from exporting
+// last line to avoid warning with trailing semicolon
+#define TEST(func)                                               \
+  __attribute__((constructor)) void __test_register_##func() {   \
+    test_register((func), #func);                                \
+  }                                                              \
+  void __test_register_##func()
 
 #endif
