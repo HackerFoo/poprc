@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <unistd.h>
+#include <mach-o/getsect.h>
 
 #if defined(USE_READLINE)
 #include <readline/readline.h>
@@ -1196,30 +1197,20 @@ void eval_trace(cell_t *t) {
 
 }
 
-#define MAX_TESTS 128
-#define MAX_NAME_SIZE 128
-
-struct test_registry_entry {
-  int (*func)(char *name);
-  char *name;
-};
-
-static struct test_registry_entry test_registry[MAX_TESTS];
-static unsigned int __test_count = 0;
-
-void test_register(int (*func)(char *name), char *name) {
-  if(__test_count < MAX_TESTS) {
-    struct test_registry_entry *entry = &test_registry[__test_count++];
-    entry->func = func;
-    entry->name = name;
-  }
-}
+#define MAX_NAME_SIZE 4096
 
 int test_run(char *name, void (*logger)(char *name, int result)) {
+  unsigned long secsize;
+
+  // NOT PORTABLE
+  char *section_start = getsectdata("__TEXT", "__tests", &secsize);
+  char *section_end = section_start + secsize;
+
   int name_size = strnlen(name, MAX_NAME_SIZE);
   int fail = 0;
-  for(unsigned int i = 0; i < __test_count; i++) {
-    struct test_registry_entry *entry = &test_registry[i];
+  for(struct __test_entry *entry = (struct __test_entry *)section_start;
+      (char *)entry < section_end;
+      entry++) {
     int entry_name_size = strnlen(entry->name, MAX_NAME_SIZE);
     if(strncmp(name, entry->name, min(name_size, entry_name_size)) == 0) {
       int result = entry->func(name);

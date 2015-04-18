@@ -162,12 +162,19 @@ struct pair {
 };
 
 // declare a test function
-// must preceed with 'static' to prevent makeheaders from exporting
-// last line to avoid warning with trailing semicolon
-#define TEST(func)                                               \
-  __attribute__((constructor)) void __test_register_##func() {   \
-    test_register((func), #func);                                \
-  }                                                              \
-  void __test_register_##func()
+// must preceed with 'static' and follow with semicolon
+// to work with makeheaders
+// NOT PORTABLE
+#define TEST(func)                                       \
+  __attribute__((used,section("__TEXT,__tests")))        \
+  struct __test_entry __test_entry_##func =  {           \
+    &(func),                                             \
+    #func                                                \
+  }
+
+struct __test_entry {
+  int (*func)(char *name);
+  char *name;
+};
 
 #endif
