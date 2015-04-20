@@ -157,10 +157,6 @@ typedef enum trace_type_t {
 
 #define UNUSED __attribute__((unused))
 
-struct pair {
-  uintptr_t first, second;
-};
-
 // declare a test function
 // must preceed with 'static' and follow with semicolon
 // to work with makeheaders

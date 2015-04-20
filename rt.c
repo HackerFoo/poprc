@@ -640,6 +640,7 @@ bool is_any(cell_t const *c) {
   return (c->type & T_EXCLUSIVE) == T_ANY;
 }
 
+#if INTERFACE
 #define traverse(r, action, flags) 			\
   do {							\
     cell_t **p;						\
@@ -666,6 +667,7 @@ bool is_any(cell_t const *c) {
       action						\
     }							\
   } while(0)
+#endif
 
 void traverse_mark_alt(cell_t *c) {
   traverse(c, {

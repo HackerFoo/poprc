@@ -22,7 +22,6 @@
 #include <stdio.h>
 #include <assert.h>
 #include <unistd.h>
-#include <mach-o/getsect.h>
 
 #if defined(USE_READLINE)
 #include <readline/readline.h>
@@ -37,6 +36,8 @@
 #include "gen/eval.h"
 #include "gen/primitive.h"
 #include "gen/test.h"
+#include "gen/support.h"
+#include "gen/byte_compile.h"
 
 #ifdef USE_LLVM
 #include "llvm.h"
@@ -572,6 +573,14 @@ void run_eval() {
 #else
       printf("Compilation is not supported.\n");
 #endif
+    } else if(strncmp(line, ":C ", 3) == 0) {
+      cells_init();
+      line += 3;
+      while(*line == ' ') ++line;
+      char *name = line;
+      while(*line != ' ') ++line;
+      *line++ = 0;
+      compact_expr(name, line, strlen(line));
     } else if(strncmp(line, ":a ", 3) == 0) {
       unsigned int in, out;
       cells_init();
@@ -1057,170 +1066,4 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
 	   (long int)(((cell_t **)r)[1] - cells));
     break;
   }
-}
-
-// find the median of 3 integers
-unsigned int median3(struct pair *array, unsigned int lo, unsigned int hi) {
-  unsigned int mid = lo + (hi - lo) / 2;
-  uint32_t
-    a = array[lo].first,
-    b = array[mid].first,
-    c = array[hi].first;
-  if(a < b) {
-    if(a < c) {
-      if (b < c) {
-        return mid;
-      } else { // b >= c
-        return hi;
-      }
-    } else { // a >= c
-      return lo;
-    }
-  } else { // a >= b
-    if(a < c) {
-      return lo;
-    } else { // a >= c
-      if(b < c) {
-        return hi;
-      } else {
-        return mid;
-      }
-    }
-  }
-}
-
-void swap(struct pair *x, struct pair *y) {
-  struct pair tmp = *x;
-  *x = *y;
-  *y = tmp;
-}
-
-
-int test_sort(UNUSED char *name) {
-  struct pair array[] = {{3, 0}, {7, 1}, {2, 2}, {4, 3}, {500, 4}, {0, 5}, {8, 6}, {4, 7}};
-  quicksort(array, LENGTH(array));
-  uintptr_t last = array[0].first;
-  printf("{{%d, %d}", (int)array[0].first, (int)array[0].second);
-  for(unsigned int i = 1; i < LENGTH(array); i++) {
-    printf(", {%d, %d}", (int)array[i].first, (int)array[i].second);
-    if(array[i].first < last) {
-      printf(" <- ERROR\n");
-      return -1;
-    }
-  }
-  printf("}\n");
-
-  int i1 = find(array, LENGTH(array), 7);
-  bool r1 = i1 > 0 && array[i1].second == 1;
-  printf("index find existing: %s\n", r1 ? "PASS" : "FAIL");
-  bool r2 = find(array, LENGTH(array), 5);
-  printf("index find missing: %s\n", r2 ? "PASS" : "FAIL");
-
-  return r1 && r2 ? 0 : -1;
-}
-static TEST(test_sort);
-
-void quicksort(struct pair *array, unsigned int size) {
-  if(size <= 1) return;
-
-  unsigned int lo = 0, hi = size-1;
-  struct frame {
-    unsigned int lo, hi;
-  } stack[size-1];
-  struct frame *top = stack;
-
-  for(;;) {
-    struct pair
-      *pivot = &array[median3(array, lo, hi)],
-      *right = &array[hi],
-      *left = &array[lo],
-      *x = left;
-    struct pair pivot_value = *pivot;
-    *pivot = *right;
-    unsigned int fill_index = lo;
-
-    for(unsigned int i = lo; i < hi; i++, x++) {
-      if(x->first < pivot_value.first) {
-        swap(x, left);
-        left++;
-        fill_index++;
-      }
-    }
-    *right = *left;
-
-    *left = pivot_value;
-
-    if(hi > fill_index + 1) {
-      top->lo = fill_index+1;
-      top->hi = hi;
-      top++;
-    }
-
-    if(fill_index > lo + 1) {
-      hi = fill_index-1;
-    } else if(top > stack) {
-      top--;
-      lo = top->lo;
-      hi = top->hi;
-    } else break;
-  }
-}
-
-// find the index of a value in a sorted array
-int find(struct pair *array, unsigned int size, uintptr_t key) {
-  unsigned int low = 0, high = size;
-  while(high > low) {
-    const unsigned int pivot = low + ((high - low) / 2);
-    const uintptr_t pivot_key = array[pivot].first;
-    if(pivot_key == key) {
-      return pivot;
-    } else if(pivot_key < key) {
-      low = pivot + 1;
-    } else {
-      high = pivot;
-    }
-  }
-  return -1;
-}
-
-// copy tree c --> d, replacing internal links with integer offsets
-void compact_copy(cell_t *c, cell_t *d) {
-  (void)c;
-  (void)d;
-}
-
-// build tree from trace
-void eval_trace(cell_t *t) {
-
-  (void)t;
-  // ???
-
-}
-
-#define MAX_NAME_SIZE 4096
-
-int test_run(char *name, void (*logger)(char *name, int result)) {
-  unsigned long secsize;
-
-  // NOT PORTABLE
-  char *section_start = getsectdata("__TEXT", "__tests", &secsize);
-  char *section_end = section_start + secsize;
-
-  int name_size = strnlen(name, MAX_NAME_SIZE);
-  int fail = 0;
-  for(struct __test_entry *entry = (struct __test_entry *)section_start;
-      (char *)entry < section_end;
-      entry++) {
-    int entry_name_size = strnlen(entry->name, MAX_NAME_SIZE);
-    if(strncmp(name, entry->name, min(name_size, entry_name_size)) == 0) {
-      int result = entry->func(name);
-      if((uintptr_t)logger > 1) logger(entry->name, result);
-      if(result && !fail) fail = result;
-    }
-  }
-  return fail;
-}
-
-void test_log(char *name, int result) {
-  printf("%s => %d\n", name, result);
 }

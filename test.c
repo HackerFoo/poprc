@@ -18,6 +18,8 @@
 #include "rt_types.h"
 #include <stdio.h>
 #include <string.h>
+#include <mach-o/getsect.h>
+
 #include "linenoise/linenoise.h"
 #include "gen/rt.h"
 #include "gen/test.h"
@@ -55,4 +57,32 @@ bool check_free() {
     }
   }
   return !leak;
+}
+
+#define MAX_NAME_SIZE 4096
+
+int test_run(char *name, void (*logger)(char *name, int result)) {
+  unsigned long secsize;
+
+  // NOT PORTABLE
+  char *section_start = getsectdata("__TEXT", "__tests", &secsize);
+  char *section_end = section_start + secsize;
+
+  int name_size = strnlen(name, MAX_NAME_SIZE);
+  int fail = 0;
+  for(struct __test_entry *entry = (struct __test_entry *)section_start;
+      (char *)entry < section_end;
+      entry++) {
+    int entry_name_size = strnlen(entry->name, MAX_NAME_SIZE);
+    if(strncmp(name, entry->name, min(name_size, entry_name_size)) == 0) {
+      int result = entry->func(name);
+      if((uintptr_t)logger > 1) logger(entry->name, result);
+      if(result && !fail) fail = result;
+    }
+  }
+  return fail;
+}
+
+void test_log(char *name, int result) {
+  printf("%s => %d\n", name, result);
 }
