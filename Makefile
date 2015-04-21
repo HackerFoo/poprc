@@ -30,8 +30,9 @@ endif
 
 BUILD := build/$(CC)
 
-OBJS := $(patsubst %.c, $(BUILD)/%.o, $(wildcard *.c))
-GEN := $(patsubst %.c, gen/%.h, $(wildcard *.c))
+SRC := $(wildcard *.c)
+OBJS := $(patsubst %.c, $(BUILD)/%.o, $(SRC))
+GEN := $(patsubst %.c, gen/%.h, $(SRC))
 
 .PHONY: all
 all: test
@@ -63,16 +64,16 @@ ifeq ($(USE_LLVM),y)
 	CXXFLAGS += -isystem $(shell llvm-config --includedir)/c++/v1
 endif
 
-debug:
-	echo $(OBJS:.o=.d)
+print-%:
+	@echo $* = $($*)
 
 # modified from http://scottmcpeak.com/autodepend/autodepend.html
 
 # link
 eval: $(OBJS)
-	$(CC) $(OBJS) $(LDFLAGS) $(LIBS) -o eval
+	$(CC) $(OBJS) $(LDFLAGS) $(LIBS) -o $@
 
-eval.js: EMCC_OBJS := $(patsubst %.c, build/emcc/%.o, $(wildcard *.c))
+eval.js: EMCC_OBJS := $(patsubst %.c, build/emcc/%.o, $(SRC))
 eval.js:
 	make CC=emcc $(EMCC_OBJS)
 	emcc $(EMCC_OBJS) -o eval.js -s EXPORTED_FUNCTIONS="['_eval', '_cells_init']"
@@ -92,7 +93,7 @@ $(BUILD)/llvm.o: llvm.cpp llvm.h llvm_ext.h rt_types.h
 $(BUILD)/%.o: %.c
 	@mkdir -p $(BUILD)
 	@$(CC) -MM $(CFLAGS) $*.c -MG -MP -MT $(BUILD)/$*.o -MF $(BUILD)/$*.d
-	make -f Makefile.gen OBJS="$(OBJS)" $(BUILD)/$*.o > /dev/null
+	@make -f Makefile.gen OBJS="$(OBJS)" $(BUILD)/$*.o > /dev/null
 	$(CC) -c $(CFLAGS) $*.c -o $(BUILD)/$*.o
 
 .SECONDARY: $(GEN)
@@ -110,7 +111,20 @@ scan: clean
 test: eval
 	./eval -t test
 
+.PHONY: rtags
+rtags: make-eval.log
+	-rc -c - < make-eval.log; true
+
+make-eval.log: $(SRC) Makefile Makefile.gen
+	make clean
+	make eval | tee make-eval.log
+
+compile_commands.json: make-eval.log
+	make rtags
+	rc --dump-compilation-database > compile_commands.json
+
 # remove compilation products
 clean:
 	rm -f eval eval.js
 	rm -rf build gen
+	rm -f make-eval.log compile_commands.json
