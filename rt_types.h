@@ -64,8 +64,8 @@ struct __attribute__((packed)) cell {
     struct __attribute__((packed)) {
       alt_set_t alt_set;
       union {
-	intptr_t val[2]; /* value */
-	cell_t *ptr[2];  /* list */
+        intptr_t val[2]; /* value */
+        cell_t *ptr[2];  /* list */
       };
     };
     /* unallocated */

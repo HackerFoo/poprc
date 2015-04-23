@@ -153,10 +153,10 @@ reduce_t *byte_compile(cell_t *root, int in, int out) {
   /* for(auto i = cnt.begin(); i != cnt.end(); ++i) { */
   /*   if(i->second < 0) { */
   /*     CallInst::Create(ext::refn(module), */
-  /*       	       std::vector<Value *> { */
-  /*       		 reg(i->first), */
-  /*       		 ConstantInt::get(ctx, APInt(32, -i->second)) */
-  /*       	       }, "", block); */
+  /*                   std::vector<Value *> { */
+  /*                     reg(i->first), */
+  /*                     ConstantInt::get(ctx, APInt(32, -i->second)) */
+  /*                   }, "", block); */
   /*   } else if(i->second > 0) { */
   /*     CallInst::Create(ext::drop(module), ArrayRef<Value *>(reg(i->first)), "", block); */
   /*   } */
@@ -167,11 +167,11 @@ reduce_t *byte_compile(cell_t *root, int in, int out) {
 }
 
 void compact_expr(char const *name, char *str, unsigned int n) {
-  word_entry_t *e = 
+  word_entry_t *e =
     lookup_linear(user_word_table,
-		  WIDTH(user_word_table),
-		  user_word_table_length,
-		  name);
+                  WIDTH(user_word_table),
+                  user_word_table_length,
+                  name);
   if(!e) e = new_user_word_entry++;
   strcpy(e->name, name);
   e->func = func_placeholder;

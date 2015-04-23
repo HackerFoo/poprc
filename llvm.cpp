@@ -74,8 +74,8 @@ Value *get_arg(Value *ptr, int x, BasicBlock *b);
 void set_arg(Value *ptr, int x, Value *val, BasicBlock *b);
 void set_field(Value *ptr, int f, Value *val, BasicBlock *b);
 void build_closure(Function *f,
-		   std::vector<unsigned int> in,
-		   std::vector<unsigned int> out);
+                   std::vector<unsigned int> in,
+                   std::vector<unsigned int> out);
 Function* declare_wrap_func(Function *func);
 Value *build_tree(cell_t *c);
 Function *get_builder(cell_t *p, Module *mod);
@@ -83,21 +83,21 @@ Function *get_builder(cell_t *p, Module *mod);
 class FunctionBuilder {
 public:
   FunctionBuilder(std::string name,
-		  cell_t *root,
-		  unsigned int in,
-		  unsigned int out,
-		  Module *mod);
+                  cell_t *root,
+                  unsigned int in,
+                  unsigned int out,
+                  Module *mod);
   void call(cell_t *c);
   Function *get_cell_func(std::string name,
-			  unsigned int in, unsigned int out);
+                          unsigned int in, unsigned int out);
   Function *get_builder(cell_t *p);
   Value *wrap_alts(cell_t *c);
   void apply_list(cell_t *c);
   void assign(cell_t *a, cell_t *b);
   Value *reg(unsigned int ix);
   void build_closure (Function *f,
-		      std::vector<unsigned int> in,
-		      std::vector<unsigned int> out);
+                      std::vector<unsigned int> in,
+                      std::vector<unsigned int> out);
   Value *build_closure_from_cell(cell_t *r);
   Value *build_tree(cell_t *c);
   void callSelf(cell_t *c);
@@ -233,7 +233,7 @@ void FunctionBuilder::assign(cell_t *a, cell_t *b) {
 }
 
 void FunctionBuilder::select(cell_t *a, cell_t *b) {
-    unsigned int 
+    unsigned int
       ai = a - cells,
       bi = b - cells;
     --cnt[bi];
@@ -316,8 +316,8 @@ void FunctionBuilder::build_closure
      std::vector<unsigned int> out) {
   LLVMContext &ctx = module->getContext();
   Value *c = CallInst::Create(ext::closure_alloc(module),
-			      ConstantInt::get(ctx, APInt(32, in.size() + out.size() - 1)),
-			      "", block);
+                              ConstantInt::get(ctx, APInt(32, in.size() + out.size() - 1)),
+                              "", block);
   for(unsigned int i = 0; i < in.size(); ++i) {
     set_arg(c, i, reg(in[i]), block);
     --cnt[in[i]];
@@ -332,25 +332,25 @@ void FunctionBuilder::build_closure
   }
   // c->out = out.size() - 1
   new StoreInst(ConstantInt::get(ctx,
-				 APInt(16, out.size() - 1)),
-		GetElementPtrInst::Create(c,
-		  std::vector<Value *> {
-		    ConstantInt::get(ctx, APInt(64, 0)),
-		    ConstantInt::get(ctx, APInt(32, CELL_OUT))
-		  },
-		  "",
-		  block),
-		block);
+                                 APInt(16, out.size() - 1)),
+                GetElementPtrInst::Create(c,
+                  std::vector<Value *> {
+                    ConstantInt::get(ctx, APInt(64, 0)),
+                    ConstantInt::get(ctx, APInt(32, CELL_OUT))
+                  },
+                  "",
+                  block),
+                block);
   // c->func = f
   new StoreInst(f,
-		GetElementPtrInst::Create(c,
-		  std::vector<Value *> {
-		    ConstantInt::get(ctx, APInt(64, 0)),
-		    ConstantInt::get(ctx, APInt(32, CELL_FUNC))
-		  },
-		  "",
-		  block),
-		block);
+                GetElementPtrInst::Create(c,
+                  std::vector<Value *> {
+                    ConstantInt::get(ctx, APInt(64, 0)),
+                    ConstantInt::get(ctx, APInt(32, CELL_FUNC))
+                  },
+                  "",
+                  block),
+                block);
 }
 
 Value *FunctionBuilder::build_closure_from_cell(cell_t *r) {
@@ -367,34 +367,34 @@ Value *FunctionBuilder::build_closure_from_cell(cell_t *r) {
   if(!closure_is_ready(r)) {
     if(!is_data(r->arg[0])) {
       set_arg(c, 0, new IntToPtrInst(ConstantInt::get(ctx, APInt(64, (intptr_t)r->arg[0])),
-				     ext::cell_ptr_type, "", block), block);
+                                     ext::cell_ptr_type, "", block), block);
     }
   }
   // c->out = r->out
   new StoreInst(ConstantInt::get(ctx, APInt(16, r->out)),
-		GetElementPtrInst::Create(c,
-		  std::vector<Value *> {
-		    ConstantInt::get(ctx, APInt(64, 0)),
-		    ConstantInt::get(ctx, APInt(32, CELL_OUT))
-		  },
-		  "",
-		  block),
-		block);
+                GetElementPtrInst::Create(c,
+                  std::vector<Value *> {
+                    ConstantInt::get(ctx, APInt(64, 0)),
+                    ConstantInt::get(ctx, APInt(32, CELL_OUT))
+                  },
+                  "",
+                  block),
+                block);
   // c->func = (intptr_t)r->func
   new StoreInst(new IntToPtrInst(ConstantInt::get(ctx, APInt(64, (intptr_t)r->func)), ext::void_ptr_type, "", block), // ***
-		GetElementPtrInst::Create(c,
-		  std::vector<Value *> {
-		    ConstantInt::get(ctx, APInt(64, 0)),
-		    ConstantInt::get(ctx, APInt(32, CELL_FUNC))
-		  },
-		  "",
-		  block),
-		block);
+                GetElementPtrInst::Create(c,
+                  std::vector<Value *> {
+                    ConstantInt::get(ctx, APInt(64, 0)),
+                    ConstantInt::get(ctx, APInt(32, CELL_FUNC))
+                  },
+                  "",
+                  block),
+                block);
   if(!closure_is_ready(r)) {
     CallInst::Create(ext::closure_set_ready(module),
-		     std::vector<Value *> {c, ConstantInt::get(ctx, APInt(1, 1))},
-		     "",
-		     block);
+                     std::vector<Value *> {c, ConstantInt::get(ctx, APInt(1, 1))},
+                     "",
+                     block);
   }
   return c;
 }
@@ -414,8 +414,8 @@ Value *FunctionBuilder::build_tree(cell_t *c) {
       regs[ix] = r = call;
       cnt[ix] = 1;
       for(unsigned int i = 0; i < list_size(c); ++i) {
-	set_arg(call, i+1, build_tree(c->ptr[i]), block);
-	--cnt[c->ptr[i] - cells];
+        set_arg(call, i+1, build_tree(c->ptr[i]), block);
+        --cnt[c->ptr[i] - cells];
       }
     } else if(c->type & T_INT) {
       auto call = CallInst::Create(ext::val(module), ConstantInt::get(ctx, APInt(64, c->val[0])), "", block);
@@ -477,10 +477,10 @@ Function *FunctionBuilder::compile_simple() {
   for(auto i = cnt.begin(); i != cnt.end(); ++i) {
     if(i->second < 0) {
       CallInst::Create(ext::refn(module),
-		       std::vector<Value *> {
-			 reg(i->first),
-			 ConstantInt::get(ctx, APInt(32, -i->second))
-		       }, "", block);
+                       std::vector<Value *> {
+                         reg(i->first),
+                         ConstantInt::get(ctx, APInt(32, -i->second))
+                       }, "", block);
     } else if(i->second > 0) {
       CallInst::Create(ext::drop(module), ArrayRef<Value *>(reg(i->first)), "", block);
     }
@@ -493,38 +493,38 @@ Function *FunctionBuilder::compile_simple() {
 Value *get_arg(Value *ptr, int x, BasicBlock *b) {
   LLVMContext &ctx = b->getContext();
   auto p = GetElementPtrInst::Create(ptr,
-	     std::vector<Value *> {
-	       ConstantInt::get(ctx, APInt(64, 0)),
-	       ConstantInt::get(ctx, APInt(32, CELL_ARG)),
-	       ConstantInt::get(ctx, APInt(64, x))
-	     },
-	     "",
-	     b);
+             std::vector<Value *> {
+               ConstantInt::get(ctx, APInt(64, 0)),
+               ConstantInt::get(ctx, APInt(32, CELL_ARG)),
+               ConstantInt::get(ctx, APInt(64, x))
+             },
+             "",
+             b);
   return new LoadInst(p, "", false, b);
 }
 
 void set_arg(Value *ptr, int x, Value *val, BasicBlock *b) {
   LLVMContext &ctx = b->getContext();
   auto p = GetElementPtrInst::Create(ptr,
-	     std::vector<Value *> {
-	       ConstantInt::get(ctx, APInt(64, 0)),
-	       ConstantInt::get(ctx, APInt(32, CELL_ARG)),
-	       ConstantInt::get(ctx, APInt(64, x))
-	     },
-	     "",
-	     b);
+             std::vector<Value *> {
+               ConstantInt::get(ctx, APInt(64, 0)),
+               ConstantInt::get(ctx, APInt(32, CELL_ARG)),
+               ConstantInt::get(ctx, APInt(64, x))
+             },
+             "",
+             b);
   new StoreInst(val, p, b);
 }
 
 void set_field(Value *ptr, int f, Value *val, BasicBlock *b) {
   LLVMContext &ctx = b->getContext();
   auto p = GetElementPtrInst::Create(ptr,
-	     std::vector<Value *> {
-	       ConstantInt::get(ctx, APInt(64, 0)),
-	       ConstantInt::get(ctx, APInt(32, f))
-	     },
-	     "",
-	     b);
+             std::vector<Value *> {
+               ConstantInt::get(ctx, APInt(64, 0)),
+               ConstantInt::get(ctx, APInt(32, f))
+             },
+             "",
+             b);
   new StoreInst(val, p, b);
 }
 
@@ -538,8 +538,8 @@ Function* declare_wrap_func(Function *func) {
 
     // Global Variable Definitions
     FunctionType *FuncTy_wrapper = FunctionType::get(IntegerType::get(ctx, 1),
-						     std::vector<Type *> { ext::cell_ptr_ptr_type, IntegerType::get(ctx, 32) },
-						     false);
+                                                     std::vector<Type *> { ext::cell_ptr_ptr_type, IntegerType::get(ctx, 32) },
+                                                     false);
 
     // function definition
     func_wrapper = Function::Create(FuncTy_wrapper, GlobalValue::ExternalLinkage, name, mod);
@@ -561,8 +561,8 @@ Function* wrap_func(Function *func) {
 
     // Global Variable Definitions
     FunctionType *FuncTy_wrapper = FunctionType::get(IntegerType::get(ctx, 1),
-						     std::vector<Type *> { ext::cell_ptr_ptr_type, IntegerType::get(ctx, 32) },
-						     false);
+                                                     std::vector<Type *> { ext::cell_ptr_ptr_type, IntegerType::get(ctx, 32) },
+                                                     false);
 
     // function definition
     func_wrapper = Function::Create(FuncTy_wrapper, GlobalValue::ExternalLinkage, name, mod);
@@ -586,7 +586,7 @@ Function* wrap_func(Function *func) {
     auto ptr_cp_deref = new LoadInst(ptr_cp, "", false, label_entry);
     auto int64_c = new PtrToIntInst(ptr_cp_deref, IntegerType::get(ctx, 64), "", label_entry);
     auto int64_c_and_not_3 = BinaryOperator::Create(Instruction::And, int64_c,
-						    ConstantInt::get(ctx, APInt(64, ~3)), "", label_entry);
+                                                    ConstantInt::get(ctx, APInt(64, ~3)), "", label_entry);
     auto ptr_c = new IntToPtrInst(int64_c_and_not_3, ext::cell_ptr_type, "c", label_entry);
 
     std::vector<Value *> builder_args;
@@ -606,9 +606,9 @@ Function* wrap_func(Function *func) {
       CallInst::Create(f_store_lazy, std::vector<Value *> {ptr_cp, ptr_c, call}, "", label_entry);
     } else {
        for(int i = 1; i < out; i++) {
-	auto x = ExtractValueInst::Create(call, ArrayRef<unsigned>(i), "", label_entry);
-	auto d = get_arg(ptr_c, in + i - 1, label_entry);
-	CallInst::Create(f_store_lazy_dep, std::vector<Value *> {ptr_c, d, x}, "", label_entry);
+        auto x = ExtractValueInst::Create(call, ArrayRef<unsigned>(i), "", label_entry);
+        auto d = get_arg(ptr_c, in + i - 1, label_entry);
+        CallInst::Create(f_store_lazy_dep, std::vector<Value *> {ptr_c, d, x}, "", label_entry);
       }
       auto x = ExtractValueInst::Create(call, ArrayRef<unsigned>(0), "", label_entry);
       CallInst::Create(f_store_lazy, std::vector<Value *> {ptr_cp, ptr_c, x}, "", label_entry);
@@ -657,9 +657,9 @@ reduce_t *compile(cell_t *c, unsigned int in, unsigned int out) {
 
   for(unsigned int i = 0; i < builder_table_length; ++i) {
     engine->addGlobalMapping(
-      fb.get_cell_func("build_" + std::string(builder_table[i].name), 
-		       builder_table[i].in,
-		       builder_table[i].out),
+      fb.get_cell_func("build_" + std::string(builder_table[i].name),
+                       builder_table[i].in,
+                       builder_table[i].out),
       builder_table[i].func);
   }
 

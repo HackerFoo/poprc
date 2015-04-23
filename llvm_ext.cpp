@@ -81,8 +81,8 @@ Function *fail(Module *mod) {
   LLVMContext &ctx = mod->getContext();
   FunctionType* ft =
     FunctionType::get(Type::getVoidTy(ctx),
-		      { cell_ptr_ptr_type },
-		      false);
+                      { cell_ptr_ptr_type },
+                      false);
   f = Function::Create(ft, GlobalValue::ExternalLinkage, "fail", mod);
   f->setCallingConv(CallingConv::C);
   return f;
@@ -95,8 +95,8 @@ Function *store_lazy(Module *mod) {
   LLVMContext &ctx = mod->getContext();
   FunctionType* ft =
     FunctionType::get(Type::getVoidTy(ctx),
-		      std::vector<Type *> { cell_ptr_ptr_type, cell_ptr_type, cell_ptr_type },
-		      false);
+                      std::vector<Type *> { cell_ptr_ptr_type, cell_ptr_type, cell_ptr_type },
+                      false);
   f = Function::Create(ft, GlobalValue::ExternalLinkage, "store_lazy", mod);
   f->setCallingConv(CallingConv::C);
   return f;
@@ -109,8 +109,8 @@ Function *store_lazy_dep(Module *mod) {
   LLVMContext &ctx = mod->getContext();
   FunctionType* ft =
     FunctionType::get(Type::getVoidTy(ctx),
-		      std::vector<Type *> { cell_ptr_type, cell_ptr_type, cell_ptr_type },
-		      false);
+                      std::vector<Type *> { cell_ptr_type, cell_ptr_type, cell_ptr_type },
+                      false);
   f = Function::Create(ft, GlobalValue::ExternalLinkage, "store_lazy_dep", mod);
   f->setCallingConv(CallingConv::C);
   return f;
@@ -123,8 +123,8 @@ Function *drop(Module *mod) {
   LLVMContext &ctx = mod->getContext();
   FunctionType* ft =
     FunctionType::get(Type::getVoidTy(ctx),
-		      { cell_ptr_type },
-		      false);
+                      { cell_ptr_type },
+                      false);
   f = Function::Create(ft, GlobalValue::ExternalLinkage, "drop", mod);
   f->setCallingConv(CallingConv::C);
   return f;
@@ -137,8 +137,8 @@ Function *refn(Module *mod) {
   LLVMContext &ctx = mod->getContext();
   FunctionType* ft =
     FunctionType::get(Type::getVoidTy(ctx),
-		      std::vector<Type *> { cell_ptr_type, IntegerType::get(ctx, 32) },
-		      false);
+                      std::vector<Type *> { cell_ptr_type, IntegerType::get(ctx, 32) },
+                      false);
   f = Function::Create(ft, GlobalValue::ExternalLinkage, "refn", mod);
   f->setCallingConv(CallingConv::C);
   return f;
@@ -151,8 +151,8 @@ Function *dep(Module *mod) {
   LLVMContext &ctx = mod->getContext();
   FunctionType* ft =
     FunctionType::get(Type::getVoidTy(ctx),
-		      cell_ptr_type,
-		      false);
+                      cell_ptr_type,
+                      false);
   f = Function::Create(ft, GlobalValue::ExternalLinkage, "dep", mod);
   f->setCallingConv(CallingConv::C);
   return f;
@@ -168,13 +168,13 @@ void define_types(Module *mod) {
     cell_type = StructType::create(ctx, "cell_t");
     cell_ptr_type = PointerType::get(cell_type, 0);
     cell_type->setBody(std::vector<Type *> {
-	void_ptr_type,
-	cell_ptr_type,
-	cell_ptr_type,
-	IntegerType::get(ctx, 32),
-	IntegerType::get(ctx, 16),
-	IntegerType::get(ctx, 16),
-	ArrayType::get(cell_ptr_type, 3)
+        void_ptr_type,
+        cell_ptr_type,
+        cell_ptr_type,
+        IntegerType::get(ctx, 32),
+        IntegerType::get(ctx, 16),
+        IntegerType::get(ctx, 16),
+        ArrayType::get(cell_ptr_type, 3)
       },
       true);
     cell_ptr_ptr_type = PointerType::get(cell_ptr_type, 0);

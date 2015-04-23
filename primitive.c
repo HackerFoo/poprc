@@ -94,11 +94,11 @@ const unsigned int builder_table_length = LENGTH(builder_table);
 
 cell_t *_op2(intptr_t (*op)(intptr_t, intptr_t), cell_t *x, cell_t *y) {
   unsigned int size = min(val_size(x),
-		 val_size(y));
+                 val_size(y));
   cell_t *res = vector(size);
   for(unsigned int i = 0; i < size; ++i)
     res->val[i] = op(x->val[i],
-		     y->val[i]);
+                     y->val[i]);
   res->size = size + 1;
   return res;
 }
@@ -429,7 +429,7 @@ bool func_assert(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   alt_set_t alt_set = 0;
   if(!reduce_arg(c, 1, &alt_set, T_INT)) goto fail;
-  clear_flags(c);  
+  clear_flags(c);
   cell_t *p = c->arg[1];
   if(!(is_var(p) || p->val[0])) goto fail;
   c->func = func_id;
@@ -454,7 +454,7 @@ bool type_check(cell_t **cp, type_t type) {
   if(!((p->type == type) ||
        is_var(p))) goto fail;
   store_reduced(c, mod_alt(c->arg[0], c->alt,
-			   c->arg[0]->alt_set));
+                           c->arg[0]->alt_set));
   return true;
  fail:
   fail(cp);

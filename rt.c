@@ -134,9 +134,9 @@ void split_arg(cell_t *c, unsigned int n) {
 
 // Reduce then split c->arg[n]
 bool reduce_arg(cell_t *c,
-		unsigned int n,
-		alt_set_t *as,
-		type_t t) {
+                unsigned int n,
+                alt_set_t *as,
+                type_t t) {
   bool r = reduce(&c->arg[n], t);
   split_arg(c, n);
   return r && entangle(as, clear_ptr(c->arg[n], 1));
@@ -194,7 +194,7 @@ bool reduce_partial(cell_t **cp) {
     return false;
   }
   assert(is_closure(c) &&
-	 closure_is_ready(c));
+         closure_is_ready(c));
   measure.reduce_cnt++;
   return c->func(cp, T_ANY);
 }
@@ -290,9 +290,9 @@ cell_t *closure_alloc_cells(unsigned int size) {
   return c;
 }
 
-#define calc_size(f, n)				\
-  ((sizeof(cell_t)				\
-    + ((uintptr_t)&(((cell_t *)0)->f[n]) - 1))	\
+#define calc_size(f, n)                         \
+  ((sizeof(cell_t)                              \
+    + ((uintptr_t)&(((cell_t *)0)->f[n]) - 1))  \
    / sizeof(cell_t))
 
 unsigned int calculate_cells(unsigned int n) {
@@ -356,8 +356,8 @@ bool func_reduced(cell_t **cp, type_rep_t t) {
     if(is_any(c)) {
       /* create placeholder */
       if((t & T_EXCLUSIVE) == T_LIST) {
-	c->ptr[0] = func(func_placeholder, 0, 1);
-	c->size = 2;
+        c->ptr[0] = func(func_placeholder, 0, 1);
+        c->size = 2;
       }
       c->type |= t;
       trace(c, 0, tt_touched);
@@ -482,8 +482,8 @@ cell_t *compose_placeholders(cell_t *a, cell_t *b) {
   unsigned int b_out = closure_out(b);
   cell_t *c = expand(b, a->size);
   memmove(c->arg + a->size + b_in,
-	  c->arg + b_in,
-	  b_out * sizeof(cell_t *));
+          c->arg + b_in,
+          b_out * sizeof(cell_t *));
   for(i = 0; i < closure_in(a); ++i)
     c->arg[b_in + i] = ref(a->arg[i]);
   for(; i < a->size; ++i)
@@ -503,16 +503,16 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
     while(!closure_is_ready(l = b->ptr[n-1]) && i < n_a) {
       cell_t *x = a->ptr[i];
       if(is_placeholder(x)) {
-	if(is_placeholder(l)) {
-	  b->ptr[n-1] = compose_placeholders(x, l);
-	  ++i;
-	  break;
-	}
-	a->ptr[i] = x = expand_inplace_dep(x, 1);
-	b = arg_nd(l, x->arg[closure_in(x)] = dep(ref(x)), b);
+        if(is_placeholder(l)) {
+          b->ptr[n-1] = compose_placeholders(x, l);
+          ++i;
+          break;
+        }
+        a->ptr[i] = x = expand_inplace_dep(x, 1);
+        b = arg_nd(l, x->arg[closure_in(x)] = dep(ref(x)), b);
       } else {
-	b = arg_nd(l, ref(x), b);
-	++i;
+        b = arg_nd(l, ref(x), b);
+        ++i;
       }
     }
   }
@@ -641,39 +641,39 @@ bool is_any(cell_t const *c) {
 }
 
 #if INTERFACE
-#define traverse(r, action, flags) 			\
-  do {							\
-    cell_t **p;						\
-    if(is_reduced(r)) {					\
-      if(((flags) & PTRS) &&				\
-		is_list(r)) {				\
-	unsigned int i, n = list_size(r);		\
-	for(i = 0; i < n; ++i) {			\
-	  p = (r)->ptr + i;				\
-	  action					\
-	}						\
-      }							\
-    } else if((flags) & (ARGS | ARGS_IN)) {		\
-      unsigned int i, n = ((flags) & ARGS_IN) ?		\
-	closure_in(r) :					\
-	closure_args(r);				\
-      for(i = closure_next_child(r); i < n; ++i) {	\
-	p = (r)->arg + i;				\
-	if(*p) {action}					\
-      }							\
-    }							\
-    if((flags) & ALT) {					\
-      p = &(r)->alt;					\
-      action						\
-    }							\
+#define traverse(r, action, flags)                      \
+  do {                                                  \
+    cell_t **p;                                         \
+    if(is_reduced(r)) {                                 \
+      if(((flags) & PTRS) &&                            \
+                is_list(r)) {                           \
+        unsigned int i, n = list_size(r);               \
+        for(i = 0; i < n; ++i) {                        \
+          p = (r)->ptr + i;                             \
+          action                                        \
+        }                                               \
+      }                                                 \
+    } else if((flags) & (ARGS | ARGS_IN)) {             \
+      unsigned int i, n = ((flags) & ARGS_IN) ?         \
+        closure_in(r) :                                 \
+        closure_args(r);                                \
+      for(i = closure_next_child(r); i < n; ++i) {      \
+        p = (r)->arg + i;                               \
+        if(*p) {action}                                 \
+      }                                                 \
+    }                                                   \
+    if((flags) & ALT) {                                 \
+      p = &(r)->alt;                                    \
+      action                                            \
+    }                                                   \
   } while(0)
 #endif
 
 void traverse_mark_alt(cell_t *c) {
   traverse(c, {
       if(*p && !is_marked((*p)->alt, 1)) {
-	(*p)->alt = mark_ptr((*p)->alt, 1);
-	traverse_mark_alt(*p);
+        (*p)->alt = mark_ptr((*p)->alt, 1);
+        traverse_mark_alt(*p);
       }
     }, ARGS | PTRS);
 }
@@ -681,8 +681,8 @@ void traverse_mark_alt(cell_t *c) {
 void traverse_clear_alt(cell_t *c) {
   traverse(c, {
       if(*p && is_marked((*p)->alt, 1)) {
-	(*p)->alt = clear_ptr((*p)->alt, 1);
-	traverse_clear_alt(*p);
+        (*p)->alt = clear_ptr((*p)->alt, 1);
+        traverse_clear_alt(*p);
       }
     }, ARGS | PTRS);
 }
@@ -762,8 +762,8 @@ void fail(cell_t **cp) {
   drop(c);
   if(c->func) {
     traverse(c, {
-	cell_t *x = clear_ptr(*p, 3);
-	drop(x);
+        cell_t *x = clear_ptr(*p, 3);
+        drop(x);
       }, ARGS_IN);
     closure_shrink(c, 1);
     memset(c->arg, 0, sizeof(c->arg));
@@ -833,21 +833,21 @@ void drop(cell_t *c) {
   if(!c->n) {
     cell_t *p;
     traverse(c, {
-	cell_t *x = clear_ptr(*p, 3);
-	/* !is_marked condition needed */
-	/* during _modify_copy2 */
-	if(!is_marked(*p, 2)) {
-	  drop(x);
-	}
+        cell_t *x = clear_ptr(*p, 3);
+        /* !is_marked condition needed */
+        /* during _modify_copy2 */
+        if(!is_marked(*p, 2)) {
+          drop(x);
+        }
       }, ALT | ARGS_IN | PTRS);
     if(is_dep(c) && !is_reduced(p = c->arg[0]) && is_closure(p)) {
       /* mark dep arg as gone */
       unsigned int n = closure_args(p);
       while(n--) {
-	if(p->arg[n] == c) {
-	  p->arg[n] = 0;
-	  break;
-	}
+        if(p->arg[n] == c) {
+          p->arg[n] = 0;
+          break;
+        }
       }
     }
     if(is_reduced(c)) alt_set_drop(c->alt_set);
@@ -892,7 +892,7 @@ bool is_dep(cell_t const *c) {
 // *** fix arg()'s
 cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
   assert(is_closure(a) &&
-	 is_closure(b) && is_list(b));
+         is_closure(b) && is_list(b));
   assert(n);
   bool ph_a = is_placeholder(a);
   unsigned int i, bs = list_size(b);
@@ -905,7 +905,7 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
       return b;
     }
     while((ph_a || n > 1) &&
-	  !closure_is_ready(*l)) {
+          !closure_is_ready(*l)) {
       d = dep(NULL);
       arg(l, d);
       arg(&a, d);
@@ -918,8 +918,8 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
       arg(l, a);
       // *** messy
       for(i = closure_in(*l); i < closure_args(*l); ++i) {
-	drop((*l)->arg[i]->arg[0]);
-	(*l)->arg[i]->arg[0] = ref(*l);
+        drop((*l)->arg[i]->arg[0]);
+        (*l)->arg[i]->arg[0] = ref(*l);
       }
       return b;
     }
@@ -945,7 +945,7 @@ cell_t *pushl_val(intptr_t x, cell_t *c) {
 
 cell_t *pushl_nd(cell_t *a, cell_t *b) {
   assert(is_closure(a) &&
-	 is_closure(b) && is_list(b));
+         is_closure(b) && is_list(b));
 
   unsigned int n = list_size(b);
   if(n) {
@@ -1075,9 +1075,9 @@ void check_tmps() {
     if(is_closure(p)) {
       /*
       if(p->tmp) {
-	printf("<<%d %d>>\n", i, (int)p->tmp);
-	drop(clear_ptr(p->tmp, 3));
-	p->tmp = 0;
+        printf("<<%d %d>>\n", i, (int)p->tmp);
+        drop(clear_ptr(p->tmp, 3));
+        p->tmp = 0;
       }
       */
       assert(!p->tmp);
@@ -1107,9 +1107,9 @@ unsigned int nondep_n(cell_t *c) {
   else if(!is_reduced(c)) {
     unsigned int n = closure_args(c);
     while(n-- &&
-	  is_closure(c->arg[n]) &&
-	  is_dep(c->arg[n]) &&
-	  c->arg[n]->arg[0] == c) --nd;
+          is_closure(c->arg[n]) &&
+          is_dep(c->arg[n]) &&
+          c->arg[n]->arg[0] == c) --nd;
   }
   return nd;
 }
@@ -1145,7 +1145,7 @@ cell_t *_modify_copy1(cell_t *c, cell_t *r, bool up) {
   if(c == r) _modify_new(r, u);
   traverse(r, {
       if(_modify_copy1(c, *p, u))
-	_modify_new(r, u);
+        _modify_new(r, u);
     }, ARGS | PTRS | ALT);
   return clear_ptr(r->tmp, 3);
 }
@@ -1171,14 +1171,14 @@ void _modify_copy2(cell_t *r) {
       cell_t *u = clear_ptr(*p, 3);
       cell_t *t = get_mod(u);
       if(t) {
-	if(!(s && t == u)) {
-	  *p = ref(t);
-	  if(s) drop(u);
-	}
-	_modify_copy2(t);
+        if(!(s && t == u)) {
+          *p = ref(t);
+          if(s) drop(u);
+        }
+        _modify_copy2(t);
       } else if(!s) ref(u);
       if((!s || t != u) && is_weak(r, *p)) {
-	--(*p)->n;
+        --(*p)->n;
       }
     }, ARGS | PTRS | ALT);
 }

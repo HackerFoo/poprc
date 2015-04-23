@@ -114,9 +114,9 @@ char const *function_token(reduce_t *f) {
 void make_graph(char const *path, cell_t const *c) {
   FILE *f = fopen(path, "w");
   fprintf(f, "digraph g {\n"
-	     "graph [\n"
-	     "rankdir = \"RL\"\n"
-	     "];\n");
+             "graph [\n"
+             "rankdir = \"RL\"\n"
+             "];\n");
   zero(visited);
   graph_cell(f, c);
   fprintf(f, "}\n");
@@ -128,8 +128,8 @@ void make_graph_all(char const *path) {
   FILE *f = fopen(path, "w");
   fprintf(f, "digraph g {\n"
           "graph [\n"
-	     "rankdir = \"RL\"\n"
-	     "];\n");
+             "rankdir = \"RL\"\n"
+             "];\n");
   zero(visited);
   FOREACH(cells, i) {
     graph_cell(f, &cells[i]);
@@ -154,28 +154,28 @@ void graph_cell(FILE *f, cell_t const *c) {
   /* print node attributes */
   fprintf(f, "node%ld [\nlabel =<", node);
   fprintf(f, "<table border=\"0\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%ld) %s%s %x %x (%d)</b></font></td></tr>",
-	  node,
-	  function_name(c->func),
-	  closure_is_ready(c) ? "" : "*",
-	  (int)c->size,
-	  (int)c->out,
-	  (int)c->n);
+          node,
+          function_name(c->func),
+          closure_is_ready(c) ? "" : "*",
+          (int)c->size,
+          (int)c->out,
+          (int)c->n);
   fprintf(f, "<tr><td port=\"alt\">alt: <font color=\"lightgray\">%p</font></td></tr>",
              c->alt);
   if(is_reduced(c)) {
     fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
-	    show_alt_set(c->alt_set));
+            show_alt_set(c->alt_set));
     if(is_list(c)) {
       int n = list_size(c);
       while(n--)
-	fprintf(f, "<tr><td port=\"ptr%d\">ptr: <font color=\"lightgray\">%p</font></td></tr>",
-		n, c->ptr[n]);
+        fprintf(f, "<tr><td port=\"ptr%d\">ptr: <font color=\"lightgray\">%p</font></td></tr>",
+                n, c->ptr[n]);
     } else if(is_fail(c)) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
     } else {
       int n = val_size(c);
       while(n--)
-	fprintf(f, "<tr><td bgcolor=\"yellow\">val: %ld</td></tr>", (long int)c->val[n]);
+        fprintf(f, "<tr><td bgcolor=\"yellow\">val: %ld</td></tr>", (long int)c->val[n]);
     }
   } else {
     for(unsigned int i = 0; i < n; i++) {
@@ -183,7 +183,7 @@ void graph_cell(FILE *f, cell_t const *c) {
     }
     if(c->func == func_id) {
       fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
-	      show_alt_set((alt_set_t)c->arg[1]));
+              show_alt_set((alt_set_t)c->arg[1]));
     }
   }
   fprintf(f, "</table>>\nshape = \"none\"\n];\n");
@@ -192,27 +192,27 @@ void graph_cell(FILE *f, cell_t const *c) {
   if(is_cell(c->alt)) {
     cell_t *alt = clear_ptr(c->alt, 1);
     fprintf(f, "node%ld:alt -> node%ld:top;\n",
-	    node, (long int)(alt - cells));
+            node, (long int)(alt - cells));
     graph_cell(f, c->alt);
   }
   if(is_reduced(c)) {
     if(is_list(c)) {
       int n = list_size(c);
       while(n--) {
-	if(is_cell(c->ptr[n])) {
-	  fprintf(f, "node%ld:ptr%d -> node%ld:top;\n",
-		  node, n, (long int)(c->ptr[n] - cells));
-	  graph_cell(f, c->ptr[n]);
-	}
+        if(is_cell(c->ptr[n])) {
+          fprintf(f, "node%ld:ptr%d -> node%ld:top;\n",
+                  node, n, (long int)(c->ptr[n] - cells));
+          graph_cell(f, c->ptr[n]);
+        }
       }
     }
   } else {
     for(unsigned int i = 0; i < n; i++) {
       cell_t *arg = clear_ptr(c->arg[i], 1);
       if(is_cell(arg)) {
-	fprintf(f, "node%ld:arg%d -> node%ld:top%s;\n",
-		(long int)(c - cells), i, (long int)(arg - cells), is_weak(c, arg) ? " [color=lightgray]" : "");
-	graph_cell(f, arg);
+        fprintf(f, "node%ld:arg%d -> node%ld:top%s;\n",
+                (long int)(c - cells), i, (long int)(arg - cells), is_weak(c, arg) ? " [color=lightgray]" : "");
+        graph_cell(f, arg);
       }
     }
   }
@@ -273,52 +273,52 @@ void show_list(cell_t const *c) {
 
       /* find first match */
       if(!any_conflicts((cell_t const *const *)c->ptr, n)) {
-	m1 = c;
+        m1 = c;
       } else {
-	p = copy(c);
-	while(count((cell_t const **)p->ptr, (cell_t const *const *)c->ptr, n) >= 0) {
-	  if(!any_conflicts((cell_t const *const *)p->ptr, n)) {
-	    m1 = p;
+        p = copy(c);
+        while(count((cell_t const **)p->ptr, (cell_t const *const *)c->ptr, n) >= 0) {
+          if(!any_conflicts((cell_t const *const *)p->ptr, n)) {
+            m1 = p;
             free_this = p;
-	    break;
-	  }
-	}
+            break;
+          }
+        }
       }
       if(!m1) {
-	/* no matches */
-	printf(" []");
-	if(p) closure_free(p);
+        /* no matches */
+        printf(" []");
+        if(p) closure_free(p);
       } else {
-	/* find second match */
-	p = copy(m1);
-	while(count((cell_t const **)p->ptr, (cell_t const *const *)c->ptr, n) >= 0) {
-	  if(!any_conflicts((cell_t const *const *)p->ptr, n)) {
-	    m2 = p;
-	    break;
-	  }
-	}
-	if(m2) printf(" {");
-	/* at least one match */
- 	printf(" [");
-	i = n; while(i--) show_one(m1->ptr[i]);
-	printf(" ]");
-	closure_free(free_this);
-	if(m2) {
-	  /* second match */
-	  printf(" | [");
-	  i = n; while(i--) show_one(m2->ptr[i]);
-	  printf(" ]");
-	  /* remaining matches */
-	  while(count((cell_t const **)p->ptr, (cell_t const *const *)c->ptr, n) >= 0) {
-	    if(!any_conflicts((cell_t const *const *)p->ptr, n)) {
-	      printf(" | [");
-	      i = n; while(i--) show_one(p->ptr[i]);
-	      printf(" ]");
-	    }
-	  }
-	  printf(" }");
-	}
-	closure_free(p);
+        /* find second match */
+        p = copy(m1);
+        while(count((cell_t const **)p->ptr, (cell_t const *const *)c->ptr, n) >= 0) {
+          if(!any_conflicts((cell_t const *const *)p->ptr, n)) {
+            m2 = p;
+            break;
+          }
+        }
+        if(m2) printf(" {");
+        /* at least one match */
+        printf(" [");
+        i = n; while(i--) show_one(m1->ptr[i]);
+        printf(" ]");
+        closure_free(free_this);
+        if(m2) {
+          /* second match */
+          printf(" | [");
+          i = n; while(i--) show_one(m2->ptr[i]);
+          printf(" ]");
+          /* remaining matches */
+          while(count((cell_t const **)p->ptr, (cell_t const *const *)c->ptr, n) >= 0) {
+            if(!any_conflicts((cell_t const *const *)p->ptr, n)) {
+              printf(" | [");
+              i = n; while(i--) show_one(p->ptr[i]);
+              printf(" ]");
+            }
+          }
+          printf(" }");
+        }
+        closure_free(p);
       }
     } else {
       printf(" [");
@@ -439,10 +439,10 @@ void show_alt(cell_t const *c) {
       show_one(p);
       p = t;
       do {
-	printf(" |");
-	t = p->alt;
-	show_one(p);
-	p = t;
+        printf(" |");
+        t = p->alt;
+        show_one(p);
+        p = t;
       } while(p);
       printf(" }");
     }
@@ -467,15 +467,15 @@ void measure_display() {
   double time = (saved_measure.stop - saved_measure.start) /
     (double)CLOCKS_PER_SEC;
   printf("time        : %.3e sec\n"
-	 "allocated   : %d bytes\n"
-	 "working set : %d bytes\n"
-	 "reductions  : %d\n"
-	 "alts used   : %d\n",
-	 time,
-	 saved_measure.alloc_cnt * (int)sizeof(cell_t),
-	 saved_measure.max_alloc_cnt * (int)sizeof(cell_t),
-	 saved_measure.reduce_cnt,
-	 saved_measure.alt_cnt);
+         "allocated   : %d bytes\n"
+         "working set : %d bytes\n"
+         "reductions  : %d\n"
+         "alts used   : %d\n",
+         time,
+         saved_measure.alloc_cnt * (int)sizeof(cell_t),
+         saved_measure.max_alloc_cnt * (int)sizeof(cell_t),
+         saved_measure.reduce_cnt,
+         saved_measure.alt_cnt);
 
 }
 
@@ -549,7 +549,7 @@ void run_eval() {
       printf("graph %s\n", write_graph ? "ON" : "OFF");
     } else if(strncmp(line, ":l ", 3) == 0) {
       if(line[3])
-	loadSource(&line[3]);
+        loadSource(&line[3]);
     } else if(strcmp(line, ":q") == 0) {
 #ifndef RAW_LINE
       free(line_raw);
@@ -586,7 +586,7 @@ void run_eval() {
       cells_init();
       line += 3;
       if(get_arity(line, strlen(line), &in, &out)) {
-	printf("%d -> %d\n", in, out);
+        printf("%d -> %d\n", in, out);
       }
     } else {
 #if defined(USE_LINENOISE)
@@ -621,10 +621,10 @@ void completion(char const *buf, linenoiseCompletions *lc) {
     /* add completions */
     do {
       if(strnlen(e->name, sizeof_field(word_entry_t, name)) >
-	 tok_len) {
+         tok_len) {
 
-	strncpy(tok, e->name, sizeof(e->name));
-	linenoiseAddCompletion(lc, comp);
+        strncpy(tok, e->name, sizeof(e->name));
+        linenoiseAddCompletion(lc, comp);
       }
       e++;
     } while(strncmp(e->name, tok, tok_len) == 0);
@@ -700,14 +700,14 @@ bool is_num(char const *str) {
 word_entry_t *lookup_word(char const *w) {
   word_entry_t *res =
     lookup(word_table,
-	   WIDTH(word_table),
-	   word_table_length,
-	   w);
+           WIDTH(word_table),
+           word_table_length,
+           w);
   if(!res) res =
     lookup_linear(user_word_table,
-		  WIDTH(user_word_table),
-		  user_word_table_length,
-		  w);
+                  WIDTH(user_word_table),
+                  user_word_table_length,
+                  w);
   return res;
 }
 
@@ -717,8 +717,8 @@ cell_t *word(char const *w) {
 }
 
 cell_t *word_parse(char const *w,
-		   unsigned int *in,
-		   unsigned int *out) {
+                   unsigned int *in,
+                   unsigned int *out) {
   cell_t *c;
   if(is_num(w)) {
     c = val(atoi(w));
@@ -801,7 +801,7 @@ cell_t *parse_vector(char *str, char **p) {
   char *tok = *p;
   cell_t *c = vector(0);
   while((tok = rtok(str, tok)) &&
-	strcmp("(", tok) != 0) {
+        strcmp("(", tok) != 0) {
     assert(is_num(tok));
     c = pushl_val(atoi(tok), c);
   }
@@ -900,11 +900,11 @@ bool get_arity(char *str, unsigned int n, unsigned int *in, unsigned int *out) {
 
 #ifdef USE_LLVM
 void compile_expr(char const *name, char *str, unsigned int n) {
-  word_entry_t *e = 
+  word_entry_t *e =
     lookup_linear(user_word_table,
-		  WIDTH(user_word_table),
-		  user_word_table_length,
-		  name);
+                  WIDTH(user_word_table),
+                  user_word_table_length,
+                  name);
   if(!e) e = new_user_word_entry++;
   strcpy(e->name, name);
   e->func = func_placeholder;
@@ -1016,19 +1016,19 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
       for(i = 0; i < in; ++i) trace(c->arg[i], 0, tt_force); // ***
       if(!is_placeholder(c)) printf("?%c%ld ", type_char(r->type), (long int)(c - cells));
       for(i = 0; i < out; ++i) {
-	cell_t *a = c->arg[n - i - 1];
-	if(a) printf("?%ld ", (long int)(a - cells));
-	else printf("__ ");
+        cell_t *a = c->arg[n - i - 1];
+        if(a) printf("?%ld ", (long int)(a - cells));
+        else printf("__ ");
       }
       printf("<- ");
       for(i = 0; i < in; ++i) {
-	if(is_cell(c->arg[i])) printf("?%ld ", (long int)(c->arg[i] - cells));
-	else printf("?_ ");
+        if(is_cell(c->arg[i])) printf("?%ld ", (long int)(c->arg[i] - cells));
+        else printf("?_ ");
       }
       if(is_placeholder(c)) {
-	printf("f[?%ld]\n", (long int)(c - cells));
+        printf("f[?%ld]\n", (long int)(c - cells));
       } else {
-	printf("%s\n", function_name(c->func));
+        printf("%s\n", function_name(c->func));
       }
     }
     r->type |= T_TRACED;
@@ -1051,19 +1051,19 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     break;
   case tt_select:
     printf("?%c%ld <- ?%ld ?%ld select\n",
-	   type_char(c->type),
-	   (long int)(c - cells),
-	   (long int)(c - cells),
-	   (long int)(r - cells));
+           type_char(c->type),
+           (long int)(c - cells),
+           (long int)(c - cells),
+           (long int)(r - cells));
     break;
   case tt_copy:
     printf("?f%ld <- ?%ld\n", (long int)(c - cells), (long int)(r - cells));
     break;
   case tt_compose_placeholders:
     printf("?f%ld <- ?%ld ?%ld compose_placeholders\n",
-	   (long int)(c - cells),
-	   (long int)(((cell_t **)r)[0] - cells),
-	   (long int)(((cell_t **)r)[1] - cells));
+           (long int)(c - cells),
+           (long int)(((cell_t **)r)[0] - cells),
+           (long int)(((cell_t **)r)[1] - cells));
     break;
   }
 }
