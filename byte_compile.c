@@ -16,7 +16,7 @@
 
 void _make_index(cell_t *c, pair_t **index) {
   traverse(c, {
-      if(*p && !(*p)->type & T_TRACED) {
+      if(*p && !((*p)->type & T_TRACED)) {
         pair_t *x = *index;
         x->first = (intptr_t)clear_ptr(*p, 3);
         (*p)->type |= T_TRACED;
@@ -38,8 +38,54 @@ unsigned int make_index(cell_t *c, pair_t *index) {
   return n;
 }
 
-cell_t trace_arr[1 << 10];
-cell_t *trace_ptr = &trace_arr[0];
+cell_t trace_cells[1 << 10];
+cell_t *trace_ptr = &trace_cells[0];
+pair_t trace_index[1 << 10] = {{0, 0}};
+pair_t *trace_index_ptr = &trace_index[0];
+
+pair_t *trace_index_lookup_linear(cell_t *c) {
+  pair_t *p = &trace_index[0];
+  while(p < trace_index_ptr) {
+    if(p->first == (uintptr_t)c) {
+      return p;
+    } else p++;
+  }
+  return NULL;
+}
+
+pair_t *trace_index_add(cell_t *c, uintptr_t x) {
+  pair_t *p = trace_index_ptr++;
+  p->first = (uintptr_t)c;
+  p->second = x;
+  return p;
+}
+
+pair_t *trace_index_assign(cell_t *new, cell_t *old) {
+  pair_t *p = trace_index_lookup_linear(old);
+  if(p) {
+    return trace_index_add(new, p->second);
+  } else {
+    return NULL;
+  }
+}
+
+cell_t *trace_store(cell_t *c) {
+  cell_t *dest = trace_ptr;
+  unsigned int size = closure_cells(c);
+  trace_ptr += size;
+  memcpy(dest, c, sizeof(cell_t) * size);
+  trace_index_add(c, dest - trace_cells);
+  return dest;
+}
+
+void trace_init() {
+  trace_ptr = &trace_cells[0];
+  trace_index_ptr = &trace_index[0];
+}
+
+void trace_rewrite_ptrs() {
+
+}
 
 void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   switch(tt) {
@@ -54,7 +100,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
 
     if(c->func == func_cut ||
        c->func == func_id) {
-      //fb->assign(c, c->arg[0]);
+      trace_index_assign(c, c->arg[0]);
     } else if(c->func == func_dep) {
       // do nothing
     } else if(c->func == func_placeholder) {
@@ -62,7 +108,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     } else if(c->func == func_self) {
       //fb->callSelf(c);
     } else {
-      //fb->call(c);
+      trace_store(c);
     }
     r->type |= T_TRACED;
     break;
@@ -97,13 +143,12 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
 }
 
 cell_t const *bc_args[1 << 10] = {0};
-cell_t const **bc_args_ptr = &bc_args[0];
-void bc_arg(cell_t const *c, UNUSED int x) {
-  *bc_args_ptr++ = c;
+void bc_arg(cell_t const *c, int x) {
+  bc_args[x] = c;
 }
 
-reduce_t *byte_compile(cell_t *root, int in, int out) {
-  pair_t index[1 << 10] = {0};
+reduce_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
+  pair_t index[1 << 10] = {{0, 0}};
   set_trace(bc_trace);
   /* fb = this; */
 
