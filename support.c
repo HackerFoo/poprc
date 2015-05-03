@@ -48,6 +48,17 @@ void swap(pair_t *x, pair_t *y) {
   *y = tmp;
 }
 
+void print_pairs(pair_t *array, size_t len) {
+  if(!len) {
+    printf("{}\n");
+  } else {
+    printf("{{%d, %d}", (int)array[0].first, (int)array[0].second);
+    for(unsigned int i = 1; i < len; i++) {
+      printf(", {%d, %d}", (int)array[i].first, (int)array[i].second);
+    }
+    printf("}\n");
+  }
+}
 
 int test_sort(UNUSED char *name) {
   pair_t array[] = {{3, 0}, {7, 1}, {2, 2}, {4, 3}, {500, 4}, {0, 5}, {8, 6}, {4, 7}};
