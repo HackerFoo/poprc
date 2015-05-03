@@ -15,6 +15,16 @@ void merge(pair_t *arr, size_t n) {
     *q_low = q; // q_low is the lowest queue address
 
   while(a < b) {
+    /*
+    printf("\n");
+    print_pairs(arr, a-arr);
+    printf("a: ");
+    print_pairs(a, q_low-a);
+    printf("q[%d]: ", q-q_low);
+    print_pairs(q_low, b-q_low);
+    printf("b: ");
+    print_pairs(b, n-(b-arr));
+    */
     if(q >= q_low && q != b && q->first < a->first) {
       if(b->first < q->first) { // b < q < a
         goto select_b;
@@ -51,6 +61,7 @@ void merge(pair_t *arr, size_t n) {
     // if a runs into the queue, just keep going
     // this works because the queue is sorted
     if(a >= q_low) q_low++;
+    if(q < q_low) q = q_low;
   }
 }
 
@@ -84,7 +95,7 @@ static TEST(test_merge);
 
 typedef pair_t * map_t;
 
-const size_t map_size(map_t map) {
+size_t map_size(map_t map) {
   return map[0].first;
 }
 
@@ -135,10 +146,10 @@ pair_t test_pair(uintptr_t x) {
   return p;
 }
 
-int test_map(char *name) {
-  MAP(map, 16);
-  int elems[] = {2, 5, 8, 3, 1, 0, 4, 7};
-  for(int i = 0; i < LENGTH(elems); i++) {
+int test_map(UNUSED char *name) {
+  MAP(map, 32);
+  int elems[] = {2, 5, 8, 3, 1, 0, 4, 7, 6, 9, 10, 15, 13, 11, 12, 14};
+  for(size_t i = 0; i < LENGTH(elems); i++) {
     map_insert(map, test_pair(elems[i]));
   }
   print_map(map);
