@@ -74,10 +74,10 @@ int test_sort(UNUSED char *name) {
   }
   printf("}\n");
 
-  int i1 = find(array, LENGTH(array), 7);
-  bool r1 = i1 > 0 && array[i1].second == 1;
+  pair_t *p1 = find(array, LENGTH(array), 7);
+  bool r1 = p1 && p1->second == 1;
   printf("index find existing: %s\n", r1 ? "PASS" : "FAIL");
-  bool r2 = find(array, LENGTH(array), 5);
+  bool r2 = !find(array, LENGTH(array), 5);
   printf("index find missing: %s\n", r2 ? "PASS" : "FAIL");
 
   return r1 && r2 ? 0 : -1;
@@ -131,18 +131,18 @@ void quicksort(pair_t *array, unsigned int size) {
 }
 
 // find the index of a value in a sorted array
-int find(pair_t *array, unsigned int size, uintptr_t key) {
-  unsigned int low = 0, high = size;
+pair_t *find(pair_t *array, size_t size, uintptr_t key) {
+  size_t low = 0, high = size;
   while(high > low) {
-    const unsigned int pivot = low + ((high - low) / 2);
+    const size_t pivot = low + ((high - low) / 2);
     const uintptr_t pivot_key = array[pivot].first;
     if(pivot_key == key) {
-      return pivot;
+      return &array[pivot];
     } else if(pivot_key < key) {
       low = pivot + 1;
     } else {
       high = pivot;
     }
   }
-  return -1;
+  return NULL;
 }

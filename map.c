@@ -130,6 +130,21 @@ bool map_insert(map_t map, pair_t x) {
   return true;
 }
 
+pair_t *map_find(map_t map, uintptr_t key) {
+  uintptr_t x = *map_cnt(map);
+  pair_t *elems = map_elems(map);
+  pair_t *result = NULL;
+  uintptr_t bit = 1;
+  while(x) {
+    if(x & bit) {
+      x &= ~bit;
+      if((result = find(&elems[x], bit, key))) break;
+    }
+    bit <<= 1;
+  }
+  return result;
+}
+
 #define MAP(name, size) pair_t name[size+1] = {{size, 0}}
 
 #define print_map(map) _print_map(#map, map)
@@ -141,18 +156,42 @@ void _print_map(char *name, map_t map) {
   print_pairs(map_elems(map), cnt);
 }
 
-pair_t test_pair(uintptr_t x) {
-  pair_t p = {x, x};
+#define find_test(map, key) _find_test((map), #map, (key))
+
+pair_t *_find_test(map_t map, char *name, uintptr_t key) {
+  pair_t *p = map_find(map, key);
+  printf("map_find(%s, %d) = ", name, (int)key);
+  if(p) {
+    printf("{%d, %d}\n", (int)p->first, (int)p->second);
+  } else {
+    printf("NULL\n");
+  }
   return p;
 }
 
 int test_map(UNUSED char *name) {
+  size_t i;
+  int ret = 0;
   MAP(map, 32);
-  int elems[] = {2, 5, 8, 3, 1, 0, 4, 7, 6, 9, 10, 15, 13, 11, 12, 14};
-  for(size_t i = 0; i < LENGTH(elems); i++) {
-    map_insert(map, test_pair(elems[i]));
+  int elems[] = {2, 5, 8, 3, 1, 0, 4, 7, 6, 9, 10, 15, 13, 11, 12};
+  FOREACH(elems, i) {
+    pair_t p = {elems[i], i};
+    map_insert(map, p);
   }
   print_map(map);
-  return 0;
+
+  FOREACH(elems, i) {
+    pair_t *p = find_test(map, elems[i]);
+    if(p) {
+      if(p->second != i) {
+        printf("MISMATCH\n");
+        ret = -1;
+      }
+    } else {
+      printf("MISSING\n");
+      ret = -1;
+    }
+  }
+  return ret;
 }
 static TEST(test_map);
