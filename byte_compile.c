@@ -11,9 +11,10 @@
 #include "gen/primitive.h"
 #include "gen/test.h"
 #include "gen/support.h"
+#include "gen/map.h"
 #include "gen/byte_compile.h"
 
-
+/*
 void _make_index(cell_t *c, pair_t **index) {
   traverse(c, {
       if(*p && !((*p)->type & T_TRACED)) {
@@ -37,12 +38,11 @@ unsigned int make_index(cell_t *c, pair_t *index) {
   }
   return n;
 }
-
+*/
 cell_t trace_cells[1 << 10];
 cell_t *trace_ptr = &trace_cells[0];
-pair_t trace_index[1 << 10] = {{0, 0}};
-pair_t *trace_index_ptr = &trace_index[0];
-
+static MAP(trace_index, 1 << 10);
+/*
 pair_t *trace_index_lookup_linear(cell_t *c) {
   pair_t *p = &trace_index[0];
   while(p < trace_index_ptr) {
@@ -52,20 +52,16 @@ pair_t *trace_index_lookup_linear(cell_t *c) {
   }
   return NULL;
 }
-
-pair_t *trace_index_add(cell_t *c, uintptr_t x) {
-  pair_t *p = trace_index_ptr++;
-  p->first = (uintptr_t)c;
-  p->second = x;
-  return p;
+*/
+void trace_index_add(cell_t *c, uintptr_t x) {
+  pair_t p = {(uintptr_t)c, x};
+  map_insert(trace_index, p);
 }
 
-pair_t *trace_index_assign(cell_t *new, cell_t *old) {
-  pair_t *p = trace_index_lookup_linear(old);
+void trace_index_assign(cell_t *new, cell_t *old) {
+  pair_t *p = map_find(trace_index, (uintptr_t)old);
   if(p) {
-    return trace_index_add(new, p->second);
-  } else {
-    return NULL;
+    trace_index_add(new, p->second);
   }
 }
 
@@ -80,7 +76,7 @@ cell_t *trace_store(cell_t *c) {
 
 void trace_init() {
   trace_ptr = &trace_cells[0];
-  trace_index_ptr = &trace_index[0];
+  map_clear(trace_index);
 }
 
 void trace_rewrite_ptrs() {
@@ -148,7 +144,7 @@ void bc_arg(cell_t const *c, int x) {
 }
 
 reduce_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
-  pair_t index[1 << 10] = {{0, 0}};
+  //pair_t index[1 << 10] = {{0, 0}};
   set_trace(bc_trace);
   /* fb = this; */
 
@@ -167,12 +163,12 @@ reduce_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
   /* } */
 
   reduce_root(root);
-
+/*
   unsigned int n = make_index(root, index);
   for(unsigned int i = 0; i < n; i++) {
     printf("index[%d] = &cells[%d]\n", i, (int)((cell_t *)index[i].first - cells));
   }
-
+*/
   /* Value *ret; */
   /* if(out > 1) { */
   /*   Value *agg = UndefValue::get(f->getReturnType()); */
@@ -208,6 +204,7 @@ reduce_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
   /* } */
 
   /* ReturnInst::Create(ctx, ret, block); */
+  print_map(trace_index);
   return NULL;
 }
 

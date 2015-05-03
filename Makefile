@@ -1,3 +1,4 @@
+# defaults
 ifndef $(USE_LINENOISE)
 	USE_LINENOISE=n
 endif
@@ -7,7 +8,7 @@ ifndef $(USE_READLINE)
 endif
 
 ifndef $(USE_LLVM)
-	USE_LLVM=y
+	USE_LLVM=n
 endif
 
 ifeq ($(CC),cc)

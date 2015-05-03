@@ -4,6 +4,12 @@
 #include <string.h>
 #include "rt_types.h"
 #include "gen/support.h"
+#include "gen/map.h"
+
+#if INTERFACE
+typedef pair_t * map_t;
+#define MAP(name, size) pair_t name[(size) + 1] = {{(size), 0}}
+#endif
 
 void merge(pair_t *arr, size_t n) {
   //printf("merge ");
@@ -93,14 +99,16 @@ static int test_merge(UNUSED char *name) {
 }
 static TEST(test_merge);
 
-typedef pair_t * map_t;
-
 size_t map_size(map_t map) {
   return map[0].first;
 }
 
 size_t *map_cnt(map_t map) {
   return &map[0].second;
+}
+
+void map_clear(map_t map) {
+  *map_cnt(map) = 0;
 }
 
 pair_t *map_elems(map_t map) {
@@ -145,9 +153,9 @@ pair_t *map_find(map_t map, uintptr_t key) {
   return result;
 }
 
-#define MAP(name, size) pair_t name[size+1] = {{size, 0}}
-
+#if INTERFACE
 #define print_map(map) _print_map(#map, map)
+#endif
 
 void _print_map(char *name, map_t map) {
   size_t size = map_size(map);
