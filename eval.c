@@ -218,7 +218,7 @@ void graph_cell(FILE *f, cell_t const *c) {
   }
 }
 
-void show_val(cell_t const *c) {
+void show_int(cell_t const *c) {
   assert(c && type_match(T_INT, c));
   int n = val_size(c);
   switch(n) {
@@ -398,7 +398,7 @@ void show_one(cell_t const *c) {
   } else if(is_var(c)) {
     show_var(c);
   } else if(type_match(T_INT, c)) {
-    show_val(c);
+    show_int(c);
   } else if(type_match(T_LIST, c)) {
     show_list(c);
   } else {
@@ -986,6 +986,7 @@ char *show_type(type_rep_t t) {
   _case(T_LIST);
   default: return "???";
   }
+#undef case
 }
 
 char type_char(type_rep_t t) {

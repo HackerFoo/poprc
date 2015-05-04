@@ -373,7 +373,7 @@ bool func_reduced(cell_t **cp, type_rep_t t) {
 cell_t *val(intptr_t x) {
   cell_t *c = closure_alloc(2);
   c->func = func_reduced;
-  c->type = T_INT;
+  c->type = T_ANY;
   c->val[0] = x;
   return c;
 }
@@ -388,7 +388,7 @@ cell_t *var(type_t t) {
 cell_t *vector(uint32_t n) {
   cell_t *c = closure_alloc(n+1);
   c->func = func_reduced;
-  c->type = T_INT;
+  c->type = T_ANY;
   return c;
 }
 
