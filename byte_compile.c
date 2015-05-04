@@ -42,17 +42,7 @@ unsigned int make_index(cell_t *c, pair_t *index) {
 cell_t trace_cells[1 << 10];
 cell_t *trace_ptr = &trace_cells[0];
 static MAP(trace_index, 1 << 10);
-/*
-pair_t *trace_index_lookup_linear(cell_t *c) {
-  pair_t *p = &trace_index[0];
-  while(p < trace_index_ptr) {
-    if(p->first == (uintptr_t)c) {
-      return p;
-    } else p++;
-  }
-  return NULL;
-}
-*/
+
 void trace_index_add(cell_t *c, uintptr_t x) {
   pair_t p = {(uintptr_t)c, x};
   map_insert(trace_index, p);
@@ -103,6 +93,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
       //fb->apply_list(c);
     } else if(c->func == func_self) {
       //fb->callSelf(c);
+      trace_store(c);
     } else {
       trace_store(c);
     }
@@ -117,8 +108,10 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     if(is_any(c)) break;
     if(is_list(c) && is_placeholder(c->ptr[0])) {
       //fb->assign(c->ptr[0], c); // ***
+      trace_index_assign(c, c->arg[0]);
     } else if(!is_var(c)) {
       //fb->val(c);
+      trace_store(c);
     }
     c->type |= T_TRACED;
     break;
@@ -129,6 +122,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   }
   case tt_copy: {
     //fb->assign(c, r);
+    trace_index_assign(c, c->arg[0]);
     break;
   }
   case tt_compose_placeholders: {
@@ -144,67 +138,13 @@ void bc_arg(cell_t const *c, int x) {
 }
 
 reduce_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
-  //pair_t index[1 << 10] = {{0, 0}};
+  trace_init();
   set_trace(bc_trace);
-  /* fb = this; */
-
-  /* Function *f = get_cell_func(name, in, out); */
   fill_args(root, bc_arg);
-  /* self = declare_wrap_func(f); */
-  /* block = BasicBlock::Create(ctx, "entry", f, 0); */
-
-  /* auto j = args.begin(); */
-  /* for(auto i = f->arg_begin(); */
-  /*     i != f->arg_end() && j != args.end(); */
-  /*     ++i, ++j) { */
-  /*   printf("%d <- *\n", *j); */
-  /*   regs[*j] = i; */
-  /*   cnt[*j] = 1; */
-  /* } */
-
   reduce_root(root);
-/*
-  unsigned int n = make_index(root, index);
-  for(unsigned int i = 0; i < n; i++) {
-    printf("index[%d] = &cells[%d]\n", i, (int)((cell_t *)index[i].first - cells));
-  }
-*/
-  /* Value *ret; */
-  /* if(out > 1) { */
-  /*   Value *agg = UndefValue::get(f->getReturnType()); */
-  /*   for(unsigned int i = 0; i < out; ++i) { */
-  /*     build_tree(root->ptr[out - 1 - i]); */
-  /*     agg = InsertValueInst::Create(agg, wrap_alts(root->ptr[out - 1 - i]), {i}, "", block); */
-  /*   } */
-  /*   ret = agg; */
-  /* } else { */
-  /*   build_tree(root->ptr[0]); */
-  /*   ret = wrap_alts(root->ptr[0]); */
-  /* } */
 
-  /* for(unsigned int i = 0; i < out; ++i) { */
-  /*   cell_t *p = root->ptr[i]; */
-  /*   while(p) { */
-  /*     --cnt[p - cells]; */
-  /*     p = p->alt; */
-  /*   } */
-  /* } */
-
-  // adjust reference counts
-  /* for(auto i = cnt.begin(); i != cnt.end(); ++i) { */
-  /*   if(i->second < 0) { */
-  /*     CallInst::Create(ext::refn(module), */
-  /*                   std::vector<Value *> { */
-  /*                     reg(i->first), */
-  /*                     ConstantInt::get(ctx, APInt(32, -i->second)) */
-  /*                   }, "", block); */
-  /*   } else if(i->second > 0) { */
-  /*     CallInst::Create(ext::drop(module), ArrayRef<Value *>(reg(i->first)), "", block); */
-  /*   } */
-  /* } */
-
-  /* ReturnInst::Create(ctx, ret, block); */
   print_map(trace_index);
+
   return NULL;
 }
 
