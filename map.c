@@ -11,12 +11,13 @@ typedef pair_t * map_t;
 #define MAP(name, size) pair_t name[(size) + 1] = {{(size), 0}}
 #endif
 
-void merge(pair_t *arr, size_t n) {
+// arr points to the array of size n
+// b is the start of the second sorted section
+void merge(pair_t *arr, pair_t *b, size_t n) {
   //printf("merge ");
   //print_pairs(arr, n);
   pair_t
     *a = arr,
-    *b = arr + (n >> 1),
     *q = b, // queue where the head is q and the tail is q - 1
     *q_low = q; // q_low is the lowest queue address
 
@@ -36,7 +37,7 @@ void merge(pair_t *arr, size_t n) {
         goto select_b;
       } else { // q < a, b >= q
         swap(a, q++);
-        if(q == b) { // queue ran out of elements after q, un-rotate
+        if(q >= b) { // queue ran out of elements after q, un-rotate
           q = q_low;
         }
       }
@@ -64,18 +65,22 @@ void merge(pair_t *arr, size_t n) {
 
     a++;
 
-    // if a runs into the queue, just keep going
-    // this works because the queue is sorted
-    if(a >= q_low) q_low++;
-    if(q < q_low) q = q_low;
+    // if a runs into the queue, just steal the bottom half of the queue
+    // this works because the bottom half of the queue is sorted
+    if(a >= q_low) {
+      if(q <= q_low) {
+        ++q;
+      }
+      q_low = q;
+    }
   }
 }
 
-#define MERGE_TEST(arr)                         \
-  do {                                          \
-    merge((arr), LENGTH(arr));                  \
-    printf(#arr ": ");                          \
-    print_pairs((arr), LENGTH(arr));            \
+#define MERGE_TEST(arr)                                         \
+  do {                                                          \
+    merge((arr), (arr) + (LENGTH(arr) >> 1), LENGTH(arr));      \
+    printf(#arr ": ");                                          \
+    print_pairs((arr), LENGTH(arr));                            \
   } while(0)
 
 
@@ -124,8 +129,8 @@ void map_sort(map_t map) {
   uintptr_t bit = 1;
   while(x & bit) {
     x &= ~bit;
+    merge(&elems[x], &elems[x+bit], bit << 1);
     bit <<= 1;
-    merge(&elems[x], bit);
   }
 }
 
@@ -177,7 +182,7 @@ pair_t *_find_test(map_t map, char *name, uintptr_t key) {
   return p;
 }
 
-int test_map(UNUSED char *name) {
+static int test_map(UNUSED char *name) {
   size_t i;
   int ret = 0;
   MAP(map, 32);
