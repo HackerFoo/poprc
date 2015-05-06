@@ -14,36 +14,21 @@
 #include "gen/map.h"
 #include "gen/byte_compile.h"
 
-/*
-void _make_index(cell_t *c, pair_t **index) {
+void make_index(cell_t *c) {
   traverse(c, {
       if(*p && !((*p)->type & T_TRACED)) {
-        pair_t *x = *index;
-        x->first = (intptr_t)clear_ptr(*p, 3);
+        trace_store(clear_ptr(*p, 3));
         (*p)->type |= T_TRACED;
-        *index += 1;
-        _make_index(*p, index);
+        make_index(*p);
       }
     }, ARGS | PTRS);
 }
 
-unsigned int make_index(cell_t *c, pair_t *index) {
-  pair_t *p = index;
-  _make_index(c, &p);
-  unsigned int n = p - index;
-  quicksort(index, n);
-  for(unsigned int i = 0; i < n; i++) {
-    ((cell_t *)p[i].first)->type &= ~T_TRACED;
-    p[i].second = i;
-  }
-  return n;
-}
-*/
 cell_t trace_cells[1 << 10];
 cell_t *trace_ptr = &trace_cells[0];
 static MAP(trace_index, 1 << 10);
 
-void trace_index_add(cell_t *c, uintptr_t x) {
+void trace_index_add(const cell_t *c, uintptr_t x) {
   pair_t p = {(uintptr_t)c, x};
   map_insert(trace_index, p);
 }
@@ -55,7 +40,7 @@ void trace_index_assign(cell_t *new, cell_t *old) {
   }
 }
 
-cell_t *trace_store(cell_t *c) {
+cell_t *trace_store(const cell_t *c) {
   cell_t *dest = trace_ptr;
   unsigned int size = closure_cells(c);
   trace_ptr += size;
@@ -69,8 +54,25 @@ void trace_init() {
   map_clear(trace_index);
 }
 
-void trace_rewrite_ptrs() {
+void print_trace_cells() {
+  for(cell_t *c = trace_cells; c < trace_ptr; c += closure_cells(c)) {
+    printf("cell[%d]: %s", (int)(c-trace_cells), function_name(c->func));
+    traverse(c, {
+          printf(" %d", (int)*p);
+      }, ARGS | PTRS);
+    printf("\n");
+  }
+}
 
+void trace_rewrite_ptrs() {
+  for(cell_t *c = trace_cells; c < trace_ptr; c += closure_cells(c)) {
+    traverse(c, {
+        if(*p) {
+          pair_t *e = map_find(trace_index, (uintptr_t)clear_ptr(*p, 3));
+          *p = e ? (cell_t *)(e->second + 1) : NULL;
+        }
+      }, ARGS | PTRS);
+  }
 }
 
 void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
@@ -132,9 +134,8 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   }
 }
 
-cell_t const *bc_args[1 << 10] = {0};
-void bc_arg(cell_t const *c, int x) {
-  bc_args[x] = c;
+void bc_arg(cell_t const *c, UNUSED int x) {
+  trace_store(c);
 }
 
 reduce_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
@@ -142,8 +143,16 @@ reduce_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
   set_trace(bc_trace);
   fill_args(root, bc_arg);
   reduce_root(root);
+  make_index(root);
+  trace_rewrite_ptrs();
+
+  // make index readable for debugging
+  for(size_t i = 1; i <= *map_cnt(trace_index); i++) {
+    trace_index[i].first = (cell_t *)trace_index[i].first - cells;
+  }
 
   print_map(trace_index);
+  print_trace_cells();
 
   return NULL;
 }
