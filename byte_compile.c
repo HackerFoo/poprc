@@ -46,7 +46,24 @@ cell_t *trace_store(const cell_t *c) {
   trace_ptr += size;
   memcpy(dest, c, sizeof(cell_t) * size);
   trace_index_add(c, dest - trace_cells);
+
+  // rewrite pointers
+  traverse(dest, {
+      if(*p) {
+        pair_t *e = map_find(trace_index, (uintptr_t)clear_ptr(*p, 3));
+        *p = e ? (cell_t *)(-(e->second+1)) : NULL;
+      }
+    }, ARGS | PTRS);
+
   return dest;
+}
+
+cell_t *trace_update_type(const cell_t *c) {
+  pair_t *p = map_find(trace_index, (uintptr_t)c);
+  if(!p) return NULL;
+  cell_t *t = &trace_cells[p->second];
+  t->type = c->type;
+  return t;
 }
 
 void trace_init() {
@@ -56,22 +73,22 @@ void trace_init() {
 
 void print_trace_cells() {
   for(cell_t *c = trace_cells; c < trace_ptr; c += closure_cells(c)) {
-    printf("cell[%d]: %s", (int)(c-trace_cells), function_name(c->func));
-    traverse(c, {
-          printf(" %d", (int)*p);
-      }, ARGS | PTRS);
-    printf("\n");
-  }
-}
+    printf("cell[%d]:", (int)(c-trace_cells));
+    if(is_reduced(c)) {
+      if(is_var(c)) {
+        printf(" var");
+      } else {
+        printf(" val %ld", (long int)c->val[0]);
+      }
+      printf(", type = %x", c->type);
+    } else {
+      printf(" %s", function_name(c->func));
 
-void trace_rewrite_ptrs() {
-  for(cell_t *c = trace_cells; c < trace_ptr; c += closure_cells(c)) {
-    traverse(c, {
-        if(*p) {
-          pair_t *e = map_find(trace_index, (uintptr_t)clear_ptr(*p, 3));
-          *p = e ? (cell_t *)(e->second + 1) : NULL;
-        }
-      }, ARGS | PTRS);
+      traverse(c, {
+          printf(" %ld", -1-(long int)(intptr_t)*p);
+        }, ARGS | PTRS);
+    }
+    printf("\n");
   }
 }
 
@@ -111,7 +128,9 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     if(is_list(c) && is_placeholder(c->ptr[0])) {
       //fb->assign(c->ptr[0], c); // ***
       trace_index_assign(c, c->arg[0]);
-    } else if(!is_var(c)) {
+    } else if(is_var(c)) {
+      trace_update_type(c);
+    } else {
       //fb->val(c);
       trace_store(c);
     }
@@ -144,7 +163,6 @@ reduce_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
   fill_args(root, bc_arg);
   reduce_root(root);
   make_index(root);
-  trace_rewrite_ptrs();
 
   // make index readable for debugging
   for(size_t i = 1; i <= *map_cnt(trace_index); i++) {

@@ -52,9 +52,9 @@ void print_pairs(pair_t *array, size_t len) {
   if(!len) {
     printf("{}\n");
   } else {
-    printf("{{%d, %d}", (int)array[0].first, (int)array[0].second);
+    printf("{{%ld, %ld}", (long int)array[0].first, (long int)array[0].second);
     for(unsigned int i = 1; i < len; i++) {
-      printf(", {%d, %d}", (int)array[i].first, (int)array[i].second);
+      printf(", {%ld, %ld}", (long int)array[i].first, (long int)array[i].second);
     }
     printf("}\n");
   }
