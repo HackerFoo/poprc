@@ -124,7 +124,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   case tt_force: {
     if(!is_reduced(c)) break;
     if(c->type & T_TRACED) break;
-    if(is_any(c)) break;
+    if(is_any(c)) break; // why?
     if(is_list(c) && is_placeholder(c->ptr[0])) {
       //fb->assign(c->ptr[0], c); // ***
       trace_index_assign(c, c->arg[0]);
@@ -197,4 +197,49 @@ void compact_expr(char const *name, char *str, unsigned int n) {
     return;
   }
   e->func = byte_compile(c, e->in, e->out);
+}
+
+bool func_exec(cell_t **cp, type_rep_t t) {
+  cell_t *c = clear_ptr(*cp, 3);
+  assert(is_closure(c));
+
+  cell_t *header = c->arg[c->size - 1];
+  cell_t *code = header + 1;
+
+  size_t count = header->val[0];
+  cell_t *map[count];
+  size_t map_idx = 0;
+  cell_t *res;
+
+  memset(map, 0, sizeof(map[0]) * count);
+  for(size_t i = 0; i < c->size - 1; i++) {
+    map[map_idx++] = c->arg[i];
+  }
+
+  for(size_t i = 0; i < count; i++) {
+    size_t s = closure_cells(code);
+    cell_t *nc = closure_alloc_cells(s);
+    memcpy(nc, code, s);
+    code += s;
+
+    map[map_idx++] = nc;
+    traverse(nc, {
+        if(*p) {
+          unsigned int x = -1-(intptr_t)*p;
+          if(x < count) {
+            *p = map[x];
+          } else {
+            *p = NULL;
+          }
+        }
+      }, ARGS | PTRS);
+    res = nc;
+  }
+
+  bool ret = reduce(&res, t);
+  *cp = res;
+  drop(c);
+
+  //store_lazy(cp, c, res);
+  return false;
 }
