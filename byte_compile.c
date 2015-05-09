@@ -25,7 +25,9 @@ void make_index(cell_t *c) {
 }
 
 cell_t trace_cells[1 << 10];
+cell_t *trace_cur = &trace_cells[0];
 cell_t *trace_ptr = &trace_cells[0];
+size_t trace_cnt = 0;
 static MAP(trace_index, 1 << 10);
 
 void trace_index_add(const cell_t *c, uintptr_t x) {
@@ -44,8 +46,9 @@ cell_t *trace_store(const cell_t *c) {
   cell_t *dest = trace_ptr;
   unsigned int size = closure_cells(c);
   trace_ptr += size;
+  trace_cnt++;
   memcpy(dest, c, sizeof(cell_t) * size);
-  trace_index_add(c, dest - trace_cells);
+  trace_index_add(c, dest - trace_cur);
 
   // rewrite pointers
   traverse(dest, {
@@ -61,19 +64,20 @@ cell_t *trace_store(const cell_t *c) {
 cell_t *trace_update_type(const cell_t *c) {
   pair_t *p = map_find(trace_index, (uintptr_t)c);
   if(!p) return NULL;
-  cell_t *t = &trace_cells[p->second];
+  cell_t *t = &trace_cur[p->second];
   t->type = c->type;
   return t;
 }
 
 void trace_init() {
-  trace_ptr = &trace_cells[0];
+  trace_cur = trace_ptr;
+  trace_cnt = 0;
   map_clear(trace_index);
 }
 
 void print_trace_cells() {
-  for(cell_t *c = trace_cells; c < trace_ptr; c += closure_cells(c)) {
-    printf("cell[%d]:", (int)(c-trace_cells));
+  for(cell_t *c = trace_cur; c < trace_ptr; c += closure_cells(c)) {
+    printf("cell[%d]:", (int)(c-trace_cur));
     if(is_reduced(c)) {
       if(is_var(c)) {
         printf(" var");
@@ -157,22 +161,27 @@ void bc_arg(cell_t const *c, UNUSED int x) {
   trace_store(c);
 }
 
-reduce_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
+cell_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
   trace_init();
+  cell_t *header = trace_ptr++;
+  header->func = func_id; // to pass asserts
+  trace_cur = trace_ptr;
   set_trace(bc_trace);
   fill_args(root, bc_arg);
   reduce_root(root);
   make_index(root);
 
+  /*
   // make index readable for debugging
   for(size_t i = 1; i <= *map_cnt(trace_index); i++) {
     trace_index[i].first = (cell_t *)trace_index[i].first - cells;
   }
 
   print_map(trace_index);
+  */
   print_trace_cells();
-
-  return NULL;
+  header->val[0] = trace_cnt;
+  return header;
 }
 
 void compact_expr(char const *name, char *str, unsigned int n) {
@@ -196,7 +205,8 @@ void compact_expr(char const *name, char *str, unsigned int n) {
     --new_user_word_entry;
     return;
   }
-  e->func = byte_compile(c, e->in, e->out);
+  e->func = func_exec;
+  e->data = byte_compile(c, e->in, e->out);
 }
 
 bool func_exec(cell_t **cp, type_rep_t t) {
@@ -212,14 +222,17 @@ bool func_exec(cell_t **cp, type_rep_t t) {
   cell_t *res;
 
   memset(map, 0, sizeof(map[0]) * count);
-  for(size_t i = 0; i < c->size - 1; i++) {
+
+  size_t i;
+  for(i = 0; i < c->size - 1; i++) {
     map[map_idx++] = c->arg[i];
+    code++; // skip args for now
   }
 
-  for(size_t i = 0; i < count; i++) {
+  for( ; i < count; i++) {
     size_t s = closure_cells(code);
     cell_t *nc = closure_alloc_cells(s);
-    memcpy(nc, code, s);
+    memcpy(nc, code, s * sizeof(cell_t));
     code += s;
 
     map[map_idx++] = nc;
@@ -237,9 +250,8 @@ bool func_exec(cell_t **cp, type_rep_t t) {
   }
 
   bool ret = reduce(&res, t);
-  *cp = res;
-  drop(c);
+  store_reduced(cp, res);
 
   //store_lazy(cp, c, res);
-  return false;
+  return ret;
 }

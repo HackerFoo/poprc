@@ -79,6 +79,7 @@ typedef struct word_entry_t {
   char name[64];
   reduce_t *func;
   unsigned int in, out;
+  cell_t *data;
 } word_entry_t;
 
 typedef struct builder_entry_t {

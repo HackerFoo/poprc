@@ -561,7 +561,7 @@ void run_eval() {
       while(*line == ' ') ++line;
       char *name = line;
       test_run(name, test_log);
-    } else if(strncmp(line, ":c ", 3) == 0) {
+    } else if(strncmp(line, ":C ", 3) == 0) {
 #ifdef USE_LLVM
       cells_init();
       line += 3;
@@ -573,7 +573,7 @@ void run_eval() {
 #else
       printf("Compilation is not supported.\n");
 #endif
-    } else if(strncmp(line, ":C ", 3) == 0) {
+    } else if(strncmp(line, ":c ", 3) == 0) {
       cells_init();
       line += 3;
       while(*line == ' ') ++line;
@@ -739,7 +739,12 @@ cell_t *word_parse(char const *w,
       *in = 0;
       *out = 1;
     } else {
-      c = func(e->func, e->in, e->out);
+      if(e->data) {
+        c = func(e->func, e->in + 1, e->out);
+        arg(&c, e->data);
+      } else {
+        c = func(e->func, e->in, e->out);
+      }
       *in = e->in;
       *out = e->out;
     }
