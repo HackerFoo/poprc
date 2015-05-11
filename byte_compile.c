@@ -81,6 +81,12 @@ void print_trace_cells() {
     if(is_reduced(c)) {
       if(is_var(c)) {
         printf(" var");
+      } if(is_list(c)) {
+        printf(" [");
+        for(int i = 0; i < list_size(c); i++) {
+          printf(" %ld", -1-(long int)(intptr_t)c->ptr[i]);
+        }
+        printf(" ]");
       } else {
         printf(" val %ld", (long int)c->val[0]);
       }
@@ -169,7 +175,7 @@ cell_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
   set_trace(bc_trace);
   fill_args(root, bc_arg);
   reduce_root(root);
-  make_index(root);
+  trace_store(root);
 
   /*
   // make index readable for debugging
@@ -215,18 +221,21 @@ bool func_exec(cell_t **cp, type_rep_t t) {
 
   cell_t *header = c->arg[c->size - 1];
   cell_t *code = header + 1;
-
   size_t count = header->val[0];
   cell_t *map[count];
   size_t map_idx = 0;
-  cell_t *res;
+  cell_t *last, *res;
 
   memset(map, 0, sizeof(map[0]) * count);
 
-  size_t i;
-  for(i = 0; i < c->size - 1; i++) {
+  size_t i = 0;
+  while(is_var(code)) {
     map[map_idx++] = c->arg[i];
+    i++;
     code++; // skip args for now
+
+    // counts aren't calculated properly yet
+    c->arg[i]->n = -1;
   }
 
   for( ; i < count; i++) {
@@ -246,8 +255,29 @@ bool func_exec(cell_t **cp, type_rep_t t) {
           }
         }
       }, ARGS | PTRS);
-    res = nc;
+    last = nc;
+
+    // counts aren't calculated properly yet
+    nc->n = -1;
   }
+
+  size_t
+    out_n = list_size(last),
+    in_n = c->size - out_n;
+  res = last->ptr[0];
+  for(i = 1; i < out_n; i++) {
+    cell_t *d = c->arg[in_n + i - 1];
+    d->func = func_id;
+    d->arg[0] = last->ptr[i];
+    d->arg[1] = 0;
+  }
+
+  // counts aren't calculated properly yet
+  for(i = 0; i < out_n; i++) {
+    last->ptr[i]->n = -1;
+  }
+
+  drop(last);
 
   bool ret = reduce(&res, t);
   store_reduced(cp, res);
