@@ -12,7 +12,8 @@ ifndef $(USE_LLVM)
 endif
 
 ifeq ($(CC),cc)
-	CC=gcc #default to gcc for better gdb support
+#default to gcc for better gdb supported
+	CC=gcc
 endif
 ifeq ($(CC),gcc)
 	CFLAGS = -falign-functions=4 -Wall -g -std=c11 $(COPT)
