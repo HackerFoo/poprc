@@ -1,15 +1,11 @@
-
 SECTIONS
 {
-  . = 0x10000;
-  .text : { *(.text) }
-  .test :
+  .tests :
   {
-      __test_start = .;
-      *(.test)
-      __test_end = .;
+      PROVIDE(__tests_start = .);
+      KEEP(*(.tests))
+      PROVIDE(__tests_end = .);
   }
-  . = 0x8000000;
-  .data : { *(.data) }
-  .bss : { *(.bss) }
 }
+
+INSERT AFTER .dtors;

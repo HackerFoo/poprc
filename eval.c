@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <unistd.h>
+#include <getopt.h>
 
 #if defined(USE_READLINE)
 #include <readline/readline.h>
@@ -43,7 +44,7 @@
 #include "llvm.h"
 #endif
 
-word_entry_t user_word_table[64] = {{"", NULL, 0, 0}};
+word_entry_t user_word_table[64] = {{"", NULL, 0, 0, NULL}};
 unsigned int const user_word_table_length = LENGTH(user_word_table);
 word_entry_t *new_user_word_entry = user_word_table;
 
@@ -453,7 +454,7 @@ void show_alt(cell_t const *c) {
 }
 
 void measure_start() {
-  bzero(&measure, sizeof(measure));
+  memset(&measure, 0, sizeof(measure));
   measure.start = clock();
 }
 

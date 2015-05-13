@@ -16,11 +16,11 @@ ifeq ($(CC),cc)
 	CC=gcc
 endif
 ifeq ($(CC),gcc)
-	CFLAGS = -falign-functions=4 -Wall -g -std=c11 $(COPT)
+	CFLAGS = -falign-functions=4 -Wall -g -std=gnu11 $(COPT)
 	CXXFLAGS = -xc++ -falign-functions=4 -Wall -g -std=c++11 $(COPT)
 endif
 ifeq ($(CC),clang)
-	CFLAGS = -Wall -Wextra -pedantic -g -std=c11 $(COPT)
+	CFLAGS = -Wall -Wextra -pedantic -g -std=gnu11 $(COPT)
 	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -g -std=c++11 $(COPT)
 endif
 ifeq ($(CC),emcc)
@@ -64,6 +64,10 @@ ifeq ($(USE_LLVM),y)
 	LDFLAGS += $(shell $(LLVM_CONFIG) --ldflags)
 	LIBS += $(shell $(LLVM_CONFIG) --libs --system-libs $(LLVM_COMPONENTS)) -lc++
 	CXXFLAGS += -isystem $(shell llvm-config --includedir)/c++/v1
+endif
+
+ifneq ($(UNAME_S),Darwin)
+	LDFLAGS += -Wl,-Teval.ld
 endif
 
 print-%:

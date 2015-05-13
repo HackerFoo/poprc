@@ -111,7 +111,7 @@ typedef struct measure_t {
   uint8_t alt_cnt;
 } measure_t;
 
-#define zero(a) bzero((a), sizeof(a))
+#define zero(a) memset((a), 0, sizeof(a))
 
 #define show(x) printf(#x " = %d\n", (int)(x))
 #define WIDTH(a) (sizeof((a)[0]))
@@ -161,13 +161,22 @@ typedef enum trace_type_t {
 // declare a test function
 // must preceed with 'static' and follow with semicolon
 // to work with makeheaders
-// NOT PORTABLE
+
+#ifdef __MACH__
 #define TEST(func)                                       \
   __attribute__((used,section("__TEXT,__tests")))        \
   struct __test_entry __test_entry_##func =  {           \
     &(func),                                             \
     #func                                                \
   }
+#else
+#define TEST(func)                                       \
+  __attribute__((used,section(".tests")))                \
+  struct __test_entry __test_entry_##func =  {           \
+    &(func),                                             \
+    #func                                                \
+  }
+#endif
 
 struct __test_entry {
   int (*func)(char *name);

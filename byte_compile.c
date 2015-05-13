@@ -83,7 +83,7 @@ void print_trace_cells() {
         printf(" var");
       } if(is_list(c)) {
         printf(" [");
-        for(int i = 0; i < list_size(c); i++) {
+        for(unsigned int i = 0; i < list_size(c); i++) {
           printf(" %ld", -1-(long int)(intptr_t)c->ptr[i]);
         }
         printf(" ]");

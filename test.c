@@ -18,7 +18,10 @@
 #include "rt_types.h"
 #include <stdio.h>
 #include <string.h>
+
+#ifdef __MACH__
 #include <mach-o/getsect.h>
+#endif
 
 #include "linenoise/linenoise.h"
 #include "gen/rt.h"
@@ -60,13 +63,20 @@ bool check_free() {
 }
 
 #define MAX_NAME_SIZE 4096
+#ifndef __MACH__
+extern char __tests_start;
+extern char __tests_end;
+#endif
 
 int test_run(char *name, void (*logger)(char *name, int result)) {
+#ifdef __MACH__
   unsigned long secsize;
-
-  // NOT PORTABLE
   char *section_start = getsectdata("__TEXT", "__tests", &secsize);
   char *section_end = section_start + secsize;
+#else
+  char *section_start = &__tests_start;
+  char *section_end = &__tests_end;
+#endif
 
   int name_size = strnlen(name, MAX_NAME_SIZE);
   int fail = 0;
