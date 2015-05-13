@@ -510,6 +510,91 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
 }
 #endif
 
+#ifdef USE_LINENOISE
+static void completion(char const *buf, linenoiseCompletions *lc) {
+  unsigned int n = strlen(buf);
+  char comp[n+sizeof_field(word_entry_t, name)];
+  char *insert = comp + n;
+  strncpy(comp, buf, sizeof(comp));
+  char *tok = rtok(comp, insert);
+  unsigned int tok_len = strnlen(tok, sizeof_field(word_entry_t, name));
+  if(!tok) return;
+  word_entry_t *e = lookup_word(tok);
+  if(e) {
+    /* add completions */
+    do {
+      if(strnlen(e->name, sizeof_field(word_entry_t, name)) >
+         tok_len) {
+
+        strncpy(tok, e->name, sizeof(e->name));
+        linenoiseAddCompletion(lc, comp);
+      }
+      e++;
+    } while(strncmp(e->name, tok, tok_len) == 0);
+  }
+}
+#endif
+
+#ifdef USE_READLINE
+static char **completion(char *buf, UNUSED int start, UNUSED int end)
+{
+    unsigned int current_match = 1;
+    char **matches = NULL;
+
+    unsigned int n = strlen(buf);
+    char *comp = malloc(n + sizeof_field(word_entry_t, name) + 1);
+    memcpy(comp, buf, n);
+    char *insert = comp + n;
+    *insert = 0;
+    char *tok = rtok(comp, insert);
+    if(tok) {
+        word_entry_t *e = lookup_word(tok);
+        if(e) {
+            matches = malloc(sizeof(char *) * 16);
+            memset(matches, 0, sizeof(char *) * 16);
+
+            unsigned int tok_len = strnlen(tok, sizeof_field(word_entry_t, name));
+            char *copy = malloc(sizeof_field(word_entry_t, name));
+            memcpy(copy, tok, tok_len+1);
+            matches[0] = copy;
+
+            /* add completions */
+            do {
+                unsigned int entry_len = strnlen(e->name, sizeof_field(word_entry_t, name));
+                if(entry_len > tok_len) {
+                    memcpy(tok, e->name, entry_len);
+                    comp[entry_len] = 0;
+
+                    char *copy = malloc(sizeof_field(word_entry_t, name));
+                    memcpy(copy, comp, entry_len+1);
+                    matches[current_match++] = copy;
+                }
+                e++;
+            } while(strncmp(e->name, tok, tok_len) == 0 && current_match < 16);
+
+            /* if there is just one match, make it the substitute */
+            if(current_match == 2) {
+                strncpy(matches[0], matches[1], sizeof_field(word_entry_t, name));
+            }
+        }
+    }
+
+    free(comp);
+    return matches;
+}
+
+static void initialize_readline()
+{
+  rl_readline_name = "Poprc";
+#if defined(__clang__)
+  rl_attempted_completion_function = (CPPFunction *)completion;
+#else
+  rl_attempted_completion_function = (rl_completion_func_t *)completion;
+#endif
+}
+
+#endif
+
 #define HISTORY_FILE ".poprc_history"
 #define GRAPH_FILE "cells.dot"
 #define REDUCED_GRAPH_FILE "reduced.dot"
@@ -607,91 +692,6 @@ void run_eval() {
 #endif
   }
 }
-
-#ifdef USE_LINENOISE
-void completion(char const *buf, linenoiseCompletions *lc) {
-  unsigned int n = strlen(buf);
-  char comp[n+sizeof_field(word_entry_t, name)];
-  char *insert = comp + n;
-  strncpy(comp, buf, sizeof(comp));
-  char *tok = rtok(comp, insert);
-  unsigned int tok_len = strnlen(tok, sizeof_field(word_entry_t, name));
-  if(!tok) return;
-  word_entry_t *e = lookup_word(tok);
-  if(e) {
-    /* add completions */
-    do {
-      if(strnlen(e->name, sizeof_field(word_entry_t, name)) >
-         tok_len) {
-
-        strncpy(tok, e->name, sizeof(e->name));
-        linenoiseAddCompletion(lc, comp);
-      }
-      e++;
-    } while(strncmp(e->name, tok, tok_len) == 0);
-  }
-}
-#endif
-
-#ifdef USE_READLINE
-char **completion(char *buf, UNUSED int start, UNUSED int end)
-{
-    unsigned int current_match = 1;
-    char **matches = NULL;
-
-    unsigned int n = strlen(buf);
-    char *comp = malloc(n + sizeof_field(word_entry_t, name) + 1);
-    memcpy(comp, buf, n);
-    char *insert = comp + n;
-    *insert = 0;
-    char *tok = rtok(comp, insert);
-    if(tok) {
-        word_entry_t *e = lookup_word(tok);
-        if(e) {
-            matches = malloc(sizeof(char *) * 16);
-            memset(matches, 0, sizeof(char *) * 16);
-
-            unsigned int tok_len = strnlen(tok, sizeof_field(word_entry_t, name));
-            char *copy = malloc(sizeof_field(word_entry_t, name));
-            memcpy(copy, tok, tok_len+1);
-            matches[0] = copy;
-
-            /* add completions */
-            do {
-                unsigned int entry_len = strnlen(e->name, sizeof_field(word_entry_t, name));
-                if(entry_len > tok_len) {
-                    memcpy(tok, e->name, entry_len);
-                    comp[entry_len] = 0;
-
-                    char *copy = malloc(sizeof_field(word_entry_t, name));
-                    memcpy(copy, comp, entry_len+1);
-                    matches[current_match++] = copy;
-                }
-                e++;
-            } while(strncmp(e->name, tok, tok_len) == 0 && current_match < 16);
-
-            /* if there is just one match, make it the substitute */
-            if(current_match == 2) {
-                strncpy(matches[0], matches[1], sizeof_field(word_entry_t, name));
-            }
-        }
-    }
-
-    free(comp);
-    return matches;
-}
-
-void initialize_readline()
-{
-  rl_readline_name = "Poprc";
-#if defined(__clang__)
-  rl_attempted_completion_function = (CPPFunction *)completion;
-#else
-  rl_attempted_completion_function = (rl_completion_func_t *)completion;
-#endif
-}
-
-#endif
 
 bool is_num(char const *str) {
   return char_class(str[0]) == CC_NUMERIC ||
