@@ -66,6 +66,8 @@ ifeq ($(USE_LLVM),y)
 	CXXFLAGS += -isystem $(shell llvm-config --includedir)/c++/v1
 endif
 
+UNAME_S := $(shell uname -s)
+
 ifneq ($(UNAME_S),Darwin)
 	LDFLAGS += -Wl,-Teval.ld
 endif
