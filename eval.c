@@ -98,6 +98,7 @@ char const *function_name(reduce_t *f) {
   CASE(select);
   CASE(placeholder);
   CASE(self);
+  CASE(exec);
   return "?";
 # undef CASE
 }

@@ -50,11 +50,18 @@ cell_t *trace_store(const cell_t *c) {
   memcpy(dest, c, sizeof(cell_t) * size);
   trace_index_add(c, dest - trace_cur);
 
+  dest->n = -1;
+
   // rewrite pointers
   traverse(dest, {
       if(*p) {
         pair_t *e = map_find(trace_index, (uintptr_t)clear_ptr(*p, 3));
-        *p = e ? (cell_t *)(-(e->second+1)) : NULL;
+        if(e) {
+          *p = (cell_t *)(-(e->second+1));
+          trace_cur[e->second].n++;
+        } else {
+          *p = NULL;
+        }
       }
     }, ARGS | PTRS);
 
@@ -98,7 +105,7 @@ void print_trace_cells() {
           printf(" %ld", -1-(long int)(intptr_t)*p);
         }, ARGS | PTRS);
     }
-    printf("\n");
+    printf(" x%d\n", c->n + 1);
   }
 }
 
@@ -175,7 +182,7 @@ cell_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
   set_trace(bc_trace);
   fill_args(root, bc_arg);
   reduce_root(root);
-  trace_store(root);
+  trace_store(root)->n++;
 
   /*
   // make index readable for debugging
@@ -231,11 +238,9 @@ bool func_exec(cell_t **cp, type_rep_t t) {
   size_t i = 0;
   while(is_var(code)) {
     map[map_idx++] = c->arg[i];
+    refn(c->arg[i], code->n + 1);
     i++;
     code++; // skip args for now
-
-    // counts aren't calculated properly yet
-    c->arg[i]->n = -1;
   }
 
   for( ; i < count; i++) {
@@ -256,25 +261,19 @@ bool func_exec(cell_t **cp, type_rep_t t) {
         }
       }, ARGS | PTRS);
     last = nc;
-
-    // counts aren't calculated properly yet
-    nc->n = -1;
   }
 
   size_t
     out_n = list_size(last),
     in_n = c->size - out_n;
-  res = last->ptr[0];
+  res = ref(last->ptr[0]);
   for(i = 1; i < out_n; i++) {
     cell_t *d = c->arg[in_n + i - 1];
     d->func = func_id;
-    d->arg[0] = last->ptr[i];
+    d->arg[0] = ref(last->ptr[i]);
     d->arg[1] = 0;
-  }
-
-  // counts aren't calculated properly yet
-  for(i = 0; i < out_n; i++) {
-    last->ptr[i]->n = -1;
+    drop(c);
+    ref(d);
   }
 
   drop(last);
@@ -282,6 +281,5 @@ bool func_exec(cell_t **cp, type_rep_t t) {
   bool ret = reduce(&res, t);
   store_reduced(cp, res);
 
-  //store_lazy(cp, c, res);
   return ret;
 }
