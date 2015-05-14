@@ -16,12 +16,12 @@ ifeq ($(CC),cc)
 	CC=gcc
 endif
 ifeq ($(CC),gcc)
-	CFLAGS = -falign-functions=4 -Wall -g -std=gnu11 $(COPT)
-	CXXFLAGS = -xc++ -falign-functions=4 -Wall -g -std=c++11 $(COPT)
+	CFLAGS = -falign-functions=4 -Wall -g -std=gnu99 $(COPT)
+	CXXFLAGS = -xc++ -falign-functions=4 -Wall -g -std=c++98 $(COPT)
 endif
 ifeq ($(CC),clang)
-	CFLAGS = -Wall -Wextra -pedantic -g -std=gnu11 $(COPT)
-	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -g -std=c++11 $(COPT)
+	CFLAGS = -Wall -Wextra -pedantic -g -std=gnu99 $(COPT)
+	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -g -std=c++98 $(COPT)
 endif
 ifeq ($(CC),emcc)
 	CFLAGS = -Wall -DNDEBUG -DEMSCRIPTEN $(COPT)
