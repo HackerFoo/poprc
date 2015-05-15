@@ -226,24 +226,27 @@ bool func_exec(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   assert(is_closure(c));
 
-  cell_t *header = c->arg[c->size - 1];
+  size_t data = closure_in(c) - 1;
+  cell_t *header = c->arg[data];
   cell_t *code = header + 1;
   size_t count = header->val[0];
   cell_t *map[count];
   size_t map_idx = 0;
   cell_t *last, *res;
 
+  c->arg[data] = 0;
   memset(map, 0, sizeof(map[0]) * count);
 
-  size_t i = 0;
-  while(is_var(code)) {
+  size_t i = data;
+  while(i--) {
+    assert(is_var(code));
     map[map_idx++] = c->arg[i];
     refn(c->arg[i], code->n + 1);
-    i++;
-    code++; // skip args for now
+    code++;
   }
+  count -= data;
 
-  for( ; i < count; i++) {
+  while(count--) {
     size_t s = closure_cells(code);
     cell_t *nc = closure_alloc_cells(s);
     memcpy(nc, code, s * sizeof(cell_t));
@@ -253,7 +256,7 @@ bool func_exec(cell_t **cp, type_rep_t t) {
     traverse(nc, {
         if(*p) {
           unsigned int x = -1-(intptr_t)*p;
-          if(x < count) {
+          if(x < map_idx) {
             *p = map[x];
           } else {
             *p = NULL;
@@ -268,12 +271,11 @@ bool func_exec(cell_t **cp, type_rep_t t) {
     in_n = c->size - out_n;
   res = ref(last->ptr[0]);
   for(i = 1; i < out_n; i++) {
-    cell_t *d = c->arg[in_n + i - 1];
+    cell_t *d = c->arg[in_n + i];
     d->func = func_id;
     d->arg[0] = ref(last->ptr[i]);
     d->arg[1] = 0;
     drop(c);
-    ref(d);
   }
 
   drop(last);

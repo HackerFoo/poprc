@@ -712,16 +712,18 @@ word_entry_t *lookup_word(char const *w) {
                   w);
   return res;
 }
-
+/*
 cell_t *word(char const *w) {
   unsigned int in, out;
   return word_parse(w, &in, &out);
 }
-
+*/
 cell_t *word_parse(char const *w,
                    unsigned int *in,
-                   unsigned int *out) {
+                   unsigned int *out,
+                   cell_t **data) {
   cell_t *c;
+  *data = NULL;
   if(is_num(w)) {
     c = val(atoi(w));
     *in = 0;
@@ -743,7 +745,7 @@ cell_t *word_parse(char const *w,
     } else {
       if(e->data) {
         c = func(e->func, e->in + 1, e->out);
-        arg(&c, e->data);
+        *data = e->data;
       } else {
         c = func(e->func, e->in, e->out);
       }
@@ -818,12 +820,16 @@ cell_t *parse_vector(char *str, char **p) {
 
 bool parse_word(char *str, char **p, cell_t **r) {
   unsigned int in = 0, out = 1;
+  cell_t *data = NULL;
   char *tok = *p = rtok(str, *p);
   if(!tok || strcmp(tok, "[") == 0) return false;
   cell_t *c = strcmp(tok, "]") == 0 ? _build(str, p) :
     strcmp(tok, ")") == 0 ? parse_vector(str, p) :
-    word_parse(tok, &in, &out);
-  if(c) *r = compose_expand(c, out, *r);
+    word_parse(tok, &in, &out, &data);
+  if(c) {
+    *r = compose_expand(c, out, *r);
+    if(data) arg(&c, data); // arg will not return a new pointer
+  }
   return true;
 }
 
