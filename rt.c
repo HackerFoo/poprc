@@ -559,17 +559,17 @@ unsigned int closure_args(cell_t const *c) {
   return c->size;
 }
 
-unsigned int closure_in(cell_t *c) {
+unsigned int closure_in(cell_t const *c) {
   assert(is_closure(c) && !is_reduced(c));
   return c->size - c->out;
 }
 
-unsigned int closure_out(cell_t *c) {
+unsigned int closure_out(cell_t const *c) {
   assert(is_closure(c) && !is_reduced(c));
   return c->out;
 }
 
-unsigned int closure_next_child(cell_t *c) {
+unsigned int closure_next_child(cell_t const *c) {
   assert(is_closure(c));
   return is_offset(c->arg[0]) ? (intptr_t)c->arg[0] : 0;
 }
@@ -889,6 +889,7 @@ bool is_dep(cell_t const *c) {
   return c->func == func_dep;
 }
 
+// compose a with n outputs into the list b (destructive) returning the result
 // *** fix arg()'s
 cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
   assert(is_closure(a) &&
