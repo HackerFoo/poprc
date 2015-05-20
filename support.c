@@ -146,3 +146,19 @@ pair_t *find(pair_t *array, size_t size, uintptr_t key) {
   }
   return NULL;
 }
+
+// find the last index of a value in a sorted array
+pair_t *find_last(pair_t *array, size_t size, uintptr_t key) {
+  size_t low = 0, high = size;
+  while(high > low + 1) {
+    const size_t pivot = low + ((high - low + 1) / 2);
+    const uintptr_t pivot_key = array[pivot].first;
+    if(pivot_key <= key) {
+      low = pivot;
+    } else {
+      high = pivot;
+    }
+  }
+  pair_t *p = &array[low];
+  return p->first == key ? p : NULL;
+}

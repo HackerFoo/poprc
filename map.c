@@ -151,7 +151,7 @@ pair_t *map_find(map_t map, uintptr_t key) {
   while(x) {
     if(x & bit) {
       x &= ~bit;
-      if((result = find(&elems[x], bit, key))) break;
+      if((result = find_last(&elems[x], bit, key))) break;
     }
     bit <<= 1;
   }
@@ -208,3 +208,19 @@ static int test_map(UNUSED char *name) {
   return ret;
 }
 static TEST(test_map);
+
+static bool expect(map_t map, uintptr_t key, uintptr_t x) {
+  pair_t *p = map_find(map, key);
+  return p && p->second == x;
+}
+
+static int test_map_stack_behavior(UNUSED char *name) {
+  MAP(map, 16);
+  for(int i = 0; i < 16; i++) {
+    pair_t x = {0, i};
+    map_insert(map, x);
+    if(!expect(map, 0, i)) return -1;
+  }
+  return 0;
+}
+static TEST(test_map_stack_behavior);

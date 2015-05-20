@@ -42,6 +42,14 @@ void trace_index_assign(cell_t *new, cell_t *old) {
   }
 }
 
+cell_t *trace_encode(uintptr_t index) {
+  return (cell_t *)(-(index+1));
+}
+
+uintptr_t trace_decode(cell_t *c) {
+  return -1 - (intptr_t)c;
+}
+
 cell_t *trace_store(const cell_t *c) {
   cell_t *dest = trace_ptr;
   unsigned int size = closure_cells(c);
@@ -57,13 +65,38 @@ cell_t *trace_store(const cell_t *c) {
       if(*p) {
         pair_t *e = map_find(trace_index, (uintptr_t)clear_ptr(*p, 3));
         if(e) {
-          *p = (cell_t *)(-(e->second+1));
+          *p = trace_encode(e->second);
           trace_cur[e->second].n++;
         } else {
           *p = NULL;
         }
       }
     }, ARGS | PTRS);
+
+  return dest;
+}
+
+cell_t *trace_select(const cell_t *c, const cell_t *a) {
+  cell_t *dest = trace_ptr;
+  unsigned int size = closure_cells(c);
+  trace_ptr += size;
+  trace_cnt++;
+
+  pair_t *e = map_find(trace_index, (uintptr_t)clear_ptr(c, 3));
+  assert(e != NULL);
+  pair_t *e2 = map_find(trace_index, (uintptr_t)clear_ptr(a, 3));
+  assert(e2 != NULL);
+
+  memset(dest, 0, sizeof(cell_t));
+  dest->func = func_select;
+  dest->arg[0] = trace_encode(e->second);
+  dest->arg[1] = trace_encode(e2->second);
+  dest->size = 2;
+  dest->n = -1;
+
+  e->second = dest - trace_cur;
+  memcpy(dest, c, sizeof(cell_t) * size);
+  trace_index_add(c, dest - trace_cur);
 
   return dest;
 }
@@ -91,7 +124,7 @@ void print_trace_cells() {
       } if(is_list(c)) {
         printf(" [");
         for(unsigned int i = 0; i < list_size(c); i++) {
-          printf(" %ld", -1-(long int)(intptr_t)c->ptr[i]);
+          printf(" %ld", (long int)trace_decode(c->ptr[i]));
         }
         printf(" ]");
       } else {
@@ -102,7 +135,7 @@ void print_trace_cells() {
       printf(" %s", function_name(c->func));
 
       traverse(c, {
-          printf(" %ld", -1-(long int)(intptr_t)*p);
+          printf(" %ld", (long int)trace_decode(*p));
         }, ARGS | PTRS);
     }
     printf(" x%d\n", c->n + 1);
@@ -143,23 +176,20 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     if(c->type & T_TRACED) break;
     if(is_any(c)) break; // why?
     if(is_list(c) && is_placeholder(c->ptr[0])) {
-      //fb->assign(c->ptr[0], c); // ***
       trace_index_assign(c, c->arg[0]);
     } else if(is_var(c)) {
       trace_update_type(c);
     } else {
-      //fb->val(c);
       trace_store(c);
     }
     c->type |= T_TRACED;
     break;
   }
   case tt_select: {
-    //fb->select(c, r);
+    trace_select(c, r);
     break;
   }
   case tt_copy: {
-    //fb->assign(c, r);
     trace_index_assign(c, c->arg[0]);
     break;
   }
@@ -255,7 +285,7 @@ bool func_exec(cell_t **cp, type_rep_t t) {
     map[map_idx++] = nc;
     traverse(nc, {
         if(*p) {
-          unsigned int x = -1-(intptr_t)*p;
+          unsigned int x = trace_decode(*p);
           if(x < map_idx) {
             *p = map[x];
           } else {
