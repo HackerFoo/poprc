@@ -121,7 +121,7 @@ void print_trace_cells() {
     if(is_reduced(c)) {
       if(is_var(c)) {
         printf(" var");
-      } if(is_list(c)) {
+      } else if(is_list(c)) {
         printf(" [");
         for(unsigned int i = 0; i < list_size(c); i++) {
           printf(" %ld", (long int)trace_decode(c->ptr[i]));
@@ -130,7 +130,7 @@ void print_trace_cells() {
       } else {
         printf(" val %ld", (long int)c->val[0]);
       }
-      printf(", type = %x", c->type);
+      printf(", type = %s", show_type_all_short(c->type));
     } else {
       printf(" %s", function_name(c->func));
 

@@ -155,13 +155,16 @@ void graph_cell(FILE *f, cell_t const *c) {
 
   /* print node attributes */
   fprintf(f, "node%ld [\nlabel =<", node);
-  fprintf(f, "<table border=\"0\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%ld) %s%s %x %x (%d)</b></font></td></tr>",
+  fprintf(f, "<table border=\"0\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%ld) %s%s %x ",
           node,
           function_name(c->func),
           closure_is_ready(c) ? "" : "*",
-          (int)c->size,
-          (int)c->out,
-          (int)c->n);
+          (int)c->size);
+  if(!is_reduced(c)) {
+    fprintf(f, "%x (%d)</b></font></td></tr>", (int)c->out, (int)c->n);
+  } else {
+    fprintf(f, "%s (%d)</b></font></td></tr>", show_type_all_short(c->type), (int)c->n);
+  }
   fprintf(f, "<tr><td port=\"alt\">alt: <font color=\"lightgray\">%p</font></td></tr>",
              c->alt);
   if(is_reduced(c)) {
@@ -1002,14 +1005,60 @@ char *show_type(type_rep_t t) {
 #undef case
 }
 
+// unsafe
+char *show_type_all(type_rep_t t) {
+  const static char *type_flag_name[] = {
+    "T_VAR",
+    "T_ROW",
+    "T_INDIRECT",
+    "T_FAIL",
+    "T_TRACED"
+  };
+  static char buf[64];
+  char *p = buf;
+  size_t i;
+  p += sprintf(p, "%s", show_type(t));
+  FOREACH(type_flag_name, i) {
+    if(t & (0x8000 >> i)) {
+      p += sprintf(p, "|%s", type_flag_name[i]);
+    }
+  }
+  return buf;
+}
+
 char type_char(type_rep_t t) {
   switch(t & T_EXCLUSIVE) {
-  case T_ANY: return '_';
+  case T_ANY: return 'a';
   case T_INT: return 'i';
   case T_IO: return 'w';
   case T_LIST: return 'l';
   }
-  return '?';
+  return 'x';
+}
+
+// unsafe
+char *show_type_all_short(type_rep_t t) {
+  const static char type_flag_char[] = {
+    '?',
+    '@',
+    '*',
+    '!',
+    '.'
+  };
+  static char buf[] = "XXXXXX";
+
+  size_t i;
+  char *p = buf;
+
+  FOREACH(type_flag_char, i) {
+    if(t & (0x8000 >> i)) {
+      *p++ = type_flag_char[i];
+    }
+  }
+
+  *p++ = type_char(t);
+  *p = 0;
+  return buf;
 }
 
 void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
