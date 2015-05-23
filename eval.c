@@ -126,6 +126,12 @@ void make_graph(char const *path, cell_t const *c) {
 }
 
 void make_graph_all(char const *path) {
+  static char autopath[16];
+  static unsigned int autopath_count = 0;
+  if(!path && autopath_count < 1000) {
+    snprintf(autopath, sizeof(autopath), "graph%03d.dot", autopath_count++);
+    path = autopath;
+  }
   unsigned int i;
   FILE *f = fopen(path, "w");
   fprintf(f, "digraph g {\n"
