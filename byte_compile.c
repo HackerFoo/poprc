@@ -94,6 +94,9 @@ cell_t *trace_select(const cell_t *c, const cell_t *a) {
   dest->size = 2;
   dest->n = -1;
 
+  trace_cur[e->second].n++;
+  trace_cur[e2->second].n++;
+
   e->second = dest - trace_cur;
 
   return dest;
