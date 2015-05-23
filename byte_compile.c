@@ -95,8 +95,6 @@ cell_t *trace_select(const cell_t *c, const cell_t *a) {
   dest->n = -1;
 
   e->second = dest - trace_cur;
-  memcpy(dest, c, sizeof(cell_t) * size);
-  trace_index_add(c, dest - trace_cur);
 
   return dest;
 }
