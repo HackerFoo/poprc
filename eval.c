@@ -1107,7 +1107,7 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   case tt_force:
     if(!is_reduced(c)) break;
     if(c->type & T_TRACED) break;
-    if(is_any(c)) break;
+    //if(is_any(c)) break;
     if(is_list(c) && is_placeholder(c->ptr[0])) {
       printf("?f%ld <- ?l%ld head\n", (long int)(c->ptr[0] - cells), (long int)(c - cells));
     } else {

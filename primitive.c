@@ -429,15 +429,16 @@ cell_t *build_alt2(cell_t *x, cell_t *y) {
 bool func_assert(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 1, &alt_set, T_INT)) goto fail;
+  if(!reduce_arg(c, 1, &alt_set, T_INT) ||
+     !reduce_arg(c, 0, &alt_set, t)) goto fail;
   clear_flags(c);
   cell_t *p = c->arg[1];
-  if(!(is_var(p) || p->val[0])) goto fail;
-  c->func = func_id;
-  c->size = 1;
-  c->arg[1] = (cell_t *)alt_set_ref(alt_set);
-  drop(p);
-  return false;
+  if(is_var(p)) {
+    store_reduced(cp, var(t));
+  } else if(p->val[0]) {
+    store_reduced(cp, ref(c->arg[0]));
+  } else goto fail;
+  return true;
  fail:
   fail(cp);
   return false;
