@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <unistd.h>
+#include <stdarg.h>
 
 #include "gen/rt.h"
 #include "gen/eval.h"
@@ -143,6 +144,60 @@ void print_trace_cells() {
   }
 }
 
+cell_t *trace_alloc(unsigned int args) {
+  cell_t *c = trace_ptr;
+  trace_ptr += calculate_cells(args);
+  return c;
+}
+
+uintptr_t bc_func(reduce_t f, unsigned int in, unsigned int out, ...) {
+  assert(out > 0);
+  va_list argp;
+  unsigned int args = in + out - 1;
+  cell_t *c = trace_alloc(args);
+  c->out = out - 1;
+  c->func = f;
+
+  va_start(argp, out);
+
+  for(int i = 0; i < in; i++) {
+    c->arg[i] = trace_encode(va_arg(argp, uintptr_t));
+  }
+
+  for(int i = 0; i < out - 1; i++) {
+    uintptr_t d = bc_func(func_dep, 1, 1, c);
+    uintptr_t *out = va_arg(argp, uintptr_t *);
+    c->arg[in + i] = trace_encode(d);
+    *out = d;
+  }
+
+  va_end(argp);
+  return c - trace_cur;
+}
+
+void bc_apply_list(cell_t *c) {
+  unsigned int ix = c - cells;
+
+  unsigned int in = closure_in(c);
+  unsigned int out = closure_out(c);
+  int i = in;
+  uintptr_t p = map_find(trace_index, ix)->second;
+  trace_cells[p].n++;
+  while(i--) {
+    cell_t *a = c->arg[i];
+    uintptr_t x = map_find(trace_index, (uintptr_t)a)->second;
+    trace_cells[x].n++;
+    p = bc_func(func_pushl, 2, 1, x, p);
+  }
+  i = out;
+  while(i--) {
+    cell_t *a = c->arg[i+in];
+    pair_t x = { (uintptr_t)a };
+    p = bc_func(func_popr, 1, 2, p, &x.second);
+    map_insert(trace_index, x);
+  }
+}
+
 void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   switch(tt) {
   case tt_reduction: {
@@ -161,6 +216,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
       // do nothing
     } else if(c->func == func_placeholder) {
       //fb->apply_list(c);
+      bc_apply_list(c);
     } else if(c->func == func_self) {
       //fb->callSelf(c);
       trace_store(c);
