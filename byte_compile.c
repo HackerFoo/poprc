@@ -147,6 +147,7 @@ void print_trace_cells() {
 cell_t *trace_alloc(unsigned int args) {
   cell_t *c = trace_ptr;
   trace_ptr += calculate_cells(args);
+  trace_cnt++;
   return c;
 }
 
@@ -176,12 +177,10 @@ uintptr_t bc_func(reduce_t f, unsigned int in, unsigned int out, ...) {
 }
 
 void bc_apply_list(cell_t *c) {
-  unsigned int ix = c - cells;
-
   unsigned int in = closure_in(c);
   unsigned int out = closure_out(c);
   int i = in;
-  uintptr_t p = map_find(trace_index, ix)->second;
+  uintptr_t p = map_find(trace_index, (uintptr_t)c)->second;
   trace_cells[p].n++;
   while(i--) {
     cell_t *a = c->arg[i];
@@ -233,7 +232,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     if(c->type & T_TRACED) break;
     //if(is_any(c)) break; // why?
     if(is_list(c) && is_placeholder(c->ptr[0])) {
-      trace_index_assign(c, c->arg[0]);
+      trace_index_assign(c->ptr[0], c);
     } else if(is_var(c)) {
       trace_update_type(c);
     } else {
