@@ -65,12 +65,9 @@ cell_t *trace_store(const cell_t *c) {
   traverse(dest, {
       if(*p) {
         pair_t *e = map_find(trace_index, (uintptr_t)clear_ptr(*p, 3));
-        if(e) {
-          *p = trace_encode(e->second);
-          trace_cur[e->second].n++;
-        } else {
-          *p = NULL;
-        }
+        assert(e);
+        *p = trace_encode(e->second);
+        trace_cur[e->second].n++;
       }
     }, ARGS | PTRS);
 
@@ -107,7 +104,9 @@ cell_t *trace_update_type(const cell_t *c) {
   pair_t *p = map_find(trace_index, (uintptr_t)c);
   if(!p) return NULL;
   cell_t *t = &trace_cur[p->second];
-  t->type = c->type;
+  if(is_reduced(t)) {
+    t->type = c->type;
+  }
   return t;
 }
 
@@ -148,6 +147,7 @@ cell_t *trace_alloc(unsigned int args) {
   cell_t *c = trace_ptr;
   trace_ptr += calculate_cells(args);
   trace_cnt++;
+  c->size = args;
   return c;
 }
 
@@ -158,15 +158,18 @@ uintptr_t bc_func(reduce_t f, unsigned int in, unsigned int out, ...) {
   cell_t *c = trace_alloc(args);
   c->out = out - 1;
   c->func = f;
+  c->n = -1;
 
   va_start(argp, out);
 
   for(int i = 0; i < in; i++) {
-    c->arg[i] = trace_encode(va_arg(argp, uintptr_t));
+    uintptr_t x = va_arg(argp, uintptr_t);
+    trace_cur[x].n++;
+    c->arg[i] = trace_encode(x);
   }
 
   for(int i = 0; i < out - 1; i++) {
-    uintptr_t d = bc_func(func_dep, 1, 1, c);
+    uintptr_t d = bc_func(func_dep, 1, 1, c - trace_cur);
     uintptr_t *out = va_arg(argp, uintptr_t *);
     c->arg[in + i] = trace_encode(d);
     *out = d;
@@ -181,11 +184,9 @@ void bc_apply_list(cell_t *c) {
   unsigned int out = closure_out(c);
   int i = in;
   uintptr_t p = map_find(trace_index, (uintptr_t)c)->second;
-  trace_cells[p].n++;
   while(i--) {
     cell_t *a = c->arg[i];
     uintptr_t x = map_find(trace_index, (uintptr_t)a)->second;
-    trace_cells[x].n++;
     p = bc_func(func_pushl, 2, 1, x, p);
   }
   i = out;
@@ -268,7 +269,7 @@ cell_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
   set_trace(bc_trace);
   fill_args(root, bc_arg);
   reduce_root(root);
-  trace_store(root)->n++;
+  trace_store(root)->n++; // *** need to store lists
 
   /*
   // make index readable for debugging
@@ -332,6 +333,7 @@ bool func_exec(cell_t **cp, type_rep_t t) {
   }
   count -= data;
 
+  // allocate, copy, and index
   while(count--) {
     size_t s = closure_cells(code);
     cell_t *nc = closure_alloc_cells(s);
@@ -339,7 +341,13 @@ bool func_exec(cell_t **cp, type_rep_t t) {
     code += s;
 
     map[map_idx++] = nc;
-    traverse(nc, {
+    last = nc;
+  }
+
+  // rewrite pointers
+  for(int i = data; i < map_idx; i++) {
+    cell_t *t = map[i];
+    traverse(t, {
         if(*p) {
           unsigned int x = trace_decode(*p);
           if(x < map_idx) {
@@ -349,7 +357,6 @@ bool func_exec(cell_t **cp, type_rep_t t) {
           }
         }
       }, ARGS | PTRS);
-    last = nc;
   }
 
   size_t
