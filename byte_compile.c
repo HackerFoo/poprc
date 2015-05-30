@@ -15,16 +15,6 @@
 #include "gen/map.h"
 #include "gen/byte_compile.h"
 
-void make_index(cell_t *c) {
-  traverse(c, {
-      if(*p && !((*p)->type & T_TRACED)) {
-        trace_store(clear_ptr(*p, 3));
-        (*p)->type |= T_TRACED;
-        make_index(*p);
-      }
-    }, ARGS | PTRS);
-}
-
 cell_t trace_cells[1 << 10];
 cell_t *trace_cur = &trace_cells[0];
 cell_t *trace_ptr = &trace_cells[0];
@@ -124,7 +114,8 @@ void print_trace_cells() {
         printf(" var");
       } else if(is_list(c)) {
         printf(" [");
-        for(unsigned int i = 0; i < list_size(c); i++) {
+        unsigned int i = list_size(c);
+        while(i--) {
           printf(" %ld", (long int)trace_decode(c->ptr[i]));
         }
         printf(" ]");
@@ -215,7 +206,6 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     } else if(c->func == func_dep) {
       // do nothing
     } else if(c->func == func_placeholder) {
-      //fb->apply_list(c);
       bc_apply_list(c);
     } else if(c->func == func_self) {
       //fb->callSelf(c);
@@ -231,9 +221,8 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   case tt_force: {
     if(!is_reduced(c)) break;
     if(c->type & T_TRACED) break;
-    //if(is_any(c)) break; // why?
     if(is_list(c) && is_placeholder(c->ptr[0])) {
-      trace_index_assign(c->ptr[0], c);
+      trace_index_assign(c->ptr[0], c); // ***
     } else if(is_var(c)) {
       trace_update_type(c);
     } else {
@@ -247,7 +236,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     break;
   }
   case tt_copy: {
-    trace_index_assign(c, c->arg[0]);
+    trace_index_assign(c, r);
     break;
   }
   case tt_compose_placeholders: {
@@ -261,6 +250,16 @@ void bc_arg(cell_t const *c, UNUSED int x) {
   trace_store(c);
 }
 
+cell_t *trace_store_list(cell_t *c) {
+  traverse(c, {
+      if(*p && !((*p)->type & T_TRACED)) {
+        trace_store_list(clear_ptr(*p, 3));
+        (*p)->type |= T_TRACED;
+      }
+    }, PTRS);
+  return trace_store(c);
+}
+
 cell_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
   trace_init();
   cell_t *header = trace_ptr++;
@@ -269,7 +268,7 @@ cell_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
   set_trace(bc_trace);
   fill_args(root, bc_arg);
   reduce_root(root);
-  trace_store(root)->n++; // *** need to store lists
+  trace_store_list(root)->n++;
 
   /*
   // make index readable for debugging
@@ -360,11 +359,11 @@ bool func_exec(cell_t **cp, type_rep_t t) {
   }
 
   size_t
-    out_n = list_size(last),
-    in_n = c->size - out_n;
-  res = ref(last->ptr[0]);
-  for(i = 1; i < out_n; i++) {
-    cell_t *d = c->arg[in_n + i];
+    last_out = list_size(last) - 1,
+    last_arg = c->size - 1;
+  res = ref(last->ptr[last_out]);
+  for(i = 0; i < last_out; i++) {
+    cell_t *d = c->arg[last_arg - i];
     d->func = func_id;
     d->arg[0] = ref(last->ptr[i]);
     d->arg[1] = 0;
