@@ -30,13 +30,12 @@
 #include "gen/primitive.h"
 
 int test_alloc(UNUSED char *name) {
-  unsigned int i, j;
   cell_t *a[30];
-  for(j = 0; j < 50; j++) {
-    for(i = 0; i < LENGTH(a); i++) {
+  LOOP(50) {
+    FOREACH(i, a) {
       a[i] = func(func_add, 9, 1);
     }
-    for(i = 0; i < LENGTH(a); i++) {
+    FOREACH(i, a) {
       closure_free(a[i]);
     }
   }
@@ -44,18 +43,38 @@ int test_alloc(UNUSED char *name) {
 }
 static TEST(test_alloc);
 
+int test_loops(UNUSED char *name) {
+  COUNTUP(i, 3) {
+    printf("up: %d\n", (unsigned int)i);
+  }
+  COUNTDOWN(i, 3) {
+    printf("down: %d\n", (unsigned int)i);
+  }
+  unsigned int arr[] = {1, 4, 9};
+  FOREACH(i, arr) {
+    printf("arr[%d] = %d\n", (unsigned int)i, arr[i]);
+  }
+  LOOP(3) {
+    LOOP(3) {
+      putchar('x');
+    }
+    putchar('\n');
+  }
+  return 0;
+}
+static TEST(test_loops);
+
 bool check_free() {
-  unsigned int i;
   bool leak = false;
-  for(i = 0; i < LENGTH(cells); i++) {
+  FOREACH(i, cells) {
     if(is_closure(&cells[i])) {
-      printf("LEAK: %d (%ld)\n", i, (long int)cells[i].n);
+      printf("LEAK: %d (%ld)\n", (unsigned int)i, (long int)cells[i].n);
       leak = true;
     }
   }
-  FOREACH(alt_live, i) {
+  FOREACH(i, alt_live) {
     if(alt_live[i]) {
-      printf("ALT LEAK: %d (%ld)\n", i, (long int)alt_live[i]);
+      printf("ALT LEAK: %d (%ld)\n", (unsigned int)i, (long int)alt_live[i]);
       leak = true;
     }
   }

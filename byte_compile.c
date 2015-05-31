@@ -41,6 +41,22 @@ uintptr_t trace_decode(cell_t *c) {
   return -1 - (intptr_t)c;
 }
 
+static
+uintptr_t map_get(map_t map, uintptr_t key) {
+  pair_t *e = map_find(map, key);
+  assert(e);
+  return e->second;
+}
+
+static
+uintptr_t map_update(map_t map, uintptr_t key, uintptr_t new_value) {
+  pair_t *e = map_find(map, key);
+  assert(e);
+  uintptr_t old_value = e->second;
+  e->second = new_value;
+  return old_value;
+}
+
 cell_t *trace_store(const cell_t *c) {
   cell_t *dest = trace_ptr;
   unsigned int size = closure_cells(c);
@@ -54,10 +70,9 @@ cell_t *trace_store(const cell_t *c) {
   // rewrite pointers
   traverse(dest, {
       if(*p) {
-        pair_t *e = map_find(trace_index, (uintptr_t)clear_ptr(*p, 3));
-        assert(e);
-        *p = trace_encode(e->second);
-        trace_cur[e->second].n++;
+        uintptr_t x = map_get(trace_index, (uintptr_t)clear_ptr(*p, 3));
+        *p = trace_encode(x);
+        trace_cur[x].n++;
       }
     }, ARGS | PTRS);
 
@@ -70,22 +85,18 @@ cell_t *trace_select(const cell_t *c, const cell_t *a) {
   trace_ptr += size;
   trace_cnt++;
 
-  pair_t *e = map_find(trace_index, (uintptr_t)clear_ptr(c, 3));
-  assert(e != NULL);
-  pair_t *e2 = map_find(trace_index, (uintptr_t)clear_ptr(a, 3));
-  assert(e2 != NULL);
+  uintptr_t tc = map_update(trace_index, (uintptr_t)clear_ptr(c, 3), dest - trace_cur);
+  uintptr_t ta = map_get(trace_index, (uintptr_t)clear_ptr(a, 3));
 
   memset(dest, 0, sizeof(cell_t));
   dest->func = func_select;
-  dest->arg[0] = trace_encode(e->second);
-  dest->arg[1] = trace_encode(e2->second);
+  dest->arg[0] = trace_encode(tc);
+  dest->arg[1] = trace_encode(ta);
   dest->size = 2;
   dest->n = -1;
 
-  trace_cur[e->second].n++;
-  trace_cur[e2->second].n++;
-
-  e->second = dest - trace_cur;
+  trace_cur[tc].n++;
+  trace_cur[ta].n++;
 
   return dest;
 }
@@ -114,8 +125,7 @@ void print_trace_cells() {
         printf(" var");
       } else if(is_list(c)) {
         printf(" [");
-        unsigned int i = list_size(c);
-        while(i--) {
+        COUNTDOWN(i, list_size(c)) {
           printf(" %ld", (long int)trace_decode(c->ptr[i]));
         }
         printf(" ]");
@@ -153,13 +163,13 @@ uintptr_t bc_func(reduce_t f, unsigned int in, unsigned int out, ...) {
 
   va_start(argp, out);
 
-  for(int i = 0; i < in; i++) {
+  COUNTUP(i, in) {
     uintptr_t x = va_arg(argp, uintptr_t);
     trace_cur[x].n++;
     c->arg[i] = trace_encode(x);
   }
 
-  for(int i = 0; i < out - 1; i++) {
+  COUNTUP(i, out - 1) {
     uintptr_t d = bc_func(func_dep, 1, 1, c - trace_cur);
     uintptr_t *out = va_arg(argp, uintptr_t *);
     c->arg[in + i] = trace_encode(d);
@@ -173,17 +183,16 @@ uintptr_t bc_func(reduce_t f, unsigned int in, unsigned int out, ...) {
 void bc_apply_list(cell_t *c) {
   unsigned int in = closure_in(c);
   unsigned int out = closure_out(c);
-  int i = in;
-  uintptr_t p = map_find(trace_index, (uintptr_t)c)->second;
-  while(i--) {
-    cell_t *a = c->arg[i];
-    uintptr_t x = map_find(trace_index, (uintptr_t)a)->second;
+  uintptr_t p = map_get(trace_index, (uintptr_t)c);
+
+  /* pushl inputs */
+  COUNTDOWN(i, in) {
+    uintptr_t x = map_get(trace_index, (uintptr_t)c->arg[i]);
     p = bc_func(func_pushl, 2, 1, x, p);
   }
-  i = out;
-  while(i--) {
-    cell_t *a = c->arg[i+in];
-    pair_t x = { (uintptr_t)a };
+
+  COUNTDOWN(i, out) {
+    pair_t x = { (uintptr_t)c->arg[i+in] };
     p = bc_func(func_popr, 1, 2, p, &x.second);
     map_insert(trace_index, x);
   }
@@ -197,8 +206,10 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
        c->func == func_pushr ||
        c->func == func_popr) break;
     if(is_dep(c)) break;
-    int i, in = closure_in(c);
-    for(i = 0; i < in; ++i) trace(c->arg[i], 0, tt_force);
+    int in = closure_in(c);
+    COUNTUP(i, in) {
+      trace(c->arg[i], 0, tt_force);
+    }
 
     if(c->func == func_cut ||
        c->func == func_id) {
@@ -323,8 +334,7 @@ bool func_exec(cell_t **cp, type_rep_t t) {
   c->arg[data] = 0;
   memset(map, 0, sizeof(map[0]) * count);
 
-  size_t i = data;
-  while(i--) {
+  COUNTDOWN(i, data) {
     assert(is_var(code));
     map[map_idx++] = c->arg[i];
     refn(c->arg[i], code->n + 1);
@@ -333,7 +343,7 @@ bool func_exec(cell_t **cp, type_rep_t t) {
   count -= data;
 
   // allocate, copy, and index
-  while(count--) {
+  LOOP(count) {
     size_t s = closure_cells(code);
     cell_t *nc = closure_alloc_cells(s);
     memcpy(nc, code, s * sizeof(cell_t));
@@ -362,7 +372,7 @@ bool func_exec(cell_t **cp, type_rep_t t) {
     last_out = list_size(last) - 1,
     last_arg = c->size - 1;
   res = ref(last->ptr[last_out]);
-  for(i = 0; i < last_out; i++) {
+  COUNTUP(i, last_out) {
     cell_t *d = c->arg[last_arg - i];
     d->func = func_id;
     d->arg[0] = ref(last->ptr[i]);

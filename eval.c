@@ -132,14 +132,13 @@ void make_graph_all(char const *path) {
     snprintf(autopath, sizeof(autopath), "graph%03d.dot", autopath_count++);
     path = autopath;
   }
-  unsigned int i;
   FILE *f = fopen(path, "w");
   fprintf(f, "digraph g {\n"
           "graph [\n"
              "rankdir = \"RL\"\n"
              "];\n");
   zero(visited);
-  FOREACH(cells, i) {
+  FOREACH(i, cells) {
     graph_cell(f, &cells[i]);
   }
   fprintf(f, "}\n");
@@ -1022,9 +1021,8 @@ char *show_type_all(type_rep_t t) {
   };
   static char buf[64];
   char *p = buf;
-  size_t i;
   p += sprintf(p, "%s", show_type(t));
-  FOREACH(type_flag_name, i) {
+  FOREACH(i, type_flag_name) {
     if(t & (0x8000 >> i)) {
       p += sprintf(p, "|%s", type_flag_name[i]);
     }
@@ -1053,10 +1051,9 @@ char *show_type_all_short(type_rep_t t) {
   };
   static char buf[] = "XXXXXX";
 
-  size_t i;
   char *p = buf;
 
-  FOREACH(type_flag_char, i) {
+  FOREACH(i, type_flag_char) {
     if(t & (0x8000 >> i)) {
       *p++ = type_flag_char[i];
     }

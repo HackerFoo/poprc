@@ -183,17 +183,16 @@ pair_t *_find_test(map_t map, char *name, uintptr_t key) {
 }
 
 static int test_map(UNUSED char *name) {
-  size_t i;
   int ret = 0;
   MAP(map, 32);
   int elems[] = {2, 5, 8, 3, 1, 0, 4, 7, 6, 9, 10, 15, 13, 11, 12};
-  FOREACH(elems, i) {
+  FOREACH(i, elems) {
     pair_t p = {elems[i], i};
     map_insert(map, p);
   }
   print_map(map);
 
-  FOREACH(elems, i) {
+  FOREACH(i, elems) {
     pair_t *p = find_test(map, elems[i]);
     if(p) {
       if(p->second != i) {

@@ -116,7 +116,13 @@ typedef struct measure_t {
 #define show(x) printf(#x " = %d\n", (int)(x))
 #define WIDTH(a) (sizeof((a)[0]))
 #define LENGTH(a) (sizeof(a) / WIDTH(a))
-#define FOREACH(a, i) for(i = 0; i < LENGTH(a); i++)
+#define COUNTDOWN(i, n) for(size_t i = (n); i--; )
+#define COUNTUP(i, n) for(size_t i = 0; i < (n); i++)
+#define FOREACH(i, a) COUNTUP(i, LENGTH(a))
+#define _CONCAT(x, y) x##y
+#define CONCAT(x, y) _CONCAT(x, y)
+#define UNIQUE CONCAT(__unique_, __LINE__)
+#define LOOP(n) COUNTDOWN(UNIQUE, n)
 #define sizeof_field(s, f) sizeof(((s *)0)->f)
 
 #define min(a, b) ((a) <= (b) ? (a) : (b))
