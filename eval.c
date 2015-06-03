@@ -853,8 +853,8 @@ cell_t *build(char *str, unsigned int n) {
   return _build(str, &p);
 }
 
-void argf_noop(UNUSED cell_t const *c, UNUSED int i) {}
-unsigned int fill_args(cell_t *r, void (*argf)(cell_t const *, int)) {
+void argf_noop(UNUSED cell_t *c, UNUSED int i) {}
+unsigned int fill_args(cell_t *r, void (*argf)(cell_t *, int)) {
   if(!argf) argf = argf_noop;
   int n = list_size(r);
   if(n < 1) return 0;
@@ -877,7 +877,7 @@ cell_t *_build(char *str, char **p) {
   return r;
 }
 
-void print_arg(cell_t const *c, int i) {
+void print_arg(cell_t *c, int i) {
   printf("?_%ld <- arg(%d)\n", (long int)(c - cells), i);
 }
 

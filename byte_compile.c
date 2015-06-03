@@ -257,8 +257,9 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   }
 }
 
-void bc_arg(cell_t const *c, UNUSED int x) {
+void bc_arg(cell_t *c, UNUSED int x) {
   trace_store(c);
+  c->type |= T_TRACED;
 }
 
 cell_t *trace_store_list(cell_t *c) {
