@@ -31,10 +31,14 @@ ifeq ($(CC),emcc)
 endif
 
 BUILD := build/$(CC)
+DIAGRAMS := diagrams
+DIAGRAMS_FILE := diagrams.pdf
 
 SRC := $(wildcard *.c)
 OBJS := $(patsubst %.c, $(BUILD)/%.o, $(SRC))
 GEN := $(patsubst %.c, gen/%.h, $(SRC))
+DOT := $(wildcard *.dot)
+DOTPDF := $(patsubst %.dot, $(DIAGRAMS)/%.pdf, $(DOT))
 
 .PHONY: all
 all: test
@@ -110,6 +114,17 @@ $(BUILD)/linenoise.o: linenoise/linenoise.c linenoise/linenoise.h
 	@mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -c linenoise/linenoise.c -o $(BUILD)/linenoise.o
 
+$(DIAGRAMS)/%.pdf: %.dot
+	@mkdir -p $(DIAGRAMS)
+	dot $^ -Tpdf > $@
+
+$(DIAGRAMS_FILE): $(DOTPDF)
+ifeq ($(DOTPDF),)
+	$(error "no dot files")
+else
+	pdfunite $(sort $^) $@
+endif
+
 .PHONY: scan
 scan: clean
 	make $(BUILD)/linenoise.o
@@ -131,8 +146,14 @@ compile_commands.json: make-eval.log
 	make rtags
 	rc --dump-compilation-database > compile_commands.json
 
+.PHONY: diagrams
+diagrams: $(DIAGRAMS_FILE)
+	open $^
+
 # remove compilation products
 clean:
 	rm -f eval eval.js
-	rm -rf build gen
+	rm -rf build gen diagrams
 	rm -f make-eval.log compile_commands.json
+	rm -f $(DIAGRAMS_FILE)
+	rm -f *.dot

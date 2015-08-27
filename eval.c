@@ -116,9 +116,12 @@ char const *function_token(reduce_t *f) {
 void make_graph(char const *path, cell_t const *c) {
   FILE *f = fopen(path, "w");
   fprintf(f, "digraph g {\n"
+             "label=\"%s\";\n"
+             "labelloc=bottom\n"
+             "labeljust=right\n"
              "graph [\n"
              "rankdir = \"RL\"\n"
-             "];\n");
+             "];\n", path);
   zero(visited);
   graph_cell(f, c);
   fprintf(f, "}\n");
@@ -134,9 +137,12 @@ void make_graph_all(char const *path) {
   }
   FILE *f = fopen(path, "w");
   fprintf(f, "digraph g {\n"
-          "graph [\n"
+             "label=\"%s\";\n"
+             "labelloc=bottom\n"
+             "labeljust=right\n"
+             "graph [\n"
              "rankdir = \"RL\"\n"
-             "];\n");
+             "];\n", path);
   zero(visited);
   FOREACH(i, cells) {
     graph_cell(f, &cells[i]);
