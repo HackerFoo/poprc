@@ -192,7 +192,7 @@ void bc_apply_list(cell_t *c) {
   }
 
   COUNTDOWN(i, out) {
-    pair_t x = { (uintptr_t)c->arg[i+in] };
+    pair_t x = { (uintptr_t)c->arg[i+in], 0 };
     p = bc_func(func_popr, 1, 2, p, &x.second);
     map_insert(trace_index, x);
   }
@@ -206,7 +206,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
        c->func == func_pushr ||
        c->func == func_popr) break;
     if(is_dep(c)) break;
-    int in = closure_in(c);
+    unsigned int in = closure_in(c);
     COUNTUP(i, in) {
       trace(c->arg[i], 0, tt_force);
     }
@@ -355,7 +355,7 @@ bool func_exec(cell_t **cp, type_rep_t t) {
   }
 
   // rewrite pointers
-  for(int i = data; i < map_idx; i++) {
+  for(unsigned int i = data; i < map_idx; i++) {
     cell_t *t = map[i];
     traverse(t, {
         if(*p) {

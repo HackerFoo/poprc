@@ -11,16 +11,22 @@ ifndef $(USE_LLVM)
 	USE_LLVM=n
 endif
 
+OS := $(shell uname)
+
 ifeq ($(CC),cc)
+	ifeq ($(OS), Darwin)
+		CC=clang
+	else
 #default to gcc for better gdb supported
-	CC=gcc
+		CC=gcc
+	endif
 endif
 ifeq ($(CC),gcc)
 	CFLAGS = -falign-functions=4 -Wall -g -std=gnu99 $(COPT)
 	CXXFLAGS = -xc++ -falign-functions=4 -Wall -g -std=c++98 $(COPT)
 endif
 ifeq ($(CC),clang)
-	CFLAGS = -Wall -Wextra -pedantic -g -std=gnu99 $(COPT)
+	CFLAGS = -Wall -Wextra -pedantic -g -std=gnu11 $(COPT)
 	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -g -std=c++98 $(COPT)
 endif
 ifeq ($(CC),emcc)
