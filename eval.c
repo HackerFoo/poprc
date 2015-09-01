@@ -48,6 +48,15 @@ word_entry_t user_word_table[64] = {{"", NULL, 0, 0, NULL}};
 unsigned int const user_word_table_length = LENGTH(user_word_table);
 word_entry_t *new_user_word_entry = user_word_table;
 
+static BITSET_INDEX(visited, cells);
+static BITSET_INDEX(marked, cells);
+
+void mark_cell(cell_t *c) {
+  if(is_cell(c)) {
+    set_bit(marked, c - cells);
+  }
+}
+
 char const *show_alt_set(uintptr_t as) {
   static char out[sizeof(as)*4+1];
   char *p = out;
@@ -151,12 +160,12 @@ void make_graph_all(char const *path) {
   fclose(f);
 }
 
-uint8_t visited[(LENGTH(cells)+7)/8] = {0};
-
 void graph_cell(FILE *f, cell_t const *c) {
   c = clear_ptr(c, 3);
   if(!is_closure(c) || !is_cell(c)) return;
   long unsigned int node = c - cells;
+  int border = check_bit(marked, node) ? 4 : 0;
+  clear_bit(marked, node);
   if(check_bit(visited, node)) return;
   set_bit(visited, node);
   unsigned int n = closure_args(c);
@@ -166,7 +175,8 @@ void graph_cell(FILE *f, cell_t const *c) {
 
   /* print node attributes */
   fprintf(f, "node%ld [\nlabel =<", node);
-  fprintf(f, "<table border=\"0\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%ld) %s%s %x ",
+  fprintf(f, "<table border=\"%d\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%ld) %s%s %x ",
+          border,
           node,
           function_name(c->func),
           closure_is_ready(c) ? "" : "*",
