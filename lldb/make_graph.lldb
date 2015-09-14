@@ -1,0 +1,2 @@
+command script import lldb/lldb_popr.py
+make_graph

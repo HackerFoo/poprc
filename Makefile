@@ -156,6 +156,12 @@ compile_commands.json: make-eval.log
 diagrams: $(DIAGRAMS_FILE)
 	open $^
 
+.PHONY: graph
+graph: eval
+	rm -f *.dot
+	lldb ./eval -b -s lldb/make_graph.lldb
+	make diagrams
+
 # remove compilation products
 clean:
 	rm -f eval eval.js
