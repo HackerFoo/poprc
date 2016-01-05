@@ -356,11 +356,17 @@ bool func_popr(cell_t **cp, UNUSED type_rep_t t) {
   clear_flags(c);
   cell_t *p = c->arg[0];
   if(list_size(p) == 0) goto fail;
+
+  type_rep_t res_type = T_LIST;
+  // adds an extra output dep to the placeholder, and puts the dep in front of it
+  // [P[in|out] -> [P[in|out+d], d]
+  // also marks result as a variable
   if(is_placeholder(p->ptr[0])) {
     ++p->size;
     cell_t *h = expand_inplace_dep(p->ptr[0], 1); // *** no shift here
     p->ptr[0] = h->arg[closure_in(h)] = dep(ref(h));
     p->ptr[1] = h;
+    res_type |= T_VAR;
   }
 
   if(d) {
@@ -374,7 +380,7 @@ bool func_popr(cell_t **cp, UNUSED type_rep_t t) {
   /* drop the right list element */
   cell_t *res = closure_alloc(closure_args(p)-1);
   unsigned int elems = list_size(res);
-  res->type = T_LIST;
+  res->type = res_type;
   for(unsigned int i = 0; i < elems; ++i)
     res->ptr[i] = ref(p->ptr[i+1]);
 

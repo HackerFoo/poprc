@@ -358,6 +358,7 @@ bool func_reduced(cell_t **cp, type_rep_t t) {
       if((t & T_EXCLUSIVE) == T_LIST) {
         c->ptr[0] = func(func_placeholder, 0, 1);
         c->size = 2;
+        c->type &= ~T_TRACED;
       }
       c->type |= t;
       trace(c, 0, tt_touched);
@@ -1296,6 +1297,7 @@ type_rep_t tr_arg(type_rep_t t, unsigned int n) {
 }
 */
 
+// this shouldn't reduced directly, but is called through reduce_partial from func_dep
 bool func_placeholder(cell_t **cp, UNUSED type_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   unsigned int in = closure_in(c), n = closure_args(c);

@@ -158,6 +158,19 @@ pair_t *map_find(map_t map, uintptr_t key) {
   return result;
 }
 
+pair_t *map_find_value(map_t map, uintptr_t value) {
+  uintptr_t x = *map_cnt(map);
+  pair_t *elems = map_elems(map);
+  pair_t *result = NULL;
+  for(uintptr_t i = 0; i < x; i++) {
+    if(elems[i].second == value) {
+      result = &elems[i];
+      break;
+    }
+  }
+  return result;
+}
+
 #if INTERFACE
 #define print_map(map) _print_map(#map, map)
 #endif
@@ -165,7 +178,7 @@ pair_t *map_find(map_t map, uintptr_t key) {
 void _print_map(char *name, map_t map) {
   size_t size = map_size(map);
   size_t cnt = *map_cnt(map);
-  printf("%s[%ld] = ", name, (long)size);
+  printf("%s[%ld] = ", name ? name : "map", (long)size);
   print_pairs(map_elems(map), cnt);
 }
 

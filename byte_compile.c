@@ -45,6 +45,13 @@ static
 uintptr_t map_get(map_t map, uintptr_t key) {
   pair_t *e = map_find(map, key);
   assert(e);
+  /*
+  // for debugging values not in the map
+  if(!e) {
+    //raise(SIGINT);
+    return 100 + ((cell_t *)key - cells);
+  }
+  */
   return e->second;
 }
 
@@ -119,7 +126,8 @@ void trace_init() {
 
 void print_trace_cells() {
   for(cell_t *c = trace_cur; c < trace_ptr; c += closure_cells(c)) {
-    printf("cell[%d]:", (int)(c-trace_cur));
+    int t = c - trace_cur;
+    printf("cell[%d]:", t);
     if(is_reduced(c)) {
       if(is_var(c)) {
         printf(" var");
@@ -139,6 +147,11 @@ void print_trace_cells() {
       traverse(c, {
           printf(" %ld", (long int)trace_decode(*p));
         }, ARGS | PTRS);
+    }
+
+    pair_t *p = map_find_value(trace_index, t);
+    if(p) {
+      printf(" (%d)", (int)p->first);
     }
     printf(" x%d\n", c->n + 1);
   }
@@ -180,7 +193,7 @@ uintptr_t bc_func(reduce_t f, unsigned int in, unsigned int out, ...) {
   return c - trace_cur;
 }
 
-void bc_apply_list(cell_t *c) {
+uintptr_t bc_apply_list(cell_t *c) {
   unsigned int in = closure_in(c);
   unsigned int out = closure_out(c);
   uintptr_t p = map_get(trace_index, (uintptr_t)c);
@@ -191,11 +204,13 @@ void bc_apply_list(cell_t *c) {
     p = bc_func(func_pushl, 2, 1, x, p);
   }
 
+  /* popr outputs */
   COUNTDOWN(i, out) {
     pair_t x = { (uintptr_t)c->arg[i+in], 0 };
     p = bc_func(func_popr, 1, 2, p, &x.second);
     map_insert(trace_index, x);
   }
+  return p;
 }
 
 void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
@@ -233,7 +248,8 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     if(!is_reduced(c)) break;
     if(c->type & T_TRACED) break;
     if(is_list(c) && is_placeholder(c->ptr[0])) {
-      trace_index_assign(c->ptr[0], c); // ***
+      // kind of hacky; replaces placeholder its list var
+      trace_index_assign(c->ptr[0], c);
     } else if(is_var(c)) {
       trace_update_type(c);
     } else {
@@ -272,6 +288,20 @@ cell_t *trace_store_list(cell_t *c) {
   return trace_store(c);
 }
 
+void print_trace_index()
+{
+  static MAP(tmp_trace_index, 1 << 10);
+  memcpy(tmp_trace_index, trace_index, sizeof(trace_index));
+
+  // make index readable for debugging
+  for(size_t i = 1; i <= *map_cnt(tmp_trace_index); i++) {
+    tmp_trace_index[i].first = (cell_t *)tmp_trace_index[i].first - cells;
+  }
+
+  print_map(tmp_trace_index);
+}
+
+
 cell_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
   trace_init();
   cell_t *header = trace_ptr++;
@@ -282,14 +312,12 @@ cell_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
   reduce_root(root);
   trace_store_list(root)->n++;
 
-  /*
   // make index readable for debugging
   for(size_t i = 1; i <= *map_cnt(trace_index); i++) {
     trace_index[i].first = (cell_t *)trace_index[i].first - cells;
   }
 
   print_map(trace_index);
-  */
   print_trace_cells();
   header->val[0] = trace_cnt;
   return header;

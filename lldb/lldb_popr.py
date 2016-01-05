@@ -4,7 +4,7 @@ import lldb
 import os
 import time
 
-# Set the path to the executable to debug
+expr = "popr swap drop"
 bp_trace_loc = "bc_trace"
 
 def trace_callback(frame, bp_loc, dict):
@@ -12,8 +12,18 @@ def trace_callback(frame, bp_loc, dict):
     process = thread.GetProcess()
     process.Stop()
     print('making graph...')
+    c = frame.EvaluateExpression('c - cells')
+    print c
+#    frame.EvaluateExpression('print_trace_index()')
     frame.EvaluateExpression('mark_cell(c)')
     frame.EvaluateExpression('make_graph_all(0)')
+    process.Continue()
+
+def map_callback(frame, bp_loc, dict):
+    thread = frame.GetThread()
+    process = thread.GetProcess()
+    process.Stop()
+    frame.EvaluateExpression('print_trace_index()')
     process.Continue()
 
 def peval(process, cmd):
@@ -34,13 +44,19 @@ def make_graph(debugger, command, result, internal_dict):
 
     bp_trace = target.BreakpointCreateByName(bp_trace_loc);
     bp_trace.SetScriptCallbackFunction('lldb_popr.trace_callback')
+
+    map_trace = target.BreakpointCreateByName('map_insert');
+    map_trace.SetScriptCallbackFunction('lldb_popr.map_callback')
+    map_trace = target.BreakpointCreateByName('map_find');
+    map_trace.SetScriptCallbackFunction('lldb_popr.map_callback')
+
     process = target.LaunchSimple(None, None, os.getcwd())
 
     # turn on graphing
     peval(process, ':g')
 
     # compile
-    peval(process, ':c tst popr')
+    peval(process, ':c tst ' + expr)
 
     # quit
     peval(process, ':q')
