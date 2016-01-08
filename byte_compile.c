@@ -65,6 +65,13 @@ uintptr_t map_update(map_t map, uintptr_t key, uintptr_t new_value) {
 }
 
 cell_t *trace_store(const cell_t *c) {
+
+  // entry already exists
+  pair_t *e = map_find(trace_index, (uintptr_t)c);
+  if(e) {
+    return trace_cur + e->second;
+  }
+
   cell_t *dest = trace_ptr;
   unsigned int size = closure_cells(c);
   trace_ptr += size;
@@ -217,6 +224,12 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   switch(tt) {
   case tt_reduction: {
     if(is_reduced(c) || !is_var(r)) break;
+    if(c->func == func_popr) {
+      assert(is_placeholder(r->ptr[0]));
+      pair_t p = { .first = (uintptr_t)c };
+      p.second = bc_apply_list(r->ptr[0]);
+      map_insert(trace_index, p);
+    }
     if(c->func == func_pushl ||
        c->func == func_pushr ||
        c->func == func_popr) break;
@@ -232,7 +245,8 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     } else if(c->func == func_dep) {
       // do nothing
     } else if(c->func == func_placeholder) {
-      bc_apply_list(c);
+      // moved up a level
+      //bc_apply_list(c);
     } else if(c->func == func_self) {
       //fb->callSelf(c);
       trace_store(c);
