@@ -21,13 +21,35 @@ cell_t *trace_ptr = &trace_cells[0];
 size_t trace_cnt = 0;
 static MAP(trace_index, 1 << 10);
 
+static
+pair_t *trace_find(const cell_t *c) {
+  c = clear_ptr(c, 3);
+  if(is_list(c) && c->ptr[0] && (c->ptr[0]->type & T_ROW)) {
+    c = clear_ptr(c->ptr[0], 3);
+  }
+  return map_find(trace_index, (uintptr_t)c);
+}
+
+static
+uintptr_t trace_get(const cell_t *c) {
+  pair_t *e = trace_find(c);
+#if(DEBUG)
+  if(!e) {
+    return 100 + (c - cells);
+  }
+#else
+  assert(e);
+#endif
+  return e->second;
+}
+
 void trace_index_add(const cell_t *c, uintptr_t x) {
   pair_t p = {(uintptr_t)c, x};
   map_insert(trace_index, p);
 }
 
 void trace_index_assign(cell_t *new, cell_t *old) {
-  pair_t *p = map_find(trace_index, (uintptr_t)old);
+  pair_t *p = trace_find(old);
   if(p) {
     trace_index_add(new, p->second);
   }
@@ -42,20 +64,6 @@ uintptr_t trace_decode(cell_t *c) {
 }
 
 static
-uintptr_t map_get(map_t map, uintptr_t key) {
-  pair_t *e = map_find(map, key);
-  assert(e);
-  /*
-  // for debugging values not in the map
-  if(!e) {
-    //raise(SIGINT);
-    return 100 + ((cell_t *)key - cells);
-  }
-  */
-  return e->second;
-}
-
-static
 uintptr_t map_update(map_t map, uintptr_t key, uintptr_t new_value) {
   pair_t *e = map_find(map, key);
   assert(e);
@@ -67,7 +75,7 @@ uintptr_t map_update(map_t map, uintptr_t key, uintptr_t new_value) {
 cell_t *trace_store(const cell_t *c) {
 
   // entry already exists
-  pair_t *e = map_find(trace_index, (uintptr_t)c);
+  pair_t *e = trace_find(c);
   if(e) {
     return trace_cur + e->second;
   }
@@ -84,7 +92,7 @@ cell_t *trace_store(const cell_t *c) {
   // rewrite pointers
   traverse(dest, {
       if(*p) {
-        uintptr_t x = map_get(trace_index, (uintptr_t)clear_ptr(*p, 3));
+        uintptr_t x = trace_get(*p);
         *p = trace_encode(x);
         trace_cur[x].n++;
       }
@@ -100,7 +108,7 @@ cell_t *trace_select(const cell_t *c, const cell_t *a) {
   trace_cnt++;
 
   uintptr_t tc = map_update(trace_index, (uintptr_t)clear_ptr(c, 3), dest - trace_cur);
-  uintptr_t ta = map_get(trace_index, (uintptr_t)clear_ptr(a, 3));
+  uintptr_t ta = trace_get(a);
 
   memset(dest, 0, sizeof(cell_t));
   dest->func = func_select;
@@ -116,7 +124,7 @@ cell_t *trace_select(const cell_t *c, const cell_t *a) {
 }
 
 cell_t *trace_update_type(const cell_t *c) {
-  pair_t *p = map_find(trace_index, (uintptr_t)c);
+  pair_t *p = trace_find(c);
   if(!p) return NULL;
   cell_t *t = &trace_cur[p->second];
   if(is_reduced(t)) {
@@ -203,11 +211,11 @@ uintptr_t bc_func(reduce_t f, unsigned int in, unsigned int out, ...) {
 uintptr_t bc_apply_list(cell_t *c) {
   unsigned int in = closure_in(c);
   unsigned int out = closure_out(c);
-  uintptr_t p = map_get(trace_index, (uintptr_t)c);
+  uintptr_t p = trace_get(c);
 
   /* pushl inputs */
   COUNTDOWN(i, in) {
-    uintptr_t x = map_get(trace_index, (uintptr_t)c->arg[i]);
+    uintptr_t x = trace_get(c->arg[i]);
     p = bc_func(func_pushl, 2, 1, x, p);
   }
 
@@ -224,12 +232,6 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
   switch(tt) {
   case tt_reduction: {
     if(is_reduced(c) || !is_var(r)) break;
-    if(c->func == func_popr) {
-      assert(is_placeholder(r->ptr[0]));
-      pair_t p = { .first = (uintptr_t)c };
-      p.second = bc_apply_list(r->ptr[0]);
-      map_insert(trace_index, p);
-    }
     if(c->func == func_pushl ||
        c->func == func_pushr ||
        c->func == func_popr) break;
@@ -245,8 +247,8 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     } else if(c->func == func_dep) {
       // do nothing
     } else if(c->func == func_placeholder) {
-      // moved up a level
-      //bc_apply_list(c);
+      pair_t p = { (uintptr_t)c, bc_apply_list(c) };
+      map_insert(trace_index, p);
     } else if(c->func == func_self) {
       //fb->callSelf(c);
       trace_store(c);
@@ -262,7 +264,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     if(!is_reduced(c)) break;
     if(c->type & T_TRACED) break;
     if(is_list(c) && is_placeholder(c->ptr[0])) {
-      // kind of hacky; replaces placeholder its list var
+      // kind of hacky; replaces placeholder its list var to be overwritten later
       trace_index_assign(c->ptr[0], c);
     } else if(is_var(c)) {
       trace_update_type(c);
