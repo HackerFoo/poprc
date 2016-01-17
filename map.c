@@ -14,15 +14,17 @@ typedef pair_t * map_t;
 // arr points to the array of size n
 // b is the start of the second sorted section
 void merge(pair_t *arr, pair_t *b, size_t n) {
-  //printf("merge ");
-  //print_pairs(arr, n);
+#if(DEBUG)
+  printf("merge ");
+  print_pairs(arr, n);
+#endif
   pair_t
     *a = arr,
     *q = b, // queue where the head is q and the tail is q - 1
     *q_low = q; // q_low is the lowest queue address
 
   while(a < b) {
-    /*
+#if(DEBUG)
     printf("\n");
     print_pairs(arr, a-arr);
     printf("a: ");
@@ -31,7 +33,7 @@ void merge(pair_t *arr, pair_t *b, size_t n) {
     print_pairs(q_low, b-q_low);
     printf("b: ");
     print_pairs(b, n-(b-arr));
-    */
+#endif
     if(q >= q_low && q != b && q->first < a->first) {
       if(b->first < q->first) { // b < q < a
         goto select_b;
@@ -100,6 +102,14 @@ static int test_merge(UNUSED char *name) {
   pair_t arr5[] = {{2, 0}, {3, 1}, {5, 2}, {8, 3}, {0, 4}, {1, 5}, {4, 6}, {7, 7}};
   MERGE_TEST(arr5);
 
+  pair_t arr6[] = {{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {7, 0},
+                   {0, 1}, {1, 1}, {2, 1}, {3, 1}, {4, 1}, {5, 1}, {6, 1}, {7, 1}};
+  MERGE_TEST(arr6);
+
+  pair_t arr7[] = {{0, 0}, {2, 0}, {4, 0}, {6, 0}, {8, 0}, {10, 0}, {12, 0}, {14, 0},
+                   {1, 0}, {3, 0}, {5, 0}, {7, 0}, {8, 0}, {11, 0}, {13, 0}, {15, 0}};
+  MERGE_TEST(arr7);
+
   return 0;
 }
 static TEST(test_merge);
@@ -141,6 +151,16 @@ bool map_insert(map_t map, pair_t x) {
   map[++*cnt] = x;
   map_sort(map);
   return true;
+}
+
+bool map_replace_insert(map_t map, pair_t x) {
+  pair_t *p = map_find(map, x.first);
+  if(p) {
+    p->second = x.second;
+    return true;
+  } else {
+    return map_insert(map, x);
+  }
 }
 
 pair_t *map_find(map_t map, uintptr_t key) {
@@ -223,15 +243,31 @@ static TEST(test_map);
 
 static bool expect(map_t map, uintptr_t key, uintptr_t x) {
   pair_t *p = map_find(map, key);
-  return p && p->second == x;
+  if(!p) {
+    printf("expect(%ld, %ld): missing\n", key, x);
+    return false;
+  } else if(p->second != x) {
+    printf("expect(%ld, %ld): %ld\n", key, x, p->second);
+    return false;
+  }
+  return true;
 }
 
 static int test_map_stack_behavior(UNUSED char *name) {
-  MAP(map, 16);
-  for(int i = 0; i < 16; i++) {
-    pair_t x = {0, i};
-    map_insert(map, x);
-    if(!expect(map, 0, i)) return -1;
+  const static int m = 2, n = 8;
+  MAP(map, m * n);
+  for(int i = 0; i < m; i++) {
+    for(int j = 0; j < n; j++) {
+      pair_t x = {j, i};
+      map_insert(map, x);
+      print_map(map);
+    }
+    for(int j = 0; j < n; j++) {
+      if(!expect(map, j, i)) {
+        print_map(map);
+        return -1;
+      }
+    }
   }
   return 0;
 }
