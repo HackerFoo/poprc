@@ -10,7 +10,7 @@
 typedef pair_t * map_t;
 #define MAP(name, size) pair_t name[(size) + 1] = {{(size), 0}}
 #endif
-
+#define DEBUG 0
 // arr points to the array of size n
 // b is the start of the second sorted section
 void merge(pair_t *arr, pair_t *b, size_t n) {
@@ -18,62 +18,49 @@ void merge(pair_t *arr, pair_t *b, size_t n) {
   printf("merge ");
   print_pairs(arr, n);
 #endif
+  // |== merged ==|== a ==|== q ==|== b ==|
+  //                  head--^
   pair_t
-    *a = arr,
-    *q = b, // queue where the head is q and the tail is q - 1
-    *q_low = q; // q_low is the lowest queue address
+    *a = arr, // sorted region a
+    *q = b,   // queuing region
+    *h = b,   // head (and tail) of the queue
+    *end = arr + n;
 
   while(a < b) {
 #if(DEBUG)
     printf("\n");
     print_pairs(arr, a-arr);
     printf("a: ");
-    print_pairs(a, q_low-a);
-    printf("q[%d]: ", q-q_low);
-    print_pairs(q_low, b-q_low);
+    print_pairs(a, q-a);
+    printf("q[%d]: ", h-q);
+    print_pairs(q, b-q);
     printf("b: ");
     print_pairs(b, n-(b-arr));
 #endif
-    if(q >= q_low && q != b && q->first < a->first) {
-      if(b->first < q->first) { // b < q < a
-        goto select_b;
-      } else { // q < a, b >= q
-        swap(a, q++);
-        if(q >= b) { // queue ran out of elements after q, un-rotate
-          q = q_low;
-        }
+    // non-empty queue
+    if(q < b) {
+      if(b < end && b->first < h->first) { // b < h
+        pair_t _b = *b;                         // store b
+        memmove(h+1, h, (char *)b - (char *)h); // make space to insert a at tail (overwrites b)
+        *h++ = *a;                              // put a at tail
+        *a = _b;                                // put b where a was
+        b++;
+      } else { // b >= h
+        swap(a, h++);
       }
-    } else if(b->first < a->first) {
-    select_b:
-      // `b` moves, increasing the size of the queue
-      // put `a` at the tail of the queue
-      if(q <= q_low) {
-        // no bubble
-        swap(a, b);
-      } else {
-        // remove bubble in the queue
-        pair_t _a = *a;
-        pair_t * const t = q - 1;
-        *a = *b;
-        *b = *t;
-        memmove(q_low, q_low + 1, (char *)q - (char *)(q_low + 1));
-
-        // put `a` at the tail
-        *t = _a;
+      if(h >= b) { // queue wrap around
+        h = q;
       }
-      b++;
-      if(b >= arr + n) return;
+    } else if(b < end && b->first < a->first) {
+      swap(a, b++);
     }
 
     a++;
 
     // if a runs into the queue, just steal the bottom half of the queue
     // this works because the bottom half of the queue is sorted
-    if(a >= q_low) {
-      if(q <= q_low) {
-        ++q;
-      }
-      q_low = q;
+    if(a >= q) {
+      q = h;
     }
   }
 }
@@ -107,7 +94,7 @@ static int test_merge(UNUSED char *name) {
   MERGE_TEST(arr6);
 
   pair_t arr7[] = {{0, 0}, {2, 0}, {4, 0}, {6, 0}, {8, 0}, {10, 0}, {12, 0}, {14, 0},
-                   {1, 0}, {3, 0}, {5, 0}, {7, 0}, {8, 0}, {11, 0}, {13, 0}, {15, 0}};
+                   {1, 0}, {3, 0}, {5, 0}, {7, 0}, {9, 0}, {11, 0}, {13, 0}, {15, 0}};
   MERGE_TEST(arr7);
 
   return 0;
@@ -260,7 +247,6 @@ static int test_map_stack_behavior(UNUSED char *name) {
     for(int j = 0; j < n; j++) {
       pair_t x = {j, i};
       map_insert(map, x);
-      print_map(map);
     }
     for(int j = 0; j < n; j++) {
       if(!expect(map, j, i)) {
