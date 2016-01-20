@@ -2,15 +2,76 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <assert.h>
+#include <stddef.h>
 #include "rt_types.h"
 #include "gen/support.h"
 #include "gen/map.h"
+#include <stdlib.h>
 
 #if INTERFACE
 typedef pair_t * map_t;
 #define MAP(name, size) pair_t name[(size) + 1] = {{(size), 0}}
 #endif
 #define DEBUG 0
+
+// scans for a pair with a lesser key
+size_t scan(pair_t *start, pair_t *end, uintptr_t key) {
+  size_t cnt = 0;
+  pair_t *x = start;
+  while(x < end && x->first < key) {
+    ++cnt;
+    ++x;
+  }
+  return cnt;
+}
+
+// NOTE: non-overlapping
+void swap_block(pair_t *a, pair_t *b, size_t n) {
+  while(n--) {
+    swap(a++, b++);
+  }
+}
+
+
+void reverse(pair_t *a, size_t n) {
+  size_t m = n / 2;
+  pair_t *b = a + n;
+  while(m--) swap(a++, --b);
+}
+
+// O(n) inplace rotate
+void rotate(pair_t *a, pair_t *b, size_t n) {
+  if(a == b) return;
+  const size_t m = b - a;
+  reverse(a, m);
+  reverse(b, n - m);
+  reverse(a, n);
+}
+
+/*
+// alternate implementation
+void rotate(pair_t *a, pair_t *b, size_t n) {
+  size_t offset = b - a;
+  while(offset) {
+    pair_t
+      *p = b,
+      *q = a + n;
+    assert(a <= b);
+    assert(b <= q);
+    while(q > b) {
+      swap(--p, --q);
+      if(p <= a) p = b;
+    }
+    if(offset > 1) {
+      b = a + (offset - (n % offset));
+      n = offset;
+      offset = b - a;
+    } else break;
+  }
+}
+*/
+
 // arr points to the array of size n
 // b is the start of the second sorted section
 void merge(pair_t *arr, pair_t *b, size_t n) {
@@ -18,7 +79,7 @@ void merge(pair_t *arr, pair_t *b, size_t n) {
   printf("merge ");
   print_pairs(arr, n);
 #endif
-  // |== merged ==|== a ==|== q ==|== b ==|
+  // |== output ==|== a ==|== q ==|== b ==|
   //                  head--^
   pair_t
     *a = arr, // sorted region a
@@ -30,37 +91,57 @@ void merge(pair_t *arr, pair_t *b, size_t n) {
 #if(DEBUG)
     printf("\n");
     print_pairs(arr, a-arr);
-    printf("a: ");
+    printf("a[%ld]: ", a-arr);
     print_pairs(a, q-a);
-    printf("q[%d]: ", h-q);
+    printf("q[%ld, %ld]: ", q-arr, h-q);
     print_pairs(q, b-q);
-    printf("b: ");
+    printf("b[%ld]: ", b-arr);
     print_pairs(b, n-(b-arr));
 #endif
     // non-empty queue
     if(q < b) {
-      if(b < end && b->first < h->first) { // b < h
-        pair_t _b = *b;                         // store b
-        memmove(h+1, h, (char *)b - (char *)h); // make space to insert a at tail (overwrites b)
-        *h++ = *a;                              // put a at tail
-        *a = _b;                                // put b where a was
-        b++;
+      // count b < h
+      size_t b_run = scan(b, end, h->first);
+      if(b_run) { // choose minimum copying to preserve queue
+        swap_block(a, b, b_run); // swap the run into the output replacing a block of 'a'
+        // |== output b_left ==|== a_right ==|== q a_left ==|== b_right ==|
+        if((ptrdiff_t)b_run > h - q) {
+          // rotate h back to q
+          // leave new items on end
+          rotate(q, h, b - q);
+          h = q;
+          // ==|== q a_left ==|==
+          //   ^-- h
+        } else {
+          // rotate h over new items
+          rotate(h, b, b_run + (b - h));
+          h += b_run;
+          // ==|== q_left a_left q_right ==|==
+          //                    ^-- h
+        }
+        b += b_run;
+        a += b_run;
       } else { // b >= h
-        swap(a, h++);
+        swap(a++, h++);
+        if(h >= b) { // queue wrap around
+          h = q;
+        }
       }
-      if(h >= b) { // queue wrap around
-        h = q;
+    } else {
+      // empty queue
+      if(b < end && b->first < a->first) {
+        swap(a++, b++);
+      } else {
+        a++;
       }
-    } else if(b < end && b->first < a->first) {
-      swap(a, b++);
     }
 
-    a++;
-
-    // if a runs into the queue, just steal the bottom half of the queue
-    // this works because the bottom half of the queue is sorted
+    // if a runs into the queue, just steal the queue
     if(a >= q) {
-      q = h;
+      rotate(q, h, b-q);
+      a = q;
+      q = b;
+      h = q;
     }
   }
 }
@@ -258,3 +339,31 @@ static int test_map_stack_behavior(UNUSED char *name) {
   return 0;
 }
 static TEST(test_map_stack_behavior);
+
+static int test_rotate(UNUSED char *name) {
+  pair_t arr[7];
+  FOREACH(i, arr) {
+    arr[i].first = i;
+    arr[i].second = i;
+  };
+  pair_t tmp[LENGTH(arr)];
+
+  FOREACH(i, arr) {
+    memcpy(tmp, arr, sizeof(arr)); 
+    rotate(tmp, tmp+i, LENGTH(tmp));
+    print_pairs(tmp, LENGTH(tmp));
+  }
+  return 0;
+}
+static TEST(test_rotate);
+
+/*
+static int test_rotate_speed(UNUSED char *name) {
+  size_t cnt = 1 << 28;
+  pair_t *arr = calloc(cnt, sizeof(pair_t));
+  rotate(arr, arr + (1 << 27) - 1, cnt);
+  free(arr);
+  return 0;
+}
+static TEST(test_rotate_speed);
+*/
