@@ -105,7 +105,7 @@ void merge(pair_t *arr, pair_t *b, size_t n) {
       if(b_run) { // choose minimum copying to preserve queue
         swap_block(a, b, b_run); // swap the run into the output replacing a block of 'a'
         // |== output b_left ==|== a_right ==|== q a_left ==|== b_right ==|
-        if((ptrdiff_t)b_run > h - q) {
+        if((ptrdiff_t)b_run >= h - q) {
           // rotate h back to q
           // leave new items on end
           rotate(q, h, b - q);
