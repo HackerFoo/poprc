@@ -513,11 +513,14 @@ void usage() {
 int main(UNUSED int argc, UNUSED char *argv[]) {
   int ch;
 
-  while ((ch = getopt(argc, argv, "t:")) != -1) {
+  while ((ch = getopt(argc, argv, "t:l:")) != -1) {
     switch (ch) {
     case 't':
       cells_init();
       return test_run(optarg, test_log);
+      break;
+    case 'l':
+      load_source(optarg);
       break;
     case '?':
     default:
@@ -984,7 +987,11 @@ void load_source(char *path) {
   char buf[1024];
   char *line = 0;
   FILE *f = fopen(path, "r");
-  if(!f) return;
+  if(!f) {
+    printf("could not open: %s\n", path);
+    return;
+  }
+  printf("loading: %s\n", path);
   while((line = fgets(buf, sizeof(buf), f))) {
     if(line[0] == '@')
       printf("%s", line);
@@ -1008,6 +1015,7 @@ void load_source(char *path) {
     }
   }
   fclose(f);
+  printf("loaded: %s\n", path);
 }
 
 char *show_type(type_rep_t t) {
