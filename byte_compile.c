@@ -21,6 +21,8 @@ cell_t *trace_ptr = &trace_cells[0];
 size_t trace_cnt = 0;
 static MAP(trace_index, 1 << 10);
 
+#define DEBUG 0
+
 static
 pair_t *trace_find(const cell_t *c) {
   c = clear_ptr(c, 3);
@@ -244,6 +246,8 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     if(c->func == func_cut ||
        c->func == func_id) {
       trace_index_assign(c, c->arg[0]);
+    } else if(c->func == func_exec) {
+      trace_index_assign(c, r);
     } else if(c->func == func_dep) {
       // do nothing
     } else if(c->func == func_placeholder) {

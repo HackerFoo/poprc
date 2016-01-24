@@ -660,7 +660,7 @@ void run_eval() {
       printf("graph %s\n", write_graph ? "ON" : "OFF");
     } else if(strncmp(line, ":l ", 3) == 0) {
       if(line[3])
-        loadSource(&line[3]);
+        load_source(&line[3]);
     } else if(strcmp(line, ":q") == 0) {
 #ifndef RAW_LINE
       free(line_raw);
@@ -980,7 +980,7 @@ cell_t *remove_left(cell_t *c) {
   return new;
 }
 
-void loadSource(char *path) {
+void load_source(char *path) {
   char buf[1024];
   char *line = 0;
   FILE *f = fopen(path, "r");
@@ -994,7 +994,6 @@ void loadSource(char *path) {
       eval(line+1, strlen(line));
       check_free();
     } else if(line[0] == '=') {
-#ifdef USE_LLVM
       printf("%s", line);
       ++line;
       while(*line == ' ') ++line;
@@ -1005,10 +1004,7 @@ void loadSource(char *path) {
       while(*x && *x != '\n') ++x;
       *x = 0;
       cells_init();
-      compile_expr(name, line, strlen(line));
-#else
-      printf("Compilation is not supported.\n");
-#endif
+      compact_expr(name, line, strlen(line));
     }
   }
   fclose(f);
