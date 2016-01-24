@@ -571,16 +571,12 @@ bool func_select(cell_t **cp, type_rep_t t) {
   cell_t *c = *cp;
   cell_t *p;
   alt_set_t alt_set = 0;
-  if(reduce_arg(c, 0, &alt_set, t)) {
+  if(reduce_arg(c, 0, &alt_set, t) && !is_var(c->arg[0])) {
     clear_flags(c);
     p = c->arg[0];
   } else if(reduce_arg(c, 1, &alt_set, t)) {
     clear_flags(c);
-    drop(c->arg[0]);
     p = c->arg[1];
-    c->func = func_id;
-    c->size = 1;
-    c->arg[0] = p;
   } else goto fail;
   store_reduced(cp, ref(p));
   return true;
