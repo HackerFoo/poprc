@@ -103,6 +103,42 @@ cell_t *trace_store(const cell_t *c) {
   return dest;
 }
 
+cell_t *trace_store_addarg(const cell_t *c) {
+
+  // entry already exists
+  pair_t *e = trace_find(c);
+  if(e) {
+    return trace_cur + e->second;
+  }
+
+  cell_t *dest = trace_ptr;
+  unsigned int
+    in = closure_in(c),
+    out = closure_out(c),
+    args = closure_args(c),
+    size = calculate_cells(args + 1);
+  trace_ptr += size;
+  trace_cnt++;
+  memcpy(dest, c, (char *)&dest->arg[in] - (char *)dest);
+  dest->arg[in] = 0;
+  memcpy(&dest->arg[in + 1], &c->arg[in], sizeof(dest->arg[0]) * out);
+  dest->size++;
+  trace_index_add(c, dest - trace_cur);
+
+  dest->n = -1;
+
+  // rewrite pointers
+  traverse(dest, {
+      if(*p) {
+        uintptr_t x = trace_get(*p);
+        *p = trace_encode(x);
+        trace_cur[x].n++;
+      }
+    }, ARGS | PTRS);
+
+  return dest;
+}
+
 cell_t *trace_select(const cell_t *c, const cell_t *a) {
   cell_t *dest = trace_ptr;
   unsigned int size = closure_cells(c);
@@ -201,9 +237,9 @@ uintptr_t bc_func(reduce_t f, unsigned int in, unsigned int out, ...) {
 
   COUNTUP(i, out - 1) {
     uintptr_t d = bc_func(func_dep, 1, 1, c - trace_cur);
-    uintptr_t *out = va_arg(argp, uintptr_t *);
+    uintptr_t *res = va_arg(argp, uintptr_t *);
     c->arg[in + i] = trace_encode(d);
-    *out = d;
+    *res = d;
   }
 
   va_end(argp);
@@ -247,6 +283,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
        c->func == func_id) {
       trace_index_assign(c, c->arg[0]);
     } else if(c->func == func_exec) {
+      // just replace exec with it's result
       trace_index_assign(c, r);
     } else if(c->func == func_dep) {
       // do nothing
@@ -255,7 +292,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
       map_insert(trace_index, p);
     } else if(c->func == func_self) {
       //fb->callSelf(c);
-      trace_store(c);
+      trace_store_addarg(c);
     } else {
       trace_store(c);
     }
@@ -415,6 +452,12 @@ bool func_exec(cell_t **cp, type_rep_t t) {
           }
         }
       }, ARGS | PTRS);
+    if(t->func == func_self) {
+      assert(t->size == c->size &&
+             t->out == c->out);
+      t->func = func_exec;
+      t->arg[data] = header;
+    }
   }
 
   size_t

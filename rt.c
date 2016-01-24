@@ -1323,27 +1323,7 @@ bool func_placeholder(cell_t **cp, UNUSED type_t t) {
 }
 
 bool func_self(cell_t **cp, UNUSED type_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
-  unsigned int in = closure_in(c), n = closure_args(c);
-  for(unsigned int i = 0; i < in; ++i) {
-    if(!reduce(&c->arg[i], T_ANY)) goto fail;
-    trace(c->arg[i], 0, tt_force);
-  }
-  for(unsigned int i = in; i < n; ++i) {
-    cell_t *d = c->arg[i];
-    if(!d) continue;
-    drop(d->arg[0]);
-    d->func = func_reduced;
-    d->size = 1;
-    d->alt_set = 0;
-    d->type = T_VAR;
-  }
-  store_reduced(cp, var(T_ANY));
-  return true;
-
- fail:
-  fail(cp);
-  return false;
+  return func_placeholder(cp, t);
 }
 
 bool is_placeholder(cell_t const *c) {
