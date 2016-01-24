@@ -274,11 +274,6 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
        c->func == func_pushr ||
        c->func == func_popr) break;
     if(is_dep(c)) break;
-    unsigned int in = closure_in(c);
-    COUNTUP(i, in) {
-      trace(c->arg[i], 0, tt_force);
-    }
-
     if(c->func == func_cut ||
        c->func == func_id) {
       trace_index_assign(c, c->arg[0]);
@@ -294,6 +289,10 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
       //fb->callSelf(c);
       trace_store_addarg(c);
     } else {
+      unsigned int in = closure_in(c);
+      COUNTUP(i, in) {
+        trace(c->arg[i], 0, tt_force);
+      }
       trace_store(c);
     }
     r->type |= T_TRACED;
