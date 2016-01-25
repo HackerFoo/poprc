@@ -506,17 +506,8 @@ bool func_drop(cell_t **cp, UNUSED type_rep_t t) {
 bool func_swap(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = c->arg[2];
-  c->func = func_id;
-  if(d) {
-    drop(c);
-    d->func = func_id;
-    d->arg[0] = c->arg[0];
-    d->arg[1] = 0;
-  } else drop(c->arg[0]);
-  cell_t *q = c->arg[0] = c->arg[1];
-  c->arg[1] = c->arg[2] = 0;
-  *cp = ref(q);
-  drop(c);
+  store_lazy_dep(c, d, c->arg[0]);
+  store_lazy(cp, c, c->arg[1]);
   return false;
 }
 
@@ -529,7 +520,7 @@ cell_t *id(cell_t *c) {
 bool func_dup(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = c->arg[1];
-  if(d) store_lazy_dep(c, d, ref(c->arg[0]));
+  store_lazy_dep(c, d, ref(c->arg[0]));
   store_lazy(cp, c, c->arg[0]);
   return false;
 }
