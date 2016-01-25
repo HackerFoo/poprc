@@ -40,6 +40,7 @@
 /* must be in ascending order */
 word_entry_t word_table[] = {
   {"!",      func_assert,      2, 1, NULL},
+  {"!=",     func_neq,         2, 1, NULL},
   {"'",      func_quote,       1, 1, NULL},
   {"*",      func_mul,         2, 1, NULL},
   {"+",      func_add,         2, 1, NULL},
@@ -265,6 +266,12 @@ intptr_t eq_op(intptr_t x, intptr_t y) { return x == y; }
 bool func_eq(cell_t **cp, type_rep_t t) { return func_op2(cp, t, eq_op); }
 cell_t *build_eq(cell_t *x, cell_t *y) {
   return build21(func_eq, x, y);
+}
+
+intptr_t neq_op(intptr_t x, intptr_t y) { return x != y; }
+bool func_neq(cell_t **cp, type_rep_t t) { return func_op2(cp, t, neq_op); }
+cell_t *build_neq(cell_t *x, cell_t *y) {
+  return build21(func_neq, x, y);
 }
 
 bool func_compose(cell_t **cp, UNUSED type_rep_t t) {

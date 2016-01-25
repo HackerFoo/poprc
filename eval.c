@@ -98,6 +98,7 @@ char const *function_name(reduce_t *f) {
   CASE(lt);
   CASE(lte);
   CASE(eq);
+  CASE(neq);
   CASE(dup);
   CASE(swap);
   CASE(drop);
