@@ -109,6 +109,7 @@ char const *function_name(reduce_t *f) {
   CASE(placeholder);
   CASE(self);
   CASE(exec);
+  CASE(ap);
   return "?";
 # undef CASE
 }
@@ -760,6 +761,13 @@ cell_t *word_parse(char const *w,
     c = var(T_ANY);
     *in = 0;
     *out = 1;
+  } else if(w[0] == 'a' && w[1] == 'p' &&
+            char_class(w[2]) == CC_NUMERIC &&
+            char_class(w[3]) == CC_NUMERIC &&
+            w[4] == 0) {
+    *in = w[2] - '0' + 1;
+    *out = w[3] - '0';
+    c = func(func_ap, *in, *out);
   } else {
     word_entry_t *e = lookup_word(w);
     /* disallow partial matches */

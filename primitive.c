@@ -615,3 +615,31 @@ bool func_ift(cell_t **cp, UNUSED type_rep_t t) {
 cell_t *build_ift(cell_t *x, cell_t *y, cell_t *z) {
   return build31(func_ift, x, y, z);
 }
+
+bool func_ap(cell_t **cp, UNUSED type_rep_t t) {
+  cell_t *c = clear_ptr(*cp, 3);
+  alt_set_t alt_set = 0;
+  const unsigned int
+    in = closure_in(c),
+    n = closure_args(c);
+  unsigned int i;
+  if(!reduce_arg(c, in-1, &alt_set, T_LIST)) goto fail;
+  cell_t *l = clear_ptr(c->arg[in-1], 3);
+  COUNTDOWN(i, in-1) {
+    l = clear_ptr(pushl_nd(c->arg[i], l), 3);
+  }
+  cell_t **out = &l->ptr[0];
+  for(i = n-1; i >= in; i--) {
+    store_lazy_dep(c, c->arg[i], ref(*out++), alt_set);
+  }
+  cell_t *res = id(ref(*out));
+  res->alt = c->alt;
+  res->arg[1] = (cell_t *)alt_set;
+  c->alt = 0;
+  store_lazy(cp, c, res);
+  drop(l);
+  return false;
+fail:
+  fail(cp);
+  return false;
+}
