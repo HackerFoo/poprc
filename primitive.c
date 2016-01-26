@@ -376,13 +376,7 @@ bool func_popr(cell_t **cp, UNUSED type_rep_t t) {
     res_type |= T_VAR;
   }
 
-  if(d) {
-    drop(c);
-    d->func = func_id;
-    d->arg[0] = ref(p->ptr[0]);
-    d->arg[1] = (cell_t *)alt_set_ref(alt_set);
-    c->arg[1] = p->ptr[0];
-  }
+  store_lazy_dep(c, d, ref(p->ptr[0]), alt_set);
 
   /* drop the right list element */
   cell_t *res = closure_alloc(closure_args(p)-1);
@@ -513,7 +507,7 @@ bool func_drop(cell_t **cp, UNUSED type_rep_t t) {
 bool func_swap(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = c->arg[2];
-  store_lazy_dep(c, d, c->arg[0]);
+  store_lazy_dep(c, d, c->arg[0], 0);
   store_lazy(cp, c, c->arg[1]);
   return false;
 }
@@ -527,7 +521,7 @@ cell_t *id(cell_t *c) {
 bool func_dup(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = c->arg[1];
-  store_lazy_dep(c, d, ref(c->arg[0]));
+  store_lazy_dep(c, d, ref(c->arg[0]), 0);
   store_lazy(cp, c, c->arg[0]);
   return false;
 }

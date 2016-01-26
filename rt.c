@@ -185,18 +185,17 @@ bool reduce(cell_t **cp, type_rep_t t) {
 }
 
 // Perform one reduction step on *cp
-bool reduce_partial(cell_t **cp) {
-  cell_t *c;
-  c = clear_ptr(*cp, 1);
+void reduce_dep(cell_t **cp) {
+  cell_t *c = clear_ptr(*cp, 1);
   if(!closure_is_ready(c)) close_placeholders(c);
   if(!c || !closure_is_ready(c)) {
     fail(cp);
-    return false;
+  } else {
+    assert(is_closure(c) &&
+           closure_is_ready(c));
+    measure.reduce_cnt++;
+    c->func(cp, T_ANY);
   }
-  assert(is_closure(c) &&
-         closure_is_ready(c));
-  measure.reduce_cnt++;
-  return c->func(cp, T_ANY);
 }
 
 cell_t *cells_next() {
@@ -875,14 +874,15 @@ cell_t *dep(cell_t *c) {
   return n;
 }
 
+/* todo: propagate types here */
 bool func_dep(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
+  /* must make weak reference strong during reduction */
   cell_t *p = ref(c->arg[0]);
-  reduce_partial(&p);
-  if(p) drop(p);
-  else fail(cp);
+  reduce_dep(&p);
+  drop(p);
   return false;
 }
 
@@ -1267,14 +1267,14 @@ void store_lazy(cell_t **cp, cell_t *c, cell_t *r) {
   *cp = r;
 }
 
-void store_lazy_dep(cell_t *c, cell_t *d, cell_t *r) {
+void store_lazy_dep(cell_t *c, cell_t *d, cell_t *r, alt_set_t alt_set) {
   if(d) {
-    --c->n;
+    drop(c);
     d->func = func_id;
     d->size = 1;
     d->out = 0;
     d->arg[0] = r;
-    d->arg[1] = 0;
+    d->arg[1] = (cell_t *)alt_set;
   } else drop(r);
 }
 
