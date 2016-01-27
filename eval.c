@@ -766,7 +766,7 @@ cell_t *word_parse(char const *w,
             char_class(w[3]) == CC_NUMERIC &&
             w[4] == 0) {
     *in = w[2] - '0' + 1;
-    *out = w[3] - '0';
+    *out = w[3] - '0' + 1;
     c = func(func_ap, *in, *out);
   } else {
     word_entry_t *e = lookup_word(w);
@@ -1093,7 +1093,7 @@ char *show_type_all_short(type_rep_t t) {
   return buf;
 }
 
-void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
+void print_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED unsigned int n) {
   switch(tt) {
   case tt_reduction:
     if(is_reduced(c) || !is_var(r)) break;
@@ -1107,8 +1107,8 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     if(is_dep(c)) {
       printf("?%c%ld <- type\n", type_char(r->type), (long int)(c - cells));
     } else {
-      int i, n = closure_args(c), in = closure_in(c), out = closure_out(c);
-      for(i = 0; i < in; ++i) trace(c->arg[i], 0, tt_force); // ***
+      unsigned int i, n = closure_args(c), in = closure_in(c), out = closure_out(c);
+      for(i = 0; i < in; ++i) trace(c->arg[i], c, tt_force, i); // ***
       if(!is_placeholder(c)) printf("?%c%ld ", type_char(r->type), (long int)(c - cells));
       for(i = 0; i < out; ++i) {
         cell_t *a = c->arg[n - i - 1];
@@ -1159,6 +1159,8 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt) {
            (long int)(c - cells),
            (long int)(((cell_t **)r)[0] - cells),
            (long int)(((cell_t **)r)[1] - cells));
+    break;
+  case tt_placeholder_dep:
     break;
   }
 }

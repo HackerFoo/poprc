@@ -380,6 +380,7 @@ bool func_popr(cell_t **cp, UNUSED type_rep_t t) {
 
   /* drop the right list element */
   cell_t *res = closure_alloc(closure_args(p)-1);
+  res->func = func_reduced;
   unsigned int elems = list_size(res);
   res->type = res_type;
   for(unsigned int i = 0; i < elems; ++i)
@@ -528,8 +529,8 @@ bool func_dup(cell_t **cp, UNUSED type_rep_t t) {
 
 void trace_expand_select(cell_t *c, cell_t *x, type_t t) {
   while(reduce(&x, t)) {
-    if(!is_var(x)) trace(x, 0, tt_force);
-    trace(c, x, tt_select);
+    if(!is_var(x)) trace(x, c, tt_force, 0);
+    trace(c, x, tt_select, 0);
     if(!is_var(x)) break;
     x = x->alt;
   }
@@ -615,20 +616,45 @@ bool func_ap(cell_t **cp, UNUSED type_rep_t t) {
   alt_set_t alt_set = 0;
   const unsigned int
     in = closure_in(c),
-    n = closure_args(c);
+    n = closure_args(c),
+    out = closure_out(c);
   unsigned int i;
   if(!reduce_arg(c, in-1, &alt_set, T_LIST)) goto fail;
   cell_t *l = clear_ptr(c->arg[in-1], 3);
   COUNTDOWN(i, in-1) {
     l = clear_ptr(pushl_nd(c->arg[i], l), 3);
   }
-  cell_t **out = &l->ptr[0];
-  for(i = n-1; i >= in; i--) {
-    store_lazy_dep(c, c->arg[i], ref(*out++), alt_set);
+
+  unsigned int ln = list_size(l);
+  cell_t *ph = 0;
+  if(ln && is_placeholder(l->ptr[ln-1])) {
+    ph = l->ptr[ln-1];
+    ln--;
   }
-  cell_t *res = id(ref(*out));
+
+  unsigned int stop = min(ln, out);
+  for(i = 0; i < stop; i++) {
+    store_lazy_dep(c, c->arg[n-1-i], ref(l->ptr[i]), alt_set);
+  }
+
+  for(; i < out; i++) {
+    cell_t *p = c->arg[n-1-i];
+    drop(c);
+    store_fail(p, p->alt);
+  }
+
+  if(out > ln) goto fail; // todo: handle placeholders
+
+  /* drop the right list elements */
+  cell_t *res = closure_alloc(closure_args(l) - out);
+  unsigned int elems = list_size(res);
+  res->type = T_LIST;
+  for(unsigned int i = 0; i < elems; ++i)
+    res->ptr[i] = ref(l->ptr[i+(n-in)]);
+
+  res->func = func_reduced;
+  res->alt_set = alt_set_ref(alt_set);
   res->alt = c->alt;
-  res->arg[1] = (cell_t *)alt_set;
   c->alt = 0;
   store_lazy(cp, c, res);
   drop(l);

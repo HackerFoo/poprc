@@ -250,7 +250,7 @@ void FunctionBuilder::val(cell_t *c) {
   cnt[ci] = 1;
 }
 
-void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
+void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt, unsigned int n) {
   switch(tt) {
   case tt_reduction: {
     if(is_reduced(c) || !is_var(r)) break;
@@ -258,8 +258,8 @@ void compile_simple_trace(cell_t *c, cell_t *r, trace_type_t tt) {
        c->func == func_pushr ||
        c->func == func_popr) break;
     if(is_dep(c)) break;
-    int i, in = closure_in(c);
-    for(i = 0; i < in; ++i) trace(c->arg[i], 0, tt_force);
+    unsigned int i, in = closure_in(c);
+    for(i = 0; i < in; ++i) trace(c->arg[i], c, tt_force, i);
 
     if(c->func == func_cut ||
        c->func == func_id) {

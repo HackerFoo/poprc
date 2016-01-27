@@ -26,8 +26,10 @@ static MAP(trace_index, 1 << 10);
 static
 pair_t *trace_find(const cell_t *c) {
   c = clear_ptr(c, 3);
-  if(is_list(c) && c->ptr[0] && (c->ptr[0]->type & T_ROW)) {
-    c = clear_ptr(c->ptr[0], 3);
+  if(is_list(c) && c->ptr[0] && is_placeholder(c->ptr[0])) {
+    cell_t *ph = clear_ptr(c->ptr[0], 3);
+    pair_t *res = map_find(trace_index, (uintptr_t)ph);
+    if(res) return res;
   }
   return map_find(trace_index, (uintptr_t)c);
 }
@@ -253,21 +255,28 @@ uintptr_t bc_apply_list(cell_t *c) {
 
   /* pushl inputs */
   COUNTDOWN(i, in) {
-    uintptr_t x = trace_get(c->arg[i]);
-    p = bc_func(func_pushl, 2, 1, x, p);
+    if(c->arg[i]->tmp != &cells[0]) { // HACK
+      uintptr_t x = trace_get(c->arg[i]);
+      p = bc_func(func_pushl, 2, 1, x, p);
+      c->arg[i]->tmp = &cells[0];
+    }
   }
 
   /* popr outputs */
   COUNTDOWN(i, out) {
-    pair_t x = { (uintptr_t)c->arg[i+in], 0 };
-    p = bc_func(func_popr, 1, 2, p, &x.second);
-    map_insert(trace_index, x);
+    if(c->arg[i+in]->tmp != &cells[0]) { // HACK
+      uintptr_t res;
+      p = bc_func(func_popr, 1, 2, p, &res);
+      trace_index_add(c->arg[i+in], res);
+      c->arg[i+in]->tmp = &cells[0];
+    }
   }
   return p;
 }
 
-void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
+void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, unsigned int n) {
   switch(tt) {
+
   case tt_reduction: {
     if(is_reduced(c) || !is_var(r)) break;
     if(c->func == func_pushl ||
@@ -281,20 +290,20 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
       // just replace exec with it's result
       trace_index_assign(c, r);
     } else if(c->func == func_placeholder) {
-      pair_t p = { (uintptr_t)c, bc_apply_list(c) };
-      map_insert(trace_index, p);
+      //trace_index_add(c, bc_apply_list(c));
     } else if(c->func == func_self) {
       trace_store_addarg(c);
     } else {
       unsigned int in = closure_in(c);
       COUNTUP(i, in) {
-        trace(c->arg[i], 0, tt_force);
+        trace(c->arg[i], c, tt_force, i);
       }
       trace_store(c);
     }
     r->type |= T_TRACED;
     break;
   }
+
   case tt_touched:
     if(!is_var(c)) break;
   case tt_force: {
@@ -310,16 +319,24 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt) {
     c->type |= T_TRACED;
     break;
   }
+
   case tt_select: {
     trace_select(c, r);
     break;
   }
+
   case tt_copy: {
     trace_index_assign(c, r);
     break;
   }
+
   case tt_compose_placeholders: {
     /* to do *** */
+    break;
+  }
+
+  case tt_placeholder_dep: {
+    trace_index_add(r, bc_apply_list(r));
     break;
   }
   }

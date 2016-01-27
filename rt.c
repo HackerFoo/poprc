@@ -51,13 +51,13 @@ uintptr_t alt_live[sizeof(intptr_t) * 4];
 measure_t measure, saved_measure;
 
 // Default tracing function that does nothing
-void trace_noop(UNUSED cell_t *c, UNUSED cell_t *r, UNUSED trace_type_t tt) {}
+void trace_noop(UNUSED cell_t *c, UNUSED cell_t *r, UNUSED trace_type_t tt, unsigned int n) {}
 
 // Pointer to tracing function
-void (*trace)(cell_t *, cell_t *, trace_type_t) = trace_noop;
+void (*trace)(cell_t *, cell_t *, trace_type_t, unsigned int) = trace_noop;
 
 // Set the tracing function
-void set_trace(void (*t)(cell_t *, cell_t *, trace_type_t)) {
+void set_trace(void (*t)(cell_t *, cell_t *, trace_type_t, unsigned int)) {
   trace = t ? t : trace_noop;
 }
 
@@ -172,6 +172,7 @@ bool reduce(cell_t **cp, type_rep_t t) {
   cell_t *c;
   while((c = clear_ptr(*cp, 1))) {
     if(!closure_is_ready(c)) close_placeholders(c);
+    if(is_placeholder(c)) break;
     assert(is_closure(c));
     if(!closure_is_ready(c)) {
       fail(cp);
@@ -360,7 +361,7 @@ bool func_reduced(cell_t **cp, type_rep_t t) {
         c->type &= ~T_TRACED;
       }
       c->type |= t;
-      trace(c, 0, tt_touched);
+      trace(c, 0, tt_touched, 0);
     }
     return true;
   }
@@ -434,7 +435,7 @@ cell_t *expand(cell_t *c, unsigned int s) {
     /* copy */
     cell_t *new = closure_alloc(n + s);
     memcpy(new, c, cn_p * sizeof(cell_t));
-    if(is_placeholder(c)) trace(new, c, tt_copy);
+    if(is_placeholder(c)) trace(new, c, tt_copy, 0);
     new->n = 0;
     traverse_ref(new, ARGS_IN | PTRS | ALT);
     new->size = n + s;
@@ -490,7 +491,7 @@ cell_t *compose_placeholders(cell_t *a, cell_t *b) {
     c->arg[b_in + i] = a->arg[i];
   drop(a);
   cell_t *ab[] = {a, b};
-  trace(c, (cell_t *)ab, tt_compose_placeholders);
+  trace(c, (cell_t *)ab, tt_compose_placeholders, 0);
   return c;
 }
 
@@ -777,7 +778,7 @@ void store_reduced(cell_t **cp, cell_t *r) {
   cell_t *c = clear_ptr(*cp, 3);
   unsigned int n = c->n;
   r->func = func_reduced;
-  trace(c, r, tt_reduction);
+  trace(c, r, tt_reduction, 0);
   drop_multi(c->arg, closure_in(c));
   alt_set_ref(r->alt_set);
   unsigned int size = is_closure(r) ? closure_cells(r) : 0;
@@ -954,7 +955,7 @@ cell_t *pushl_nd(cell_t *a, cell_t *b) {
     cell_t *l = b->ptr[n-1];
     if(!closure_is_ready(l)) {
       cell_t *_b = arg_nd(l, a, b);
-      if(is_placeholder(l)) trace(_b->ptr[n-1], l, tt_copy);
+      if(is_placeholder(l)) trace(_b->ptr[n-1], l, tt_copy, 0);
       return _b;
     }
   }
@@ -1303,19 +1304,17 @@ bool func_placeholder(cell_t **cp, UNUSED type_t t) {
   unsigned int in = closure_in(c), n = closure_args(c);
   for(unsigned int i = 0; i < in; ++i) {
     if(!reduce(&c->arg[i], T_ANY)) goto fail;
-    trace(c->arg[i], 0, tt_force);
+    trace(c->arg[i], c, tt_force, i);
   }
   for(unsigned int i = in; i < n; ++i) {
     cell_t *d = c->arg[i];
-    if(!d) continue;
-    drop(d->arg[0]);
-    d->func = func_reduced;
-    d->size = 1;
-    d->alt_set = 0;
-    d->type = T_VAR;
+    if(d && is_dep(d)) {
+      drop(c);
+      store_var(d, 0);
+      trace(d, c, tt_placeholder_dep, i);
+    }
   }
-  store_reduced(cp, var(T_ROW));
-  return true;
+  return false;
 
  fail:
   fail(cp);
