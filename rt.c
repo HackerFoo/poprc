@@ -44,6 +44,9 @@ cell_t fail_cell = {
 #define AS_SIZE (sizeof(intptr_t) * 4)
 #define ALT_SET_IDS AS_SIZE
 
+// to catch errors that result in large allocations
+#define MAX_ALLOC_SIZE 32
+
 // OBSOLETE Array for tracking 'live' alt ids
 uintptr_t alt_live[sizeof(intptr_t) * 4];
 
@@ -264,6 +267,7 @@ cell_t *closure_alloc(unsigned int args) {
 }
 
 cell_t *closure_alloc_cells(unsigned int size) {
+  assert(size < MAX_ALLOC_SIZE);
   cell_t *ptr = cells_next(), *c = ptr;
   cell_t *mark = ptr;
   unsigned int cnt = 0;
