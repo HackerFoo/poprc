@@ -693,14 +693,15 @@ void traverse_clear_alt(cell_t *c) {
 }
 
 cell_t *arg_nd(cell_t *c, cell_t *a, cell_t *r) {
-  cell_t *t = _arg_nd(c, a, r);
-  zero_tmps(r);
+  cell_t *l = _arg_nd(c, a, r);
+  r = r->tmp ? clear_ptr(r->tmp, 3) : r;
+  clean_tmp(l);
   //check_tmps();
-  return t;
+  return r;
 }
 
 cell_t *_arg_nd(cell_t *c, cell_t *a, cell_t *r) {
-  cell_t *t;
+  cell_t *l = 0;
   assert(is_closure(c) && is_closure(a));
   assert(!closure_is_ready(c));
   unsigned int i = closure_next_child(c);
@@ -708,28 +709,27 @@ cell_t *_arg_nd(cell_t *c, cell_t *a, cell_t *r) {
   if(is_placeholder(c) &&
      (closure_in(c) == 0 ||
       closure_is_ready(c->arg[0]))) {
-    t = modify_copy(c, r);
-    cell_t *_c = clear_ptr(c->tmp, 3) ? clear_ptr(c->tmp, 3) : c;
-    _c = expand_inplace(_c, 1); // ***
-    _c->arg[0] = a;
-    cell_t *rt = clear_ptr(r->tmp, 3);
-    rt->ptr[list_size(rt)-1] = c->tmp = _c; // ***
+    l = mutate(c, r, 1);
+    c = c->tmp ? clear_ptr(c->tmp, 3) : c;
+    r = r->tmp ? clear_ptr(r->tmp, 3) : r;
+    c->arg[0] = a;
+    r->ptr[list_size(r)-1] = c; // ***
   } else if(!is_data(c->arg[i])) {
-    t = modify_copy(c, r);
-    cell_t *_c = clear_ptr(c->tmp, 3) ? clear_ptr(c->tmp, 3) : c;
-    _c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
-    _c->arg[i] = a;
-    if(i == 0 && !is_placeholder(c)) closure_set_ready(_c, closure_is_ready(a));
+    l = mutate(c, r, 0);
+    c = c->tmp ? clear_ptr(c->tmp, 3) : c;
+    c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
+    c->arg[i] = a;
+    if(i == 0 && !is_placeholder(c)) closure_set_ready(c, closure_is_ready(a));
   } else {
-    t = _arg_nd(c->arg[i], a, r);
-    cell_t *_c = clear_ptr(c->tmp, 3) ? clear_ptr(c->tmp, 3) : c;
+    l = _arg_nd(c->arg[i], a, r);
+    c = c->tmp ? clear_ptr(c->tmp, 3) : c;
     if(!is_placeholder(c) &&
-       closure_is_ready(_c->arg[i])) {
-      if(i == 0) closure_set_ready(_c, true);
-      else --*(intptr_t *)&_c->arg[0]; // decrement offset
+       closure_is_ready(c->arg[i])) {
+      if(i == 0) closure_set_ready(c, true);
+      else --*(intptr_t *)&c->arg[0]; // decrement offset
     }
   }
-  return t;
+  return l;
 }
 
 cell_t *copy(cell_t const *c) {
@@ -1119,6 +1119,72 @@ unsigned int nondep_n(cell_t *c) {
           c->arg[n]->arg[0] == c) --nd;
   }
   return nd;
+}
+
+void mutate_update(cell_t *r) {
+  traverse(r, {
+      cell_t *c = clear_ptr(*p, 3);
+      if(c && c->tmp) {
+        *p = c->tmp;
+        if(is_weak(r, c)) {
+          ref(c->tmp);
+          drop(c);
+        }
+      }
+    }, ARGS | PTRS | ALT);
+}
+
+bool mutate_sweep(cell_t *c, cell_t *r, cell_t ***l, bool u, int exp) {
+  r = clear_ptr(r, 3);
+  if(!is_closure(r)) return false;
+  if(r == c || r->tmp) return true;
+  u &= nondep_n(r) > 0;
+
+  bool dirty = false;
+  traverse(r, {
+      dirty |= mutate_sweep(c, *p, l, u, exp);
+    }, ARGS | PTRS | ALT);
+
+  if(dirty) {
+    if(u) {
+      // if unique, rewrite pointers inplace
+      mutate_update(r);
+    } else {
+      // otherwise, add to the list and defer
+      cell_t *n = copy(r);
+      if(exp) n = expand_inplace(n, exp); // *** TODO optimize
+      **l = r;
+      r->tmp = n;
+      *l = &n->tmp;
+    }
+  }
+  return dirty && !u;
+}
+
+cell_t *mutate(cell_t *c, cell_t *r, int exp) {
+  cell_t *l = 0, **lp = &l;
+
+  mutate_sweep(c, r, &lp, true, exp);
+
+  *lp = 0;
+
+  // traverse list and rewrite pointers
+  cell_t *li = l;
+  while(li) {
+    cell_t *t = l->tmp;
+    mutate_update(t);
+    li = t->tmp;
+  }
+
+  return l;
+}
+
+void clean_tmp(cell_t *l) {
+  while(l) {
+    cell_t *next = l->tmp;
+    l->tmp = 0;
+    l = next;
+  }
 }
 
 void _modify_new(cell_t *r, bool u) {
