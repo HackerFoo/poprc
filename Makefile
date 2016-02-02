@@ -163,9 +163,14 @@ graph: eval
 	make diagrams
 
 # remove compilation products
+.PHONY: clean
 clean:
 	rm -f eval eval.js
 	rm -rf build gen diagrams
 	rm -f make-eval.log compile_commands.json
 	rm -f $(DIAGRAMS_FILE)
+	rm -f *.dot
+
+.PHONE: clean-dot
+clean-dot:
 	rm -f *.dot

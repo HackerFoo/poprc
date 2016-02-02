@@ -133,8 +133,9 @@ typedef struct measure_t {
 #define clear_ptr(p, x) ((void *)((intptr_t)(p) & ~(x)))
 
 #define ALT 1
-#define ARGS 2
-#define ARGS_IN 4
+#define ARGS_IN 2
+#define ARGS_OUT 4
+#define ARGS (ARGS_IN | ARGS_OUT)
 #define PTRS 8
 
 typedef struct two_cells_t {

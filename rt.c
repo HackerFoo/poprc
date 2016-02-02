@@ -646,31 +646,32 @@ bool is_any(cell_t const *c) {
 }
 
 #if INTERFACE
-#define traverse(r, action, flags)                      \
-  do {                                                  \
-    cell_t **p;                                         \
-    if(is_reduced(r)) {                                 \
-      if(((flags) & PTRS) &&                            \
-                is_list(r)) {                           \
-        unsigned int i, n = list_size(r);               \
-        for(i = 0; i < n; ++i) {                        \
-          p = (r)->ptr + i;                             \
-          action                                        \
-        }                                               \
-      }                                                 \
-    } else if((flags) & (ARGS | ARGS_IN)) {             \
-      unsigned int i, n = ((flags) & ARGS_IN) ?         \
-        closure_in(r) :                                 \
-        closure_args(r);                                \
-      for(i = closure_next_child(r); i < n; ++i) {      \
-        p = (r)->arg + i;                               \
-        if(*p) {action}                                 \
-      }                                                 \
-    }                                                   \
-    if((flags) & ALT) {                                 \
-      p = &(r)->alt;                                    \
-      action                                            \
-    }                                                   \
+#define traverse(r, action, flags)                              \
+  do {                                                          \
+    unsigned int i = 0, n = 0;                                  \
+    cell_t **p;                                                 \
+    if(is_reduced(r)) {                                         \
+      if(((flags) & PTRS) &&                                    \
+                is_list(r)) {                                   \
+        n = list_size(r);                                       \
+        for(i = 0; i < n; ++i) {                                \
+          p = (r)->ptr + i;                                     \
+          action                                                \
+        }                                                       \
+      }                                                         \
+    } else if((flags) & ARGS) {                                 \
+      unsigned int  __in = closure_in(r);                       \
+      i = (~(flags) & ARGS_IN) ? __in : closure_next_child(r);  \
+      n = (~(flags) & ARGS_OUT) ? __in : closure_args(r);       \
+      for(; i < n; ++i) {                                       \
+        p = (r)->arg + i;                                       \
+        if(*p) {action}                                         \
+      }                                                         \
+    }                                                           \
+    if((flags) & ALT) {                                         \
+      p = &(r)->alt;                                            \
+      action                                                    \
+    }                                                           \
   } while(0)
 #endif
 
@@ -1121,61 +1122,73 @@ unsigned int nondep_n(cell_t *c) {
   return nd;
 }
 
-void mutate_update(cell_t *r) {
+void mutate_update(cell_t *r, bool m) {
+  traverse(r, {
+      cell_t *c = clear_ptr(*p, 3);
+      if(is_closure(c)) {
+        if(c->tmp) {
+          *p = ref(c->tmp);
+          if (m) drop(c);
+        } else if (!m) ref(c);
+      }
+    }, ARGS_IN | PTRS | ALT);
+
   traverse(r, {
       cell_t *c = clear_ptr(*p, 3);
       if(c && c->tmp) {
         *p = c->tmp;
-        if(is_weak(r, c)) {
-          ref(c->tmp);
-          drop(c);
-        }
       }
-    }, ARGS | PTRS | ALT);
+    }, ARGS_OUT);
 }
 
-bool mutate_sweep(cell_t *c, cell_t *r, cell_t ***l, bool u, int exp) {
+bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u, int exp) {
   r = clear_ptr(r, 3);
   if(!is_closure(r)) return false;
-  if(r == c || r->tmp) return true;
+  if(r->tmp) return true;
   u &= nondep_n(r) > 0;
 
   bool dirty = false;
-  traverse(r, {
-      dirty |= mutate_sweep(c, *p, l, u, exp);
-    }, ARGS | PTRS | ALT);
+  if(r == c) {
+    dirty = true;
+  } else {
+    traverse(r, {
+        dirty |= mutate_sweep(c, *p, l, u, exp);
+      }, ARGS | PTRS | ALT);
+  }
 
   if(dirty) {
     if(u) {
       // if unique, rewrite pointers inplace
-      mutate_update(r);
+      mutate_update(r, true);
     } else {
       // otherwise, add to the list and defer
       cell_t *n = copy(r);
+      n->n = -1;
       if(exp) n = expand_inplace(n, exp); // *** TODO optimize
-      **l = r;
+      n->tmp = *l;
       r->tmp = n;
-      *l = &n->tmp;
+      *l = r;
     }
   }
   return dirty && !u;
 }
 
 cell_t *mutate(cell_t *c, cell_t *r, int exp) {
-  cell_t *l = 0, **lp = &l;
-
-  mutate_sweep(c, r, &lp, true, exp);
-
-  *lp = 0;
+  cell_t *l = 0;
+  ref(c);
+  make_graph_all(0);
+  mutate_sweep(c, r, &l, true, exp);
+  make_graph_all(0);
 
   // traverse list and rewrite pointers
   cell_t *li = l;
   while(li) {
-    cell_t *t = l->tmp;
-    mutate_update(t);
+    cell_t *t = li->tmp;
+    mutate_update(t, false);
     li = t->tmp;
   }
-
+  drop(c);
+  make_graph_all(0);
   return l;
 }
 
