@@ -1128,7 +1128,7 @@ void mutate_update(cell_t *r, bool m) {
       if(is_closure(c)) {
         if(c->tmp) {
           *p = ref(c->tmp);
-          if (m) drop(c);
+          if (m) --c->n;
         } else if (!m) ref(c);
       }
     }, ARGS_IN | PTRS | ALT);
@@ -1175,7 +1175,6 @@ bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u, int exp) {
 
 cell_t *mutate(cell_t *c, cell_t *r, int exp) {
   cell_t *l = 0;
-  ref(c);
   make_graph_all(0);
   mutate_sweep(c, r, &l, true, exp);
   make_graph_all(0);
@@ -1187,7 +1186,6 @@ cell_t *mutate(cell_t *c, cell_t *r, int exp) {
     mutate_update(t, false);
     li = t->tmp;
   }
-  drop(c);
   make_graph_all(0);
   return l;
 }
@@ -1196,6 +1194,10 @@ void clean_tmp(cell_t *l) {
   while(l) {
     cell_t *next = l->tmp;
     l->tmp = 0;
+    if(l->n == -1) {
+      l->n = 0;
+      drop(l);
+    }
     l = next;
   }
 }
