@@ -1114,7 +1114,7 @@ void mutate_update(cell_t *r, bool m) {
     }, ARGS_OUT);
 }
 
-bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u) {
+bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u, int exp) {
   r = clear_ptr(r, 3);
   if(!is_closure(r)) return false;
   if(r->tmp) return true;
@@ -1124,9 +1124,12 @@ bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u) {
   if(r == c) {
     dirty = true;
   } else {
+    // prevent looping
+    r->tmp = r;
     traverse(r, {
-        dirty |= mutate_sweep(c, *p, l, u);
-      }, ARGS_IN | PTRS | ALT);
+        dirty |= mutate_sweep(c, *p, l, u, exp);
+      }, ARGS | PTRS | ALT);
+    r->tmp = 0;
   }
 
   if(dirty) {
@@ -1137,6 +1140,7 @@ bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u) {
       // otherwise, add to the list and defer
       cell_t *n = copy(r);
       n->n = -1;
+      if(exp && r == c) n = expand_inplace(n, exp); // *** TODO optimize
       n->tmp = *l;
       r->tmp = n;
       *l = r;
@@ -1151,14 +1155,13 @@ cell_t *mutate(cell_t *c, cell_t *r, int exp) {
   // make sure c is copied if it is to be expanded
   if(exp) ref(c);
 
-  mutate_sweep(c, r, &l, true);
+  mutate_sweep(c, r, &l, true, exp);
   if(r->tmp) {
     ++r->tmp->n;
     --r->n;
   }
 
   if(exp) {
-    c->tmp = expand_inplace(c->tmp, exp);
     --c->n;
   }
 
