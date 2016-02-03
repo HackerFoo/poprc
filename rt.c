@@ -1061,20 +1061,6 @@ void *lookup_linear(void *table, unsigned int width, unsigned int rows, char con
   return NULL;
 }
 
-// return a copy of c rooted at r that can be modified without
-// affecting else while sharing as much as possible
-cell_t *modify_copy(cell_t *c, cell_t *r) {
-  cell_t *new = _modify_copy1(c, r, true);
-  if(new && new != r) {
-    ref(new);
-    drop(r);
-  }
-  if(new) {
-    _modify_copy2(new);
-    return new;
-  } else return r;
-}
-
 void check_tmps() {
   unsigned int i = 0;
   cell_t *p;
@@ -1092,19 +1078,6 @@ void check_tmps() {
       i += closure_cells(p);
     } else ++i;
   }
-}
-
-void zero_tmps(cell_t *r) {
-  if(!r || !r->tmp) return;
-
-  cell_t *t = clear_ptr(r->tmp, 3);
-  r->tmp = 0;
-  zero_tmps(t);
-  drop(t);
-
-  traverse(r, {
-      zero_tmps(clear_ptr(*p, 3));
-    }, ARGS | PTRS | ALT);
 }
 
 /* ref count not from deps */
@@ -1141,7 +1114,7 @@ void mutate_update(cell_t *r, bool m) {
     }, ARGS_OUT);
 }
 
-bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u, int exp) {
+bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u) {
   r = clear_ptr(r, 3);
   if(!is_closure(r)) return false;
   if(r->tmp) return true;
@@ -1152,7 +1125,7 @@ bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u, int exp) {
     dirty = true;
   } else {
     traverse(r, {
-        dirty |= mutate_sweep(c, *p, l, u, exp);
+        dirty |= mutate_sweep(c, *p, l, u);
       }, ARGS_IN | PTRS | ALT);
   }
 
@@ -1164,7 +1137,6 @@ bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u, int exp) {
       // otherwise, add to the list and defer
       cell_t *n = copy(r);
       n->n = -1;
-      if(exp) n = expand_inplace(n, exp); // *** TODO optimize
       n->tmp = *l;
       r->tmp = n;
       *l = r;
@@ -1175,13 +1147,20 @@ bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u, int exp) {
 
 cell_t *mutate(cell_t *c, cell_t *r, int exp) {
   cell_t *l = 0;
-  make_graph_all(0);
-  mutate_sweep(c, r, &l, true, exp);
+
+  // make sure c is copied if it is to be expanded
+  if(exp) ref(c);
+
+  mutate_sweep(c, r, &l, true);
   if(r->tmp) {
     ++r->tmp->n;
     --r->n;
   }
-  make_graph_all(0);
+
+  if(exp) {
+    c->tmp = expand_inplace(c->tmp, exp);
+    --c->n;
+  }
 
   // traverse list and rewrite pointers
   cell_t *li = l;
@@ -1190,7 +1169,6 @@ cell_t *mutate(cell_t *c, cell_t *r, int exp) {
     mutate_update(t, false);
     li = t->tmp;
   }
-  make_graph_all(0);
   return l;
 }
 
@@ -1204,75 +1182,6 @@ void clean_tmp(cell_t *l) {
     }
     l = next;
   }
-}
-
-void _modify_new(cell_t *r, bool u) {
-  cell_t *n;
-  if(clear_ptr(r->tmp, 3)) return;
-  if(u) {
-    n = ref(r);
-  } else {
-    n = copy(r);
-    n->tmp = (cell_t *)3;
-    n->n = 0;
-  }
-  r->tmp = mark_ptr(n, 3);
-}
-
-/* first sweep of modify_copy */
-cell_t *_modify_copy1(cell_t *c, cell_t *r, bool up) {
-  if(!is_closure(r)) return 0;
-
-  r = clear_ptr(r, 3);
-  unsigned int nd = nondep_n(r);
-
-  /* is r unique (okay to replace)? */
-  bool u = up && !nd;
-
-  if(r->tmp) {
-    assert(is_marked(r->tmp, 3));
-    /* already been replaced */
-    return clear_ptr(r->tmp, 3);
-  } else r->tmp = (cell_t *)3;
-  if(c == r) _modify_new(r, u);
-  traverse(r, {
-      if(_modify_copy1(c, *p, u))
-        _modify_new(r, u);
-    }, ARGS | PTRS | ALT);
-  return clear_ptr(r->tmp, 3);
-}
-
-cell_t *get_mod(cell_t *r) {
-  if(!r) return 0;
-  cell_t *a = r->tmp;
-  if(is_marked(a, 2)) return clear_ptr(a, 3);
-  else return 0;
-}
-
-/* second sweep of modify copy */
-void _modify_copy2(cell_t *r) {
-
-  /* r is modified in place */
-  bool s = r == clear_ptr(r->tmp, 3);
-
-  if(!is_closure(r)) return;
-  /* alread been here */
-  if(!is_marked(r->tmp, 1)) return;
-  r->tmp = clear_ptr(r->tmp, 1);
-  traverse(r, {
-      cell_t *u = clear_ptr(*p, 3);
-      cell_t *t = get_mod(u);
-      if(t) {
-        if(!(s && t == u)) {
-          *p = ref(t);
-          if(s) drop(u);
-        }
-        _modify_copy2(t);
-      } else if(!s) ref(u);
-      if((!s || t != u) && is_weak(r, *p)) {
-        --(*p)->n;
-      }
-    }, ARGS | PTRS | ALT);
 }
 
 cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
