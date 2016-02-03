@@ -54,7 +54,7 @@ uintptr_t alt_live[sizeof(intptr_t) * 4];
 measure_t measure, saved_measure;
 
 // Default tracing function that does nothing
-void trace_noop(UNUSED cell_t *c, UNUSED cell_t *r, UNUSED trace_type_t tt, unsigned int n) {}
+void trace_noop(UNUSED cell_t *c, UNUSED cell_t *r, UNUSED trace_type_t tt, UNUSED unsigned int n) {}
 
 // Pointer to tracing function
 void (*trace)(cell_t *, cell_t *, trace_type_t, unsigned int) = trace_noop;
@@ -1179,7 +1179,7 @@ void clean_tmp(cell_t *l) {
   while(l) {
     cell_t *next = l->tmp;
     l->tmp = 0;
-    if(l->n == -1) {
+    if(l->n + 1 == 0) {
       l->n = 0;
       drop(l);
     }

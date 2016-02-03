@@ -515,14 +515,16 @@ void usage() {
 int main(UNUSED int argc, UNUSED char *argv[]) {
   int ch;
 
-  while ((ch = getopt(argc, argv, "t:l:")) != -1) {
+  while ((ch = getopt(argc, argv, "t:l:r:")) != -1) {
     switch (ch) {
     case 't':
       cells_init();
       return test_run(optarg, test_log);
       break;
     case 'l':
+    case 'r':
       load_source(optarg);
+      if(ch == 'r') return 0;
       break;
     case '?':
     default:

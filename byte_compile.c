@@ -274,7 +274,7 @@ uintptr_t bc_apply_list(cell_t *c) {
   return p;
 }
 
-void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, unsigned int n) {
+void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED unsigned int n) {
   switch(tt) {
 
   case tt_reduction: {

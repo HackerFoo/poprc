@@ -138,7 +138,19 @@ scan: clean
 
 .PHONY: test
 test: eval
-	./eval -t test
+	./eval -t test | diff test_output/test.log -
+	./eval -r tests.peg | diff test_output/tests.peg.log -
+
+test_output/test.log: eval
+	@mkdir -p test_output
+	./eval -t test > $@
+
+test_output/tests.peg.log: eval tests.peg
+	@mkdir -p test_output
+	./eval -r tests.peg > $@
+
+.PHONY: test_output
+test_output: test_output/test.log test_output/tests.peg.log
 
 .PHONY: rtags
 rtags: make-eval.log

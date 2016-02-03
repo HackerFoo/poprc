@@ -45,6 +45,7 @@ typedef uintptr_t alt_set_t;
 #pragma clang diagnostic ignored "-Warray-bounds"
 #pragma clang diagnostic ignored "-Wgnu-anonymous-struct"
 #pragma clang diagnostic ignored "-Wnested-anon-types"
+#pragma clang diagnostic ignored "-Wgnu-folding-constant"
 #endif
 typedef bool (reduce_t)(cell_t **cell, type_rep_t type);
 struct __attribute__((packed)) cell {
