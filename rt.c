@@ -1145,7 +1145,7 @@ bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u, int exp) {
   r = clear_ptr(r, 3);
   if(!is_closure(r)) return false;
   if(r->tmp) return true;
-  u &= nondep_n(r) > 0;
+  u &= !nondep_n(r);
 
   bool dirty = false;
   if(r == c) {
@@ -1153,7 +1153,7 @@ bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u, int exp) {
   } else {
     traverse(r, {
         dirty |= mutate_sweep(c, *p, l, u, exp);
-      }, ARGS | PTRS | ALT);
+      }, ARGS_IN | PTRS | ALT);
   }
 
   if(dirty) {
@@ -1177,6 +1177,10 @@ cell_t *mutate(cell_t *c, cell_t *r, int exp) {
   cell_t *l = 0;
   make_graph_all(0);
   mutate_sweep(c, r, &l, true, exp);
+  if(r->tmp) {
+    ++r->tmp->n;
+    --r->n;
+  }
   make_graph_all(0);
 
   // traverse list and rewrite pointers
