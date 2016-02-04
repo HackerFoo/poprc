@@ -252,23 +252,23 @@ uintptr_t bc_apply_list(cell_t *c) {
   unsigned int in = closure_in(c);
   unsigned int out = closure_out(c);
   uintptr_t p = trace_get(c);
+  assert(out > 0);
 
   /* pushl inputs */
-  COUNTDOWN(i, in) {
-    if(c->arg[i]->tmp != &cells[0]) { // HACK
+  if(trace_cur[p].func != func_popr) { // HACKish
+    COUNTDOWN(i, in) {
       uintptr_t x = trace_get(c->arg[i]);
       p = bc_func(func_pushl, 2, 1, x, p);
-      c->arg[i]->tmp = &cells[0];
     }
   }
 
   /* popr outputs */
   COUNTDOWN(i, out) {
-    if(c->arg[i+in]->tmp != &cells[0]) { // HACK
+    cell_t *arg = c->arg[i + in];
+    if(!map_find(trace_index, (uintptr_t)clear_ptr(arg, 3))) {
       uintptr_t res;
       p = bc_func(func_popr, 1, 2, p, &res);
-      trace_index_add(c->arg[i+in], res);
-      c->arg[i+in]->tmp = &cells[0];
+      trace_index_add(arg, res);
     }
   }
   return p;
