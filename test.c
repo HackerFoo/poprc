@@ -104,6 +104,7 @@ int test_run(char *name, void (*logger)(char *name, int result)) {
       entry++) {
     int entry_name_size = strnlen(entry->name, MAX_NAME_SIZE);
     if(strncmp(name, entry->name, min(name_size, entry_name_size)) == 0) {
+      printf("@ %s\n", entry->name);
       int result = entry->func(name);
       if((uintptr_t)logger > 1) logger(entry->name, result);
       if(result && !fail) fail = result;
