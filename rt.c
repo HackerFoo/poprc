@@ -895,8 +895,15 @@ bool func_dep(cell_t **cp, UNUSED type_rep_t t) {
   /* don't need to drop arg, handled by other function */
   /* must make weak reference strong during reduction */
   cell_t *p = ref(c->arg[0]);
-  reduce_dep(&p);
-  drop(p);
+  if(p) {
+    c->arg[0] = 0;
+    reduce_dep(&p);
+    drop(p);
+  } else {
+    // shouldn't happen
+    // can be caused by circular reference
+    fail(cp);
+  }
   return false;
 }
 
