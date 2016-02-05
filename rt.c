@@ -21,14 +21,21 @@
 #include "gen/rt.h"
 #include "gen/primitive.h"
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wgnu-empty-initializer"
+#endif
 
 // Cell storage array
 // NOTE: make sure &cells > 255
+#if INTERFACE
 #ifdef EMSCRIPTEN
-cell_t cells[1<<10] = {};
+#define CELLS_SIZE (1<<10)
 #else
-cell_t cells[1<<16];
+#define CELLS_SIZE (1<<16)
 #endif
+#endif
+#define MAX_ALLOC (CELLS_SIZE - 32)
+cell_t cells[CELLS_SIZE] = {};
 cell_t *cells_ptr;
 
 // Counter of used alt ids
@@ -248,6 +255,7 @@ void cells_init() {
 
 void cell_alloc(cell_t *c) {
   assert(is_cell(c) && !is_closure(c));
+  assert(measure.current_alloc_cnt < MAX_ALLOC);
   cell_t *prev = c->prev;
   assert(is_cell(prev) && !is_closure(prev));
   cell_t *next = c->next;
