@@ -322,14 +322,15 @@ static bool expect(map_t map, uintptr_t key, uintptr_t x) {
 }
 
 static int test_map_stack_behavior(UNUSED char *name) {
-  const static int m = 2, n = 8;
-  MAP(map, m * n);
-  for(int i = 0; i < m; i++) {
-    for(int j = 0; j < n; j++) {
+  #define M 2
+  #define N 8
+  MAP(map, (M * N));
+  for(int i = 0; i < M; i++) {
+    for(int j = 0; j < N; j++) {
       pair_t x = {j, i};
       map_insert(map, x);
     }
-    for(int j = 0; j < n; j++) {
+    for(int j = 0; j < N; j++) {
       if(!expect(map, j, i)) {
         print_map(map);
         return -1;
@@ -337,6 +338,8 @@ static int test_map_stack_behavior(UNUSED char *name) {
     }
   }
   return 0;
+  #undef M
+  #undef N
 }
 static TEST(test_map_stack_behavior);
 
