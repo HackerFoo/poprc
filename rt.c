@@ -809,7 +809,7 @@ void store_reduced(cell_t **cp, cell_t *r) {
       memcpy(t, r, sizeof(cell_t) * size);
       r = t;
     }
-    store_lazy(cp, c, r);
+    store_lazy(cp, c, r, 0);
   }
 }
 
@@ -1271,17 +1271,22 @@ void drop_multi(cell_t **a, unsigned int n) {
   for(unsigned int i = 0; i < n; i++) drop(*a++);
 }
 
-void store_lazy(cell_t **cp, cell_t *c, cell_t *r) {
-  if(c->n) {
-    --c->n;
+void store_lazy(cell_t **cp, cell_t *c, cell_t *r, alt_set_t alt_set) {
+  if(c->n || alt_set) {
     closure_shrink(c, 1);
     c->func = func_id;
     c->size = 1;
     c->out = 0;
-    c->arg[0] = ref(r);
-    c->arg[1] = 0;
-  } else closure_free(c);
-  *cp = r;
+    c->arg[0] = r;
+    if(c->n) ref(r);
+    c->arg[1] = (cell_t *)alt_set;
+  }
+
+  if(!alt_set) {
+    if(c->n == 0) closure_free(c);
+    else --c->n;
+    *cp = r;
+  }
 }
 
 void store_lazy_dep(cell_t *c, cell_t *d, cell_t *r, alt_set_t alt_set) {

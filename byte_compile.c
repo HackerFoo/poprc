@@ -35,8 +35,12 @@ pair_t *trace_find(const cell_t *c) {
 }
 
 static
-uintptr_t trace_get(const cell_t *c) {
+uintptr_t trace_get(cell_t *c) {
   pair_t *e = trace_find(c);
+  if(!e) {
+    c = reduce_alt(c); // force argument if not found, HACKish
+    e = trace_find(c);
+  }
 #if(DEBUG)
   if(!e) {
     return 100 + (c - cells);
@@ -141,7 +145,7 @@ cell_t *trace_store_addarg(const cell_t *c) {
   return dest;
 }
 
-cell_t *trace_select(const cell_t *c, const cell_t *a) {
+cell_t *trace_select(const cell_t *c, cell_t *a) {
   cell_t *dest = trace_ptr;
   unsigned int size = closure_cells(c);
   trace_ptr += size;
@@ -417,7 +421,7 @@ void compact_expr(char const *name, char *str, unsigned int n) {
   e->data = byte_compile(c, e->in, e->out);
 }
 
-bool func_exec(cell_t **cp, type_rep_t t) {
+bool func_exec(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   assert(is_closure(c));
 
@@ -435,7 +439,7 @@ bool func_exec(cell_t **cp, type_rep_t t) {
   COUNTDOWN(i, data) {
     assert(is_var(code));
     map[map_idx++] = c->arg[i];
-    refn(c->arg[i], code->n + 1);
+    refn(c->arg[i], code->n);
     code++;
   }
   count -= data;
@@ -486,8 +490,6 @@ bool func_exec(cell_t **cp, type_rep_t t) {
 
   drop(last);
 
-  bool ret = reduce(&res, t);
-  store_reduced(cp, res);
-
-  return ret;
+  store_lazy(cp, c, res, 0);
+  return false;
 }

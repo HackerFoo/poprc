@@ -412,7 +412,7 @@ bool func_alt(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *r1 = id(c->arg[1]);
   r1->arg[1] = (cell_t *)as(a, 1);
   r0->alt = r1;
-  store_lazy(cp, c, r0);
+  store_lazy(cp, c, r0, 0);
   return false;
 }
 cell_t *build_alt(cell_t *x, cell_t *y) {
@@ -434,19 +434,20 @@ cell_t *build_alt2(cell_t *x, cell_t *y) {
   return build21(func_alt2, x, y);
 }
 
-bool func_assert(cell_t **cp, UNUSED type_rep_t t) {
+bool func_assert(cell_t **cp, type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 1, &alt_set, T_INT) ||
-     !reduce_arg(c, 0, &alt_set, t)) goto fail;
+  if(!reduce_arg(c, 1, &alt_set, T_INT)) goto fail;
   clear_flags(c);
   cell_t *p = c->arg[1];
   if(is_var(p)) {
     store_reduced(cp, var(t));
+    return true;
   } else if(p->val[0]) {
-    store_reduced(cp, ref(c->arg[0]));
+    drop(p);
+    store_lazy(cp, c, c->arg[0], alt_set);
+    return false;
   } else goto fail;
-  return true;
  fail:
   fail(cp);
   return false;
@@ -509,7 +510,7 @@ bool func_swap(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = c->arg[2];
   store_lazy_dep(c, d, c->arg[0], 0);
-  store_lazy(cp, c, c->arg[1]);
+  store_lazy(cp, c, c->arg[1], 0);
   return false;
 }
 
@@ -523,7 +524,7 @@ bool func_dup(cell_t **cp, UNUSED type_rep_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   cell_t *d = c->arg[1];
   store_lazy_dep(c, d, ref(c->arg[0]), 0);
-  store_lazy(cp, c, c->arg[0]);
+  store_lazy(cp, c, c->arg[0], 0);
   return false;
 }
 
@@ -562,21 +563,16 @@ cell_t *build_cut(cell_t *x) {
 /* should probably cut them, or hide select */
 bool func_select(cell_t **cp, type_rep_t t) {
   cell_t *c = *cp;
-  cell_t *p;
   alt_set_t alt_set = 0;
   if(reduce_arg(c, 0, &alt_set, t) && !is_var(c->arg[0])) {
     clear_flags(c);
-    p = c->arg[0];
-  } else if(reduce_arg(c, 1, &alt_set, t)) {
+    store_reduced(cp, ref(c->arg[0]));
+    return true;
+  } else {
     clear_flags(c);
-    p = c->arg[1];
-  } else goto fail;
-  store_reduced(cp, ref(p));
-  return true;
-
- fail:
-  fail(cp);
-  return false;
+    store_lazy(cp, c, c->arg[1], alt_set);
+    return false;
+  };
 }
 cell_t *build_select(cell_t *x, cell_t *y) {
   return build21(func_select, x, y);
@@ -592,15 +588,15 @@ bool func_ift(cell_t **cp, UNUSED type_rep_t t) {
     drop(c->arg[0]); // need to add assertions
     cell_t *res = id(c->arg[1]);
     res->alt = id(c->arg[2]);
-    store_lazy(cp, c, res); // ***
+    store_lazy(cp, c, res, alt_set); // ***
   } else if(c->arg[0]->val[0]) {
     drop(c->arg[0]);
     drop(c->arg[2]);
-    store_lazy(cp, c, c->arg[1]);
+    store_lazy(cp, c, c->arg[1], alt_set);
   } else {
     drop(c->arg[0]);
     drop(c->arg[1]);
-    store_lazy(cp, c, c->arg[2]);
+    store_lazy(cp, c, c->arg[2], alt_set);
   }
   return false;
  fail:
@@ -656,7 +652,7 @@ bool func_ap(cell_t **cp, UNUSED type_rep_t t) {
   res->alt_set = alt_set_ref(alt_set);
   res->alt = c->alt;
   c->alt = 0;
-  store_lazy(cp, c, res);
+  store_lazy(cp, c, res, 0);
   drop(l);
   return false;
 fail:
