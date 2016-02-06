@@ -495,14 +495,16 @@ void measure_display() {
   double time = (saved_measure.stop - saved_measure.start) /
     (double)CLOCKS_PER_SEC;
   printf("time        : %.3e sec\n"
-         "allocated   : %d bytes\n"
-         "working set : %d bytes\n"
+         "allocated   : %d cells\n"
+         "working set : %d cells\n"
          "reductions  : %d\n"
+         "rate        : %.3e reductions/sec\n"
          "alts used   : %d\n",
          time,
-         saved_measure.alloc_cnt * (int)sizeof(cell_t),
-         saved_measure.max_alloc_cnt * (int)sizeof(cell_t),
+         saved_measure.alloc_cnt,
+         saved_measure.max_alloc_cnt,
          saved_measure.reduce_cnt,
+         saved_measure.reduce_cnt / time,
          saved_measure.alt_cnt);
 
 }
