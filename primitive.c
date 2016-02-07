@@ -16,6 +16,7 @@
 */
 
 #include <string.h>
+#include <assert.h>
 #include "rt_types.h"
 #include "gen/rt.h"
 #include "gen/primitive.h"
@@ -106,7 +107,8 @@ cell_t *_op2(intptr_t (*op)(intptr_t, intptr_t), cell_t *x, cell_t *y) {
 
 bool func_op2(cell_t **cp, type_rep_t t, intptr_t (*op)(intptr_t, intptr_t)) {
   cell_t *res = 0;
-  cell_t *const c = clear_ptr(*cp, 3);
+  cell_t *const c = *cp;
+  assert(!is_marked(c, 3));
   alt_set_t alt_set = 0;
 
   if(t == T_ANY || t == T_INT) t = T_INT;
@@ -275,7 +277,8 @@ cell_t *build_neq(cell_t *x, cell_t *y) {
 }
 
 bool func_compose(cell_t **cp, UNUSED type_rep_t t) {
-  cell_t *const c = clear_ptr(*cp, 3);
+  cell_t *const c = *cp;
+  assert(!is_marked(c, 3));
   alt_set_t alt_set = 0;
 
   if(!(reduce_arg(c, 0, &alt_set, T_LIST) &&
@@ -297,7 +300,8 @@ cell_t *build_compose(cell_t *x, cell_t *y) {
 }
 
 bool func_pushl(cell_t **cp, UNUSED type_rep_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = *cp;
+  assert(!is_marked(c, 3));
   alt_set_t alt_set = 0;
   if(!reduce_arg(c, 1, &alt_set, T_LIST)) goto fail;
   clear_flags(c);
@@ -320,7 +324,8 @@ cell_t *build_pushl(cell_t *x, cell_t *y) {
 }
 
 bool func_pushr(cell_t **cp, UNUSED type_rep_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = *cp;
+  assert(!is_marked(c, 3));
   alt_set_t alt_set = 0;
   if(!reduce_arg(c, 0, &alt_set, T_LIST)) goto fail;
   clear_flags(c);
@@ -346,7 +351,8 @@ cell_t *build_pushr(cell_t *x, cell_t *y) {
 }
 
 bool func_quote(cell_t **cp, UNUSED type_rep_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = *cp;
+  assert(!is_marked(*cp, 3));
   cell_t res = { .size = 2, .ptr = {ref(c->arg[0])} };
   store_reduced(cp, &res);
   return true;
@@ -356,7 +362,8 @@ cell_t *build_quote(cell_t *x) {
 }
 
 bool func_popr(cell_t **cp, UNUSED type_rep_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = *cp;
+  assert(!is_marked(c, 3));
   cell_t *d = c->arg[1];
   alt_set_t alt_set = 0;
   if(!reduce_arg(c, 0, &alt_set, T_LIST)) goto fail;
@@ -405,7 +412,8 @@ two_cells_t build_popr(cell_t *x) {
 }
 
 bool func_alt(cell_t **cp, UNUSED type_rep_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = *cp;
+  assert(!is_marked(c, 3));
   uint8_t a = new_alt_id(2);
   cell_t *r0 = id(c->arg[0]);
   r0->arg[1] = (cell_t *)as(a, 0);
@@ -420,7 +428,8 @@ cell_t *build_alt(cell_t *x, cell_t *y) {
 }
 
 bool func_alt2(cell_t **cp, UNUSED type_rep_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = *cp;
+  assert(!is_marked(c, 3));
   cell_t *r0 = id(ref(c->arg[0]));
   r0->arg[1] = 0;
   cell_t *r1 = id(ref(c->arg[1]));
@@ -435,7 +444,8 @@ cell_t *build_alt2(cell_t *x, cell_t *y) {
 }
 
 bool func_assert(cell_t **cp, type_rep_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = *cp;
+  assert(!is_marked(c, 3));
   alt_set_t alt_set = 0;
   if(!reduce_arg(c, 1, &alt_set, T_INT)) goto fail;
   clear_flags(c);
@@ -459,7 +469,8 @@ cell_t *build_assert(cell_t *x, cell_t *y) {
 
 /*
 bool type_check(cell_t **cp, type_t type) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = *cp;
+  assert(!is_marked(c, 3));
   if(!reduce(&c->arg[0], type)) goto fail;
   c->alt = closure_split1(c, 0);
   cell_t *p = get(c->arg[0]);
@@ -474,7 +485,8 @@ bool type_check(cell_t **cp, type_t type) {
 }
 */
 bool func_id(cell_t **cp, type_rep_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = *cp;
+  assert(!is_marked(c, 3));
   alt_set_t alt_set = (alt_set_t)c->arg[1];
   if(alt_set || c->alt) {
     if(!reduce_arg(c, 0, &alt_set, t)) goto fail;
@@ -500,7 +512,8 @@ cell_t *build_id(cell_t *x) {
 }
 
 bool func_drop(cell_t **cp, UNUSED type_rep_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = *cp;
+  assert(!is_marked(c, 3));
   cell_t *p = ref(c->arg[0]);
   drop(c);
   *cp = p;
@@ -508,7 +521,8 @@ bool func_drop(cell_t **cp, UNUSED type_rep_t t) {
 }
 
 bool func_swap(cell_t **cp, UNUSED type_rep_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = *cp;
+  assert(!is_marked(c, 3));
   cell_t *d = c->arg[2];
   store_lazy_dep(c, d, c->arg[0], 0);
   store_lazy(cp, c, c->arg[1], 0);
@@ -522,7 +536,8 @@ cell_t *id(cell_t *c) {
 }
 
 bool func_dup(cell_t **cp, UNUSED type_rep_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = *cp;
+  assert(!is_marked(c, 3));
   cell_t *d = c->arg[1];
   store_lazy_dep(c, d, ref(c->arg[0]), 0);
   store_lazy(cp, c, c->arg[0], 0);
@@ -580,7 +595,8 @@ cell_t *build_select(cell_t *x, cell_t *y) {
 }
 
 bool func_ift(cell_t **cp, UNUSED type_rep_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = *cp;
+  assert(!is_marked(c, 3));
   alt_set_t alt_set = 0;
   if(!reduce_arg(c, 0, &alt_set, T_INT)) goto fail;
   clear_flags(c);
@@ -609,7 +625,8 @@ cell_t *build_ift(cell_t *x, cell_t *y, cell_t *z) {
 }
 
 bool func_ap(cell_t **cp, UNUSED type_rep_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = *cp;
+  assert(!is_marked(c, 3));
   alt_set_t alt_set = 0;
   const unsigned int
     in = closure_in(c),
@@ -617,9 +634,9 @@ bool func_ap(cell_t **cp, UNUSED type_rep_t t) {
     out = closure_out(c);
   unsigned int i;
   if(!reduce_arg(c, in-1, &alt_set, T_LIST)) goto fail;
-  cell_t *l = clear_ptr(c->arg[in-1], 3);
+  cell_t *l = c->arg[in-1];
   COUNTDOWN(i, in-1) {
-    l = clear_ptr(pushl_nd(c->arg[i], l), 3);
+    l = pushl_nd(c->arg[i], l);
   }
 
   unsigned int ln = list_size(l);

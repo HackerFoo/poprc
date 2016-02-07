@@ -361,7 +361,7 @@ bool type_match(type_t t, cell_t const *c) {
 }
 
 bool func_reduced(cell_t **cp, type_rep_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = clear_ptr(*cp, 3); // TODO remove clear_ptr
   assert(is_closure(c));
   measure.reduce_cnt--;
   if(c->type != T_FAIL &&
@@ -684,27 +684,9 @@ bool is_any(cell_t const *c) {
   } while(0)
 #endif
 
-void traverse_mark_alt(cell_t *c) {
-  traverse(c, {
-      if(*p && !is_marked((*p)->alt, 1)) {
-        (*p)->alt = mark_ptr((*p)->alt, 1);
-        traverse_mark_alt(*p);
-      }
-    }, ARGS | PTRS);
-}
-
-void traverse_clear_alt(cell_t *c) {
-  traverse(c, {
-      if(*p && is_marked((*p)->alt, 1)) {
-        (*p)->alt = clear_ptr((*p)->alt, 1);
-        traverse_clear_alt(*p);
-      }
-    }, ARGS | PTRS);
-}
-
 cell_t *arg_nd(cell_t *c, cell_t *a, cell_t *r) {
   cell_t *l = _arg_nd(c, a, r);
-  r = r->tmp ? clear_ptr(r->tmp, 3) : r;
+  r = r->tmp ? r->tmp : r;
   clean_tmp(l);
   //check_tmps();
   return r;
@@ -720,19 +702,19 @@ cell_t *_arg_nd(cell_t *c, cell_t *a, cell_t *r) {
      (closure_in(c) == 0 ||
       closure_is_ready(c->arg[0]))) {
     l = mutate(c, r, 1);
-    c = c->tmp ? clear_ptr(c->tmp, 3) : c;
-    r = r->tmp ? clear_ptr(r->tmp, 3) : r;
+    c = c->tmp ? c->tmp : c;
+    r = r->tmp ? r->tmp : r;
     c->arg[0] = a;
     r->ptr[list_size(r)-1] = c; // ***
   } else if(!is_data(c->arg[i])) {
     l = mutate(c, r, 0);
-    c = c->tmp ? clear_ptr(c->tmp, 3) : c;
+    c = c->tmp ? c->tmp : c;
     c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
     c->arg[i] = a;
     if(i == 0 && !is_placeholder(c)) closure_set_ready(c, closure_is_ready(a));
   } else {
     l = _arg_nd(c->arg[i], a, r);
-    c = c->tmp ? clear_ptr(c->tmp, 3) : c;
+    c = c->tmp ? c->tmp : c;
     if(!is_placeholder(c) &&
        closure_is_ready(c->arg[i])) {
       if(i == 0) closure_set_ready(c, true);
@@ -772,7 +754,8 @@ void store_var(cell_t *c, type_rep_t t) {
 }
 
 void fail(cell_t **cp) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = *cp;
+  assert(!is_marked(c, 3));
   cell_t *alt = ref(c->alt);
   drop(c);
   if(c->func) {
@@ -789,7 +772,8 @@ void fail(cell_t **cp) {
 }
 
 void store_reduced(cell_t **cp, cell_t *r) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = *cp;
+  assert(!is_marked(c, 3));
   unsigned int n = c->n;
   r->func = func_reduced;
   trace(c, r, tt_reduction, 0);
@@ -853,7 +837,7 @@ void drop(cell_t *c) {
         cell_t *x = clear_ptr(*p, 3);
         /* !is_marked condition needed */
         /* during _modify_copy2 */
-        if(!is_marked(*p, 2)) {
+        if(!is_marked(*p, 2)) { // TODO why is this needed anymore?
           drop(x);
         }
       }, ALT | ARGS_IN | PTRS);
@@ -893,7 +877,8 @@ cell_t *dep(cell_t *c) {
 
 /* todo: propagate types here */
 bool func_dep(cell_t **cp, UNUSED type_rep_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = *cp;
+  assert(!is_marked(c, 3));
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
   /* must make weak reference strong during reduction */
@@ -1324,7 +1309,8 @@ type_rep_t tr_arg(type_rep_t t, unsigned int n) {
 
 // this shouldn't reduced directly, but is called through reduce_partial from func_dep
 bool func_placeholder(cell_t **cp, UNUSED type_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = *cp;
+  assert(!is_marked(c, 3));
   unsigned int in = closure_in(c), n = closure_args(c);
   for(unsigned int i = 0; i < in; ++i) {
     if(!reduce(&c->arg[i], T_ANY)) goto fail;
