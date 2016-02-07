@@ -1,33 +1,33 @@
 # defaults
 ifndef $(USE_LINENOISE)
-	USE_LINENOISE=n
+	USE_LINENOISE=y
 endif
 
 ifndef $(USE_READLINE)
-	USE_READLINE=y
+	USE_READLINE=n
 endif
 
 ifndef $(USE_LLVM)
 	USE_LLVM=n
 endif
 
+ifndef $(BUILD)
+	BUILD=debug
+endif
+
 OS := $(shell uname)
 
 ifeq ($(CC),cc)
-	ifeq ($(OS), Darwin)
-		CC=clang
-	else
-#default to gcc for better gdb supported
-		CC=gcc
-	endif
+	CC=clang
 endif
-ifeq ($(CC),gcc)
-	CFLAGS = -falign-functions=4 -Wall -g -std=gnu99 $(COPT)
-	CXXFLAGS = -xc++ -falign-functions=4 -Wall -g -std=c++98 $(COPT)
+
+ifeq ($(findstring gcc, $(CC)),gcc)
+	CFLAGS = -falign-functions=4 -Wall -std=gnu99 $(COPT)
+	CXXFLAGS = -xc++ -falign-functions=4 -Wall -std=c++98 $(COPT)
 endif
 ifeq ($(CC),clang)
-	CFLAGS = -Wall -Wextra -pedantic -g -std=gnu11 $(COPT)
-	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -g -std=c++98 $(COPT)
+	CFLAGS = -Wall -Wextra -pedantic -std=gnu11 $(COPT)
+	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -std=c++98 $(COPT)
 endif
 ifeq ($(CC),emcc)
 	CFLAGS = -Wall -DNDEBUG -DEMSCRIPTEN $(COPT)
@@ -36,12 +36,28 @@ ifeq ($(CC),emcc)
 	USE_READLINE=n
 endif
 
-BUILD := build/$(CC)
+ifeq ($(BUILD),debug)
+	CFLAGS += -g -O0
+	CXXFLAGS += -g -O0
+endif
+
+ifeq ($(BUILD),release)
+	CFLAGS += -DNDEBUG -O3
+	CXXFLAGS += -DNDEBUG -O3
+endif
+
+ifeq ($(BUILD),profile)
+	CFLAGS += -DNDEBUG -O3
+	CXXFLAGS += -DNDEBUG -O3
+	LIBS += -lprofiler
+endif
+
+BUILD_DIR := build/$(CC)/$(BUILD)
 DIAGRAMS := diagrams
 DIAGRAMS_FILE := diagrams.pdf
 
 SRC := $(wildcard *.c)
-OBJS := $(patsubst %.c, $(BUILD)/%.o, $(SRC))
+OBJS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SRC))
 GEN := $(patsubst %.c, gen/%.h, $(SRC))
 DOT := $(wildcard *.dot)
 DOTPDF := $(patsubst %.dot, $(DIAGRAMS)/%.pdf, $(DOT))
@@ -61,12 +77,12 @@ ifeq ($(USE_READLINE),y)
 endif
 
 ifeq ($(USE_LINENOISE),y)
-	OBJS += $(BUILD)/linenoise.o
+	OBJS += $(BUILD_DIR)/linenoise.o
 	CFLAGS += -DUSE_LINENOISE
 endif
 
 ifeq ($(USE_LLVM),y)
-	OBJS += $(BUILD)/llvm.o $(BUILD)/llvm_ext.o
+	OBJS += $(BUILD_DIR)/llvm.o $(BUILD_DIR)/llvm_ext.o
 	CFLAGS += -DUSE_LLVM
 	LLVM_COMPONENTS = engine #core mcjit native
 	LLVM_CONFIG = llvm-config
@@ -101,26 +117,26 @@ eval.js:
 # pull in dependency info for *existing* .o files
 -include $(OBJS:.o=.d)
 
-$(BUILD)/llvm_ext.o: llvm_ext.cpp llvm_ext.h
-	@mkdir -p $(BUILD)
-	$(CC) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -O0 llvm_ext.cpp -o $(BUILD)/llvm_ext.o
+$(BUILD_DIR)/llvm_ext.o: llvm_ext.cpp llvm_ext.h
+	@mkdir -p $(BUILD_DIR)
+	$(CC) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -O0 llvm_ext.cpp -o $(BUILD_DIR)/llvm_ext.o
 
-$(BUILD)/llvm.o: llvm.cpp llvm.h llvm_ext.h rt_types.h
-	@mkdir -p $(BUILD)
-	$(CC) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -O0 llvm.cpp -o $(BUILD)/llvm.o
+$(BUILD_DIR)/llvm.o: llvm.cpp llvm.h llvm_ext.h rt_types.h
+	@mkdir -p $(BUILD_DIR)
+	$(CC) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -O0 llvm.cpp -o $(BUILD_DIR)/llvm.o
 
 # compile and generate dependency info;
-$(BUILD)/%.o: %.c
-	@mkdir -p $(BUILD)
-	@$(CC) -MM $(CFLAGS) $*.c -MG -MP -MT $(BUILD)/$*.o -MF $(BUILD)/$*.d
-	@make -f Makefile.gen OBJS="$(OBJS)" $(BUILD)/$*.o > /dev/null
-	$(CC) -c $(CFLAGS) $*.c -o $(BUILD)/$*.o
+$(BUILD_DIR)/%.o: %.c
+	@mkdir -p $(BUILD_DIR)
+	@$(CC) -MM $(CFLAGS) $*.c -MG -MP -MT $(BUILD_DIR)/$*.o -MF $(BUILD_DIR)/$*.d
+	@make -f Makefile.gen OBJS="$(OBJS)" $(BUILD_DIR)/$*.o > /dev/null
+	$(CC) -c $(CFLAGS) $*.c -o $(BUILD_DIR)/$*.o
 
 .SECONDARY: $(GEN)
 
-$(BUILD)/linenoise.o: linenoise/linenoise.c linenoise/linenoise.h
-	@mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -c linenoise/linenoise.c -o $(BUILD)/linenoise.o
+$(BUILD_DIR)/linenoise.o: linenoise/linenoise.c linenoise/linenoise.h
+	@mkdir -p $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c linenoise/linenoise.c -o $(BUILD_DIR)/linenoise.o
 
 $(DIAGRAMS)/%.pdf: %.dot
 	@mkdir -p $(DIAGRAMS)
@@ -135,7 +151,7 @@ endif
 
 .PHONY: scan
 scan: clean
-	make $(BUILD)/linenoise.o
+	make $(BUILD_DIR)/linenoise.o
 	scan-build make
 
 .PHONY: test
@@ -176,6 +192,12 @@ graph: eval
 	lldb ./eval -b -s lldb/make_graph.lldb
 	make diagrams
 
+.PHONY: profile
+profile:
+	make BUILD=profile test
+	CPUPROFILE=eval_prof.out ./eval
+	pprof --web eval eval_prof.out
+
 # remove compilation products
 .PHONY: clean
 clean:
@@ -184,6 +206,7 @@ clean:
 	rm -f make-eval.log compile_commands.json
 	rm -f $(DIAGRAMS_FILE)
 	rm -f *.dot
+	rm -f eval_prof.out
 
 .PHONE: clean-dot
 clean-dot:

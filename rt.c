@@ -308,7 +308,7 @@ cell_t *closure_alloc_cells(unsigned int size) {
    / sizeof(cell_t))
 
 unsigned int calculate_cells(unsigned int n) {
-  return calc_size(arg, n);
+  return n <= 3 ? 1 : calc_size(arg, n); // TODO calculate 3 at compile time
 }
 
 unsigned int calculate_list_size(unsigned int n) {
@@ -332,7 +332,8 @@ void cell_free(cell_t *c) {
 }
 
 void closure_shrink(cell_t *c, unsigned int s) {
-  if(!is_cell(c)) return;
+  if(!c) return;
+  assert(is_cell(c));
   unsigned int i, size = closure_cells(c);
   if(size > s) {
     assert(is_closure(c));
@@ -660,7 +661,7 @@ bool is_any(cell_t const *c) {
     cell_t **p;                                                 \
     if(is_reduced(r)) {                                         \
       if(((flags) & PTRS) &&                                    \
-                is_list(r)) {                                   \
+         (r->type & T_EXCLUSIVE) == T_LIST) {                   \
         n = list_size(r);                                       \
         for(i = 0; i < n; ++i) {                                \
           p = (r)->ptr + i;                                     \
@@ -798,17 +799,18 @@ void store_reduced(cell_t **cp, cell_t *r) {
   if(size <= closure_cells(c)) {
     closure_shrink(c, size);
     memcpy(c, r, sizeof(cell_t) * size);
-    if(is_cell(r)) {
-      traverse_ref(r, ALT | PTRS);
-      drop(r);
-    }
+    assert(is_cell(r));
+    traverse_ref(r, ALT | PTRS);
+    drop(r);
     c->n = n;
    } else { /* TODO: must copy if not cell */
+    /*
     if(!is_cell(r)) {
       cell_t *t = closure_alloc_cells(size);
       memcpy(t, r, sizeof(cell_t) * size);
       r = t;
     }
+    */
     store_lazy(cp, c, r, 0);
   }
 }
@@ -843,7 +845,8 @@ bool is_weak(cell_t const *p, cell_t const *c) {
 }
 
 void drop(cell_t *c) {
-  if(!is_cell(c) || !is_closure(c)) return;
+  if(!is_cell(c)) return;
+  assert(is_closure(c));
   if(!c->n) {
     cell_t *p;
     traverse(c, {
@@ -915,7 +918,7 @@ bool is_dep(cell_t const *c) {
 // *** fix arg()'s
 cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
   assert(is_closure(a) &&
-         is_closure(b) && is_list(b));
+         is_list(b));
   assert(n);
   bool ph_a = is_placeholder(a);
   unsigned int i, bs = list_size(b);
@@ -968,7 +971,7 @@ cell_t *pushl_val(intptr_t x, cell_t *c) {
 
 cell_t *pushl_nd(cell_t *a, cell_t *b) {
   assert(is_closure(a) &&
-         is_closure(b) && is_list(b));
+         is_list(b));
 
   unsigned int n = list_size(b);
   if(n) {
@@ -1353,6 +1356,8 @@ bool is_placeholder(cell_t const *c) {
 }
 
 bool entangle(alt_set_t *as, cell_t *c) {
-  return !as_conflict(*as, c->alt_set) &&
-    (*as |= c->alt_set, true);
+  alt_set_t cas = c->alt_set;
+  return !cas ||
+    (!as_conflict(*as, cas) &&
+     (*as |= cas, true));
 }

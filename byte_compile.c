@@ -37,10 +37,6 @@ pair_t *trace_find(const cell_t *c) {
 static
 uintptr_t trace_get(cell_t *c) {
   pair_t *e = trace_find(c);
-  if(!e) {
-    c = reduce_alt(c); // force argument if not found, HACKish
-    e = trace_find(c);
-  }
 #if(DEBUG)
   if(!e) {
     return 100 + (c - cells);

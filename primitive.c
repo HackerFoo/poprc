@@ -441,6 +441,7 @@ bool func_assert(cell_t **cp, type_rep_t t) {
   clear_flags(c);
   cell_t *p = c->arg[1];
   if(is_var(p)) {
+    if(!reduce_arg(c, 0, &alt_set, t)) goto fail;
     store_reduced(cp, var(t));
     return true;
   } else if(p->val[0]) {
