@@ -580,9 +580,14 @@ cell_t *build_cut(cell_t *x) {
 bool func_select(cell_t **cp, type_rep_t t) {
   cell_t *c = *cp;
   alt_set_t alt_set = 0;
-  if(reduce_arg(c, 0, &alt_set, t) && !is_var(c->arg[0])) {
-    clear_flags(c);
-    store_reduced(cp, ref(c->arg[0]));
+  if(reduce_arg(c, 0, &alt_set, t)) {
+    if(is_var(c->arg[0])) {
+      clear_flags(c);
+      store_reduced(cp, var(t));
+    } else {
+      clear_flags(c);
+      store_reduced(cp, ref(c->arg[0]));
+    }
     return true;
   } else {
     clear_flags(c);
