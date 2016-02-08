@@ -1,6 +1,14 @@
 # defaults
+ifndef $(BUILD)
+	BUILD=debug
+endif
+
 ifndef $(USE_LINENOISE)
-	USE_LINENOISE=y
+	ifeq ($(BUILD),release)
+		USE_LINENOISE=y
+	else
+		USE_LINENOISE=n
+	endif
 endif
 
 ifndef $(USE_READLINE)
@@ -9,10 +17,6 @@ endif
 
 ifndef $(USE_LLVM)
 	USE_LLVM=n
-endif
-
-ifndef $(BUILD)
-	BUILD=debug
 endif
 
 OS := $(shell uname)
