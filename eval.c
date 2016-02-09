@@ -18,6 +18,7 @@
 #include "rt_types.h"
 #include <time.h>
 #include <string.h>
+#include <strings.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
