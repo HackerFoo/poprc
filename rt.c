@@ -906,7 +906,6 @@ cell_t *compose_expand(cell_t *a, csize_t n, cell_t *b) {
   if(bs) {
     cell_t **l = &b->ptr[bs-1];
     cell_t *d = 0;
-    unsigned int nd = 0;
     if(ph_a && is_placeholder(*l)) {
       *l = compose_placeholders(a, *l);
       return b;
@@ -917,7 +916,6 @@ cell_t *compose_expand(cell_t *a, csize_t n, cell_t *b) {
       arg(l, d);
       arg(&a, d);
       d->arg[0] = ref(a);
-      ++nd;
       if(ph_a) ++a->out;
       else --n;
     }
