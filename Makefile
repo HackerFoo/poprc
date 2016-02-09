@@ -26,14 +26,15 @@ ifeq ($(CC),cc)
 endif
 
 ifeq ($(findstring gcc, $(CC)),gcc)
+	SANITIZE := -fsanitize=undefined
 	CFLAGS = -falign-functions=4 -Wall -std=gnu99 $(COPT)
 	CXXFLAGS = -xc++ -falign-functions=4 -Wall -std=c++98 $(COPT)
 endif
-ifeq ($(CC),clang)
+ifeq ($(findstring clang, $(CC)),clang)
 	CFLAGS = -Wall -Wextra -pedantic -std=gnu11 $(COPT)
 	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -std=c++98 $(COPT)
 endif
-ifeq ($(CC),emcc)
+ifeq ($(findstring emcc, $(CC)),emcc)
 	CFLAGS = -Wall -DNDEBUG -DEMSCRIPTEN $(COPT)
 	USE_LINENOISE=n
 	USE_LLVM=n
@@ -41,8 +42,9 @@ ifeq ($(CC),emcc)
 endif
 
 ifeq ($(BUILD),debug)
-	CFLAGS += -g -O0
-	CXXFLAGS += -g -O0
+	CFLAGS += -g -O0 $(SANITIZE)
+	CXXFLAGS += -g -O0 $(SANITIZE)
+	LIBS += $(SANITIZE)
 endif
 
 ifeq ($(BUILD),release)
@@ -102,7 +104,8 @@ ifneq ($(UNAME_S),Darwin)
 	LDFLAGS += -Wl,-Teval.ld
 endif
 
-DIFF_TEST := diff -u -F '^@ '
+#DIFF_TEST := diff -u -F '^@ '
+DIFF_TEST := diff -U 3
 
 print-%:
 	@echo $* = $($*)
@@ -160,8 +163,8 @@ scan: clean
 
 .PHONY: test
 test: eval
-	./eval -t test | $(DIFF_TEST) test_output/test.log - | colordiff
-	./eval -r tests.peg | $(DIFF_TEST) test_output/tests.peg.log - | colordiff
+	./eval -t test | $(DIFF_TEST) test_output/test.log -
+	./eval -r tests.peg | $(DIFF_TEST) test_output/tests.peg.log -
 
 test_output/test.log: eval
 	@mkdir -p test_output
