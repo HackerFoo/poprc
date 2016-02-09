@@ -85,7 +85,7 @@ cell_t *trace_store(const cell_t *c) {
   }
 
   cell_t *dest = trace_ptr;
-  unsigned int size = closure_cells(c);
+  csize_t size = closure_cells(c);
   trace_ptr += size;
   trace_cnt++;
   memcpy(dest, c, sizeof(cell_t) * size);
@@ -114,7 +114,7 @@ cell_t *trace_store_addarg(const cell_t *c) {
   }
 
   cell_t *dest = trace_ptr;
-  unsigned int
+  csize_t
     in = closure_in(c),
     out = closure_out(c),
     args = closure_args(c),
@@ -143,7 +143,7 @@ cell_t *trace_store_addarg(const cell_t *c) {
 
 cell_t *trace_select(const cell_t *c, cell_t *a) {
   cell_t *dest = trace_ptr;
-  unsigned int size = closure_cells(c);
+  csize_t size = closure_cells(c);
   trace_ptr += size;
   trace_cnt++;
 
@@ -212,7 +212,7 @@ void print_trace_cells() {
   }
 }
 
-cell_t *trace_alloc(unsigned int args) {
+cell_t *trace_alloc(csize_t args) {
   cell_t *c = trace_ptr;
   trace_ptr += calculate_cells(args);
   trace_cnt++;
@@ -220,10 +220,10 @@ cell_t *trace_alloc(unsigned int args) {
   return c;
 }
 
-uintptr_t bc_func(reduce_t f, unsigned int in, unsigned int out, ...) {
+uintptr_t bc_func(reduce_t f, csize_t in, csize_t out, ...) {
   assert(out > 0);
   va_list argp;
-  unsigned int args = in + out - 1;
+  csize_t args = in + out - 1;
   cell_t *c = trace_alloc(args);
   c->out = out - 1;
   c->func = f;
@@ -249,8 +249,8 @@ uintptr_t bc_func(reduce_t f, unsigned int in, unsigned int out, ...) {
 }
 
 uintptr_t bc_apply_list(cell_t *c) {
-  unsigned int in = closure_in(c);
-  unsigned int out = closure_out(c);
+  csize_t in = closure_in(c);
+  csize_t out = closure_out(c);
   uintptr_t p = trace_get(c);
   assert(out > 0);
 
@@ -274,7 +274,7 @@ uintptr_t bc_apply_list(cell_t *c) {
   return p;
 }
 
-void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED unsigned int n) {
+void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
   switch(tt) {
 
   case tt_reduction: {
@@ -294,7 +294,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED unsigned int n) {
     } else if(c->func == func_self) {
       trace_store_addarg(c);
     } else {
-      unsigned int in = closure_in(c);
+      csize_t in = closure_in(c);
       COUNTUP(i, in) {
         trace(c->arg[i], c, tt_force, i);
       }
@@ -342,7 +342,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED unsigned int n) {
   }
 }
 
-void bc_arg(cell_t *c, UNUSED int x) {
+void bc_arg(cell_t *c, UNUSED val_t x) {
   trace_store(c);
   c->type |= T_TRACED;
 }
@@ -417,7 +417,7 @@ void compact_expr(char const *name, char *str, unsigned int n) {
   e->data = byte_compile(c, e->in, e->out);
 }
 
-bool func_exec(cell_t **cp, UNUSED type_rep_t t) {
+bool func_exec(cell_t **cp, UNUSED type_t t) {
   cell_t *c = clear_ptr(*cp, 3);
   assert(is_closure(c));
 
@@ -452,11 +452,11 @@ bool func_exec(cell_t **cp, UNUSED type_rep_t t) {
   }
 
   // rewrite pointers
-  for(unsigned int i = data; i < map_idx; i++) {
+  for(size_t i = data; i < map_idx; i++) {
     cell_t *t = map[i];
     traverse(t, {
         if(*p) {
-          unsigned int x = trace_decode(*p);
+          uintptr_t x = trace_decode(*p);
           if(x < map_idx) {
             *p = map[x];
           } else {

@@ -22,7 +22,9 @@
 #include <stdint.h>
 #include <time.h>
 
-typedef uint16_t type_t;
+typedef uint16_t type_or_csize_t;
+typedef type_or_csize_t type_t;
+typedef type_or_csize_t csize_t;
 
 #define T_ANY       0x0000
 #define T_INT       0x0001
@@ -35,11 +37,11 @@ typedef uint16_t type_t;
 #define T_VAR       0x8000
 #define T_EXCLUSIVE 0x00FF
 
-typedef type_t type_rep_t;
-
 typedef struct cell cell_t;
 
 typedef uintptr_t alt_set_t;
+typedef uint32_t refcount_t;
+typedef intptr_t val_t;
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Warray-bounds"
@@ -47,16 +49,16 @@ typedef uintptr_t alt_set_t;
 #pragma clang diagnostic ignored "-Wnested-anon-types"
 #pragma clang diagnostic ignored "-Wgnu-folding-constant"
 #endif
-typedef bool (reduce_t)(cell_t **cell, type_rep_t type);
+typedef bool (reduce_t)(cell_t **cell, type_t type);
 struct __attribute__((packed)) cell {
   reduce_t *func;
   cell_t *alt;
   cell_t *tmp;
-  uint32_t n;
-  uint16_t size;
+  refcount_t n;
+  csize_t size;
   union {
-    uint16_t type;
-    uint16_t out;
+    type_t type;
+    csize_t out;
   };
   union {
     /* unevaluated */
@@ -65,7 +67,7 @@ struct __attribute__((packed)) cell {
     struct __attribute__((packed)) {
       alt_set_t alt_set;
       union {
-        intptr_t val[2]; /* value */
+        val_t val[2];    /* value */
         cell_t *ptr[2];  /* list */
       };
     };
@@ -79,19 +81,19 @@ struct __attribute__((packed)) cell {
 typedef struct word_entry_t {
   char name[64];
   reduce_t *func;
-  unsigned int in, out;
+  csize_t in, out;
   cell_t *data;
 } word_entry_t;
 
 typedef struct builder_entry_t {
   char name[64];
   void *func;
-  unsigned int in, out;
+  csize_t in, out;
 } builder_entry_t;
 
 typedef struct parse_tok_t {
   cell_t *c;
-  unsigned int out;
+  csize_t out;
 } parse_tok_t;
 
 typedef enum char_class_t {
@@ -194,5 +196,9 @@ struct __test_entry {
 
 #define BITSET(name, size) uint8_t name[((size)+7)/8] = {0}
 #define BITSET_INDEX(name, array) BITSET(name, LENGTH(array))
+
+// Maximum number of alts
+#define AS_SIZE (sizeof(alt_set_t) * 4)
+#define ALT_SET_IDS AS_SIZE
 
 #endif

@@ -47,27 +47,23 @@ cell_t fail_cell = {
   .type = T_FAIL
 };
 
-// Maximum number of alts
-#define AS_SIZE (sizeof(intptr_t) * 4)
-#define ALT_SET_IDS AS_SIZE
-
 // to catch errors that result in large allocations
 #define MAX_ALLOC_SIZE 32
 
 // OBSOLETE Array for tracking 'live' alt ids
-uintptr_t alt_live[sizeof(intptr_t) * 4];
+uintptr_t alt_live[AS_SIZE];
 
 // Structs for storing statistics
 measure_t measure, saved_measure;
 
 // Default tracing function that does nothing
-void trace_noop(UNUSED cell_t *c, UNUSED cell_t *r, UNUSED trace_type_t tt, UNUSED unsigned int n) {}
+void trace_noop(UNUSED cell_t *c, UNUSED cell_t *r, UNUSED trace_type_t tt, UNUSED csize_t n) {}
 
 // Pointer to tracing function
-void (*trace)(cell_t *, cell_t *, trace_type_t, unsigned int) = trace_noop;
+void (*trace)(cell_t *, cell_t *, trace_type_t, csize_t) = trace_noop;
 
 // Set the tracing function
-void set_trace(void (*t)(cell_t *, cell_t *, trace_type_t, unsigned int)) {
+void set_trace(void (*t)(cell_t *, cell_t *, trace_type_t, csize_t)) {
   trace = t ? t : trace_noop;
 }
 
@@ -75,7 +71,7 @@ void set_trace(void (*t)(cell_t *, cell_t *, trace_type_t, unsigned int)) {
 
 // Is `p` a pointer?
 bool is_data(void const *p) {
-  return (intptr_t)p > 255;
+  return (uintptr_t)p > 255;
 }
 
 // Is `p` a pointer to a cell in the cell storage array?
@@ -101,8 +97,8 @@ void closure_set_ready(cell_t *c, bool r) {
 }
 
 // Duplicate c to c->alt and return it
-cell_t *dup_alt(cell_t *c, unsigned int n, cell_t *b) {
-  unsigned int i = 0, in = closure_in(c), out = 0;
+cell_t *dup_alt(cell_t *c, csize_t n, cell_t *b) {
+  csize_t i = 0, in = closure_in(c), out = 0;
   assert(n < in);
   cell_t *a = copy(c);
 
@@ -125,7 +121,7 @@ cell_t *dup_alt(cell_t *c, unsigned int n, cell_t *b) {
 }
 
 // Lift alternates from c->arg[n] to c
-void split_arg(cell_t *c, unsigned int n) {
+void split_arg(cell_t *c, csize_t n) {
   cell_t
     *a = c->arg[n],
     *p = c,
@@ -144,7 +140,7 @@ void split_arg(cell_t *c, unsigned int n) {
 
 // Reduce then split c->arg[n]
 bool reduce_arg(cell_t *c,
-                unsigned int n,
+                csize_t n,
                 alt_set_t *as,
                 type_t t) {
   bool r = reduce(&c->arg[n], t);
@@ -153,8 +149,8 @@ bool reduce_arg(cell_t *c,
 }
 
 // Lift alternates from all args
-cell_t *closure_split(cell_t *c, unsigned int s) {
-  unsigned int i;
+cell_t *closure_split(cell_t *c, csize_t s) {
+  csize_t i;
   for(i = 0; i < s; ++i) {
     split_arg(c, i);
   }
@@ -178,7 +174,7 @@ cell_t *closure_split1(cell_t *c, int n) {
 }
 
 // Reduce *cp with type t
-bool reduce(cell_t **cp, type_rep_t t) {
+bool reduce(cell_t **cp, type_t t) {
   cell_t *c;
   while((c = clear_ptr(*cp, 1))) {
     if(!closure_is_ready(c)) close_placeholders(c);
@@ -218,7 +214,7 @@ cell_t *cells_next() {
 
 #ifdef CHECK_CYCLE
 bool check_cycle() {
-  unsigned int i = 0;
+  size_t i = 0;
   cell_t *start = cells_ptr, *ptr = start;
   while(ptr->next != start) {
     if(i > LENGTH(cells)) return false;
@@ -235,14 +231,14 @@ bool check_cycle() {
 #endif
 
 void cells_init() {
-  unsigned int const n = LENGTH(cells)-1;
+  size_t const n = LENGTH(cells)-1;
 
   // zero the cells
   memset(&cells, 0, sizeof(cells));
   memset(&alt_live, 0, sizeof(alt_live));
 
   // set up doubly-linked pointer ring
-  for(unsigned int i = 0; i < n; i++) {
+  for(size_t i = 0; i < n; i++) {
     cells[i].prev = &cells[i-1];
     cells[i].next = &cells[i+1];
   }
@@ -268,17 +264,17 @@ void cell_alloc(cell_t *c) {
     measure.max_alloc_cnt = measure.current_alloc_cnt;
 }
 
-cell_t *closure_alloc(unsigned int args) {
+cell_t *closure_alloc(csize_t args) {
   cell_t *c = closure_alloc_cells(calculate_cells(args));
   c->size = args;
   return c;
 }
 
-cell_t *closure_alloc_cells(unsigned int size) {
+cell_t *closure_alloc_cells(csize_t size) {
   assert(size < MAX_ALLOC_SIZE);
   cell_t *ptr = cells_next(), *c = ptr;
   cell_t *mark = ptr;
-  unsigned int cnt = 0;
+  csize_t cnt = 0;
   (void)mark;
 
   // search for contiguous chunk
@@ -294,7 +290,7 @@ cell_t *closure_alloc_cells(unsigned int size) {
   }
 
   // remove the found chunk
-  for(unsigned int i = 0; i < size; i++) {
+  for(csize_t i = 0; i < size; i++) {
     cell_alloc(&c[i]);
   }
 
@@ -307,19 +303,19 @@ cell_t *closure_alloc_cells(unsigned int size) {
     + ((uintptr_t)&(((cell_t *)0)->f[n]) - 1))  \
    / sizeof(cell_t))
 
-unsigned int calculate_cells(unsigned int n) {
+csize_t calculate_cells(csize_t n) {
   return n <= 3 ? 1 : calc_size(arg, n); // TODO calculate 3 at compile time
 }
 
-unsigned int calculate_list_size(unsigned int n) {
+csize_t calculate_list_size(csize_t n) {
   return calc_size(ptr, n);
 }
 
-unsigned int calculate_val_size(unsigned int n) {
+csize_t calculate_val_size(csize_t n) {
   return calc_size(val, n);
 }
 
-unsigned int closure_cells(cell_t const *c) {
+csize_t closure_cells(cell_t const *c) {
   return calculate_cells(closure_args(c));
 }
 
@@ -331,10 +327,10 @@ void cell_free(cell_t *c) {
   c->prev->next = c;
 }
 
-void closure_shrink(cell_t *c, unsigned int s) {
+void closure_shrink(cell_t *c, csize_t s) {
   if(!c) return;
   assert(is_cell(c));
-  unsigned int i, size = closure_cells(c);
+  csize_t i, size = closure_cells(c);
   if(size > s) {
     assert(is_closure(c));
     for(i = s; i < size; i++) {
@@ -360,7 +356,7 @@ bool type_match(type_t t, cell_t const *c) {
   return ta == T_ANY || tb == T_ANY || ta == tb;
 }
 
-bool func_reduced(cell_t **cp, type_rep_t t) {
+bool func_reduced(cell_t **cp, type_t t) {
   cell_t *c = clear_ptr(*cp, 3); // TODO remove clear_ptr
   assert(is_closure(c));
   measure.reduce_cnt--;
@@ -399,7 +395,7 @@ cell_t *var(type_t t) {
   return c;
 }
 
-cell_t *vector(uint32_t n) {
+cell_t *vector(csize_t n) {
   cell_t *c = closure_alloc(n+1);
   c->func = func_reduced;
   c->type = T_ANY;
@@ -421,7 +417,7 @@ cell_t *empty_list() {
   return c;
 }
 
-cell_t *make_list(unsigned int n) {
+cell_t *make_list(csize_t n) {
   cell_t *c = closure_alloc(n + 1);
   c->func = func_reduced;
   c->type = T_LIST;
@@ -429,18 +425,18 @@ cell_t *make_list(unsigned int n) {
 }
 
 cell_t *append(cell_t *a, cell_t *b) {
-  unsigned int n = list_size(b);
-  unsigned int n_a = list_size(a);
+  csize_t n = list_size(b);
+  csize_t n_a = list_size(a);
   cell_t *e = expand(a, n);
   while(n--) e->ptr[n + n_a] = b->ptr[n];
   return e;
 }
 
-cell_t *expand(cell_t *c, unsigned int s) {
+cell_t *expand(cell_t *c, csize_t s) {
   if(!c) return 0;
-  unsigned int n = closure_args(c);
-  unsigned int cn_p = calculate_cells(n);
-  unsigned int cn = calculate_cells(n + s);
+  csize_t n = closure_args(c);
+  csize_t cn_p = calculate_cells(n);
+  csize_t cn = calculate_cells(n + s);
   if(!c->n && cn == cn_p) {
     c->size += s;
     return c;
@@ -458,24 +454,24 @@ cell_t *expand(cell_t *c, unsigned int s) {
   }
 }
 
-cell_t *expand_inplace(cell_t *c, unsigned int s) {
-  uintptr_t n = c->n;
+cell_t *expand_inplace(cell_t *c, csize_t s) {
+  refcount_t n = c->n;
   c->n = 0;
   c = expand(c, s);
   c->n = n;
 
   // shift and update deps
   memmove(&c->arg[s], &c->arg[0], (c->size - 1) * sizeof(cell_t *));
-  unsigned int i;
+  csize_t i;
   for(i = c->size - c->out; i < c->size; ++i) {
     if(c->arg[i]) c->arg[i]->arg[0] = c;
   }
   return c;
 }
 
-cell_t *expand_inplace_dep(cell_t *c, unsigned int s) {
-  uintptr_t n = c->n;
-  unsigned int in = closure_in(c);
+cell_t *expand_inplace_dep(cell_t *c, csize_t s) {
+  refcount_t n = c->n;
+  csize_t in = closure_in(c);
   c->n = 0;
   c = expand(c, s);
   c->n = n;
@@ -483,7 +479,7 @@ cell_t *expand_inplace_dep(cell_t *c, unsigned int s) {
   // shift and update deps
   memmove(&c->arg[in+s], &c->arg[in], c->out * sizeof(cell_t *));
   c->out += s;
-  unsigned int i;
+  csize_t i;
   for(i = c->size - c->out + s; i < c->size; ++i) {
     if(c->arg[i]) c->arg[i]->arg[0] = c;
   }
@@ -491,9 +487,9 @@ cell_t *expand_inplace_dep(cell_t *c, unsigned int s) {
 }
 
 cell_t *compose_placeholders(cell_t *a, cell_t *b) {
-  unsigned int i;
-  unsigned int b_in = closure_in(b);
-  unsigned int b_out = closure_out(b);
+  csize_t i;
+  csize_t b_in = closure_in(b);
+  csize_t b_out = closure_out(b);
   cell_t *c = expand(b, a->size);
   memmove(c->arg + a->size + b_in,
           c->arg + b_in,
@@ -509,9 +505,9 @@ cell_t *compose_placeholders(cell_t *a, cell_t *b) {
 }
 
 cell_t *compose_nd(cell_t *a, cell_t *b) {
-  unsigned int n = list_size(b);
-  unsigned int n_a = list_size(a);
-  unsigned int i = 0;
+  csize_t n = list_size(b);
+  csize_t n_a = list_size(a);
+  csize_t i = 0;
   if(n && n_a) {
     cell_t *l;
     while(!closure_is_ready(l = b->ptr[n-1]) && i < n_a) {
@@ -547,9 +543,9 @@ bool is_offset(cell_t const *c) {
   return !((uintptr_t)c & ~0xff);
 }
 
-cell_t *func(reduce_t *f, unsigned int in, unsigned int out) {
+cell_t *func(reduce_t *f, csize_t in, csize_t out) {
   assert(out > 0);
-  unsigned int args = in + out - 1;
+  csize_t args = in + out - 1;
   cell_t *c = closure_alloc(args);
   c->out = out - 1;
   c->func = f;
@@ -560,30 +556,30 @@ cell_t *func(reduce_t *f, unsigned int in, unsigned int out) {
 
 #define cell_offset(f) ((cell_t **)&(((cell_t *)0)->f))
 
-unsigned int list_size(cell_t const *c) {
+csize_t list_size(cell_t const *c) {
   return c->size ? c->size - 1 : 0;
 }
 
-unsigned int val_size(cell_t const *c) {
+csize_t val_size(cell_t const *c) {
   return c->size ? c->size - 1 : 0;
 }
 
-unsigned int closure_args(cell_t const *c) {
+csize_t closure_args(cell_t const *c) {
   assert(is_closure(c));
   return c->size;
 }
 
-unsigned int closure_in(cell_t const *c) {
+csize_t closure_in(cell_t const *c) {
   assert(is_closure(c) && !is_reduced(c));
   return c->size - c->out;
 }
 
-unsigned int closure_out(cell_t const *c) {
+csize_t closure_out(cell_t const *c) {
   assert(is_closure(c) && !is_reduced(c));
   return c->out;
 }
 
-unsigned int closure_next_child(cell_t const *c) {
+csize_t closure_next_child(cell_t const *c) {
   assert(is_closure(c));
   return is_offset(c->arg[0]) ? (intptr_t)c->arg[0] : 0;
 }
@@ -593,7 +589,7 @@ void arg(cell_t **cp, cell_t *a) {
   cell_t *c = *cp;
   assert(is_closure(c) && is_closure(a));
   assert(!closure_is_ready(c));
-  unsigned int i = closure_next_child(c);
+  csize_t i = closure_next_child(c);
   // *** shift args if placeholder
   if(is_placeholder(c) &&
      (closure_in(c) == 0 ||
@@ -621,7 +617,7 @@ void arg_noexpand(cell_t **cp, cell_t *a) {
   cell_t *c = *cp;
   assert(is_closure(c) && is_closure(a));
   assert(!closure_is_ready(c));
-  unsigned int i = closure_next_child(c);
+  csize_t i = closure_next_child(c);
   if(!is_data(c->arg[i])) {
     c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
     c->arg[i] = a;
@@ -657,7 +653,7 @@ bool is_any(cell_t const *c) {
 #if INTERFACE
 #define traverse(r, action, flags)                              \
   do {                                                          \
-    unsigned int i = 0, n = 0;                                  \
+    csize_t i = 0, n = 0;                                       \
     cell_t **p;                                                 \
     if(is_reduced(r)) {                                         \
       if(((flags) & PTRS) &&                                    \
@@ -669,7 +665,7 @@ bool is_any(cell_t const *c) {
         }                                                       \
       }                                                         \
     } else if((flags) & ARGS) {                                 \
-      unsigned int  __in = closure_in(r);                       \
+      csize_t  __in = closure_in(r);                            \
       i = (~(flags) & ARGS_IN) ? __in : closure_next_child(r);  \
       n = (~(flags) & ARGS_OUT) ? __in : closure_args(r);       \
       for(; i < n; ++i) {                                       \
@@ -696,7 +692,7 @@ cell_t *_arg_nd(cell_t *c, cell_t *a, cell_t *r) {
   cell_t *l = 0;
   assert(is_closure(c) && is_closure(a));
   assert(!closure_is_ready(c));
-  unsigned int i = closure_next_child(c);
+  csize_t i = closure_next_child(c);
   // *** shift args if placeholder
   if(is_placeholder(c) &&
      (closure_in(c) == 0 ||
@@ -725,7 +721,7 @@ cell_t *_arg_nd(cell_t *c, cell_t *a, cell_t *r) {
 }
 
 cell_t *copy(cell_t const *c) {
-  unsigned int size = closure_cells(c);
+  csize_t size = closure_cells(c);
   cell_t *new = closure_alloc_cells(size);
   memcpy(new, c, size * sizeof(cell_t));
   return new;
@@ -746,7 +742,7 @@ void store_fail(cell_t *c, cell_t *alt) {
   c->alt = alt;
 }
 
-void store_var(cell_t *c, type_rep_t t) {
+void store_var(cell_t *c, type_t t) {
   closure_shrink(c, 1);
   c->func = func_reduced;
   c->type = T_VAR | t;
@@ -774,12 +770,12 @@ void fail(cell_t **cp) {
 void store_reduced(cell_t **cp, cell_t *r) {
   cell_t *c = *cp;
   assert(!is_marked(c, 3));
-  unsigned int n = c->n;
+  refcount_t n = c->n;
   r->func = func_reduced;
   trace(c, r, tt_reduction, 0);
   drop_multi(c->arg, closure_in(c));
   alt_set_ref(r->alt_set);
-  unsigned int size = is_closure(r) ? closure_cells(r) : 0;
+  csize_t size = is_closure(r) ? closure_cells(r) : 0;
   if(size <= closure_cells(c)) {
     closure_shrink(c, size);
     memcpy(c, r, sizeof(cell_t) * size);
@@ -803,7 +799,7 @@ cell_t *ref(cell_t *c) {
   return(refn(c, 1));
 }
 
-cell_t *refn(cell_t *c, unsigned int n) {
+cell_t *refn(cell_t *c, refcount_t n) {
   c = clear_ptr(c, 3);
   if(c) {
     assert(is_closure(c));
@@ -843,7 +839,7 @@ void drop(cell_t *c) {
       }, ALT | ARGS_IN | PTRS);
     if(is_dep(c) && !is_reduced(p = c->arg[0]) && is_closure(p)) {
       /* mark dep arg as gone */
-      unsigned int n = closure_args(p);
+      csize_t n = closure_args(p);
       while(n--) {
         if(p->arg[n] == c) {
           p->arg[n] = 0;
@@ -876,7 +872,7 @@ cell_t *dep(cell_t *c) {
 }
 
 /* todo: propagate types here */
-bool func_dep(cell_t **cp, UNUSED type_rep_t t) {
+bool func_dep(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c, 3));
   /* rely on another cell for reduction */
@@ -901,12 +897,12 @@ bool is_dep(cell_t const *c) {
 
 // compose a with n outputs into the list b (destructive) returning the result
 // *** fix arg()'s
-cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
+cell_t *compose_expand(cell_t *a, csize_t n, cell_t *b) {
   assert(is_closure(a) &&
          is_list(b));
   assert(n);
   bool ph_a = is_placeholder(a);
-  unsigned int i, bs = list_size(b);
+  csize_t i, bs = list_size(b);
   if(bs) {
     cell_t **l = &b->ptr[bs-1];
     cell_t *d = 0;
@@ -948,7 +944,7 @@ cell_t *compose_expand(cell_t *a, unsigned int n, cell_t *b) {
 }
 
 cell_t *pushl_val(intptr_t x, cell_t *c) {
-  unsigned int n = val_size(c);
+  csize_t n = val_size(c);
   c = expand(c, 1);
   c->val[n] = x;
   return c;
@@ -958,7 +954,7 @@ cell_t *pushl_nd(cell_t *a, cell_t *b) {
   assert(is_closure(a) &&
          is_list(b));
 
-  unsigned int n = list_size(b);
+  csize_t n = list_size(b);
   if(n) {
     cell_t *l = b->ptr[n-1];
     if(!closure_is_ready(l)) {
@@ -1065,7 +1061,7 @@ void *lookup_linear(void *table, unsigned int width, unsigned int rows, char con
 }
 
 void check_tmps() {
-  unsigned int i = 0;
+  size_t i = 0;
   cell_t *p;
   while(i < LENGTH(cells)) {
     p = &cells[i];
@@ -1084,12 +1080,12 @@ void check_tmps() {
 }
 
 /* ref count not from deps */
-unsigned int nondep_n(cell_t *c) {
+refcount_t nondep_n(cell_t *c) {
   if(!is_closure(c)) return 0;
-  unsigned int nd = c->n;
+  refcount_t nd = c->n;
   if(is_dep(c)) return nd;
   else if(!is_reduced(c)) {
-    unsigned int n = closure_args(c);
+    csize_t n = closure_args(c);
     while(n-- &&
           is_closure(c->arg[n]) &&
           is_dep(c->arg[n]) &&
@@ -1255,8 +1251,8 @@ uint8_t new_alt_id(UNUSED uintptr_t n) {
   return alt_cnt++;
 }
 
-void drop_multi(cell_t **a, unsigned int n) {
-  for(unsigned int i = 0; i < n; i++) drop(*a++);
+void drop_multi(cell_t **a, csize_t n) {
+  for(csize_t i = 0; i < n; i++) drop(*a++);
 }
 
 void store_lazy(cell_t **cp, cell_t *c, cell_t *r, alt_set_t alt_set) {
@@ -1288,35 +1284,16 @@ void store_lazy_dep(cell_t *c, cell_t *d, cell_t *r, alt_set_t alt_set) {
   } else drop(r);
 }
 
-/*
-type_rep_t tr_next(type_rep_t t) {
-  type_rep_t p = t;
-  int level = 0;
-  do {
-    if(!*p) return NULL;
-    level += *p++ == '.' ? -1 : 1;
-  } while(level > 0);
-  return p;
-}
-
-type_rep_t tr_arg(type_rep_t t, unsigned int n) {
-  if(!t[0] || t[0] == '.') return NULL;
-  type_rep_t p = t + 1;
-  while(n--) p = tr_next(p);
-  return p;
-}
-*/
-
 // this shouldn't reduced directly, but is called through reduce_partial from func_dep
 bool func_placeholder(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c, 3));
-  unsigned int in = closure_in(c), n = closure_args(c);
-  for(unsigned int i = 0; i < in; ++i) {
+  csize_t in = closure_in(c), n = closure_args(c);
+  for(csize_t i = 0; i < in; ++i) {
     if(!reduce(&c->arg[i], T_ANY)) goto fail;
     trace(c->arg[i], c, tt_force, i);
   }
-  for(unsigned int i = in; i < n; ++i) {
+  for(csize_t i = in; i < n; ++i) {
     cell_t *d = c->arg[i];
     if(d && is_dep(d)) {
       drop(c);

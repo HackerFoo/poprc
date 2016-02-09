@@ -170,10 +170,10 @@ void graph_cell(FILE *f, cell_t const *c) {
   clear_bit(marked, node);
   if(check_bit(visited, node)) return;
   set_bit(visited, node);
-  unsigned int n = closure_args(c);
-  unsigned int s = calculate_cells(n);
+  csize_t n = closure_args(c);
+  csize_t s = calculate_cells(n);
 
-  for(unsigned int i = 0; i < s; ++i) set_bit(visited, node+i);
+  for(csize_t i = 0; i < s; ++i) set_bit(visited, node+i);
 
   /* print node attributes */
   fprintf(f, "node%ld [\nlabel =<", node);
@@ -206,7 +206,7 @@ void graph_cell(FILE *f, cell_t const *c) {
         fprintf(f, "<tr><td bgcolor=\"yellow\">val: %ld</td></tr>", (long int)c->val[n]);
     }
   } else {
-    for(unsigned int i = 0; i < n; i++) {
+    for(csize_t i = 0; i < n; i++) {
       fprintf(f, "<tr><td port=\"arg%d\"><font color=\"lightgray\">%p</font></td></tr>", i, c->arg[i]);
     }
     if(c->func == func_id) {
@@ -235,7 +235,7 @@ void graph_cell(FILE *f, cell_t const *c) {
       }
     }
   } else {
-    for(unsigned int i = 0; i < n; i++) {
+    for(csize_t i = 0; i < n; i++) {
       cell_t *arg = clear_ptr(c->arg[i], 1);
       if(is_cell(arg)) {
         fprintf(f, "node%ld:arg%d -> node%ld:top%s;\n",
@@ -262,7 +262,7 @@ void show_int(cell_t const *c) {
 
 bool reduce_list(cell_t *c) {
   bool b = true;
-  unsigned int n = list_size(c);
+  csize_t n = list_size(c);
   cell_t **p = c->ptr;
   while(n--) {
     *p = reduce_alt(*p);
@@ -273,18 +273,18 @@ bool reduce_list(cell_t *c) {
   return b;
 }
 
-bool any_alt_overlap(cell_t const *const *p, unsigned int size) {
+bool any_alt_overlap(cell_t const *const *p, csize_t size) {
   uintptr_t t, as = 0;
-  for(unsigned int i = 0; i < size; ++i) {
+  for(csize_t i = 0; i < size; ++i) {
     if((t = p[i]->alt_set) & as) return true;
     as |= t;
   }
   return false;
 }
 
-bool any_conflicts(cell_t const *const *p, unsigned int size) {
+bool any_conflicts(cell_t const *const *p, csize_t size) {
   uintptr_t t, as = 0;
-  for(unsigned int i = 0; i < size; ++i) {
+  for(csize_t i = 0; i < size; ++i) {
     if(as_conflict(as, t = p[i]->alt_set)) return true;
     as |= t;
   }
@@ -702,7 +702,7 @@ void run_eval() {
       *line++ = 0;
       compact_expr(name, line, strlen(line));
     } else if(strncmp(line, ":a ", 3) == 0) {
-      unsigned int in, out;
+      csize_t in, out;
       cells_init();
       line += 3;
       if(get_arity(line, strlen(line), &in, &out)) {
@@ -747,13 +747,13 @@ word_entry_t *lookup_word(char const *w) {
 }
 /*
 cell_t *word(char const *w) {
-  unsigned int in, out;
+  csize_t in, out;
   return word_parse(w, &in, &out);
 }
 */
 cell_t *word_parse(char const *w,
-                   unsigned int *in,
-                   unsigned int *out,
+                   csize_t *in,
+                   csize_t *out,
                    cell_t **data) {
   cell_t *c;
   *data = NULL;
@@ -859,7 +859,7 @@ cell_t *parse_vector(char *str, char **p) {
 }
 
 bool parse_word(char *str, char **p, cell_t **r) {
-  unsigned int in = 0, out = 1;
+  csize_t in = 0, out = 1;
   cell_t *data = NULL;
   char *tok = *p = rtok(str, *p);
   if(!tok || strcmp(tok, "[") == 0) return false;
@@ -885,13 +885,13 @@ cell_t *build(char *str, unsigned int n) {
   return _build(str, &p);
 }
 
-void argf_noop(UNUSED cell_t *c, UNUSED int i) {}
-unsigned int fill_args(cell_t *r, void (*argf)(cell_t *, int)) {
+void argf_noop(UNUSED cell_t *c, UNUSED val_t i) {}
+val_t fill_args(cell_t *r, void (*argf)(cell_t *, val_t)) {
   if(!argf) argf = argf_noop;
-  int n = list_size(r);
+  csize_t n = list_size(r);
   if(n < 1) return 0;
   cell_t **l = &r->ptr[n-1];
-  int i = 0;
+  val_t i = 0;
   close_placeholders(*l);
   while(!closure_is_ready(*l)) {
     cell_t *v = var(T_ANY);
@@ -909,8 +909,8 @@ cell_t *_build(char *str, char **p) {
   return r;
 }
 
-void print_arg(cell_t *c, int i) {
-  printf("?_%ld <- arg(%d)\n", (long int)(c - cells), i);
+void print_arg(cell_t *c, val_t i) {
+  printf("?_%ld <- arg(%d)\n", (long int)(c - cells), (int)i);
 }
 
 void reduce_root(cell_t *c) {
@@ -935,7 +935,7 @@ void eval(char *str, unsigned int n) {
   }
 }
 
-bool get_arity(char *str, unsigned int n, unsigned int *in, unsigned int *out) {
+bool get_arity(char *str, unsigned int n, csize_t *in, csize_t *out) {
   set_trace(NULL);
   cell_t *c = build(str, n);
   if(!c) return false;
@@ -979,7 +979,7 @@ void compile_expr(char const *name, char *str, unsigned int n) {
 
 cell_t *remove_row(cell_t *c) {
   assert(is_list(c));
-  unsigned int n = list_size(c);
+  csize_t n = list_size(c);
   if(n == 0 || !(c->ptr[n-1]->type & T_ROW)) return c;
   return remove_left(c);
 }
@@ -987,7 +987,7 @@ cell_t *remove_row(cell_t *c) {
 cell_t *remove_left(cell_t *c) {
   assert(is_list(c));
   assert(list_size(c) > 0);
-  unsigned int size = calculate_cells(c->size - 1);
+  csize_t size = calculate_cells(c->size - 1);
   cell_t *new = closure_alloc_cells(size);
   memcpy(new, c, sizeof(cell_t) * size);
   --new->size;
@@ -1031,7 +1031,7 @@ void load_source(char *path) {
   printf("loaded: %s\n", path);
 }
 
-char *show_type(type_rep_t t) {
+char *show_type(type_t t) {
 #define _case(x) case x: return #x
   switch(t & T_EXCLUSIVE) {
   _case(T_ANY);
@@ -1044,7 +1044,7 @@ char *show_type(type_rep_t t) {
 }
 
 // unsafe
-char *show_type_all(type_rep_t t) {
+char *show_type_all(type_t t) {
   const static char *type_flag_name[] = {
     "T_VAR",
     "T_ROW",
@@ -1063,7 +1063,7 @@ char *show_type_all(type_rep_t t) {
   return buf;
 }
 
-char type_char(type_rep_t t) {
+char type_char(type_t t) {
   switch(t & T_EXCLUSIVE) {
   case T_ANY: return 'a';
   case T_INT: return 'i';
@@ -1074,7 +1074,7 @@ char type_char(type_rep_t t) {
 }
 
 // unsafe
-char *show_type_all_short(type_rep_t t) {
+char *show_type_all_short(type_t t) {
   const static char type_flag_char[] = {
     '?',
     '@',
@@ -1097,7 +1097,7 @@ char *show_type_all_short(type_rep_t t) {
   return buf;
 }
 
-void print_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED unsigned int n) {
+void print_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
   switch(tt) {
   case tt_reduction:
     if(is_reduced(c) || !is_var(r)) break;
@@ -1111,7 +1111,7 @@ void print_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED unsigned int n) {
     if(is_dep(c)) {
       printf("?%c%ld <- type\n", type_char(r->type), (long int)(c - cells));
     } else {
-      unsigned int i, n = closure_args(c), in = closure_in(c), out = closure_out(c);
+      csize_t i, n = closure_args(c), in = closure_in(c), out = closure_out(c);
       for(i = 0; i < in; ++i) trace(c->arg[i], c, tt_force, i); // ***
       if(!is_placeholder(c)) printf("?%c%ld ", type_char(r->type), (long int)(c - cells));
       for(i = 0; i < out; ++i) {
