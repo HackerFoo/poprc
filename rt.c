@@ -87,13 +87,13 @@ bool is_closure(void const *p) {
 // Is the closure `c` ready to reduce?
 bool closure_is_ready(cell_t const *c) {
   assert(is_closure(c));
-  return !is_marked(c->func, 1);
+  return !is_marked(c->func);
 }
 
 // Set the readiness of closure `c` to state `r`
 void closure_set_ready(cell_t *c, bool r) {
   assert(is_closure(c));
-  c->func = (reduce_t *)mark_ptr(clear_ptr(c->func, 1), r ? 0 : 1);
+  c->func = (reduce_t *)(r ? clear_ptr(c->func) : mark_ptr(c->func));
 }
 
 // Duplicate c to c->alt and return it
@@ -126,14 +126,14 @@ void split_arg(cell_t *c, csize_t n) {
     *a = c->arg[n],
     *p = c,
     **pa;
-  if(!a || !a->alt || is_marked(a, 1)) return;
+  if(!a || !a->alt || is_marked(a)) return;
   do {
     pa = &p->arg[n];
     if(*pa == a) {
       // insert a copy with the alt arg
       p = dup_alt(p, n, ref((*pa)->alt))->alt;
       // mark the arg
-      *pa = mark_ptr(*pa, 1);
+      *pa = mark_ptr(*pa);
     } else p = p->alt;
   } while(p);
 }
@@ -145,7 +145,7 @@ bool reduce_arg(cell_t *c,
                 type_t t) {
   bool r = reduce(&c->arg[n], t);
   split_arg(c, n);
-  return r && entangle(as, clear_ptr(c->arg[n], 1));
+  return r && entangle(as, clear_ptr(c->arg[n]));
 }
 
 // Lift alternates from all args
@@ -155,7 +155,7 @@ cell_t *closure_split(cell_t *c, csize_t s) {
     split_arg(c, i);
   }
   for(i = 0; i < s; ++i) {
-    c->arg[i] = clear_ptr(c->arg[i], 1);
+    c->arg[i] = clear_ptr(c->arg[i]);
   }
   return c->alt;
 }
@@ -164,7 +164,7 @@ cell_t *closure_split(cell_t *c, csize_t s) {
 void clear_flags(cell_t *c) {
   int i = 0;
   for(; i < c->size; ++i) {
-    c->arg[i] = clear_ptr(c->arg[i], 3);
+    c->arg[i] = clear_ptr(c->arg[i]);
   }
 }
 
@@ -176,7 +176,7 @@ cell_t *closure_split1(cell_t *c, int n) {
 // Reduce *cp with type t
 bool reduce(cell_t **cp, type_t t) {
   cell_t *c;
-  while((c = clear_ptr(*cp, 1))) {
+  while((c = clear_ptr(*cp))) {
     if(!closure_is_ready(c)) close_placeholders(c);
     if(is_placeholder(c)) break;
     assert(is_closure(c));
@@ -193,7 +193,7 @@ bool reduce(cell_t **cp, type_t t) {
 
 // Perform one reduction step on *cp
 void reduce_dep(cell_t **cp) {
-  cell_t *c = clear_ptr(*cp, 1);
+  cell_t *c = clear_ptr(*cp);
   if(!closure_is_ready(c)) close_placeholders(c);
   if(!c || !closure_is_ready(c)) {
     fail(cp);
@@ -357,7 +357,7 @@ bool type_match(type_t t, cell_t const *c) {
 }
 
 bool func_reduced(cell_t **cp, type_t t) {
-  cell_t *c = clear_ptr(*cp, 3); // TODO remove clear_ptr
+  cell_t *c = clear_ptr(*cp); // TODO remove clear_ptr
   assert(is_closure(c));
   measure.reduce_cnt--;
   if(c->type != T_FAIL &&
@@ -751,12 +751,12 @@ void store_var(cell_t *c, type_t t) {
 
 void fail(cell_t **cp) {
   cell_t *c = *cp;
-  assert(!is_marked(c, 3));
+  assert(!is_marked(c));
   cell_t *alt = ref(c->alt);
   drop(c);
   if(c->func) {
     traverse(c, {
-        cell_t *x = clear_ptr(*p, 3);
+        cell_t *x = clear_ptr(*p);
         drop(x);
       }, ARGS_IN);
     closure_shrink(c, 1);
@@ -769,7 +769,7 @@ void fail(cell_t **cp) {
 
 void store_reduced(cell_t **cp, cell_t *r) {
   cell_t *c = *cp;
-  assert(!is_marked(c, 3));
+  assert(!is_marked(c));
   refcount_t n = c->n;
   r->func = func_reduced;
   trace(c, r, tt_reduction, 0);
@@ -800,7 +800,7 @@ cell_t *ref(cell_t *c) {
 }
 
 cell_t *refn(cell_t *c, refcount_t n) {
-  c = clear_ptr(c, 3);
+  c = clear_ptr(c);
   if(c) {
     assert(is_closure(c));
     c->n += n;
@@ -830,12 +830,8 @@ void drop(cell_t *c) {
   if(!c->n) {
     cell_t *p;
     traverse(c, {
-        cell_t *x = clear_ptr(*p, 3);
-        /* !is_marked condition needed */
-        /* during _modify_copy2 */
-        if(!is_marked(*p, 2)) { // TODO why is this needed anymore?
-          drop(x);
-        }
+        cell_t *x = clear_ptr(*p);
+        drop(x);
       }, ALT | ARGS_IN | PTRS);
     if(is_dep(c) && !is_reduced(p = c->arg[0]) && is_closure(p)) {
       /* mark dep arg as gone */
@@ -874,7 +870,7 @@ cell_t *dep(cell_t *c) {
 /* todo: propagate types here */
 bool func_dep(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
-  assert(!is_marked(c, 3));
+  assert(!is_marked(c));
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
   /* must make weak reference strong during reduction */
@@ -1067,7 +1063,7 @@ void check_tmps() {
       /*
       if(p->tmp) {
         printf("<<%d %d>>\n", i, (int)p->tmp);
-        drop(clear_ptr(p->tmp, 3));
+        drop(clear_ptr(p->tmp));
         p->tmp = 0;
       }
       */
@@ -1094,7 +1090,7 @@ refcount_t nondep_n(cell_t *c) {
 
 void mutate_update(cell_t *r, bool m) {
   traverse(r, {
-      cell_t *c = clear_ptr(*p, 3);
+      cell_t *c = clear_ptr(*p);
       if(is_closure(c)) {
         if(c->tmp) {
           *p = ref(c->tmp);
@@ -1104,7 +1100,7 @@ void mutate_update(cell_t *r, bool m) {
     }, ARGS_IN | PTRS | ALT);
 
   traverse(r, {
-      cell_t *c = clear_ptr(*p, 3);
+      cell_t *c = clear_ptr(*p);
       if(c && c->tmp) {
         *p = c->tmp;
       }
@@ -1112,7 +1108,7 @@ void mutate_update(cell_t *r, bool m) {
 }
 
 bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u, int exp) {
-  r = clear_ptr(r, 3);
+  r = clear_ptr(r);
   if(!is_closure(r)) return false;
   if(r->tmp) return true;
   u &= !nondep_n(r);
@@ -1285,7 +1281,7 @@ void store_lazy_dep(cell_t *c, cell_t *d, cell_t *r, alt_set_t alt_set) {
 // this shouldn't reduced directly, but is called through reduce_partial from func_dep
 bool func_placeholder(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
-  assert(!is_marked(c, 3));
+  assert(!is_marked(c));
   csize_t in = closure_in(c), n = closure_args(c);
   for(csize_t i = 0; i < in; ++i) {
     if(!reduce(&c->arg[i], T_ANY)) goto fail;
@@ -1313,7 +1309,7 @@ bool func_self(cell_t **cp, UNUSED type_t t) {
 }
 
 bool is_placeholder(cell_t const *c) {
-  return c && clear_ptr(c->func, 3) == (void *)func_placeholder;
+  return c && clear_ptr(c->func) == (void *)func_placeholder;
 }
 
 bool entangle(alt_set_t *as, cell_t *c) {

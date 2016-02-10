@@ -131,9 +131,10 @@ typedef struct measure_t {
 #define min(a, b) ((a) <= (b) ? (a) : (b))
 #define max(a, b) ((a) >= (b) ? (a) : (b))
 
-#define is_marked(p, x) (((intptr_t)(p) & (x)) != 0)
-#define mark_ptr(p, x) ((void *)((intptr_t)(p) | (x)))
-#define clear_ptr(p, x) ((void *)((intptr_t)(p) & ~(x)))
+#define MARK_BIT 2
+#define is_marked(p) (((intptr_t)(p) & (MARK_BIT)) != 0)
+#define mark_ptr(p) ((void *)((intptr_t)(p) | (MARK_BIT)))
+#define clear_ptr(p) ((void *)((intptr_t)(p) & ~(MARK_BIT)))
 
 #define ALT 1
 #define ARGS_IN 2

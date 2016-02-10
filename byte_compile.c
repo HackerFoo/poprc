@@ -25,9 +25,9 @@ static MAP(trace_index, 1 << 10);
 
 static
 pair_t *trace_find(const cell_t *c) {
-  c = clear_ptr(c, 3);
+  c = clear_ptr(c);
   if(is_list(c) && c->ptr[0] && is_placeholder(c->ptr[0])) {
-    cell_t *ph = clear_ptr(c->ptr[0], 3);
+    cell_t *ph = clear_ptr(c->ptr[0]);
     pair_t *res = map_find(trace_index, (uintptr_t)ph);
     if(res) return res;
   }
@@ -147,7 +147,7 @@ cell_t *trace_select(const cell_t *c, cell_t *a) {
   trace_ptr += size;
   trace_cnt++;
 
-  uintptr_t tc = map_update(trace_index, (uintptr_t)clear_ptr(c, 3), dest - trace_cur);
+  uintptr_t tc = map_update(trace_index, (uintptr_t)clear_ptr(c), dest - trace_cur);
   uintptr_t ta = trace_get(a);
 
   memset(dest, 0, sizeof(cell_t));
@@ -265,7 +265,7 @@ uintptr_t bc_apply_list(cell_t *c) {
   /* popr outputs */
   COUNTDOWN(i, out) {
     cell_t *arg = c->arg[i + in];
-    if(!map_find(trace_index, (uintptr_t)clear_ptr(arg, 3))) {
+    if(!map_find(trace_index, (uintptr_t)clear_ptr(arg))) {
       uintptr_t res;
       p = bc_func(func_popr, 1, 2, p, &res);
       trace_index_add(arg, res);
@@ -350,7 +350,7 @@ void bc_arg(cell_t *c, UNUSED val_t x) {
 cell_t *trace_store_list(cell_t *c) {
   traverse(c, {
       if(*p && !((*p)->type & T_TRACED)) {
-        trace_store_list(clear_ptr(*p, 3));
+        trace_store_list(clear_ptr(*p));
         (*p)->type |= T_TRACED;
       }
     }, PTRS);
@@ -418,7 +418,7 @@ void compact_expr(char const *name, char *str, unsigned int n) {
 }
 
 bool func_exec(cell_t **cp, UNUSED type_t t) {
-  cell_t *c = clear_ptr(*cp, 3);
+  cell_t *c = clear_ptr(*cp);
   assert(is_closure(c));
 
   size_t data = closure_in(c) - 1;

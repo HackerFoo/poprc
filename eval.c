@@ -77,7 +77,7 @@ char const *show_alt_set(uintptr_t as) {
 }
 
 char const *function_name(reduce_t *f) {
-  f = (reduce_t *)clear_ptr(f, 1);
+  f = (reduce_t *)clear_ptr(f);
   //  int i;
 # define CASE(n) if(f == func_##n) return #n
   CASE(add);
@@ -116,7 +116,7 @@ char const *function_name(reduce_t *f) {
 }
 
 char const *function_token(reduce_t *f) {
-  f = (reduce_t *)clear_ptr(f, 1);
+  f = (reduce_t *)clear_ptr(f);
   for(unsigned int i = 0; i < word_table_length; ++i) {
     if(word_table[i].func == f)
       return word_table[i].name;
@@ -164,7 +164,7 @@ void make_graph_all(char const *path) {
 }
 
 void graph_cell(FILE *f, cell_t const *c) {
-  c = clear_ptr(c, 3);
+  c = clear_ptr(c);
   if(!is_closure(c) || !is_cell(c)) return;
   long unsigned int node = c - cells;
   int border = check_bit(marked, node) ? 4 : 0;
@@ -219,7 +219,7 @@ void graph_cell(FILE *f, cell_t const *c) {
 
   /* print edges */
   if(is_cell(c->alt)) {
-    cell_t *alt = clear_ptr(c->alt, 1);
+    cell_t *alt = clear_ptr(c->alt);
     fprintf(f, "node%ld:alt -> node%ld:top;\n",
             node, (long int)(alt - cells));
     graph_cell(f, c->alt);
@@ -237,7 +237,7 @@ void graph_cell(FILE *f, cell_t const *c) {
     }
   } else {
     for(csize_t i = 0; i < n; i++) {
-      cell_t *arg = clear_ptr(c->arg[i], 1);
+      cell_t *arg = clear_ptr(c->arg[i]);
       if(is_cell(arg)) {
         fprintf(f, "node%ld:arg%d -> node%ld:top%s;\n",
                 (long int)(c - cells), i, (long int)(arg - cells), is_weak(c, arg) ? " [color=lightgray]" : "");
