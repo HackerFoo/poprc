@@ -3,7 +3,7 @@ SECTIONS
   .tests :
   {
       PROVIDE(__tests_start = .);
-      KEEP(*(.tests))
+      KEEP(SORT(*)(.tests))
       PROVIDE(__tests_end = .);
   }
 }
