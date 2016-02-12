@@ -1,0 +1,6 @@
+#+TITLE: PoprC Notes
+
+* things that must not escape functions
+- for efficiency and simplicity
+** thunks
+** alts? (cut before return)
