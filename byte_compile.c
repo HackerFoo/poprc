@@ -282,7 +282,8 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
     if(c->func == func_pushl ||
        c->func == func_pushr ||
        c->func == func_popr  ||
-       c->func == func_dep) break;
+       c->func == func_dep   ||
+       c->func == func_compose) break;
     if(c->func == func_cut ||
        c->func == func_id) {
       trace_index_assign(c, c->arg[0]);
@@ -313,6 +314,8 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       trace_index_assign(c->ptr[0], c);
     } else if(is_var(c)) {
       trace_update_type(c);
+    } else if(is_list(c)) {
+      trace_store_list(c);
     } else {
       trace_store(c);
     }
@@ -332,6 +335,11 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
 
   case tt_compose_placeholders: {
     /* to do *** */
+    pair_t *pb = trace_find(((cell_t **)r)[1]);
+    uintptr_t
+      a = trace_get(((cell_t **)r)[0]),
+      n = bc_func(func_compose, 2, 1, a, pb->second);
+    pb->second = n;
     break;
   }
 

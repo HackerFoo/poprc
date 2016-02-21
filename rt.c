@@ -498,7 +498,7 @@ cell_t *compose_placeholders(cell_t *a, cell_t *b) {
     c->arg[b_in + i] = ref(a->arg[i]);
   for(; i < a->size; ++i)
     c->arg[b_in + i] = a->arg[i];
-  drop(a);
+  //drop(a);
   cell_t *ab[] = {a, b};
   trace(c, (cell_t *)ab, tt_compose_placeholders, 0);
   return c;
