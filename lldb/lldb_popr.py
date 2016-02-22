@@ -4,7 +4,12 @@ import lldb
 import os
 import time
 
-expr = "popr"
+#expr = "pushr popr"
+#expr = "[] pushl swap pushr pushl popr swap popr swap popr swap drop"
+#expr = "popr swap popr swap drop swap"
+#expr = "popr"
+#expr = "pushl popr swap drop"
+expr = "[1] swap . popr swap drop"
 bp_trace_loc = "bc_trace"
 
 def trace_callback(frame, bp_loc, dict):

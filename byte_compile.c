@@ -293,6 +293,12 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       //trace_index_add(c, bc_apply_list(c));
     } else if(c->func == func_self) {
       trace_store_addarg(c);
+    } else if(c->func == func_compose) {
+      // HACKy
+      cell_t *p = c->arg[1];
+      if(is_var(p) && is_placeholder(p->ptr[0])) {
+        trace_index_assign(r->ptr[0], p->ptr[0]);
+      }
     } else {
       csize_t in = closure_in(c);
       COUNTUP(i, in) {
@@ -313,6 +319,8 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       trace_index_assign(c->ptr[0], c);
     } else if(is_var(c)) {
       trace_update_type(c);
+    } else if(is_list(c)) {
+      trace_store_list(c);
     } else {
       trace_store(c);
     }
@@ -332,6 +340,11 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
 
   case tt_compose_placeholders: {
     /* to do *** */
+    pair_t *pb = trace_find(((cell_t **)r)[1]);
+    uintptr_t
+      a = trace_get(((cell_t **)r)[0]),
+      n = bc_func(func_compose, 2, 1, a, pb->second);
+    pb->second = n;
     break;
   }
 

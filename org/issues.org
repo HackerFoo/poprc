@@ -1,5 +1,9 @@
 #+TITLE: PoprC Issues
 
+* LLVM compiler
+Revive LLVM code to fully compile to direct machine code when possible
+- strict, function arguments, no backtracking
+** simple numeric ops (e.g. :c f1 + *)
 * improvements
 ** add more tests to tests.peg
 ** clear_flags in func_select?
@@ -11,6 +15,7 @@
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * bugs
+** DONE :c c1 [ 1 ] swap . popr swap drop
 ** DONE :c f1 swap !
 ** DONE 100000 mod5 -> stack overflow (func_exec, func_select)
 - treat select with variable arg as alt followed by cut
@@ -23,4 +28,7 @@
 * byte_compile
 ** DONE exec
 ** DONE replace func_self when loading code in func_exec
-** TODO compose?
+** DONE compose?
+- in compose_nd
+- fix compose_placeholders/_nd
+** TODO build incomplete closures
