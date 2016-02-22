@@ -282,8 +282,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
     if(c->func == func_pushl ||
        c->func == func_pushr ||
        c->func == func_popr  ||
-       c->func == func_dep   ||
-       c->func == func_compose) break;
+       c->func == func_dep) break;
     if(c->func == func_cut ||
        c->func == func_id) {
       trace_index_assign(c, c->arg[0]);
@@ -294,6 +293,12 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       //trace_index_add(c, bc_apply_list(c));
     } else if(c->func == func_self) {
       trace_store_addarg(c);
+    } else if(c->func == func_compose) {
+      // HACKy
+      cell_t *p = c->arg[1];
+      if(is_var(p) && is_placeholder(p->ptr[0])) {
+        trace_index_assign(r->ptr[0], p->ptr[0]);
+      }
     } else {
       csize_t in = closure_in(c);
       COUNTUP(i, in) {
