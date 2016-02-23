@@ -286,8 +286,10 @@ bool any_alt_overlap(cell_t const *const *p, csize_t size) {
 bool any_conflicts(cell_t const *const *p, csize_t size) {
   uintptr_t t, as = 0;
   for(csize_t i = 0; i < size; ++i) {
-    if(as_conflict(as, t = p[i]->alt_set)) return true;
-    as |= t;
+    if(is_reduced(p[i])) {
+      if(as_conflict(as, t = p[i]->alt_set)) return true;
+      as |= t;
+    }
   }
   return false;
 }
