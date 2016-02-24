@@ -27,18 +27,22 @@ endif
 
 ifeq ($(findstring gcc, $(CC)),gcc)
 	SANITIZE := -fsanitize=undefined
-	CFLAGS = -falign-functions=4 -Wall -std=gnu99 $(COPT)
-	CXXFLAGS = -xc++ -falign-functions=4 -Wall -std=c++98 $(COPT)
+	CFLAGS = -falign-functions=4 -Wall -std=gnu99
+	CXXFLAGS = -xc++ -falign-functions=4 -Wall -std=c++98
+	OPT_FLAG=-O3
 endif
 ifeq ($(findstring clang, $(CC)),clang)
-	CFLAGS = -Wall -Wextra -pedantic -std=gnu11 $(COPT)
-	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -std=c++98 $(COPT)
+	CFLAGS = -Wall -Wextra -pedantic -std=gnu11
+	LINENOISE_CFLAGS = -Wno-gnu-zero-variadic-macro-arguments
+	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -std=c++98
+	OPT_FLAG=-O3
 endif
 ifeq ($(findstring emcc, $(CC)),emcc)
-	CFLAGS = -Wall -DNDEBUG -DEMSCRIPTEN $(COPT)
+	CFLAGS = -Wall -DNDEBUG -DEMSCRIPTEN -s ALIASING_FUNCTION_POINTERS=0
 	USE_LINENOISE=n
 	USE_LLVM=n
 	USE_READLINE=n
+	OPT_FLAG=-Os
 endif
 
 ifeq ($(BUILD),debug)
@@ -48,15 +52,18 @@ ifeq ($(BUILD),debug)
 endif
 
 ifeq ($(BUILD),release)
-	CFLAGS += -DNDEBUG -O3
-	CXXFLAGS += -DNDEBUG -O3
+	CFLAGS += -DNDEBUG $(OPT_FLAG)
+	CXXFLAGS += -DNDEBUG $(OPT_FLAG)
 endif
 
 ifeq ($(BUILD),profile)
-	CFLAGS += -DNDEBUG -O3
-	CXXFLAGS += -DNDEBUG -O3
+	CFLAGS += -DNDEBUG $(OPT_FLAG)
+	CXXFLAGS += -DNDEBUG $(OPT_FLAG)
 	LIBS += -lprofiler
 endif
+
+CFLAGS += $(COPT)
+CXXFLAGS += $(COPT)
 
 BUILD_DIR := build/$(CC)/$(BUILD)
 DIAGRAMS := diagrams
@@ -116,10 +123,10 @@ print-%:
 eval: $(OBJS)
 	$(CC) $(OBJS) $(LDFLAGS) $(LIBS) -o $@
 
-eval.js: EMCC_OBJS := $(patsubst %.c, build/emcc/%.o, $(SRC))
+eval.js: EMCC_OBJS := $(patsubst %.c, build/emcc/$(BUILD)/%.o, $(SRC))
 eval.js:
 	make CC=emcc $(EMCC_OBJS)
-	emcc $(EMCC_OBJS) -o eval.js -s EXPORTED_FUNCTIONS="['_eval', '_cells_init']"
+	emcc $(EMCC_OBJS) -o eval.js -s EXPORTED_FUNCTIONS="['_eval_command', '_cells_init']"
 
 # pull in dependency info for *existing* .o files
 -include $(OBJS:.o=.d)
@@ -143,7 +150,7 @@ $(BUILD_DIR)/%.o: %.c
 
 $(BUILD_DIR)/linenoise.o: linenoise/linenoise.c linenoise/linenoise.h
 	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c linenoise/linenoise.c -o $(BUILD_DIR)/linenoise.o
+	$(CC) $(CFLAGS) $(LINENOISE_CFLAGS) -c linenoise/linenoise.c -o $(BUILD_DIR)/linenoise.o
 
 $(DIAGRAMS)/%.pdf: %.dot
 	@mkdir -p $(DIAGRAMS)

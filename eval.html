@@ -1,7 +1,7 @@
 <head>
   <title>popr</title>
-  <script src="js/jquery-1.7.1.min.js"></script>
-  <script src="js/jquery.terminal-min.js"></script>
+  <script src="js/jquery-1.7.2.min.js"></script>
+  <script src="js/jquery.terminal-0.9.3.min.js"></script>
   <script>
     var term;
     var Module = {
@@ -25,7 +25,7 @@
   cells_init = Module.cwrap('cells_init', 'void', []);
 
   function eval_popr(str) {
-    Module.ccall('eval', 'undefined', ['string', 'number'], [str, str.length]);
+    Module.ccall('eval_command', 'undefined', ['string', 'number'], [str, str.length]);
   }
 
   cells_init();
@@ -38,10 +38,10 @@
 
   var termOptions = {
     prompt: ': ',
-    greetings: "       ,------------------,\n" +
-               " ,-----' Popr Interpreter '------,\n" +
-               " | [[;#f00;;]Copyright 2013 Dustin DeWeese] |\n" +
-               " '-------------------------------'\n",
+    greetings: "          ,------------------,\n" +
+               " ,--------' Popr Interpreter '--------,\n" +
+               " | [[;#f00;;]Copyright 2013-2016 Dustin DeWeese] |\n" +
+               " '------------------------------------'\n",
     onClear: function(term) {
       term.echo(this.greetings);
     }

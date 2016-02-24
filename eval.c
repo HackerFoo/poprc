@@ -664,6 +664,23 @@ void run_eval() {
       continue;
     }
     line = line_raw;
+
+    bool run = eval_command(line);
+
+#if defined(USE_LINENOISE)
+    linenoiseHistoryAdd(line);
+    linenoiseHistorySave(HISTORY_FILE);
+#elif defined(USE_READLINE)
+    add_history(line);
+#endif
+#ifndef RAW_LINE
+    free(line_raw);
+#endif
+    if(!run) break;
+  }
+}
+
+bool eval_command(char *line) {
     while(*line == ' ') ++line;
     if(strcmp(line, ":m") == 0) {
       measure_display();
@@ -674,16 +691,15 @@ void run_eval() {
       if(line[3])
         load_source(&line[3]);
     } else if(strcmp(line, ":q") == 0) {
-#ifndef RAW_LINE
-      free(line_raw);
-#endif
-      break;
+      return false;
+#ifndef EMSCRIPTEN
     } else if(strncmp(line, ":t ", 3) == 0) {
       cells_init();
       line += 3;
       while(*line == ' ') ++line;
       char *name = line;
       test_run(name, test_log);
+#endif
     } else if(strncmp(line, ":C ", 3) == 0) {
 #ifdef USE_LLVM
       cells_init();
@@ -712,22 +728,13 @@ void run_eval() {
         printf("%d -> %d\n", in, out);
       }
     } else {
-#if defined(USE_LINENOISE)
-      linenoiseHistoryAdd(line);
-      linenoiseHistorySave(HISTORY_FILE);
-#elif defined(USE_READLINE)
-      add_history(line);
-#endif
       cells_init();
       measure_start();
       eval(line, strlen(line));
       measure_stop();
       check_free();
     }
-#ifndef RAW_LINE
-    free(line_raw);
-#endif
-  }
+    return true;
 }
 
 bool is_num(char const *str) {
