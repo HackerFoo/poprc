@@ -123,10 +123,10 @@ print-%:
 eval: $(OBJS)
 	$(CC) $(OBJS) $(LDFLAGS) $(LIBS) -o $@
 
-eval.js: EMCC_OBJS := $(patsubst %.c, build/emcc/$(BUILD)/%.o, $(SRC))
-eval.js:
+js/eval.js: EMCC_OBJS := $(patsubst %.c, build/emcc/$(BUILD)/%.o, $(SRC))
+js/eval.js:
 	make CC=emcc $(EMCC_OBJS)
-	emcc $(EMCC_OBJS) -o eval.js -s EXPORTED_FUNCTIONS="['_eval_command', '_cells_init']"
+	emcc $(EMCC_OBJS) -o js/eval.js -s EXPORTED_FUNCTIONS="['_eval_command', '_cells_init']"
 
 # pull in dependency info for *existing* .o files
 -include $(OBJS:.o=.d)
@@ -215,7 +215,7 @@ profile:
 # remove compilation products
 .PHONY: clean
 clean:
-	rm -f eval eval.js
+	rm -f eval js/eval.js
 	rm -rf build gen diagrams
 	rm -f make-eval.log compile_commands.json
 	rm -f $(DIAGRAMS_FILE)
