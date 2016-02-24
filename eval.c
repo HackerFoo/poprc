@@ -665,14 +665,15 @@ void run_eval() {
     }
     line = line_raw;
 
-    bool run = eval_command(line);
-
 #if defined(USE_LINENOISE)
     linenoiseHistoryAdd(line);
     linenoiseHistorySave(HISTORY_FILE);
 #elif defined(USE_READLINE)
     add_history(line);
 #endif
+
+    bool run = eval_command(line);
+
 #ifndef RAW_LINE
     free(line_raw);
 #endif
