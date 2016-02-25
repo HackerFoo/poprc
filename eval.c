@@ -920,10 +920,6 @@ cell_t *_build(char *str, char **p) {
   return r;
 }
 
-void print_arg(cell_t *c, val_t i) {
-  printf("?_%ld <- arg(%d)\n", (long int)(c - cells), (int)i);
-}
-
 void reduce_root(cell_t *c) {
   if(write_graph) make_graph_all(GRAPH_FILE);
   reduce_list(c);
@@ -932,18 +928,17 @@ void reduce_root(cell_t *c) {
 
 void eval(char *str, unsigned int n) {
   cell_t *c = build(str, n);
-  set_trace(print_trace);
-  fill_args(c, print_arg);
   reduce_root(c);
   if(!c) return;
-  if(!closure_is_ready(c))
+  csize_t s = list_size(c);
+  if(s > 0 && !closure_is_ready(c->ptr[s-1])) {
     printf("incomplete expression\n");
-  else {
+  } else {
     c = remove_row(c);
     show_list(c);
-    drop(c);
     printf("\n");
   }
+  drop(c);
 }
 
 bool get_arity(char *str, unsigned int n, csize_t *in, csize_t *out) {
@@ -1106,76 +1101,4 @@ char *show_type_all_short(type_t t) {
   *p++ = type_char(t);
   *p = 0;
   return buf;
-}
-
-void print_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
-  switch(tt) {
-  case tt_reduction:
-    if(is_reduced(c) || !is_var(r)) break;
-    /*
-    if(c->func == func_pushl ||
-       c->func == func_pushr ||
-       c->func == func_popr  ||
-       c->func == func_compose) break;
-    */
-    if(is_list(r)) break;
-    if(is_dep(c)) {
-      printf("?%c%ld <- type\n", type_char(r->type), (long int)(c - cells));
-    } else {
-      csize_t i, n = closure_args(c), in = closure_in(c), out = closure_out(c);
-      for(i = 0; i < in; ++i) trace(c->arg[i], c, tt_force, i); // ***
-      if(!is_placeholder(c)) printf("?%c%ld ", type_char(r->type), (long int)(c - cells));
-      for(i = 0; i < out; ++i) {
-        cell_t *a = c->arg[n - i - 1];
-        if(a) printf("?%ld ", (long int)(a - cells));
-        else printf("__ ");
-      }
-      printf("<- ");
-      for(i = 0; i < in; ++i) {
-        if(is_cell(c->arg[i])) printf("?%ld ", (long int)(c->arg[i] - cells));
-        else printf("?_ ");
-      }
-      if(is_placeholder(c)) {
-        printf("f[?%ld]\n", (long int)(c - cells));
-      } else {
-        printf("%s\n", function_name(c->func));
-      }
-    }
-    r->type |= T_TRACED;
-    break;
-  case tt_touched:
-    if(!is_var(c)) break;
-  case tt_force:
-    if(!is_reduced(c)) break;
-    if(c->type & T_TRACED) break;
-    //if(is_any(c)) break;
-    if(is_list(c) && is_placeholder(c->ptr[0])) {
-      printf("?f%ld <- ?l%ld head\n", (long int)(c->ptr[0] - cells), (long int)(c - cells));
-    } else {
-      printf("?%c%ld <-", type_char(c->type), (long int)(c - cells));
-      if(is_var(c)) printf(" type");
-      else show_one(c);
-      printf("\n");
-    }
-    c->type |= T_TRACED;
-    break;
-  case tt_select:
-    printf("?%c%ld <- ?%ld ?%ld select\n",
-           type_char(c->type),
-           (long int)(c - cells),
-           (long int)(c - cells),
-           (long int)(r - cells));
-    break;
-  case tt_copy:
-    printf("?f%ld <- ?%ld\n", (long int)(c - cells), (long int)(r - cells));
-    break;
-  case tt_compose_placeholders:
-    printf("?f%ld <- ?%ld ?%ld compose_placeholders\n",
-           (long int)(c - cells),
-           (long int)(((cell_t **)r)[0] - cells),
-           (long int)(((cell_t **)r)[1] - cells));
-    break;
-  case tt_placeholder_dep:
-    break;
-  }
 }
