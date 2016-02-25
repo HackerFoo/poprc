@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <inttypes.h>
 
 #include "gen/support.h"
 
@@ -52,9 +53,9 @@ void print_pairs(pair_t *array, size_t len) {
   if(!len) {
     printf("{}\n");
   } else {
-    printf("{{%ld, %ld}", (long int)array[0].first, (long int)array[0].second);
+    printf("{{%" PRIuPTR ", %" PRIuPTR "}", array[0].first, array[0].second);
     for(unsigned int i = 1; i < len; i++) {
-      printf(", {%ld, %ld}", (long int)array[i].first, (long int)array[i].second);
+      printf(", {%" PRIuPTR ", %" PRIuPTR "}", array[i].first, array[i].second);
     }
     printf("}\n");
   }

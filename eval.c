@@ -24,6 +24,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <inttypes.h>
 
 #if defined(USE_READLINE)
 #include <readline/readline.h>
@@ -44,6 +45,9 @@
 #ifdef USE_LLVM
 #include "llvm.h"
 #endif
+
+// for when index declaration is missing for some reason e.g. clang on Android
+char *index(const char *s, int c);
 
 word_entry_t user_word_table[64] = {{"", NULL, 0, 0, NULL}};
 unsigned int const user_word_table_length = LENGTH(user_word_table);
@@ -166,7 +170,7 @@ void make_graph_all(char const *path) {
 void graph_cell(FILE *f, cell_t const *c) {
   c = clear_ptr(c);
   if(!is_closure(c) || !is_cell(c)) return;
-  long unsigned int node = c - cells;
+  size_t node = c - cells;
   int border = check_bit(marked, node) ? 4 : 0;
   clear_bit(marked, node);
   if(check_bit(visited, node)) return;
@@ -177,38 +181,38 @@ void graph_cell(FILE *f, cell_t const *c) {
   for(csize_t i = 0; i < s; ++i) set_bit(visited, node+i);
 
   /* print node attributes */
-  fprintf(f, "node%ld [\nlabel =<", node);
-  fprintf(f, "<table border=\"%d\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%ld) %s%s %x ",
+  fprintf(f, "node%" PRIuPTR " [\nlabel =<", node);
+  fprintf(f, "<table border=\"%d\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%" PRIuPTR ") %s%s %x ",
           border,
           node,
           function_name(c->func),
           closure_is_ready(c) ? "" : "*",
           (int)c->size);
   if(!is_reduced(c)) {
-    fprintf(f, "%x (%d)</b></font></td></tr>", (int)c->out, (int)c->n);
+    fprintf(f, "%x (%u)</b></font></td></tr>", (unsigned int)c->out, (unsigned int)c->n);
   } else {
-    fprintf(f, "%s (%d)</b></font></td></tr>", show_type_all_short(c->type), (int)c->n);
+    fprintf(f, "%s (%u)</b></font></td></tr>", show_type_all_short(c->type), (unsigned int)c->n);
   }
   fprintf(f, "<tr><td port=\"alt\">alt: <font color=\"lightgray\">%p</font></td></tr>",
-             c->alt);
+          (void *)c->alt);
   if(is_reduced(c)) {
     fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
             show_alt_set(c->alt_set));
     if(is_list(c)) {
-      int n = list_size(c);
+      csize_t n = list_size(c);
       while(n--)
-        fprintf(f, "<tr><td port=\"ptr%d\">ptr: <font color=\"lightgray\">%p</font></td></tr>",
-                n, c->ptr[n]);
+        fprintf(f, "<tr><td port=\"ptr%u\">ptr: <font color=\"lightgray\">%p</font></td></tr>",
+                (unsigned int)n, (void *)c->ptr[n]);
     } else if(is_fail(c)) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
     } else {
       int n = val_size(c);
       while(n--)
-        fprintf(f, "<tr><td bgcolor=\"yellow\">val: %ld</td></tr>", (long int)c->val[n]);
+        fprintf(f, "<tr><td bgcolor=\"yellow\">val: %" PRIdPTR "</td></tr>", c->val[n]);
     }
   } else {
     for(csize_t i = 0; i < n; i++) {
-      fprintf(f, "<tr><td port=\"arg%d\"><font color=\"lightgray\">%p</font></td></tr>", i, c->arg[i]);
+      fprintf(f, "<tr><td port=\"arg%u\"><font color=\"lightgray\">%p</font></td></tr>", (unsigned int)i, (void *)c->arg[i]);
     }
     if(c->func == func_id) {
       fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
@@ -220,17 +224,17 @@ void graph_cell(FILE *f, cell_t const *c) {
   /* print edges */
   if(is_cell(c->alt)) {
     cell_t *alt = clear_ptr(c->alt);
-    fprintf(f, "node%ld:alt -> node%ld:top;\n",
-            node, (long int)(alt - cells));
+    fprintf(f, "node%" PRIuPTR ":alt -> node%" PRIuPTR ":top;\n",
+            node, alt - cells);
     graph_cell(f, c->alt);
   }
   if(is_reduced(c)) {
     if(is_list(c)) {
-      int n = list_size(c);
+      csize_t n = list_size(c);
       while(n--) {
         if(is_cell(c->ptr[n])) {
-          fprintf(f, "node%ld:ptr%d -> node%ld:top;\n",
-                  node, n, (long int)(c->ptr[n] - cells));
+          fprintf(f, "node%" PRIuPTR ":ptr%u -> node%" PRIuPTR ":top;\n",
+                  node, (unsigned int)n, c->ptr[n] - cells);
           graph_cell(f, c->ptr[n]);
         }
       }
@@ -239,8 +243,8 @@ void graph_cell(FILE *f, cell_t const *c) {
     for(csize_t i = 0; i < n; i++) {
       cell_t *arg = clear_ptr(c->arg[i]);
       if(is_cell(arg)) {
-        fprintf(f, "node%ld:arg%d -> node%ld:top%s;\n",
-                (long int)(c - cells), i, (long int)(arg - cells), is_weak(c, arg) ? " [color=lightgray]" : "");
+        fprintf(f, "node%" PRIuPTR ":arg%d -> node%" PRIuPTR ":top%s;\n",
+                c - cells, (unsigned int)i, arg - cells, is_weak(c, arg) ? " [color=lightgray]" : "");
         graph_cell(f, arg);
       }
     }
@@ -252,10 +256,10 @@ void show_int(cell_t const *c) {
   int n = val_size(c);
   switch(n) {
   case 0: printf(" ()"); break;
-  case 1: printf(" %d", (int)c->val[0]); break;
+  case 1: printf(" %" PRIdPTR, c->val[0]); break;
   default:
     printf(" (");
-    while(n--) printf(" %d", (int)c->val[n]);
+    while(n--) printf(" %" PRIdPTR, c->val[n]);
     printf(" )");
     break;
   }
@@ -397,7 +401,7 @@ void show_func(cell_t const *c) {
   int n = closure_args(c), i;
   char const *s = function_token(c->func);
   if(!s) return;
-  if(is_placeholder(c)) printf(" ?%ld =", (long int)(c - cells));
+  if(is_placeholder(c)) printf(" ?%" PRIuPTR " =", c - cells);
   for(i = 0; i < n; ++i) {
     cell_t *arg = c->arg[i];
     if(is_closure(arg)) {
@@ -410,10 +414,9 @@ void show_func(cell_t const *c) {
 void show_var(cell_t const *c) {
   assert(is_var(c));
   if(is_list(c)) {
-    //printf(" ?l%ld =", c-cells);
     show_list(c);
   } else {
-    printf(" ?%c%ld", type_char(c->type), (long int)(c - cells));
+    printf(" ?%c%" PRIuPTR, type_char(c->type), c - cells);
   }
 }
 

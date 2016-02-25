@@ -8,6 +8,7 @@
 #include "gen/support.h"
 #include "gen/map.h"
 #include <stdlib.h>
+#include <inttypes.h>
 
 #if INTERFACE
 typedef pair_t * map_t;
@@ -91,11 +92,11 @@ void merge(pair_t *arr, pair_t *b, size_t n) {
 #if(DEBUG)
     printf("\n");
     print_pairs(arr, a-arr);
-    printf("a[%ld]: ", a-arr);
+    printf("a[%" PRIuPTR "]: ", a-arr);
     print_pairs(a, q-a);
-    printf("q[%ld, %ld]: ", q-arr, h-q);
+    printf("q[%" PRIuPTR ", %" PRIuPTR "]: ", q-arr, h-q);
     print_pairs(q, b-q);
-    printf("b[%ld]: ", b-arr);
+    printf("b[%" PRIuPTR "]: ", b-arr);
     print_pairs(b, n-(b-arr));
 #endif
     // non-empty queue
@@ -266,7 +267,7 @@ pair_t *map_find_value(map_t map, uintptr_t value) {
 void _print_map(char *name, map_t map) {
   size_t size = map_size(map);
   size_t cnt = *map_cnt(map);
-  printf("%s[%ld] = ", name ? name : "map", (long)size);
+  printf("%s[%" PRIuPTR "] = ", name ? name : "map", size);
   print_pairs(map_elems(map), cnt);
 }
 
@@ -274,9 +275,9 @@ void _print_map(char *name, map_t map) {
 
 pair_t *_find_test(map_t map, char *name, uintptr_t key) {
   pair_t *p = map_find(map, key);
-  printf("map_find(%s, %d) = ", name, (int)key);
+  printf("map_find(%s, %" PRIuPTR ") = ", name, key);
   if(p) {
-    printf("{%d, %d}\n", (int)p->first, (int)p->second);
+    printf("{%" PRIuPTR ", %" PRIuPTR "}\n", p->first, p->second);
   } else {
     printf("NULL\n");
   }
@@ -312,10 +313,10 @@ static TEST(test_map);
 static bool expect(map_t map, uintptr_t key, uintptr_t x) {
   pair_t *p = map_find(map, key);
   if(!p) {
-    printf("expect(%ld, %ld): missing\n", key, x);
+    printf("expect(%" PRIuPTR ", %" PRIuPTR "): missing\n", key, x);
     return false;
   } else if(p->second != x) {
-    printf("expect(%ld, %ld): %ld\n", key, x, p->second);
+    printf("expect(%" PRIuPTR ", %" PRIuPTR "): %" PRIuPTR "\n", key, x, p->second);
     return false;
   }
   return true;

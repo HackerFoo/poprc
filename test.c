@@ -18,6 +18,7 @@
 #include "rt_types.h"
 #include <stdio.h>
 #include <string.h>
+#include <inttypes.h>
 
 #ifdef __MACH__
 #include <mach-o/getsect.h>
@@ -68,13 +69,13 @@ bool check_free() {
   bool leak = false;
   FOREACH(i, cells) {
     if(is_closure(&cells[i])) {
-      printf("LEAK: %d (%ld)\n", (unsigned int)i, (long int)cells[i].n);
+      printf("LEAK: %" PRIuPTR " (%u)\n", i, (unsigned int)cells[i].n);
       leak = true;
     }
   }
   FOREACH(i, alt_live) {
     if(alt_live[i]) {
-      printf("ALT LEAK: %d (%ld)\n", (unsigned int)i, (long int)alt_live[i]);
+      printf("ALT LEAK: %" PRIuPTR " (%" PRIuPTR ")\n", i, alt_live[i]);
       leak = true;
     }
   }

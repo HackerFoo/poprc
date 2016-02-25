@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <inttypes.h>
 
 #include "gen/rt.h"
 #include "gen/eval.h"
@@ -189,18 +190,18 @@ void print_trace_cells() {
       } else if(is_list(c)) {
         printf(" [");
         COUNTDOWN(i, list_size(c)) {
-          printf(" %ld", (long int)trace_decode(c->ptr[i]));
+          printf(" %" PRIuPTR, trace_decode(c->ptr[i]));
         }
         printf(" ]");
       } else {
-        printf(" val %ld", (long int)c->val[0]);
+        printf(" val %" PRIdPTR, c->val[0]);
       }
       printf(", type = %s", show_type_all_short(c->type));
     } else {
       printf(" %s", function_name(c->func));
 
       traverse(c, {
-          printf(" %ld", (long int)trace_decode(*p));
+          printf(" %" PRIuPTR, trace_decode(*p));
         }, ARGS | PTRS);
     }
 
