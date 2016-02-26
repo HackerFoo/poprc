@@ -18,7 +18,7 @@ Compile to direct C when possible
 ** CANCELED need a separate arity pass for placeholders?
 * bugs
 ** TODO :c f1 [] [] ifte pushl
-** TODO cut memory leak
+** DONE cut memory leak
 1 2 | cut
 ** DONE :c c1 [ 1 ] swap . popr swap drop
 ** DONE :c f1 swap !

@@ -555,16 +555,16 @@ void trace_expand_select(cell_t *c, cell_t *x, type_t t) {
 
 bool func_cut(cell_t **cp, type_t t) {
   cell_t *c = *cp;
-  alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 0, &alt_set, t)) goto fail;
-  clear_flags(c);
+  if(!reduce(&c->arg[0], t)) goto fail;
   cell_t *p = c->arg[0];
-  bool v = is_var(p);
-  cell_t *alt = p->alt;
-  p->alt = 0;
-  store_reduced(cp, ref(p));
-  if(v) trace_expand_select(c, alt, t);
-  drop(alt);
+  if(is_var(p)) {
+    cell_t *alt = ref(p->alt);
+    store_reduced(cp, mod_alt(ref(p), 0, p->alt_set));
+    trace_expand_select(*cp, alt, t);
+    drop(alt);
+  } else {
+    store_reduced(cp, mod_alt(ref(p), 0, p->alt_set));
+  }
   return true;
 
  fail:
