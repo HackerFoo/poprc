@@ -1,23 +1,21 @@
+-include config.mk
+
 # defaults
-ifndef $(BUILD)
-	BUILD=debug
+BUILD ?= debug
+
+ifeq ($(BUILD),release)
+	USE_LINENOISE ?= y
+	USE_READLINE ?= n
+else
+	USE_LINENOISE ?= n
+	USE_READLINE ?= n
 endif
 
-ifndef $(USE_LINENOISE)
-	ifeq ($(BUILD),release)
-		USE_LINENOISE=y
-	else
-		USE_LINENOISE=n
-	endif
+ifeq ($(USE_LINENOISE),y)
+	USE_READLINE = n
 endif
 
-ifndef $(USE_READLINE)
-	USE_READLINE=n
-endif
-
-ifndef $(USE_LLVM)
-	USE_LLVM=n
-endif
+USE_LLVM ?= n
 
 OS := $(shell uname)
 
