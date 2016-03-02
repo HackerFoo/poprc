@@ -276,6 +276,11 @@ uintptr_t bc_apply_list(cell_t *c) {
 }
 
 void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
+  if(write_graph) {
+    mark_cell(c);
+    make_graph_all(0);
+  }
+
   switch(tt) {
 
   case tt_reduction: {
