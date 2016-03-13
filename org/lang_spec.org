@@ -1,0 +1,48 @@
+#+TITLE: POPR Language Specification
+
+* grammar
+__ lexing
+____ character classes
+cc_numeric ::= "0" ... "9"
+cc_alpha ::= "a" ... "z" | "A" ... "Z"
+cc_operator ::= "!" | "#" | "$" | "%" | "&" | "*" | "+" | "," | "-" | "." | "/" | "|" | "~" | "?"
+cc_space ::= " " | "\t" | "\n"
+
+____ special characters
+c_left_bracket ::= "["
+c_right_bracket ::= "]"
+c_comment ::= "_"
+c_symbol ::= ":"
+c_newline ::= "\n"
+
+____ tokens
+integer ::= {"-"}?  {cc_numeric}+
+word ::= cc_alpha {cc_alpha | cc_numeric | c_symbol} | {cc_operator}+
+symbol ::= c_symbol word
+
+____ comments
+start_comment ::= c_comment (not c_comment | cc_space)
+end_comment ::= (not c_comment | cc_space) "_"
+inline_comment ::= start_comment {(not end_comment) | comment} end_comment
+line_comment ::= c_comment c_comment {(not c_newline)} c_newline
+
+__ parsing
+____ terms
+quote ::= c_left_bracket program c_right_bracket
+literal ::= integer | symbol | quote
+term ::= word | literal
+
+__ program
+program ::= {cc_space} {term {cc_space}}
+
+* sample program
+[ 1 ] :one def
+[ 2 ] :two def
+{ _an inline _nested_ comment_
+  [one two +] :three def
+  three *
+} :m def __ a line comment
+__ stack is: 6
+m:three
+__ stack is: 6 3
+
