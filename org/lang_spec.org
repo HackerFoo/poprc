@@ -1,6 +1,8 @@
 #+TITLE: POPR Language Specification
 
-* grammar
+* Syntax
+** Grammar
+#+BEGIN_EXAMPLE
 __ lexing
 ____ character classes
 cc_numeric ::= "0" ... "9"
@@ -34,10 +36,11 @@ term ::= word | literal
 
 __ program
 program ::= {cc_space} {term {cc_space}}
-
-* sample program
-[ 1 ] :one def
-[ 2 ] :two def
+#+END_EXAMPLE
+** Sample Program
+#+BEGIN_EXAMPLE
+[1] :one def
+[2] :two def
 { _an inline _nested_ comment_
   [one two +] :three def
   three *
@@ -45,4 +48,21 @@ program ::= {cc_space} {term {cc_space}}
 __ stack is: 6
 m:three
 __ stack is: 6 3
-
+#+END_EXAMPLE
+* Semantics
+** Alternatives and Assertions
+#+BEGIN_EXAMPLE
+1 2 | 3 +         __  [ { 4 | 5 } ]
+2 5 | dup 2 - !   __  [ 5 ]
+#+END_EXAMPLE
+An expression can be asserted true by using an assertion. If it does not, it will fail.
+Alternatives can be given in an expression, such that the result is all the alternatives that succeed (do not fail.)
+Alternatives and Assertions form both POPR's branching facility (at runtime) and it's type system (at compile time.)
+- ~a | b~ is two alternatives ~a~ and ~b~
+- ~a b !~ will be ~a~ if ~b~ is non-zero, and fail otherwise.
+** Quotes
+#+BEGIN_EXAMPLE
+[ 1 2 + 3 4 + ] popr   -->   [ [ 1 2 + ] 7 ]
+1 [ 2 + ] pushl        -->   [ [ 1 2 + ] ]
+1 [ 2 + ] pushl popr   -->   [ [] 3 ]
+#+END_EXAMPLE
