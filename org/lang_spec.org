@@ -62,7 +62,7 @@ Alternatives and Assertions form both POPR's branching facility (at runtime) and
 - ~a b !~ will be ~a~ if ~b~ is non-zero, and fail otherwise.
 ** Quotes
 #+BEGIN_EXAMPLE
-[ 1 2 + 3 4 + ] popr   -->   [ [ 1 2 + ] 7 ]
-1 [ 2 + ] pushl        -->   [ [ 1 2 + ] ]
-1 [ 2 + ] pushl popr   -->   [ [] 3 ]
+[ 1 2 + 3 4 + ] popr   __   [ [ 1 2 + ] 7 ]
+1 [ 2 + ] pushl        __   [ [ 1 2 + ] ]
+1 [ 2 + ] pushl popr   __   [ [] 3 ]
 #+END_EXAMPLE
