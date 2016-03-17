@@ -102,7 +102,8 @@ typedef enum char_class_t {
   CC_ALPHA,
   CC_SYMBOL,
   CC_BRACKET,
-  CC_VAR
+  CC_VAR,
+  CC_COMMENT
 } char_class_t;
 
 #define sizeof_field(s, f) sizeof(((s *)0)->f)
@@ -206,5 +207,11 @@ struct __test_entry {
 // Maximum number of alts
 #define AS_SIZE (sizeof(alt_set_t) * 4)
 #define ALT_SET_IDS AS_SIZE
+
+// string segment
+typedef struct seg_t {
+  char *s;
+  size_t n;
+} seg_t;
 
 #endif

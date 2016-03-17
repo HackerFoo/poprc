@@ -118,7 +118,7 @@ bool func_op2(cell_t **cp, type_t t, val_t (*op)(val_t, val_t)) {
      !reduce_arg(c, 1, &alt_set, t)) goto fail;
   clear_flags(c);
   cell_t *p = c->arg[0], *q = c->arg[1];
-  res = is_var(p) || is_var(q) ? var(t) : _op2(op, p, q);
+  res = is_var(p) || is_var(q) ? var(t) : _op2(op, q, p);
   res->type |= t;
   res->alt = c->alt;
   res->alt_set = alt_set_ref(alt_set);

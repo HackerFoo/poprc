@@ -552,6 +552,7 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
 
 #ifdef USE_LINENOISE
 static void completion(char const *buf, linenoiseCompletions *lc) {
+  /* FIXME
   unsigned int n = strlen(buf);
   char comp[n+sizeof_field(word_entry_t, name)];
   char *insert = comp + n;
@@ -561,7 +562,7 @@ static void completion(char const *buf, linenoiseCompletions *lc) {
   if(!tok) return;
   word_entry_t *e = lookup_word(tok);
   if(e) {
-    /* add completions */
+    // add completions
     do {
       if(strnlen(e->name, sizeof_field(word_entry_t, name)) >
          tok_len) {
@@ -572,6 +573,7 @@ static void completion(char const *buf, linenoiseCompletions *lc) {
       e++;
     } while(strncmp(e->name, tok, tok_len) == 0);
   }
+  */
 }
 #endif
 
@@ -580,7 +582,7 @@ static char **completion(char *buf, UNUSED int start, UNUSED int end)
 {
     unsigned int current_match = 1;
     char **matches = NULL;
-
+/* FIXME
     unsigned int n = strlen(buf);
     char *comp = malloc(n + sizeof_field(word_entry_t, name) + 1);
     memcpy(comp, buf, n);
@@ -598,7 +600,7 @@ static char **completion(char *buf, UNUSED int start, UNUSED int end)
             memcpy(copy, tok, tok_len+1);
             matches[0] = copy;
 
-            /* add completions */
+            // add completions
             do {
                 unsigned int entry_len = strnlen(e->name, sizeof_field(word_entry_t, name));
                 if(entry_len > tok_len) {
@@ -612,7 +614,7 @@ static char **completion(char *buf, UNUSED int start, UNUSED int end)
                 e++;
             } while(strncmp(e->name, tok, tok_len) == 0 && current_match < 16);
 
-            /* if there is just one match, make it the substitute */
+            // if there is just one match, make it the substitute
             if(current_match == 2) {
                 strncpy(matches[0], matches[1], sizeof_field(word_entry_t, name));
             }
@@ -620,6 +622,7 @@ static char **completion(char *buf, UNUSED int start, UNUSED int end)
     }
 
     free(comp);
+*/
     return matches;
 }
 
@@ -746,7 +749,7 @@ bool is_num(char const *str) {
     (str[0] == '-' && char_class(str[1]) == CC_NUMERIC);
 }
 
-word_entry_t *lookup_word(char const *w) {
+word_entry_t *lookup_word(seg_t w) {
   word_entry_t *res =
     lookup(word_table,
            WIDTH(word_table),
@@ -765,33 +768,32 @@ cell_t *word(char const *w) {
   return word_parse(w, &in, &out);
 }
 */
-cell_t *word_parse(char const *w,
+cell_t *word_parse(seg_t w,
                    csize_t *in,
                    csize_t *out,
                    cell_t **data) {
   cell_t *c;
   *data = NULL;
-  if(is_num(w)) {
-    c = val(atoi(w));
+  if(is_num(w.s)) {
+    c = val(atoi(w.s));
     *in = 0;
     *out = 1;
-  } else if(w[0] == '?') {
+  } else if(w.s[0] == '?') {
     c = var(T_ANY);
     *in = 0;
     *out = 1;
-  } else if(w[0] == 'a' && w[1] == 'p' &&
-            char_class(w[2]) == CC_NUMERIC &&
-            char_class(w[3]) == CC_NUMERIC &&
-            w[4] == 0) {
-    *in = w[2] - '0' + 1;
-    *out = w[3] - '0' + 1;
+  } else if(w.n == 4 &&
+            w.s[0] == 'a' && w.s[1] == 'p' &&
+            char_class(w.s[2]) == CC_NUMERIC &&
+            char_class(w.s[3]) == CC_NUMERIC) {
+    *in = w.s[2] - '0' + 1;
+    *out = w.s[3] - '0' + 1;
     c = func(func_ap, *in, *out);
   } else {
     word_entry_t *e = lookup_word(w);
     /* disallow partial matches */
     if(!e ||
-       strnlen(w, sizeof_field(word_entry_t, name)) !=
-       strnlen(e->name, sizeof_field(word_entry_t, name))) {
+       w.n != strnlen(e->name, sizeof_field(word_entry_t, name))) {
       // trace the name ***
       c = func(func_placeholder, 0, 1);
       *in = 0;
@@ -819,84 +821,184 @@ char_class_t char_class(char c) {
      (c >= 'A' && c <= 'Z'))
     return CC_ALPHA;
   if(c == '?') return CC_VAR;
+  if(c == '_') return CC_COMMENT;
   if(index("[](){}", c))
     return CC_BRACKET;
   return CC_SYMBOL;
 }
 
-char *rtok(char *str, char *ptr) {
-  if(ptr <= str) return NULL;
+// starts at comment
+char *skip_comment(char *s) {
+  int level = 0;
+  char_class_t before = CC_NONE;
+  char *ptr = s;
 
-  ptr--;
-
-  /* remove trailing spaces */
-  while(char_class(*ptr) == CC_NONE) {
-    if(ptr > str) ptr--;
-    else return NULL;
-  }
-
-  *(ptr+1) = '\0';
-
-  /* move to start of token */
-  char_class_t class = char_class(*ptr);
-
-  /* allow adjacent brackets to be seperately tokenized */
-  if(class == CC_BRACKET ||
-     class == CC_VAR) return ptr;
-
-  do {
-    if(ptr > str) ptr--;
-    else return ptr;
-    if(class == CC_NUMERIC) {
-      if(char_class(*ptr) == CC_ALPHA) class = CC_ALPHA;
-      //if(*ptr == '?') class = CC_VAR;
+  for(;;) {
+    // move cursor past comment character, and record character class after it
+    ptr++;
+    char_class_t after;
+    unsigned int length = 1;
+    while((after = char_class(*ptr)) == CC_COMMENT) {
+      length++;
+      ptr++;
     }
-  } while(char_class(*ptr) == class);
 
-  /* handle negative numbers */
-  if(!(class == CC_NUMERIC &&
-       *ptr == '-')) ptr++;
+    if(before == CC_NONE) {
+      if(after != CC_NONE) {
+        level++;
+      } else if(level == 0) {
+        if(length > 1) {
+          // line comment
+          while(*ptr && *ptr != '\n') ptr++;
+          return ptr;
+        } else {
+          // just a lone comment char
+          return s;
+        }
+      }
+    } else if(after == CC_NONE) {
+      level--;
+      if(!*ptr || level <= 0) return ptr;
+    }
 
-  return ptr;
+    // move cursor to next comment character, tracking character class before it
+    ptr++;
+    char_class_t cur = after;
+    do {
+      before = cur;
+      ptr++;
+      if(!*ptr) return ptr;
+      cur = char_class(*ptr);
+    } while(cur != CC_COMMENT);
+  }
 }
 
-cell_t *parse_vector(char *str, char **p) {
-  char *tok = *p;
-  cell_t *c = vector(0);
-  while((tok = rtok(str, tok)) &&
-        strcmp("(", tok) != 0) {
-    assert(is_num(tok));
-    c = pushl_val(atoi(tok), c);
+void mark_comments(char c, char *str) {
+  char *ptr = str;
+  while(*ptr) {
+    char_class_t cc = char_class(*ptr);
+    switch(cc) {
+    case CC_NONE:
+      ptr++;
+      break;
+    case CC_COMMENT: {
+      char *start = ptr;
+      ptr = skip_comment(ptr);
+      if(ptr == start) {
+        ptr++;
+      } else {
+        memset(start, c, ptr - start);
+      }
+      break;
+    }
+    default:
+      while(char_class(*++ptr) != CC_NONE);
+    }
   }
-  *p = tok;
+}
+
+int test_comments(UNUSED char *name) {
+  char str[] =
+    "[1] :one def\n"
+    "[2] :t_w_o def\n"
+    "{ _an inline _n_e_s_t_ed_ comment_\n"
+    "  [one t_w_o +] :three def\n"
+    "  three *\n"
+    "} :m def __ a line comment\n"
+    "__ stack is: 6\n"
+    "m:three\n"
+    "__ stack is: 6 3\n";
+  mark_comments('#', str);
+  printf("%s", str);
+  return 0;
+}
+static TEST(test_comments);
+
+char *seg_end(seg_t seg) {
+  return seg.s ? seg.s + seg.n : NULL;
+}
+
+seg_t tok(char *s) {
+  seg_t seg = {NULL, 0};
+  char_class_t cc = char_class(*s);
+
+  /* skip spaces & comments */
+  while(cc == CC_NONE || cc == CC_COMMENT) {
+    if(!*s) {
+      return seg;
+    } else if(cc == CC_COMMENT) {
+      char *n = skip_comment(s);
+      if(s == n) break;
+      s = n;
+    } else {
+      s++;
+    }
+    cc = char_class(*s);
+  }
+
+  /* at start of token */
+  seg.s = s;
+
+  /* allow adjacent brackets to be separately tokenized */
+  if(cc == CC_BRACKET ||
+     cc == CC_COMMENT) {
+    seg.n = 1;
+    return seg;
+  }
+
+  while(*++s) {
+    char_class_t ncc = char_class(*s);
+    if(cc == ncc) continue;
+
+    // exceptions
+    switch(ncc) {
+    case CC_NUMERIC: // negative numbers
+      if(s[-1] == '-') {
+        cc = ncc;
+        continue;
+      } else break;
+    case CC_COMMENT: // comment char inside token
+      if(cc == CC_ALPHA ||
+         cc == CC_SYMBOL) {
+        continue;
+      } else break;
+    default:
+      break;
+    }
+    break;
+  }
+  seg.n = s - seg.s;
+  return seg;
+}
+
+cell_t *parse_vector(char **s) {
+  seg_t t;
+  cell_t *c = vector(0);
+  while((t = tok(*s), t.s) &&
+        *t.s != ')') {
+    assert(is_num(t.s));
+    c = pushl_val(atoi(t.s), c);
+    *s = seg_end(t);
+  }
+  *s = seg_end(t);
   return c;
 }
 
-bool parse_word(char *str, char **p, cell_t **r) {
+bool parse_word(char **s, cell_t **r) {
   csize_t in = 0, out = 1;
   cell_t *data = NULL;
-  char *tok = *p = rtok(str, *p);
-  if(!tok || strcmp(tok, "[") == 0) return false;
-  cell_t *c = strcmp(tok, "]") == 0 ? _build(str, p) :
-    strcmp(tok, ")") == 0 ? parse_vector(str, p) :
-    word_parse(tok, &in, &out, &data);
+  seg_t t = tok(*s);
+  *s = seg_end(t);
+  if(!t.s || *t.s == ']') return false;
+  cell_t *c =
+    *t.s == '[' ? _build(s) :
+    *t.s == '(' ? parse_vector(s) :
+    word_parse(t, &in, &out, &data);
   if(c) {
     *r = compose_expand(c, out, *r);
     if(data) arg(&c, data); // arg will not return a new pointer
   }
   return true;
-}
-
-cell_t *build(char *str, unsigned int n) {
-  char *p = str;
-  while(*p != '\0' && n--) {
-    if(*p == '\n') {
-      *p = '\0';
-      break;
-    }
-    p++;
-  }
-  return _build(str, &p);
 }
 
 void argf_noop(UNUSED cell_t *c, UNUSED val_t i) {}
@@ -917,9 +1019,13 @@ val_t fill_args(cell_t *r, void (*argf)(cell_t *, val_t)) {
   return i;
 }
 
-cell_t *_build(char *str, char **p) {
+cell_t *build(char *s) {
+  return _build(&s);
+}
+
+cell_t *_build(char **s) {
   cell_t *r = empty_list();
-  while((parse_word(str, p, &r)));
+  while((parse_word(s, &r)));
   return r;
 }
 
@@ -930,7 +1036,7 @@ void reduce_root(cell_t *c) {
 }
 
 void eval(char *str, unsigned int n) {
-  cell_t *c = build(str, n);
+  cell_t *c = build(str);
   reduce_root(c);
   if(!c) return;
   csize_t s = list_size(c);
@@ -946,7 +1052,7 @@ void eval(char *str, unsigned int n) {
 
 bool get_arity(char *str, unsigned int n, csize_t *in, csize_t *out) {
   set_trace(NULL);
-  cell_t *c = build(str, n);
+  cell_t *c = build(str);
   if(!c) return false;
   *in = fill_args(c, NULL);
   if(!closure_is_ready(c)) {

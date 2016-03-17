@@ -1025,10 +1025,12 @@ bool func_collect(cell_t *c) {
 }
 */
 
-void *lookup(void *table, unsigned int width, unsigned int rows, char const *key) {
-  unsigned int low = 0, high = rows, pivot;
+void *lookup(void *table, size_t width, size_t rows, seg_t key_seg) {
+  size_t low = 0, high = rows, pivot;
+  char const *key = key_seg.s;
+  size_t key_length = key_seg.n;
   void *entry, *ret = 0;
-  int key_length = strnlen(key, width);
+  if(key_length > width) key_length = width;
   while(high > low) {
     pivot = low + ((high - low) >> 1);
     entry = (uint8_t *)table + width * pivot;
@@ -1043,10 +1045,12 @@ void *lookup(void *table, unsigned int width, unsigned int rows, char const *key
   return ret;
 }
 
-void *lookup_linear(void *table, unsigned int width, unsigned int rows, char const *key) {
+void *lookup_linear(void *table, size_t width, size_t rows, seg_t key_seg) {
+  char const *key = key_seg.s;
+  size_t key_length = key_seg.n;
   uint8_t *entry = table;
   unsigned int rows_left = rows;
-  unsigned int key_length = strnlen(key, width);
+  if(key_length > width) key_length = width;
   while(rows_left-- && *entry) {
     if(!strncmp(key, (void *)entry, key_length)) return entry;
     entry += width;

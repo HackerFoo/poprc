@@ -1,23 +1,37 @@
-=max [] pushl pushl dup . dup popr drop | [<= !] . popr swap drop cut
-=min [] pushl pushl dup . dup popr drop | [> !] . popr swap drop cut
+__ max of two values
+[[] pushl pushl dup . dup popr drop | [<= !] . popr swap drop cut] :max def
 
-=ifte [] pushl pushl swap pushr [0 == !] [drop drop] | . popr swap drop cut
+__ min of two values
+[[] pushl pushl dup . dup popr drop | [> !] . popr swap drop cut] :min def
 
-=head popr swap drop
+__ if then else
+[[] pushl pushl swap pushr [0 == !] [drop drop] | . popr swap drop cut] :ifte def
 
-=ap11 pushl popr swap drop
-=ap21 pushl pushl popr swap drop
-=ap12 pushl popr swap popr swap drop swap
-=sap12 pushl popr swap popr swap drop
-=ap22 pushl pushl popr swap popr swap drop swap
-=sap22 pushl pushl popr swap popr swap drop
+__ take rightmost value from quote
+[popr swap drop] :head def
 
-=dip11 swap pushr pushl popr swap popr swap drop swap
-=dip12 swap pushr pushl popr swap pushl [swap] . popr swap popr swap popr swap drop
-=dip21 swap pushr pushl pushl popr swap popr swap drop swap
+__ apply a quote to a single input yielding a single output
+[pushl popr swap drop] :ap11 def
 
-=rot [] swap pushr swap pushr pushl popr swap popr swap popr swap drop
+__ apply a quote to two inputs yielding a single output
+[pushl pushl popr swap drop] :ap21 def
 
+__ apply a quote to a single input yielding two outputs
+[pushl popr swap popr swap drop swap] :ap12 def
+
+__ apply a quote underneath the top, 1 -> 1
+[swap pushr pushl popr swap popr swap drop swap] :dip11 def
+
+__ apply a quote underneath the top, 1 -> 2
+[swap pushr pushl popr swap pushl [swap] . popr swap popr swap popr swap drop] :dip12 def
+
+__ apply a quote underneath the top, 2 -> 1
+[swap pushr pushl pushl popr swap popr swap drop swap] :dip21 def
+
+__ rotate top 3
+[[] swap pushr swap pushr pushl popr swap popr swap popr swap drop] :rot def
+
+____todo
 =or swap [dup 0 != !] ap11 swap | cut
 =and 1 rot rot 0 != ! 0 != ! 0 | cut
 @fix, select disappears: =and 1 rot rot 0 != ! 0 != ! 0 or
@@ -32,3 +46,4 @@
 @fix: =fact dup 1 > [dup 1- fact *] [] ifte pushl head
 
 =top0 [popr] [0] | pushl popr swap drop cut
+todo____

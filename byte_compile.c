@@ -412,11 +412,12 @@ cell_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
 }
 
 void compact_expr(char const *name, char *str, unsigned int n) {
+  seg_t seg = {name, strlen(name)};
   word_entry_t *e =
     lookup_linear(user_word_table,
                   WIDTH(user_word_table),
                   user_word_table_length,
-                  name);
+                  seg);
   if(!e) e = new_user_word_entry++;
   strcpy(e->name, name);
   e->func = func_placeholder;
@@ -427,7 +428,7 @@ void compact_expr(char const *name, char *str, unsigned int n) {
   get_arity(s, n, &e->in, &e->out);
   free(s);
   e->func = func_self;
-  cell_t *c = build(str, n);
+  cell_t *c = build(str);
   if(!c) {
     --new_user_word_entry;
     return;
