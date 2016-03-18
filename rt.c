@@ -937,14 +937,14 @@ cell_t *compose_expand(cell_t *a, csize_t n, cell_t *b) {
   return b;
 }
 
-cell_t *pushl_val(intptr_t x, cell_t *c) {
+cell_t *pushr_val(intptr_t x, cell_t *c) {
   csize_t n = val_size(c);
   c = expand(c, 1);
   c->val[n] = x;
   return c;
 }
 
-cell_t *pushl_nd(cell_t *a, cell_t *b) {
+cell_t *pushr_nd(cell_t *a, cell_t *b) {
   assert(is_closure(a) &&
          is_list(b));
 

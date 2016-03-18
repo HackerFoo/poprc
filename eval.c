@@ -93,7 +93,7 @@ char const *function_name(reduce_t *f) {
   CASE(pushr);
   CASE(quote);
   CASE(dep);
-  CASE(popr);
+  CASE(popl);
   CASE(alt);
   CASE(assert);
   CASE(id);
@@ -335,19 +335,19 @@ void show_list(cell_t const *c) {
         if(m2) printf(" {");
         /* at least one match */
         printf(" [");
-        i = n; while(i--) show_one(m1->ptr[i]);
+        for(i = 0; i < n; i++) show_one(m1->ptr[i]);
         printf(" ]");
         closure_free(free_this);
         if(m2) {
           /* second match */
           printf(" | [");
-          i = n; while(i--) show_one(m2->ptr[i]);
+          for(i = 0; i < n; i++) show_one(m2->ptr[i]);
           printf(" ]");
           /* remaining matches */
           while(count((cell_t const **)p->ptr, (cell_t const *const *)c->ptr, n) >= 0) {
             if(!any_conflicts((cell_t const *const *)p->ptr, n)) {
               printf(" | [");
-              i = n; while(i--) show_one(p->ptr[i]);
+              show_one(p->ptr[i]);
               printf(" ]");
             }
           }
@@ -357,7 +357,7 @@ void show_list(cell_t const *c) {
       }
     } else {
       printf(" [");
-      i = n; while(i--) show_alt(c->ptr[i]);
+      for(i = 0; i < n; i++) show_alt(c->ptr[i]);
       printf(" ]");
     }
   } else printf(" []");
@@ -977,7 +977,7 @@ cell_t *parse_vector(char **s) {
   while((t = tok(*s), t.s) &&
         *t.s != ')') {
     assert(is_num(t.s));
-    c = pushl_val(atoi(t.s), c);
+    c = pushr_val(atoi(t.s), c);
     *s = seg_end(t);
   }
   *s = seg_end(t);

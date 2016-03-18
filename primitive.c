@@ -59,7 +59,7 @@ word_entry_t word_table[] = {
   //{"fib",  func_fib,         1, 1, NULL},
   {"id",     func_id,          1, 1, NULL},
   {"ift",    func_ift,         3, 1, NULL},
-  {"popr",   func_popr,        1, 2, NULL},
+  {"popl",   func_popl,        1, 2, NULL},
   {"pushl",  func_pushl,       2, 1, NULL},
   {"pushr",  func_pushr,       2, 1, NULL},
   {"select", func_select,      2, 1, NULL},
@@ -81,7 +81,7 @@ builder_entry_t builder_table[] = {
   {"compose", (void *)build_compose, 2, 1},
   {"pushl",   (void *)build_pushl,   2, 1},
   {"pushr",   (void *)build_pushr,   2, 1},
-  {"popr",    (void *)build_popr,    1, 2},
+  {"popl",    (void *)build_popl,    1, 2},
   {"quote",   (void *)build_quote,   1, 1},
   {"alt",     (void *)build_alt,     2, 1},
   {"alt2",    (void *)build_alt2,    2, 1},
@@ -299,7 +299,7 @@ cell_t *build_compose(cell_t *x, cell_t *y) {
   return build21(func_compose, x, y);
 }
 
-bool func_pushl(cell_t **cp, UNUSED type_t t) {
+bool func_pushr(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   alt_set_t alt_set = 0;
@@ -307,7 +307,7 @@ bool func_pushl(cell_t **cp, UNUSED type_t t) {
   clear_flags(c);
   cell_t *q = c->arg[1];
   bool rvar = is_var(q);
-  cell_t *res = pushl_nd(ref(c->arg[0]), ref(q));
+  cell_t *res = pushr_nd(ref(c->arg[0]), ref(q));
   if(rvar) res->type |= T_VAR;
   drop(res->alt);
   res->alt = c->alt;
@@ -319,11 +319,11 @@ bool func_pushl(cell_t **cp, UNUSED type_t t) {
     fail(cp);
     return false;
 }
-cell_t *build_pushl(cell_t *x, cell_t *y) {
-  return build21(func_pushl, x, y);
+cell_t *build_pushr(cell_t *x, cell_t *y) {
+  return build21(func_pushr, x, y);
 }
 
-bool func_pushr(cell_t **cp, UNUSED type_t t) {
+bool func_pushl(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   alt_set_t alt_set = 0;
@@ -346,8 +346,8 @@ bool func_pushr(cell_t **cp, UNUSED type_t t) {
   fail(cp);
   return false;
 }
-cell_t *build_pushr(cell_t *x, cell_t *y) {
-  return build21(func_pushr, x, y);
+cell_t *build_pushl(cell_t *x, cell_t *y) {
+  return build21(func_pushl, x, y);
 }
 
 bool func_quote(cell_t **cp, UNUSED type_t t) {
@@ -361,7 +361,7 @@ cell_t *build_quote(cell_t *x) {
   return build11(func_quote, x);
 }
 
-bool func_popr(cell_t **cp, UNUSED type_t t) {
+bool func_popl(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   cell_t *d = c->arg[1];
@@ -407,17 +407,17 @@ bool func_popr(cell_t **cp, UNUSED type_t t) {
   fail(cp);
   return false;
 }
-two_cells_t build_popr(cell_t *x) {
-  return build12(func_popr, x);
+two_cells_t build_popl(cell_t *x) {
+  return build12(func_popl, x);
 }
 
 bool func_alt(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   uint8_t a = new_alt_id(2);
-  cell_t *r0 = id(c->arg[0]);
+  cell_t *r0 = id(c->arg[1]);
   r0->arg[1] = (cell_t *)as(a, 0);
-  cell_t *r1 = id(c->arg[1]);
+  cell_t *r1 = id(c->arg[0]);
   r1->arg[1] = (cell_t *)as(a, 1);
   r0->alt = r1;
   store_lazy(cp, c, r0, 0);
@@ -430,9 +430,9 @@ cell_t *build_alt(cell_t *x, cell_t *y) {
 bool func_alt2(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
-  cell_t *r0 = id(ref(c->arg[0]));
+  cell_t *r0 = id(ref(c->arg[1]));
   r0->arg[1] = 0;
-  cell_t *r1 = id(ref(c->arg[1]));
+  cell_t *r1 = id(ref(c->arg[0]));
   r1->arg[1] = 0;
   r0->alt = r1;
   *cp = r0;
@@ -641,7 +641,7 @@ bool func_ap(cell_t **cp, UNUSED type_t t) {
   if(!reduce_arg(c, in-1, &alt_set, T_LIST)) goto fail;
   cell_t *l = c->arg[in-1];
   COUNTDOWN(i, in-1) {
-    l = pushl_nd(c->arg[i], l);
+    l = pushr_nd(c->arg[i], l);
   }
 
   csize_t ln = list_size(l);

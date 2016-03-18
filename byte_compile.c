@@ -255,20 +255,20 @@ uintptr_t bc_apply_list(cell_t *c) {
   uintptr_t p = trace_get(c);
   assert(out > 0);
 
-  /* pushl inputs */
-  if(trace_cur[p].func != func_popr) { // HACKish
+  /* pushr inputs */
+  if(trace_cur[p].func != func_popl) { // HACKish
     COUNTDOWN(i, in) {
       uintptr_t x = trace_get(c->arg[i]);
-      p = bc_func(func_pushl, 2, 1, x, p);
+      p = bc_func(func_pushr, 2, 1, x, p);
     }
   }
 
-  /* popr outputs */
+  /* popl outputs */
   COUNTDOWN(i, out) {
     cell_t *arg = c->arg[i + in];
     if(!map_find(trace_index, (uintptr_t)clear_ptr(arg))) {
       uintptr_t res;
-      p = bc_func(func_popr, 1, 2, p, &res);
+      p = bc_func(func_popl, 1, 2, p, &res);
       trace_index_add(arg, res);
     }
   }
@@ -287,7 +287,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
     if(is_reduced(c) || !is_var(r)) break;
     if(c->func == func_pushl ||
        c->func == func_pushr ||
-       c->func == func_popr  ||
+       c->func == func_popl  ||
        c->func == func_dep) break;
     if(c->func == func_cut ||
        c->func == func_id) {
