@@ -105,21 +105,20 @@ cell_t *_op2(val_t (*op)(val_t, val_t), cell_t *x, cell_t *y) {
   return res;
 }
 
-bool func_op2(cell_t **cp, type_t t, val_t (*op)(val_t, val_t)) {
+bool func_op2(cell_t **cp, type_t t, type_t arg_type, type_t res_type, val_t (*op)(val_t, val_t)) {
   cell_t *res = 0;
   cell_t *const c = *cp;
   assert(!is_marked(c));
   alt_set_t alt_set = 0;
 
-  if(t == T_ANY || t == T_INT) t = T_INT;
-  else goto fail;
+  if(t != T_ANY && t != res_type) goto fail;
 
-  if(!reduce_arg(c, 0, &alt_set, t) ||
-     !reduce_arg(c, 1, &alt_set, t)) goto fail;
+  if(!reduce_arg(c, 0, &alt_set, arg_type) ||
+     !reduce_arg(c, 1, &alt_set, arg_type)) goto fail;
   clear_flags(c);
   cell_t *p = c->arg[0], *q = c->arg[1];
-  res = is_var(p) || is_var(q) ? var(t) : _op2(op, q, p);
-  res->type |= t;
+  res = is_var(p) || is_var(q) ? var(t) : _op2(op, p, q);
+  res->type |= res_type;
   res->alt = c->alt;
   res->alt_set = alt_set_ref(alt_set);
   store_reduced(cp, res);
@@ -223,55 +222,57 @@ three_cells_t build33(reduce_t f, cell_t *x, cell_t *y, cell_t *z) {
 }
 
 val_t add_op(val_t x, val_t y) { return x + y; }
-bool func_add(cell_t **cp, type_t t) { return func_op2(cp, t, add_op); }
+bool func_add(cell_t **cp, type_t t) { return func_op2(cp, t, T_INT, T_INT, add_op); }
 cell_t *build_add(cell_t *x, cell_t *y) {
   return build21(func_add, x, y);
 }
 
 val_t mul_op(val_t x, val_t y) { return x * y; }
-bool func_mul(cell_t **cp, type_t t) { return func_op2(cp, t, mul_op); }
+bool func_mul(cell_t **cp, type_t t) { return func_op2(cp, t, T_INT, T_INT, mul_op); }
 cell_t *build_mul(cell_t *x, cell_t *y) {
   return build21(func_mul, x, y);
 }
 
 val_t sub_op(val_t x, val_t y) { return x - y; }
-bool func_sub(cell_t **cp, type_t t) { return func_op2(cp, t, sub_op); }
+bool func_sub(cell_t **cp, type_t t) { return func_op2(cp, t, T_INT, T_INT, sub_op); }
 cell_t *build_sub(cell_t *x, cell_t *y) {
   return build21(func_sub, x, y);
 }
 
 val_t gt_op(val_t x, val_t y) { return x > y; }
-bool func_gt(cell_t **cp, type_t t) { return func_op2(cp, t, gt_op); }
+bool func_gt(cell_t **cp, type_t t) { return func_op2(cp, t, T_INT, T_SYMBOL, gt_op); }
 cell_t *build_gt(cell_t *x, cell_t *y) {
   return build21(func_gt, x, y);
 }
 
 val_t gte_op(val_t x, val_t y) { return x >= y; }
-bool func_gte(cell_t **cp, type_t t) { return func_op2(cp, t, gte_op); }
+bool func_gte(cell_t **cp, type_t t) { return func_op2(cp, t, T_INT, T_SYMBOL, gte_op); }
 cell_t *build_gte(cell_t *x, cell_t *y) {
   return build21(func_gte, x, y);
 }
 
 val_t lt_op(val_t x, val_t y) { return x < y; }
-bool func_lt(cell_t **cp, type_t t) { return func_op2(cp, t, lt_op); }
+bool func_lt(cell_t **cp, type_t t) { return func_op2(cp, t, T_INT, T_SYMBOL, lt_op); }
 cell_t *build_lt(cell_t *x, cell_t *y) {
   return build21(func_lt, x, y);
 }
 
 val_t lte_op(val_t x, val_t y) { return x <= y; }
-bool func_lte(cell_t **cp, type_t t) { return func_op2(cp, t, lte_op); }
+bool func_lte(cell_t **cp, type_t t) { return func_op2(cp, t, T_INT, T_SYMBOL, lte_op); }
 cell_t *build_lte(cell_t *x, cell_t *y) {
   return build21(func_lte, x, y);
 }
 
 val_t eq_op(val_t x, val_t y) { return x == y; }
-bool func_eq(cell_t **cp, type_t t) { return func_op2(cp, t, eq_op); }
+bool func_eq(cell_t **cp, type_t t) { return func_op2(cp, t, T_INT, T_SYMBOL, eq_op); }
+bool func_eq_s(cell_t **cp, type_t t) { return func_op2(cp, t, T_SYMBOL, T_SYMBOL, eq_op); }
 cell_t *build_eq(cell_t *x, cell_t *y) {
   return build21(func_eq, x, y);
 }
 
 val_t neq_op(val_t x, val_t y) { return x != y; }
-bool func_neq(cell_t **cp, type_t t) { return func_op2(cp, t, neq_op); }
+bool func_neq(cell_t **cp, type_t t) { return func_op2(cp, t, T_INT, T_SYMBOL, neq_op); }
+bool func_neq_s(cell_t **cp, type_t t) { return func_op2(cp, t, T_SYMBOL, T_SYMBOL, neq_op); }
 cell_t *build_neq(cell_t *x, cell_t *y) {
   return build21(func_neq, x, y);
 }
@@ -447,14 +448,14 @@ bool func_assert(cell_t **cp, type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 1, &alt_set, T_INT)) goto fail;
+  if(!reduce_arg(c, 1, &alt_set, T_SYMBOL)) goto fail;
   clear_flags(c);
   cell_t *p = c->arg[1];
   if(is_var(p)) {
     if(!reduce_arg(c, 0, &alt_set, t)) goto fail;
     store_reduced(cp, var(t));
     return true;
-  } else if(p->val[0]) {
+  } else if(p->val[0] == SYM_TRUE) {
     drop(p);
     store_lazy(cp, c, c->arg[0], alt_set);
     return false;

@@ -51,6 +51,13 @@ int test_loops(UNUSED char *name) {
   COUNTDOWN(i, 3) {
     printf("down: %d\n", (unsigned int)i);
   }
+  COUNTUP(i, 0) {
+    printf("down: shouldn't print this\n");
+  }
+  COUNTDOWN(i, 0) {
+    printf("down: shouldn't print this\n");
+  }
+
   unsigned int arr[] = {1, 4, 9};
   FOREACH(i, arr) {
     printf("arr[%d] = %d\n", (unsigned int)i, arr[i]);

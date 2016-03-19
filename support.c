@@ -163,3 +163,8 @@ pair_t *find_last(pair_t *array, size_t size, uintptr_t key) {
   pair_t *p = &array[low];
   return p->first == key ? p : NULL;
 }
+
+// string segments
+const char *seg_end(seg_t seg) {
+  return seg.s ? seg.s + seg.n : NULL;
+}

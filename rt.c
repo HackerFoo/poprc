@@ -38,6 +38,16 @@
 cell_t cells[CELLS_SIZE] = {};
 cell_t *cells_ptr;
 
+#if INTERFACE
+#define SYM_FALSE 0
+#define SYM_TRUE 1
+#endif
+char symbols[64][64] = {
+  "false",
+  "true",
+};
+size_t symbols_n = 2;
+
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
 
@@ -383,7 +393,7 @@ bool func_reduced(cell_t **cp, type_t t) {
 cell_t *val(intptr_t x) {
   cell_t *c = closure_alloc(2);
   c->func = func_reduced;
-  c->type = T_ANY;
+  c->type = T_INT;
   c->val[0] = x;
   return c;
 }
@@ -1321,4 +1331,34 @@ bool entangle(alt_set_t *as, cell_t *c) {
   return !cas ||
     (!as_conflict(*as, cas) &&
      (*as |= cas, true));
+}
+
+int lookup_symbol(seg_t sym) {
+  size_t len = min(sym.n, LENGTH(symbols[0]) - 1);
+  COUNTUP(i, symbols_n) {
+    if(strncmp(sym.s, symbols[i], len) == 0) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+size_t intern(seg_t sym) {
+  int x = lookup_symbol(sym);
+  if(x >= 0) return x;
+  size_t len = min(sym.n, LENGTH(symbols[0]) - 1);
+  assert(symbols_n < LENGTH(symbols));
+  size_t i = symbols_n++;
+  char *e = symbols[i];
+  memcpy(e, sym.s, len);
+  e[len] = 0;
+  return i;
+}
+
+cell_t *symbol(seg_t sym) {
+  cell_t *c = closure_alloc(2);
+  c->func = func_reduced;
+  c->type = T_SYMBOL;
+  c->val[0] = intern(sym);
+  return c;
 }

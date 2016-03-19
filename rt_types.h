@@ -30,6 +30,7 @@ typedef type_or_csize_t csize_t;
 #define T_INT       0x0001
 #define T_IO        0x0002
 #define T_LIST      0x0003
+#define T_SYMBOL    0x0004
 #define T_TRACED    0x0800
 #define T_FAIL      0x1000
 #define T_INDIRECT  0x2000
@@ -120,8 +121,8 @@ typedef struct measure_t {
 #define show(x) printf(#x " = %d\n", (int)(x))
 #define WIDTH(a) (sizeof((a)[0]))
 #define LENGTH(a) (sizeof(a) / WIDTH(a))
-#define COUNTDOWN(i, n) for(size_t i = (n); i--; )
-#define COUNTUP(i, n) for(size_t i = 0; i < (n); i++)
+#define COUNTDOWN(i, n) if(n) for(size_t i = (n); i--; )
+#define COUNTUP(i, n) for(size_t i = 0, __n = (n); i < __n; i++)
 #define FOREACH(i, a) COUNTUP(i, LENGTH(a))
 #define _CONCAT(x, y) x##y
 #define CONCAT(x, y) _CONCAT(x, y)
@@ -210,7 +211,7 @@ struct __test_entry {
 
 // string segment
 typedef struct seg_t {
-  char *s;
+  const char *s;
   size_t n;
 } seg_t;
 

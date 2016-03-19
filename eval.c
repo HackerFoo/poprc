@@ -435,6 +435,13 @@ void show_one(cell_t const *c) {
     show_int(c);
   } else if(type_match(T_LIST, c)) {
     show_list(c);
+  } else if(type_match(T_SYMBOL, c)) {
+    val_t x = c->val[0];
+    if(x >= 0 && x < (val_t)symbols_n) {
+      printf(" :%s", symbols[x]);
+    } else {
+      printf(" :?!");
+    }
   } else {
     printf(" ?");
   }
@@ -726,18 +733,18 @@ bool eval_command(char *line) {
       char *name = line;
       while(*line != ' ') ++line;
       *line++ = 0;
-      compact_expr(name, line, strlen(line));
+      compact_expr(name, line);
     } else if(strncmp(line, ":a ", 3) == 0) {
       csize_t in, out;
       cells_init();
       line += 3;
-      if(get_arity(line, strlen(line), &in, &out)) {
+      if(get_arity(line, &in, &out)) {
         printf("%d -> %d\n", in, out);
       }
     } else {
       cells_init();
       measure_start();
-      eval(line, strlen(line));
+      eval(line);
       measure_stop();
       check_free();
     }
@@ -765,10 +772,10 @@ word_entry_t *lookup_word(seg_t w) {
 /*
 cell_t *word(char const *w) {
   csize_t in, out;
-  return word_parse(w, &in, &out);
+  return parse_word(w, &in, &out);
 }
 */
-cell_t *word_parse(seg_t w,
+cell_t *parse_word(seg_t w,
                    csize_t *in,
                    csize_t *out,
                    cell_t **data) {
@@ -828,10 +835,10 @@ char_class_t char_class(char c) {
 }
 
 // starts at comment
-char *skip_comment(char *s) {
+const char *skip_comment(const char *s) {
   int level = 0;
   char_class_t before = CC_NONE;
-  char *ptr = s;
+  const char *ptr = s;
 
   for(;;) {
     // move cursor past comment character, and record character class after it
@@ -883,7 +890,7 @@ void mark_comments(char c, char *str) {
       break;
     case CC_COMMENT: {
       char *start = ptr;
-      ptr = skip_comment(ptr);
+      ptr = (char *)skip_comment(ptr);
       if(ptr == start) {
         ptr++;
       } else {
@@ -914,11 +921,7 @@ int test_comments(UNUSED char *name) {
 }
 static TEST(test_comments);
 
-char *seg_end(seg_t seg) {
-  return seg.s ? seg.s + seg.n : NULL;
-}
-
-seg_t tok(char *s) {
+seg_t tok(const char *s) {
   seg_t seg = {NULL, 0};
   char_class_t cc = char_class(*s);
 
@@ -927,7 +930,7 @@ seg_t tok(char *s) {
     if(!*s) {
       return seg;
     } else if(cc == CC_COMMENT) {
-      char *n = skip_comment(s);
+      const char *n = skip_comment(s);
       if(s == n) break;
       s = n;
     } else {
@@ -956,12 +959,22 @@ seg_t tok(char *s) {
       if(s[-1] == '-') {
         cc = ncc;
         continue;
-      } else break;
+      } else if(cc == CC_ALPHA) { // allow numeric after alpha
+        continue;
+      }
+      break;
+    case CC_ALPHA: // allow symbols
+      if(s[-1] == ':') {
+        cc = ncc;
+        continue;
+      }
+      break;
     case CC_COMMENT: // comment char inside token
       if(cc == CC_ALPHA ||
          cc == CC_SYMBOL) {
         continue;
-      } else break;
+      }
+      break;
     default:
       break;
     }
@@ -971,7 +984,16 @@ seg_t tok(char *s) {
   return seg;
 }
 
-cell_t *parse_vector(char **s) {
+void reverse_vector(cell_t *c) {
+  csize_t n = val_size(c);
+  COUNTUP(i, n/2) {
+    val_t tmp = c->val[i];
+    c->val[i] = c->val[--n];
+    c->val[n] = tmp;
+  }
+}
+
+cell_t *parse_vector(const char **s) {
   seg_t t;
   cell_t *c = vector(0);
   while((t = tok(*s), t.s) &&
@@ -980,25 +1002,9 @@ cell_t *parse_vector(char **s) {
     c = pushl_val(atoi(t.s), c);
     *s = seg_end(t);
   }
+  reverse_vector(c);
   *s = seg_end(t);
   return c;
-}
-
-bool parse_word(char **s, cell_t **r) {
-  csize_t in = 0, out = 1;
-  cell_t *data = NULL;
-  seg_t t = tok(*s);
-  *s = seg_end(t);
-  if(!t.s || *t.s == ']') return false;
-  cell_t *c =
-    *t.s == '[' ? _build(s) :
-    *t.s == '(' ? parse_vector(s) :
-    word_parse(t, &in, &out, &data);
-  if(c) {
-    *r = compose_expand(c, out, *r);
-    if(data) arg(&c, data); // arg will not return a new pointer
-  }
-  return true;
 }
 
 void argf_noop(UNUSED cell_t *c, UNUSED val_t i) {}
@@ -1019,14 +1025,66 @@ val_t fill_args(cell_t *r, void (*argf)(cell_t *, val_t)) {
   return i;
 }
 
-cell_t *build(char *s) {
-  return _build(&s);
+#define MAX_ARGS 16
+cell_t *_build(const char **s) {
+  cell_t *arg_stack[MAX_ARGS]; // TODO use allocated storage
+  unsigned int n = 0;
+  seg_t t;
+
+  while(t = tok(*s), t.s) {
+    csize_t in = 0, out = 1;
+    cell_t *data = NULL;
+    *s = seg_end(t);
+    if(t.n == 1) {
+      switch(*t.s) {
+      case ']':
+        goto make_list;
+      case '[':
+        arg_stack[n++] = _build(s);
+        continue;
+      case '(':
+        arg_stack[n++] = parse_vector(s);
+        continue;
+      default:
+        break;
+      }
+    }
+
+    if(*t.s == ':' && t.n > 1) {
+      seg_t sym = {t.s + 1, t.n - 1};
+      arg_stack[n++] = symbol(sym);
+      continue;
+    }
+
+    cell_t *c = parse_word(t, &in, &out, &data);
+    COUNTUP(i, out-1) {
+      cell_t *d = dep(ref(c));
+      arg(&c, d);
+    }
+    if(data) {
+      arg_stack[n++] = data;
+      in++;
+    }
+    COUNTDOWN(i, min(n, in)) {
+      arg(&c, arg_stack[--n]);
+    }
+    arg_stack[n++] = c;
+    COUNTUP(i, out-1) {
+      arg_stack[n++] = c->arg[in+i];
+    }
+  }
+
+make_list: { // build list from stack and return
+    cell_t *l = make_list(n);
+    COUNTUP(i, n) {
+      l->ptr[i] = arg_stack[--n];
+    }
+    return l;
+  }
 }
 
-cell_t *_build(char **s) {
-  cell_t *r = empty_list();
-  while((parse_word(s, &r)));
-  return r;
+cell_t *build(const char *s) {
+  return _build(&s);
 }
 
 void reduce_root(cell_t *c) {
@@ -1035,7 +1093,7 @@ void reduce_root(cell_t *c) {
   if(write_graph) make_graph_all(REDUCED_GRAPH_FILE);
 }
 
-void eval(char *str, unsigned int n) {
+void eval(const char *str) {
   cell_t *c = build(str);
   reduce_root(c);
   if(!c) return;
@@ -1050,7 +1108,7 @@ void eval(char *str, unsigned int n) {
   drop(c);
 }
 
-bool get_arity(char *str, unsigned int n, csize_t *in, csize_t *out) {
+bool get_arity(char *str, csize_t *in, csize_t *out) {
   set_trace(NULL);
   cell_t *c = build(str);
   if(!c) return false;
@@ -1126,7 +1184,7 @@ void load_source(char *path) {
     else if(line[0] == ':') {
       printf("%s", line);
       cells_init();
-      eval(line+1, strlen(line));
+      eval(line+1);
       check_free();
     } else if(line[0] == '=') {
       printf("%s", line);
@@ -1139,7 +1197,7 @@ void load_source(char *path) {
       while(*x && *x != '\n') ++x;
       *x = 0;
       cells_init();
-      compact_expr(name, line, strlen(line));
+      compact_expr(name, line);
     }
   }
   fclose(f);
@@ -1153,6 +1211,7 @@ char *show_type(type_t t) {
   _case(T_INT);
   _case(T_IO);
   _case(T_LIST);
+  _case(T_SYMBOL);
   default: return "???";
   }
 #undef case
@@ -1184,6 +1243,7 @@ char type_char(type_t t) {
   case T_INT: return 'i';
   case T_IO: return 'w';
   case T_LIST: return 'l';
+  case T_SYMBOL: return 's';
   }
   return 'x';
 }

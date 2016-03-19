@@ -411,7 +411,7 @@ cell_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
   return header;
 }
 
-void compact_expr(char const *name, char *str, unsigned int n) {
+void compact_expr(char const *name, char *str) {
   seg_t seg = {name, strlen(name)};
   word_entry_t *e =
     lookup_linear(user_word_table,
@@ -423,10 +423,7 @@ void compact_expr(char const *name, char *str, unsigned int n) {
   e->func = func_placeholder;
   e->in = 0;
   e->out = 1;
-  char *s = malloc(n+1);
-  memcpy(s, str, n+1);
-  get_arity(s, n, &e->in, &e->out);
-  free(s);
+  get_arity(str, &e->in, &e->out);
   e->func = func_self;
   cell_t *c = build(str);
   if(!c) {
