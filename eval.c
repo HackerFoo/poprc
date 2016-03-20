@@ -557,30 +557,35 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
 }
 #endif
 
+static seg_t last_tok(const char *str) {
+  seg_t last, n;
+  while(n = tok(str), n.s) {
+    last = n;
+    str = seg_end(n);
+  }
+  return last;
+}
+
 #ifdef USE_LINENOISE
 static void completion(char const *buf, linenoiseCompletions *lc) {
-  /* FIXME
   unsigned int n = strlen(buf);
   char comp[n+sizeof_field(word_entry_t, name)];
-  char *insert = comp + n;
   strncpy(comp, buf, sizeof(comp));
-  char *tok = rtok(comp, insert);
-  unsigned int tok_len = strnlen(tok, sizeof_field(word_entry_t, name));
-  if(!tok) return;
-  word_entry_t *e = lookup_word(tok);
+  seg_t t = last_tok(comp);
+  if(!t.s) return;
+  word_entry_t *e = lookup_word(t);
   if(e) {
     // add completions
     do {
       if(strnlen(e->name, sizeof_field(word_entry_t, name)) >
-         tok_len) {
+         t.n) {
 
-        strncpy(tok, e->name, sizeof(e->name));
+        strncpy((char *)t.s, e->name, sizeof(e->name));
         linenoiseAddCompletion(lc, comp);
       }
       e++;
-    } while(strncmp(e->name, tok, tok_len) == 0);
+    } while(strncmp(e->name, t.s, t.n) == 0);
   }
-  */
 }
 #endif
 
@@ -589,29 +594,25 @@ static char **completion(char *buf, UNUSED int start, UNUSED int end)
 {
     unsigned int current_match = 1;
     char **matches = NULL;
-/* FIXME
     unsigned int n = strlen(buf);
     char *comp = malloc(n + sizeof_field(word_entry_t, name) + 1);
     memcpy(comp, buf, n);
-    char *insert = comp + n;
-    *insert = 0;
-    char *tok = rtok(comp, insert);
-    if(tok) {
-        word_entry_t *e = lookup_word(tok);
+    seg_t t = last_tok(comp);
+    if(t.s) {
+        word_entry_t *e = lookup_word(t);
         if(e) {
             matches = malloc(sizeof(char *) * 16);
             memset(matches, 0, sizeof(char *) * 16);
 
-            unsigned int tok_len = strnlen(tok, sizeof_field(word_entry_t, name));
             char *copy = malloc(sizeof_field(word_entry_t, name));
-            memcpy(copy, tok, tok_len+1);
+            memcpy(copy, t.s, t.n+1);
             matches[0] = copy;
 
             // add completions
             do {
                 unsigned int entry_len = strnlen(e->name, sizeof_field(word_entry_t, name));
-                if(entry_len > tok_len) {
-                    memcpy(tok, e->name, entry_len);
+                if(entry_len > t.n) {
+                  memcpy((char *)t.s, e->name, entry_len);
                     comp[entry_len] = 0;
 
                     char *copy = malloc(sizeof_field(word_entry_t, name));
@@ -619,7 +620,7 @@ static char **completion(char *buf, UNUSED int start, UNUSED int end)
                     matches[current_match++] = copy;
                 }
                 e++;
-            } while(strncmp(e->name, tok, tok_len) == 0 && current_match < 16);
+            } while(strncmp(e->name, t.s, t.n) == 0 && current_match < 16);
 
             // if there is just one match, make it the substitute
             if(current_match == 2) {
@@ -629,7 +630,6 @@ static char **completion(char *buf, UNUSED int start, UNUSED int end)
     }
 
     free(comp);
-*/
     return matches;
 }
 
