@@ -41,6 +41,7 @@
 /* must be in ascending order */
 word_entry_t word_table[] = {
   {"!",      func_assert,      2, 1, NULL},
+  {"!:=",    func_neq_s,       2, 1, NULL},
   {"!=",     func_neq,         2, 1, NULL},
   {"'",      func_quote,       1, 1, NULL},
   {"*",      func_mul,         2, 1, NULL},
@@ -49,6 +50,7 @@ word_entry_t word_table[] = {
   {".",      func_compose,     2, 1, NULL},
   {"<",      func_lt,          2, 1, NULL},
   {"<=",     func_lte,         2, 1, NULL},
+  {"=:=",    func_eq_s,        2, 1, NULL},
   {"==",     func_eq,          2, 1, NULL},
   {">",      func_gt,          2, 1, NULL},
   {">=",     func_gte,         2, 1, NULL},
