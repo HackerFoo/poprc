@@ -12,6 +12,7 @@ Compile to direct C when possible
 **** closure_set_ready
 **** split_args
 * major
+** DONE add comment and symbol support to parser
 ** TODO add support to return quoted functions from compiled functions
 ** TODO compile all quoted functions
 ** DONE add primitive apNM operator
