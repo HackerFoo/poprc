@@ -13,14 +13,16 @@
 #if INTERFACE
 typedef pair_t * map_t;
 #define MAP(name, size) pair_t name[(size) + 1] = {{(size), 0}}
+typedef bool (cmp_t)(uintptr_t, uintptr_t);
 #endif
 #define DEBUG 0
 
 // scans for a pair with a lesser key
-size_t scan(pair_t *start, pair_t *end, uintptr_t key) {
+static
+size_t scan(pair_t *start, pair_t *end, uintptr_t key, cmp_t cmp) {
   size_t cnt = 0;
   pair_t *x = start;
-  while(x < end && x->first < key) {
+  while(x < end && cmp(x->first, key)) {
     ++cnt;
     ++x;
   }
@@ -75,7 +77,8 @@ void rotate(pair_t *a, pair_t *b, size_t n) {
 
 // arr points to the array of size n
 // b is the start of the second sorted section
-void merge(pair_t *arr, pair_t *b, size_t n) {
+static
+void merge(pair_t *arr, pair_t *b, size_t n, cmp_t cmp) {
 #if(DEBUG)
   printf("merge ");
   print_pairs(arr, n);
@@ -102,7 +105,7 @@ void merge(pair_t *arr, pair_t *b, size_t n) {
     // non-empty queue
     if(q < b) {
       // count b < h
-      size_t b_run = scan(b, end, h->first);
+      size_t b_run = scan(b, end, h->first, cmp);
       if(b_run) { // choose minimum copying to preserve queue
         swap_block(a, b, b_run); // swap the run into the output replacing a block of 'a'
         // |== output b_left ==|== a_right ==|== q a_left ==|== b_right ==|
@@ -130,7 +133,7 @@ void merge(pair_t *arr, pair_t *b, size_t n) {
       }
     } else {
       // empty queue
-      if(b < end && b->first < a->first) {
+      if(b < end && cmp(b->first, a->first)) {
         swap(a++, b++);
       } else {
         a++;
@@ -147,11 +150,16 @@ void merge(pair_t *arr, pair_t *b, size_t n) {
   }
 }
 
-#define MERGE_TEST(arr)                                         \
-  do {                                                          \
-    merge((arr), (arr) + (LENGTH(arr) >> 1), LENGTH(arr));      \
-    printf(#arr ": ");                                          \
-    print_pairs((arr), LENGTH(arr));                            \
+static
+bool key_cmp(uintptr_t a, uintptr_t b) {
+  return a < b;
+}
+
+#define MERGE_TEST(arr)                                                 \
+  do {                                                                  \
+    merge((arr), (arr) + (LENGTH(arr) >> 1), LENGTH(arr), key_cmp);     \
+    printf(#arr ": ");                                                  \
+    print_pairs((arr), LENGTH(arr));                                    \
   } while(0)
 
 
@@ -200,7 +208,8 @@ pair_t *map_elems(map_t map) {
 }
 
 // called after inserting an element
-void map_sort(map_t map) {
+static
+void map_sort(map_t map, cmp_t cmp) {
   uintptr_t cnt = *map_cnt(map);
   pair_t *elems = map_elems(map);
   if(!cnt || cnt & 1) return;
@@ -208,28 +217,38 @@ void map_sort(map_t map) {
   uintptr_t bit = 1;
   while(x & bit) {
     x &= ~bit;
-    merge(&elems[x], &elems[x+bit], bit << 1);
+    merge(&elems[x], &elems[x+bit], bit << 1, cmp);
     bit <<= 1;
   }
 }
 
-bool map_insert(map_t map, pair_t x) {
+static
+bool _map_insert(map_t map, pair_t x, cmp_t cmp) {
   uintptr_t *size = &map[0].first;
   uintptr_t *cnt = &map[0].second;
   if(*cnt >= *size) return false;
   map[++*cnt] = x;
-  map_sort(map);
+  map_sort(map, cmp);
   return true;
 }
 
-bool map_replace_insert(map_t map, pair_t x) {
+bool map_insert(map_t map, pair_t x) {
+  return _map_insert(map, x, key_cmp);
+}
+
+static
+bool _map_replace_insert(map_t map, pair_t x, cmp_t cmp) {
   pair_t *p = map_find(map, x.first);
   if(p) {
     p->second = x.second;
     return true;
   } else {
-    return map_insert(map, x);
+    return _map_insert(map, x, cmp);
   }
+}
+
+bool map_replace_insert(map_t map, pair_t x) {
+  return _map_replace_insert(map, x, key_cmp);
 }
 
 pair_t *map_find(map_t map, uintptr_t key) {
