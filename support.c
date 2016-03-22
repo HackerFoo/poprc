@@ -61,6 +61,18 @@ void print_pairs(pair_t *array, size_t len) {
   }
 }
 
+void print_string_pairs(pair_t *array, size_t len) {
+  if(!len) {
+    printf("{}\n");
+  } else {
+    printf("{{%s, %" PRIuPTR "}", (char *)array[0].first, array[0].second);
+    for(unsigned int i = 1; i < len; i++) {
+      printf(", {%s, %" PRIuPTR "}", (char *)array[i].first, array[i].second);
+    }
+    printf("}\n");
+  }
+}
+
 int test_sort(UNUSED char *name) {
   pair_t array[] = {{3, 0}, {7, 1}, {2, 2}, {4, 3}, {500, 4}, {0, 5}, {8, 6}, {4, 7}};
   quicksort(array, LENGTH(array));
@@ -162,6 +174,22 @@ pair_t *find_last(pair_t *array, size_t size, uintptr_t key) {
   }
   pair_t *p = &array[low];
   return p->first == key ? p : NULL;
+}
+
+// find the last index of a value in a sorted array with string keys
+pair_t *find_last_string(pair_t *array, size_t size, char *key) {
+  size_t low = 0, high = size;
+  while(high > low + 1) {
+    const size_t pivot = low + ((high - low + 1) / 2);
+    const char *pivot_key = (char *)array[pivot].first;
+    if(strcmp(pivot_key, key) <= 0) {
+      low = pivot;
+    } else {
+      high = pivot;
+    }
+  }
+  pair_t *p = &array[low];
+  return strcmp((char *)p->first, key) == 0 ? p : NULL;
 }
 
 // string segments

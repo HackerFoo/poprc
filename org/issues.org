@@ -17,6 +17,8 @@ Compile to direct C when possible
 ** TODO compile all quoted functions
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
+* minor
+** DONE add string map
 * bugs
 ** TODO :c f1 [] [] ifte pushl
 ** DONE cut memory leak

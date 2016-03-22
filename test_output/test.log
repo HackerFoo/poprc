@@ -55,6 +55,10 @@ test_map_stack_behavior => 0
 {{5, 5}, {6, 6}, {0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}}
 {{6, 6}, {0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}}
 test_rotate => 0
+@ test_string_map
+map[8] = {{abc, 3}, {bat, 5}, {cheese, 6}, {cow, 4}, {one, 0}, {quilt, 7}, {three, 2}, {two, 1}}
+cow => 4
+test_string_map => 0
 @ test_sort
 {{0, 5}, {2, 2}, {3, 0}, {4, 7}, {4, 3}, {7, 1}, {8, 6}, {500, 4}}
 index find existing: PASS

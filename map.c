@@ -155,6 +155,11 @@ bool key_cmp(uintptr_t a, uintptr_t b) {
   return a < b;
 }
 
+static
+bool string_cmp(uintptr_t a, uintptr_t b) {
+  return strcmp((char *)a, (char *)b) < 0;
+}
+
 #define MERGE_TEST(arr)                                                 \
   do {                                                                  \
     merge((arr), (arr) + (LENGTH(arr) >> 1), LENGTH(arr), key_cmp);     \
@@ -236,6 +241,10 @@ bool map_insert(map_t map, pair_t x) {
   return _map_insert(map, x, key_cmp);
 }
 
+bool string_map_insert(map_t map, pair_t x) {
+  return _map_insert(map, x, string_cmp);
+}
+
 static
 bool _map_replace_insert(map_t map, pair_t x, cmp_t cmp) {
   pair_t *p = map_find(map, x.first);
@@ -251,6 +260,10 @@ bool map_replace_insert(map_t map, pair_t x) {
   return _map_replace_insert(map, x, key_cmp);
 }
 
+bool string_map_replace_insert(map_t map, pair_t x) {
+  return _map_replace_insert(map, x, string_cmp);
+}
+
 pair_t *map_find(map_t map, uintptr_t key) {
   uintptr_t x = *map_cnt(map);
   pair_t *elems = map_elems(map);
@@ -260,6 +273,21 @@ pair_t *map_find(map_t map, uintptr_t key) {
     if(x & bit) {
       x &= ~bit;
       if((result = find_last(&elems[x], bit, key))) break;
+    }
+    bit <<= 1;
+  }
+  return result;
+}
+
+pair_t *string_map_find(map_t map, char *key) {
+  uintptr_t x = *map_cnt(map);
+  pair_t *elems = map_elems(map);
+  pair_t *result = NULL;
+  uintptr_t bit = 1;
+  while(x) {
+    if(x & bit) {
+      x &= ~bit;
+      if((result = find_last_string(&elems[x], bit, key))) break;
     }
     bit <<= 1;
   }
@@ -288,6 +316,17 @@ void _print_map(char *name, map_t map) {
   size_t cnt = *map_cnt(map);
   printf("%s[%" PRIuPTR "] = ", name ? name : "map", size);
   print_pairs(map_elems(map), cnt);
+}
+
+#if INTERFACE
+#define print_string_map(map) _print_string_map(#map, map)
+#endif
+
+void _print_string_map(char *name, map_t map) {
+  size_t size = map_size(map);
+  size_t cnt = *map_cnt(map);
+  printf("%s[%" PRIuPTR "] = ", name ? name : "map", size);
+  print_string_pairs(map_elems(map), cnt);
 }
 
 #define find_test(map, key) _find_test((map), #map, (key))
@@ -372,7 +411,7 @@ static int test_rotate(UNUSED char *name) {
   pair_t tmp[LENGTH(arr)];
 
   FOREACH(i, arr) {
-    memcpy(tmp, arr, sizeof(arr)); 
+    memcpy(tmp, arr, sizeof(arr));
     rotate(tmp, tmp+i, LENGTH(tmp));
     print_pairs(tmp, LENGTH(tmp));
   }
@@ -390,3 +429,30 @@ static int test_rotate_speed(UNUSED char *name) {
 }
 static TEST(test_rotate_speed);
 */
+
+static int test_string_map(UNUSED char *name) {
+  char *strings[] = {
+    "one",
+    "two",
+    "three",
+    "abc",
+    "cow",
+    "bat",
+    "cheese",
+    "quilt"
+  };
+  MAP(map, LENGTH(strings));
+  FOREACH(i, strings) {
+    pair_t x = {(uintptr_t)strings[i], i};
+    string_map_insert(map, x);
+  }
+  print_string_map(map);
+
+  pair_t *p = string_map_find(map, "cow");
+  if(!p) return -1;
+  printf("%s => %" PRIuPTR "\n", (char *)p->first, p->second);
+  if(p->second != 4) return -1;
+  return 0;
+}
+
+static TEST(test_string_map);
