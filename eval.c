@@ -41,6 +41,7 @@
 #include "gen/test.h"
 #include "gen/support.h"
 #include "gen/byte_compile.h"
+#include "gen/map.h"
 
 #ifdef USE_LLVM
 #include "llvm.h"
@@ -55,6 +56,16 @@ word_entry_t *new_user_word_entry = user_word_table;
 
 static BITSET_INDEX(visited, cells);
 static BITSET_INDEX(marked, cells);
+
+#define MAX_SYMBOLS 64
+static uint32_t symbol_index[MAX_SYMBOLS] = {0, 6};
+static char symbol_strings[4096] = "false\0true";
+static pair_t symbols[MAX_SYMBOLS+1] = {
+  {MAX_SYMBOLS, 2},
+  {(uintptr_t)&symbol_strings[0], SYM_FALSE},
+  {(uintptr_t)&symbol_strings[6], SYM_TRUE}
+};
+uint32_t symbol_strings_n = 11;
 
 void mark_cell(cell_t *c) {
   if(is_cell(c)) {
@@ -437,8 +448,8 @@ void show_one(cell_t const *c) {
     show_list(c);
   } else if(type_match(T_SYMBOL, c)) {
     val_t x = c->val[0];
-    if(x >= 0 && x < (val_t)symbols_n) {
-      printf(" :%s", symbols[x]);
+    if(x >= 0 && x < (val_t)*map_cnt(symbols)) {
+      printf(" :%s", symbol_strings + symbol_index[x]);
     } else {
       printf(" :?!");
     }
@@ -1270,4 +1281,32 @@ char *show_type_all_short(type_t t) {
   *p++ = type_char(t);
   *p = 0;
   return buf;
+}
+
+uintptr_t intern(seg_t sym) {
+  assert(LENGTH(symbol_strings) > symbol_strings_n + sym.n);
+  char *s = &symbol_strings[symbol_strings_n];
+  memcpy(s, sym.s, sym.n);
+  s[sym.n] = 0;
+  pair_t *x = string_map_find(symbols, s);
+  uintptr_t v;
+  if(x) {
+    v = x->second;
+  } else {
+    v = *map_cnt(symbols);
+    assert(v < MAX_SYMBOLS);
+    pair_t p = {(uintptr_t)s, v};
+    string_map_insert(symbols, p);
+    symbol_index[v] = symbol_strings_n;
+    symbol_strings_n += sym.n + 1;
+  }
+  return v;
+}
+
+cell_t *symbol(seg_t sym) {
+  cell_t *c = closure_alloc(2);
+  c->func = func_reduced;
+  c->type = T_SYMBOL;
+  c->val[0] = intern(sym);
+  return c;
 }
