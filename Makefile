@@ -47,6 +47,8 @@ ifeq ($(BUILD),debug)
 	CFLAGS += -g -O0 $(SANITIZE)
 	CXXFLAGS += -g -O0 $(SANITIZE)
 	LIBS += $(SANITIZE)
+	USE_LINENOISE=n
+	USE_READLINE=n
 endif
 
 ifeq ($(BUILD),release)
@@ -210,6 +212,11 @@ profile:
 	CPUPROFILE=eval_prof.out ./eval
 	pprof --web eval eval_prof.out
 
+.PHONY: lldb
+lldb:
+	make BUILD=debug
+	lldb eval
+
 # remove compilation products
 .PHONY: clean
 clean:
@@ -220,6 +227,6 @@ clean:
 	rm -f *.dot
 	rm -f eval_prof.out
 
-.PHONE: clean-dot
+.PHONY: clean-dot
 clean-dot:
 	rm -f *.dot
