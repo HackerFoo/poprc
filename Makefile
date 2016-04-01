@@ -47,8 +47,14 @@ ifeq ($(BUILD),debug)
 	CFLAGS += -g -O0 $(SANITIZE)
 	CXXFLAGS += -g -O0 $(SANITIZE)
 	LIBS += $(SANITIZE)
-	USE_LINENOISE=n
-	USE_READLINE=n
+endif
+
+ifeq ($(BUILD),lldb-debug)
+	CFLAGS += -g -O0 $(SANITIZE)
+	CXXFLAGS += -g -O0 $(SANITIZE)
+	LIBS += $(SANITIZE)
+	USE_LINENOISE = n
+	USE_READLINE = n
 endif
 
 ifeq ($(BUILD),release)
@@ -218,7 +224,7 @@ profile:
 
 .PHONY: lldb
 lldb:
-	make BUILD=debug
+	make BUILD=lldb-debug eval
 	lldb eval
 
 # remove compilation products
