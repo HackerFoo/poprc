@@ -107,8 +107,12 @@ endif
 
 UNAME_S := $(shell uname -s)
 
-ifneq ($(UNAME_S),Darwin)
+ifeq ($(UNAME_S),Darwin)
+	OPENPDF := open
+else
 	LDFLAGS += -Wl,-Teval.ld
+	OPENPDF := $(shell command -v termux-share 2> /dev/null)
+	OPENPDF ?= $(shell command -v evince 2> /dev/null)
 endif
 
 #DIFF_TEST := diff -u -F '^@ '
@@ -198,7 +202,7 @@ compile_commands.json: make-eval.log
 
 .PHONY: diagrams
 diagrams: $(DIAGRAMS_FILE)
-	open $^
+	$(OPENPDF) $^
 
 .PHONY: graph
 graph: eval
