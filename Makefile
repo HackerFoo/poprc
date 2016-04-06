@@ -129,8 +129,12 @@ print-%:
 
 # modified from http://scottmcpeak.com/autodepend/autodepend.html
 
+.PHONY: eval
+eval: $(BUILD_DIR)/eval
+	ln -fs $(BUILD_DIR)/eval $@
+
 # link
-eval: $(OBJS)
+$(BUILD_DIR)/eval: $(OBJS)
 	$(CC) $(OBJS) $(LDFLAGS) $(LIBS) -o $@
 
 js/eval.js: EMCC_OBJS := $(patsubst %.c, build/emcc/$(BUILD)/%.o, $(SRC))
