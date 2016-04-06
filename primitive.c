@@ -378,24 +378,27 @@ bool func_popr(cell_t **cp, UNUSED type_t t) {
   // adds an extra output dep to the placeholder, and puts the dep in front of it
   // [P[in|out] -> [P[in|out+d], d]
   // also marks result as a variable
-  if(is_placeholder(p->ptr[0])) {
-    ++p->size;
-    cell_t *h = expand_inplace_dep(p->ptr[0], 1); // *** no shift here
-    p->ptr[0] = h->arg[closure_in(h)] = dep(ref(h));
-    p->ptr[1] = h;
+  cell_t *res;
+  cell_t **l = p->ptr;
+  if(is_placeholder(l[0])) {
+    closure_set_ready(l[0], true);
+    cell_t *h = expand_inplace_dep(l[0], 1); // *** no shift here
+    l[0] = h->arg[closure_in(h)] = dep(ref(h));
+    l[1] = h;
     res_type |= T_VAR;
-  }
+    res = ref(p);
+  } else if(closure_is_ready(l[0])) {
+    /* drop the right list element */
+    res = closure_alloc(closure_args(p)-1);
+    res->func = func_reduced;
+    csize_t elems = list_size(res);
+    res->type = res_type;
+    for(csize_t i = 0; i < elems; ++i) {
+      res->ptr[i] = ref(l[i+1]);
+    }
+  } else goto fail;
 
   store_lazy_dep(c, d, ref(p->ptr[0]), alt_set);
-
-  /* drop the right list element */
-  cell_t *res = closure_alloc(closure_args(p)-1);
-  res->func = func_reduced;
-  csize_t elems = list_size(res);
-  res->type = res_type;
-  for(csize_t i = 0; i < elems; ++i)
-    res->ptr[i] = ref(p->ptr[i+1]);
-
   res->alt_set = alt_set_ref(alt_set);
   res->alt = c->alt;
   store_reduced(cp, res);
