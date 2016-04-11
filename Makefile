@@ -73,13 +73,13 @@ CXXFLAGS += $(COPT)
 
 BUILD_DIR := build/$(CC)/$(BUILD)
 DIAGRAMS := diagrams
-DIAGRAMS_FILE := diagrams.pdf
+DIAGRAMS_FILE := diagrams.html
 
 SRC := $(wildcard *.c)
 OBJS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SRC))
 GEN := $(patsubst %.c, gen/%.h, $(SRC))
 DOT := $(wildcard *.dot)
-DOTPDF := $(patsubst %.dot, $(DIAGRAMS)/%.pdf, $(DOT))
+DOTSVG := $(patsubst %.dot, $(DIAGRAMS)/%.svg, $(DOT))
 
 .PHONY: all
 all: test
@@ -114,11 +114,13 @@ endif
 UNAME_S := $(shell uname -s)
 
 ifeq ($(UNAME_S),Darwin)
-	OPENPDF := open
+	OPEN_DIAGRAMS := open
 else
 	LDFLAGS += -Wl,-Teval.ld
-	OPENPDF := $(shell command -v termux-share 2> /dev/null)
-	OPENPDF ?= $(shell command -v evince 2> /dev/null)
+	OPEN_DIAGRAMS := $(shell command -v termux-share 2> /dev/null)
+	OPEN_DIAGRAMS ?= $(shell command -v chrome 2> /dev/null)
+	OPEN_DIAGRAMS ?= $(shell command -v chromium 2> /dev/null)
+	OPEN_DIAGRAMS ?= $(shell command -v firefox 2> /dev/null)
 endif
 
 #DIFF_TEST := diff -u -F '^@ '
@@ -166,15 +168,15 @@ $(BUILD_DIR)/linenoise.o: linenoise/linenoise.c linenoise/linenoise.h
 	@mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) $(LINENOISE_CFLAGS) -c linenoise/linenoise.c -o $(BUILD_DIR)/linenoise.o
 
-$(DIAGRAMS)/%.pdf: %.dot
+$(DIAGRAMS)/%.svg: %.dot
 	@mkdir -p $(DIAGRAMS)
-	dot $^ -Tpdf > $@
+	dot $^ -Tsvg > $@
 
-$(DIAGRAMS_FILE): $(DOTPDF)
-ifeq ($(DOTPDF),)
+$(DIAGRAMS_FILE): $(DOTSVG)
+ifeq ($(DOTSVG),)
 	$(error "no dot files")
 else
-	pdfunite $(sort $^) $@
+	./wrap-svgs.sh $(sort $^) > $@
 endif
 
 .PHONY: scan
@@ -212,7 +214,7 @@ compile_commands.json: make-eval.log
 
 .PHONY: diagrams
 diagrams: $(DIAGRAMS_FILE)
-	$(OPENPDF) $^
+	$(OPEN_DIAGRAMS) $^
 
 .PHONY: graph
 graph: eval
