@@ -4,7 +4,7 @@ cat <<EOF
 <html><head>
 <title>diagrams</title>
 <style>
-.diagram {
+svg {
   margin: 0.5em;
 }
 body {
@@ -15,8 +15,6 @@ body {
 EOF
 for src in "$@"
 do
-cat <<EOF
-    <object class="diagram" type="image/svg+xml" data="$src"></object>
-EOF
+    tail -n +7 "$src"
 done
 echo '</body></html>'
