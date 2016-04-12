@@ -20,6 +20,14 @@ Compile to direct C when possible
 * minor
 ** DONE add string map
 * bugs
+** TODO :( -> segmentation fault
+also just (
+** TODO select seems broken
+:c f1 |
+:c rot [] pushl swap pushr pushl popr swap popr swap popr swap drop
+:c f5 [] pushl rot rot | swap pushl popr swap popr swap drop dup rot > ! cut
+** TODO :c f2 pushl pushl popr 1 + swap pushl popr swap popr swap drop +
+x y [z+] should be x + y + z + 1, gives 2y + 2z + 1
 ** TODO :c f1 [] [] ifte pushl
 ** DONE cut memory leak
 1 2 | cut
