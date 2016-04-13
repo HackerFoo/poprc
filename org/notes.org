@@ -1,5 +1,7 @@
 #+TITLE: PoprC Notes
 
+* simple etif (else/then/if)
+:c etif ! swap | cut
 * things that must not escape functions
 - for efficiency and simplicity
 ** thunks

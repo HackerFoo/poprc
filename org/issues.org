@@ -23,7 +23,7 @@ Compile to direct C when possible
 ** TODO :( -> segmentation fault
 also just (
 ** TODO select seems broken
-:c f1 |
+:c f2 | popr ! cut popr swap drop
 :c rot [] pushl swap pushr pushl popr swap popr swap popr swap drop
 :c f5 [] pushl rot rot | swap pushl popr swap popr swap drop dup rot > ! cut
 ** TODO :c f2 pushl pushl popr 1 + swap pushl popr swap popr swap drop +
