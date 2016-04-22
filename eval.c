@@ -59,13 +59,14 @@ static BITSET_INDEX(marked, cells);
 
 #define MAX_SYMBOLS 64
 static uint32_t symbol_index[MAX_SYMBOLS] = {0, 6};
-static char symbol_strings[4096] = "false\0true";
+static char symbol_strings[4096] = "false\0true\0IO";
 static pair_t symbols[MAX_SYMBOLS+1] = {
   {MAX_SYMBOLS, 2},
   {(uintptr_t)&symbol_strings[0], SYM_FALSE},
-  {(uintptr_t)&symbol_strings[6], SYM_TRUE}
+  {(uintptr_t)&symbol_strings[6], SYM_TRUE},
+  {(uintptr_t)&symbol_strings[11], SYM_IO}
 };
-uint32_t symbol_strings_n = 11;
+uint32_t symbol_strings_n = 14;
 
 void mark_cell(cell_t *c) {
   if(is_cell(c)) {
@@ -126,6 +127,7 @@ char const *function_name(reduce_t *f) {
   CASE(self);
   CASE(exec);
   CASE(ap);
+  CASE(print);
   return "?";
 # undef CASE
 }

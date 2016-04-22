@@ -17,9 +17,11 @@
 
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
 #include "rt_types.h"
 #include "gen/rt.h"
 #include "gen/primitive.h"
+#include "gen/eval.h"
 
    /*-----------------------------------------------,
     |          VARIABLE NAME CONVENTIONS            |
@@ -62,6 +64,7 @@ word_entry_t word_table[] = {
   {"id",     func_id,          1, 1, NULL},
   {"ift",    func_ift,         3, 1, NULL},
   {"popr",   func_popr,        1, 2, NULL},
+  {"print",  func_print,       2, 1, NULL},
   {"pushl",  func_pushl,       2, 1, NULL},
   {"pushr",  func_pushr,       2, 1, NULL},
   {"select", func_select,      2, 1, NULL},
@@ -685,6 +688,36 @@ bool func_ap(cell_t **cp, UNUSED type_t t) {
   drop(l);
   return false;
 fail:
+  fail(cp);
+  return false;
+}
+
+bool func_print(cell_t **cp, type_t t) {
+  cell_t *res = 0;
+  cell_t *const c = *cp;
+  assert(!is_marked(c));
+  alt_set_t alt_set = 0;
+
+  if(t != T_ANY && t != T_SYMBOL) goto fail;
+
+  if(!reduce_arg(c, 0, &alt_set, T_SYMBOL) ||
+     !reduce_arg(c, 1, &alt_set, T_ANY)) goto fail;
+  clear_flags(c);
+  cell_t *p = c->arg[0], *q = c->arg[1];
+  if(is_var(p) || is_var(q)) {
+    res = var(t);
+  } else if(p->val[0] == SYM_IO) {
+    show_one(q);
+    res = mod_alt(ref(p), NULL, alt_set);
+  } else goto fail;
+  res->type |= T_SYMBOL;
+  res->alt = c->alt;
+  res->alt_set = alt_set_ref(alt_set);
+  store_reduced(cp, res);
+  return true;
+
+ fail:
+  drop(res);
   fail(cp);
   return false;
 }
