@@ -19,6 +19,9 @@ Compile to direct C when possible
 ** CANCELED need a separate arity pass for placeholders?
 * minor
 ** DONE add string map
+** TODO add static asserts as tests
+- check symbol table
+- check builtins table order
 * bugs
 ** TODO :( -> segmentation fault
 also just (
