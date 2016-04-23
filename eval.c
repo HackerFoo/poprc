@@ -58,10 +58,10 @@ static BITSET_INDEX(visited, cells);
 static BITSET_INDEX(marked, cells);
 
 #define MAX_SYMBOLS 64
-static uint32_t symbol_index[MAX_SYMBOLS] = {0, 6};
+static uint32_t symbol_index[MAX_SYMBOLS] = {0, 6, 11};
 static char symbol_strings[4096] = "false\0true\0IO";
 static pair_t symbols[MAX_SYMBOLS+1] = {
-  {MAX_SYMBOLS, 2},
+  {MAX_SYMBOLS, 3},
   {(uintptr_t)&symbol_strings[0], SYM_FALSE},
   {(uintptr_t)&symbol_strings[6], SYM_TRUE},
   {(uintptr_t)&symbol_strings[11], SYM_IO}
