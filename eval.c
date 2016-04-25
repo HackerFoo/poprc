@@ -58,15 +58,18 @@ static BITSET_INDEX(visited, cells);
 static BITSET_INDEX(marked, cells);
 
 #define MAX_SYMBOLS 64
-static uint32_t symbol_index[MAX_SYMBOLS] = {0, 6, 11};
-static char symbol_strings[4096] = "false\0true\0IO";
+static uint32_t symbol_index[MAX_SYMBOLS] = {0, 6, 11, 14};
+static char symbol_strings[4096] = "false\0true\0IO\0Dict";
+#define ENTRY(i, name) {(uintptr_t)&symbol_strings[(i)], SYM_##name}
 static pair_t symbols[MAX_SYMBOLS+1] = {
-  {MAX_SYMBOLS, 3},
-  {(uintptr_t)&symbol_strings[0], SYM_FALSE},
-  {(uintptr_t)&symbol_strings[6], SYM_TRUE},
-  {(uintptr_t)&symbol_strings[11], SYM_IO}
+  {MAX_SYMBOLS, 4},
+  ENTRY(14, DICT),
+  ENTRY(11, IO),
+  ENTRY(0,  FALSE),
+  ENTRY(6,  TRUE)
 };
-uint32_t symbol_strings_n = 14;
+#undef ENTRY
+uint32_t symbol_strings_n = 19;
 
 void mark_cell(cell_t *c) {
   if(is_cell(c)) {

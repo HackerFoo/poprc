@@ -216,7 +216,8 @@ typedef struct seg_t {
 } seg_t;
 
 #define SYM_FALSE 0
-#define SYM_TRUE 1
-#define SYM_IO 2
+#define SYM_TRUE  1
+#define SYM_IO    2
+#define SYM_DICT  3
 
 #endif
