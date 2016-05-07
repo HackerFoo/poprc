@@ -102,7 +102,7 @@ char const *function_name(reduce_t *f) {
   CASE(add);
   CASE(sub);
   CASE(mul);
-  CASE(reduced);
+  CASE(value);
   CASE(compose);
   CASE(pushl);
   CASE(pushr);
@@ -204,35 +204,35 @@ void graph_cell(FILE *f, cell_t const *c) {
           function_name(c->func),
           closure_is_ready(c) ? "" : "*",
           (int)c->size);
-  if(!is_reduced(c)) {
-    fprintf(f, "%x (%u)</b></font></td></tr>", (unsigned int)c->out, (unsigned int)c->n);
+  if(!is_value(c)) {
+    fprintf(f, "%x (%u)</b></font></td></tr>", (unsigned int)c->expr.out, (unsigned int)c->n);
   } else {
-    fprintf(f, "%s (%u)</b></font></td></tr>", show_type_all_short(c->type), (unsigned int)c->n);
+    fprintf(f, "%s (%u)</b></font></td></tr>", show_type_all_short(c->value.type), (unsigned int)c->n);
   }
   fprintf(f, "<tr><td port=\"alt\">alt: <font color=\"lightgray\">%p</font></td></tr>",
           (void *)c->alt);
-  if(is_reduced(c)) {
+  if(is_value(c)) {
     fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
-            show_alt_set(c->alt_set));
+            show_alt_set(c->value.alt_set));
     if(is_list(c)) {
       csize_t n = list_size(c);
       while(n--)
         fprintf(f, "<tr><td port=\"ptr%u\">ptr: <font color=\"lightgray\">%p</font></td></tr>",
-                (unsigned int)n, (void *)c->ptr[n]);
+                (unsigned int)n, (void *)c->value.ptr[n]);
     } else if(is_fail(c)) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
     } else {
       int n = val_size(c);
       while(n--)
-        fprintf(f, "<tr><td bgcolor=\"yellow\">val: %" PRIdPTR "</td></tr>", c->val[n]);
+        fprintf(f, "<tr><td bgcolor=\"yellow\">val: %" PRIdPTR "</td></tr>", c->value.integer[n]);
     }
   } else {
     for(csize_t i = 0; i < n; i++) {
-      fprintf(f, "<tr><td port=\"arg%u\"><font color=\"lightgray\">%p</font></td></tr>", (unsigned int)i, (void *)c->arg[i]);
+      fprintf(f, "<tr><td port=\"arg%u\"><font color=\"lightgray\">%p</font></td></tr>", (unsigned int)i, (void *)c->expr.arg[i]);
     }
     if(c->func == func_id) {
       fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
-              show_alt_set((alt_set_t)c->arg[1]));
+              show_alt_set((alt_set_t)c->expr.arg[1]));
     }
   }
   fprintf(f, "</table>>\nshape = \"none\"\n];\n");
@@ -244,20 +244,20 @@ void graph_cell(FILE *f, cell_t const *c) {
             node, alt - cells);
     graph_cell(f, c->alt);
   }
-  if(is_reduced(c)) {
+  if(is_value(c)) {
     if(is_list(c)) {
       csize_t n = list_size(c);
       while(n--) {
-        if(is_cell(c->ptr[n])) {
+        if(is_cell(c->value.ptr[n])) {
           fprintf(f, "node%" PRIuPTR ":ptr%u -> node%" PRIuPTR ":top;\n",
-                  node, (unsigned int)n, c->ptr[n] - cells);
-          graph_cell(f, c->ptr[n]);
+                  node, (unsigned int)n, c->value.ptr[n] - cells);
+          graph_cell(f, c->value.ptr[n]);
         }
       }
     }
   } else {
     for(csize_t i = 0; i < n; i++) {
-      cell_t *arg = clear_ptr(c->arg[i]);
+      cell_t *arg = clear_ptr(c->expr.arg[i]);
       if(is_cell(arg)) {
         fprintf(f, "node%" PRIuPTR ":arg%d -> node%" PRIuPTR ":top%s;\n",
                 c - cells, (unsigned int)i, arg - cells, is_weak(c, arg) ? " [color=lightgray]" : "");
@@ -272,10 +272,10 @@ void show_int(cell_t const *c) {
   int n = val_size(c);
   switch(n) {
   case 0: printf(" ()"); break;
-  case 1: printf(" %" PRIdPTR, c->val[0]); break;
+  case 1: printf(" %" PRIdPTR, c->value.integer[0]); break;
   default:
     printf(" (");
-    while(n--) printf(" %" PRIdPTR, c->val[n]);
+    while(n--) printf(" %" PRIdPTR, c->value.integer[n]);
     printf(" )");
     break;
   }
@@ -284,7 +284,7 @@ void show_int(cell_t const *c) {
 bool reduce_list(cell_t *c) {
   bool b = true;
   csize_t n = list_size(c);
-  cell_t **p = c->ptr;
+  cell_t **p = c->value.ptr;
   while(n--) {
     *p = reduce_alt(*p);
     b &= *p != 0;
@@ -297,7 +297,7 @@ bool reduce_list(cell_t *c) {
 bool any_alt_overlap(cell_t const *const *p, csize_t size) {
   uintptr_t t, as = 0;
   for(csize_t i = 0; i < size; ++i) {
-    if((t = p[i]->alt_set) & as) return true;
+    if((t = p[i]->value.alt_set) & as) return true;
     as |= t;
   }
   return false;
@@ -306,8 +306,8 @@ bool any_alt_overlap(cell_t const *const *p, csize_t size) {
 bool any_conflicts(cell_t const *const *p, csize_t size) {
   uintptr_t t, as = 0;
   for(csize_t i = 0; i < size; ++i) {
-    if(is_reduced(p[i])) {
-      if(as_conflict(as, t = p[i]->alt_set)) return true;
+    if(is_value(p[i])) {
+      if(as_conflict(as, t = p[i]->value.alt_set)) return true;
       as |= t;
     }
   }
@@ -318,17 +318,17 @@ void show_list(cell_t const *c) {
   assert(c && is_list(c));
   int n = list_size(c), i;
   if(n) {
-    if(any_alt_overlap((cell_t const *const *)c->ptr, n)) {
+    if(any_alt_overlap((cell_t const *const *)c->value.ptr, n)) {
       cell_t *p = 0, *free_this = 0;
       cell_t const *m1 = 0, *m2 = 0;
 
       /* find first match */
-      if(!any_conflicts((cell_t const *const *)c->ptr, n)) {
+      if(!any_conflicts((cell_t const *const *)c->value.ptr, n)) {
         m1 = c;
       } else {
         p = copy(c);
-        while(count((cell_t const **)p->ptr, (cell_t const *const *)c->ptr, n) >= 0) {
-          if(!any_conflicts((cell_t const *const *)p->ptr, n)) {
+        while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, n) >= 0) {
+          if(!any_conflicts((cell_t const *const *)p->value.ptr, n)) {
             m1 = p;
             free_this = p;
             break;
@@ -342,8 +342,8 @@ void show_list(cell_t const *c) {
       } else {
         /* find second match */
         p = copy(m1);
-        while(count((cell_t const **)p->ptr, (cell_t const *const *)c->ptr, n) >= 0) {
-          if(!any_conflicts((cell_t const *const *)p->ptr, n)) {
+        while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, n) >= 0) {
+          if(!any_conflicts((cell_t const *const *)p->value.ptr, n)) {
             m2 = p;
             break;
           }
@@ -351,19 +351,19 @@ void show_list(cell_t const *c) {
         if(m2) printf(" {");
         /* at least one match */
         printf(" [");
-        i = n; while(i--) show_one(m1->ptr[i]);
+        i = n; while(i--) show_one(m1->value.ptr[i]);
         printf(" ]");
         closure_free(free_this);
         if(m2) {
           /* second match */
           printf(" | [");
-          i = n; while(i--) show_one(m2->ptr[i]);
+          i = n; while(i--) show_one(m2->value.ptr[i]);
           printf(" ]");
           /* remaining matches */
-          while(count((cell_t const **)p->ptr, (cell_t const *const *)c->ptr, n) >= 0) {
-            if(!any_conflicts((cell_t const *const *)p->ptr, n)) {
+          while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, n) >= 0) {
+            if(!any_conflicts((cell_t const *const *)p->value.ptr, n)) {
               printf(" | [");
-              i = n; while(i--) show_one(p->ptr[i]);
+              i = n; while(i--) show_one(p->value.ptr[i]);
               printf(" ]");
             }
           }
@@ -373,7 +373,7 @@ void show_list(cell_t const *c) {
       }
     } else {
       printf(" [");
-      i = n; while(i--) show_alt(c->ptr[i]);
+      i = n; while(i--) show_alt(c->value.ptr[i]);
       printf(" ]");
     }
   } else printf(" []");
@@ -419,7 +419,7 @@ void show_func(cell_t const *c) {
   if(!s) return;
   if(is_placeholder(c)) printf(" ?%" PRIuPTR " =", c - cells);
   for(i = 0; i < n; ++i) {
-    cell_t *arg = c->arg[i];
+    cell_t *arg = c->expr.arg[i];
     if(is_closure(arg)) {
       show_one(arg);
     }
@@ -432,7 +432,7 @@ void show_var(cell_t const *c) {
   if(is_list(c)) {
     show_list(c);
   } else {
-    printf(" ?%c%" PRIuPTR, type_char(c->type), c - cells);
+    printf(" ?%c%" PRIuPTR, type_char(c->value.type), c - cells);
   }
 }
 
@@ -441,7 +441,7 @@ void show_one(cell_t const *c) {
     printf(" []");
   } else if(!is_closure(c)) {
     printf(" ?");
-  } else if(!is_reduced(c)) {
+  } else if(!is_value(c)) {
     show_func(c);
   } else if(is_fail(c)) {
     printf(" {}");
@@ -452,7 +452,7 @@ void show_one(cell_t const *c) {
   } else if(type_match(T_LIST, c)) {
     show_list(c);
   } else if(type_match(T_SYMBOL, c)) {
-    val_t x = c->val[0];
+    val_t x = c->value.integer[0];
     if(x >= 0 && x < (val_t)*map_cnt(symbols)) {
       printf(" :%s", symbol_strings + symbol_index[x]);
     } else {
@@ -1003,9 +1003,9 @@ seg_t tok(const char *s) {
 void reverse_vector(cell_t *c) {
   csize_t n = val_size(c);
   COUNTUP(i, n/2) {
-    val_t tmp = c->val[i];
-    c->val[i] = c->val[--n];
-    c->val[n] = tmp;
+    val_t tmp = c->value.integer[i];
+    c->value.integer[i] = c->value.integer[--n];
+    c->value.integer[n] = tmp;
   }
 }
 
@@ -1028,12 +1028,12 @@ val_t fill_args(cell_t *r, void (*argf)(cell_t *, val_t)) {
   if(!argf) argf = argf_noop;
   csize_t n = list_size(r);
   if(n < 1) return 0;
-  cell_t **l = &r->ptr[n-1];
+  cell_t **l = &r->value.ptr[n-1];
   val_t i = 0;
   close_placeholders(*l);
   while(!closure_is_ready(*l)) {
     cell_t *v = var(T_ANY);
-    v->val[0] = i;
+    v->value.integer[0] = i;
     arg_noexpand(l, v);
     argf(v, i);
     ++i;
@@ -1086,14 +1086,14 @@ cell_t *_build(const char **s) {
     }
     arg_stack[n++] = c;
     COUNTUP(i, out-1) {
-      arg_stack[n++] = c->arg[in+i];
+      arg_stack[n++] = c->expr.arg[in+i];
     }
   }
 
 make_list: { // build list from stack and return
     cell_t *l = make_list(n);
     COUNTUP(i, n) {
-      l->ptr[i] = arg_stack[--n];
+      l->value.ptr[i] = arg_stack[--n];
     }
     return l;
   }
@@ -1114,7 +1114,7 @@ void eval(const char *str) {
   reduce_root(c);
   if(!c) return;
   csize_t s = list_size(c);
-  if(s > 0 && !closure_is_ready(c->ptr[s-1])) {
+  if(s > 0 && !closure_is_ready(c->value.ptr[s-1])) {
     printf("incomplete expression\n");
   } else {
     c = remove_row(c);
@@ -1169,7 +1169,7 @@ void compile_expr(char const *name, char *str, unsigned int n) {
 cell_t *remove_row(cell_t *c) {
   assert(is_list(c));
   csize_t n = list_size(c);
-  if(n == 0 || !(c->ptr[n-1]->type & T_ROW)) return c;
+  if(n == 0 || !(c->value.ptr[n-1]->value.type & T_ROW)) return c;
   return remove_left(c);
 }
 
@@ -1310,8 +1310,8 @@ uintptr_t intern(seg_t sym) {
 
 cell_t *symbol(seg_t sym) {
   cell_t *c = closure_alloc(2);
-  c->func = func_reduced;
-  c->type = T_SYMBOL;
-  c->val[0] = intern(sym);
+  c->func = func_value;
+  c->value.type = T_SYMBOL;
+  c->value.integer[0] = intern(sym);
   return c;
 }

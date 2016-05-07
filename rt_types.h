@@ -39,6 +39,9 @@ typedef type_or_csize_t csize_t;
 #define T_EXCLUSIVE 0x00FF
 
 typedef struct cell cell_t;
+typedef struct expr expr_t;
+typedef struct value value_t;
+typedef struct mem mem_t;
 
 typedef uintptr_t alt_set_t;
 typedef uint32_t refcount_t;
@@ -51,31 +54,44 @@ typedef intptr_t val_t;
 #pragma clang diagnostic ignored "-Wgnu-folding-constant"
 #endif
 typedef bool (reduce_t)(cell_t **cell, type_t type);
+
+/* unevaluated expression */
+struct __attribute__((packed)) expr {
+  csize_t out;
+  cell_t *arg[3];
+} __attribute__((aligned(4)));
+
+/* reduced value */
+struct __attribute__((packed)) value {
+  type_t type;
+  alt_set_t alt_set;
+  union {
+    val_t integer[2]; /* integer */
+    cell_t *ptr[2];   /* list */
+  };
+} __attribute__((aligned(4)));
+
+/* unallocated memory */
+struct __attribute__((packed)) mem {
+  cell_t *prev, *next;
+} __attribute__((aligned(4)));
+
 struct __attribute__((packed)) cell {
+  /* func indicates the type:
+   * NULL         -> mem
+   * func_reduced -> value
+   * cell         -> extension
+   * otherwise    -> expr
+   */
   reduce_t *func;
   cell_t *alt;
   cell_t *tmp;
   refcount_t n;
   csize_t size;
   union {
-    type_t type;
-    csize_t out;
-  };
-  union {
-    /* unevaluated */
-    cell_t *arg[3];
-    /* reduced */
-    struct __attribute__((packed)) {
-      alt_set_t alt_set;
-      union {
-        val_t val[2];    /* value */
-        cell_t *ptr[2];  /* list */
-      };
-    };
-    /* unallocated */
-    struct __attribute__((packed)) {
-      cell_t *prev, *next;
-    };
+    expr_t expr;
+    value_t value;
+    mem_t mem;
   };
 } __attribute__((aligned(4)));
 

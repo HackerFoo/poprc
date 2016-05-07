@@ -43,8 +43,8 @@ uint8_t alt_cnt = 0;
 
 // Predefined failure cell
 cell_t fail_cell = {
-  .func = func_reduced,
-  .type = T_FAIL
+  .func = func_value,
+  .value.type = T_FAIL
 };
 
 // to catch errors that result in large allocations
@@ -104,17 +104,17 @@ cell_t *dup_alt(cell_t *c, csize_t n, cell_t *b) {
 
   // ref args
   for(; i < in; ++i) {
-    if(i != n) ref(a->arg[i]);
+    if(i != n) ref(a->expr.arg[i]);
   }
 
   // update deps
   for(; i < c->size; ++i) {
-    if(a->arg[i]) a->arg[i] = dep(a);
-    c->arg[i]->alt = conc_alt(a->arg[i], c->arg[i]->alt);
+    if(a->expr.arg[i]) a->expr.arg[i] = dep(a);
+    c->expr.arg[i]->alt = conc_alt(a->expr.arg[i], c->expr.arg[i]->alt);
     ++out;
   }
 
-  a->arg[n] = b;
+  a->expr.arg[n] = b;
   a->n = out;
   c->alt = a;
   return a;
@@ -123,12 +123,12 @@ cell_t *dup_alt(cell_t *c, csize_t n, cell_t *b) {
 // Lift alternates from c->arg[n] to c
 void split_arg(cell_t *c, csize_t n) {
   cell_t
-    *a = c->arg[n],
+    *a = c->expr.arg[n],
     *p = c,
     **pa;
   if(!a || !a->alt || is_marked(a)) return;
   do {
-    pa = &p->arg[n];
+    pa = &p->expr.arg[n];
     if(*pa == a) {
       // insert a copy with the alt arg
       p = dup_alt(p, n, ref((*pa)->alt))->alt;
@@ -143,9 +143,9 @@ bool reduce_arg(cell_t *c,
                 csize_t n,
                 alt_set_t *as,
                 type_t t) {
-  bool r = reduce(&c->arg[n], t);
+  bool r = reduce(&c->expr.arg[n], t);
   split_arg(c, n);
-  return r && entangle(as, clear_ptr(c->arg[n]));
+  return r && entangle(as, clear_ptr(c->expr.arg[n]));
 }
 
 // Lift alternates from all args
@@ -155,7 +155,7 @@ cell_t *closure_split(cell_t *c, csize_t s) {
     split_arg(c, i);
   }
   for(i = 0; i < s; ++i) {
-    c->arg[i] = clear_ptr(c->arg[i]);
+    c->expr.arg[i] = clear_ptr(c->expr.arg[i]);
   }
   return c->alt;
 }
@@ -164,13 +164,13 @@ cell_t *closure_split(cell_t *c, csize_t s) {
 void clear_flags(cell_t *c) {
   int i = 0;
   for(; i < c->size; ++i) {
-    c->arg[i] = clear_ptr(c->arg[i]);
+    c->expr.arg[i] = clear_ptr(c->expr.arg[i]);
   }
 }
 
 cell_t *closure_split1(cell_t *c, int n) {
-  if(!c->arg[n]->alt) return c->alt;
-  return dup_alt(c, n, ref(c->arg[n]->alt));
+  if(!c->expr.arg[n]->alt) return c->alt;
+  return dup_alt(c, n, ref(c->expr.arg[n]->alt));
 }
 
 // Reduce *cp with type t
@@ -207,8 +207,8 @@ void reduce_dep(cell_t **cp) {
 
 cell_t *cells_next() {
   cell_t *p = cells_ptr;
-  assert(is_cell(p) && !is_closure(p) && is_cell(cells_ptr->next));
-  cells_ptr = cells_ptr->next;
+  assert(is_cell(p) && !is_closure(p) && is_cell(cells_ptr->mem.next));
+  cells_ptr = cells_ptr->mem.next;
   return p;
 }
 
@@ -239,11 +239,11 @@ void cells_init() {
 
   // set up doubly-linked pointer ring
   for(size_t i = 0; i < n; i++) {
-    cells[i].prev = &cells[i-1];
-    cells[i].next = &cells[i+1];
+    cells[i].mem.prev = &cells[i-1];
+    cells[i].mem.next = &cells[i+1];
   }
-  cells[0].prev = &cells[n-1];
-  cells[n-1].next = &cells[0];
+  cells[0].mem.prev = &cells[n-1];
+  cells[n-1].mem.next = &cells[0];
 
   cells_ptr = &cells[0];
   alt_cnt = 0;
@@ -252,13 +252,13 @@ void cells_init() {
 void cell_alloc(cell_t *c) {
   assert(is_cell(c) && !is_closure(c));
   assert(measure.current_alloc_cnt < MAX_ALLOC);
-  cell_t *prev = c->prev;
+  cell_t *prev = c->mem.prev;
   assert(is_cell(prev) && !is_closure(prev));
-  cell_t *next = c->next;
+  cell_t *next = c->mem.next;
   assert(is_cell(next) && !is_closure(next));
   if(cells_ptr == c) cells_next();
-  prev->next = next;
-  next->prev = prev;
+  prev->mem.next = next;
+  next->mem.prev = prev;
   measure.alloc_cnt++;
   if(++measure.current_alloc_cnt > measure.max_alloc_cnt)
     measure.max_alloc_cnt = measure.current_alloc_cnt;
@@ -304,15 +304,15 @@ cell_t *closure_alloc_cells(csize_t size) {
    / sizeof(cell_t))
 
 csize_t calculate_cells(csize_t n) {
-  return n <= 3 ? 1 : calc_size(arg, n); // TODO calculate 3 at compile time
+  return n <= 3 ? 1 : calc_size(expr.arg, n); // TODO calculate 3 at compile time
 }
 
 csize_t calculate_list_size(csize_t n) {
-  return calc_size(ptr, n);
+  return calc_size(value.ptr, n);
 }
 
 csize_t calculate_val_size(csize_t n) {
-  return calc_size(val, n);
+  return calc_size(value.integer, n);
 }
 
 csize_t closure_cells(cell_t const *c) {
@@ -321,10 +321,10 @@ csize_t closure_cells(cell_t const *c) {
 
 void cell_free(cell_t *c) {
   c->func = 0;
-  c->next = cells_ptr;
-  c->prev = cells_ptr->prev;
-  cells_ptr->prev = c;
-  c->prev->next = c;
+  c->mem.next = cells_ptr;
+  c->mem.prev = cells_ptr->mem.prev;
+  cells_ptr->mem.prev = c;
+  c->mem.prev->mem.next = c;
 }
 
 void closure_shrink(cell_t *c, csize_t s) {
@@ -335,13 +335,13 @@ void closure_shrink(cell_t *c, csize_t s) {
     assert(is_closure(c));
     for(i = s; i < size; i++) {
       c[i].func = 0;
-      c[i].prev = &c[i-1];
-      c[i].next = &c[i+1];
+      c[i].mem.prev = &c[i-1];
+      c[i].mem.next = &c[i+1];
     }
-    c[s].prev = cells_ptr->prev;
-    cells_ptr->prev->next = &c[s];
-    c[size-1].next = cells_ptr;
-    cells_ptr->prev = &c[size-1];
+    c[s].mem.prev = cells_ptr->mem.prev;
+    cells_ptr->mem.prev->mem.next = &c[s];
+    c[size-1].mem.next = cells_ptr;
+    cells_ptr->mem.prev = &c[size-1];
     measure.current_alloc_cnt -= size - s;
   }
 }
@@ -352,24 +352,24 @@ void closure_free(cell_t *c) {
 
 bool type_match(type_t t, cell_t const *c) {
   type_t ta = t & T_EXCLUSIVE;
-  type_t tb = c->type & T_EXCLUSIVE;
+  type_t tb = c->value.type & T_EXCLUSIVE;
   return ta == T_ANY || tb == T_ANY || ta == tb;
 }
 
-bool func_reduced(cell_t **cp, type_t t) {
+bool func_value(cell_t **cp, type_t t) {
   cell_t *c = clear_ptr(*cp); // TODO remove clear_ptr
   assert(is_closure(c));
   measure.reduce_cnt--;
-  if(c->type != T_FAIL &&
+  if(c->value.type != T_FAIL &&
      type_match(t, c)) {
     if(is_any(c)) {
       /* create placeholder */
       if((t & T_EXCLUSIVE) == T_LIST) {
-        c->ptr[0] = func(func_placeholder, 0, 1);
+        c->value.ptr[0] = func(func_placeholder, 0, 1);
         c->size = 2;
-        c->type &= ~T_TRACED;
+        c->value.type &= ~T_TRACED;
       }
-      c->type |= t;
+      c->value.type |= t;
       trace(c, 0, tt_touched, 0);
     }
     return true;
@@ -382,45 +382,45 @@ bool func_reduced(cell_t **cp, type_t t) {
 
 cell_t *val(intptr_t x) {
   cell_t *c = closure_alloc(2);
-  c->func = func_reduced;
-  c->type = T_INT;
-  c->val[0] = x;
+  c->func = func_value;
+  c->value.type = T_INT;
+  c->value.integer[0] = x;
   return c;
 }
 
 cell_t *var(type_t t) {
   cell_t *c = closure_alloc(1);
-  c->func = func_reduced;
-  c->type = T_VAR | t;
+  c->func = func_value;
+  c->value.type = T_VAR | t;
   return c;
 }
 
 cell_t *vector(csize_t n) {
   cell_t *c = closure_alloc(n+1);
-  c->func = func_reduced;
-  c->type = T_ANY;
+  c->func = func_value;
+  c->value.type = T_ANY;
   return c;
 }
 
 cell_t *quote(cell_t *x) {
   cell_t *c = closure_alloc(2);
-  c->func = func_reduced;
-  c->type = T_LIST;
-  c->ptr[0] = x;
+  c->func = func_value;
+  c->value.type = T_LIST;
+  c->value.ptr[0] = x;
   return c;
 }
 
 cell_t *empty_list() {
   cell_t *c = closure_alloc(1);
-  c->func = func_reduced;
-  c->type = T_LIST;
+  c->func = func_value;
+  c->value.type = T_LIST;
   return c;
 }
 
 cell_t *make_list(csize_t n) {
   cell_t *c = closure_alloc(n + 1);
-  c->func = func_reduced;
-  c->type = T_LIST;
+  c->func = func_value;
+  c->value.type = T_LIST;
   return c;
 }
 
@@ -428,7 +428,7 @@ cell_t *append(cell_t *a, cell_t *b) {
   csize_t n = list_size(b);
   csize_t n_a = list_size(a);
   cell_t *e = expand(a, n);
-  while(n--) e->ptr[n + n_a] = b->ptr[n];
+  while(n--) e->value.ptr[n + n_a] = b->value.ptr[n];
   return e;
 }
 
@@ -448,7 +448,7 @@ cell_t *expand(cell_t *c, csize_t s) {
     new->n = 0;
     traverse_ref(new, ARGS_IN | PTRS | ALT);
     new->size = n + s;
-    if(is_reduced(c)) alt_set_ref(c->alt_set);
+    if(is_value(c)) alt_set_ref(c->value.alt_set);
     drop(c);
     return new;
   }
@@ -461,10 +461,10 @@ cell_t *expand_inplace(cell_t *c, csize_t s) {
   c->n = n;
 
   // shift and update deps
-  memmove(&c->arg[s], &c->arg[0], (c->size - 1) * sizeof(cell_t *));
+  memmove(&c->expr.arg[s], &c->expr.arg[0], (c->size - 1) * sizeof(cell_t *));
   csize_t i;
-  for(i = c->size - c->out; i < c->size; ++i) {
-    if(c->arg[i]) c->arg[i]->arg[0] = c;
+  for(i = c->size - c->expr.out; i < c->size; ++i) {
+    if(c->expr.arg[i]) c->expr.arg[i]->expr.arg[0] = c;
   }
   return c;
 }
@@ -477,11 +477,11 @@ cell_t *expand_inplace_dep(cell_t *c, csize_t s) {
   c->n = n;
 
   // shift and update deps
-  memmove(&c->arg[in+s], &c->arg[in], c->out * sizeof(cell_t *));
-  c->out += s;
+  memmove(&c->expr.arg[in+s], &c->expr.arg[in], c->expr.out * sizeof(cell_t *));
+  c->expr.out += s;
   csize_t i;
-  for(i = c->size - c->out + s; i < c->size; ++i) {
-    if(c->arg[i]) c->arg[i]->arg[0] = c;
+  for(i = c->size - c->expr.out + s; i < c->size; ++i) {
+    if(c->expr.arg[i]) c->expr.arg[i]->expr.arg[0] = c;
   }
   return c;
 }
@@ -491,13 +491,13 @@ cell_t *compose_placeholders(cell_t *a, cell_t *b) {
   csize_t b_in = closure_in(b);
   csize_t b_out = closure_out(b);
   cell_t *c = expand(b, a->size);
-  memmove(c->arg + a->size + b_in,
-          c->arg + b_in,
+  memmove(c->expr.arg + a->size + b_in,
+          c->expr.arg + b_in,
           b_out * sizeof(cell_t *));
   for(i = 0; i < closure_in(a); ++i)
-    c->arg[b_in + i] = ref(a->arg[i]);
+    c->expr.arg[b_in + i] = ref(a->expr.arg[i]);
   for(; i < a->size; ++i)
-    c->arg[b_in + i] = a->arg[i];
+    c->expr.arg[b_in + i] = a->expr.arg[i];
   //drop(a); // dropping here will cause func_compose to break in store_reduced
   cell_t *ab[] = {a, b};
   trace(c, (cell_t *)ab, tt_compose_placeholders, 0);
@@ -510,16 +510,16 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
   csize_t i = 0;
   if(n && n_a) {
     cell_t *l;
-    while(!closure_is_ready(l = b->ptr[n-1]) && i < n_a) {
-      cell_t *x = a->ptr[i];
+    while(!closure_is_ready(l = b->value.ptr[n-1]) && i < n_a) {
+      cell_t *x = a->value.ptr[i];
       if(is_placeholder(x)) {
         if(is_placeholder(l)) {
-          b->ptr[n-1] = compose_placeholders(x, l);
+          b->value.ptr[n-1] = compose_placeholders(x, l);
           ++i;
           break;
         }
-        a->ptr[i] = x = expand_inplace_dep(x, 1);
-        b = arg_nd(l, x->arg[closure_in(x)] = dep(ref(x)), b);
+        a->value.ptr[i] = x = expand_inplace_dep(x, 1);
+        b = arg_nd(l, x->expr.arg[closure_in(x)] = dep(ref(x)), b);
       } else {
         b = arg_nd(l, ref(x), b);
         ++i;
@@ -528,14 +528,14 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
   }
   cell_t *e = expand(b, n_a - i);
   for(unsigned j = n; i < n_a; ++i, ++j) {
-    e->ptr[j] = ref(a->ptr[i]);
+    e->value.ptr[j] = ref(a->value.ptr[i]);
   }
   drop(a);
   return e;
 }
 
-bool is_reduced(cell_t const *c) {
-  return c && c->func == func_reduced;
+bool is_value(cell_t const *c) {
+  return c && c->func == func_value;
 }
 
 // max offset is 255
@@ -547,9 +547,9 @@ cell_t *func(reduce_t *f, csize_t in, csize_t out) {
   assert(out > 0);
   csize_t args = in + out - 1;
   cell_t *c = closure_alloc(args);
-  c->out = out - 1;
+  c->expr.out = out - 1;
   c->func = f;
-  if(args) c->arg[0] = (cell_t *)(intptr_t)(args - 1);
+  if(args) c->expr.arg[0] = (cell_t *)(intptr_t)(args - 1);
   closure_set_ready(c, !args && f != func_placeholder);
   return c;
 }
@@ -570,18 +570,18 @@ csize_t closure_args(cell_t const *c) {
 }
 
 csize_t closure_in(cell_t const *c) {
-  assert(is_closure(c) && !is_reduced(c));
-  return c->size - c->out;
+  assert(is_closure(c) && !is_value(c));
+  return c->size - c->expr.out;
 }
 
 csize_t closure_out(cell_t const *c) {
-  assert(is_closure(c) && !is_reduced(c));
-  return c->out;
+  assert(is_closure(c) && !is_value(c));
+  return c->expr.out;
 }
 
 csize_t closure_next_child(cell_t const *c) {
   assert(is_closure(c));
-  return is_offset(c->arg[0]) ? (intptr_t)c->arg[0] : 0;
+  return is_offset(c->expr.arg[0]) ? (intptr_t)c->expr.arg[0] : 0;
 }
 
 /* arg is destructive to *cp */
@@ -593,21 +593,21 @@ void arg(cell_t **cp, cell_t *a) {
   // *** shift args if placeholder
   if(is_placeholder(c) &&
      (closure_in(c) == 0 ||
-      closure_is_ready(c->arg[0]))) {
+      closure_is_ready(c->expr.arg[0]))) {
     c = expand_inplace(c, 1);
-    c->arg[0] = a;
-  } else if(!is_data(c->arg[i])) {
-    c->arg[0] = (cell_t *)(intptr_t)
+    c->expr.arg[0] = a;
+  } else if(!is_data(c->expr.arg[i])) {
+    c->expr.arg[0] = (cell_t *)(intptr_t)
       (i - (closure_is_ready(a) ? 1 : 0));
-    c->arg[i] = a;
+    c->expr.arg[i] = a;
     if(i == 0 && !is_placeholder(c))
       closure_set_ready(c, closure_is_ready(a));
   } else {
-    arg(&c->arg[i], a);
+    arg(&c->expr.arg[i], a);
     if(!is_placeholder(c) &&
-       closure_is_ready(c->arg[i])) {
+       closure_is_ready(c->expr.arg[i])) {
       if(i == 0) closure_set_ready(c, true);
-      else --*(intptr_t *)&c->arg[0]; // decrement offset
+      else --*(intptr_t *)&c->expr.arg[0]; // decrement offset
     }
   }
   *cp = c;
@@ -618,15 +618,15 @@ void arg_noexpand(cell_t **cp, cell_t *a) {
   assert(is_closure(c) && is_closure(a));
   assert(!closure_is_ready(c));
   csize_t i = closure_next_child(c);
-  if(!is_data(c->arg[i])) {
-    c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
-    c->arg[i] = a;
+  if(!is_data(c->expr.arg[i])) {
+    c->expr.arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
+    c->expr.arg[i] = a;
     if(i == 0) closure_set_ready(c, closure_is_ready(a));
   } else {
-    arg_noexpand(&c->arg[i], a);
-    if(closure_is_ready(c->arg[i])) {
+    arg_noexpand(&c->expr.arg[i], a);
+    if(closure_is_ready(c->expr.arg[i])) {
       if(i == 0) closure_set_ready(c, true);
-      else --*(intptr_t *)&c->arg[0]; // decrement offset
+      else --*(intptr_t *)&c->expr.arg[0]; // decrement offset
     }
   }
   *cp = c;
@@ -636,18 +636,18 @@ void close_placeholders(cell_t *c) {
   if(!is_closure(c) ||
      closure_is_ready(c)) return;
   if(is_placeholder(c)) {
-    closure_set_ready(c, closure_in(c) == 0 ? true : closure_is_ready(c->arg[0]));
-  } else if(is_data(c->arg[0])) {
-    close_placeholders(c->arg[0]);
+    closure_set_ready(c, closure_in(c) == 0 ? true : closure_is_ready(c->expr.arg[0]));
+  } else if(is_data(c->expr.arg[0])) {
+    close_placeholders(c->expr.arg[0]);
   }
 }
 
 bool is_fail(cell_t const *c) {
-  return (c->type & T_FAIL) != 0;
+  return (is_value(c) && c->value.type & T_FAIL) != 0;
 }
 
 bool is_any(cell_t const *c) {
-  return (c->type & T_EXCLUSIVE) == T_ANY;
+  return (is_value(c) && c->value.type & T_EXCLUSIVE) == T_ANY;
 }
 
 #if INTERFACE
@@ -655,12 +655,12 @@ bool is_any(cell_t const *c) {
   do {                                                          \
     csize_t i = 0, n = 0;                                       \
     cell_t **p;                                                 \
-    if(is_reduced(r)) {                                         \
+    if(is_value(r)) {                                           \
       if(((flags) & PTRS) &&                                    \
-         (r->type & T_EXCLUSIVE) == T_LIST) {                   \
+         (r->value.type & T_EXCLUSIVE) == T_LIST) {             \
         n = list_size(r);                                       \
         for(i = 0; i < n; ++i) {                                \
-          p = (r)->ptr + i;                                     \
+          p = (r)->value.ptr + i;                               \
           action                                                \
         }                                                       \
       }                                                         \
@@ -669,7 +669,7 @@ bool is_any(cell_t const *c) {
       i = (~(flags) & ARGS_IN) ? __in : closure_next_child(r);  \
       n = (~(flags) & ARGS_OUT) ? __in : closure_args(r);       \
       for(; i < n; ++i) {                                       \
-        p = (r)->arg + i;                                       \
+        p = (r)->expr.arg + i;                                  \
         if(*p) {action}                                         \
       }                                                         \
     }                                                           \
@@ -696,25 +696,25 @@ cell_t *_arg_nd(cell_t *c, cell_t *a, cell_t *r) {
   // *** shift args if placeholder
   if(is_placeholder(c) &&
      (closure_in(c) == 0 ||
-      closure_is_ready(c->arg[0]))) {
+      closure_is_ready(c->expr.arg[0]))) {
     l = mutate(c, r, 1);
     c = c->tmp ? c->tmp : c;
     r = r->tmp ? r->tmp : r;
-    c->arg[0] = a;
-    r->ptr[list_size(r)-1] = c; // ***
-  } else if(!is_data(c->arg[i])) {
+    c->expr.arg[0] = a;
+    r->value.ptr[list_size(r)-1] = c; // ***
+  } else if(!is_data(c->expr.arg[i])) {
     l = mutate(c, r, 0);
     c = c->tmp ? c->tmp : c;
-    c->arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
-    c->arg[i] = a;
+    c->expr.arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
+    c->expr.arg[i] = a;
     if(i == 0 && !is_placeholder(c)) closure_set_ready(c, closure_is_ready(a));
   } else {
-    l = _arg_nd(c->arg[i], a, r);
+    l = _arg_nd(c->expr.arg[i], a, r);
     c = c->tmp ? c->tmp : c;
     if(!is_placeholder(c) &&
-       closure_is_ready(c->arg[i])) {
+       closure_is_ready(c->expr.arg[i])) {
       if(i == 0) closure_set_ready(c, true);
-      else --*(intptr_t *)&c->arg[0]; // decrement offset
+      else --*(intptr_t *)&c->expr.arg[0]; // decrement offset
     }
   }
   return l;
@@ -736,16 +736,16 @@ cell_t *traverse_ref(cell_t *c, uint8_t flags) {
 
 void store_fail(cell_t *c, cell_t *alt) {
   closure_shrink(c, 1);
-  memset(c->arg, 0, sizeof(c->arg));
-  c->func = func_reduced;
-  c->type = T_FAIL;
+  memset(&c->value, 0, sizeof(c->value));
+  c->func = func_value;
+  c->value.type = T_FAIL;
   c->alt = alt;
 }
 
 void store_var(cell_t *c, type_t t) {
   closure_shrink(c, 1);
-  c->func = func_reduced;
-  c->type = T_VAR | t;
+  c->func = func_value;
+  c->value.type = T_VAR | t;
   c->size = 0;
 }
 
@@ -760,9 +760,9 @@ void fail(cell_t **cp) {
         drop(x);
       }, ARGS_IN);
     closure_shrink(c, 1);
-    memset(c->arg, 0, sizeof(c->arg));
-    c->func = func_reduced;
-    c->type = T_FAIL;
+    memset(&c->value, 0, sizeof(c->value));
+    c->func = func_value;
+    c->value.type = T_FAIL;
   }
   *cp = alt;
 }
@@ -771,10 +771,10 @@ void store_reduced(cell_t **cp, cell_t *r) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   refcount_t n = c->n;
-  r->func = func_reduced;
+  r->func = func_value;
   trace(c, r, tt_reduction, 0);
-  drop_multi(c->arg, closure_in(c));
-  alt_set_ref(r->alt_set);
+  drop_multi(c->expr.arg, closure_in(c));
+  alt_set_ref(r->value.alt_set);
   csize_t size = is_closure(r) ? closure_cells(r) : 0;
   if(size <= closure_cells(c)) {
     closure_shrink(c, size);
@@ -813,15 +813,15 @@ bool is_nil(cell_t const *c) {
 }
 
 bool is_list(cell_t const *c) {
-  return c && is_reduced(c) && (c->type & T_EXCLUSIVE) == T_LIST;
+  return c && is_value(c) && (c->value.type & T_EXCLUSIVE) == T_LIST;
 }
 
 bool is_var(cell_t const *c) {
-  return c && is_reduced(c) && (c->type & T_VAR) != 0;
+  return c && is_value(c) && (c->value.type & T_VAR) != 0;
 }
 
 bool is_weak(cell_t const *p, cell_t const *c) {
-  return c && is_dep(c) && (!c->arg[0] || c->arg[0] == p);
+  return c && is_dep(c) && (!c->expr.arg[0] || c->expr.arg[0] == p);
 }
 
 void drop(cell_t *c) {
@@ -833,18 +833,18 @@ void drop(cell_t *c) {
         cell_t *x = clear_ptr(*p);
         drop(x);
       }, ALT | ARGS_IN | PTRS);
-    if(is_dep(c) && !is_reduced(p = c->arg[0]) && is_closure(p)) {
+    if(is_dep(c) && !is_value(p = c->expr.arg[0]) && is_closure(p)) {
       /* mark dep arg as gone */
       csize_t n = closure_args(p);
       while(n--) {
-        if(p->arg[n] == c) {
-          p->arg[n] = 0;
+        if(p->expr.arg[n] == c) {
+          p->expr.arg[n] = 0;
           break;
         }
       }
     }
-    if(is_reduced(c)) alt_set_drop(c->alt_set);
-    if(c->func == func_id) alt_set_drop((alt_set_t)c->arg[1]);
+    if(is_value(c)) alt_set_drop(c->value.alt_set);
+    if(c->func == func_id) alt_set_drop((alt_set_t)c->expr.arg[1]);
     closure_free(c);
   } else {
     --c->n;
@@ -863,7 +863,7 @@ cell_t *conc_alt(cell_t *a, cell_t *b) {
 cell_t *dep(cell_t *c) {
   cell_t *n = closure_alloc(1);
   n->func = func_dep;
-  n->arg[0] = c;
+  n->expr.arg[0] = c;
   return n;
 }
 
@@ -874,9 +874,9 @@ bool func_dep(cell_t **cp, UNUSED type_t t) {
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
   /* must make weak reference strong during reduction */
-  cell_t *p = ref(c->arg[0]);
+  cell_t *p = ref(c->expr.arg[0]);
   if(p) {
-    c->arg[0] = 0;
+    c->expr.arg[0] = 0;
     reduce_dep(&p);
     drop(p);
   } else {
@@ -900,7 +900,7 @@ cell_t *compose_expand(cell_t *a, csize_t n, cell_t *b) {
   bool ph_a = is_placeholder(a);
   csize_t i, bs = list_size(b);
   if(bs) {
-    cell_t **l = &b->ptr[bs-1];
+    cell_t **l = &b->value.ptr[bs-1];
     cell_t *d = 0;
     if(ph_a && is_placeholder(*l)) {
       *l = compose_placeholders(a, *l);
@@ -911,16 +911,16 @@ cell_t *compose_expand(cell_t *a, csize_t n, cell_t *b) {
       d = dep(NULL);
       arg(l, d);
       arg(&a, d);
-      d->arg[0] = ref(a);
-      if(ph_a) ++a->out;
+      d->expr.arg[0] = ref(a);
+      if(ph_a) ++a->expr.out;
       else --n;
     }
     if(!closure_is_ready(*l)) {
       arg(l, a);
       // *** messy
       for(i = closure_in(*l); i < closure_args(*l); ++i) {
-        drop((*l)->arg[i]->arg[0]);
-        (*l)->arg[i]->arg[0] = ref(*l);
+        drop((*l)->expr.arg[i]->expr.arg[0]);
+        (*l)->expr.arg[i]->expr.arg[0] = ref(*l);
       }
       return b;
     }
@@ -930,17 +930,17 @@ cell_t *compose_expand(cell_t *a, csize_t n, cell_t *b) {
 
   for(i = 0; i < n-1; ++i) {
     cell_t *d = dep(ref(a));
-    b->ptr[bs+i] = d;
+    b->value.ptr[bs+i] = d;
     arg(&a, d);
   }
-  b->ptr[bs+n-1] = a;
+  b->value.ptr[bs+n-1] = a;
   return b;
 }
 
 cell_t *pushl_val(intptr_t x, cell_t *c) {
   csize_t n = val_size(c);
   c = expand(c, 1);
-  c->val[n] = x;
+  c->value.integer[n] = x;
   return c;
 }
 
@@ -950,16 +950,16 @@ cell_t *pushl_nd(cell_t *a, cell_t *b) {
 
   csize_t n = list_size(b);
   if(n) {
-    cell_t *l = b->ptr[n-1];
+    cell_t *l = b->value.ptr[n-1];
     if(!closure_is_ready(l)) {
       cell_t *_b = arg_nd(l, a, b);
-      if(is_placeholder(l)) trace(_b->ptr[n-1], l, tt_copy, 0);
+      if(is_placeholder(l)) trace(_b->value.ptr[n-1], l, tt_copy, 0);
       return _b;
     }
   }
 
   cell_t *e = expand(b, 1);
-  e->ptr[n] = a;
+  e->value.ptr[n] = a;
   return e;
 }
 
@@ -1082,12 +1082,12 @@ refcount_t nondep_n(cell_t *c) {
   if(!is_closure(c)) return 0;
   refcount_t nd = c->n;
   if(is_dep(c)) return nd;
-  else if(!is_reduced(c)) {
+  else if(!is_value(c)) {
     csize_t n = closure_args(c);
     while(n-- &&
-          is_closure(c->arg[n]) &&
-          is_dep(c->arg[n]) &&
-          c->arg[n]->arg[0] == c) --nd;
+          is_closure(c->expr.arg[n]) &&
+          is_dep(c->expr.arg[n]) &&
+          c->expr.arg[n]->expr.arg[0] == c) --nd;
   }
   return nd;
 }
@@ -1187,12 +1187,12 @@ void clean_tmp(cell_t *l) {
 cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
   cell_t *n;
   if(c->alt == alt &&
-     c->alt_set == alt_set) return c;
+     c->value.alt_set == alt_set) return c;
   alt_set_ref(alt_set);
   if(!c->n) {
     n = c;
     drop(c->alt);
-    alt_set_drop(c->alt_set);
+    alt_set_drop(c->value.alt_set);
   } else {
     --c->n;
     n = copy(c);
@@ -1200,7 +1200,7 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
     n->n = 0;
   }
   n->alt = alt;
-  n->alt_set = alt_set;
+  n->value.alt_set = alt_set;
   return n;
 }
 
@@ -1258,10 +1258,10 @@ void store_lazy(cell_t **cp, cell_t *c, cell_t *r, alt_set_t alt_set) {
     closure_shrink(c, 1);
     c->func = func_id;
     c->size = 1;
-    c->out = 0;
-    c->arg[0] = r;
+    c->expr.out = 0;
+    c->expr.arg[0] = r;
     if(c->n) ref(r);
-    c->arg[1] = (cell_t *)alt_set;
+    c->expr.arg[1] = (cell_t *)alt_set;
   }
 
   if(!alt_set) {
@@ -1276,9 +1276,9 @@ void store_lazy_dep(cell_t *c, cell_t *d, cell_t *r, alt_set_t alt_set) {
     drop(c);
     d->func = func_id;
     d->size = 1;
-    d->out = 0;
-    d->arg[0] = r;
-    d->arg[1] = (cell_t *)alt_set;
+    d->expr.out = 0;
+    d->expr.arg[0] = r;
+    d->expr.arg[1] = (cell_t *)alt_set;
   } else drop(r);
 }
 
@@ -1288,11 +1288,11 @@ bool func_placeholder(cell_t **cp, UNUSED type_t t) {
   assert(!is_marked(c));
   csize_t in = closure_in(c), n = closure_args(c);
   for(csize_t i = 0; i < in; ++i) {
-    if(!reduce(&c->arg[i], T_ANY)) goto fail;
-    trace(c->arg[i], c, tt_force, i);
+    if(!reduce(&c->expr.arg[i], T_ANY)) goto fail;
+    trace(c->expr.arg[i], c, tt_force, i);
   }
   for(csize_t i = in; i < n; ++i) {
-    cell_t *d = c->arg[i];
+    cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {
       drop(c);
       store_var(d, 0);
@@ -1317,7 +1317,7 @@ bool is_placeholder(cell_t const *c) {
 }
 
 bool entangle(alt_set_t *as, cell_t *c) {
-  alt_set_t cas = c->alt_set;
+  alt_set_t cas = c->value.alt_set;
   return !cas ||
     (!as_conflict(*as, cas) &&
      (*as |= cas, true));
