@@ -1,22 +1,3 @@
-@ test_count
-0 2 3
-0 2 4
-0 2 5
-1 2 3
-1 2 4
-1 2 5
-test_count => 0
-@ test_comments
-[1] :one def
-[2] :t_w_o def
-{ ################################
-  [one t_w_o +] :three def
-  three *
-} :m def #################
-##############
-m:three
-################
-test_comments => 0
 @ test_merge
 arr1: {{0, 0}, {1, 4}, {2, 1}, {3, 5}, {4, 2}, {5, 6}, {6, 3}, {7, 7}}
 arr2: {{0, 0}, {1, 1}, {2, 4}, {3, 5}, {4, 6}, {5, 7}, {6, 2}, {7, 3}}
@@ -59,6 +40,25 @@ test_rotate => 0
 map[8] = {{abc, 3}, {bat, 5}, {cheese, 6}, {cow, 4}, {one, 0}, {quilt, 7}, {three, 2}, {two, 1}}
 cow => 4
 test_string_map => 0
+@ test_comments
+[1] :one def
+[2] :t_w_o def
+{ ################################
+  [one t_w_o +] :three def
+  three *
+} :m def #################
+##############
+m:three
+################
+test_comments => 0
+@ test_count
+0 2 3
+0 2 4
+0 2 5
+1 2 3
+1 2 4
+1 2 5
+test_count => 0
 @ test_sort
 {{0, 5}, {2, 2}, {3, 0}, {4, 7}, {4, 3}, {7, 1}, {8, 6}, {500, 4}}
 index find existing: PASS
