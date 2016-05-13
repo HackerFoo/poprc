@@ -139,6 +139,7 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
 }
 #endif
 
+#if defined(USE_LINENOISE) || defined(USE_READLINE)
 static seg_t last_tok(const char *str) {
   seg_t last, n;
   while(n = tok(str), n.s) {
@@ -147,6 +148,7 @@ static seg_t last_tok(const char *str) {
   }
   return last;
 }
+#endif
 
 #ifdef USE_LINENOISE
 static void completion(char const *buf, linenoiseCompletions *lc) {
