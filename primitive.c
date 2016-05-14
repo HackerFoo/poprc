@@ -19,8 +19,10 @@
 #include <assert.h>
 #include <stdio.h>
 #include "rt_types.h"
+#include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/primitive.h"
+#include "gen/special.h"
 #include "gen/print.h"
 
    /*-----------------------------------------------,

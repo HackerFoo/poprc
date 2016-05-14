@@ -25,6 +25,7 @@
 #endif
 
 #include "linenoise/linenoise.h"
+#include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/test.h"
 #include "gen/eval.h"

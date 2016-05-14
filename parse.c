@@ -21,8 +21,10 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/primitive.h"
+#include "gen/special.h"
 #include "gen/test.h"
 #include "gen/support.h"
 #include "gen/map.h"

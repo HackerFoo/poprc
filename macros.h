@@ -75,6 +75,4 @@ struct __test_entry {
 #define BITSET(name, size) uint8_t name[((size)+7)/8] = {0}
 #define BITSET_INDEX(name, array) BITSET(name, LENGTH(array))
 
-#define INTERFACE_BEGIN #if INTERFACE
-#define INTERFACE_END #endif
 #endif

@@ -196,3 +196,36 @@ pair_t *find_last_string(pair_t *array, size_t size, char *key) {
 const char *seg_end(seg_t seg) {
   return seg.s ? seg.s + seg.n : NULL;
 }
+
+void *lookup(void *table, size_t width, size_t rows, seg_t key_seg) {
+  size_t low = 0, high = rows, pivot;
+  char const *key = key_seg.s;
+  size_t key_length = key_seg.n;
+  void *entry, *ret = 0;
+  if(key_length > width) key_length = width;
+  while(high > low) {
+    pivot = low + ((high - low) >> 1);
+    entry = (uint8_t *)table + width * pivot;
+    int c = strncmp(key, entry, key_length);
+    if(c == 0) {
+      /* keep looking for a lower key */
+      ret = entry;
+      high = pivot;
+    } else if(c < 0) high = pivot;
+    else low = pivot + 1;
+  }
+  return ret;
+}
+
+void *lookup_linear(void *table, size_t width, size_t rows, seg_t key_seg) {
+  char const *key = key_seg.s;
+  size_t key_length = key_seg.n;
+  uint8_t *entry = table;
+  unsigned int rows_left = rows;
+  if(key_length > width) key_length = width;
+  while(rows_left-- && *entry) {
+    if(!strncmp(key, (void *)entry, key_length)) return entry;
+    entry += width;
+  }
+  return NULL;
+}

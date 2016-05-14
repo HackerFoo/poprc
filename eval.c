@@ -31,7 +31,9 @@
 #define RAW_LINE
 #endif
 
+#include "gen/cells.h"
 #include "gen/rt.h"
+#include "gen/special.h"
 #include "gen/eval.h"
 #include "gen/test.h"
 #include "gen/support.h"

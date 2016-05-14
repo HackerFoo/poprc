@@ -25,9 +25,11 @@
 #include <stdarg.h>
 #include <inttypes.h>
 
+#include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/eval.h"
 #include "gen/primitive.h"
+#include "gen/special.h"
 #include "gen/test.h"
 #include "gen/support.h"
 #include "gen/map.h"
