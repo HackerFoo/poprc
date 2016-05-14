@@ -18,6 +18,7 @@ Compile to direct C when possible
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
+** TODO replace all tables with maps
 ** DONE add string map
 ** TODO add static asserts as tests
 - check symbol table
