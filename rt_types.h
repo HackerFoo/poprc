@@ -21,6 +21,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
+#include "macros.h"
 
 typedef uint16_t type_or_csize_t;
 typedef type_or_csize_t type_t;
@@ -123,41 +124,12 @@ typedef enum char_class_t {
   CC_COMMENT
 } char_class_t;
 
-#define sizeof_field(s, f) sizeof(((s *)0)->f)
-
 typedef struct measure_t {
   unsigned int reduce_cnt, alloc_cnt, max_alloc_cnt;
   unsigned int current_alloc_cnt;
   clock_t start, stop;
   uint8_t alt_cnt;
 } measure_t;
-
-#define zero(a) memset((a), 0, sizeof(a))
-
-#define show(x) printf(#x " = %d\n", (int)(x))
-#define WIDTH(a) (sizeof((a)[0]))
-#define LENGTH(a) (sizeof(a) / WIDTH(a))
-#define COUNTDOWN(i, n) if(n) for(size_t i = (n); i--; )
-#define COUNTUP(i, n) for(size_t i = 0, __n = (n); i < __n; i++)
-#define FOREACH(i, a) COUNTUP(i, LENGTH(a))
-#define _CONCAT(x, y) x##y
-#define CONCAT(x, y) _CONCAT(x, y)
-#define UNIQUE CONCAT(__unique_, __LINE__)
-#define LOOP(n) COUNTDOWN(UNIQUE, n)
-#define sizeof_field(s, f) sizeof(((s *)0)->f)
-
-#define min(a, b) ((a) <= (b) ? (a) : (b))
-#define max(a, b) ((a) >= (b) ? (a) : (b))
-
-#ifdef EMSCRIPTEN
-#define MARK_BIT (1<<31)
-#else
-#define MARK_BIT 2
-#endif
-
-#define is_marked(p) (((uintptr_t)(p) & (MARK_BIT)) != 0)
-#define mark_ptr(p) ((void *)((uintptr_t)(p) | (MARK_BIT)))
-#define clear_ptr(p) ((void *)((uintptr_t)(p) & ~(MARK_BIT)))
 
 #define ALT 1
 #define ARGS_IN 2
@@ -192,34 +164,6 @@ typedef enum trace_type_t {
 #endif
 
 #define UNUSED __attribute__((unused))
-
-// declare a test function
-// must preceed with 'static' and follow with semicolon
-// to work with makeheaders
-
-#ifdef __MACH__
-#define TEST(func)                                       \
-  __attribute__((used,section("__TEXT,__tests")))        \
-  struct __test_entry __test_entry_##func =  {           \
-    &(func),                                             \
-    #func                                                \
-  }
-#else
-#define TEST(func)                                       \
-  __attribute__((used,section(".tests")))                \
-  struct __test_entry __test_entry_##func =  {           \
-    &(func),                                             \
-    #func                                                \
-  }
-#endif
-
-struct __test_entry {
-  int (*func)(char *name);
-  char *name;
-};
-
-#define BITSET(name, size) uint8_t name[((size)+7)/8] = {0}
-#define BITSET_INDEX(name, array) BITSET(name, LENGTH(array))
 
 // Maximum number of alts
 #define AS_SIZE (sizeof(alt_set_t) * 4)
