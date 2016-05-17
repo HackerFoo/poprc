@@ -81,12 +81,6 @@ bool check_free() {
       leak = true;
     }
   }
-  FOREACH(i, alt_live) {
-    if(alt_live[i]) {
-      printf("ALT LEAK: %" PRIuPTR " (%" PRIuPTR ")\n", i, alt_live[i]);
-      leak = true;
-    }
-  }
   return !leak;
 }
 

@@ -23,9 +23,6 @@
 #include "gen/primitive.h"
 #include "gen/special.h"
 
-// OBSOLETE Array for tracking 'live' alt ids
-uintptr_t alt_live[AS_SIZE];
-
 // Default tracing function that does nothing
 void trace_noop(UNUSED cell_t *c, UNUSED cell_t *r, UNUSED trace_type_t tt, UNUSED csize_t n) {}
 
@@ -176,7 +173,6 @@ cell_t *expand(cell_t *c, csize_t s) {
     new->n = 0;
     traverse_ref(new, ARGS_IN | PTRS | ALT);
     new->size = n + s;
-    if(is_value(c)) alt_set_ref(c->value.alt_set);
     drop(c);
     return new;
   }
@@ -418,7 +414,6 @@ void store_reduced(cell_t **cp, cell_t *r) {
   r->func = func_value;
   trace(c, r, tt_reduction, 0);
   drop_multi(c->expr.arg, closure_in(c));
-  alt_set_ref(r->value.alt_set);
   csize_t size = is_closure(r) ? closure_cells(r) : 0;
   if(size <= closure_cells(c)) {
     closure_shrink(c, size);
@@ -681,11 +676,9 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
   cell_t *n;
   if(c->alt == alt &&
      c->value.alt_set == alt_set) return c;
-  alt_set_ref(alt_set);
   if(!c->n) {
     n = c;
     drop(c->alt);
-    alt_set_drop(c->value.alt_set);
   } else {
     --c->n;
     n = copy(c);

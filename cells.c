@@ -112,7 +112,6 @@ void cells_init() {
 
   // zero the cells
   memset(&cells, 0, sizeof(cells));
-  //memset(&alt_live, 0, sizeof(alt_live));
 
   // set up doubly-linked pointer ring
   for(size_t i = 0; i < n; i++) {
@@ -343,8 +342,6 @@ void drop(cell_t *c) {
         }
       }
     }
-    if(is_value(c)) alt_set_drop(c->value.alt_set);
-    //if(c->func == func_id) alt_set_drop((alt_set_t)c->expr.arg[1]);
     closure_free(c);
   } else {
     --c->n;
@@ -397,47 +394,6 @@ bool entangle(alt_set_t *as, cell_t *c) {
      (*as |= cas, true));
 }
 
-alt_set_t alt_set_ref(alt_set_t alt_set) {
-  /*
-  uintptr_t bit = (uintptr_t)1 << (sizeof(uintptr_t) * 4);
-  uintptr_t *live = alt_live;
-  while(bit) {
-    if(alt_set & bit) ++*live;
-    ++live;
-    bit <<= 1;
-  }
-  */
-  return alt_set;
-}
-
-alt_set_t alt_set_drop(alt_set_t alt_set) {
-  /*
-  uintptr_t bit = (uintptr_t)1 << (sizeof(uintptr_t) * 4);
-  uintptr_t *live = alt_live;
-  while(bit) {
-    if(alt_set & bit) {
-      assert(*live);
-      --*live;
-    }
-    ++live;
-    bit <<= 1;
-  }
-  */
-  return alt_set;
-}
-
 uint8_t new_alt_id(UNUSED uintptr_t n) {
-  /*
-  uint8_t r = 0;
-  while(r < ALT_SET_IDS) {
-    if(alt_live[r]) ++r;
-    else {
-      alt_live[r] = n;
-      return r;
-    }
-  }
-  assert(false);
-  return -1;
-  */
   return alt_cnt++;
 }
