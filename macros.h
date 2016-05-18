@@ -47,25 +47,20 @@
 #define mark_ptr(p) ((void *)((uintptr_t)(p) | (MARK_BIT)))
 #define clear_ptr(p) ((void *)((uintptr_t)(p) & ~(MARK_BIT)))
 
-// declare a test function
-// must preceed with 'static' and follow with semicolon
-// to work with makeheaders
+#define WORD(name, func, in, out)                        \
+  {                                                      \
+    name,                                                \
+    func_##func,                                         \
+    in,                                                  \
+    out,                                                 \
+    NULL                                                 \
+  }
 
-#ifdef __MACH__
-#define TEST(func)                                       \
-  __attribute__((used,section("__TEXT,__tests")))        \
-  struct __test_entry __test_entry_##func =  {           \
-    &(func),                                             \
-    #func                                                \
+#define TEST(name)                                       \
+  {                                                      \
+    &test_##name,                                        \
+    "test_" #name                                        \
   }
-#else
-#define TEST(func)                                       \
-  __attribute__((used,section(".tests")))                \
-  struct __test_entry __test_entry_##func =  {           \
-    &(func),                                             \
-    #func                                                \
-  }
-#endif
 
 struct __test_entry {
   int (*func)(char *name);

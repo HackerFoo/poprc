@@ -219,7 +219,6 @@ int test_comments(UNUSED char *name) {
   printf("%s", str);
   return 0;
 }
-static TEST(test_comments);
 
 seg_t tok(const char *s) {
   seg_t seg = {NULL, 0};

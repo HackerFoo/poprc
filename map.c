@@ -168,7 +168,7 @@ bool string_cmp(uintptr_t a, uintptr_t b) {
   } while(0)
 
 
-static int test_merge(UNUSED char *name) {
+int test_merge(UNUSED char *name) {
   pair_t arr1[] = {{0, 0}, {2, 1}, {4, 2}, {6, 3}, {1, 4}, {3, 5}, {5, 6}, {7, 7}};
   MERGE_TEST(arr1);
 
@@ -194,7 +194,6 @@ static int test_merge(UNUSED char *name) {
 
   return 0;
 }
-static TEST(test_merge);
 
 size_t map_size(map_t map) {
   return map[0].first;
@@ -342,7 +341,7 @@ pair_t *_find_test(map_t map, char *name, uintptr_t key) {
   return p;
 }
 
-static int test_map(UNUSED char *name) {
+int test_map(UNUSED char *name) {
   int ret = 0;
   MAP(map, 32);
   int elems[] = {2, 5, 8, 3, 1, 0, 4, 7, 6, 9, 10, 15, 13, 11, 12};
@@ -366,7 +365,6 @@ static int test_map(UNUSED char *name) {
   }
   return ret;
 }
-static TEST(test_map);
 
 static bool expect(map_t map, uintptr_t key, uintptr_t x) {
   pair_t *p = map_find(map, key);
@@ -380,7 +378,7 @@ static bool expect(map_t map, uintptr_t key, uintptr_t x) {
   return true;
 }
 
-static int test_map_stack_behavior(UNUSED char *name) {
+int test_map_stack_behavior(UNUSED char *name) {
   #define M 2
   #define N 8
   MAP(map, (M * N));
@@ -400,9 +398,8 @@ static int test_map_stack_behavior(UNUSED char *name) {
   #undef M
   #undef N
 }
-static TEST(test_map_stack_behavior);
 
-static int test_rotate(UNUSED char *name) {
+int test_rotate(UNUSED char *name) {
   pair_t arr[7];
   FOREACH(i, arr) {
     arr[i].first = i;
@@ -417,20 +414,18 @@ static int test_rotate(UNUSED char *name) {
   }
   return 0;
 }
-static TEST(test_rotate);
 
 /*
-static int test_rotate_speed(UNUSED char *name) {
+//int test_rotate_speed(UNUSED char *name) {
   size_t cnt = 1 << 28;
   pair_t *arr = calloc(cnt, sizeof(pair_t));
   rotate(arr, arr + (1 << 27) - 1, cnt);
   free(arr);
   return 0;
 }
-static TEST(test_rotate_speed);
 */
 
-static int test_string_map(UNUSED char *name) {
+int test_string_map(UNUSED char *name) {
   char *strings[] = {
     "one",
     "two",
@@ -454,5 +449,3 @@ static int test_string_map(UNUSED char *name) {
   if(p->second != 4) return -1;
   return 0;
 }
-
-static TEST(test_string_map);

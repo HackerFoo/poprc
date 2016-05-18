@@ -349,7 +349,6 @@ int test_count(UNUSED char *name) {
   } while(count((const cell_t **)cnt, reset, 3) >= 0);
   return n == 6 ? 0 : -1;
 }
-static TEST(test_count);
 
 void show_func(cell_t const *c) {
   int n = closure_args(c), i;

@@ -118,7 +118,7 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
     switch (ch) {
     case 't':
       cells_init();
-      return test_run(optarg, test_log);
+      return run_test(optarg, test_log);
       break;
     case 'l':
     case 'r':
@@ -298,7 +298,7 @@ bool eval_command(char *line) {
       line += 3;
       while(*line == ' ') ++line;
       char *name = line;
-      test_run(name, test_log);
+      run_test(name, test_log);
 #endif
     } else if(strncmp(line, ":C ", 3) == 0) {
 #ifdef USE_LLVM

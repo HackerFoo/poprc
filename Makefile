@@ -77,7 +77,7 @@ DIAGRAMS_FILE := diagrams.html
 
 SRC := $(wildcard *.c)
 OBJS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SRC))
-GEN := $(patsubst %.c, gen/%.h, $(SRC))
+GEN := $(patsubst %.c, gen/%.h, $(SRC)) gen/word_table.h gen/test_table.h
 DOT := $(wildcard *.dot)
 DOTSVG := $(patsubst %.dot, $(DIAGRAMS)/%.svg, $(DOT))
 
@@ -116,7 +116,6 @@ UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 	OPEN_DIAGRAMS := open
 else
-	LDFLAGS += -Wl,-Teval.ld
 	OPEN_DIAGRAMS := $(shell command -v termux-share 2> /dev/null)
 	OPEN_DIAGRAMS ?= $(shell command -v chrome 2> /dev/null)
 	OPEN_DIAGRAMS ?= $(shell command -v chromium 2> /dev/null)
@@ -159,7 +158,7 @@ $(BUILD_DIR)/llvm.o: llvm.cpp llvm.h llvm_ext.h rt_types.h
 $(BUILD_DIR)/%.o: %.c
 	@mkdir -p $(BUILD_DIR)
 	@$(CC) -MM $(CFLAGS) $*.c -MG -MP -MT $(BUILD_DIR)/$*.o -MF $(BUILD_DIR)/$*.d
-	@make -f Makefile.gen OBJS="$(OBJS)" $(BUILD_DIR)/$*.o > /dev/null
+	@make -f Makefile.gen SRC="$(SRC)" OBJS="$(OBJS)" $(BUILD_DIR)/$*.o -s
 	$(CC) -c $(CFLAGS) $*.c -o $(BUILD_DIR)/$*.o
 
 .SECONDARY: $(GEN)

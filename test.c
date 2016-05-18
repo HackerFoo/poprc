@@ -20,16 +20,15 @@
 #include <string.h>
 #include <inttypes.h>
 
-#ifdef __MACH__
-#include <mach-o/getsect.h>
-#endif
-
 #include "linenoise/linenoise.h"
 #include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/test.h"
 #include "gen/eval.h"
 #include "gen/primitive.h"
+#include "gen/test_table.h"
+
+struct __test_entry tests[] = TESTS;
 
 int test_alloc(UNUSED char *name) {
   cell_t *a[30];
@@ -43,7 +42,6 @@ int test_alloc(UNUSED char *name) {
   }
   return check_free() ? 0 : -1;
 }
-static TEST(test_alloc);
 
 int test_loops(UNUSED char *name) {
   COUNTUP(i, 3) {
@@ -71,7 +69,6 @@ int test_loops(UNUSED char *name) {
   }
   return 0;
 }
-static TEST(test_loops);
 
 bool check_free() {
   bool leak = false;
@@ -85,26 +82,12 @@ bool check_free() {
 }
 
 #define MAX_NAME_SIZE 4096
-#ifndef __MACH__
-extern char __tests_start;
-extern char __tests_end;
-#endif
 
-int test_run(char *name, void (*logger)(char *name, int result)) {
-#ifdef __MACH__
-  unsigned long secsize;
-  char *section_start = getsectdata("__TEXT", "__tests", &secsize);
-  char *section_end = section_start + secsize;
-#else
-  char *section_start = &__tests_start;
-  char *section_end = &__tests_end;
-#endif
-
+int run_test(char *name, void (*logger)(char *name, int result)) {
   int name_size = strnlen(name, MAX_NAME_SIZE);
   int fail = 0;
-  for(struct __test_entry *entry = (struct __test_entry *)section_start;
-      (char *)entry < section_end;
-      entry++) {
+  FOREACH(i, tests) {
+    struct __test_entry *entry = &tests[i];
     int entry_name_size = strnlen(entry->name, MAX_NAME_SIZE);
     if(strncmp(name, entry->name, min(name_size, entry_name_size)) == 0) {
       printf("@ %s\n", entry->name);

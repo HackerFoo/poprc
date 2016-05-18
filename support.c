@@ -95,7 +95,6 @@ int test_sort(UNUSED char *name) {
 
   return r1 && r2 ? 0 : -1;
 }
-static TEST(test_sort);
 
 void quicksort(pair_t *array, unsigned int size) {
   if(size <= 1) return;
