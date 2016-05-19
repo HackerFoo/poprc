@@ -97,17 +97,11 @@ struct __attribute__((packed)) cell {
 } __attribute__((aligned(4)));
 
 typedef struct word_entry_t {
-  char name[64];
+  char *name;
   reduce_t *func;
   csize_t in, out;
   cell_t *data;
 } word_entry_t;
-
-typedef struct builder_entry_t {
-  char name[64];
-  void *func;
-  csize_t in, out;
-} builder_entry_t;
 
 typedef struct parse_tok_t {
   cell_t *c;

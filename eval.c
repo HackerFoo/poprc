@@ -114,6 +114,8 @@ void usage() {
 int main(UNUSED int argc, UNUSED char *argv[]) {
   int ch;
 
+  parse_init();
+
   while ((ch = getopt(argc, argv, "t:l:r:")) != -1) {
     switch (ch) {
     case 't':

@@ -196,6 +196,13 @@ const char *seg_end(seg_t seg) {
   return seg.s ? seg.s + seg.n : NULL;
 }
 
+size_t seg_read(seg_t seg, char *str, size_t size) {
+  size_t n = size - 1 < seg.n ? size - 1 : seg.n;
+  memcpy(str, seg.s, n);
+  str[n] = 0;
+  return n;
+}
+
 void *lookup(void *table, size_t width, size_t rows, seg_t key_seg) {
   size_t low = 0, high = rows, pivot;
   char const *key = key_seg.s;

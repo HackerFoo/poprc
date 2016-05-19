@@ -34,9 +34,11 @@
 word_entry_t word_table[] = WORDS;
 const unsigned int word_table_length = LENGTH(word_table);
 
-word_entry_t user_word_table[64] = {{"", NULL, 0, 0, NULL}};
+word_entry_t user_word_table[64];
 unsigned int const user_word_table_length = LENGTH(user_word_table);
-word_entry_t *new_user_word_entry = user_word_table;
+word_entry_t *new_user_word_entry = NULL;
+
+static pair_t word_index[word_table_length + user_word_table_length + 1];
 
 #define MAX_SYMBOLS 64
 static uint32_t symbol_index[MAX_SYMBOLS] = {0, 6, 11, 14};
@@ -55,23 +57,37 @@ uint32_t symbol_strings_n = 19;
 // for when index declaration is missing for some reason e.g. clang on Android
 char *index(const char *s, int c);
 
+void parse_init() {
+  memset(user_word_table, 0, sizeof(user_word_table));
+  new_user_word_entry = user_word_table;
+
+  // create index
+  word_index[0].first = LENGTH(word_index) - 1;
+  word_index[0].second = LENGTH(word_table);
+  FOREACH(i, word_table) {
+    pair_t *p = &word_index[i+1];
+    p->first = (uintptr_t)word_table[i].name;
+    p->second = (uintptr_t)&word_table[i];
+  }
+}
+
 bool is_num(char const *str) {
   return char_class(str[0]) == CC_NUMERIC ||
     (str[0] == '-' && char_class(str[1]) == CC_NUMERIC);
 }
 
 word_entry_t *lookup_word(seg_t w) {
-  word_entry_t *res =
-    lookup(word_table,
-           WIDTH(word_table),
-           word_table_length,
-           w);
-  if(!res) res =
-    lookup_linear(user_word_table,
-                  WIDTH(user_word_table),
-                  user_word_table_length,
-                  w);
-  return res;
+  char tmp[64]; // HACKy, need seg_map_find
+  seg_read(w, tmp, sizeof(tmp));
+  pair_t *res = string_map_find(word_index, tmp);
+  if(res) {
+    return (word_entry_t *)res->second;
+  } else {
+    return lookup_linear(user_word_table,
+                         WIDTH(user_word_table),
+                         user_word_table_length,
+                         w);
+  }
 }
 /*
 cell_t *word(char const *w) {
@@ -102,9 +118,7 @@ cell_t *parse_word(seg_t w,
     c = func(func_ap, *in, *out);
   } else {
     word_entry_t *e = lookup_word(w);
-    /* disallow partial matches */
-    if(!e ||
-       w.n != strnlen(e->name, sizeof_field(word_entry_t, name))) {
+    if(!e) {
       // trace the name ***
       c = func(func_placeholder, 0, 1);
       *in = 0;
