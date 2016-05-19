@@ -22,10 +22,6 @@
 #include "gen/rt.h"
 #include "gen/primitive.h"
 #include "gen/special.h"
-#include "gen/word_table.h"
-
-word_entry_t word_table[] = WORDS;
-const unsigned int word_table_length = LENGTH(word_table);
 
 // Default tracing function that does nothing
 void trace_noop(UNUSED cell_t *c, UNUSED cell_t *r, UNUSED trace_type_t tt, UNUSED csize_t n) {}

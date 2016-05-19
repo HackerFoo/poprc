@@ -29,6 +29,10 @@
 #include "gen/support.h"
 #include "gen/map.h"
 #include "gen/parse.h"
+#include "gen/word_table.h"
+
+word_entry_t word_table[] = WORDS;
+const unsigned int word_table_length = LENGTH(word_table);
 
 word_entry_t user_word_table[64] = {{"", NULL, 0, 0, NULL}};
 unsigned int const user_word_table_length = LENGTH(user_word_table);
