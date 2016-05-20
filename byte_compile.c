@@ -434,23 +434,18 @@ cell_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
 
 void compact_expr(char const *name, char *str) {
   seg_t seg = {name, strlen(name)};
-  word_entry_t *e =
-    lookup_linear(user_word_table,
-                  WIDTH(user_word_table),
-                  user_word_table_length,
-                  seg);
-  if(!e) e = new_user_word_entry++;
-  strcpy(e->name, name);
+  word_entry_t *e = alloc_user_word(seg);
+  if(!e) return;
   e->func = func_placeholder;
-  e->in = 0;
-  e->out = 1;
   get_arity(str, &e->in, &e->out);
   e->func = func_self;
   cell_t *c = build(str);
+  /* TODO handle build failure
   if(!c) {
     --new_user_word_entry;
     return;
   }
+  */
   e->func = func_exec;
   e->data = byte_compile(c, e->in, e->out);
 }

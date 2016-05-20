@@ -54,12 +54,16 @@ static pair_t symbols[MAX_SYMBOLS+1] = {
 #undef ENTRY
 uint32_t symbol_strings_n = 19;
 
+static char name_strings[4096];
+char *new_name_string;
+
 // for when index declaration is missing for some reason e.g. clang on Android
 char *index(const char *s, int c);
 
 void parse_init() {
   memset(user_word_table, 0, sizeof(user_word_table));
   new_user_word_entry = user_word_table;
+  new_name_string = name_strings;
 
   // create index
   word_index[0].first = LENGTH(word_index) - 1;
@@ -71,22 +75,46 @@ void parse_init() {
   }
 }
 
+word_entry_t *alloc_user_word(seg_t w) {
+  char tmp[w.n + 1]; // HACKy, need seg_map_find
+  seg_read(w, tmp, sizeof(tmp));
+  pair_t *p = string_map_find(word_index, tmp);
+  word_entry_t *e;
+  if(p) {
+    e = (word_entry_t *)p->second;
+    if(e >= word_table && e < word_table + 1) return NULL; // primitive
+    else return e;
+  } else {
+    if(new_user_word_entry >= user_word_table + 1) return NULL; // user table is full
+    size_t left = (char *)(&name_strings + 1) - new_name_string;
+    if(left < w.n + 1) return NULL; // name_strings full
+    e = new_user_word_entry++;
+    seg_read(w, new_name_string, left);
+    e->name = new_name_string;
+    new_name_string += w.n + 1;
+    e->func = func_self;
+    e->in = 0;
+    e->out = 1;
+    e->data = NULL;
+    pair_t x = {(uintptr_t)e->name, (uintptr_t)e};
+    string_map_insert(word_index, x);
+    return e;
+  }
+}
+
 bool is_num(char const *str) {
   return char_class(str[0]) == CC_NUMERIC ||
     (str[0] == '-' && char_class(str[1]) == CC_NUMERIC);
 }
 
 word_entry_t *lookup_word(seg_t w) {
-  char tmp[64]; // HACKy, need seg_map_find
+  char tmp[w.n + 1]; // HACKy, need seg_map_find
   seg_read(w, tmp, sizeof(tmp));
   pair_t *res = string_map_find(word_index, tmp);
   if(res) {
     return (word_entry_t *)res->second;
   } else {
-    return lookup_linear(user_word_table,
-                         WIDTH(user_word_table),
-                         user_word_table_length,
-                         w);
+    return NULL;
   }
 }
 /*
