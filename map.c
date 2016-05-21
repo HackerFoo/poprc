@@ -294,9 +294,18 @@ pair_t *string_map_find(map_t map, char *key) {
 }
 
 pair_t *seg_map_find(map_t map, seg_t key) {
-  char s[key.n + 1]; // FIXME shouldn't allocate large strings on stack
-  seg_read(key, s, sizeof(s));
-  return string_map_find(map, s);
+  uintptr_t x = *map_cnt(map);
+  pair_t *elems = map_elems(map);
+  pair_t *result = NULL;
+  uintptr_t bit = 1;
+  while(x) {
+    if(x & bit) {
+      x &= ~bit;
+      if((result = find_last_seg(&elems[x], bit, key))) break;
+    }
+    bit <<= 1;
+  }
+  return result;
 }
 
 pair_t *map_find_value(map_t map, uintptr_t value) {

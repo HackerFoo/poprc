@@ -191,6 +191,35 @@ pair_t *find_last_string(pair_t *array, size_t size, char *key) {
   return strcmp((char *)p->first, key) == 0 ? p : NULL;
 }
 
+// compare a string to a seg_t
+int segcmp(const char *str, seg_t seg) {
+  size_t cnt = seg.n;
+  const char *a = str, *b = seg.s;
+  while(cnt--) {
+    int diff = *a - *b;
+    if(diff || !*a) return diff;
+    a++;
+    b++;
+  }
+  return *a;
+}
+
+// find the last index of a value in a sorted array with string keys using a seg_t key
+pair_t *find_last_seg(pair_t *array, size_t size, seg_t key) {
+  size_t low = 0, high = size;
+  while(high > low + 1) {
+    const size_t pivot = low + ((high - low + 1) / 2);
+    const char *pivot_key = (char *)array[pivot].first;
+    if(segcmp(pivot_key, key) <= 0) {
+      low = pivot;
+    } else {
+      high = pivot;
+    }
+  }
+  pair_t *p = &array[low];
+  return segcmp((char *)p->first, key) == 0 ? p : NULL;
+}
+
 // string segments
 const char *seg_end(seg_t seg) {
   return seg.s ? seg.s + seg.n : NULL;
