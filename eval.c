@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <getopt.h>
+#include <stdlib.h>
 
 #if defined(USE_READLINE)
 #include <readline/readline.h>
@@ -157,20 +158,24 @@ static seg_t last_tok(const char *str) {
 #ifdef USE_LINENOISE
 static void completion(char const *buf, linenoiseCompletions *lc) {
   unsigned int n = strlen(buf);
-  char comp[n+sizeof_field(word_entry_t, name)];
-  strncpy(comp, buf, sizeof(comp));
-  seg_t t = last_tok(comp);
+  seg_t t = last_tok(buf);
   if(!t.s) return;
   word_entry_t *e = lookup_word(t);
   if(e) {
     // add completions
+    char *comp = malloc(n + 64);
+    strcpy(comp, buf);
     do {
-      if(strlen(e->name) > t.n) {
-        strcpy((char *)t.s, e->name);
+      unsigned int entry_len = strlen(e->name);
+      int diff = entry_len - t.n;
+      if(diff > 0) {
+        comp = realloc(comp, n + diff + 1);
+        strcpy(comp + n, e->name + (entry_len - diff));
         linenoiseAddCompletion(lc, comp);
       }
-      e++;
+      e++; // FIXME
     } while(strncmp(e->name, t.s, t.n) == 0);
+    free(comp);
   }
 }
 #endif
@@ -178,45 +183,43 @@ static void completion(char const *buf, linenoiseCompletions *lc) {
 #ifdef USE_READLINE
 static char **completion(char *buf, UNUSED int start, UNUSED int end)
 {
-    unsigned int current_match = 1;
-    char **matches = NULL;
-    unsigned int n = strlen(buf);
-    char *comp = malloc(n + sizeof_field(word_entry_t, name) + 1); // FIXME
-    memcpy(comp, buf, n);
-    seg_t t = last_tok(comp);
-    if(t.s) {
-        word_entry_t *e = lookup_word(t);
-        if(e) {
-            matches = malloc(sizeof(char *) * 16);
-            memset(matches, 0, sizeof(char *) * 16);
+  unsigned int current_match = 1;
+  char **matches = NULL;
+  unsigned int n = strlen(buf);
+  seg_t t = last_tok(buf);
+  if(t.s) {
+    word_entry_t *e = lookup_word(t);
+    if(e) {
+      matches = malloc(sizeof(char *) * 16);
+      memset(matches, 0, sizeof(char *) * 16);
 
-            char *copy = malloc(sizeof_field(word_entry_t, name)); // FIXME
-            memcpy(copy, t.s, t.n+1);
-            matches[0] = copy;
+      char *copy = malloc(t.n + 1);
+      seg_read(t, copy, t.n + 1);
+      matches[0] = copy;
 
-            // add completions
-            do {
-              unsigned int entry_len = strnlen(e->name, sizeof_field(word_entry_t, name)); // FIXME
-                if(entry_len > t.n) {
-                  memcpy((char *)t.s, e->name, entry_len);
-                    comp[entry_len] = 0;
-
-                    char *copy = malloc(sizeof_field(word_entry_t, name)); // FIXME
-                    memcpy(copy, comp, entry_len+1);
-                    matches[current_match++] = copy;
-                }
-                e++;
-            } while(strncmp(e->name, t.s, t.n) == 0 && current_match < 16);
-
-            // if there is just one match, make it the substitute
-            if(current_match == 2) {
-              strncpy(matches[0], matches[1], sizeof_field(word_entry_t, name)); // FIXME
-            }
+      // add completions
+      do {
+        unsigned int entry_len = strlen(e->name);
+        int diff = entry_len - t.n;
+        if(diff > 0) {
+          char *comp = malloc(n + diff + 1);
+          memcpy(comp, buf, n);
+          strcpy(comp + n, e->name + (entry_len - diff));
+          matches[current_match++] = comp;
         }
-    }
+        e++; // FIXME
+      } while(strncmp(e->name, t.s, t.n) == 0 && current_match < 16);
 
-    free(comp);
-    return matches;
+      // if there is just one match, make it the substitute
+      if(current_match == 2) {
+        free(matches[0]);
+        matches[0] = malloc(strlen(matches[1]) + 1);
+        strcpy(matches[0], matches[1]);
+      }
+    }
+  }
+
+  return matches;
 }
 
 static void initialize_readline()
