@@ -293,6 +293,12 @@ pair_t *string_map_find(map_t map, char *key) {
   return result;
 }
 
+pair_t *seg_map_find(map_t map, seg_t key) {
+  char s[key.n + 1]; // FIXME shouldn't allocate large strings on stack
+  seg_read(key, s, sizeof(s));
+  return string_map_find(map, s);
+}
+
 pair_t *map_find_value(map_t map, uintptr_t value) {
   uintptr_t x = *map_cnt(map);
   pair_t *elems = map_elems(map);

@@ -165,10 +165,8 @@ static void completion(char const *buf, linenoiseCompletions *lc) {
   if(e) {
     // add completions
     do {
-      if(strnlen(e->name, sizeof_field(word_entry_t, name)) >
-         t.n) {
-
-        strncpy((char *)t.s, e->name, sizeof(e->name));
+      if(strlen(e->name) > t.n) {
+        strcpy((char *)t.s, e->name);
         linenoiseAddCompletion(lc, comp);
       }
       e++;
@@ -183,7 +181,7 @@ static char **completion(char *buf, UNUSED int start, UNUSED int end)
     unsigned int current_match = 1;
     char **matches = NULL;
     unsigned int n = strlen(buf);
-    char *comp = malloc(n + sizeof_field(word_entry_t, name) + 1);
+    char *comp = malloc(n + sizeof_field(word_entry_t, name) + 1); // FIXME
     memcpy(comp, buf, n);
     seg_t t = last_tok(comp);
     if(t.s) {
@@ -192,18 +190,18 @@ static char **completion(char *buf, UNUSED int start, UNUSED int end)
             matches = malloc(sizeof(char *) * 16);
             memset(matches, 0, sizeof(char *) * 16);
 
-            char *copy = malloc(sizeof_field(word_entry_t, name));
+            char *copy = malloc(sizeof_field(word_entry_t, name)); // FIXME
             memcpy(copy, t.s, t.n+1);
             matches[0] = copy;
 
             // add completions
             do {
-                unsigned int entry_len = strnlen(e->name, sizeof_field(word_entry_t, name));
+              unsigned int entry_len = strnlen(e->name, sizeof_field(word_entry_t, name)); // FIXME
                 if(entry_len > t.n) {
                   memcpy((char *)t.s, e->name, entry_len);
                     comp[entry_len] = 0;
 
-                    char *copy = malloc(sizeof_field(word_entry_t, name));
+                    char *copy = malloc(sizeof_field(word_entry_t, name)); // FIXME
                     memcpy(copy, comp, entry_len+1);
                     matches[current_match++] = copy;
                 }
@@ -212,7 +210,7 @@ static char **completion(char *buf, UNUSED int start, UNUSED int end)
 
             // if there is just one match, make it the substitute
             if(current_match == 2) {
-                strncpy(matches[0], matches[1], sizeof_field(word_entry_t, name));
+              strncpy(matches[0], matches[1], sizeof_field(word_entry_t, name)); // FIXME
             }
         }
     }

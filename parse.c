@@ -76,9 +76,7 @@ void parse_init() {
 }
 
 word_entry_t *alloc_user_word(seg_t w) {
-  char tmp[w.n + 1]; // HACKy, need seg_map_find
-  seg_read(w, tmp, sizeof(tmp));
-  pair_t *p = string_map_find(word_index, tmp);
+  pair_t *p = seg_map_find(word_index, w);
   word_entry_t *e;
   if(p) {
     e = (word_entry_t *)p->second;
@@ -108,9 +106,7 @@ bool is_num(char const *str) {
 }
 
 word_entry_t *lookup_word(seg_t w) {
-  char tmp[w.n + 1]; // HACKy, need seg_map_find
-  seg_read(w, tmp, sizeof(tmp));
-  pair_t *res = string_map_find(word_index, tmp);
+  pair_t *res = seg_map_find(word_index, w);
   if(res) {
     return (word_entry_t *)res->second;
   } else {
