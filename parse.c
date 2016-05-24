@@ -366,6 +366,40 @@ val_t fill_args(cell_t *r, void (*argf)(cell_t *, val_t)) {
   return i;
 }
 
+cell_t *lex(const char* s) {
+  seg_t t;
+  cell_t *ret = NULL, **prev = &ret;
+  while(t = tok(s), t.s) {
+    cell_t *c = closure_alloc(1);
+    c->func = func_value; // HACK
+    c->tok_list.location = t.s;
+    c->tok_list.length = t.n;
+    *prev = c;
+    prev = &c->tok_list.next;
+    s = seg_end(t);
+  }
+  return ret;
+}
+
+void free_toks(cell_t *t) {
+  while(t) {
+    cell_t *tmp = t;
+    t = t->tok_list.next;
+    closure_free(tmp);
+  }
+}
+
+int test_lex(UNUSED char *name) {
+  cell_t *l = lex("testing [1 2+ 3] _ignore this_ :done"), *p = l;
+  while(p) {
+    printf("%.*s ", p->tok_list.length, p->tok_list.location);
+    p = p->tok_list.next;
+  }
+  printf("\n");
+  free_toks(l);
+  return 0;
+}
+
 #define MAX_ARGS 16
 cell_t *_build(const char **s) {
   cell_t *arg_stack[MAX_ARGS]; // TODO use allocated storage

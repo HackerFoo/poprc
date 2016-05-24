@@ -19,6 +19,9 @@ test_comments => 0
 1 2 4
 1 2 5
 test_count => 0
+@ test_lex
+testing [ 1 2 + 3 ] :done 
+test_lex => 0
 @ test_loops
 up: 0
 up: 1
