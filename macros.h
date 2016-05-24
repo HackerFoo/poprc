@@ -70,4 +70,8 @@ struct __test_entry {
 #define BITSET(name, size) uint8_t name[((size)+7)/8] = {0}
 #define BITSET_INDEX(name, array) BITSET(name, LENGTH(array))
 
+#if !defined(static_assert)
+#define static_assert(expr, msg) _Static_assert(expr, msg)
+#endif
+
 #endif

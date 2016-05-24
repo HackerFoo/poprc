@@ -76,7 +76,7 @@ struct __attribute__((packed)) value {
 /* token list */
 struct __attribute__((packed)) tok_list {
   csize_t length;
-  char *location;
+  const char *location;
   cell_t *next;
   union {
     val_t integer[1]; /* integer */
@@ -86,9 +86,8 @@ struct __attribute__((packed)) tok_list {
 
 /* unallocated memory */
 struct __attribute__((packed)) mem {
-  csize_t canary;
+  csize_t padding;
   cell_t *prev, *next;
-  cell_t *region;
 };
 
 struct __attribute__((packed)) cell {
@@ -110,6 +109,8 @@ struct __attribute__((packed)) cell {
     mem_t mem;
   };
 } __attribute__((aligned(4)));
+
+static_assert(sizeof(cell_t) == 6 * sizeof(uintptr_t) + sizeof(refcount_t) + 2 * sizeof(type_or_csize_t), "cell_t wrong size");
 
 typedef struct word_entry_t {
   char *name;
@@ -145,18 +146,6 @@ typedef struct measure_t {
 #define ARGS_OUT 4
 #define ARGS (ARGS_IN | ARGS_OUT)
 #define PTRS 8
-
-typedef struct two_cells_t {
-  cell_t *a, *b;
-} two_cells_t;
-
-typedef struct three_cells_t {
-  cell_t *a, *b, *c;
-} three_cells_t;
-
-typedef struct four_cells_t {
-  cell_t *a, *b, *c, *d;
-} four_cells_t;
 
 typedef enum trace_type_t {
   tt_reduction,
