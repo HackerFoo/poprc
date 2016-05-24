@@ -42,6 +42,7 @@ typedef type_or_csize_t csize_t;
 typedef struct cell cell_t;
 typedef struct expr expr_t;
 typedef struct value value_t;
+typedef struct tok_list tok_list_t;
 typedef struct mem mem_t;
 
 typedef uintptr_t alt_set_t;
@@ -60,7 +61,7 @@ typedef bool (reduce_t)(cell_t **cell, type_t type);
 struct __attribute__((packed)) expr {
   csize_t out;
   cell_t *arg[3];
-} __attribute__((aligned(4)));
+};
 
 /* reduced value */
 struct __attribute__((packed)) value {
@@ -70,12 +71,25 @@ struct __attribute__((packed)) value {
     val_t integer[2]; /* integer */
     cell_t *ptr[2];   /* list */
   };
-} __attribute__((aligned(4)));
+};
+
+/* token list */
+struct __attribute__((packed)) tok_list {
+  csize_t length;
+  char *location;
+  cell_t *next;
+  union {
+    val_t integer[1]; /* integer */
+    cell_t *ptr[1];   /* list */
+  };
+};
 
 /* unallocated memory */
 struct __attribute__((packed)) mem {
+  csize_t canary;
   cell_t *prev, *next;
-} __attribute__((aligned(4)));
+  cell_t *region;
+};
 
 struct __attribute__((packed)) cell {
   /* func indicates the type:
@@ -92,6 +106,7 @@ struct __attribute__((packed)) cell {
   union {
     expr_t expr;
     value_t value;
+    tok_list_t tok_list;
     mem_t mem;
   };
 } __attribute__((aligned(4)));
