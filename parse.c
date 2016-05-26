@@ -334,17 +334,17 @@ void reverse_vector(cell_t *c) {
   }
 }
 
-cell_t *parse_vector(const char **s) {
-  seg_t t;
+cell_t *parse_vector(const cell_t **l) {
+  const cell_t *t;
   cell_t *c = vector(0);
-  while((t = tok(*s), t.s) &&
-        *t.s != ')') {
-    assert(is_num(t.s));
-    c = pushl_val(atoi(t.s), c);
-    *s = seg_end(t);
+  while((t = *l) &&
+        *t->tok_list.location != ')') {
+    assert(is_num(t->tok_list.location));
+    c = pushl_val(atoi(t->tok_list.location), c);
+    *l = t->tok_list.next;
   }
   reverse_vector(c);
-  *s = seg_end(t);
+  *l = t->tok_list.next;
   return c;
 }
 
@@ -401,37 +401,38 @@ int test_lex(UNUSED char *name) {
 }
 
 #define MAX_ARGS 16
-cell_t *_build(const char **s) {
+cell_t *parse_expr(const cell_t **l) {
   cell_t *arg_stack[MAX_ARGS]; // TODO use allocated storage
   unsigned int n = 0;
-  seg_t t;
+  const cell_t *t;
 
-  while(t = tok(*s), t.s) {
+  while((t = *l)) {
     csize_t in = 0, out = 1;
     cell_t *data = NULL;
-    *s = seg_end(t);
-    if(t.n == 1) {
-      switch(*t.s) {
+    *l = t->tok_list.next;
+    if(t->tok_list.length == 1) {
+      switch(*t->tok_list.location) {
       case ']':
         goto make_list;
       case '[':
-        arg_stack[n++] = _build(s);
+        arg_stack[n++] = parse_expr(l);
         continue;
       case '(':
-        arg_stack[n++] = parse_vector(s);
+        arg_stack[n++] = parse_vector(l);
         continue;
       default:
         break;
       }
     }
 
-    if(*t.s == ':' && t.n > 1) {
-      seg_t sym = {t.s + 1, t.n - 1};
+    if(*t->tok_list.location == ':' && t->tok_list.length > 1) {
+      seg_t sym = {t->tok_list.location + 1, t->tok_list.length - 1};
       arg_stack[n++] = symbol(sym);
       continue;
     }
 
-    cell_t *c = parse_word(t, &in, &out, &data);
+    seg_t w = {t->tok_list.location, t->tok_list.length};
+    cell_t *c = parse_word(w, &in, &out, &data);
     COUNTUP(i, out-1) {
       cell_t *d = dep(ref(c));
       arg(&c, d);
@@ -459,7 +460,11 @@ make_list: { // build list from stack and return
 }
 
 cell_t *build(const char *s) {
-  return _build(&s);
+  cell_t *l = lex(s);
+  const cell_t *ll = l;
+  cell_t *c = parse_expr(&ll);
+  free_toks(l);
+  return c;
 }
 
 uintptr_t intern(seg_t sym) {
