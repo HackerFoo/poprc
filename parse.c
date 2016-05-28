@@ -329,16 +329,25 @@ void reverse_vector(cell_t *c) {
 }
 
 cell_t *parse_vector(const cell_t **l) {
-  const cell_t *t;
+  const tok_list_t *tl;
+  const char *s;
+  const cell_t *t = *l;
   cell_t *c = vector(0);
-  while((t = *l) &&
-        *t->tok_list.location != ')') {
-    assert(is_num(t->tok_list.location));
-    c = pushl_val(atoi(t->tok_list.location), c);
-    *l = t->tok_list.next;
+  while(t) {
+    tl = &t->tok_list;
+    s = tl->location;
+    if(s[0] == ')') {
+      t = tl->next;
+      break;
+    } else {
+      assert(is_num(s));
+      c = pushl_val(atoi(s), c);
+      t = tl->next;
+    }
   }
+
+  *l = t;
   reverse_vector(c);
-  *l = t->tok_list.next;
   return c;
 }
 

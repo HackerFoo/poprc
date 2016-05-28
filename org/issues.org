@@ -18,13 +18,16 @@ Compile to direct C when possible
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
-** TODO replace all tables with maps
+** DONE replace all tables with maps
 ** DONE add string map
 ** TODO add static asserts as tests
 - check symbol table
 - check builtins table order
 * bugs
-** TODO :( -> segmentation fault
+** TODO FIX: 0 [True =:=] [0 ==] | pushl popr swap drop
+- returns {} instead of True
+- works when alts are swapped
+** DONE :( -> segmentation fault
 also just (
 ** TODO select seems broken
 :c f2 | popr ! cut popr swap drop
