@@ -1,14 +1,14 @@
 @ test_alloc
 test_alloc => 0
 @ test_comments
-[1] :one def
-[2] :t_w_o def
+[1] One def
+[2] T_w_o def
 { ################################
   [one t_w_o +] :three def
   three *
-} :m def #################
+} M def #################
 ##############
-m:three
+M:three
 ################
 test_comments => 0
 @ test_count
@@ -20,7 +20,7 @@ test_comments => 0
 1 2 5
 test_count => 0
 @ test_lex
-testing [ 1 2 + 3 ] :done 
+testing [ 1 2 + 3 ] Done 
 test_lex => 0
 @ test_loops
 up: 0

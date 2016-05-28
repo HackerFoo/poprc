@@ -62,6 +62,6 @@
 
 @: =loop 6 [dup 0 > swap 5- loop swap !] [dup 0 <= !] | pushl
 
-: :false :true | dup !
+: False True | dup !
 
 : 1 [dup swap drop] pushl popr

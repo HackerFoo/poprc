@@ -392,9 +392,9 @@ void show_one(cell_t const *c) {
     val_t x = c->value.integer[0];
     char *str = symbol_string(x);
     if(str) {
-      printf(" :%s", str);
+      printf(" %s", str);
     } else {
-      printf(" :?!");
+      printf(" UnknownSymbol");
     }
   } else {
     printf(" ?");

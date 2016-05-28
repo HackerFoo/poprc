@@ -42,13 +42,13 @@ static pair_t word_index[word_table_length + user_word_table_length + 1];
 
 #define MAX_SYMBOLS 64
 static uint32_t symbol_index[MAX_SYMBOLS] = {0, 6, 11, 14};
-static char symbol_strings[4096] = "false\0true\0IO\0Dict";
+static char symbol_strings[4096] = "False\0True\0IO\0Dict";
 #define ENTRY(i, name) {(uintptr_t)&symbol_strings[(i)], SYM_##name}
 static pair_t symbols[MAX_SYMBOLS+1] = {
   {MAX_SYMBOLS, 4},
   ENTRY(14, DICT),
-  ENTRY(11, IO),
   ENTRY(0,  FALSE),
+  ENTRY(11, IO),
   ENTRY(6,  TRUE)
 };
 #undef ENTRY
@@ -248,14 +248,14 @@ void mark_comments(char c, char *str) {
 
 int test_comments(UNUSED char *name) {
   char str[] =
-    "[1] :one def\n"
-    "[2] :t_w_o def\n"
+    "[1] One def\n"
+    "[2] T_w_o def\n"
     "{ _an inline _n_e_s_t_ed_ comment_\n"
     "  [one t_w_o +] :three def\n"
     "  three *\n"
-    "} :m def __ a line comment\n"
+    "} M def __ a line comment\n"
     "__ stack is: 6\n"
-    "m:three\n"
+    "M:three\n"
     "__ stack is: 6 3\n";
   mark_comments('#', str);
   printf("%s", str);
@@ -301,12 +301,6 @@ seg_t tok(const char *s) {
         cc = ncc;
         continue;
       } else if(cc == CC_ALPHA) { // allow numeric after alpha
-        continue;
-      }
-      break;
-    case CC_ALPHA: // allow symbols
-      if(s[-1] == ':') {
-        cc = ncc;
         continue;
       }
       break;
@@ -390,7 +384,7 @@ void free_toks(cell_t *t) {
 }
 
 int test_lex(UNUSED char *name) {
-  cell_t *l = lex("testing [1 2+ 3] _ignore this_ :done"), *p = l;
+  cell_t *l = lex("testing [1 2+ 3] _ignore this_ Done"), *p = l;
   while(p) {
     printf("%.*s ", p->tok_list.length, p->tok_list.location);
     p = p->tok_list.next;
@@ -398,6 +392,10 @@ int test_lex(UNUSED char *name) {
   printf("\n");
   free_toks(l);
   return 0;
+}
+
+bool is_uppercase(char c) {
+  return c >= 'A' && c <= 'Z';
 }
 
 #define MAX_ARGS 16
@@ -425,28 +423,27 @@ cell_t *parse_expr(const cell_t **l) {
       }
     }
 
-    if(*t->tok_list.location == ':' && t->tok_list.length > 1) {
-      seg_t sym = {t->tok_list.location + 1, t->tok_list.length - 1};
-      arg_stack[n++] = symbol(sym);
-      continue;
-    }
-
     seg_t w = {t->tok_list.location, t->tok_list.length};
-    cell_t *c = parse_word(w, &in, &out, &data);
-    COUNTUP(i, out-1) {
-      cell_t *d = dep(ref(c));
-      arg(&c, d);
-    }
-    if(data) {
-      arg_stack[n++] = data;
-      in++;
-    }
-    COUNTDOWN(i, min(n, in)) {
-      arg(&c, arg_stack[--n]);
-    }
-    arg_stack[n++] = c;
-    COUNTUP(i, out-1) {
-      arg_stack[n++] = c->expr.arg[in+i];
+
+    if(is_uppercase(*t->tok_list.location)) {
+      arg_stack[n++] = symbol(w);
+    } else {
+      cell_t *c = parse_word(w, &in, &out, &data);
+      COUNTUP(i, out-1) {
+        cell_t *d = dep(ref(c));
+        arg(&c, d);
+      }
+      if(data) {
+        arg_stack[n++] = data;
+        in++;
+      }
+      COUNTDOWN(i, min(n, in)) {
+        arg(&c, arg_stack[--n]);
+      }
+      arg_stack[n++] = c;
+      COUNTUP(i, out-1) {
+        arg_stack[n++] = c->expr.arg[in+i];
+      }
     }
   }
 

@@ -62,8 +62,8 @@ loading: tests.peg
 @: [1 [swap ! 1- swap force dup pushl pushl head] [swap 0 == ! 1- force swap] || ] [dup] . popr . popr
 @: [100 [swap ! cut 1- swap force dup pushl pushl popr swap popr swap drop swap] [swap 0 == ! cut 1- force swap] || ] [dup] . popr . [swap] . head cut
 @: =loop 6 [dup 0 > swap 5- loop swap !] [dup 0 <= !] | pushl
-: :false :true | dup !
- [ :true ]
+: False True | dup !
+ [ True ]
 : 1 [dup swap drop] pushl popr
  [ [] 1 ]
 loaded: tests.peg
