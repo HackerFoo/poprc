@@ -1,49 +1,70 @@
+module lib:
+  module num: num
+  module list: list
+  module control: control
+
+
+module num:
+
 __ max of two values
-[[] pushl pushl dup . dup popr drop | [<= !] . popr swap drop cut] :max def
+max: [] pushl pushl dup . dup popr drop | [<= !] . popr swap drop cut
 
 __ min of two values
-[[] pushl pushl dup . dup popr drop | [> !] . popr swap drop cut] :min def
+min: [] pushl pushl dup . dup popr drop | [> !] . popr swap drop cut
 
-__ if then else
-[[] pushl pushl swap pushr [0 == !] [drop drop] | . popr swap drop cut] :ifte def
+
+module list:
 
 __ take rightmost value from quote
-[popr swap drop] :head def
-
-__ apply a quote to a single input yielding a single output
-[pushl popr swap drop] :ap11 def
-
-__ apply a quote to two inputs yielding a single output
-[pushl pushl popr swap drop] :ap21 def
-
-__ apply a quote to a single input yielding two outputs
-[pushl popr swap popr swap drop swap] :ap12 def
-
-__ apply a quote underneath the top, 1 -> 1
-[swap pushr pushl popr swap popr swap drop swap] :dip11 def
-
-__ apply a quote underneath the top, 1 -> 2
-[swap pushr pushl popr swap pushl [swap] . popr swap popr swap popr swap drop] :dip12 def
-
-__ apply a quote underneath the top, 2 -> 1
-[swap pushr pushl pushl popr swap popr swap drop swap] :dip21 def
+head: popr swap drop
 
 __ rotate top 3
-[[] swap pushr swap pushr pushl popr swap popr swap popr swap drop] :rot def
+rot:             __ x y z
+  [] pushl       __ x y [z]
+  swap pushr     __ x [z y]
+  pushl          __ [x z y]
+  popr swap      __ y [x z]
+  popr swap      __ y z [x]
+  popr swap drop __ y z x
 
-____todo
-=or swap [dup 0 != !] ap11 swap | cut
-=and 1 rot rot 0 != ! 0 != ! 0 | cut
-@fix, select disappears: =and 1 rot rot 0 != ! 0 != ! 0 or
 
-@alternate: =ifte2 rot [swap drop 0 != !] [0 == !] | pushl pushl pushl popr swap drop cut
+module control:
 
-@ recursive call test
-=mod5 [dup 5 < !] [dup 5 >= swap 5- mod5 swap !] | pushl popr cut swap drop
-@fix: =fib dup 2 < [1 swap drop] [dup 1- fib swap 2- fib +] ifte pushl head
-@fix: =loop dup 1 > [1- loop] [] ifte pushl head
+__ if then else
+ifte: [] pushl pushl swap pushr [0 == !] [drop drop] | . popr swap drop cut
 
-@fix: =fact dup 1 > [dup 1- fact *] [] ifte pushl head
+__ ifte2: rot [swap drop 0 != !] [0 == !] | pushl pushl pushl popr swap drop cut
 
-=top0 [popr] [0] | pushl popr swap drop cut
-todo____
+__ apply a quote to a single input yielding a single output
+ap11: pushl popr swap drop
+
+__ apply a quote to two inputs yielding a single output
+ap21: pushl pushl popr swap drop
+
+__ apply a quote to a single input yielding two outputs
+ap12: pushl popr swap popr swap drop swap
+
+__ apply a quote underneath the top, 1 -> 1
+dip11: swap pushr pushl popr swap popr swap drop swap
+
+__ apply a quote underneath the top, 1 -> 2
+dip12: swap pushr pushl popr swap pushl [swap] . popr swap popr swap popr swap drop
+
+__ apply a quote underneath the top, 2 -> 1
+dip21: swap pushr pushl pushl popr swap popr swap drop swap
+
+
+module logic:
+
+__ or: swap [dup 0 != !] ap11 swap | cut
+__ and: 1 rot rot 0 != ! 0 != ! 0 | cut
+__ fix, select disappears: =and 1 rot rot 0 != ! 0 != ! 0 or
+
+
+__ module loop:
+
+__ mod5: [dup 5 < !] [dup 5 >= swap 5- mod5 swap !] | pushl popr cut swap drop
+__ fib: dup 2 < [1 swap drop] [dup 1- fib swap 2- fib +] ifte pushl head
+__ loop: dup 1 > [1- loop] [] ifte pushl head
+__ fact: dup 1 > [dup 1- fact *] [] ifte pushl head
+__ top0 [popr] [0] | pushl popr swap drop cut

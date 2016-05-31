@@ -6,3 +6,21 @@
 - for efficiency and simplicity
 ** thunks
 ** alts? (cut before return)
+* indentation
+line with ':' establishes body indent
+next line sets head indent if greater
+section precedence: module > word
+
+module first: _start of head_ head
+  module inside_first_head: blah
+    blah
+  blah
+  _end of head_
+_start of body_
+f1: blah
+  blah
+  blah
+f2: blah
+module next: ...
+
+sub-modules and imports must be in module head, functions in body
