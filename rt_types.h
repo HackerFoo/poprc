@@ -76,12 +76,8 @@ struct __attribute__((packed)) value {
 /* token list */
 struct __attribute__((packed)) tok_list {
   csize_t length;
-  const char *location;
+  const char *location, *line;
   cell_t *next;
-  union {
-    val_t integer[1]; /* integer */
-    cell_t *ptr[1];   /* list */
-  };
 };
 
 /* unallocated memory */

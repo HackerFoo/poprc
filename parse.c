@@ -369,17 +369,33 @@ val_t fill_args(cell_t *r, void (*argf)(cell_t *, val_t)) {
   return i;
 }
 
+void update_line(const char *start, const char *end, const char **line) {
+  const char *p = end - 1;
+  while(p >= start) {
+    if(*p == '\n') {
+      *line = p + 1;
+      break;
+    } else {
+      p--;
+    }
+  }
+}
+
 cell_t *lex(const char* s) {
   seg_t t;
+  const char *line = s;
   cell_t *ret = NULL, **prev = &ret;
   while(t = tok(s), t.s) {
+    const char *next = seg_end(t);
+    update_line(s, next, &line);
+    s = next;
     cell_t *c = closure_alloc(1);
     c->func = func_value; // HACK
     c->tok_list.location = t.s;
+    c->tok_list.line = line;
     c->tok_list.length = t.n;
     *prev = c;
     prev = &c->tok_list.next;
-    s = seg_end(t);
   }
   return ret;
 }
@@ -393,8 +409,14 @@ void free_toks(cell_t *t) {
 }
 
 int test_lex(UNUSED char *name) {
-  cell_t *l = lex("testing [1 2+ 3] _ignore this_ Done"), *p = l;
+  cell_t *l = lex("testing\n[1 2+ 3]\n_ignore this_ 4\nDone"), *p = l;
+  if(!l) return -1;
+  const char *last_line = l->tok_list.line; 
   while(p) {
+    if(p->tok_list.line != last_line) {
+      printf("\n");
+      last_line = p->tok_list.line;
+    }
     printf("%.*s ", p->tok_list.length, p->tok_list.location);
     p = p->tok_list.next;
   }
