@@ -24,3 +24,28 @@ f2: blah
 module next: ...
 
 sub-modules and imports must be in module head, functions in body
+* indentation 2
+- one definition
+name: blah
+        blah blah
+        blah
+- multiple definitions
+_type1_
+name:
+  blah blah
+    blah __ first
+  yak yak
+    yak  __ second
+mod:
+  module a
+  module b
+mod.f1: c.f1
+_type2_
+mod2: module a, module b
+mod2.f1: c.f1
+_type3_
+mod3: module a
+mod3: module b
+mod3.f1: c.f1
+- also works for words
+- type1 may be confusing
