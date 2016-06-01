@@ -20,7 +20,10 @@ test_comments => 0
 1 2 5
 test_count => 0
 @ test_lex
-testing [ 1 2 + 3 ] Done 
+testing 
+[ 1 2 + 3 ] 
+4 
+Done 
 test_lex => 0
 @ test_loops
 up: 0
