@@ -381,6 +381,19 @@ void update_line(const char *start, const char *end, const char **line) {
   }
 }
 
+seg_t tok_seg(const cell_t *c) {
+  seg_t s = {
+    .s = c->tok_list.location,
+    .n = c->tok_list.length
+  };
+  return s;
+}
+
+void tok_set_seg(cell_t *c, const seg_t s) {
+  c->tok_list.location = s.s;
+  c->tok_list.length = s.n;
+}
+
 cell_t *lex(const char* s) {
   seg_t t;
   const char *line = s;
@@ -391,9 +404,8 @@ cell_t *lex(const char* s) {
     s = next;
     cell_t *c = closure_alloc(1);
     c->func = func_value; // HACK
-    c->tok_list.location = t.s;
+    tok_set_seg(c, t);
     c->tok_list.line = line;
-    c->tok_list.length = t.n;
     *prev = c;
     prev = &c->tok_list.next;
   }
@@ -408,6 +420,12 @@ void free_toks(cell_t *t) {
   }
 }
 
+#define printseg(pre, seg, fmt, ...)                            \
+  do {                                                          \
+    seg_t __seg = seg;                                          \
+    printf(pre "%.*s" fmt, __seg.n, __seg.s , ##__VA_ARGS__);   \
+  } while(0)
+
 int test_lex(UNUSED char *name) {
   cell_t *l = lex("testing\n[1 2+ 3]\n_ignore this_ 4\nDone"), *p = l;
   if(!l) return -1;
@@ -417,12 +435,73 @@ int test_lex(UNUSED char *name) {
       printf("\n");
       last_line = p->tok_list.line;
     }
-    printf("%.*s ", p->tok_list.length, p->tok_list.location);
+    printseg("", tok_seg(p), " ");
     p = p->tok_list.next;
   }
   printf("\n");
   free_toks(l);
   return 0;
+}
+
+const char *reserved_words[] = {
+  "module",
+  ":"
+};
+
+bool is_reserved(seg_t s) {
+  FOREACH(i, reserved_words) {
+    if(segcmp("module", s) == 0) return true;
+  }
+  return false;
+}
+
+uintptr_t tok_indent(const cell_t *c) {
+  assert(c->tok_list.location >= c->tok_list.line);
+  return c->tok_list.location - c->tok_list.line;
+}
+
+bool parse_def(const cell_t **c) {
+  const cell_t *name = *c;
+  if(is_reserved(tok_seg(name))) return false;
+  const cell_t *p = name->tok_list.next;
+  if(segcmp(":", tok_seg(p)) != 0) return false;
+  printseg("", tok_seg(name), ":");
+  p = p->tok_list.next;
+  const uintptr_t left_indent = tok_indent(p);
+
+  do {
+    const char *current_line = p->tok_list.line;
+    const uintptr_t indent = tok_indent(p);
+    if(indent < left_indent) {
+      printf("\n");
+      *c = p;
+      return true;
+    } else if(indent == left_indent) {
+      printseg("\n  ", tok_seg(p), "");
+    } else {
+      printseg(" ", tok_seg(p), "");
+    }
+    while((p = p->tok_list.next) &&
+          p->tok_list.line == current_line) printseg(" ", tok_seg(p), "");
+  } while(p);
+  return false;
+}
+
+int test_parse_def(UNUSED char *name) {
+  cell_t *c = lex("word: hi there this\n"
+                  "        is the first definition\n"
+                  "      and this\n"
+                  "          is the\n"
+                  "        second\n"
+                  "      oh hey heres\n"
+                  "        the third\n"
+                  "          one\n"
+                  "another: blah who\n"
+                  "           cares\n");
+  const cell_t *p = c;
+  bool ret = parse_def(&p);
+  free_toks(c);
+  return ret ? 0 : -1;
 }
 
 bool is_uppercase(char c) {

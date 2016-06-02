@@ -30,8 +30,7 @@ ifeq ($(findstring gcc, $(CC)),gcc)
 	OPT_FLAG=-O3
 endif
 ifeq ($(findstring clang, $(CC)),clang)
-	CFLAGS = -Wall -Wextra -pedantic -std=gnu11
-	LINENOISE_CFLAGS = -Wno-gnu-zero-variadic-macro-arguments
+	CFLAGS = -Wall -Wextra -pedantic -std=gnu11 -Wno-gnu-zero-variadic-macro-arguments
 	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -std=c++98
 	OPT_FLAG=-O3
 endif
@@ -165,7 +164,7 @@ $(BUILD_DIR)/%.o: %.c
 
 $(BUILD_DIR)/linenoise.o: linenoise/linenoise.c linenoise/linenoise.h
 	@mkdir -p $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(LINENOISE_CFLAGS) -c linenoise/linenoise.c -o $(BUILD_DIR)/linenoise.o
+	$(CC) $(CFLAGS) -c linenoise/linenoise.c -o $(BUILD_DIR)/linenoise.o
 
 $(DIAGRAMS)/%.svg: %.dot
 	@mkdir -p $(DIAGRAMS)
