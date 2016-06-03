@@ -420,10 +420,10 @@ void free_toks(cell_t *t) {
   }
 }
 
-#define printseg(pre, seg, fmt, ...)                            \
-  do {                                                          \
-    seg_t __seg = seg;                                          \
-    printf(pre "%.*s" fmt, __seg.n, __seg.s , ##__VA_ARGS__);   \
+#define printseg(pre, seg, fmt, ...)                                    \
+  do {                                                                  \
+    seg_t __seg = seg;                                                  \
+    printf(pre "%.*s" fmt, (int)__seg.n, __seg.s , ##__VA_ARGS__);      \
   } while(0)
 
 int test_lex(UNUSED char *name) {
