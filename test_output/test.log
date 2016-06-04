@@ -73,7 +73,26 @@ word:
   hi there this is the first definition
   and this is the second
   oh hey heres the third one
+another:
+  oh heres another
+  again
+and.more:
+  stuff
 test_parse_def => 0
+@ test_parse_module
+module a:
+f1:
+  the first word
+f2:
+  the second one
+f3:
+  number three
+
+module b:
+f4:
+  heres another
+
+test_parse_module => 0
 @ test_rotate
 {{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}}
 {{1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}, {0, 0}}

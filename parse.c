@@ -310,6 +310,9 @@ seg_t tok(const char *s) {
         continue;
       }
       break;
+    case CC_SYMBOL:
+      if(cc == CC_ALPHA && s[0] == '.') continue; // allow dots in alpha identifiers
+      break;
     default:
       break;
     }
@@ -448,9 +451,26 @@ const char *reserved_words[] = {
   ":"
 };
 
+static bool match(const cell_t *c, const char *str) {
+  return c && segcmp(str, tok_seg(c)) == 0;
+}
+
+#define MACRO_IF(b, x) CONCAT(MACRO_IF, b)(x)
+#define MACRO_IF0(x)
+#define MACRO_IF1(x) x
+#define _MATCH_IF(p, label, cond, var, n, ...)   \
+  do {                                           \
+    if(!(p) || !(cond)) goto label;              \
+    MACRO_IF(n, var = p);                        \
+    p = p->tok_list.next;                        \
+  } while(0)
+
+#define MATCH_IF(cond, ...) _MATCH_IF(p, fail, cond , ##__VA_ARGS__, 1, 0)
+#define MATCH_ONLY(str, ...) _MATCH_IF(p, fail, match(p, str) , ##__VA_ARGS__, 1, 0)
+
 bool is_reserved(seg_t s) {
   FOREACH(i, reserved_words) {
-    if(segcmp("module", s) == 0) return true;
+    if(segcmp(reserved_words[i], s) == 0) return true;
   }
   return false;
 }
@@ -460,22 +480,19 @@ uintptr_t tok_indent(const cell_t *c) {
   return c->tok_list.location - c->tok_list.line;
 }
 
-bool parse_def(const cell_t **c) {
-  const cell_t *name = *c;
-  if(is_reserved(tok_seg(name))) return false;
-  const cell_t *p = name->tok_list.next;
-  if(segcmp(":", tok_seg(p)) != 0) return false;
-  printseg("", tok_seg(name), ":");
-  p = p->tok_list.next;
+bool parse_rhs_expr(const cell_t **c) {
+  const cell_t *p = *c;
+  if(!p) goto fail;
   const uintptr_t left_indent = tok_indent(p);
 
   do {
     const char *current_line = p->tok_list.line;
     const uintptr_t indent = tok_indent(p);
-    if(indent < left_indent) {
-      printf("\n");
-      *c = p;
-      return true;
+    cell_t *next = p->tok_list.next;
+    if(indent < left_indent ||
+       match(p, "module") ||
+       match(next, ":")) {
+      goto done;
     } else if(indent == left_indent) {
       printseg("\n  ", tok_seg(p), "");
     } else {
@@ -484,6 +501,29 @@ bool parse_def(const cell_t **c) {
     while((p = p->tok_list.next) &&
           p->tok_list.line == current_line) printseg(" ", tok_seg(p), "");
   } while(p);
+done:
+  if(*c == p) {
+    return false;
+  } else {
+    printf("\n");
+    *c = p;
+    return true;
+  }
+fail:
+  return false;
+}
+
+bool parse_def(const cell_t **c) {
+  const cell_t *p = *c, *name;
+  MATCH_IF(!is_reserved(tok_seg(p)), name);
+  MATCH_ONLY(":");
+  printseg("", tok_seg(name), ":");
+  if(!parse_rhs_expr(&p)) goto fail;
+
+  *c = p;
+  return true;
+
+fail:
   return false;
 }
 
@@ -491,17 +531,49 @@ int test_parse_def(UNUSED char *name) {
   cell_t *c = lex("word: hi there this\n"
                   "        is the first definition\n"
                   "      and this\n"
-                  "          is the\n"
+                  "_comment_ is the\n"
                   "        second\n"
                   "      oh hey heres\n"
                   "        the third\n"
                   "          one\n"
-                  "another: blah who\n"
-                  "           cares\n");
+                  "another:\n"
+                  "oh heres\n"
+                  "  another\n"
+                  "again\n"
+                  "  and.more: stuff\n");
   const cell_t *p = c;
-  bool ret = parse_def(&p);
+  while(parse_def(&p));
   free_toks(c);
-  return ret ? 0 : -1;
+  return 0;
+}
+
+bool parse_module(const cell_t **c) {
+  const cell_t *p = *c, *name;
+  MATCH_ONLY("module");
+  MATCH_IF(true, name);
+  MATCH_ONLY(":");
+  printseg("module ", tok_seg(name), ":\n");
+  while(parse_def(&p));
+  printf("\n");
+  *c = p;
+  return true;
+fail:
+  return false;
+}
+
+int test_parse_module(UNUSED char *name) {
+  cell_t *c = lex("module a:\n"
+                  "f1: the first word\n"
+                  "f2: the\n"
+                  "      second one\n"
+                  "f3:\n"
+                  "number three\n"
+                  "module b:\n"
+                  "f4: heres another\n");
+  const cell_t *p = c;
+  while(parse_module(&p));
+  free_toks(c);
+  return 0;
 }
 
 bool is_uppercase(char c) {
