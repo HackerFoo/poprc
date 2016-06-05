@@ -104,8 +104,8 @@ void test_log(char *name, int result) {
 }
 
 
-#define TEST2(x0, x1, x2, ...) printf("TEST2(" x0 ", " x1 ", " x2 ")\n")
-#define TEST1(...) printf("TEST1\n")
+#define TEST_2(x0, x1, x2, ...) printf("TEST2(" x0 ", " x1 ", " x2 ")\n")
+#define TEST_1(...) printf("TEST1\n")
 
 int test_macro_dispatch(UNUSED char *name) {
   DISPATCH(TEST, 5, "1", "2", "3");

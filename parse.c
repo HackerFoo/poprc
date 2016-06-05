@@ -455,16 +455,16 @@ static bool match(const cell_t *c, const char *str) {
   return c && segcmp(str, tok_seg(c)) == 0;
 }
 
-#define MATCH_IF0(p, label, cond, var, ...) \
-  do {                                      \
-    if(!(p) || !(cond)) goto label;         \
-    var = p;                                \
-    p = p->tok_list.next;                   \
+#define MATCH_IF_0(p, label, cond, var, ...) \
+  do {                                       \
+    if(!(p) || !(cond)) goto label;          \
+    var = p;                                 \
+    p = p->tok_list.next;                    \
   } while(0)
-#define MATCH_IF1(p, label, cond, ...) \
-  do {                                 \
-    if(!(p) || !(cond)) goto label;    \
-    p = p->tok_list.next;              \
+#define MATCH_IF_1(p, label, cond, ...) \
+  do {                                  \
+    if(!(p) || !(cond)) goto label;     \
+    p = p->tok_list.next;               \
   } while(0)
 
 #define MATCH_IF(cond, ...) DISPATCH(MATCH_IF, 4, p, fail, cond , ##__VA_ARGS__)

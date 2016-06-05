@@ -77,7 +77,7 @@ struct __test_entry {
 
 // macro to allow handling optional macro arguments
 // DISPATCH(MAC, n, x_0 .. x_m) will reduce to MACi(x_0 .. x_m), where i = n-m, so i is the number of missing arguments
-#define DISPATCH(m, n, ...) CONCAT(DISPATCH, n)(m, __VA_ARGS__, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+#define DISPATCH(m, n, ...) CONCAT(DISPATCH, n)(m, __VA_ARGS__, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9)
 #define DISPATCH0(m, argc, ...) CONCAT(m, argc)()
 #define DISPATCH1(m, x0, argc, ...) CONCAT(m, argc)(x0)
 #define DISPATCH2(m, x0, x1, argc, ...) CONCAT(m, argc)(x0, x1)
