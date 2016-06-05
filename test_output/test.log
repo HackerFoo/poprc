@@ -82,6 +82,12 @@ another:
   again
 and.more:
   stuff
+  listed on
+  one line
+some.modules:
+  module one
+  module two
+  module three
 test_parse_def => 0
 @ test_parse_module
 module a:

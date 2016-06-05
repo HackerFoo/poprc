@@ -448,7 +448,8 @@ int test_lex(UNUSED char *name) {
 
 const char *reserved_words[] = {
   "module",
-  ":"
+  ":",
+  ","
 };
 
 static bool match(const cell_t *c, const char *str) {
@@ -486,14 +487,13 @@ bool parse_rhs_expr(const cell_t **c) {
   const cell_t *p = *c;
   if(!p) goto fail;
   const uintptr_t left_indent = tok_indent(p);
+  if(left_indent == 0) goto done;
 
   do {
     const char *current_line = p->tok_list.line;
     const uintptr_t indent = tok_indent(p);
     cell_t *next = p->tok_list.next;
-    if(indent < left_indent ||
-       match(p, "module") ||
-       match(next, ":")) {
+    if(indent < left_indent) {
       goto done;
     } else if(indent == left_indent) {
       printseg("\n  ", tok_seg(p), "");
@@ -501,7 +501,13 @@ bool parse_rhs_expr(const cell_t **c) {
       printseg(" ", tok_seg(p), "");
     }
     while((p = p->tok_list.next) &&
-          p->tok_list.line == current_line) printseg(" ", tok_seg(p), "");
+          p->tok_list.line == current_line) {
+      if(match(p, ",")) {
+        printf("\n ");
+      } else {
+        printseg(" ", tok_seg(p), "");
+      }
+    }
   } while(p);
 done:
   if(*c == p) {
@@ -539,10 +545,13 @@ int test_parse_def(UNUSED char *name) {
                   "        the third\n"
                   "          one\n"
                   "another:\n"
-                  "oh heres\n"
+                  " oh heres\n"
                   "  another\n"
-                  "again\n"
-                  "  and.more: stuff\n");
+                  " again\n"
+                  "and.more: stuff, listed on, one line\n"
+                  "some.modules:\n"
+                  " module one, module two\n"
+                  " module three\n");
   const cell_t *p = c;
   while(parse_def(&p));
   free_toks(c);
@@ -569,7 +578,7 @@ int test_parse_module(UNUSED char *name) {
                   "f2: the\n"
                   "      second one\n"
                   "f3:\n"
-                  "number three\n"
+                  " number three\n"
                   "module b:\n"
                   "f4: heres another\n");
   const cell_t *p = c;
