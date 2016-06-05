@@ -455,18 +455,20 @@ static bool match(const cell_t *c, const char *str) {
   return c && segcmp(str, tok_seg(c)) == 0;
 }
 
-#define MACRO_IF(b, x) CONCAT(MACRO_IF, b)(x)
-#define MACRO_IF0(x)
-#define MACRO_IF1(x) x
-#define _MATCH_IF(p, label, cond, var, n, ...)   \
-  do {                                           \
-    if(!(p) || !(cond)) goto label;              \
-    MACRO_IF(n, var = p);                        \
-    p = p->tok_list.next;                        \
+#define MATCH_IF0(p, label, cond, var, ...) \
+  do {                                      \
+    if(!(p) || !(cond)) goto label;         \
+    var = p;                                \
+    p = p->tok_list.next;                   \
+  } while(0)
+#define MATCH_IF1(p, label, cond, ...) \
+  do {                                 \
+    if(!(p) || !(cond)) goto label;    \
+    p = p->tok_list.next;              \
   } while(0)
 
-#define MATCH_IF(cond, ...) _MATCH_IF(p, fail, cond , ##__VA_ARGS__, 1, 0)
-#define MATCH_ONLY(str, ...) _MATCH_IF(p, fail, match(p, str) , ##__VA_ARGS__, 1, 0)
+#define MATCH_IF(cond, ...) DISPATCH(MATCH_IF, 4, p, fail, cond , ##__VA_ARGS__)
+#define MATCH_ONLY(str, ...) MATCH_IF(match(p, str) , ##__VA_ARGS__)
 
 bool is_reserved(seg_t s) {
   FOREACH(i, reserved_words) {

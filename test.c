@@ -102,3 +102,13 @@ int run_test(char *name, void (*logger)(char *name, int result)) {
 void test_log(char *name, int result) {
   printf("%s => %d\n", name, result);
 }
+
+
+#define TEST2(x0, x1, x2, ...) printf("TEST2(" x0 ", " x1 ", " x2 ")\n")
+#define TEST1(...) printf("TEST1\n")
+
+int test_macro_dispatch(UNUSED char *name) {
+  DISPATCH(TEST, 5, "1", "2", "3");
+  DISPATCH(TEST, 5, "1", "2", "3", "4");
+  return 0;
+}

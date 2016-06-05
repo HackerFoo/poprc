@@ -74,4 +74,19 @@ struct __test_entry {
 #define static_assert(expr, msg) _Static_assert(expr, msg)
 #endif
 
+
+// macro to allow handling optional macro arguments
+// DISPATCH(MAC, n, x_0 .. x_m) will reduce to MACi(x_0 .. x_m), where i = n-m, so i is the number of missing arguments
+#define DISPATCH(m, n, ...) CONCAT(DISPATCH, n)(m, __VA_ARGS__, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+#define DISPATCH0(m, argc, ...) CONCAT(m, argc)()
+#define DISPATCH1(m, x0, argc, ...) CONCAT(m, argc)(x0)
+#define DISPATCH2(m, x0, x1, argc, ...) CONCAT(m, argc)(x0, x1)
+#define DISPATCH3(m, x0, x1, x2, argc, ...) CONCAT(m, argc)(x0, x1, x2)
+#define DISPATCH4(m, x0, x1, x2, x3, argc, ...) CONCAT(m, argc)(x0, x1, x2, x3)
+#define DISPATCH5(m, x0, x1, x2, x3, x4, argc, ...) CONCAT(m, argc)(x0, x1, x2, x3, x4)
+#define DISPATCH6(m, x0, x1, x2, x3, x4, x5, atgc, ...) CONCAT(m, argc)(x0, x1, x2, x3, x4, x5)
+#define DISPATCH7(m, x0, x1, x2, x3, x4, x5, x6, argc, ...) CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6)
+#define DISPATCH8(m, x0, x1, x2, x3, x4, x5, x6, x7, argc, ...) CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7)
+#define DISPATCH9(m, x0, x1, x2, x3, x4, x5, x6, x7, x8, argc, ...) CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7, x8)
+
 #endif
