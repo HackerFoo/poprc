@@ -16,6 +16,7 @@
 */
 
 #include "rt_types.h"
+#include <string.h>
 #include <strings.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -492,7 +493,6 @@ bool parse_rhs_expr(const cell_t **c) {
   do {
     const char *current_line = p->tok_list.line;
     const uintptr_t indent = tok_indent(p);
-    cell_t *next = p->tok_list.next;
     if(indent < left_indent) {
       goto done;
     } else if(indent == left_indent) {
