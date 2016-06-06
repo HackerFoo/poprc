@@ -64,7 +64,7 @@ void split_arg(cell_t *c, csize_t n) {
     *a = c->expr.arg[n],
     *p = c,
     **pa;
-  if(!a || !a->alt || is_marked(a)) return;
+  if(!a || is_marked(a) || !a->alt) return;
   do {
     pa = &p->expr.arg[n];
     if(*pa == a) {

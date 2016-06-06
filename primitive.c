@@ -469,9 +469,9 @@ bool func_ap(cell_t **cp, UNUSED type_t t) {
   }
 
   csize_t ln = list_size(l);
-  cell_t *ph = 0;
+  //cell_t *ph = 0;
   if(ln && is_placeholder(l->value.ptr[ln-1])) {
-    ph = l->value.ptr[ln-1];
+    //ph = l->value.ptr[ln-1];
     ln--;
   }
 

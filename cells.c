@@ -114,11 +114,13 @@ void cells_init() {
   memset(&cells, 0, sizeof(cells));
 
   // set up doubly-linked pointer ring
-  for(size_t i = 0; i < n; i++) {
+  cells[0].mem.prev = &cells[n-1];
+  cells[0].mem.next = &cells[1];
+  for(size_t i = 1; i < n-1; i++) {
     cells[i].mem.prev = &cells[i-1];
     cells[i].mem.next = &cells[i+1];
   }
-  cells[0].mem.prev = &cells[n-1];
+  cells[n-1].mem.prev = &cells[n-2];
   cells[n-1].mem.next = &cells[0];
 
   cells_ptr = &cells[0];

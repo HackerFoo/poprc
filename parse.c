@@ -39,7 +39,7 @@ word_entry_t user_word_table[64];
 unsigned int const user_word_table_length = LENGTH(user_word_table);
 word_entry_t *new_user_word_entry = NULL;
 
-static pair_t word_index[word_table_length + user_word_table_length + 1];
+static pair_t word_index[LENGTH(word_table) + LENGTH(user_word_table) + 1];
 
 #define MAX_SYMBOLS 64
 static uint32_t symbol_index[MAX_SYMBOLS] = {0, 6, 11, 14};
