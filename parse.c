@@ -484,11 +484,20 @@ uintptr_t tok_indent(const cell_t *c) {
   return c->tok_list.location - c->tok_list.line;
 }
 
-bool parse_rhs_expr(const cell_t **c) {
+cell_t *list_insert(cell_t *c, cell_t *x) {
+  c = expand(c, 1);
+  c->value.ptr[list_size(c) - 1] = x;
+  return c;
+}
+
+bool parse_rhs_expr(const cell_t **c, cell_t **res) {
   const cell_t *p = *c;
+  cell_t *r = NULL;
   if(!p) goto fail;
   const uintptr_t left_indent = tok_indent(p);
   if(left_indent == 0) goto done;
+
+  r = empty_list();
 
   do {
     const char *current_line = p->tok_list.line;
@@ -496,16 +505,15 @@ bool parse_rhs_expr(const cell_t **c) {
     if(indent < left_indent) {
       goto done;
     } else if(indent == left_indent) {
-      printseg("\n  ", tok_seg(p), "");
-    } else {
-      printseg(" ", tok_seg(p), "");
+      r = list_insert(r, (cell_t *)p);
     }
     while((p = p->tok_list.next) &&
           p->tok_list.line == current_line) {
       if(match(p, ",")) {
-        printf("\n ");
-      } else {
-        printseg(" ", tok_seg(p), "");
+        p = p->tok_list.next;
+        if(p) {
+          r = list_insert(r, (cell_t *)p);
+        }
       }
     }
   } while(p);
@@ -513,7 +521,8 @@ done:
   if(*c == p) {
     return false;
   } else {
-    printf("\n");
+    r = list_insert(r, (cell_t *)p);
+    *res = r;
     *c = p;
     return true;
   }
@@ -521,12 +530,11 @@ fail:
   return false;
 }
 
-bool parse_def(const cell_t **c) {
-  const cell_t *p = *c, *name;
-  MATCH_IF(!is_reserved(tok_seg(p)), name);
+bool parse_def(const cell_t **c, const cell_t **name, cell_t **l) {
+  const cell_t *p = *c;
+  MATCH_IF(!is_reserved(tok_seg(p)), *name);
   MATCH_ONLY(":");
-  printseg("", tok_seg(name), ":");
-  if(!parse_rhs_expr(&p)) goto fail;
+  if(!parse_rhs_expr(&p, l)) goto fail;
 
   *c = p;
   return true;
@@ -534,6 +542,29 @@ bool parse_def(const cell_t **c) {
 fail:
   return false;
 }
+
+void print_parse_def(const cell_t **c) {
+  const cell_t *p = *c;
+  const cell_t *n = NULL;
+  cell_t *l = NULL;
+  while(parse_def(&p, &n, &l)) {
+    printseg("", tok_seg(n), ":");
+    csize_t n = list_size(l) - 1;
+    for(csize_t i = 0; i < n; i++) {
+      cell_t
+        *p = l->value.ptr[i],
+        *e = l->value.ptr[i+1];
+      printf("\n ");
+      while(p && p != e && !match(p, ",")) {
+        printseg(" ", tok_seg(p), "");
+        p = p->tok_list.next;
+      }
+    }
+    printf("\n");
+  }
+  *c = p;
+}
+
 
 int test_parse_def(UNUSED char *name) {
   cell_t *c = lex("word: hi there this\n"
@@ -553,18 +584,18 @@ int test_parse_def(UNUSED char *name) {
                   " module one, module two\n"
                   " module three\n");
   const cell_t *p = c;
-  while(parse_def(&p));
+  print_parse_def(&p);
   free_toks(c);
   return 0;
 }
 
 bool parse_module(const cell_t **c) {
-  const cell_t *p = *c, *name;
+  const cell_t *p = *c, *name = NULL;
   MATCH_ONLY("module");
   MATCH_IF(true, name);
   MATCH_ONLY(":");
   printseg("module ", tok_seg(name), ":\n");
-  while(parse_def(&p));
+  print_parse_def(&p);
   printf("\n");
   *c = p;
   return true;
