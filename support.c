@@ -7,12 +7,6 @@
 
 #include "gen/support.h"
 
-#if INTERFACE
-typedef struct pair_t {
-  uintptr_t first, second;
-} pair_t;
-#endif
-
 // find the median of 3 integers
 unsigned int median3(pair_t *array, unsigned int lo, unsigned int hi) {
   unsigned int mid = lo + (hi - lo) / 2;

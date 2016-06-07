@@ -60,7 +60,7 @@ typedef bool (reduce_t)(cell_t **cell, type_t type);
 /* unevaluated expression */
 struct __attribute__((packed)) expr {
   csize_t out;
-  cell_t *arg[3];
+  cell_t *arg[1];
 };
 
 /* reduced value */
@@ -68,8 +68,8 @@ struct __attribute__((packed)) value {
   type_t type;
   alt_set_t alt_set;
   union {
-    val_t integer[2]; /* integer */
-    cell_t *ptr[2];   /* list */
+    val_t integer[1]; /* integer */
+    cell_t *ptr[1];   /* list */
   };
 };
 
@@ -86,6 +86,10 @@ struct __attribute__((packed)) mem {
   cell_t *prev, *next;
 };
 
+typedef struct pair_t {
+  uintptr_t first, second;
+} pair_t;
+
 struct __attribute__((packed)) cell {
   /* func indicates the type:
    * NULL         -> mem
@@ -93,20 +97,26 @@ struct __attribute__((packed)) cell {
    * cell         -> extension
    * otherwise    -> expr
    */
-  reduce_t *func;
-  cell_t *alt;
-  cell_t *tmp;
-  refcount_t n;
-  csize_t size;
   union {
-    expr_t expr;
-    value_t value;
-    tok_list_t tok_list;
-    mem_t mem;
+    uintptr_t raw[8];
+    pair_t map[4];
+    struct {
+      reduce_t *func;
+      cell_t *alt;
+      cell_t *tmp;
+      refcount_t n;
+      csize_t size;
+      union {
+        expr_t expr;
+        value_t value;
+        tok_list_t tok_list;
+        mem_t mem;
+      };
+    };
   };
 } __attribute__((aligned(4)));
 
-static_assert(sizeof(cell_t) == 6 * sizeof(uintptr_t) + sizeof(refcount_t) + 2 * sizeof(type_or_csize_t), "cell_t wrong size");
+static_assert(sizeof(cell_t) == sizeof_field(cell_t, raw), "cell_t wrong size");
 
 typedef struct word_entry_t {
   char *name;
