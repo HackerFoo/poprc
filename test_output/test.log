@@ -19,6 +19,9 @@ test_comments => 0
 1 2 4
 1 2 5
 test_count => 0
+@ test_expand_map
+m[15] = {{eight, 7}, {five, 4}, {four, 3}, {one, 0}, {seven, 6}, {six, 5}, {three, 2}, {two, 1}, {nine, 8}, {ten, 9}}
+test_expand_map => 0
 @ test_lex
 testing 
 [ 1 2 + 3 ] 
