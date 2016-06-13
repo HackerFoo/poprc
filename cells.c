@@ -148,6 +148,14 @@ cell_t *closure_alloc(csize_t args) {
   return c;
 }
 
+cell_t *map_alloc(csize_t s) {
+  csize_t cs = calculate_map_size(s);
+  cell_t *c = closure_alloc_cells(cs);
+  c->map[0].first = LENGTH(c->map) * cs - 1;
+  c->map[0].second = 0;
+  return c;
+}
+
 cell_t *closure_alloc_cells(csize_t size) {
   assert(size < MAX_ALLOC_SIZE);
   cell_t *ptr = cells_next(), *c = ptr;
@@ -191,6 +199,10 @@ csize_t calculate_list_size(csize_t n) {
 
 csize_t calculate_val_size(csize_t n) {
   return calc_size(value.integer, n);
+}
+
+csize_t calculate_map_size(csize_t n) {
+  return calc_size(map, n + 1);
 }
 
 csize_t closure_cells(cell_t const *c) {

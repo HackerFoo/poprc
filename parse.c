@@ -724,3 +724,55 @@ char *symbol_string(val_t x) {
   }
 }
 
+cell_t *expand_map(cell_t *c) {
+  map_t m = c->map;
+  uintptr_t
+    size = map_size(m),
+    cnt = *map_cnt(m);
+  if(cnt == size) {
+    csize_t new_size = size * 2 + 1;
+    cell_t *nc = map_alloc(new_size);
+    memcpy(nc, c, calculate_map_size(size) * sizeof(cell_t));
+    nc->map[0].first = new_size;
+    closure_free(c);
+    return nc;
+  } else {
+    return c;
+  }
+}
+
+cell_t *cmap_insert(cell_t *c, char *key, uintptr_t val) {
+  c = expand_map(c);
+  map_t m = c->map;
+  pair_t p = {(uintptr_t)key, val};
+  string_map_insert(m, p);
+  return c;
+}
+
+int test_expand_map(UNUSED char *name) {
+  cell_t *c = map_alloc(1);
+  char *strings[] = {
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten"
+  };
+  FOREACH(i, strings) {
+    c = cmap_insert(c, strings[i], i);
+  }
+  map_t m = c->map;
+  print_string_map(m);
+  FOREACH(i, strings) {
+    pair_t *x = string_map_find(m, strings[i]);
+    if(x->second != i) {
+      return -1;
+    }
+  }
+  return 0;
+}
