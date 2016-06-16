@@ -724,6 +724,14 @@ char *symbol_string(val_t x) {
   }
 }
 
+// need different free function for map because size is stored differently
+void map_free(cell_t *c) {
+  csize_t size = calculate_map_size(map_size((map_t)c->map));
+  for(csize_t i = 0; i < size; i++) {
+    cell_free(c++);
+  }
+}
+
 cell_t *expand_map(cell_t *c) {
   map_t m = c->map;
   uintptr_t
@@ -732,9 +740,8 @@ cell_t *expand_map(cell_t *c) {
   if(cnt == size) {
     csize_t new_size = size * 2 + 1;
     cell_t *nc = map_alloc(new_size);
-    memcpy(nc, c, calculate_map_size(size) * sizeof(cell_t));
-    nc->map[0].first = new_size;
-    closure_free(c);
+    memcpy(&nc->map[0].second, &c->map[0].second, sizeof_field(pair_t, second) + size * sizeof(pair_t));
+    map_free(c);
     return nc;
   } else {
     return c;
@@ -774,5 +781,6 @@ int test_expand_map(UNUSED char *name) {
       return -1;
     }
   }
+  map_free(c);
   return 0;
 }
