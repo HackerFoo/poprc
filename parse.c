@@ -571,17 +571,31 @@ fail:
   return false;
 }
 
-void print_parse_def(const cell_t **c) {
+cell_t *parse_defs(const cell_t **c) {
   const cell_t *p = *c;
   const cell_t *n = NULL;
   cell_t *l = NULL;
+  cell_t *m = map_alloc(1);
   while(parse_def(&p, &n, &l)) {
-    printseg("", tok_seg(n), ":");
-    csize_t n = list_size(l) - 1;
-    for(csize_t i = 0; i < n; i++) {
+    const char *name = seg_string(tok_seg(n));
+    m = cmap_insert(m, name, (uintptr_t)l);
+  }
+  *c = p;
+  return m;
+}
+
+void print_defs(const cell_t *m) {
+  cell_t *l = NULL;
+  map_t map = (map_t)m->map;
+  csize_t n = *map_cnt(map);
+  COUNTUP(i, n) {
+    printf("%s:", (char *)map[i+1].first);
+    l = (cell_t *)map[i+1].second;
+    csize_t ln = list_size(l) - 1;
+    COUNTUP(j, ln) {
       cell_t
-        *p = l->value.ptr[i],
-        *e = l->value.ptr[i+1];
+        *p = l->value.ptr[j], // p = start of segment
+        *e = l->value.ptr[j+1]; // e = end of segment + 1 (start of next segment)
       printf("\n ");
       while(p && p != e && !match(p, ",")) {
         printseg(" ", tok_seg(p), "");
@@ -590,9 +604,7 @@ void print_parse_def(const cell_t **c) {
     }
     printf("\n");
   }
-  *c = p;
 }
-
 
 int test_parse_def(UNUSED char *name) {
   cell_t *c = lex("word: hi there this\n"
@@ -612,7 +624,8 @@ int test_parse_def(UNUSED char *name) {
                   " module one, module two\n"
                   " module three\n");
   const cell_t *p = c;
-  print_parse_def(&p);
+  cell_t *m = parse_defs(&p);
+  print_defs(m);
   free_toks(c);
   return 0;
 }
@@ -623,7 +636,8 @@ bool parse_module(const cell_t **c) {
   MATCH_IF(true, name);
   MATCH_ONLY(":");
   printseg("module ", tok_seg(name), ":\n");
-  print_parse_def(&p);
+  cell_t *m = parse_defs(&p);
+  print_defs(m);
   printf("\n");
   *c = p;
   return true;
@@ -774,7 +788,7 @@ cell_t *expand_map(cell_t *c) {
   }
 }
 
-cell_t *cmap_insert(cell_t *c, char *key, uintptr_t val) {
+cell_t *cmap_insert(cell_t *c, const char *key, uintptr_t val) {
   c = expand_map(c);
   map_t m = c->map;
   pair_t p = {(uintptr_t)key, val};
