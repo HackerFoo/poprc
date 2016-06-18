@@ -170,7 +170,7 @@ pair_t *find_last(pair_t *array, size_t size, uintptr_t key) {
 }
 
 // find the last index of a value in a sorted array with string keys
-pair_t *find_last_string(pair_t *array, size_t size, char *key) {
+pair_t *find_last_string(pair_t *array, size_t size, const char *key) {
   size_t low = 0, high = size;
   while(high > low + 1) {
     const size_t pivot = low + ((high - low + 1) / 2);

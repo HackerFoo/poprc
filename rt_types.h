@@ -119,7 +119,7 @@ struct __attribute__((packed)) cell {
 static_assert(sizeof(cell_t) == sizeof_field(cell_t, raw), "cell_t wrong size");
 
 typedef struct word_entry_t {
-  char *name;
+  const char *name;
   reduce_t *func;
   csize_t in, out;
   cell_t *data;

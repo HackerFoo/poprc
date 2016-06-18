@@ -278,7 +278,7 @@ pair_t *map_find(map_t map, uintptr_t key) {
   return result;
 }
 
-pair_t *string_map_find(map_t map, char *key) {
+pair_t *string_map_find(map_t map, const char *key) {
   uintptr_t x = *map_cnt(map);
   pair_t *elems = map_elems(map);
   pair_t *result = NULL;

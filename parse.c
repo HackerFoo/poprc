@@ -42,21 +42,51 @@ word_entry_t *new_user_word_entry = NULL;
 static pair_t word_index[LENGTH(word_table) + LENGTH(user_word_table) + 1];
 
 #define MAX_SYMBOLS 64
-static uint32_t symbol_index[MAX_SYMBOLS] = {0, 6, 11, 14};
-static char symbol_strings[4096] = "False\0True\0IO\0Dict";
-#define ENTRY(i, name) {(uintptr_t)&symbol_strings[(i)], SYM_##name}
+static const char *symbol_index[MAX_SYMBOLS] = {
+  [SYM_FALSE] = "False",
+  [SYM_TRUE] = "True",
+  [SYM_IO] = "IO",
+  [SYM_DICT] = "Dict"
+};
+
+#define ENTRY(str, name) {(uintptr_t)str, SYM_##name}
 static pair_t symbols[MAX_SYMBOLS+1] = {
   {MAX_SYMBOLS, 4},
-  ENTRY(14, DICT),
-  ENTRY(0,  FALSE),
-  ENTRY(11, IO),
-  ENTRY(6,  TRUE)
+  ENTRY("Dict", DICT),
+  ENTRY("False",  FALSE),
+  ENTRY("IO", IO),
+  ENTRY("True",  TRUE)
 };
 #undef ENTRY
-uint32_t symbol_strings_n = 19;
 
-static char name_strings[4096];
-char *new_name_string;
+static char strings[1<<14];
+static char *strings_top;
+
+const char *seg_string(seg_t s) {
+  if((uintptr_t)((char *)(&strings + 1) - strings_top) < s.n + 1) return NULL;
+  char *str = strings_top;
+  memcpy(str, s.s, s.n);
+  strings_top += s.n;
+  *strings_top++ = '\0';
+  return str;
+}
+
+void strings_drop() {
+  assert(strings_top > strings);
+  do {
+    strings_top--;
+  } while(strings_top > strings && strings_top[-1]);
+}
+
+int test_strings(UNUSED char *name) {
+  const char *start = strings_top;
+  seg_t s = {"Test", 4};
+  const char *test = seg_string(s);
+  if(strcmp(s.s, test) != 0) return -1;
+  strings_drop();
+  if(start != strings_top) return -2;
+  return 0;
+}
 
 // for when index declaration is missing for some reason e.g. clang on Android
 char *index(const char *s, int c);
@@ -64,7 +94,7 @@ char *index(const char *s, int c);
 void parse_init() {
   memset(user_word_table, 0, sizeof(user_word_table));
   new_user_word_entry = user_word_table;
-  new_name_string = name_strings;
+  strings_top = strings;
 
   // create index
   word_index[0].first = LENGTH(word_index) - 1;
@@ -79,18 +109,16 @@ void parse_init() {
 word_entry_t *alloc_user_word(seg_t w) {
   pair_t *p = seg_map_find(word_index, w);
   word_entry_t *e;
+  const char *name;
   if(p) {
     e = (word_entry_t *)p->second;
     if(e >= word_table && e < word_table + 1) return NULL; // primitive
     else return e;
   } else {
     if(new_user_word_entry >= user_word_table + 1) return NULL; // user table is full
-    size_t left = (char *)(&name_strings + 1) - new_name_string;
-    if(left < w.n + 1) return NULL; // name_strings full
+    if(!(name = seg_string(w))) return NULL; // strings full
     e = new_user_word_entry++;
-    seg_read(w, new_name_string, left);
-    e->name = new_name_string;
-    new_name_string += w.n + 1;
+    e->name = name;
     e->func = func_self;
     e->in = 0;
     e->out = 1;
@@ -689,21 +717,19 @@ cell_t *build(const char *s) {
 }
 
 uintptr_t intern(seg_t sym) {
-  assert(LENGTH(symbol_strings) > symbol_strings_n + sym.n);
-  char *s = &symbol_strings[symbol_strings_n];
-  memcpy(s, sym.s, sym.n);
-  s[sym.n] = 0;
+  const char *s = seg_string(sym);
+  assert(s);
   pair_t *x = string_map_find(symbols, s);
   uintptr_t v;
   if(x) {
     v = x->second;
+    strings_drop();
   } else {
     v = *map_cnt(symbols);
     assert(v < MAX_SYMBOLS);
     pair_t p = {(uintptr_t)s, v};
     string_map_insert(symbols, p);
-    symbol_index[v] = symbol_strings_n;
-    symbol_strings_n += sym.n + 1;
+    symbol_index[v] = s;
   }
   return v;
 }
@@ -716,9 +742,9 @@ cell_t *symbol(seg_t sym) {
   return c;
 }
 
-char *symbol_string(val_t x) {
+const char *symbol_string(val_t x) {
   if(x >= 0 && x < (val_t)*map_cnt(symbols)) {
-    return symbol_strings + symbol_index[x];
+    return symbol_index[x];
   } else {
     return NULL;
   }

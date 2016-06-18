@@ -391,7 +391,7 @@ void show_one(cell_t const *c) {
     show_list(c);
   } else if(type_match(T_SYMBOL, c)) {
     val_t x = c->value.integer[0];
-    char *str = symbol_string(x);
+    const char *str = symbol_string(x);
     if(str) {
       printf(" %s", str);
     } else {
