@@ -41,6 +41,8 @@ word_entry_t *new_user_word_entry = NULL;
 
 static pair_t word_index[LENGTH(word_table) + LENGTH(user_word_table) + 1];
 
+cell_t *modules = NULL;
+
 #define MAX_SYMBOLS 64
 static const char *symbol_index[MAX_SYMBOLS] = {
   [SYM_FALSE] = "False",
@@ -95,6 +97,7 @@ void parse_init() {
   memset(user_word_table, 0, sizeof(user_word_table));
   new_user_word_entry = user_word_table;
   strings_top = strings;
+  modules = NULL;
 
   // create index
   word_index[0].first = LENGTH(word_index) - 1;
@@ -575,7 +578,7 @@ cell_t *parse_defs(const cell_t **c) {
   const cell_t *p = *c;
   const cell_t *n = NULL;
   cell_t *l = NULL;
-  cell_t *m = map_alloc(1);
+  cell_t *m = NULL;
   while(parse_def(&p, &n, &l)) {
     const char *name = seg_string(tok_seg(n));
     m = cmap_insert(m, name, (uintptr_t)l);
@@ -631,18 +634,29 @@ int test_parse_def(UNUSED char *name) {
 }
 
 bool parse_module(const cell_t **c) {
-  const cell_t *p = *c, *name = NULL;
+  const cell_t *p = *c, *n = NULL;
   MATCH_ONLY("module");
-  MATCH_IF(true, name);
+  MATCH_IF(true, n);
   MATCH_ONLY(":");
-  printseg("module ", tok_seg(name), ":\n");
+  const char *name = seg_string(tok_seg(n));
   cell_t *m = parse_defs(&p);
-  print_defs(m);
-  printf("\n");
+  modules = cmap_insert(modules, name, (uintptr_t)m);
   *c = p;
   return true;
 fail:
   return false;
+}
+
+void print_modules() {
+  cell_t *defs = NULL;
+  map_t map = (map_t)modules->map;
+  csize_t n = *map_cnt(map);
+  COUNTUP(i, n) {
+    printf("module %s:\n", (char *)map[i+1].first);
+    defs = (cell_t *)map[i+1].second;
+    print_defs(defs);
+    printf("\n");
+  }
 }
 
 int test_parse_module(UNUSED char *name) {
@@ -656,6 +670,7 @@ int test_parse_module(UNUSED char *name) {
                   "f4: heres another\n");
   const cell_t *p = c;
   while(parse_module(&p));
+  print_modules();
   free_toks(c);
   return 0;
 }
@@ -773,6 +788,7 @@ void map_free(cell_t *c) {
 }
 
 cell_t *expand_map(cell_t *c) {
+  if(c == NULL) return map_alloc(1);
   map_t m = c->map;
   uintptr_t
     size = map_size(m),
@@ -797,7 +813,7 @@ cell_t *cmap_insert(cell_t *c, const char *key, uintptr_t val) {
 }
 
 int test_expand_map(UNUSED char *name) {
-  cell_t *c = map_alloc(1);
+  cell_t *c = NULL;
   char *strings[] = {
     "one",
     "two",
