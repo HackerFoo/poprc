@@ -331,7 +331,7 @@ void show_list(cell_t const *c) {
   } else printf(" []");
 }
 
-int test_count(UNUSED char *name) {
+int test_count() {
   cell_t test[] = {
     [0] = { .alt = &test[1] },
     [1] = { .alt = 0 },

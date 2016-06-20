@@ -168,7 +168,7 @@ bool string_cmp(uintptr_t a, uintptr_t b) {
   } while(0)
 
 
-int test_merge(UNUSED char *name) {
+int test_merge() {
   pair_t arr1[] = {{0, 0}, {2, 1}, {4, 2}, {6, 3}, {1, 4}, {3, 5}, {5, 6}, {7, 7}};
   MERGE_TEST(arr1);
 
@@ -356,7 +356,7 @@ pair_t *_find_test(map_t map, char *name, uintptr_t key) {
   return p;
 }
 
-int test_map(UNUSED char *name) {
+int test_map() {
   int ret = 0;
   MAP(map, 32);
   int elems[] = {2, 5, 8, 3, 1, 0, 4, 7, 6, 9, 10, 15, 13, 11, 12};
@@ -393,7 +393,7 @@ static bool expect(map_t map, uintptr_t key, uintptr_t x) {
   return true;
 }
 
-int test_map_stack_behavior(UNUSED char *name) {
+int test_map_stack_behavior() {
   #define M 2
   #define N 8
   MAP(map, (M * N));
@@ -414,7 +414,7 @@ int test_map_stack_behavior(UNUSED char *name) {
   #undef N
 }
 
-int test_rotate(UNUSED char *name) {
+int test_rotate() {
   pair_t arr[7];
   FOREACH(i, arr) {
     arr[i].first = i;
@@ -431,7 +431,7 @@ int test_rotate(UNUSED char *name) {
 }
 
 /*
-//int test_rotate_speed(UNUSED char *name) {
+//int test_rotate_speed() {
   size_t cnt = 1 << 28;
   pair_t *arr = calloc(cnt, sizeof(pair_t));
   rotate(arr, arr + (1 << 27) - 1, cnt);
@@ -440,7 +440,7 @@ int test_rotate(UNUSED char *name) {
 }
 */
 
-int test_string_map(UNUSED char *name) {
+int test_string_map() {
   char *strings[] = {
     "one",
     "two",

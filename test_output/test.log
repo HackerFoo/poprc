@@ -1,6 +1,6 @@
-@ test_alloc
-test_alloc => 0
-@ test_comments
+@ alloc
+alloc => 0
+@ comments
 [1] One def
 [2] T_w_o def
 { ################################
@@ -10,25 +10,25 @@ test_alloc => 0
 ##############
 M:three
 ################
-test_comments => 0
-@ test_count
+comments => 0
+@ count
 0 2 3
 0 2 4
 0 2 5
 1 2 3
 1 2 4
 1 2 5
-test_count => 0
-@ test_expand_map
+count => 0
+@ expand_map
 m[15] = {{eight, 7}, {five, 4}, {four, 3}, {one, 0}, {seven, 6}, {six, 5}, {three, 2}, {two, 1}, {nine, 8}, {ten, 9}}
-test_expand_map => 0
-@ test_lex
+expand_map => 0
+@ lex
 testing 
 [ 1 2 + 3 ] 
 4 
 Done 
-test_lex => 0
-@ test_loops
+lex => 0
+@ loops
 up: 0
 up: 1
 up: 2
@@ -41,12 +41,12 @@ arr[2] = 9
 xxx
 xxx
 xxx
-test_loops => 0
-@ test_macro_dispatch
+loops => 0
+@ macro_dispatch
 TEST2(1, 2, 3)
 TEST1
-test_macro_dispatch => 0
-@ test_map
+macro_dispatch => 0
+@ map
 map[32] = {{0, 5}, {1, 4}, {2, 0}, {3, 3}, {4, 6}, {5, 1}, {7, 7}, {8, 2}, {6, 8}, {9, 9}, {10, 10}, {15, 11}, {11, 13}, {13, 12}, {12, 14}}
 map_find(map, 2) = {2, 0}
 map_find(map, 5) = {5, 1}
@@ -63,10 +63,10 @@ map_find(map, 15) = {15, 11}
 map_find(map, 13) = {13, 12}
 map_find(map, 11) = {11, 13}
 map_find(map, 12) = {12, 14}
-test_map => 0
-@ test_map_stack_behavior
-test_map_stack_behavior => 0
-@ test_merge
+map => 0
+@ map_stack_behavior
+map_stack_behavior => 0
+@ merge
 arr1: {{0, 0}, {1, 4}, {2, 1}, {3, 5}, {4, 2}, {5, 6}, {6, 3}, {7, 7}}
 arr2: {{0, 0}, {1, 1}, {2, 4}, {3, 5}, {4, 6}, {5, 7}, {6, 2}, {7, 3}}
 arr3: {{0, 4}, {1, 5}, {2, 6}, {3, 7}, {4, 0}, {5, 1}, {6, 2}, {7, 3}}
@@ -74,8 +74,8 @@ arr4: {{0, 4}, {1, 0}, {2, 1}, {3, 5}, {4, 2}, {5, 3}, {6, 6}, {7, 7}}
 arr5: {{0, 4}, {1, 5}, {2, 0}, {3, 1}, {4, 6}, {5, 2}, {7, 7}, {8, 3}}
 arr6: {{0, 0}, {0, 1}, {1, 0}, {1, 1}, {2, 0}, {2, 1}, {3, 0}, {3, 1}, {4, 0}, {4, 1}, {5, 0}, {5, 1}, {6, 0}, {6, 1}, {7, 0}, {7, 1}}
 arr7: {{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {7, 0}, {8, 0}, {9, 0}, {10, 0}, {11, 0}, {12, 0}, {13, 0}, {14, 0}, {15, 0}}
-test_merge => 0
-@ test_parse_def
+merge => 0
+@ parse_def
 and.more:
   stuff
   listed on
@@ -91,8 +91,8 @@ word:
   hi there this is the first definition
   and this is the second
   oh hey heres the third one
-test_parse_def => 0
-@ test_parse_module
+parse_def => 0
+@ parse_module
 module a:
 f1:
   the first word
@@ -105,8 +105,8 @@ module b:
 f4:
   heres another
 
-test_parse_module => 0
-@ test_rotate
+parse_module => 0
+@ rotate
 {{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}}
 {{1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}, {0, 0}}
 {{2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}, {0, 0}, {1, 1}}
@@ -114,15 +114,15 @@ test_parse_module => 0
 {{4, 4}, {5, 5}, {6, 6}, {0, 0}, {1, 1}, {2, 2}, {3, 3}}
 {{5, 5}, {6, 6}, {0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}}
 {{6, 6}, {0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}}
-test_rotate => 0
-@ test_sort
+rotate => 0
+@ sort
 {{0, 5}, {2, 2}, {3, 0}, {4, 7}, {4, 3}, {7, 1}, {8, 6}, {500, 4}}
 index find existing: PASS
 index find missing: PASS
-test_sort => 0
-@ test_string_map
+sort => 0
+@ string_map
 map[8] = {{abc, 3}, {bat, 5}, {cheese, 6}, {cow, 4}, {one, 0}, {quilt, 7}, {three, 2}, {two, 1}}
 cow => 4
-test_string_map => 0
-@ test_strings
-test_strings => 0
+string_map => 0
+@ strings
+strings => 0

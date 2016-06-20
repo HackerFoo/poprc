@@ -30,7 +30,7 @@
 
 struct __test_entry tests[] = TESTS;
 
-int test_alloc(UNUSED char *name) {
+int test_alloc() {
   cell_t *a[30];
   LOOP(50) {
     FOREACH(i, a) {
@@ -43,7 +43,7 @@ int test_alloc(UNUSED char *name) {
   return check_free() ? 0 : -1;
 }
 
-int test_loops(UNUSED char *name) {
+int test_loops() {
   COUNTUP(i, 3) {
     printf("up: %d\n", (unsigned int)i);
   }
@@ -91,7 +91,7 @@ int run_test(char *name, void (*logger)(char *name, int result)) {
     int entry_name_size = strnlen(entry->name, MAX_NAME_SIZE);
     if(strncmp(name, entry->name, min(name_size, entry_name_size)) == 0) {
       printf("@ %s\n", entry->name);
-      int result = entry->func(name);
+      int result = entry->func();
       if((uintptr_t)logger > 1) logger(entry->name, result);
       if(result && !fail) fail = result;
     }
@@ -107,7 +107,7 @@ void test_log(char *name, int result) {
 #define TEST_2(x0, x1, x2, ...) printf("TEST2(" x0 ", " x1 ", " x2 ")\n")
 #define TEST_1(...) printf("TEST1\n")
 
-int test_macro_dispatch(UNUSED char *name) {
+int test_macro_dispatch() {
   DISPATCH(TEST, 5, "1", "2", "3");
   DISPATCH(TEST, 5, "1", "2", "3", "4");
   return 0;

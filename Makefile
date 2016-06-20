@@ -184,12 +184,12 @@ scan: clean
 
 .PHONY: test
 test: eval
-	./eval -t test | $(DIFF_TEST) test_output/test.log -
+	./eval -t '' | $(DIFF_TEST) test_output/test.log -
 	./eval -r tests.peg | $(DIFF_TEST) test_output/tests.peg.log -
 
 test_output/test.log: eval
 	@mkdir -p test_output
-	./eval -t test > $@
+	./eval -t '' > $@
 
 test_output/tests.peg.log: eval tests.peg
 	@mkdir -p test_output

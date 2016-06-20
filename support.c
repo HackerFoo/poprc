@@ -67,7 +67,7 @@ void print_string_pairs(pair_t *array, size_t len) {
   }
 }
 
-int test_sort(UNUSED char *name) {
+int test_sort() {
   pair_t array[] = {{3, 0}, {7, 1}, {2, 2}, {4, 3}, {500, 4}, {0, 5}, {8, 6}, {4, 7}};
   quicksort(array, LENGTH(array));
   uintptr_t last = array[0].first;

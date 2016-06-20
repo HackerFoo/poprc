@@ -80,7 +80,7 @@ void strings_drop() {
   } while(strings_top > strings && strings_top[-1]);
 }
 
-int test_strings(UNUSED char *name) {
+int test_strings() {
   const char *start = strings_top;
   seg_t s = {"Test", 4};
   const char *test = seg_string(s);
@@ -278,7 +278,7 @@ void mark_comments(char c, char *str) {
   }
 }
 
-int test_comments(UNUSED char *name) {
+int test_comments() {
   char str[] =
     "[1] One def\n"
     "[2] T_w_o def\n"
@@ -461,7 +461,7 @@ void free_toks(cell_t *t) {
     printf(pre "%.*s" fmt, (int)__seg.n, __seg.s , ##__VA_ARGS__);      \
   } while(0)
 
-int test_lex(UNUSED char *name) {
+int test_lex() {
   cell_t *l = lex("testing\n[1 2+ 3]\n_ignore this_ 4\nDone"), *p = l;
   if(!l) return -1;
   const char *last_line = l->tok_list.line; 
@@ -609,7 +609,7 @@ void print_defs(const cell_t *m) {
   }
 }
 
-int test_parse_def(UNUSED char *name) {
+int test_parse_def() {
   cell_t *c = lex("word: hi there this\n"
                   "        is the first definition\n"
                   "      and this\n"
@@ -659,7 +659,7 @@ void print_modules() {
   }
 }
 
-int test_parse_module(UNUSED char *name) {
+int test_parse_module() {
   cell_t *c = lex("module a:\n"
                   "f1: the first word\n"
                   "f2: the\n"
@@ -812,7 +812,7 @@ cell_t *cmap_insert(cell_t *c, const char *key, uintptr_t val) {
   return c;
 }
 
-int test_expand_map(UNUSED char *name) {
+int test_expand_map() {
   cell_t *c = NULL;
   char *strings[] = {
     "one",

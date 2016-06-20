@@ -59,11 +59,11 @@
 #define TEST(name)                                       \
   {                                                      \
     &test_##name,                                        \
-    "test_" #name                                        \
+    #name                                                \
   }
 
 struct __test_entry {
-  int (*func)(char *name);
+  int (*func)();
   char *name;
 };
 
