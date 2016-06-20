@@ -175,6 +175,7 @@ cell_t *parse_word(seg_t w,
   } else {
     word_entry_t *e = lookup_word(w);
     if(!e) {
+      /* TODO module lookup here */
       // trace the name ***
       c = func(func_placeholder, 0, 1);
       *in = 0;
@@ -587,25 +588,27 @@ cell_t *parse_defs(const cell_t **c) {
   return m;
 }
 
+void print_def(const cell_t *l) {
+  csize_t n = list_size(l) - 1;
+  COUNTUP(i, n) {
+    cell_t
+      *p = l->value.ptr[i], // p = start of segment
+      *e = l->value.ptr[i+1]; // e = end of segment + 1 (start of next segment)
+    printf(" ");
+    while(p && p != e && !match(p, ",")) {
+      printseg(" ", tok_seg(p), "");
+      p = p->tok_list.next;
+    }
+    printf("\n");
+  }
+}
+
 void print_defs(const cell_t *m) {
-  cell_t *l = NULL;
   map_t map = (map_t)m->map;
   csize_t n = *map_cnt(map);
   COUNTUP(i, n) {
-    printf("%s:", (char *)map[i+1].first);
-    l = (cell_t *)map[i+1].second;
-    csize_t ln = list_size(l) - 1;
-    COUNTUP(j, ln) {
-      cell_t
-        *p = l->value.ptr[j], // p = start of segment
-        *e = l->value.ptr[j+1]; // e = end of segment + 1 (start of next segment)
-      printf("\n ");
-      while(p && p != e && !match(p, ",")) {
-        printseg(" ", tok_seg(p), "");
-        p = p->tok_list.next;
-      }
-    }
-    printf("\n");
+    printf("%s:\n", (char *)map[i+1].first);
+    print_def((cell_t *)map[i+1].second);
   }
 }
 
@@ -660,6 +663,7 @@ void print_modules() {
 }
 
 int test_parse_module() {
+  modules = NULL;
   cell_t *c = lex("module a:\n"
                   "f1: the first word\n"
                   "f2: the\n"
@@ -838,5 +842,54 @@ int test_expand_map() {
     }
   }
   map_free(c);
+  return 0;
+}
+
+seg_t string_seg(const char *str) {
+  seg_t seg = {str, strlen(str)};
+  return seg;
+}
+
+seg_t parse_split(char c, const char **start, const char *end) {
+  const char *p = *start;
+  seg_t s = {p, 0};
+  while(p < end && *p++ != c) s.n++;
+  *start = p;
+  return s;
+}
+
+cell_t *module_lookup(seg_t path) {
+  if(!modules) return NULL;
+  cell_t *p = modules;
+  const char
+    *start = path.s,
+    *end = seg_end(path);
+  while(start < end) {
+    seg_t s = parse_split('.', &start, end);
+    if(!(map_size(p->map) & 1)) return NULL;
+    pair_t *x = seg_map_find(p->map, s);
+    if(!x) return NULL;
+    p = (cell_t *)x->second;
+  }
+  return p;
+}
+
+int test_module_lookup() {
+  modules = NULL;
+  cell_t *t = lex("module a:\n"
+                  "f1: the first word\n"
+                  "f2: the\n"
+                  "      second one\n"
+                  "f3:\n"
+                  " number three\n"
+                  "module b:\n"
+                  "f4: heres another\n");
+  const cell_t *p = t;
+  while(parse_module(&p));
+  char *str = "a.f3";
+  cell_t *c = module_lookup(string_seg(str));
+  printf("a.f3:\n");
+  print_def(c);
+  free_toks(t);
   return 0;
 }

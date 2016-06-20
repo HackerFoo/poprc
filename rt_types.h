@@ -93,6 +93,7 @@ typedef struct pair_t {
 struct __attribute__((packed)) cell {
   /* func indicates the type:
    * NULL         -> mem
+   * (odd)        -> map or args incomplete (c->map[0].first (size) will be odd)
    * func_reduced -> value
    * cell         -> extension
    * otherwise    -> expr
