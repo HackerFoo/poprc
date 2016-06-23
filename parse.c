@@ -858,38 +858,68 @@ seg_t parse_split(char c, const char **start, const char *end) {
   return s;
 }
 
+cell_t *get_module(seg_t s) {
+  pair_t *x = seg_map_find(modules->map, s);
+  return x ? (cell_t *)x->second : NULL;
+}
+
+cell_t *get_submodule(cell_t *m, seg_t s) {
+  pair_t *x = seg_map_find(m->map, s);
+  if(!x) return NULL;
+  cell_t *p = (cell_t *)x->second;
+
+  csize_t n = list_size(p) - 1;
+  if(n != 1) return NULL; // TODO module union operation for n > 1
+  cell_t *l = p->value.ptr[0];
+  if(segcmp("module", tok_seg(l)) != 0) return NULL;
+  seg_t sm = tok_seg(l->tok_list.next);
+  return get_module(sm);
+}
+
 cell_t *module_lookup(seg_t path) {
   if(!modules) return NULL;
-  cell_t *p = modules;
   const char
     *start = path.s,
     *end = seg_end(path);
-  while(start < end) {
-    seg_t s = parse_split('.', &start, end);
-    if(!(map_size(p->map) & 1)) return NULL;
-    pair_t *x = seg_map_find(p->map, s);
-    if(!x) return NULL;
-    p = (cell_t *)x->second;
+  seg_t s = parse_split('.', &start, end);
+  assert(end > start); // module must be specified
+  cell_t *m = get_module(s);
+
+  while(m) {
+    s = parse_split('.', &start, end);
+    if(start < end) {
+      m = get_submodule(m, s);
+    } else {
+      pair_t *x = seg_map_find(m->map, s);
+      return x ? (cell_t *)x->second : NULL;
+    }
   }
-  return p;
+  return NULL;
 }
 
 int test_module_lookup() {
   modules = NULL;
   cell_t *t = lex("module a:\n"
+                  "b: module b\n"
                   "f1: the first word\n"
                   "f2: the\n"
                   "      second one\n"
                   "f3:\n"
                   " number three\n"
                   "module b:\n"
-                  "f4: heres another\n");
+                  "f4: heres another\n"
+                  "module b:\n"
+                  "a: module a\n");
   const cell_t *p = t;
   while(parse_module(&p));
-  char *str = "a.f3";
+  char *str = "a.b.a.f3";
   cell_t *c = module_lookup(string_seg(str));
-  printf("a.f3:\n");
-  print_def(c);
+  printf("a.b.a.f3:\n");
+  if(c) {
+    print_def(c);
+  } else {
+    printf("NULL\n");
+  }
   free_toks(t);
   return 0;
 }
