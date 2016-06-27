@@ -217,12 +217,11 @@ pair_t *map_elems(map_t map) {
 
 // called after inserting an element
 static
-void map_sort(map_t map, cmp_t cmp) {
+void map_sort(map_t map, uintptr_t bit, cmp_t cmp) {
   uintptr_t cnt = *map_cnt(map);
   pair_t *elems = map_elems(map);
   if(!cnt || cnt & 1) return;
   uintptr_t x = cnt - 1;
-  uintptr_t bit = 1;
   while(x & bit) {
     x &= ~bit;
     merge(&elems[x], &elems[x+bit], bit << 1, cmp);
@@ -236,7 +235,7 @@ bool _map_insert(map_t map, pair_t x, cmp_t cmp) {
   uintptr_t *cnt = &map[0].second;
   if(*cnt >= *size) return false;
   map[++*cnt] = x;
-  map_sort(map, cmp);
+  map_sort(map, 1, cmp);
   return true;
 }
 
@@ -249,6 +248,39 @@ bool string_map_insert(map_t map, pair_t x) {
 }
 
 static
+bool _map_merge(map_t map, pair_t *x, size_t n, cmp_t cmp) {
+  uintptr_t *size = &map[0].first;
+  uintptr_t *cnt = &map[0].second;
+  if(*cnt + n > *size) return false;
+  uintptr_t bit = 1;
+  while(n) {
+    uintptr_t m = 1 << __builtin_ctz(*cnt);
+    if(m > n) {
+      memcpy(map + 1 + *cnt, x, n * sizeof(pair_t));
+      *cnt += n;
+      break;
+    }
+    memcpy(map + 1 + *cnt, x, m * sizeof(pair_t));
+    x += m;
+    n -= m;
+    *cnt += m;
+    _print_map("ump", map);
+    map_sort(map, bit, cmp);
+    print_map(map);
+    bit = m; // avoid redundant sorting
+  }
+  return true;
+}
+
+bool map_merge(map_t map, pair_t *x, size_t n) {
+  return _map_merge(map, x, n, key_cmp);
+}
+
+bool string_map_merge(map_t map, pair_t *x, size_t n) {
+  return _map_merge(map, x, n, string_cmp);
+}
+
+static
 bool _map_replace_insert(map_t map, pair_t x, cmp_t cmp) {
   pair_t *p = map_find(map, x.first);
   if(p) {
@@ -257,6 +289,27 @@ bool _map_replace_insert(map_t map, pair_t x, cmp_t cmp) {
   } else {
     return _map_insert(map, x, cmp);
   }
+}
+
+int test_map_merge() {
+  pair_t map[17] = {
+    {LENGTH(map) - 1, 5},
+    {0,0}, {4,0}, {12, 0}, {16, 0},
+              {8, 1}};
+  pair_t x[11];
+  FOREACH(i, x) {
+    x[i].first = i * 2 + 1;
+    x[i].second = 10 + 10 * i;
+  }
+  map_merge(map, x, LENGTH(x));
+  print_map(map);
+  pair_t *r = map_find(map, 16);
+  if(r) {
+    printf("r = {%d, %d}\n", (int)r->first, (int)r->second);
+  } else {
+    printf("r = NULL\n");
+  }
+  return 0;
 }
 
 bool map_replace_insert(map_t map, pair_t x) {
