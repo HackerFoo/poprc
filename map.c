@@ -75,6 +75,19 @@ void rotate(pair_t *a, pair_t *b, size_t n) {
 }
 */
 
+static
+bool is_ordered(pair_t *x, size_t r, size_t n, cmp_t cmp) {
+  if(n <= 1) return true;
+  uintptr_t prev = x[r % n].first;
+  for(size_t i = 1; i < n; i++) {
+    r = (r + 1) % n;
+    uintptr_t next = x[r].first;
+    if(cmp(next, prev)) return false;
+    prev = next;
+  }
+  return true;
+}
+
 // arr points to the array of size n
 // b is the start of the second sorted section
 static
@@ -101,11 +114,15 @@ void merge(pair_t *arr, pair_t *b, size_t n, cmp_t cmp) {
     print_pairs(q, b-q);
     printf("b[%" PRIuPTR "]: ", b-arr);
     print_pairs(b, n-(b-arr));
+    assert(is_ordered(a, 0, q-a, cmp));
+    assert(is_ordered(q, h-q, b-q, cmp));
+    assert(is_ordered(b, 0, n-(b-arr), cmp));
 #endif
     // non-empty queue
     if(q < b) {
       // count b < h
       size_t b_run = scan(b, end, h->first, cmp);
+      if((ptrdiff_t)b_run > q - a) b_run = q - a;
       if(b_run) { // choose minimum copying to preserve queue
         swap_block(a, b, b_run); // swap the run into the output replacing a block of 'a'
         // |== output b_left ==|== a_right ==|== q a_left ==|== b_right ==|
