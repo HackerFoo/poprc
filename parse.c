@@ -863,6 +863,22 @@ cell_t *get_module(seg_t s) {
   return x ? (cell_t *)x->second : NULL;
 }
 
+cell_t *build_module(cell_t *l) {
+  cell_t *m = NULL;
+  csize_t n = list_size(l) - 1;
+  // if n = 1, just link to the one map
+  uintptr_t ms = 0;
+  COUNTUP(i, n) {
+    // lookup module, add size to ms
+    // replace with direct pointer to module
+  }
+  m = map_alloc(ms);
+  COUNTUP(i, n) {
+    string_map_union(m->map, l->value.ptr[i]->map);
+  }
+  return m;
+}
+
 cell_t *get_submodule(cell_t *m, seg_t s) {
   pair_t *x = seg_map_find(m->map, s);
   if(!x) return NULL;
