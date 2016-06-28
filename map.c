@@ -302,6 +302,45 @@ bool string_map_merge(map_t map, pair_t *x, size_t n) {
   return _map_merge(map, x, n, string_cmp);
 }
 
+bool _map_union(map_t a, map_t b, cmp_t cmp) {
+  uintptr_t n = *map_cnt(b);
+  pair_t *x = map_elems(b);
+  if(n == 0) return true;
+  if(n > map_size(a) - *map_cnt(a)) return false;
+  uintptr_t bit = 1 << __builtin_ctz(n);
+  while(bit) {
+    if(bit & n) {
+      _map_merge(a, x, bit, cmp);
+      x += bit;
+    }
+    bit >>= 1;
+  }
+  return true;
+}
+
+bool map_union(map_t a, map_t b) {
+  return _map_union(a, b, key_cmp);
+}
+
+bool string_map_union(map_t a, map_t b) {
+  return _map_union(a, b, string_cmp);
+}
+
+int test_map_union() {
+  MAP(a, 16);
+  MAP(b, 8);
+  COUNTUP(i, 8) {
+    pair_t
+      pa = {i*2, 0},
+      pb = {i*2 + 1, 1};
+    map_insert(a, pa);
+    map_insert(b, pb);
+  }
+  map_union(a, b);
+  print_map(a);
+  return 0;
+}
+
 static
 bool _map_replace_insert(map_t map, pair_t x, cmp_t cmp) {
   pair_t *p = map_find(map, x.first);
