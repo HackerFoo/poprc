@@ -245,7 +245,7 @@ void map_sort(map_t map, uintptr_t bit, cmp_t cmp) {
   uintptr_t cnt = *map_cnt(map);
   pair_t *elems = map_elems(map);
   if(!cnt || cnt & 1) return;
-  uintptr_t x = cnt - 1;
+  uintptr_t x = (cnt - 1) & ~(bit - 1);
   while(x & bit) {
     x &= ~bit;
     merge(&elems[x], &elems[x+bit], bit << 1, cmp);
@@ -288,9 +288,7 @@ bool _map_merge(map_t map, pair_t *x, size_t n, cmp_t cmp) {
     x += m;
     n -= m;
     *cnt += m;
-    _print_map("ump", map);
     map_sort(map, bit, cmp);
-    print_map(map);
     bit = m; // avoid redundant sorting
   }
   return true;
