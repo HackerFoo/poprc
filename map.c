@@ -273,9 +273,15 @@ bool string_map_insert(map_t map, pair_t x) {
 
 static
 bool _map_merge(map_t map, pair_t *x, size_t n, cmp_t cmp) {
+  if(n == 0) return true;
   uintptr_t *size = &map[0].first;
   uintptr_t *cnt = &map[0].second;
   if(*cnt + n > *size) return false;
+  if(*cnt == 0) {
+      memcpy(map + 1, x, n * sizeof(pair_t));
+      *cnt = n;
+      return true;
+  }
   uintptr_t bit = 1;
   while(n) {
     uintptr_t m = 1 << __builtin_ctz(*cnt);
