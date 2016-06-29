@@ -568,6 +568,29 @@ bool parse_def(const cell_t **c, const cell_t **name, cell_t **l) {
   MATCH_ONLY(":");
   if(!parse_rhs_expr(&p, l)) goto fail;
 
+  // check expression types
+  csize_t n = list_size(*l) - 1;
+  if(n > 0) {
+    cell_t *p = (*l)->value.ptr[0];
+    if(segcmp("module", tok_seg(p)) == 0) { // module expression
+      COUNTUP(i, n) {
+        cell_t *p = (*l)->value.ptr[i];
+        cell_t *e = (*l)->value.ptr[i+1];
+        MATCH_ONLY("module");
+        MATCH_IF(!is_reserved(tok_seg(p)));
+        if(p != e) MATCH_ONLY(",");
+        if(p != e) goto fail;
+      }
+    } else { // concatenative expression
+      COUNTUP(i, n) {
+        cell_t *p = (*l)->value.ptr[i];
+        cell_t *e = (*l)->value.ptr[i+1];
+        while(p != e) {
+          MATCH_IF(segcmp(",", tok_seg(p)) == 0 || !is_reserved(tok_seg(p)));
+        }
+      }
+    }
+  }
   *c = p;
   return true;
 
@@ -589,6 +612,10 @@ cell_t *parse_defs(const cell_t **c) {
 }
 
 void print_def(const cell_t *l) {
+  if(!l) {
+    printf("NULL\n");
+    return;
+  }
   csize_t n = list_size(l) - 1;
   COUNTUP(i, n) {
     cell_t
@@ -863,18 +890,27 @@ cell_t *get_module(seg_t s) {
   return x ? (cell_t *)x->second : NULL;
 }
 
-cell_t *build_module(cell_t *l) {
+cell_t *build_module(cell_t *c) {
   cell_t *m = NULL;
-  csize_t n = list_size(l) - 1;
-  // if n = 1, just link to the one map
+  csize_t n = list_size(c) - 1;
   uintptr_t ms = 0;
+
+  // replace token pointers with pointers to modules
   COUNTUP(i, n) {
-    // lookup module, add size to ms
-    // replace with direct pointer to module
+    cell_t **p = &c->value.ptr[i];
+    cell_t *m = get_module(tok_seg((*p)->tok_list.next));
+    if(!m) return NULL;
+    ms += *map_cnt(m->map);
+    *p = m;
   }
+
+  if(n == 1) {
+    return c->value.ptr[0];
+  }
+
   m = map_alloc(ms);
   COUNTUP(i, n) {
-    string_map_union(m->map, l->value.ptr[i]->map);
+    string_map_union(m->map, c->value.ptr[i]->map);
   }
   return m;
 }
@@ -884,12 +920,15 @@ cell_t *get_submodule(cell_t *m, seg_t s) {
   if(!x) return NULL;
   cell_t *p = (cell_t *)x->second;
 
-  csize_t n = list_size(p) - 1;
-  if(n != 1) return NULL; // TODO module union operation for n > 1
+  // already built
+  if(map_size(p->map) & 1) return p;
+
+  // check for module expression
   cell_t *l = p->value.ptr[0];
   if(segcmp("module", tok_seg(l)) != 0) return NULL;
-  seg_t sm = tok_seg(l->tok_list.next);
-  return get_module(sm);
+  cell_t *n = build_module(p);
+  if(n) x->second = (uintptr_t)n;
+  return n;
 }
 
 cell_t *module_lookup(seg_t path) {
@@ -917,6 +956,7 @@ int test_module_lookup() {
   modules = NULL;
   cell_t *t = lex("module a:\n"
                   "b: module b\n"
+                  "cd: module c, module d\n"
                   "f1: the first word\n"
                   "f2: the\n"
                   "      second one\n"
@@ -925,17 +965,22 @@ int test_module_lookup() {
                   "module b:\n"
                   "f4: heres another\n"
                   "module b:\n"
-                  "a: module a\n");
+                  "a: module a\n"
+                  "module c:\n"
+                  "f5: 1 2 +\n"
+                  "module d:\n"
+                  "f6: 3 4 *\n");
   const cell_t *p = t;
   while(parse_module(&p));
-  char *str = "a.b.a.f3";
-  cell_t *c = module_lookup(string_seg(str));
+  cell_t *c = module_lookup(string_seg("a.b.a.f3"));
   printf("a.b.a.f3:\n");
-  if(c) {
-    print_def(c);
-  } else {
-    printf("NULL\n");
-  }
+  print_def(c);
+  c = module_lookup(string_seg("a.cd.f5"));
+  printf("a.cd.f5:\n");
+  print_def(c);
+  c = module_lookup(string_seg("a.cd.f6"));
+  printf("a.cd.f6:\n");
+  print_def(c);
   free_toks(t);
   return 0;
 }

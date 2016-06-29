@@ -86,6 +86,10 @@ merge => 0
 @ module_lookup
 a.b.a.f3:
   number three
+a.cd.f5:
+  1 2 +
+a.cd.f6:
+  3 4 *
 module_lookup => 0
 @ parse_def
 and.more:
