@@ -931,13 +931,24 @@ cell_t *get_submodule(cell_t *m, seg_t s) {
   return n;
 }
 
-cell_t *module_lookup(seg_t path) {
+cell_t *implicit_lookup(seg_t w, cell_t *m) {
+  if(!m) return NULL;
+  pair_t *x = seg_map_find(m->map, w);
+  if(x) return (cell_t *)x->second;
+  cell_t *imports = get_submodule(m, string_seg("imports"));
+  if(!imports) return NULL;
+  x = seg_map_find(imports->map, w);
+  if(x) return (cell_t *)x->second;
+  return NULL;
+}
+
+cell_t *module_lookup(seg_t path, cell_t *context) {
   if(!modules) return NULL;
   const char
     *start = path.s,
     *end = seg_end(path);
   seg_t s = parse_split('.', &start, end);
-  assert(end > start); // module must be specified
+  if(start == end) return implicit_lookup(s, context);
   cell_t *m = get_module(s);
 
   while(m) {
@@ -955,6 +966,7 @@ cell_t *module_lookup(seg_t path) {
 int test_module_lookup() {
   modules = NULL;
   cell_t *t = lex("module a:\n"
+                  "imports: module e\n"
                   "b: module b\n"
                   "cd: module c, module d\n"
                   "f1: the first word\n"
@@ -969,17 +981,23 @@ int test_module_lookup() {
                   "module c:\n"
                   "f5: 1 2 +\n"
                   "module d:\n"
-                  "f6: 3 4 *\n");
+                  "f6: 3 4 *\n"
+                  "module e:\n"
+                  "f7: 6 5 -\n");
   const cell_t *p = t;
   while(parse_module(&p));
-  cell_t *c = module_lookup(string_seg("a.b.a.f3"));
+  cell_t *ma = get_module(string_seg("a"));
+  cell_t *c = module_lookup(string_seg("a.b.a.f3"), ma);
   printf("a.b.a.f3:\n");
   print_def(c);
-  c = module_lookup(string_seg("a.cd.f5"));
+  c = module_lookup(string_seg("a.cd.f5"), ma);
   printf("a.cd.f5:\n");
   print_def(c);
-  c = module_lookup(string_seg("a.cd.f6"));
+  c = module_lookup(string_seg("a.cd.f6"), ma);
   printf("a.cd.f6:\n");
+  print_def(c);
+  c = module_lookup(string_seg("f7"), ma);
+  printf("f7:\n");
   print_def(c);
   free_toks(t);
   return 0;
