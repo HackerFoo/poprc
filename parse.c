@@ -145,51 +145,41 @@ word_entry_t *lookup_word(seg_t w) {
     return NULL;
   }
 }
-/*
-cell_t *word(char const *w) {
-  csize_t in, out;
-  return parse_word(w, &in, &out);
-}
-*/
-cell_t *parse_word(seg_t w,
-                   csize_t *in,
-                   csize_t *out,
-                   cell_t **data) {
+
+cell_t *parse_word(seg_t w) {
   cell_t *c;
-  *data = NULL;
+  cell_t *data = NULL;
+  csize_t in = 0, out = 1;
   if(is_num(w.s)) {
     c = val(atoi(w.s));
-    *in = 0;
-    *out = 1;
   } else if(w.s[0] == '?') {
     c = var(T_ANY);
-    *in = 0;
-    *out = 1;
   } else if(w.n == 4 &&
             w.s[0] == 'a' && w.s[1] == 'p' &&
             char_class(w.s[2]) == CC_NUMERIC &&
             char_class(w.s[3]) == CC_NUMERIC) {
-    *in = w.s[2] - '0' + 1;
-    *out = w.s[3] - '0' + 1;
-    c = func(func_ap, *in, *out);
+    in = w.s[2] - '0' + 1;
+    out = w.s[3] - '0' + 1;
+    c = func(func_ap, in, out);
   } else {
     word_entry_t *e = lookup_word(w);
     if(!e) {
       /* TODO module lookup here */
       // trace the name ***
       c = func(func_placeholder, 0, 1);
-      *in = 0;
-      *out = 1;
     } else {
-      if(e->data) {
-        c = func(e->func, e->in + 1, e->out);
-        *data = e->data;
-      } else {
-        c = func(e->func, e->in, e->out);
-      }
-      *in = e->in;
-      *out = e->out;
+      c = func(e->func, e->in + (e->data ? 1 : 0), e->out);
+      in = e->in;
+      out = e->out;
+      data = e->data;
     }
+  }
+  COUNTUP(i, out-1) {
+    cell_t *d = dep(ref(c));
+    arg(&c, d);
+  }
+  if(data) {
+    arg(&c, data);
   }
   return c;
 }
@@ -717,8 +707,6 @@ cell_t *parse_expr(const cell_t **l) {
   const cell_t *t;
 
   while((t = *l)) {
-    csize_t in = 0, out = 1;
-    cell_t *data = NULL;
     *l = t->tok_list.next;
     if(t->tok_list.length == 1) {
       switch(*t->tok_list.location) {
@@ -740,21 +728,21 @@ cell_t *parse_expr(const cell_t **l) {
     if(is_uppercase(*t->tok_list.location)) {
       arg_stack[n++] = symbol(w);
     } else {
-      cell_t *c = parse_word(w, &in, &out, &data);
-      COUNTUP(i, out-1) {
-        cell_t *d = dep(ref(c));
-        arg(&c, d);
-      }
-      if(data) {
-        arg_stack[n++] = data;
-        in++;
-      }
-      COUNTDOWN(i, min(n, in)) {
-        arg(&c, arg_stack[--n]);
+      cell_t *c = parse_word(w);
+      bool f = !is_value(c);
+      csize_t in = 0;
+      if(f) {
+        in = closure_in(c);
+        COUNTDOWN(i, min(n, in)) {
+          arg(&c, arg_stack[--n]);
+        }
       }
       arg_stack[n++] = c;
-      COUNTUP(i, out-1) {
-        arg_stack[n++] = c->expr.arg[in+i];
+      if(f) {
+        csize_t out = closure_out(c);
+        COUNTUP(i, out) {
+          arg_stack[n++] = c->expr.arg[in+i];
+        }
       }
     }
   }
