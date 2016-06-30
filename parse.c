@@ -932,10 +932,11 @@ cell_t *get_submodule(cell_t *m, seg_t s) {
 }
 
 cell_t *implicit_lookup(seg_t w, cell_t *m) {
+  static const seg_t seg_import = SEG("imports");
   if(!m) return NULL;
   pair_t *x = seg_map_find(m->map, w);
   if(x) return (cell_t *)x->second;
-  cell_t *imports = get_submodule(m, string_seg("imports"));
+  cell_t *imports = get_submodule(m, seg_import);
   if(!imports) return NULL;
   x = seg_map_find(imports->map, w);
   if(x) return (cell_t *)x->second;

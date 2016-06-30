@@ -74,6 +74,7 @@ struct __test_entry {
 #define static_assert(expr, msg) _Static_assert(expr, msg)
 #endif
 
+#define SEG(x) {(x), sizeof(x) - 1}
 
 // macro to allow handling optional macro arguments
 // DISPATCH(MAC, n, x_0 .. x_m) will reduce to MACi(x_0 .. x_m), where i = n-m, so i is the number of missing arguments
