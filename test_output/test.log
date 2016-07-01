@@ -20,7 +20,7 @@ comments => 0
 1 2 5
 count => 0
 @ expand_map
-m[15] = {{eight, 7}, {five, 4}, {four, 3}, {one, 0}, {seven, 6}, {six, 5}, {three, 2}, {two, 1}, {nine, 8}, {ten, 9}}
+m[10] = {{eight, 7}, {five, 4}, {four, 3}, {one, 0}, {seven, 6}, {six, 5}, {three, 2}, {two, 1}, {nine, 8}, {ten, 9}}
 expand_map => 0
 @ lex
 testing 
@@ -47,7 +47,7 @@ TEST2(1, 2, 3)
 TEST1
 macro_dispatch => 0
 @ map
-map[32] = {{0, 5}, {1, 4}, {2, 0}, {3, 3}, {4, 6}, {5, 1}, {7, 7}, {8, 2}, {6, 8}, {9, 9}, {10, 10}, {15, 11}, {11, 13}, {13, 12}, {12, 14}}
+map[15] = {{0, 5}, {1, 4}, {2, 0}, {3, 3}, {4, 6}, {5, 1}, {7, 7}, {8, 2}, {6, 8}, {9, 9}, {10, 10}, {15, 11}, {11, 13}, {13, 12}, {12, 14}}
 map_find(map, 2) = {2, 0}
 map_find(map, 5) = {5, 1}
 map_find(map, 8) = {8, 2}

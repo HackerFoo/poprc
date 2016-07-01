@@ -450,9 +450,8 @@ pair_t *map_find_value(map_t map, uintptr_t value) {
 #endif
 
 void _print_map(char *name, map_t map) {
-  size_t size = map_size(map);
   size_t cnt = *map_cnt(map);
-  printf("%s[%" PRIuPTR "] = ", name ? name : "map", size);
+  printf("%s[%" PRIuPTR "] = ", name ? name : "map", cnt);
   print_pairs(map_elems(map), cnt);
 }
 
@@ -461,9 +460,8 @@ void _print_map(char *name, map_t map) {
 #endif
 
 void _print_string_map(char *name, map_t map) {
-  size_t size = map_size(map);
   size_t cnt = *map_cnt(map);
-  printf("%s[%" PRIuPTR "] = ", name ? name : "map", size);
+  printf("%s[%" PRIuPTR "] = ", name ? name : "map", cnt);
   print_string_pairs(map_elems(map), cnt);
 }
 

@@ -140,6 +140,7 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
 
   run_eval();
   measure_display();
+  print_symbols();
   return 0;
 }
 #endif

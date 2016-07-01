@@ -64,6 +64,10 @@ static pair_t symbols[MAX_SYMBOLS+1] = {
 static char strings[1<<14];
 static char *strings_top;
 
+void print_symbols() {
+  print_string_map(symbols);
+}
+
 const char *seg_string(seg_t s) {
   if((uintptr_t)((char *)(&strings + 1) - strings_top) < s.n + 1) return NULL;
   char *str = strings_top;
@@ -700,7 +704,7 @@ bool is_uppercase(char c) {
   return c >= 'A' && c <= 'Z';
 }
 
-#define MAX_ARGS 16
+#define MAX_ARGS 64
 cell_t *parse_expr(const cell_t **l) {
   cell_t *arg_stack[MAX_ARGS]; // TODO use allocated storage
   unsigned int n = 0;
