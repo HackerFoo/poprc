@@ -21,6 +21,10 @@
 #include <stdio.h>
 #include <assert.h>
 #include <inttypes.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "gen/support.h"
 
@@ -274,4 +278,64 @@ void *lookup_linear(void *table, size_t width, size_t rows, seg_t key_seg) {
     entry += width;
   }
   return NULL;
+}
+
+#if INTERFACE
+struct mmfile {
+  char *path;
+  int fd;
+  size_t size;
+  char *data;
+  bool read_only;
+};
+#endif
+
+bool mmap_file(struct mmfile *f) {
+  f->fd = open(f->path, f->read_only ? O_RDONLY : O_RDWR);
+  if(f->fd < 0) return false;
+  struct stat file_info;
+  if(fstat(f->fd, &file_info) < 0) return false;
+  f->size = file_info.st_size;
+  if(f->size == 0) {
+    f->data = NULL;
+    return true;
+  }
+  f->data = mmap(f->data,
+                 f->size,
+                 f->read_only ? PROT_READ : PROT_READ | PROT_WRITE,
+                 MAP_SHARED,
+                 f->fd,
+                 0);
+
+  if(f->data == MAP_FAILED) {
+    f->data = NULL;
+    return false;
+  } else {
+    return true;
+  }
+}
+
+bool munmap_file(struct mmfile *f) {
+  bool success = true;
+  success &= munmap(f->data, f->size) == 0;
+  success &= close(f->fd) == 0;
+  memset(f, 0, sizeof(*f));
+  return success;
+}
+
+int test_mmap_file() {
+  struct mmfile f = {
+    .path = "support.c",
+    .read_only = true
+  };
+  if(!mmap_file(&f)) return -1;
+  char *c = f.data + 3;
+  size_t n = f.size;
+  while(n--) {
+    putchar(*c);
+    if(*c == '\n') break;
+    c++;
+  }
+  if(!munmap_file(&f)) return -1;
+  return 0;
 }
