@@ -464,7 +464,7 @@ bool load_file(char *path) {
   if(!mmap_file(&f)) return false;
 
   cell_t *c = lex(f.data, f.data + f.size);
-  const cell_t *p = c;
+  cell_t *p = c;
   while(parse_module(&p));
   print_modules();
   free_toks(c);

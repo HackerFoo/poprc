@@ -524,71 +524,77 @@ cell_t *list_insert(cell_t *c, cell_t *x) {
   return c;
 }
 
-bool parse_rhs_expr(const cell_t **c, cell_t **res) {
-  const cell_t *p = *c;
+bool parse_rhs_expr(cell_t **c, cell_t **res) {
+  cell_t *head = *c;
+  cell_t **it = &head;
   cell_t *r = NULL;
-  if(!p) goto fail;
-  const uintptr_t left_indent = tok_indent(p);
+  if(!*it) goto fail;
+  const uintptr_t left_indent = tok_indent(*it);
   if(left_indent == 0) goto done;
 
   r = empty_list();
 
   do {
-    const char *current_line = p->tok_list.line;
-    const uintptr_t indent = tok_indent(p);
+    const char *current_line = (*it)->tok_list.line;
+    const uintptr_t indent = tok_indent(*it);
     if(indent < left_indent) {
       goto done;
     } else if(indent == left_indent) {
-      r = list_insert(r, (cell_t *)p);
+      r = list_insert(r, *it);
+      cell_t **end = it;
+      it = &(*it)->tok_list.next;
+      *end = NULL;
+    } else {
+      it = &(*it)->tok_list.next;
     }
-    while((p = p->tok_list.next) &&
-          p->tok_list.line == current_line) {
-      if(match(p, ",")) {
-        p = p->tok_list.next;
-        if(p) {
-          r = list_insert(r, (cell_t *)p);
+    while(*it && (*it)->tok_list.line == current_line) {
+      if(match(*it, ",")) {
+        cell_t **tmp = it;
+        it = &(*it)->tok_list.next;
+        cell_free(*tmp);
+        *tmp = NULL;
+        if(*it) {
+          r = list_insert(r, *it);
         }
       }
+      it = &(*it)->tok_list.next;
     }
-  } while(p);
+  } while(*it);
 done:
-  if(*c == p) {
+  if(*c == *it) {
     return false;
   } else {
-    r = list_insert(r, (cell_t *)p);
     *res = r;
-    *c = p;
+    *c = *it;
+    *it = NULL;
     return true;
   }
 fail:
   return false;
 }
 
-bool parse_def(const cell_t **c, const cell_t **name, cell_t **l) {
-  const cell_t *p = *c;
+bool parse_def(cell_t **c, const cell_t **name, cell_t **l) {
+  cell_t *p = *c;
   MATCH_IF(!is_reserved(tok_seg(p)), *name);
   MATCH_ONLY(":");
   if(!parse_rhs_expr(&p, l)) goto fail;
 
   // check expression types
-  csize_t n = list_size(*l) - 1;
+  csize_t n = list_size(*l);
   if(n > 0) {
     cell_t *p = (*l)->value.ptr[0];
     if(segcmp("module", tok_seg(p)) == 0) { // module expression
       COUNTUP(i, n) {
         cell_t *p = (*l)->value.ptr[i];
-        cell_t *e = (*l)->value.ptr[i+1];
         MATCH_ONLY("module");
         MATCH_IF(!is_reserved(tok_seg(p)));
-        if(p != e) MATCH_ONLY(",");
-        if(p != e) goto fail;
+        if(p) goto fail;
       }
     } else { // concatenative expression
       COUNTUP(i, n) {
         cell_t *p = (*l)->value.ptr[i];
-        cell_t *e = (*l)->value.ptr[i+1];
-        while(p != e) {
-          MATCH_IF(segcmp(",", tok_seg(p)) == 0 || !is_reserved(tok_seg(p)));
+        while(p) {
+          MATCH_IF(!is_reserved(tok_seg(p)));
         }
       }
     }
@@ -600,8 +606,8 @@ fail:
   return false;
 }
 
-cell_t *parse_defs(const cell_t **c) {
-  const cell_t *p = *c;
+cell_t *parse_defs(cell_t **c) {
+  cell_t *p = *c;
   const cell_t *n = NULL;
   cell_t *l = NULL;
   cell_t *m = NULL;
@@ -618,13 +624,11 @@ void print_def(const cell_t *l) {
     printf("NULL\n");
     return;
   }
-  csize_t n = list_size(l) - 1;
+  csize_t n = list_size(l);
   COUNTUP(i, n) {
-    cell_t
-      *p = l->value.ptr[i], // p = start of segment
-      *e = l->value.ptr[i+1]; // e = end of segment + 1 (start of next segment)
+    cell_t *p = l->value.ptr[i];
     printf(" ");
-    while(p && p != e && !match(p, ",")) {
+    while(p) {
       printseg(" ", tok_seg(p), "");
       p = p->tok_list.next;
     }
@@ -658,15 +662,15 @@ int test_parse_def() {
                   "some.modules:\n"
                   " module one, module two\n"
                   " module three\n", 0);
-  const cell_t *p = c;
+  cell_t *p = c;
   cell_t *m = parse_defs(&p);
   print_defs(m);
   free_toks(c);
   return 0;
 }
 
-bool parse_module(const cell_t **c) {
-  const cell_t *p = *c, *n = NULL;
+bool parse_module(cell_t **c) {
+  cell_t *p = *c, *n = NULL;
   MATCH_ONLY("module");
   MATCH_IF(true, n);
   MATCH_ONLY(":");
@@ -701,7 +705,7 @@ int test_parse_module() {
                   " number three\n"
                   "module b:\n"
                   "f4: heres another\n", 0);
-  const cell_t *p = c;
+  cell_t *p = c;
   while(parse_module(&p));
   print_modules();
   free_toks(c);
@@ -892,7 +896,7 @@ cell_t *get_module(seg_t s) {
 
 cell_t *build_module(cell_t *c) {
   cell_t *m = NULL;
-  csize_t n = list_size(c) - 1;
+  csize_t n = list_size(c);
   uintptr_t ms = 0;
 
   // replace token pointers with pointers to modules
@@ -986,7 +990,7 @@ int test_module_lookup() {
                   "f6: 3 4 *\n"
                   "module e:\n"
                   "f7: 6 5 -\n", 0);
-  const cell_t *p = t;
+  cell_t *p = t;
   while(parse_module(&p));
   cell_t *ma = get_module(string_seg("a"));
   cell_t *ctx = ma;
