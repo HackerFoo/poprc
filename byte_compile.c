@@ -432,14 +432,14 @@ cell_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
   return header;
 }
 
-void compact_expr(char const *name, char *str) {
+void compact_expr(char const *name, char *str, cell_t *module) {
   seg_t seg = {name, strlen(name)};
   word_entry_t *e = alloc_user_word(seg);
   if(!e) return;
   e->func = func_placeholder;
-  get_arity(str, &e->in, &e->out);
+  get_arity(str, &e->in, &e->out, module);
   e->func = func_self;
-  cell_t *c = build(str);
+  cell_t *c = build(str, module);
   /* TODO handle build failure
   if(!c) {
     --new_user_word_entry;

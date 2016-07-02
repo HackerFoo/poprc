@@ -116,11 +116,11 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
   int ch;
 
   parse_init();
+  cells_init();
 
   while ((ch = getopt(argc, argv, "t:l:r:L:")) != -1) {
     switch (ch) {
     case 't':
-      cells_init();
       return run_test(optarg, test_log);
       break;
     case 'l':
@@ -129,9 +129,8 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
       if(ch == 'r') return 0;
       break;
     case 'L':
-      cells_init();
       load_file(optarg);
-      return 0;
+      break;
     case '?':
     default:
       usage();
@@ -145,6 +144,7 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
   run_eval();
   measure_display();
   print_symbols();
+  check_free();
   return 0;
 }
 #endif
@@ -302,7 +302,6 @@ bool eval_command(char *line) {
       return false;
 #ifndef EMSCRIPTEN
     } else if(strncmp(line, ":t ", 3) == 0) {
-      cells_init();
       line += 3;
       while(*line == ' ') ++line;
       char *name = line;
@@ -310,7 +309,6 @@ bool eval_command(char *line) {
 #endif
     } else if(strncmp(line, ":C ", 3) == 0) {
 #ifdef USE_LLVM
-      cells_init();
       line += 3;
       while(*line == ' ') ++line;
       char *name = line;
@@ -321,26 +319,22 @@ bool eval_command(char *line) {
       printf("Compilation is not supported.\n");
 #endif
     } else if(strncmp(line, ":c ", 3) == 0) {
-      cells_init();
       line += 3;
       while(*line == ' ') ++line;
       char *name = line;
       while(*line != ' ') ++line;
       *line++ = 0;
-      compact_expr(name, line);
+      compact_expr(name, line, NULL);
     } else if(strncmp(line, ":a ", 3) == 0) {
       csize_t in, out;
-      cells_init();
       line += 3;
-      if(get_arity(line, &in, &out)) {
+      if(get_arity(line, &in, &out, NULL)) {
         printf("%d -> %d\n", in, out);
       }
     } else {
-      cells_init();
       measure_start();
       eval(line);
       measure_stop();
-      check_free();
     }
     return true;
 }
@@ -352,7 +346,7 @@ void reduce_root(cell_t *c) {
 }
 
 void eval(const char *str) {
-  cell_t *c = build(str);
+  cell_t *c = build(str, NULL);
   reduce_root(c);
   if(!c) return;
   csize_t s = list_size(c);
@@ -366,9 +360,9 @@ void eval(const char *str) {
   drop(c);
 }
 
-bool get_arity(char *str, csize_t *in, csize_t *out) {
+bool get_arity(char *str, csize_t *in, csize_t *out, cell_t *module) {
   set_trace(NULL);
-  cell_t *c = build(str);
+  cell_t *c = build(str, module);
   if(!c) return false;
   *in = fill_args(c, NULL);
   if(!closure_is_ready(c)) {
@@ -455,7 +449,7 @@ void load_source(char *path) {
       while(*x && *x != '\n') ++x;
       *x = 0;
       cells_init();
-      compact_expr(name, line);
+      compact_expr(name, line, NULL);
     }
   }
   fclose(f);

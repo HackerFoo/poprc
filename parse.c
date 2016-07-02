@@ -150,7 +150,7 @@ word_entry_t *lookup_word(seg_t w) {
   }
 }
 
-cell_t *parse_word(seg_t w) {
+cell_t *parse_word(seg_t w, cell_t *module) {
   cell_t *c;
   cell_t *data = NULL;
   csize_t in = 0, out = 1;
@@ -169,8 +169,13 @@ cell_t *parse_word(seg_t w) {
     word_entry_t *e = lookup_word(w);
     if(!e) {
       /* TODO module lookup here */
-      // trace the name ***
-      c = func(func_placeholder, 0, 1);
+      const cell_t *p = module_lookup(w, &module);
+      if(p) {
+        return parse_expr(&p, module);
+      } else {
+        // trace the name ***
+        c = func(func_placeholder, 0, 1);
+      }
     } else {
       c = func(e->func, e->in + (e->data ? 1 : 0), e->out);
       in = e->in;
@@ -708,7 +713,7 @@ bool is_uppercase(char c) {
 }
 
 #define MAX_ARGS 64
-cell_t *parse_expr(const cell_t **l) {
+cell_t *parse_expr(const cell_t **l, cell_t *module) {
   cell_t *arg_stack[MAX_ARGS]; // TODO use allocated storage
   unsigned int n = 0;
   const cell_t *t;
@@ -720,7 +725,7 @@ cell_t *parse_expr(const cell_t **l) {
       case ']':
         goto make_list;
       case '[':
-        arg_stack[n++] = parse_expr(l);
+        arg_stack[n++] = parse_expr(l, module);
         continue;
       case '(':
         arg_stack[n++] = parse_vector(l);
@@ -735,7 +740,7 @@ cell_t *parse_expr(const cell_t **l) {
     if(is_uppercase(*t->tok_list.location)) {
       arg_stack[n++] = symbol(w);
     } else {
-      cell_t *c = parse_word(w);
+      cell_t *c = parse_word(w, module);
       bool f = !is_value(c);
       csize_t in = 0;
       if(f) {
@@ -763,10 +768,10 @@ make_list: { // build list from stack and return
   }
 }
 
-cell_t *build(const char *s) {
+cell_t *build(const char *s, cell_t *module) {
   cell_t *l = lex(s, 0);
   const cell_t *ll = l;
-  cell_t *c = parse_expr(&ll);
+  cell_t *c = parse_expr(&ll, module);
   free_toks(l);
   return c;
 }
@@ -938,13 +943,13 @@ cell_t *implicit_lookup(seg_t w, cell_t *m) {
   return NULL;
 }
 
-cell_t *module_lookup(seg_t path, cell_t *context) {
+cell_t *module_lookup(seg_t path, cell_t **context) {
   if(!modules) return NULL;
   const char
     *start = path.s,
     *end = seg_end(path);
   seg_t s = parse_split('.', &start, end);
-  if(start == end) return implicit_lookup(s, context);
+  if(start == end) return implicit_lookup(s, *context);
   cell_t *m = get_module(s);
 
   while(m) {
@@ -953,6 +958,7 @@ cell_t *module_lookup(seg_t path, cell_t *context) {
       m = get_submodule(m, s);
     } else {
       pair_t *x = seg_map_find(m->map, s);
+      *context = m;
       return x ? (cell_t *)x->second : NULL;
     }
   }
@@ -983,16 +989,20 @@ int test_module_lookup() {
   const cell_t *p = t;
   while(parse_module(&p));
   cell_t *ma = get_module(string_seg("a"));
-  cell_t *c = module_lookup(string_seg("a.b.a.f3"), ma);
+  cell_t *ctx = ma;
+  cell_t *c = module_lookup(string_seg("a.b.a.f3"), &ctx);
   printf("a.b.a.f3:\n");
   print_def(c);
-  c = module_lookup(string_seg("a.cd.f5"), ma);
+  ctx = ma;
+  c = module_lookup(string_seg("a.cd.f5"), &ctx);
   printf("a.cd.f5:\n");
   print_def(c);
-  c = module_lookup(string_seg("a.cd.f6"), ma);
+  ctx = ma;
+  c = module_lookup(string_seg("a.cd.f6"), &ctx);
   printf("a.cd.f6:\n");
   print_def(c);
-  c = module_lookup(string_seg("f7"), ma);
+  ctx = ma;
+  c = module_lookup(string_seg("f7"), &ctx);
   printf("f7:\n");
   print_def(c);
   free_toks(t);
