@@ -339,3 +339,36 @@ int test_mmap_file() {
   if(!munmap_file(&f)) return -1;
   return 0;
 }
+
+size_t line_number(const char *s, const char *e) {
+  if(!s || !e) return 0;
+  size_t cnt = 1;
+  while(s < e) {
+    if(*s++ == '\n') cnt++;
+  }
+  return cnt;
+}
+
+bool find_line(const char *x, const char **s, size_t *size) {
+  if(!x || !s || !size || !*s || x < *s || (size_t)(x - *s) >= *size) return false;
+  const char *e = *s + *size;
+  const char *p = *s;
+  const char *ls = p;
+  const char *le = e;
+  while(p < x) {
+    if(*p == '\n') {
+      ls = p;
+    }
+    p++;
+  }
+  while(p < e) {
+    if(*p == '\n') {
+      le = p;
+      break;
+    }
+    p++;
+  }
+  *s = ls;
+  *size = le - ls;
+  return true;
+}

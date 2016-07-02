@@ -567,50 +567,51 @@ done:
     return true;
   }
 fail:
+  *c = *it;
   return false;
 }
 
-bool parse_def(cell_t **c, cell_t **name, cell_t **l) {
+bool parse_def(cell_t **c, cell_t **name, cell_t **l, cell_t **e) {
   cell_t *p = *c;
   cell_t *keep;
   MATCH_IF(!is_reserved(tok_seg(p)), *name);
   MATCH_ONLY(":");
   if(!parse_rhs_expr(&p, l)) goto fail;
+  *c = p;
 
   // check expression types
   csize_t n = list_size(*l);
   if(n > 0) {
-    cell_t *p = (*l)->value.ptr[0];
-    if(segcmp("module", tok_seg(p)) == 0) { // module expression
+    if(segcmp("module", tok_seg((*l)->value.ptr[0])) == 0) { // module expression
       COUNTUP(i, n) {
-        cell_t *p = (*l)->value.ptr[i];
+        p = (*l)->value.ptr[i];
         MATCH_ONLY("module", keep);
         MATCH_IF(!is_reserved(tok_seg(p)), keep);
         if(p) goto fail;
       }
     } else { // concatenative expression
       COUNTUP(i, n) {
-        cell_t *p = (*l)->value.ptr[i];
+        p = (*l)->value.ptr[i];
         while(p) {
           MATCH_IF(!is_reserved(tok_seg(p)), keep);
         }
       }
     }
   }
-  *c = p;
   return true;
 
 fail:
+  *e = p;
   return false;
 }
 
-cell_t *parse_defs(cell_t **c) {
+cell_t *parse_defs(cell_t **c, cell_t **e) {
   cell_t
     *l = NULL,
     *m = NULL,
     *n = NULL,
     *p = *c;
-  while(parse_def(&p, &n, &l)) {
+  while(parse_def(&p, &n, &l, e)) {
     const char *name = seg_string(tok_seg(n));
     cell_free(n);
     m = cmap_insert(m, name, (uintptr_t)l);
@@ -652,6 +653,7 @@ void free_def(cell_t *l) {
 }
 
 void print_defs(const cell_t *m) {
+  if(!m) return;
   map_t map = (map_t)m->map;
   csize_t n = *map_cnt(map);
   COUNTUP(i, n) {
@@ -661,6 +663,7 @@ void print_defs(const cell_t *m) {
 }
 
 void free_defs(cell_t *m) {
+  if(!m) return;
   map_t map = (map_t)m->map;
   csize_t n = *map_cnt(map);
   COUNTUP(i, n) {
@@ -686,24 +689,26 @@ int test_parse_def() {
                   "some.modules:\n"
                   " module one, module two\n"
                   " module three\n", 0);
-  cell_t *m = parse_defs(&p);
+  cell_t *e = NULL;
+  cell_t *m = parse_defs(&p, &e);
   print_defs(m);
   free_defs(m);
-  return 0;
+  return e ? -1 : 0;
 }
 
-bool parse_module(cell_t **c) {
+bool parse_module(cell_t **c, cell_t **e) {
   cell_t *p = *c, *n = NULL;
   MATCH_ONLY("module");
   MATCH_IF(true, n);
   MATCH_ONLY(":");
   const char *name = seg_string(tok_seg(n));
   cell_free(n);
-  cell_t *m = parse_defs(&p);
+  cell_t *m = parse_defs(&p, e);
   modules = cmap_insert(modules, name, (uintptr_t)m);
   *c = p;
   return true;
 fail:
+  if(!*e) *e = p;
   return false;
 }
 
@@ -739,10 +744,11 @@ int test_parse_module() {
                   " number three\n"
                   "module b:\n"
                   "f4: heres another\n", 0);
-  while(parse_module(&p));
+  cell_t *e = NULL;
+  while(parse_module(&p, &e));
   print_modules();
   free_modules();
-  return 0;
+  return e ? -1 : 0;
 }
 
 bool is_uppercase(char c) {
@@ -1027,7 +1033,8 @@ int test_module_lookup() {
                   "f6: 3 4 *\n"
                   "module e:\n"
                   "f7: 6 5 -\n", 0);
-  while(parse_module(&p));
+  cell_t *e = NULL;
+  while(parse_module(&p, &e));
   cell_t *ma = get_module(string_seg("a"));
   cell_t *ctx = ma;
   cell_t *c = module_lookup(string_seg("a.b.a.f3"), &ctx);
@@ -1046,5 +1053,5 @@ int test_module_lookup() {
   printf("f7:\n");
   print_def(c);
   free_modules();
-  return 0;
+  return e ? -1 : 0;
 }

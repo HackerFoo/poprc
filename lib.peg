@@ -1,9 +1,9 @@
 module lib:
 
-num: module num
-list: module list
-control: module control
-
+imports:
+  module num
+  module list
+  module control
 
 module num:
 
@@ -21,13 +21,12 @@ head: popr swap drop
 
 __ rotate top 3
 rot:             __ x y z
-[] pushl         __ x y [z]
+  [] pushl       __ x y [z]
   swap pushr     __ x [z y]
   pushl          __ [x z y]
   popr swap      __ y [x z]
   popr swap      __ y z [x]
   popr swap drop __ y z x
-
 
 module control:
 

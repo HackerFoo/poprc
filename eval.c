@@ -469,8 +469,22 @@ bool load_file(char *path) {
   if(!mmap_file(f)) return false;
 
   cell_t *toks = lex(f->data, f->data + f->size);
-  while(parse_module(&toks));
+  cell_t *e = NULL;
+  while(parse_module(&toks, &e));
   print_modules();
+
+  if(e) {
+    const char *line = e->tok_list.line;
+    const char *loc = e->tok_list.location;
+    size_t size = f->size - (line - f->data);
+    find_line(loc, &line, &size);
+    printf("%.*s\n", (int)size, line);
+    int pos = loc - line;
+    int line_no = line_number(f->data, loc);
+    COUNTUP(i, pos) putchar(' ');
+    printf("^--- Parse error on line %d of %s\n", line_no, path);
+  }
+  free_toks(toks);
   return true;
 }
 
