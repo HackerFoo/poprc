@@ -146,9 +146,9 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
 #endif
 
 #if defined(USE_LINENOISE) || defined(USE_READLINE)
-static seg_t last_tok(const char *str) {
+static seg_t last_tok(const char *str, const char *e) {
   seg_t last, n;
-  while(n = tok(str), n.s) {
+  while(n = tok(str, e), n.s) {
     last = n;
     str = seg_end(n);
   }
@@ -159,7 +159,7 @@ static seg_t last_tok(const char *str) {
 #ifdef USE_LINENOISE
 static void completion(char const *buf, linenoiseCompletions *lc) {
   unsigned int n = strlen(buf);
-  seg_t t = last_tok(buf);
+  seg_t t = last_tok(buf, buf + n);
   if(!t.s) return;
   word_entry_t *e = lookup_word(t);
   if(e) {
@@ -187,7 +187,7 @@ static char **completion(char *buf, UNUSED int start, UNUSED int end)
   unsigned int current_match = 1;
   char **matches = NULL;
   unsigned int n = strlen(buf);
-  seg_t t = last_tok(buf);
+  seg_t t = last_tok(buf, buf + n);
   if(t.s) {
     word_entry_t *e = lookup_word(t);
     if(e) {

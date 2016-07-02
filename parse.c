@@ -204,7 +204,7 @@ char_class_t char_class(char c) {
 }
 
 // starts at comment
-const char *skip_comment(const char *s) {
+const char *skip_comment(const char *s, const char *e) {
   int level = 0;
   char_class_t before = CC_NONE;
   const char *ptr = s;
@@ -212,11 +212,13 @@ const char *skip_comment(const char *s) {
   for(;;) {
     // move cursor past comment character, and record character class after it
     ptr++;
+    if(ptr >= e) return e;
     char_class_t after;
     unsigned int length = 1;
     while((after = char_class(*ptr)) == CC_COMMENT) {
       length++;
       ptr++;
+      if(ptr >= e) return e;
     }
 
     if(before == CC_NONE) {
@@ -225,7 +227,7 @@ const char *skip_comment(const char *s) {
       } else if(level == 0) {
         if(length > 1) {
           // line comment
-          while(*ptr && *ptr != '\n') ptr++;
+          while(ptr < e && *ptr && *ptr != '\n') ptr++;
           return ptr;
         } else {
           // just a lone comment char
@@ -234,7 +236,7 @@ const char *skip_comment(const char *s) {
       }
     } else if(after == CC_NONE) {
       level--;
-      if(!*ptr || level <= 0) return ptr;
+      if(ptr >= e || !*ptr || level <= 0) return ptr;
     }
 
     // move cursor to next comment character, tracking character class before it
@@ -243,7 +245,7 @@ const char *skip_comment(const char *s) {
     do {
       before = cur;
       ptr++;
-      if(!*ptr) return ptr;
+      if(ptr >= e || !*ptr) return ptr;
       cur = char_class(*ptr);
     } while(cur != CC_COMMENT);
   }
@@ -251,6 +253,7 @@ const char *skip_comment(const char *s) {
 
 void mark_comments(char c, char *str) {
   char *ptr = str;
+  char *e = str + strlen(str);
   while(*ptr) {
     char_class_t cc = char_class(*ptr);
     switch(cc) {
@@ -259,7 +262,7 @@ void mark_comments(char c, char *str) {
       break;
     case CC_COMMENT: {
       char *start = ptr;
-      ptr = (char *)skip_comment(ptr);
+      ptr = (char *)skip_comment(ptr, e);
       if(ptr == start) {
         ptr++;
       } else {
@@ -289,22 +292,21 @@ int test_comments() {
   return 0;
 }
 
-seg_t tok(const char *s) {
+seg_t tok(const char *s, const char* e) {
   seg_t seg = {NULL, 0};
-  char_class_t cc = char_class(*s);
+  char_class_t cc = CC_NONE;
 
   /* skip spaces & comments */
-  while(cc == CC_NONE || cc == CC_COMMENT) {
-    if(!*s) {
-      return seg;
-    } else if(cc == CC_COMMENT) {
-      const char *n = skip_comment(s);
+  for(;;) {
+    if(s >= e || !*s) return seg;
+    cc = char_class(*s);
+    if(cc == CC_COMMENT) {
+      const char *n = skip_comment(s, e);
       if(s == n) break;
       s = n;
-    } else {
+    } else if(cc == CC_NONE) {
       s++;
-    }
-    cc = char_class(*s);
+    } else break;
   }
 
   /* at start of token */
@@ -317,7 +319,7 @@ seg_t tok(const char *s) {
     return seg;
   }
 
-  while(*++s) {
+  while(++s < e && *s) {
     char_class_t ncc = char_class(*s);
     if(cc == ncc) continue;
 
@@ -424,11 +426,12 @@ void tok_set_seg(cell_t *c, const seg_t s) {
   c->tok_list.length = s.n;
 }
 
-cell_t *lex(const char* s) {
+cell_t *lex(const char* s, const char* e) {
+  if(!e) e = s + strlen(s);
   seg_t t;
   const char *line = s;
   cell_t *ret = NULL, **prev = &ret;
-  while(t = tok(s), t.s) {
+  while(t = tok(s, e), t.s) {
     const char *next = seg_end(t);
     update_line(s, next, &line);
     s = next;
@@ -457,7 +460,7 @@ void free_toks(cell_t *t) {
   } while(0)
 
 int test_lex() {
-  cell_t *l = lex("testing\n[1 2+ 3]\n_ignore this_ 4\nDone"), *p = l;
+  cell_t *l = lex("testing\n[1 2+ 3]\n_ignore this_ 4\nDone", 0), *p = l;
   if(!l) return -1;
   const char *last_line = l->tok_list.line; 
   while(p) {
@@ -649,7 +652,7 @@ int test_parse_def() {
                   "and.more: stuff, listed on, one line\n"
                   "some.modules:\n"
                   " module one, module two\n"
-                  " module three\n");
+                  " module three\n", 0);
   const cell_t *p = c;
   cell_t *m = parse_defs(&p);
   print_defs(m);
@@ -692,7 +695,7 @@ int test_parse_module() {
                   "f3:\n"
                   " number three\n"
                   "module b:\n"
-                  "f4: heres another\n");
+                  "f4: heres another\n", 0);
   const cell_t *p = c;
   while(parse_module(&p));
   print_modules();
@@ -761,7 +764,7 @@ make_list: { // build list from stack and return
 }
 
 cell_t *build(const char *s) {
-  cell_t *l = lex(s);
+  cell_t *l = lex(s, 0);
   const cell_t *ll = l;
   cell_t *c = parse_expr(&ll);
   free_toks(l);
@@ -976,7 +979,7 @@ int test_module_lookup() {
                   "module d:\n"
                   "f6: 3 4 *\n"
                   "module e:\n"
-                  "f7: 6 5 -\n");
+                  "f7: 6 5 -\n", 0);
   const cell_t *p = t;
   while(parse_module(&p));
   cell_t *ma = get_module(string_seg("a"));
