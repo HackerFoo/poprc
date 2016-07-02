@@ -117,7 +117,7 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
 
   parse_init();
 
-  while ((ch = getopt(argc, argv, "t:l:r:")) != -1) {
+  while ((ch = getopt(argc, argv, "t:l:r:L:")) != -1) {
     switch (ch) {
     case 't':
       cells_init();
@@ -128,6 +128,10 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
       load_source(optarg);
       if(ch == 'r') return 0;
       break;
+    case 'L':
+      cells_init();
+      load_file(optarg);
+      return 0;
     case '?':
     default:
       usage();
@@ -456,4 +460,21 @@ void load_source(char *path) {
   }
   fclose(f);
   printf("loaded: %s\n", path);
+}
+
+bool load_file(char *path) {
+  struct mmfile f = {
+    .path = path,
+    .read_only = true
+  };
+  if(!mmap_file(&f)) return false;
+
+  cell_t *c = lex(f.data, f.data + f.size);
+  const cell_t *p = c;
+  while(parse_module(&p));
+  print_modules();
+  free_toks(c);
+
+  if(!munmap_file(&f)) return false;
+  return true;
 }
