@@ -144,6 +144,8 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
   run_eval();
   measure_display();
   print_symbols();
+  free_modules();
+  unload_files();
   check_free();
   return 0;
 }
@@ -456,19 +458,26 @@ void load_source(char *path) {
   printf("loaded: %s\n", path);
 }
 
+static struct mmfile files[16] = {};
+size_t files_cnt = 0;
+
 bool load_file(char *path) {
-  struct mmfile f = {
-    .path = path,
-    .read_only = true
-  };
-  if(!mmap_file(&f)) return false;
+  if(files_cnt >= LENGTH(files)) return false;
+  struct mmfile *f = &files[files_cnt++];
+  f->path = path;
+  f->read_only = true;
+  if(!mmap_file(f)) return false;
 
-  cell_t *c = lex(f.data, f.data + f.size);
-  cell_t *p = c;
-  while(parse_module(&p));
+  cell_t *toks = lex(f->data, f->data + f->size);
+  while(parse_module(&toks));
   print_modules();
-  free_toks(c);
-
-  if(!munmap_file(&f)) return false;
   return true;
+}
+
+bool unload_files() {
+  bool success = true;
+  COUNTUP(i, files_cnt) {
+    success &= munmap_file(&files[i]);
+  }
+  return success;
 }

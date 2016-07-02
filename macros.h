@@ -76,6 +76,12 @@ struct __test_entry {
 
 #define SEG(x) {(x), sizeof(x) - 1}
 
+#define printseg(pre, seg, fmt, ...)                                    \
+  do {                                                                  \
+    seg_t __seg = seg;                                                  \
+    printf(pre "%.*s" fmt, (int)__seg.n, __seg.s , ##__VA_ARGS__);      \
+  } while(0)
+
 // macro to allow handling optional macro arguments
 // DISPATCH(MAC, n, x_0 .. x_m) will reduce to MACi(x_0 .. x_m), where i = n-m, so i is the number of missing arguments
 #define DISPATCH(m, n, ...) CONCAT(DISPATCH, n)(m, __VA_ARGS__, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9)

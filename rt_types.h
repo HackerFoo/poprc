@@ -54,6 +54,7 @@ typedef intptr_t val_t;
 #pragma clang diagnostic ignored "-Wgnu-anonymous-struct"
 #pragma clang diagnostic ignored "-Wnested-anon-types"
 #pragma clang diagnostic ignored "-Wgnu-folding-constant"
+#pragma clang diagnostic ignored "-Wgnu-empty-initializer"
 #endif
 typedef bool (reduce_t)(cell_t **cell, type_t type);
 

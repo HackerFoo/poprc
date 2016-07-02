@@ -168,10 +168,11 @@ cell_t *parse_word(seg_t w, cell_t *module) {
   } else {
     word_entry_t *e = lookup_word(w);
     if(!e) {
-      /* TODO module lookup here */
       const cell_t *p = module_lookup(w, &module);
-      if(p) {
-        return parse_expr(&p, module);
+      if(p && list_size(p) > 0) {
+        /* TODO handle multiple definitions */
+        const cell_t *x = p->value.ptr[0];
+        c = parse_expr(&x, module);
       } else {
         // trace the name ***
         c = func(func_placeholder, 0, 1);
@@ -454,15 +455,9 @@ void free_toks(cell_t *t) {
   while(t) {
     cell_t *tmp = t;
     t = t->tok_list.next;
-    closure_free(tmp);
+    cell_free(tmp);
   }
 }
-
-#define printseg(pre, seg, fmt, ...)                                    \
-  do {                                                                  \
-    seg_t __seg = seg;                                                  \
-    printf(pre "%.*s" fmt, (int)__seg.n, __seg.s , ##__VA_ARGS__);      \
-  } while(0)
 
 int test_lex() {
   cell_t *l = lex("testing\n[1 2+ 3]\n_ignore this_ 4\nDone", 0), *p = l;
@@ -500,7 +495,9 @@ static bool match(const cell_t *c, const char *str) {
 #define MATCH_IF_1(p, label, cond, ...) \
   do {                                  \
     if(!(p) || !(cond)) goto label;     \
+    cell_t *tmp = p;                    \
     p = p->tok_list.next;               \
+    cell_free(tmp);                     \
   } while(0)
 
 #define MATCH_IF(cond, ...) DISPATCH(MATCH_IF, 4, p, fail, cond , ##__VA_ARGS__)
@@ -573,8 +570,9 @@ fail:
   return false;
 }
 
-bool parse_def(cell_t **c, const cell_t **name, cell_t **l) {
+bool parse_def(cell_t **c, cell_t **name, cell_t **l) {
   cell_t *p = *c;
+  cell_t *keep;
   MATCH_IF(!is_reserved(tok_seg(p)), *name);
   MATCH_ONLY(":");
   if(!parse_rhs_expr(&p, l)) goto fail;
@@ -586,15 +584,15 @@ bool parse_def(cell_t **c, const cell_t **name, cell_t **l) {
     if(segcmp("module", tok_seg(p)) == 0) { // module expression
       COUNTUP(i, n) {
         cell_t *p = (*l)->value.ptr[i];
-        MATCH_ONLY("module");
-        MATCH_IF(!is_reserved(tok_seg(p)));
+        MATCH_ONLY("module", keep);
+        MATCH_IF(!is_reserved(tok_seg(p)), keep);
         if(p) goto fail;
       }
     } else { // concatenative expression
       COUNTUP(i, n) {
         cell_t *p = (*l)->value.ptr[i];
         while(p) {
-          MATCH_IF(!is_reserved(tok_seg(p)));
+          MATCH_IF(!is_reserved(tok_seg(p)), keep);
         }
       }
     }
@@ -607,12 +605,14 @@ fail:
 }
 
 cell_t *parse_defs(cell_t **c) {
-  cell_t *p = *c;
-  const cell_t *n = NULL;
-  cell_t *l = NULL;
-  cell_t *m = NULL;
+  cell_t
+    *l = NULL,
+    *m = NULL,
+    *n = NULL,
+    *p = *c;
   while(parse_def(&p, &n, &l)) {
     const char *name = seg_string(tok_seg(n));
+    cell_free(n);
     m = cmap_insert(m, name, (uintptr_t)l);
   }
   *c = p;
@@ -636,6 +636,21 @@ void print_def(const cell_t *l) {
   }
 }
 
+void free_def(cell_t *l) {
+  if(!(l && l->func)) {
+    return;
+  }
+  if(map_size(l->map) & 1) {
+    map_free(l);
+  } else {
+    csize_t n = list_size(l);
+    COUNTUP(i, n) {
+      free_toks(l->value.ptr[i]);
+    }
+    closure_free(l);
+  }
+}
+
 void print_defs(const cell_t *m) {
   map_t map = (map_t)m->map;
   csize_t n = *map_cnt(map);
@@ -645,8 +660,17 @@ void print_defs(const cell_t *m) {
   }
 }
 
+void free_defs(cell_t *m) {
+  map_t map = (map_t)m->map;
+  csize_t n = *map_cnt(map);
+  COUNTUP(i, n) {
+    free_def((cell_t *)map[i+1].second);
+  }
+  map_free(m);
+}
+
 int test_parse_def() {
-  cell_t *c = lex("word: hi there this\n"
+  cell_t *p = lex("word: hi there this\n"
                   "        is the first definition\n"
                   "      and this\n"
                   "_comment_ is the\n"
@@ -662,10 +686,9 @@ int test_parse_def() {
                   "some.modules:\n"
                   " module one, module two\n"
                   " module three\n", 0);
-  cell_t *p = c;
   cell_t *m = parse_defs(&p);
   print_defs(m);
-  free_toks(c);
+  free_defs(m);
   return 0;
 }
 
@@ -675,6 +698,7 @@ bool parse_module(cell_t **c) {
   MATCH_IF(true, n);
   MATCH_ONLY(":");
   const char *name = seg_string(tok_seg(n));
+  cell_free(n);
   cell_t *m = parse_defs(&p);
   modules = cmap_insert(modules, name, (uintptr_t)m);
   *c = p;
@@ -684,20 +708,30 @@ fail:
 }
 
 void print_modules() {
-  cell_t *defs = NULL;
+  if(!modules) return;
   map_t map = (map_t)modules->map;
   csize_t n = *map_cnt(map);
   COUNTUP(i, n) {
     printf("module %s:\n", (char *)map[i+1].first);
-    defs = (cell_t *)map[i+1].second;
-    print_defs(defs);
+    print_defs((cell_t *)map[i+1].second);
     printf("\n");
   }
 }
 
+void free_modules() {
+  if(!modules) return;
+  map_t map = (map_t)modules->map;
+  csize_t n = *map_cnt(map);
+  COUNTUP(i, n) {
+    free_defs((cell_t *)map[i+1].second);
+  }
+  map_free(modules);
+  modules = NULL;
+}
+
 int test_parse_module() {
   modules = NULL;
-  cell_t *c = lex("module a:\n"
+  cell_t *p = lex("module a:\n"
                   "f1: the first word\n"
                   "f2: the\n"
                   "      second one\n"
@@ -705,10 +739,9 @@ int test_parse_module() {
                   " number three\n"
                   "module b:\n"
                   "f4: heres another\n", 0);
-  cell_t *p = c;
   while(parse_module(&p));
   print_modules();
-  free_toks(c);
+  free_modules();
   return 0;
 }
 
@@ -902,20 +935,24 @@ cell_t *build_module(cell_t *c) {
   // replace token pointers with pointers to modules
   COUNTUP(i, n) {
     cell_t **p = &c->value.ptr[i];
-    cell_t *m = get_module(tok_seg((*p)->tok_list.next));
-    if(!m) return NULL;
-    ms += *map_cnt(m->map);
-    *p = m;
+    cell_t *mod = get_module(tok_seg((*p)->tok_list.next));
+    if(!mod) return NULL;
+    ms += *map_cnt(mod->map);
+    free_toks(*p);
+    *p = mod;
   }
 
   if(n == 1) {
-    return c->value.ptr[0];
+    m = c->value.ptr[0];
+    closure_free(c);
+    return m;
   }
 
   m = map_alloc(ms);
   COUNTUP(i, n) {
     string_map_union(m->map, c->value.ptr[i]->map);
   }
+  closure_free(c);
   return m;
 }
 
@@ -971,7 +1008,7 @@ cell_t *module_lookup(seg_t path, cell_t **context) {
 
 int test_module_lookup() {
   modules = NULL;
-  cell_t *t = lex("module a:\n"
+  cell_t *p = lex("module a:\n"
                   "imports: module e\n"
                   "b: module b\n"
                   "cd: module c, module d\n"
@@ -990,7 +1027,6 @@ int test_module_lookup() {
                   "f6: 3 4 *\n"
                   "module e:\n"
                   "f7: 6 5 -\n", 0);
-  cell_t *p = t;
   while(parse_module(&p));
   cell_t *ma = get_module(string_seg("a"));
   cell_t *ctx = ma;
@@ -1009,6 +1045,6 @@ int test_module_lookup() {
   c = module_lookup(string_seg("f7"), &ctx);
   printf("f7:\n");
   print_def(c);
-  free_toks(t);
+  free_modules();
   return 0;
 }
