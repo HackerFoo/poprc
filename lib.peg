@@ -20,13 +20,13 @@ __ take rightmost value from quote
 head: popr swap drop
 
 __ rotate top 3
-rot:             __ x y z
-  [] pushl       __ x y [z]
-  swap pushr     __ x [z y]
-  pushl          __ [x z y]
-  popr swap      __ y [x z]
-  popr swap      __ y z [x]
-  popr swap drop __ y z x
+rot:               __ x y z
+  [] pushl         __ x y [z]
+    swap pushr     __ x [z y]
+    pushl          __ [x z y]
+    popr swap      __ y [x z]
+    popr swap      __ y z [x]
+    popr swap drop __ y z x
 
 module control:
 
