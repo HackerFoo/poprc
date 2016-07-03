@@ -185,8 +185,7 @@ scan: clean
 .PHONY: test
 test: eval
 	./eval -t '' | $(DIFF_TEST) test_output/test.log -
-# disable until tests.peg is reformatted
-#	./eval -r tests.peg | $(DIFF_TEST) test_output/tests.peg.log -
+	./eval -e -S < tests.peg | $(DIFF_TEST) test_output/tests.peg.log -
 
 test_output/test.log: eval
 	@mkdir -p test_output
@@ -194,7 +193,7 @@ test_output/test.log: eval
 
 test_output/tests.peg.log: eval tests.peg
 	@mkdir -p test_output
-	./eval -r tests.peg > $@
+	./eval -e -S < tests.peg > $@
 
 .PHONY: test_output
 test_output: test_output/test.log test_output/tests.peg.log

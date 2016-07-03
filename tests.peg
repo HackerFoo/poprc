@@ -1,67 +1,67 @@
-@ simple operator => [ 3 ]
-: 1 2 +
+__ simple operator => [ 3 ]
+1 2 +
 
-@ alts => [ { 10 | 15 | 14 | 21 } ]
-: 2 3 | 5 7 | *
+__ alts => [ { 10 | 15 | 14 | 21 } ]
+2 3 | 5 7 | *
 
-@ pushl/popr  => [ [] 3 ]
-: 1 [2+] pushl popr
+__ pushl/popr  => [ [] 3 ]
+1 [2+] pushl popr
 
-@ sharing test => [ [ 4 ] [ 2 ] ]
-: [1+] dup [3] swap . swap [1] swap .
+__ sharing test => [ [ 4 ] [ 2 ] ]
+[1+] dup [3] swap . swap [1] swap .
 
-@ sharing test
-: [[3 +]] dup popr 1 swap pushl
+__ sharing test
+[[3 +]] dup popr 1 swap pushl
 
-@ dup alt
-: 1 2 | dup
+__ dup alt
+1 2 | dup
 
-@ compose alt
-: [3] [2*] [2-] | .
+__ compose alt
+[3] [2*] [2-] | .
 
-@ compose dup
-: [1] [dup] .
+__ compose dup
+[1] [dup] .
 
-@ pushl sharing
-: [3+] dup 1 swap pushl
-: [dup] dup pushl
+__ pushl sharing
+[3+] dup 1 swap pushl
+[dup] dup pushl
 
-: 1 [dup] dup . pushl popr
+1 [dup] dup . pushl popr
 
-@: [dup pushl popr] dup pushl popr
-@: [dup pushl popr swap drop] dup pushl popr swap drop
+__ [dup pushl popr] dup pushl popr
+__ [dup pushl popr swap drop] dup pushl popr swap drop
 
-@ infinite [1]'s
-: [dup pushl popr swap 1] dup pushl popr drop popr popr popr
+__ infinite [1]'s
+[dup pushl popr swap 1] dup pushl popr drop popr popr popr
 
-@: [[] 1] [! drop dup 0 swap pushl pushl] [0 == ! drop 0 force [] pushl pushl] | . popr swap drop popr
+__ [[] 1] [! drop dup 0 swap pushl pushl] [0 == ! drop 0 force [] pushl pushl] | . popr swap drop popr
 
-: [1 2 | ] popr
+[1 2 | ] popr
 
-@: [[[! force drop dup [0] pushl swap pushl popr swap drop] [0 == ! force drop [0] force pushl] | . popr swap drop] 1] [! force drop dup [0] pushl swap pushl popr swap drop] [0 == ! force drop [0] force pushl] | . popr swap drop
+__ [[[! force drop dup [0] pushl swap pushl popr swap drop] [0 == ! force drop [0] force pushl] | . popr swap drop] 1] [! force drop dup [0] pushl swap pushl popr swap drop] [0 == ! force drop [0] force pushl] | . popr swap drop
 
-: [[1 2 |][3 4|] |] popr popr
-: [[[5]]] [[[4]] [[3] [2 1 |]|]|]| popr swap drop popr swap drop popr swap drop
+[[1 2 |][3 4|] |] popr popr
+[[[5]]] [[[4]] [[3] [2 1 |]|]|]| popr swap drop popr swap drop popr swap drop
 
-@: [[[! force 1- ' [dup] dip12 pushl swap pushl popr swap drop] [0 == ! force drop [0] force pushl] | . popr swap drop] 1] [! force 1- ' [dup] dip12 pushl swap pushl popr swap drop] [0 == ! force drop [0] force pushl] | . popr swap drop
+__ [[[! force 1- ' [dup] dip12 pushl swap pushl popr swap drop] [0 == ! force drop [0] force pushl] | . popr swap drop] 1] [! force 1- ' [dup] dip12 pushl swap pushl popr swap drop] [0 == ! force drop [0] force pushl] | . popr swap drop
 
-@: [[[! 1- [] force pushl [dup] dip12 pushl swap pushl popr swap drop] [dup 0 == ! force drop [] force pushl force pushl] | . popr swap drop cut] 5] [! 1- [] force pushl [dup] dip12 pushl swap pushl popr swap drop] [dup 0 == ! force drop [] force pushl force pushl] | . popr swap drop cut
+__ [[[! 1- [] force pushl [dup] dip12 pushl swap pushl popr swap drop] [dup 0 == ! force drop [] force pushl force pushl] | . popr swap drop cut] 5] [! 1- [] force pushl [dup] dip12 pushl swap pushl popr swap drop] [dup 0 == ! force drop [] force pushl force pushl] | . popr swap drop cut
 
-: (1 6) (2 7) | dup + dup +
+(1 6) (2 7) | dup + dup +
 
-: 1 0 | dup
-: 1 [1- dup 0 > !] [1+ dup 0 > !] | pushl popr
-: [0 |] dup 4 swap pushl popr swap drop swap 3 swap pushl popr swap drop +
-: [1] [3] | popr pushr popr
-: [0 1 |] dup popr swap drop swap popr swap drop
+1 0 | dup
+1 [1- dup 0 > !] [1+ dup 0 > !] | pushl popr
+[0 |] dup 4 swap pushl popr swap drop swap 3 swap pushl popr swap drop +
+[1] [3] | popr pushr popr
+[0 1 |] dup popr swap drop swap popr swap drop
 
-@: [1 [swap 1+ swap force dup pushl pushl popr swap drop]] [dup] . popr . popr
-@: [5 [swap [! 1-] [0 == ! 0 force swap drop] | pushl head swap force dup pushl pushl head]] [dup] . popr . popr
-@: [1 [swap ! 1- swap force dup pushl pushl head] [swap 0 == ! 1- force swap] || ] [dup] . popr . popr
-@: [100 [swap ! cut 1- swap force dup pushl pushl popr swap popr swap drop swap] [swap 0 == ! cut 1- force swap] || ] [dup] . popr . [swap] . head cut
+__ [1 [swap 1+ swap force dup pushl pushl popr swap drop]] [dup] . popr . popr
+__ [5 [swap [! 1-] [0 == ! 0 force swap drop] | pushl head swap force dup pushl pushl head]] [dup] . popr . popr
+__ [1 [swap ! 1- swap force dup pushl pushl head] [swap 0 == ! 1- force swap] || ] [dup] . popr . popr
+__ [100 [swap ! cut 1- swap force dup pushl pushl popr swap popr swap drop swap] [swap 0 == ! cut 1- force swap] || ] [dup] . popr . [swap] . head cut
 
-@: =loop 6 [dup 0 > swap 5- loop swap !] [dup 0 <= !] | pushl
+__ =loop 6 [dup 0 > swap 5- loop swap !] [dup 0 <= !] | pushl
 
-: False True | dup !
+False True | dup !
 
-: 1 [dup swap drop] pushl popr
+1 [dup swap drop] pushl popr
