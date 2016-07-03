@@ -121,15 +121,12 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
   while ((ch = getopt(argc, argv, "t:l:r:L:")) != -1) {
     switch (ch) {
     case 't':
-      return run_test(optarg, test_log);
+      return run_test(optarg);
       break;
     case 'l':
     case 'r':
-      load_source(optarg);
-      if(ch == 'r') return 0;
-      break;
-    case 'L':
       load_file(optarg);
+      if(ch == 'r') return 0;
       break;
     case '?':
     default:
@@ -291,54 +288,47 @@ void run_eval() {
 }
 
 bool eval_command(char *line) {
-    while(*line == ' ') ++line;
-    if(strcmp(line, ":m") == 0) {
+  cell_t *p = lex(line, 0), *p0 = p;
+  if(match(p, ":")) {
+    if(!(p = p->tok_list.next)) goto fail;
+    if(match(p, "m")) {
       measure_display();
-    } else if(strcmp(line, ":g") == 0) {
+    } else if(match(p, "g")) {
       write_graph = !write_graph;
       printf("graph %s\n", write_graph ? "ON" : "OFF");
-    } else if(strncmp(line, ":l ", 3) == 0) {
-      if(line[3])
-        load_source(&line[3]);
-    } else if(strcmp(line, ":q") == 0) {
-      return false;
+    } else if(match(p, "l")) {
+      load_file(p->tok_list.next->tok_list.location);
+    } else if(match(p, "q")) {
+      goto fail;
 #ifndef EMSCRIPTEN
-    } else if(strncmp(line, ":t ", 3) == 0) {
-      line += 3;
-      while(*line == ' ') ++line;
-      char *name = line;
-      run_test(name, test_log);
+    } else if(match(p, "t")) {
+      const char *name = p->tok_list.next->tok_list.location;
+      run_test(name);
 #endif
-    } else if(strncmp(line, ":C ", 3) == 0) {
-#ifdef USE_LLVM
-      line += 3;
-      while(*line == ' ') ++line;
-      char *name = line;
-      while(*line != ' ') ++line;
-      *line++ = 0;
-      compile_expr(name, line, strlen(line));
-#else
-      printf("Compilation is not supported.\n");
-#endif
-    } else if(strncmp(line, ":c ", 3) == 0) {
-      line += 3;
-      while(*line == ' ') ++line;
-      char *name = line;
-      while(*line != ' ') ++line;
-      *line++ = 0;
-      compact_expr(name, line, NULL);
-    } else if(strncmp(line, ":a ", 3) == 0) {
+    } else if(match(p, "c")) {
+      if(!(p = p->tok_list.next)) goto fail;
+      seg_t name = tok_seg(p);
+      if(!(p = p->tok_list.next)) goto fail;
+      compact_expr(name, p, NULL);
+    } else if(match(p, "a")) {
       csize_t in, out;
-      line += 3;
-      if(get_arity(line, &in, &out, NULL)) {
+      if(!(p = p->tok_list.next)) goto fail;
+      if(get_arity(p, &in, &out, NULL)) {
         printf("%d -> %d\n", in, out);
       }
     } else {
-      measure_start();
-      eval(line);
-      measure_stop();
+      printf("unknown command\n");
     }
-    return true;
+  } else {
+    measure_start();
+    eval(p);
+    measure_stop();
+  }
+  free_toks(p0);
+  return true;
+fail:
+  free_toks(p0);
+  return false;
 }
 
 void reduce_root(cell_t *c) {
@@ -347,8 +337,8 @@ void reduce_root(cell_t *c) {
   if(write_graph) make_graph_all(REDUCED_GRAPH_FILE);
 }
 
-void eval(const char *str) {
-  cell_t *c = build(str, NULL);
+void eval(const cell_t *p) {
+  cell_t *c = parse_expr(&p, NULL);
   reduce_root(c);
   if(!c) return;
   csize_t s = list_size(c);
@@ -362,9 +352,9 @@ void eval(const char *str) {
   drop(c);
 }
 
-bool get_arity(char *str, csize_t *in, csize_t *out, cell_t *module) {
+bool get_arity(const cell_t *p, csize_t *in, csize_t *out, cell_t *module) {
   set_trace(NULL);
-  cell_t *c = build(str, module);
+  cell_t *c = parse_expr(&p, module);
   if(!c) return false;
   *in = fill_args(c, NULL);
   if(!closure_is_ready(c)) {
@@ -423,45 +413,10 @@ cell_t *remove_left(cell_t *c) {
   return new;
 }
 
-void load_source(char *path) {
-  char buf[1024];
-  char *line = 0;
-  FILE *f = fopen(path, "r");
-  if(!f) {
-    printf("could not open: %s\n", path);
-    return;
-  }
-  printf("loading: %s\n", path);
-  while((line = fgets(buf, sizeof(buf), f))) {
-    if(line[0] == '@')
-      printf("%s", line);
-    else if(line[0] == ':') {
-      printf("%s", line);
-      cells_init();
-      eval(line+1);
-      check_free();
-    } else if(line[0] == '=') {
-      printf("%s", line);
-      ++line;
-      while(*line == ' ') ++line;
-      char *name = line;
-      while(*line != ' ') ++line;
-      *line++ = 0;
-      char *x = line;
-      while(*x && *x != '\n') ++x;
-      *x = 0;
-      cells_init();
-      compact_expr(name, line, NULL);
-    }
-  }
-  fclose(f);
-  printf("loaded: %s\n", path);
-}
-
 static struct mmfile files[16] = {};
 size_t files_cnt = 0;
 
-bool load_file(char *path) {
+bool load_file(const char *path) {
   if(files_cnt >= LENGTH(files)) return false;
   struct mmfile *f = &files[files_cnt++];
   f->path = path;

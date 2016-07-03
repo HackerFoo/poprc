@@ -482,7 +482,7 @@ const char *reserved_words[] = {
   ","
 };
 
-static bool match(const cell_t *c, const char *str) {
+bool match(const cell_t *c, const char *str) {
   return c && segcmp(str, tok_seg(c)) == 0;
 }
 
@@ -814,14 +814,6 @@ make_list: { // build list from stack and return
     }
     return l;
   }
-}
-
-cell_t *build(const char *s, cell_t *module) {
-  cell_t *l = lex(s, 0);
-  const cell_t *ll = l;
-  cell_t *c = parse_expr(&ll, module);
-  free_toks(l);
-  return c;
 }
 
 uintptr_t intern(seg_t sym) {

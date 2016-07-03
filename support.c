@@ -282,7 +282,7 @@ void *lookup_linear(void *table, size_t width, size_t rows, seg_t key_seg) {
 
 #if INTERFACE
 struct mmfile {
-  char *path;
+  const char *path;
   int fd;
   size_t size;
   char *data;
