@@ -571,38 +571,42 @@ fail:
   return false;
 }
 
-bool parse_def(cell_t **c, cell_t **name, cell_t **l, cell_t **e) {
+bool parse_def(cell_t **c, cell_t **name, cell_t **l) {
   cell_t *p = *c;
-  cell_t *keep;
   MATCH_IF(!is_reserved(tok_seg(p)), *name);
   MATCH_ONLY(":");
   if(!parse_rhs_expr(&p, l)) goto fail;
   *c = p;
+  return true;
+fail:
+  return false;
+}
 
+cell_t *check_def(cell_t *l) {
   // check expression types
-  csize_t n = list_size(*l);
+  cell_t *p = NULL;
+  cell_t *keep;
+  csize_t n = list_size(l);
   if(n > 0) {
-    if(segcmp("module", tok_seg((*l)->value.ptr[0])) == 0) { // module expression
+    if(segcmp("module", tok_seg(l->value.ptr[0])) == 0) { // module expression
       COUNTUP(i, n) {
-        p = (*l)->value.ptr[i];
+        p = l->value.ptr[i];
         MATCH_ONLY("module", keep);
         MATCH_IF(!is_reserved(tok_seg(p)), keep);
         if(p) goto fail;
       }
     } else { // concatenative expression
       COUNTUP(i, n) {
-        p = (*l)->value.ptr[i];
+        p = l->value.ptr[i];
         while(p) {
           MATCH_IF(!is_reserved(tok_seg(p)), keep);
         }
       }
     }
   }
-  return true;
-
+  return NULL;
 fail:
-  *e = p;
-  return false;
+  return p;
 }
 
 cell_t *parse_defs(cell_t **c, cell_t **e) {
@@ -611,10 +615,11 @@ cell_t *parse_defs(cell_t **c, cell_t **e) {
     *m = NULL,
     *n = NULL,
     *p = *c;
-  while(parse_def(&p, &n, &l, e)) {
+  while(parse_def(&p, &n, &l)) {
     const char *name = seg_string(tok_seg(n));
     cell_free(n);
     m = cmap_insert(m, name, (uintptr_t)l);
+    if((*e = check_def(l))) break;
   }
   *c = p;
   return m;
@@ -706,7 +711,7 @@ bool parse_module(cell_t **c, cell_t **e) {
   cell_t *m = parse_defs(&p, e);
   modules = cmap_insert(modules, name, (uintptr_t)m);
   *c = p;
-  return true;
+  return !*e;
 fail:
   if(!*e) *e = p;
   return false;
