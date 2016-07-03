@@ -114,12 +114,20 @@ void usage() {
 #ifndef EMSCRIPTEN
 int main(UNUSED int argc, UNUSED char *argv[]) {
   int ch;
+  bool echo = false;
+  bool stats = true;
 
   parse_init();
   cells_init();
 
-  while ((ch = getopt(argc, argv, "t:l:r:L:")) != -1) {
+  while ((ch = getopt(argc, argv, "eSt:l:r:L:")) != -1) {
     switch (ch) {
+    case 'e':
+      echo = true;
+      break;
+    case 'S':
+      stats = false;
+      break;
     case 't':
       return run_test(optarg);
       break;
@@ -138,9 +146,11 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
   argc -= optind;
   argv += optind;
 
-  run_eval();
-  measure_display();
-  print_symbols();
+  run_eval(echo);
+  if(stats) {
+    measure_display();
+    print_symbols();
+  }
   free_modules();
   unload_files();
   check_free();
@@ -243,7 +253,7 @@ static void initialize_readline()
 #define REDUCED_GRAPH_FILE "reduced.dot"
 bool write_graph = false;
 
-void run_eval() {
+void run_eval(bool echo) {
   char *line_raw, *line;
 #ifdef USE_LINENOISE
   linenoiseSetCompletionCallback(completion);
@@ -278,6 +288,7 @@ void run_eval() {
     add_history(line);
 #endif
 
+    if(echo) puts(line);
     bool run = eval_command(line);
 
 #ifndef RAW_LINE
@@ -319,7 +330,7 @@ bool eval_command(char *line) {
     } else {
       printf("unknown command\n");
     }
-  } else {
+  } else if(p) {
     measure_start();
     eval(p);
     measure_stop();
