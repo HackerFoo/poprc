@@ -83,7 +83,7 @@ bool check_free() {
 
 #define MAX_NAME_SIZE 4096
 
-int run_test(char *name, void (*logger)(char *name, int result)) {
+int run_test(const char *name) {
   int name_size = strnlen(name, MAX_NAME_SIZE);
   int fail = 0;
   FOREACH(i, tests) {
@@ -92,17 +92,12 @@ int run_test(char *name, void (*logger)(char *name, int result)) {
     if(strncmp(name, entry->name, min(name_size, entry_name_size)) == 0) {
       printf("@ %s\n", entry->name);
       int result = entry->func();
-      if((uintptr_t)logger > 1) logger(entry->name, result);
+      printf("%s => %d\n", entry->name, result);
       if(result && !fail) fail = result;
     }
   }
   return fail;
 }
-
-void test_log(char *name, int result) {
-  printf("%s => %d\n", name, result);
-}
-
 
 #define TEST_2(x0, x1, x2, ...) printf("TEST2(" x0 ", " x1 ", " x2 ")\n")
 #define TEST_1(...) printf("TEST1\n")
