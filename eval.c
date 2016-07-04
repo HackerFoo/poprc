@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <getopt.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #if defined(USE_READLINE)
 #include <readline/readline.h>
@@ -45,6 +46,8 @@
 #ifdef USE_LLVM
 #include "llvm.h"
 #endif
+
+bool tty = false;
 
 bool reduce_list(cell_t *c) {
   bool b = true;
@@ -116,6 +119,8 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
   int ch;
   bool echo = false;
   bool stats = true;
+
+  tty = isatty(fileno(stdin));
 
   parse_init();
   cells_init();
@@ -264,7 +269,7 @@ void run_eval(bool echo) {
   while((line_raw = readline(": ")))
 #else
   char buf[1024];
-  while(printf(": "),
+  while(tty && printf(": "),
         (line_raw = fgets(buf, sizeof(buf), stdin)))
 #endif
   {
