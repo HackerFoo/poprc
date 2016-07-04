@@ -358,6 +358,7 @@ fail:
 }
 
 void reduce_root(cell_t *c) {
+  rt_init();
   if(write_graph) make_graph_all(GRAPH_FILE);
   reduce_list(c);
   if(write_graph) make_graph_all(REDUCED_GRAPH_FILE);

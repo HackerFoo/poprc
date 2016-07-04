@@ -23,6 +23,9 @@
 #include "gen/primitive.h"
 #include "gen/special.h"
 
+// Counter of used alt ids
+uint8_t alt_cnt = 0;
+
 // Default tracing function that does nothing
 void trace_noop(UNUSED cell_t *c, UNUSED cell_t *r, UNUSED trace_type_t tt, UNUSED csize_t n) {}
 
@@ -32,6 +35,11 @@ void (*trace)(cell_t *, cell_t *, trace_type_t, csize_t) = trace_noop;
 // Set the tracing function
 void set_trace(void (*t)(cell_t *, cell_t *, trace_type_t, csize_t)) {
   trace = t ? t : trace_noop;
+}
+
+// Initialize run time
+void rt_init() {
+  alt_cnt = 0;
 }
 
 // Duplicate c to c->alt and return it
@@ -717,4 +725,8 @@ void store_lazy_dep(cell_t *c, cell_t *d, cell_t *r, alt_set_t alt_set) {
     d->expr.arg[0] = r;
     d->expr.arg[1] = (cell_t *)alt_set;
   } else drop(r);
+}
+
+uint8_t new_alt_id(UNUSED uintptr_t n) {
+  return alt_cnt++;
 }

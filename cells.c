@@ -43,9 +43,6 @@
 cell_t cells[CELLS_SIZE] = {};
 cell_t *cells_ptr;
 
-// Counter of used alt ids
-uint8_t alt_cnt = 0;
-
 // Predefined failure cell
 cell_t fail_cell = {
   .func = func_value,
@@ -124,7 +121,6 @@ void cells_init() {
   cells[n-1].mem.next = &cells[0];
 
   cells_ptr = &cells[0];
-  alt_cnt = 0;
 }
 
 void cell_alloc(cell_t *c) {
@@ -406,8 +402,4 @@ bool entangle(alt_set_t *as, cell_t *c) {
   return !cas ||
     (!as_conflict(*as, cas) &&
      (*as |= cas, true));
-}
-
-uint8_t new_alt_id(UNUSED uintptr_t n) {
-  return alt_cnt++;
 }
