@@ -654,7 +654,7 @@ void free_def(cell_t *l) {
   if(!(l && l->func)) {
     return;
   }
-  if(map_size(l->map) & 1) {
+  if(is_map(l)) {
     map_free(l);
   } else {
     csize_t n = list_size(l);
@@ -667,7 +667,7 @@ void free_def(cell_t *l) {
 
 void print_defs(const cell_t *m) {
   if(!m) return;
-  map_t map = (map_t)m->map;
+  map_t map = (map_t)m->value.map;
   csize_t n = *map_cnt(map);
   COUNTUP(i, n) {
     printf("%s:\n", (char *)map[i+1].first);
@@ -677,7 +677,7 @@ void print_defs(const cell_t *m) {
 
 void free_defs(cell_t *m) {
   if(!m) return;
-  map_t map = (map_t)m->map;
+  map_t map = (map_t)m->value.map;
   csize_t n = *map_cnt(map);
   COUNTUP(i, n) {
     free_def((cell_t *)map[i+1].second);
@@ -727,7 +727,7 @@ fail:
 
 void print_modules() {
   if(!modules) return;
-  map_t map = (map_t)modules->map;
+  map_t map = (map_t)modules->value.map;
   csize_t n = *map_cnt(map);
   COUNTUP(i, n) {
     printf("module %s:\n", (char *)map[i+1].first);
@@ -738,7 +738,7 @@ void print_modules() {
 
 void free_modules() {
   if(!modules) return;
-  map_t map = (map_t)modules->map;
+  map_t map = (map_t)modules->value.map;
   csize_t n = *map_cnt(map);
   COUNTUP(i, n) {
     free_defs((cell_t *)map[i+1].second);
@@ -860,22 +860,22 @@ const char *symbol_string(val_t x) {
 
 // need different free function for map because size is stored differently
 void map_free(cell_t *c) {
-  csize_t size = calculate_map_size(map_size((map_t)c->map));
+  csize_t size = calculate_map_size(map_size((map_t)c->value.map));
   for(csize_t i = 0; i < size; i++) {
     cell_free(c++);
   }
 }
 
 cell_t *expand_map(cell_t *c) {
-  if(c == NULL) return map_alloc(1);
-  map_t m = c->map;
+  if(c == NULL) return make_map(1);
+  map_t m = c->value.map;
   uintptr_t
     size = map_size(m),
     cnt = *map_cnt(m);
   if(cnt == size) {
     csize_t new_size = size * 2 + 1;
-    cell_t *nc = map_alloc(new_size);
-    memcpy(&nc->map[0].second, &c->map[0].second, sizeof_field(pair_t, second) + size * sizeof(pair_t));
+    cell_t *nc = make_map(new_size);
+    memcpy(&nc->value.map[0].second, &c->value.map[0].second, sizeof_field(pair_t, second) + size * sizeof(pair_t));
     map_free(c);
     return nc;
   } else {
@@ -885,7 +885,7 @@ cell_t *expand_map(cell_t *c) {
 
 cell_t *cmap_insert(cell_t *c, const char *key, uintptr_t val) {
   c = expand_map(c);
-  map_t m = c->map;
+  map_t m = c->value.map;
   pair_t p = {(uintptr_t)key, val};
   string_map_insert(m, p);
   return c;
@@ -908,7 +908,7 @@ int test_expand_map() {
   FOREACH(i, strings) {
     c = cmap_insert(c, strings[i], i);
   }
-  map_t m = c->map;
+  map_t m = c->value.map;
   print_string_map(m);
   FOREACH(i, strings) {
     pair_t *x = string_map_find(m, strings[i]);
@@ -934,7 +934,7 @@ seg_t parse_split(char c, const char **start, const char *end) {
 }
 
 cell_t *get_module(seg_t s) {
-  pair_t *x = seg_map_find(modules->map, s);
+  pair_t *x = seg_map_find(modules->value.map, s);
   return x ? (cell_t *)x->second : NULL;
 }
 
@@ -948,7 +948,7 @@ cell_t *build_module(cell_t *c) {
     cell_t **p = &c->value.ptr[i];
     cell_t *mod = get_module(tok_seg((*p)->tok_list.next));
     if(!mod) return NULL;
-    ms += *map_cnt(mod->map);
+    ms += *map_cnt(mod->value.map);
     free_toks(*p);
     *p = mod;
   }
@@ -959,21 +959,21 @@ cell_t *build_module(cell_t *c) {
     return m;
   }
 
-  m = map_alloc(ms);
+  m = make_map(ms);
   COUNTUP(i, n) {
-    string_map_union(m->map, c->value.ptr[i]->map);
+    string_map_union(m->value.map, c->value.ptr[i]->value.map);
   }
   closure_free(c);
   return m;
 }
 
 cell_t *get_submodule(cell_t *m, seg_t s) {
-  pair_t *x = seg_map_find(m->map, s);
+  pair_t *x = seg_map_find(m->value.map, s);
   if(!x) return NULL;
   cell_t *p = (cell_t *)x->second;
 
   // already built
-  if(map_size(p->map) & 1) return p;
+  if(is_map(p)) return p;
 
   // check for module expression
   cell_t *l = p->value.ptr[0];
@@ -986,11 +986,11 @@ cell_t *get_submodule(cell_t *m, seg_t s) {
 cell_t *implicit_lookup(seg_t w, cell_t *m) {
   static const seg_t seg_import = SEG("imports");
   if(!m) return NULL;
-  pair_t *x = seg_map_find(m->map, w);
+  pair_t *x = seg_map_find(m->value.map, w);
   if(x) return (cell_t *)x->second;
   cell_t *imports = get_submodule(m, seg_import);
   if(!imports) return NULL;
-  x = seg_map_find(imports->map, w);
+  x = seg_map_find(imports->value.map, w);
   if(x) return (cell_t *)x->second;
   return NULL;
 }
@@ -1009,7 +1009,7 @@ cell_t *module_lookup(seg_t path, cell_t **context) {
     if(start < end) {
       m = get_submodule(m, s);
     } else {
-      pair_t *x = seg_map_find(m->map, s);
+      pair_t *x = seg_map_find(m->value.map, s);
       *context = m;
       return x ? (cell_t *)x->second : NULL;
     }

@@ -101,6 +101,32 @@ bool is_list(cell_t const *c) {
   return c && is_value(c) && (c->value.type & T_EXCLUSIVE) == T_LIST;
 }
 
+cell_t *make_map(csize_t s) {
+  csize_t cs = calculate_map_size(s);
+  cell_t *c = closure_alloc_cells(cs);
+  c->func = func_value;
+  c->value.type = T_MAP;
+  c->value.map[0].first = (sizeof(cell_t) * cs - offset(cell_t, value.map)) / sizeof(pair_t) - 1;
+  c->value.map[0].second = 0;
+  return c;
+}
+
+bool is_map(cell_t const *c) {
+  return c && is_value(c) && (c->value.type & T_EXCLUSIVE) == T_MAP;
+}
+
+cell_t *make_string(seg_t s) {
+  cell_t *c = closure_alloc(1);
+  c->func = func_value;
+  c->value.type = T_STRING;
+  c->value.str = s;
+  return c;
+}
+
+bool is_string(cell_t const *c) {
+  return c && is_value(c) && (c->value.type & T_EXCLUSIVE) == T_STRING;
+}
+
 /* todo: propagate types here */
 bool func_dep(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;

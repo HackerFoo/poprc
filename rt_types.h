@@ -32,6 +32,8 @@ typedef type_or_csize_t csize_t;
 #define T_IO        0x0002
 #define T_LIST      0x0003
 #define T_SYMBOL    0x0004
+#define T_MAP       0x0005
+#define T_STRING    0x0006
 #define T_TRACED    0x0800
 #define T_FAIL      0x1000
 #define T_INDIRECT  0x2000
@@ -56,6 +58,17 @@ typedef intptr_t val_t;
 #pragma clang diagnostic ignored "-Wgnu-folding-constant"
 #pragma clang diagnostic ignored "-Wgnu-empty-initializer"
 #endif
+
+typedef struct pair_t {
+  uintptr_t first, second;
+} pair_t;
+
+// string segment
+typedef struct seg_t {
+  const char *s;
+  size_t n;
+} seg_t;
+
 typedef bool (reduce_t)(cell_t **cell, type_t type);
 
 /* unevaluated expression */
@@ -71,6 +84,8 @@ struct __attribute__((packed)) value {
   union {
     val_t integer[1]; /* integer */
     cell_t *ptr[1];   /* list */
+    pair_t map[1];    /* map */
+    seg_t str;        /* string */
   };
 };
 
@@ -83,13 +98,9 @@ struct __attribute__((packed)) tok_list {
 
 /* unallocated memory */
 struct __attribute__((packed)) mem {
-  csize_t padding;
+  csize_t __padding;
   cell_t *prev, *next;
 };
-
-typedef struct pair_t {
-  uintptr_t first, second;
-} pair_t;
 
 struct __attribute__((packed)) cell {
   /* func indicates the type:
@@ -101,7 +112,6 @@ struct __attribute__((packed)) cell {
    */
   union {
     uintptr_t raw[8];
-    pair_t map[4];
     struct {
       reduce_t *func;
       cell_t *alt;
@@ -174,12 +184,6 @@ typedef enum trace_type_t {
 // Maximum number of alts
 #define AS_SIZE (sizeof(alt_set_t) * 4)
 #define ALT_SET_IDS AS_SIZE
-
-// string segment
-typedef struct seg_t {
-  const char *s;
-  size_t n;
-} seg_t;
 
 #define SYM_FALSE 0
 #define SYM_TRUE  1
