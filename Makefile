@@ -140,7 +140,7 @@ $(BUILD_DIR)/eval: $(OBJS)
 js/eval.js: EMCC_OBJS := $(patsubst %.c, build/emcc/$(BUILD)/%.o, $(SRC))
 js/eval.js:
 	make CC=emcc $(EMCC_OBJS)
-	emcc $(EMCC_OBJS) -o js/eval.js -s EXPORTED_FUNCTIONS="['_eval_command', '_cells_init']"
+	emcc $(EMCC_OBJS) -o js/eval.js -s EXPORTED_FUNCTIONS="['_main', '_eval_command']"
 
 # pull in dependency info for *existing* .o files
 -include $(OBJS:.o=.d)

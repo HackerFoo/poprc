@@ -2,37 +2,35 @@
   <title>popr</title>
   <script src="js/jquery-1.7.2.min.js"></script>
   <script src="js/jquery.terminal-0.9.3.min.js"></script>
-  <script>
-    var term;
-    var Module = {
-      'print' : function(str) { term.echo(str); },
-/*
-      'preRun' : function() {
-         var print = function(str) { term.echo(str) };
-         var printErr = function(str) { term.err(str) };
-         FS.init(undefined, print, printErr);
-      }
-*/
-    };
-  </script>
-  <script src="js/eval.js"></script>
   <link href="css/jquery.terminal.css" rel="stylesheet"/>
 </head>
 <body>
   <div id="term"></div>
 </body>
 <script>
-  cells_init = Module.cwrap('cells_init', 'void', []);
+  var term;
+  var Module = {
+    'print' : function(str) { term.echo(str); },
+    'printErr' : function(str) { term.echo(str); },
+  };
+
+  var is_ready = false;
 
   function eval_popr(str) {
     Module.ccall('eval_command', 'undefined', ['string', 'number'], [str, str.length]);
   }
 
-  cells_init();
+  Module['onRuntimeInitialized'] = function() {
+    is_ready = true;
+  }
 
   function interpret(command, term) {
-    if(command != '') {
-      eval_popr(command);
+    if(!is_ready) {
+      term.echo("not ready");
+    } else {
+      if(command != '') {
+        eval_popr(command);
+      }
     }
   }
 
@@ -49,6 +47,7 @@
 
   jQuery(document).ready(function($) {
     term = $('#term').terminal(interpret, termOptions);
+    $.getScript( "js/eval.js");
   });
 
 </script>

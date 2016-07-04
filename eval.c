@@ -47,6 +47,10 @@
 #include "llvm.h"
 #endif
 
+#ifdef EMSCRIPTEN
+#include <emscripten.h>
+#endif
+
 bool tty = false;
 
 bool reduce_list(cell_t *c) {
@@ -114,16 +118,16 @@ void usage() {
   printf("usage: eval [-t <test name>]\n");
 }
 
-#ifndef EMSCRIPTEN
 int main(UNUSED int argc, UNUSED char *argv[]) {
+  parse_init();
+  cells_init();
+
+#ifndef EMSCRIPTEN
   int ch;
   bool echo = false;
   bool stats = true;
 
   tty = isatty(fileno(stdin));
-
-  parse_init();
-  cells_init();
 
   while ((ch = getopt(argc, argv, "eSt:l:r:L:")) != -1) {
     switch (ch) {
@@ -159,9 +163,11 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
   free_modules();
   unload_files();
   check_free();
+#else
+  emscripten_exit_with_live_runtime();
+#endif
   return 0;
 }
-#endif
 
 #if defined(USE_LINENOISE) || defined(USE_READLINE)
 static seg_t last_tok(const char *str, const char *e) {

@@ -33,7 +33,7 @@
 // NOTE: make sure &cells > 255
 #if INTERFACE
 #ifdef EMSCRIPTEN
-#define CELLS_SIZE (1<<10)
+#define CELLS_SIZE (1<<16)
 #else
 #define CELLS_SIZE (1<<16)
 #endif
