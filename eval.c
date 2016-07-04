@@ -311,11 +311,10 @@ bool eval_command(char *line) {
       load_file(p->tok_list.next->tok_list.location);
     } else if(match(p, "q")) {
       goto fail;
-#ifndef EMSCRIPTEN
     } else if(match(p, "t")) {
-      const char *name = p->tok_list.next->tok_list.location;
+      p = p->tok_list.next;
+      const char *name = p ? p->tok_list.location : "";
       run_test(name);
-#endif
     } else if(match(p, "c")) {
       if(!(p = p->tok_list.next)) goto fail;
       seg_t name = tok_seg(p);
