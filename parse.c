@@ -582,6 +582,16 @@ fail:
   return false;
 }
 
+cell_t *check_reserved(cell_t *p) {
+  cell_t *keep;
+  while(p) {
+    MATCH_IF(!is_reserved(tok_seg(p)), keep);
+  }
+  return NULL;
+fail:
+  return p;
+}
+
 cell_t *check_def(cell_t *l) {
   // check expression types
   cell_t *p = NULL;
@@ -597,10 +607,8 @@ cell_t *check_def(cell_t *l) {
       }
     } else { // concatenative expression
       COUNTUP(i, n) {
-        p = l->value.ptr[i];
-        while(p) {
-          MATCH_IF(!is_reserved(tok_seg(p)), keep);
-        }
+        p = check_reserved(l->value.ptr[i]);
+        if(p) goto fail;
       }
     }
   }

@@ -331,9 +331,20 @@ bool eval_command(char *line) {
       printf("unknown command\n");
     }
   } else if(p) {
-    measure_start();
-    eval(p);
-    measure_stop();
+    cell_t *e = NULL;
+    if((e = check_reserved(p))) {
+      const char *line = e->tok_list.line;
+      const char *loc = e->tok_list.location;
+      size_t size = strlen(line);
+      find_line(loc, &line, &size);
+      int pos = loc - line;
+      COUNTUP(i, pos + 2) putchar(' ');
+      printf("^--- Parse error\n");
+    } else {
+      measure_start();
+      eval(p);
+      measure_stop();
+    }
   }
   free_toks(p0);
   return true;
