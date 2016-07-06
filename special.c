@@ -104,9 +104,11 @@ bool is_list(cell_t const *c) {
 cell_t *make_map(csize_t s) {
   csize_t cs = calculate_map_size(s);
   cell_t *c = closure_alloc_cells(cs);
+  uintptr_t size = (sizeof(cell_t) * cs - offset(cell_t, value.map)) / sizeof(pair_t) - 1;
   c->func = func_value;
+  c->size = 2 * (size + 1) + 1;
   c->value.type = T_MAP;
-  c->value.map[0].first = (sizeof(cell_t) * cs - offset(cell_t, value.map)) / sizeof(pair_t) - 1;
+  c->value.map[0].first = size;
   c->value.map[0].second = 0;
   return c;
 }

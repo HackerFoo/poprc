@@ -651,18 +651,16 @@ void print_def(const cell_t *l) {
 }
 
 void free_def(cell_t *l) {
-  if(!(l && l->func)) {
+  if(!is_closure(l)) {
     return;
   }
-  if(is_map(l)) {
-    map_free(l);
-  } else {
+  if(is_list(l)) {
     csize_t n = list_size(l);
     COUNTUP(i, n) {
       free_toks(l->value.ptr[i]);
     }
-    closure_free(l);
   }
+  closure_free(l);
 }
 
 void print_defs(const cell_t *m) {
@@ -676,13 +674,13 @@ void print_defs(const cell_t *m) {
 }
 
 void free_defs(cell_t *m) {
-  if(!m) return;
+  if(!m || !is_closure(m)) return;
   map_t map = (map_t)m->value.map;
   csize_t n = *map_cnt(map);
   COUNTUP(i, n) {
     free_def((cell_t *)map[i+1].second);
   }
-  map_free(m);
+  closure_free(m);
 }
 
 int test_parse_def() {
@@ -743,7 +741,7 @@ void free_modules() {
   COUNTUP(i, n) {
     free_defs((cell_t *)map[i+1].second);
   }
-  map_free(modules);
+  closure_free(modules);
   modules = NULL;
 }
 
@@ -858,14 +856,6 @@ const char *symbol_string(val_t x) {
   }
 }
 
-// need different free function for map because size is stored differently
-void map_free(cell_t *c) {
-  csize_t size = calculate_map_size(map_size((map_t)c->value.map));
-  for(csize_t i = 0; i < size; i++) {
-    cell_free(c++);
-  }
-}
-
 cell_t *expand_map(cell_t *c) {
   if(c == NULL) return make_map(1);
   map_t m = c->value.map;
@@ -876,7 +866,7 @@ cell_t *expand_map(cell_t *c) {
     csize_t new_size = size * 2 + 1;
     cell_t *nc = make_map(new_size);
     memcpy(&nc->value.map[0].second, &c->value.map[0].second, sizeof_field(pair_t, second) + size * sizeof(pair_t));
-    map_free(c);
+    closure_free(c);
     return nc;
   } else {
     return c;
@@ -916,7 +906,7 @@ int test_expand_map() {
       return -1;
     }
   }
-  map_free(c);
+  closure_free(c);
   return 0;
 }
 
@@ -1018,6 +1008,7 @@ cell_t *module_lookup(seg_t path, cell_t **context) {
 }
 
 int test_module_lookup() {
+  cell_t *orig_modules = modules;
   modules = NULL;
   cell_t *p = lex("module a:\n"
                   "imports: module e\n"
@@ -1058,5 +1049,6 @@ int test_module_lookup() {
   printf("f7:\n");
   print_def(c);
   free_modules();
+  modules = orig_modules;
   return e ? -1 : 0;
 }
