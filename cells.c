@@ -326,7 +326,7 @@ bool is_any(cell_t const *c) {
 #endif
 
 void drop(cell_t *c) {
-  if(!is_cell(c)) return;
+  if(!is_cell(c) || c->n == PERSISTENT) return;
   assert(is_closure(c));
   if(!c->n) {
     cell_t *p;
