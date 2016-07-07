@@ -426,6 +426,7 @@ cell_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
     trace_index[i].first = (cell_t *)trace_index[i].first - cells;
   }
 
+  drop(root);
   print_map(trace_index);
   print_trace_cells();
   header->value.integer[0] = trace_cnt;
@@ -449,6 +450,33 @@ void compact_expr(seg_t name, cell_t *t, cell_t *module) {
   */
   e->func = func_exec;
   e->data = byte_compile(c, e->in, e->out);
+}
+
+bool compile_word(cell_t **entry, cell_t *module) {
+  cell_t *l;
+  if(!entry || !(l = *entry)) return false;
+  if(!is_list(l)) return true;
+  if(list_size(l) < 1) return false;
+  cell_t *toks = l->value.ptr[0]; // TODO handle list_size(l) > 1
+  *entry = closure_alloc(1);
+  cell_t *e = *entry;
+  e->n = PERSISTENT;
+  e->func = func_placeholder;
+  get_arity(toks, &e->entry.in, &e->entry.out, module);
+
+  e->func = func_self;
+  const cell_t *p = toks;
+  cell_t *c = parse_expr(&p, module);
+  if(!c) goto fail;
+  e->func = func_exec;
+  e->entry.data[0] = byte_compile(c, e->entry.in, e->entry.out);
+  free_def(l);
+  return true;
+
+fail:
+  closure_free(*entry);
+  *entry = l;
+  return false;
 }
 
 bool func_exec(cell_t **cp, UNUSED type_t t) {

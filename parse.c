@@ -31,6 +31,7 @@
 #include "gen/map.h"
 #include "gen/parse.h"
 #include "gen/word_table.h"
+#include "gen/byte_compile.h"
 
 word_entry_t word_table[] = WORDS;
 const unsigned int word_table_length = LENGTH(word_table);
@@ -168,11 +169,12 @@ cell_t *parse_word(seg_t w, cell_t *module) {
   } else {
     word_entry_t *e = lookup_word(w);
     if(!e) {
-      const cell_t *p = module_lookup(w, &module);
-      if(p && list_size(p) > 0) {
-        /* TODO handle multiple definitions */
-        const cell_t *x = p->value.ptr[0];
-        c = parse_expr(&x, module);
+      cell_t *e = module_lookup_compiled(w, &module);
+      if(e) {
+        c = func(e->func, e->entry.in + (e->entry.data[0] ? 1 : 0), e->entry.out);
+        in = e->entry.in;
+        out = e->entry.out;
+        data = e->entry.data[0];
       } else {
         // trace the name ***
         c = func(func_placeholder, 0, 1);
@@ -976,19 +978,19 @@ cell_t *get_submodule(cell_t *m, seg_t s) {
   return n;
 }
 
-cell_t *implicit_lookup(seg_t w, cell_t *m) {
+cell_t **implicit_lookup(seg_t w, cell_t *m) {
   static const seg_t seg_import = SEG("imports");
   if(!m) return NULL;
   pair_t *x = seg_map_find(m->value.map, w);
-  if(x) return (cell_t *)x->second;
+  if(x) return (cell_t **)&x->second;
   cell_t *imports = get_submodule(m, seg_import);
   if(!imports) return NULL;
   x = seg_map_find(imports->value.map, w);
-  if(x) return (cell_t *)x->second;
+  if(x) return (cell_t **)&x->second;
   return NULL;
 }
 
-cell_t *module_lookup(seg_t path, cell_t **context) {
+cell_t **module_lookup(seg_t path, cell_t **context) {
   if(!modules) return NULL;
   const char
     *start = path.s,
@@ -1004,7 +1006,7 @@ cell_t *module_lookup(seg_t path, cell_t **context) {
     } else {
       pair_t *x = seg_map_find(m->value.map, s);
       *context = m;
-      return x ? (cell_t *)x->second : NULL;
+      return x ? (cell_t **)&x->second : NULL;
     }
   }
   return NULL;
@@ -1036,22 +1038,32 @@ int test_module_lookup() {
   while(parse_module(&p, &e));
   cell_t *ma = get_module(string_seg("a"));
   cell_t *ctx = ma;
-  cell_t *c = module_lookup(string_seg("a.b.a.f3"), &ctx);
+  cell_t **c = module_lookup(string_seg("a.b.a.f3"), &ctx);
   printf("a.b.a.f3:\n");
-  print_def(c);
+  print_def(*c);
   ctx = ma;
   c = module_lookup(string_seg("a.cd.f5"), &ctx);
   printf("a.cd.f5:\n");
-  print_def(c);
+  print_def(*c);
   ctx = ma;
   c = module_lookup(string_seg("a.cd.f6"), &ctx);
   printf("a.cd.f6:\n");
-  print_def(c);
+  print_def(*c);
   ctx = ma;
   c = module_lookup(string_seg("f7"), &ctx);
   printf("f7:\n");
-  print_def(c);
+  print_def(*c);
   free_modules();
   modules = orig_modules;
   return e ? -1 : 0;
+}
+
+cell_t *module_lookup_compiled(seg_t path, cell_t **context) {
+  cell_t **p = module_lookup(path, context);
+  if(!p || !*p || !is_list(*p)) return *p;
+  if(compile_word(p, *context)) {
+    return *p;
+  } else {
+    return NULL;
+  }
 }

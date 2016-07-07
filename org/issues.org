@@ -13,10 +13,10 @@ Compile to direct C when possible
 **** split_args
 * major
 ** modules
-*** STARTED look up words from modules
-*** TODO build/compile on demand
+*** DONE look up words from modules
+*** DONE build/compile on demand
 *** TODO module linking
-*** TODO add module union operation
+*** DONE add module union operation
 ** DONE add comment and symbol support to parser
 ** TODO add support to return quoted functions from compiled functions
 ** TODO compile all quoted functions

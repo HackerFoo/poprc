@@ -45,6 +45,7 @@ typedef struct cell cell_t;
 typedef struct expr expr_t;
 typedef struct value value_t;
 typedef struct tok_list tok_list_t;
+typedef struct entry entry_t;
 typedef struct mem mem_t;
 
 typedef uintptr_t alt_set_t;
@@ -102,6 +103,13 @@ struct __attribute__((packed)) mem {
   cell_t *prev, *next;
 };
 
+/* word entry */
+struct __attribute__((packed)) entry {
+  csize_t __padding;
+  csize_t in, out;
+  cell_t *data[1];
+};
+
 struct __attribute__((packed)) cell {
   /* func indicates the type:
    * NULL         -> mem
@@ -120,6 +128,7 @@ struct __attribute__((packed)) cell {
         expr_t expr;
         value_t value;
         tok_list_t tok_list;
+        entry_t entry;
         mem_t mem;
       };
     };
