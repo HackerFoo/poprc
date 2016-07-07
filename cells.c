@@ -276,7 +276,7 @@ cell_t *ref(cell_t *c) {
 
 cell_t *refn(cell_t *c, refcount_t n) {
   c = clear_ptr(c);
-  if(c) {
+  if(c && c->n != PERSISTENT) {
     assert(is_closure(c));
     c->n += n;
   }

@@ -197,6 +197,6 @@ typedef enum trace_type_t {
 #define SYM_IO    2
 #define SYM_DICT  3
 
-#define PERSISTENT (~(refcount_t)0)
+#define PERSISTENT (~(refcount_t)-15)
 
 #endif
