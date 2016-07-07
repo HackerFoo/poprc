@@ -29,7 +29,7 @@ Compile to direct C when possible
 - check symbol table
 - check builtins table order
 * bugs
-** TODO smaller CELLS_SIZE breaks at module_lookup test
+** DONE smaller CELLS_SIZE breaks at module_lookup test
 ** TODO FIX: 0 [True =:=] [0 ==] | pushl popr swap drop
 - returns {} instead of True
 - works when alts are swapped
