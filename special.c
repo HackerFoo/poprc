@@ -194,3 +194,11 @@ bool func_self(cell_t **cp, UNUSED type_t t) {
 bool is_placeholder(cell_t const *c) {
   return c && clear_ptr(c->func) == (void *)func_placeholder;
 }
+
+bool func_fail(cell_t **cp, UNUSED type_t t) {
+  cell_t *c = clear_ptr(*cp); // TODO remove clear_ptr
+  assert(is_closure(c));
+  measure.reduce_cnt--;
+  fail(cp);
+  return false;
+}

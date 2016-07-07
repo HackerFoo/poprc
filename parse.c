@@ -442,7 +442,8 @@ cell_t *lex(const char* s, const char* e) {
     update_line(s, next, &line);
     s = next;
     cell_t *c = closure_alloc(1);
-    c->func = func_value; // HACK
+    c->func = func_fail; // HACK
+    c->n = PERSISTENT;
     tok_set_seg(c, t);
     c->tok_list.line = line;
     *prev = c;
@@ -630,6 +631,7 @@ cell_t *parse_defs(cell_t **c, cell_t **e) {
     if((*e = check_def(l))) break;
   }
   *c = p;
+  if(m) m->n = PERSISTENT;
   return m;
 }
 
@@ -716,6 +718,7 @@ bool parse_module(cell_t **c, cell_t **e) {
   cell_free(n);
   cell_t *m = parse_defs(&p, e);
   modules = cmap_insert(modules, name, (uintptr_t)m);
+  if(modules) modules->n = PERSISTENT;
   *c = p;
   return !*e;
 fail:

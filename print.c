@@ -142,7 +142,9 @@ void make_graph_all(char const *path) {
              "];\n", path);
   zero(visited);
   FOREACH(i, cells) {
-    graph_cell(f, &cells[i]);
+    if(cells[i].n != PERSISTENT) {
+      graph_cell(f, &cells[i]);
+    }
   }
   fprintf(f, "}\n");
   fclose(f);

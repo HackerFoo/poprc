@@ -105,9 +105,7 @@ struct __attribute__((packed)) mem {
 struct __attribute__((packed)) cell {
   /* func indicates the type:
    * NULL         -> mem
-   * (odd)        -> map or args incomplete (c->map[0].first (size) will be odd)
-   * func_reduced -> value
-   * cell         -> extension
+   * func_value   -> value
    * otherwise    -> expr
    */
   union {
@@ -189,5 +187,7 @@ typedef enum trace_type_t {
 #define SYM_TRUE  1
 #define SYM_IO    2
 #define SYM_DICT  3
+
+#define PERSISTENT (~(refcount_t)0)
 
 #endif
