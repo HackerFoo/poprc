@@ -6,12 +6,13 @@ gen/word_table.h: $(SRC)
 	@mkdir -p gen
 	sed -n -e 's/.*WORD([^,]*, *\([a-zA-Z0-9_]*\).*).*/extern reduce_t func_\1;/p' $(SRC) | sort > $@
 	echo '#define WORDS { \\' >> $@
+	echo '{ .first = 0, .second = 0}, \\' >> $@
 	sed -n -e 's/.*\(WORD(.*)\).*/\1,\\/p' $(SRC) | LC_ALL=C sort -t \" -k 2,2 >> $@
 	echo '}' >> $@
 
 gen/test_table.h: $(SRC)
 	@mkdir -p gen
-	sed -n -e 's/^ *int test_\([a-zA-Z0-9_]*\).*/extern int test_\1(char *);/p' $(SRC) | sort > $@
+	sed -n -e 's/^ *int test_\([a-zA-Z0-9_]*\).*/extern int test_\1();/p' $(SRC) | sort > $@
 	echo '#define TESTS { \\' >> $@
 	sed -n -e 's/^ *int test_\([a-zA-Z0-9_]*\).*/TEST(\1),\\/p' $(SRC) | LC_ALL=C sort >> $@
 	echo '}' >> $@

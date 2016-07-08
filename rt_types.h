@@ -110,7 +110,7 @@ struct __attribute__((packed)) entry {
   cell_t *data[1];
 };
 
-struct __attribute__((packed)) cell {
+struct __attribute__((packed, aligned(4))) cell {
   /* func indicates the type:
    * NULL         -> mem
    * func_value   -> value
@@ -133,21 +133,9 @@ struct __attribute__((packed)) cell {
       };
     };
   };
-} __attribute__((aligned(4)));
+};
 
 static_assert(sizeof(cell_t) == sizeof_field(cell_t, raw), "cell_t wrong size");
-
-typedef struct word_entry_t {
-  const char *name;
-  reduce_t *func;
-  csize_t in, out;
-  cell_t *data;
-} word_entry_t;
-
-typedef struct parse_tok_t {
-  cell_t *c;
-  csize_t out;
-} parse_tok_t;
 
 typedef enum char_class_t {
   CC_NONE,

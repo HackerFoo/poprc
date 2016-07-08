@@ -403,7 +403,7 @@ void print_trace_index()
   memcpy(tmp_trace_index, trace_index, sizeof(trace_index));
 
   // make index readable for debugging
-  for(size_t i = 1; i <= *map_cnt(tmp_trace_index); i++) {
+  FORMAP(i, tmp_trace_index) {
     tmp_trace_index[i].first = (cell_t *)tmp_trace_index[i].first - cells;
   }
 
@@ -422,7 +422,7 @@ cell_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
   trace_store_list(root)->n++;
 
   // make index readable for debugging
-  for(size_t i = 1; i <= *map_cnt(trace_index); i++) {
+  FORMAP(i, trace_index) {
     trace_index[i].first = (cell_t *)trace_index[i].first - cells;
   }
 
@@ -431,25 +431,6 @@ cell_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
   print_trace_cells();
   header->value.integer[0] = trace_cnt;
   return header;
-}
-
-void compact_expr(seg_t name, cell_t *t, cell_t *module) {
-  if(!t) return;
-  word_entry_t *e = alloc_user_word(name);
-  if(!e) return;
-  e->func = func_placeholder;
-  get_arity(t, &e->in, &e->out, module);
-  e->func = func_self;
-  const cell_t *p = t;
-  cell_t *c = parse_expr(&p, module);
-  /* TODO handle build failure
-  if(!c) {
-    --new_user_word_entry;
-    return;
-  }
-  */
-  e->func = func_exec;
-  e->data = byte_compile(c, e->in, e->out);
 }
 
 bool compile_word(cell_t **entry, cell_t *module) {

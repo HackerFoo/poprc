@@ -33,14 +33,7 @@
 #include "gen/word_table.h"
 #include "gen/byte_compile.h"
 
-word_entry_t word_table[] = WORDS;
-const unsigned int word_table_length = LENGTH(word_table);
-
-word_entry_t user_word_table[64];
-unsigned int const user_word_table_length = LENGTH(user_word_table);
-word_entry_t *new_user_word_entry = NULL;
-
-static pair_t word_index[LENGTH(word_table) + LENGTH(user_word_table) + 1];
+pair_t primitive_module[] = WORDS;
 
 cell_t *modules = NULL;
 
@@ -99,21 +92,13 @@ int test_strings() {
 char *index(const char *s, int c);
 
 void parse_init() {
-  memset(user_word_table, 0, sizeof(user_word_table));
-  new_user_word_entry = user_word_table;
   strings_top = strings;
   modules = NULL;
 
-  // create index
-  word_index[0].first = LENGTH(word_index) - 1;
-  word_index[0].second = LENGTH(word_table);
-  FOREACH(i, word_table) {
-    pair_t *p = &word_index[i+1];
-    p->first = (uintptr_t)word_table[i].name;
-    p->second = (uintptr_t)&word_table[i];
-  }
+  primitive_module[0] = (pair_t) {LENGTH(primitive_module) - 1,
+                                  LENGTH(primitive_module) - 1};
 }
-
+/*
 word_entry_t *alloc_user_word(seg_t w) {
   pair_t *p = seg_map_find(word_index, w);
   word_entry_t *e;
@@ -136,16 +121,16 @@ word_entry_t *alloc_user_word(seg_t w) {
     return e;
   }
 }
-
+*/
 bool is_num(char const *str) {
   return char_class(str[0]) == CC_NUMERIC ||
     (str[0] == '-' && char_class(str[1]) == CC_NUMERIC);
 }
 
-word_entry_t *lookup_word(seg_t w) {
-  pair_t *res = seg_map_find(word_index, w);
+cell_t *lookup_word(seg_t w) {
+  pair_t *res = seg_map_find(primitive_module, w);
   if(res) {
-    return (word_entry_t *)res->second;
+    return (cell_t *)res->second;
   } else {
     return NULL;
   }
@@ -167,23 +152,16 @@ cell_t *parse_word(seg_t w, cell_t *module) {
     out = w.s[3] - '0' + 1;
     c = func(func_ap, in, out);
   } else {
-    word_entry_t *e = lookup_word(w);
-    if(!e) {
-      cell_t *e = module_lookup_compiled(w, &module);
-      if(e) {
-        c = func(e->func, e->entry.in + (e->entry.data[0] ? 1 : 0), e->entry.out);
-        in = e->entry.in;
-        out = e->entry.out;
-        data = e->entry.data[0];
-      } else {
-        // trace the name ***
-        c = func(func_placeholder, 0, 1);
-      }
+    cell_t *e = lookup_word(w);
+    if(!e) e = module_lookup_compiled(w, &module);
+    if(e) {
+      c = func(e->func, e->entry.in + (e->entry.data[0] ? 1 : 0), e->entry.out);
+      in = e->entry.in;
+      out = e->entry.out;
+      data = e->entry.data[0];
     } else {
-      c = func(e->func, e->in + (e->data ? 1 : 0), e->out);
-      in = e->in;
-      out = e->out;
-      data = e->data;
+      // trace the name ***
+      c = func(func_placeholder, 0, 1);
     }
   }
   COUNTUP(i, out-1) {
@@ -586,7 +564,7 @@ fail:
 }
 
 cell_t *check_reserved(cell_t *p) {
-  cell_t *keep;
+  UNUSED cell_t *keep;
   while(p) {
     MATCH_IF(!is_reserved(tok_seg(p)), keep);
   }
@@ -598,7 +576,7 @@ fail:
 cell_t *check_def(cell_t *l) {
   // check expression types
   cell_t *p = NULL;
-  cell_t *keep;
+  UNUSED cell_t *keep;
   csize_t n = list_size(l);
   if(n > 0) {
     if(segcmp("module", tok_seg(l->value.ptr[0])) == 0) { // module expression

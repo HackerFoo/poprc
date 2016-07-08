@@ -170,6 +170,7 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
 }
 
 #if defined(USE_LINENOISE) || defined(USE_READLINE)
+/*
 static seg_t last_tok(const char *str, const char *e) {
   seg_t last, n;
   while(n = tok(str, e), n.s) {
@@ -178,9 +179,11 @@ static seg_t last_tok(const char *str, const char *e) {
   }
   return last;
 }
+*/
 #endif
 
 #ifdef USE_LINENOISE
+/*
 static void completion(char const *buf, linenoiseCompletions *lc) {
   unsigned int n = strlen(buf);
   seg_t t = last_tok(buf, buf + n);
@@ -203,9 +206,11 @@ static void completion(char const *buf, linenoiseCompletions *lc) {
     free(comp);
   }
 }
+*/
 #endif
 
 #ifdef USE_READLINE
+/*
 static char **completion(char *buf, UNUSED int start, UNUSED int end)
 {
   unsigned int current_match = 1;
@@ -246,15 +251,17 @@ static char **completion(char *buf, UNUSED int start, UNUSED int end)
 
   return matches;
 }
-
+*/
 static void initialize_readline()
 {
   rl_readline_name = "Poprc";
+  /*
 #if defined(__clang__)
   rl_attempted_completion_function = (CPPFunction *)completion;
 #else
   rl_attempted_completion_function = (rl_completion_func_t *)completion;
 #endif
+  */
 }
 
 #endif
@@ -267,7 +274,7 @@ bool write_graph = false;
 void run_eval(bool echo) {
   char *line_raw, *line;
 #ifdef USE_LINENOISE
-  linenoiseSetCompletionCallback(completion);
+  //linenoiseSetCompletionCallback(completion);
   linenoiseHistoryLoad(HISTORY_FILE);
   while((line_raw = linenoise(": ")))
 #elif USE_READLINE
@@ -326,11 +333,6 @@ bool eval_command(char *line) {
       p = p->tok_list.next;
       const char *name = p ? p->tok_list.location : "";
       run_test(name);
-    } else if(match(p, "c")) {
-      if(!(p = p->tok_list.next)) goto fail;
-      seg_t name = tok_seg(p);
-      if(!(p = p->tok_list.next)) goto fail;
-      compact_expr(name, p, NULL);
     } else if(match(p, "a")) {
       csize_t in, out;
       if(!(p = p->tok_list.next)) goto fail;

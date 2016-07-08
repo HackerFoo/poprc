@@ -29,6 +29,7 @@
 #define COUNTDOWN(i, n) if(n) for(size_t i = (n); i--; )
 #define COUNTUP(i, n) for(size_t i = 0, __n = (n); i < __n; i++)
 #define FOREACH(i, a) COUNTUP(i, LENGTH(a))
+#define FORMAP(i, m) for(size_t i = 1; i <= *map_cnt(m); i++)
 #define _CONCAT(x, y) x##y
 #define CONCAT(x, y) _CONCAT(x, y)
 #define UNIQUE CONCAT(__unique_, __LINE__)
@@ -48,13 +49,17 @@
 #define mark_ptr(p) ((void *)((uintptr_t)(p) | (MARK_BIT)))
 #define clear_ptr(p) ((void *)((uintptr_t)(p) & ~(MARK_BIT)))
 
-#define WORD(name, func, in, out)                        \
+#define WORD(__name, __func, __in, __out)                \
   {                                                      \
-    name,                                                \
-    func_##func,                                         \
-    in,                                                  \
-    out,                                                 \
-    NULL                                                 \
+    .first = (uintptr_t)__name,                          \
+    .second = (uintptr_t)&(cell_t) {                     \
+      .func = func_##__func,                             \
+        .entry = {                                       \
+          .in = __in,                                    \
+          .out = __out,                                  \
+          .data[0] = NULL                                \
+      }                                                  \
+    }                                                    \
   }
 
 #define TEST(name)                                       \

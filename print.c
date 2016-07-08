@@ -102,9 +102,11 @@ char const *function_name(reduce_t *f) {
 
 char const *function_token(reduce_t *f) {
   f = (reduce_t *)clear_ptr(f);
-  for(unsigned int i = 0; i < word_table_length; ++i) {
-    if(word_table[i].func == f)
-      return word_table[i].name;
+  FORMAP(i, primitive_module) {
+    pair_t *p = &primitive_module[i];
+    cell_t *e = (cell_t *)p->second;
+    if(e && e->func == f)
+      return (char *)p->first;
   }
   return NULL;
 }
