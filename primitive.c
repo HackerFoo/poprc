@@ -74,7 +74,7 @@ bool func_op2(cell_t **cp, type_t t, type_t arg_type, type_t res_type, val_t (*o
 
  fail:
   drop(res);
-  fail(cp);
+  fail(cp, t);
   return false;
 }
 
@@ -136,7 +136,7 @@ bool func_compose(cell_t **cp, UNUSED type_t t) {
   return true;
 
  fail:
-  fail(cp);
+  fail(cp, t);
   return false;
 }
 
@@ -158,7 +158,7 @@ bool func_pushl(cell_t **cp, UNUSED type_t t) {
   return true;
 
   fail:
-    fail(cp);
+  fail(cp, t);
     return false;
 }
 
@@ -183,7 +183,7 @@ bool func_pushr(cell_t **cp, UNUSED type_t t) {
   return true;
 
  fail:
-  fail(cp);
+  fail(cp, t);
   return false;
 }
 
@@ -243,7 +243,7 @@ bool func_popr(cell_t **cp, UNUSED type_t t) {
     store_fail(d, d->alt);
   }
   c->expr.arg[1] = 0;
-  fail(cp);
+  fail(cp, t);
   return false;
 }
 
@@ -293,7 +293,7 @@ bool func_assert(cell_t **cp, type_t t) {
     return false;
   } else goto fail;
  fail:
-  fail(cp);
+  fail(cp, t);
   return false;
 }
 
@@ -334,7 +334,7 @@ bool func_id(cell_t **cp, type_t t) {
   }
 
  fail:
-  fail(cp);
+  fail(cp, t);
   return false;
 }
 
@@ -399,7 +399,7 @@ bool func_cut(cell_t **cp, type_t t) {
   return true;
 
  fail:
-  fail(cp);
+  fail(cp, t);
   return false;
 }
 
@@ -449,7 +449,7 @@ bool func_ift(cell_t **cp, UNUSED type_t t) {
   }
   return false;
  fail:
-  fail(cp);
+  fail(cp, t);
   return false;
 }
 
@@ -503,7 +503,7 @@ bool func_ap(cell_t **cp, UNUSED type_t t) {
   drop(l);
   return false;
 fail:
-  fail(cp);
+  fail(cp, t);
   return false;
 }
 
@@ -534,6 +534,6 @@ bool func_print(cell_t **cp, type_t t) {
 
  fail:
   drop(res);
-  fail(cp);
+  fail(cp, t);
   return false;
 }

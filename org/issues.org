@@ -30,9 +30,11 @@ Compile to direct C when possible
 - check builtins table order
 * bugs
 ** DONE smaller CELLS_SIZE breaks at module_lookup test
-** TODO FIX: 0 [True =:=] [0 ==] | pushl popr swap drop
+** DONE FIX: 0 [True =:=] [0 ==] | pushl popr swap drop
 - returns {} instead of True
 - works when alts are swapped
+- args are failed on type mismatch, so it sticks for later alts
+  - use something like split_args
 ** DONE :( -> segmentation fault
 also just (
 ** TODO select seems broken

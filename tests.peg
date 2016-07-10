@@ -65,3 +65,6 @@ __ =loop 6 [dup 0 > swap 5- loop swap !] [dup 0 <= !] | pushl
 False True | dup !
 
 1 [dup swap drop] pushl popr
+
+__ type mismatch test
+0 [True =:=] [0 ==] | pushl popr swap drop

@@ -65,3 +65,6 @@ False True | dup !
  [ True ]
 1 [dup swap drop] pushl popr
  [ [] 1 ]
+__ type mismatch test
+0 [True =:=] [0 ==] | pushl popr swap drop
+ [ True ]

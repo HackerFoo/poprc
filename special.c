@@ -40,7 +40,7 @@ bool func_value(cell_t **cp, type_t t) {
     return true;
   }
   else {
-    fail(cp);
+    fail(cp, t);
     return false;
   }
 }
@@ -144,7 +144,7 @@ bool func_dep(cell_t **cp, UNUSED type_t t) {
   } else {
     // shouldn't happen
     // can be caused by circular reference
-    fail(cp);
+    fail(cp, t);
   }
   return false;
 }
@@ -181,7 +181,7 @@ bool func_placeholder(cell_t **cp, UNUSED type_t t) {
   return false;
 
  fail:
-  fail(cp);
+  fail(cp, t);
   return false;
 }
 
@@ -199,6 +199,6 @@ bool func_fail(cell_t **cp, UNUSED type_t t) {
   cell_t *c = clear_ptr(*cp); // TODO remove clear_ptr
   assert(is_closure(c));
   measure.reduce_cnt--;
-  fail(cp);
+  fail(cp, t);
   return false;
 }

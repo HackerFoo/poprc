@@ -130,7 +130,7 @@ bool reduce(cell_t **cp, type_t t) {
     if(is_placeholder(c)) break;
     assert(is_closure(c));
     if(!closure_is_ready(c)) {
-      fail(cp);
+      fail(cp, t);
       continue;
     }
     unsigned int m = measure.reduce_cnt++;
@@ -153,14 +153,15 @@ bool reduce(cell_t **cp, type_t t) {
 // Perform one reduction step on *cp
 void reduce_dep(cell_t **cp) {
   cell_t *c = clear_ptr(*cp);
+  const type_t t = T_ANY;
   if(!closure_is_ready(c)) close_placeholders(c);
   if(!c || !closure_is_ready(c)) {
-    fail(cp);
+    fail(cp, t);
   } else {
     assert(is_closure(c) &&
            closure_is_ready(c));
     measure.reduce_cnt++;
-    c->func(cp, T_ANY);
+    c->func(cp, t);
   }
 }
 
@@ -410,12 +411,11 @@ void store_var(cell_t *c, type_t t) {
   c->size = 0;
 }
 
-void fail(cell_t **cp) {
+void fail(cell_t **cp, type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   cell_t *alt = ref(c->alt);
-  drop(c);
-  if(c->func) {
+  if(c->n && t == T_ANY) { // HACK this probably needs to be more sophisticated
     traverse(c, {
         cell_t *x = clear_ptr(*p);
         drop(x);
@@ -425,6 +425,7 @@ void fail(cell_t **cp) {
     c->func = func_value;
     c->value.type = T_FAIL;
   }
+  drop(c);
   *cp = alt;
 }
 
