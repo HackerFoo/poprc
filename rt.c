@@ -17,11 +17,14 @@
 
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
 #include "rt_types.h"
 #include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/primitive.h"
 #include "gen/special.h"
+#include "gen/eval.h"
+#include "gen/print.h"
 
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
@@ -130,8 +133,18 @@ bool reduce(cell_t **cp, type_t t) {
       fail(cp);
       continue;
     }
-    measure.reduce_cnt++;
-    if(c->func(cp, t)) return true;
+    unsigned int m = measure.reduce_cnt++;
+    if(c->func(cp, t)) {
+      if(write_graph && measure.reduce_cnt > m) {
+        mark_cell(c);
+        make_graph_all(0);
+      }
+      return true;
+    }
+  }
+  if(write_graph) {
+    mark_cell(c);
+    make_graph_all(0);
   }
   *cp = &fail_cell;
   return false;
