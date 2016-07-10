@@ -374,12 +374,12 @@ void reduce_root(cell_t *c) {
 
 void eval(const cell_t *p) {
   cell_t *c = parse_expr(&p, NULL);
-  reduce_root(c);
   if(!c) return;
   csize_t s = list_size(c);
   if(s > 0 && !closure_is_ready(c->value.ptr[s-1])) {
     printf("incomplete expression\n");
   } else {
+    reduce_root(c);
     c = remove_row(c);
     show_list(c);
     printf("\n");
@@ -392,15 +392,10 @@ bool get_arity(const cell_t *p, csize_t *in, csize_t *out, cell_t *module) {
   cell_t *c = parse_expr(&p, module);
   if(!c) return false;
   *in = fill_args(c, NULL);
-  if(!closure_is_ready(c)) {
-    printf("incomplete expression\n");
-    return false;
-  } else {
-    c = remove_row(c);
-    *out = max(1, list_size(c));
-    drop(c);
-    return true;
-  }
+  c = remove_row(c);
+  *out = max(1, list_size(c));
+  drop(c);
+  return true;
 }
 
 #ifdef USE_LLVM
