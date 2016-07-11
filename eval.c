@@ -68,7 +68,8 @@ bool reduce_list(cell_t *c) {
 
 bool reduce_one(cell_t **cp) {
   if(!closure_is_ready(*cp)) return true;
-  bool b = reduce(cp, T_ANY);
+  alt_set_t as = 0;
+  bool b = reduce(cp, T_ANY, &as);
   //if(is_list(*cp)) reduce_list(*cp); // *** hack to force things that might be needed later
   return b;
 }

@@ -92,7 +92,7 @@ bool reduce_arg(cell_t *c,
                 csize_t n,
                 alt_set_t *as,
                 type_t t) {
-  bool r = reduce(&c->expr.arg[n], t);
+  bool r = reduce(&c->expr.arg[n], t, as);
   split_arg(c, n);
   return r && entangle(as, clear_ptr(c->expr.arg[n]));
 }
@@ -123,18 +123,18 @@ cell_t *closure_split1(cell_t *c, int n) {
 }
 
 // Reduce *cp with type t
-bool reduce(cell_t **cp, type_t t) {
+bool reduce(cell_t **cp, type_t t, alt_set_t *as) {
   cell_t *c;
   while((c = clear_ptr(*cp))) {
     if(!closure_is_ready(c)) close_placeholders(c);
     if(is_placeholder(c)) break;
     assert(is_closure(c));
     if(!closure_is_ready(c)) {
-      fail(cp, t);
+      fail(cp, t, as);
       continue;
     }
     unsigned int m = measure.reduce_cnt++;
-    if(c->func(cp, t)) {
+    if(c->func(cp, t, as)) {
       if(write_graph && measure.reduce_cnt > m) {
         mark_cell(c);
         make_graph_all(0);
@@ -151,17 +151,17 @@ bool reduce(cell_t **cp, type_t t) {
 }
 
 // Perform one reduction step on *cp
-void reduce_dep(cell_t **cp) {
+void reduce_dep(cell_t **cp, alt_set_t *as) {
   cell_t *c = clear_ptr(*cp);
   const type_t t = T_ANY;
   if(!closure_is_ready(c)) close_placeholders(c);
   if(!c || !closure_is_ready(c)) {
-    fail(cp, t);
+    fail(cp, t, as);
   } else {
     assert(is_closure(c) &&
            closure_is_ready(c));
     measure.reduce_cnt++;
-    c->func(cp, t);
+    c->func(cp, t, as);
   }
 }
 
@@ -404,14 +404,14 @@ void store_fail(cell_t *c, cell_t *alt) {
   c->alt = alt;
 }
 
-void store_var(cell_t *c, type_t t) {
+void store_var(cell_t *c, type_t t, alt_set_t *as) {
   closure_shrink(c, 1);
   c->func = func_value;
   c->value.type = T_VAR | t;
   c->size = 0;
 }
 
-void fail(cell_t **cp, type_t t) {
+void fail(cell_t **cp, type_t t, alt_set_t *as) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   cell_t *alt = ref(c->alt);

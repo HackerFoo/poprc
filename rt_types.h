@@ -70,7 +70,7 @@ typedef struct seg_t {
   size_t n;
 } seg_t;
 
-typedef bool (reduce_t)(cell_t **cell, type_t type);
+typedef bool (reduce_t)(cell_t **cell, type_t type, alt_set_t *as);
 
 /* unevaluated expression */
 struct __attribute__((packed)) expr {

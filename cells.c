@@ -354,7 +354,7 @@ void drop_multi(cell_t **a, csize_t n) {
   for(csize_t i = 0; i < n; i++) drop(*a++);
 }
 
-alt_set_t as(unsigned int k, unsigned int v) {
+alt_set_t as_single(unsigned int k, unsigned int v) {
   assert(k < AS_SIZE);
   return ((alt_set_t)1 << (k + AS_SIZE)) |
     (((alt_set_t)v & 1) << k);

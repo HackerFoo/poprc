@@ -21,7 +21,7 @@
 #include "gen/rt.h"
 #include "gen/special.h"
 
-bool func_value(cell_t **cp, type_t t) {
+bool func_value(cell_t **cp, type_t t, alt_set_t *as) {
   cell_t *c = clear_ptr(*cp); // TODO remove clear_ptr
   assert(is_closure(c));
   measure.reduce_cnt--;
@@ -40,7 +40,7 @@ bool func_value(cell_t **cp, type_t t) {
     return true;
   }
   else {
-    fail(cp, t);
+    fail(cp, t, as);
     return false;
   }
 }
@@ -130,7 +130,7 @@ bool is_string(cell_t const *c) {
 }
 
 /* todo: propagate types here */
-bool func_dep(cell_t **cp, UNUSED type_t t) {
+bool func_dep(cell_t **cp, UNUSED type_t t, alt_set_t *as) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   /* rely on another cell for reduction */
@@ -139,12 +139,12 @@ bool func_dep(cell_t **cp, UNUSED type_t t) {
   cell_t *p = ref(c->expr.arg[0]);
   if(p) {
     c->expr.arg[0] = 0;
-    reduce_dep(&p);
+    reduce_dep(&p, as);
     drop(p);
   } else {
     // shouldn't happen
     // can be caused by circular reference
-    fail(cp, t);
+    fail(cp, t, as);
   }
   return false;
 }
@@ -162,31 +162,31 @@ bool is_dep(cell_t const *c) {
 
 // this shouldn't reduced directly, but is called through reduce_partial from func_dep
 // WORD("_", placeholder, 0, 1)
-bool func_placeholder(cell_t **cp, UNUSED type_t t) {
+bool func_placeholder(cell_t **cp, UNUSED type_t t, alt_set_t *as) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   csize_t in = closure_in(c), n = closure_args(c);
   for(csize_t i = 0; i < in; ++i) {
-    if(!reduce(&c->expr.arg[i], T_ANY)) goto fail;
+    if(!reduce(&c->expr.arg[i], T_ANY, as)) goto fail;
     trace(c->expr.arg[i], c, tt_force, i);
   }
   for(csize_t i = in; i < n; ++i) {
     cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {
       drop(c);
-      store_var(d, 0);
+      store_var(d, 0, as);
       trace(d, c, tt_placeholder_dep, i);
     }
   }
   return false;
 
  fail:
-  fail(cp, t);
+  fail(cp, t, as);
   return false;
 }
 
-bool func_self(cell_t **cp, UNUSED type_t t) {
-  func_placeholder(cp, t);
+bool func_self(cell_t **cp, UNUSED type_t t, alt_set_t *as) {
+  func_placeholder(cp, t, as);
   store_reduced(cp, var(t));
   return true;
 }
@@ -195,10 +195,10 @@ bool is_placeholder(cell_t const *c) {
   return c && clear_ptr(c->func) == (void *)func_placeholder;
 }
 
-bool func_fail(cell_t **cp, UNUSED type_t t) {
+bool func_fail(cell_t **cp, UNUSED type_t t, alt_set_t *as) {
   cell_t *c = clear_ptr(*cp); // TODO remove clear_ptr
   assert(is_closure(c));
   measure.reduce_cnt--;
-  fail(cp, t);
+  fail(cp, t, as);
   return false;
 }
