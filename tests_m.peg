@@ -1,0 +1,15 @@
+module tests:
+
+imports:
+  module list
+
+f2b: | popr ! cut popr swap drop
+
+f5: [] pushl rot rot | swap pushl popr swap popr swap drop dup rot > ! cut
+
+__ x y [z+] should be x + y + z + 1, gives 2y + 2z + 1
+f2: pushl pushl popr 1 + swap pushl popr swap popr swap drop +
+
+f1: [] [] ifte pushl
+
+f6: rot
