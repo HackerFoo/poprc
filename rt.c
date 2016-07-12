@@ -404,7 +404,7 @@ void store_fail(cell_t *c, cell_t *alt) {
   c->alt = alt;
 }
 
-void store_var(cell_t *c, type_t t, alt_set_t as) {
+void store_var(cell_t *c, type_t t) {
   closure_shrink(c, 1);
   c->func = func_value;
   c->value.type = T_VAR | t;
@@ -415,7 +415,7 @@ void fail(cell_t **cp, type_t t, alt_set_t as) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   cell_t *alt = ref(c->alt);
-  if(c->n && t == T_ANY) { // HACK this probably needs to be more sophisticated
+  if(c->n && t == T_ANY && as == 0) { // HACK this should be more sophisticated
     traverse(c, {
         cell_t *x = clear_ptr(*p);
         drop(x);

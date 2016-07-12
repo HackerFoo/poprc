@@ -174,7 +174,7 @@ bool func_placeholder(cell_t **cp, UNUSED type_t t, alt_set_t as) {
     cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {
       drop(c);
-      store_var(d, 0, as);
+      store_var(d, 0);
       trace(d, c, tt_placeholder_dep, i);
     }
   }
