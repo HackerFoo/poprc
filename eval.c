@@ -103,12 +103,14 @@ void measure_display() {
          "allocated   : %d cells\n"
          "working set : %d cells\n"
          "reductions  : %d\n"
+         "failures    : %d\n"
          "rate        : %.3e reductions/sec\n"
          "alts used   : %d\n",
          time,
          saved_measure.alloc_cnt,
          saved_measure.max_alloc_cnt,
          saved_measure.reduce_cnt,
+         saved_measure.fail_cnt,
          saved_measure.reduce_cnt / time,
          saved_measure.alt_cnt);
 

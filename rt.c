@@ -427,6 +427,7 @@ void fail(cell_t **cp, type_t t, alt_set_t as) {
   }
   drop(c);
   *cp = alt;
+  measure.fail_cnt++;
 }
 
 void store_reduced(cell_t **cp, cell_t *r) {
