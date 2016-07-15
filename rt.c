@@ -90,11 +90,14 @@ void split_arg(cell_t *c, csize_t n) {
 // Reduce then split c->arg[n]
 bool reduce_arg(cell_t *c,
                 csize_t n,
-                alt_set_t *as,
+                alt_set_t *ctx,
                 type_t t) {
-  bool r = reduce(&c->expr.arg[n], t, *as);
+  cell_t **cp = &c->expr.arg[n];
+  bool r = reduce(cp, t, *ctx);
   split_arg(c, n);
-  return r && entangle(as, clear_ptr(c->expr.arg[n]));
+  assert(!r || !as_conflict(*ctx, ((cell_t *)clear_ptr(*cp))->value.alt_set));
+  *ctx |= ((cell_t *)clear_ptr(*cp))->value.alt_set;
+  return r;
 }
 
 // Lift alternates from all args
@@ -135,11 +138,18 @@ bool reduce(cell_t **cp, type_t t, alt_set_t as) {
     }
     unsigned int m = measure.reduce_cnt++;
     if(c->func(cp, t, as)) {
+      cell_t *n = clear_ptr(*cp);
       if(write_graph && measure.reduce_cnt > m) {
-        mark_cell(c);
+        mark_cell(n);
         make_graph_all(0);
       }
-      return true;
+      if(as_conflict(as, n->value.alt_set)) {
+        cell_t *alt = ref(n->alt);
+        drop(n);
+        *cp = alt;
+      } else {
+        return true;
+      }
     }
   }
   if(write_graph) {

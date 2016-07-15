@@ -406,10 +406,3 @@ void clear_bit(uint8_t *m, unsigned int x) {
 bool check_bit(uint8_t *m, unsigned int x) {
   return m[x >> 3] & (1 << (x & 7));
 }
-
-bool entangle(alt_set_t *as, cell_t *c) {
-  alt_set_t cas = c->value.alt_set;
-  return !cas ||
-    (!as_conflict(*as, cas) &&
-     (*as |= cas, true));
-}
