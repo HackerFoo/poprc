@@ -243,4 +243,6 @@ clean:
 
 .PHONY: clean-dot
 clean-dot:
+	rm -rf diagrams
+	rm -f $(DIAGRAMS_FILE)
 	rm -f *.dot

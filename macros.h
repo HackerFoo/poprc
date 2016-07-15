@@ -102,4 +102,15 @@ struct __test_entry {
 #define DISPATCH8(m, x0, x1, x2, x3, x4, x5, x6, x7, argc, ...) CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7)
 #define DISPATCH9(m, x0, x1, x2, x3, x4, x5, x6, x7, x8, argc, ...) CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7, x8)
 
+#define AS_UNION_0(c, x, y, z, ...)    \
+  (c->expr.arg[x]->value.alt_set |     \
+   c->expr.arg[y]->value.alt_set |     \
+   c->expr.arg[z]->value.alt_set)
+#define AS_UNION_1(c, x, y, ...)       \
+  (c->expr.arg[x]->value.alt_set |     \
+   c->expr.arg[y]->value.alt_set)
+#define AS_UNION_2(c, x, ...)          \
+  (c->expr.arg[x]->value.alt_set)
+#define AS_UNION(c, ...) DISPATCH(AS_UNION, 4, c, ##__VA_ARGS__)
+
 #endif
