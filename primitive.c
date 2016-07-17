@@ -392,7 +392,7 @@ bool func_dup(cell_t **cp, UNUSED type_t t, UNUSED alt_set_t as) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   cell_t *d = c->expr.arg[1];
-  store_lazy_dep(c, d, ref(c->expr.arg[0]), 0);
+  store_lazy_dep(c, d, ref(c->expr.arg[0]), as);
   store_lazy(cp, c, c->expr.arg[0], 0);
   return false;
 }

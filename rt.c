@@ -143,13 +143,7 @@ bool reduce(cell_t **cp, type_t t, alt_set_t as) {
         mark_cell(n);
         make_graph_all(0);
       }
-      if(as_conflict(as, n->value.alt_set)) {
-        cell_t *alt = ref(n->alt);
-        drop(n);
-        *cp = alt;
-      } else {
-        return true;
-      }
+      return true;
     }
   }
   if(write_graph) {
