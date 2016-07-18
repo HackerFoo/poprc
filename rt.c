@@ -95,21 +95,11 @@ bool reduce_arg(cell_t *c,
   cell_t **cp = &c->expr.arg[n];
   bool r = reduce(cp, t, *ctx);
   split_arg(c, n);
-  assert(!r || !as_conflict(*ctx, ((cell_t *)clear_ptr(*cp))->value.alt_set));
-  *ctx |= ((cell_t *)clear_ptr(*cp))->value.alt_set;
+  if(r) {
+    assert(!as_conflict(*ctx, ((cell_t *)clear_ptr(*cp))->value.alt_set));
+    *ctx |= ((cell_t *)clear_ptr(*cp))->value.alt_set;
+  }
   return r;
-}
-
-// Lift alternates from all args
-cell_t *closure_split(cell_t *c, csize_t s) {
-  csize_t i;
-  for(i = 0; i < s; ++i) {
-    split_arg(c, i);
-  }
-  for(i = 0; i < s; ++i) {
-    c->expr.arg[i] = clear_ptr(c->expr.arg[i]);
-  }
-  return c->alt;
 }
 
 // Clear the flags bits in args
@@ -118,11 +108,6 @@ void clear_flags(cell_t *c) {
   for(; i < c->size; ++i) {
     c->expr.arg[i] = clear_ptr(c->expr.arg[i]);
   }
-}
-
-cell_t *closure_split1(cell_t *c, int n) {
-  if(!c->expr.arg[n]->alt) return c->alt;
-  return dup_alt(c, n, ref(c->expr.arg[n]->alt));
 }
 
 // Reduce *cp with type t

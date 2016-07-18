@@ -373,10 +373,6 @@ alt_set_t as_conflict(alt_set_t a, alt_set_t b) {
     ((a ^ b) & (((alt_set_t)1<<AS_SIZE)-1));
 }
 
-alt_set_t as_overlap(alt_set_t a, alt_set_t b) {
-  return a | (b & (a >> AS_SIZE));
-}
-
 alt_set_t as_more_general_than(alt_set_t a, alt_set_t b) {
   return (~a & b) & ~(((alt_set_t)1<<AS_SIZE)-1);
 }

@@ -168,7 +168,7 @@ bool func_placeholder(cell_t **cp, UNUSED type_t t, alt_set_t as) {
   assert(!is_marked(c));
   csize_t in = closure_in(c), n = closure_args(c);
   for(csize_t i = 0; i < in; ++i) {
-    if(!reduce(&c->expr.arg[i], T_ANY, as)) goto fail;
+    if(!reduce(&c->expr.arg[i], T_ANY, as)) goto fail; // TODO why not reduce_arg?
     trace(c->expr.arg[i], c, tt_force, i);
   }
   for(csize_t i = in; i < n; ++i) {
