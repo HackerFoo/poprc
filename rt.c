@@ -401,7 +401,7 @@ void store_var(cell_t *c, type_t t) {
 }
 
 void fail(cell_t **cp, type_t t, alt_set_t as) {
-  cell_t *c = *cp;
+  cell_t *c = clear_ptr(*cp);
   assert(!is_marked(c));
   cell_t *alt = ref(c->alt);
   if(c->n && t == T_ANY && as == 0) { // HACK this should be more sophisticated
