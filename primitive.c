@@ -64,7 +64,7 @@ bool func_op2(cell_t **cp, type_t t, alt_set_t as, type_t arg_type, type_t res_t
      !reduce_arg(cp, 1, &ctx, arg_type)) goto fail;
   cell_t *c = *cp;
   clear_flags(c);
-  if(as_conflict(as, ctx)) goto fail;
+  if(as_conflict(as | ctx)) goto fail;
   alt_set_t alt_set = AS_UNION(c, 0, 1);
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
@@ -130,7 +130,7 @@ bool func_compose(cell_t **cp, UNUSED type_t t, alt_set_t as) {
        reduce_arg(cp, 1, &ctx, T_LIST))) goto fail;
   cell_t *c = *cp;
   clear_flags(c);
-  if(as_conflict(as, ctx)) goto fail;
+  if(as_conflict(as | ctx)) goto fail;
   alt_set_t alt_set = AS_UNION(c, 0, 1);
 
   cell_t *res = compose_nd(ref(c->expr.arg[0]), ref(c->expr.arg[1]));
@@ -153,7 +153,7 @@ bool func_pushl(cell_t **cp, UNUSED type_t t, alt_set_t as) {
   if(!reduce_arg(cp, 1, &ctx, T_LIST)) goto fail;
   cell_t *c = *cp;
   clear_flags(c);
-  if(as_conflict(as, ctx)) goto fail;
+  if(as_conflict(as | ctx)) goto fail;
   alt_set_t alt_set = AS_UNION(c, 1);
 
   cell_t *q = c->expr.arg[1];
@@ -179,7 +179,7 @@ bool func_pushr(cell_t **cp, UNUSED type_t t, alt_set_t as) {
   if(!reduce_arg(cp, 0, &ctx, T_LIST)) goto fail;
   cell_t *c = *cp;
   clear_flags(c);
-  if(as_conflict(as, ctx)) goto fail;
+  if(as_conflict(as | ctx)) goto fail;
   alt_set_t alt_set = AS_UNION(c, 0);
 
   cell_t *p = c->expr.arg[0];
@@ -219,7 +219,7 @@ bool func_popr(cell_t **cp, UNUSED type_t t, alt_set_t as) {
   c = *cp;
   d = c->expr.arg[1];
   clear_flags(c);
-  if(as_conflict(as, ctx)) goto fail;
+  if(as_conflict(as | ctx)) goto fail;
   alt_set_t alt_set = AS_UNION(c, 0);
 
   cell_t *p = c->expr.arg[0];
@@ -347,12 +347,12 @@ bool func_id(cell_t **cp, type_t t, alt_set_t as) {
   alt_set_t alt_set = (alt_set_t)(*cp)->expr.arg[1];
 
   if(alt_set || (*cp)->alt) {
-    if(as_conflict(as, alt_set)) goto fail;
+    if(as_conflict(as | alt_set)) goto fail;
     alt_set_t ctx = as | alt_set;
     if(!reduce_arg(cp, 0, &ctx, t)) goto fail;
     cell_t *c = *cp;
     clear_flags(c);
-    if(as_conflict(as, ctx)) goto fail;
+    if(as_conflict(as | ctx)) goto fail;
     alt_set |= AS_UNION(c, 0);
 
     cell_t *p = c->expr.arg[0];
@@ -441,7 +441,7 @@ bool func_cut(cell_t **cp, type_t t, alt_set_t as) {
 // WORD("select", select, 2, 1)
 bool func_select(cell_t **cp, type_t t, alt_set_t as) {
   alt_set_t ctx = as; // ***
-  bool r = reduce_arg(cp, 0, &ctx, t) && !as_conflict(as, ctx);
+  bool r = reduce_arg(cp, 0, &ctx, t) && !as_conflict(as | ctx);
   cell_t *c = *cp;
   clear_flags(c);
   alt_set_t alt_set = AS_UNION(c, 0);
@@ -471,7 +471,7 @@ bool func_ap(cell_t **cp, UNUSED type_t t, alt_set_t as) {
   if(!reduce_arg(cp, in-1, &ctx, T_LIST)) goto fail;
   cell_t *c = *cp;
   clear_flags(c);
-  if(as_conflict(as, ctx)) goto fail;
+  if(as_conflict(as | ctx)) goto fail;
   alt_set_t alt_set = AS_UNION(c, in-1);
 
   cell_t *l = c->expr.arg[in-1];
@@ -531,7 +531,7 @@ bool func_print(cell_t **cp, type_t t, alt_set_t as) {
      !reduce_arg(cp, 1, &ctx, T_ANY)) goto fail;
   cell_t *c = *cp;
   clear_flags(c);
-  if(as_conflict(as, ctx)) goto fail;
+  if(as_conflict(as | ctx)) goto fail;
   alt_set_t alt_set = AS_UNION(c, 0, 1);
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];

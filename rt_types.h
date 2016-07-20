@@ -178,6 +178,7 @@ typedef enum trace_type_t {
 
 // Maximum number of alts
 #define AS_SIZE (sizeof(alt_set_t) * 4)
+#define AS_MASK ((alt_set_t)0x5555555555555555)
 #define ALT_SET_IDS AS_SIZE
 
 #define SYM_FALSE 0

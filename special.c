@@ -25,7 +25,7 @@ bool func_value(cell_t **cp, type_t t, alt_set_t as) {
   cell_t *c = clear_ptr(*cp); // TODO remove clear_ptr
   assert(is_closure(c));
   measure.reduce_cnt--;
-  if(!as_conflict(as, c->value.alt_set) &&
+  if(!as_conflict(as | c->value.alt_set) &&
      c->value.type != T_FAIL &&
      type_match(t, c)) {
     if(is_any(c)) {

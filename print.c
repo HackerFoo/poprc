@@ -46,15 +46,21 @@ char const *show_alt_set(uintptr_t as) {
   static char out[sizeof(as)*4+1];
   char *p = out;
   unsigned int n = sizeof(as)*4;
-  uintptr_t set_mask = 1l << (sizeof(as) * 8 - 1);
-  uintptr_t val_mask = 1l << (sizeof(as) * 4 - 1);
-  while(!(as & set_mask) && n) {
-    as <<= 1;
+  const unsigned int shift = sizeof(as) * 8 - 2;
+  uintptr_t mask = 3l << shift;
+
+  while(!(as & mask) && n) {
+    as <<= 2;
     n--;
   }
   while(n--) {
-    *p++ = as & set_mask ? (as & val_mask ? '1' : '0') : 'X';
-    as <<= 1;
+    switch(as >> shift) {
+    case 0: *p++ = 'X'; break;
+    case 1: *p++ = '0'; break;
+    case 2: *p++ = '1'; break;
+    case 3: *p++ = 'E'; break;
+    }
+    as <<= 2;
   }
   *p++ = '\0';
   return out;
@@ -263,7 +269,7 @@ bool any_conflicts(cell_t const *const *p, csize_t size) {
   uintptr_t t, as = 0;
   for(csize_t i = 0; i < size; ++i) {
     if(is_value(p[i])) {
-      if(as_conflict(as, t = p[i]->value.alt_set)) return true;
+      if(as_conflict(as | (t = p[i]->value.alt_set))) return true;
       as |= t;
     }
   }

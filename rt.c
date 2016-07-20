@@ -107,7 +107,7 @@ bool reduce_arg(cell_t **cp,
   c->expr.arg[n] = a;
   split_arg(c, n);
   if(r) {
-    assert(!as_conflict(*ctx, a->value.alt_set));
+    assert(!as_conflict(*ctx | a->value.alt_set));
     *ctx |= a->value.alt_set;
   }
   return r;
