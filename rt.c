@@ -88,16 +88,27 @@ void split_arg(cell_t *c, csize_t n) {
 }
 
 // Reduce then split c->arg[n]
-bool reduce_arg(cell_t *c,
+bool reduce_arg(cell_t **cp,
                 csize_t n,
                 alt_set_t *ctx,
                 type_t t) {
-  cell_t **cp = &c->expr.arg[n];
-  bool r = reduce(cp, t, *ctx);
+  cell_t
+    *c = *cp,
+    *a0 = c->expr.arg[n],
+    *a = a0;
+  bool r = reduce(&a, t, *ctx);
+  if(a != a0 && c->n && *ctx) {
+    --c->n; // TODO abstract this block (also in mod_alt)
+    c = copy(c);
+    traverse_ref(c, ARGS | ALT);
+    c->n = 0;
+    *cp = c;
+  }
+  c->expr.arg[n] = a;
   split_arg(c, n);
   if(r) {
-    assert(!as_conflict(*ctx, ((cell_t *)clear_ptr(*cp))->value.alt_set));
-    *ctx |= ((cell_t *)clear_ptr(*cp))->value.alt_set;
+    assert(!as_conflict(*ctx, a->value.alt_set));
+    *ctx |= a->value.alt_set;
   }
   return r;
 }
