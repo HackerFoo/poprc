@@ -97,19 +97,22 @@ bool reduce_arg(cell_t **cp,
     *a0 = c->expr.arg[n],
     *a = a0;
   bool r = reduce(&a, t, *ctx);
-  if(a != a0 && c->n && *ctx) {
+  alt_set_t alt_set = ((cell_t *)clear_ptr(a))->value.alt_set | *ctx;
+  /*
+  if(a != a0 && c->n && alt_set0 != alt_set) {
     --c->n; // TODO abstract this block (also in mod_alt)
     c = copy(c);
     traverse_ref(c, ARGS | ALT);
     c->n = 0;
     *cp = c;
   }
+  */
   c->expr.arg[n] = a;
   split_arg(c, n);
   if(r) {
-    assert(!as_conflict(*ctx | a->value.alt_set));
-    *ctx |= a->value.alt_set;
+    assert(!as_conflict(alt_set));
   }
+  *ctx = alt_set;
   return r;
 }
 
