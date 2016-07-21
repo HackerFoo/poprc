@@ -12,6 +12,7 @@ Compile to direct C when possible
 **** closure_set_ready
 **** split_args
 * major
+** TODO look into adding conflict-driven clause learning
 ** modules
 *** DONE look up words from modules
 *** DONE build/compile on demand
