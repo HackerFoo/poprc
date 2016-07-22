@@ -88,31 +88,14 @@ void split_arg(cell_t *c, csize_t n) {
 }
 
 // Reduce then split c->arg[n]
-bool reduce_arg(cell_t **cp,
+bool reduce_arg(cell_t *c,
                 csize_t n,
                 alt_set_t *ctx,
                 type_t t) {
-  cell_t
-    *c = *cp,
-    *a0 = c->expr.arg[n],
-    *a = a0;
-  bool r = reduce(&a, t, *ctx);
-  alt_set_t alt_set = ((cell_t *)clear_ptr(a))->value.alt_set | *ctx;
-  /*
-  if(a != a0 && c->n && alt_set0 != alt_set) {
-    --c->n; // TODO abstract this block (also in mod_alt)
-    c = copy(c);
-    traverse_ref(c, ARGS | ALT);
-    c->n = 0;
-    *cp = c;
-  }
-  */
-  c->expr.arg[n] = a;
+  cell_t **ap = &c->expr.arg[n];
+  bool r = reduce(ap, t);
+  *ctx |= ((cell_t *)clear_ptr(*ap))->value.alt_set;
   split_arg(c, n);
-  if(r) {
-    assert(!as_conflict(alt_set));
-  }
-  *ctx = alt_set;
   return r;
 }
 
@@ -125,18 +108,18 @@ void clear_flags(cell_t *c) {
 }
 
 // Reduce *cp with type t
-bool reduce(cell_t **cp, type_t t, alt_set_t as) {
+bool reduce(cell_t **cp, type_t t) {
   cell_t *c;
   while((c = clear_ptr(*cp))) {
     if(!closure_is_ready(c)) close_placeholders(c);
     if(is_placeholder(c)) break;
     assert(is_closure(c));
     if(!closure_is_ready(c)) {
-      fail(cp, t, as);
+      fail(cp, t);
       continue;
     }
     unsigned int m = measure.reduce_cnt++;
-    if(c->func(cp, t, as)) {
+    if(c->func(cp, t)) {
       cell_t *n = clear_ptr(*cp);
       if(write_graph && measure.reduce_cnt > m) {
         mark_cell(n);
@@ -154,17 +137,17 @@ bool reduce(cell_t **cp, type_t t, alt_set_t as) {
 }
 
 // Perform one reduction step on *cp
-void reduce_dep(cell_t **cp, alt_set_t as) {
+void reduce_dep(cell_t **cp) {
   cell_t *c = clear_ptr(*cp);
   const type_t t = T_ANY;
   if(!closure_is_ready(c)) close_placeholders(c);
   if(!c || !closure_is_ready(c)) {
-    fail(cp, t, as);
+    fail(cp, t);
   } else {
     assert(is_closure(c) &&
            closure_is_ready(c));
     measure.reduce_cnt++;
-    c->func(cp, t, as);
+    c->func(cp, t);
   }
 }
 
@@ -414,11 +397,11 @@ void store_var(cell_t *c, type_t t) {
   c->size = 0;
 }
 
-void fail(cell_t **cp, type_t t, alt_set_t as) {
+void fail(cell_t **cp, type_t t) {
   cell_t *c = clear_ptr(*cp);
   assert(!is_marked(c));
   cell_t *alt = ref(c->alt);
-  if(c->n && t == T_ANY && as == 0) { // HACK this should be more sophisticated
+  if(c->n && t == T_ANY) { // HACK this should be more sophisticated
     traverse(c, {
         cell_t *x = clear_ptr(*p);
         drop(x);

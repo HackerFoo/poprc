@@ -460,7 +460,7 @@ fail:
   return false;
 }
 
-bool func_exec(cell_t **cp, UNUSED type_t t, UNUSED alt_set_t as) {
+bool func_exec(cell_t **cp, UNUSED type_t t) {
   cell_t *c = clear_ptr(*cp);
   assert(is_closure(c));
 

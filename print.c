@@ -256,24 +256,28 @@ void show_int(cell_t const *c) {
   }
 }
 
-bool any_alt_overlap(cell_t const *const *p, csize_t size) {
-  uintptr_t t, as = 0;
-  for(csize_t i = 0; i < size; ++i) {
-    if((t = p[i]->value.alt_set) & as) return true;
-    as |= t;
+bool any_alt_overlap(cell_t const * const *p, csize_t size) {
+  uintptr_t  mask = 0;
+  while(size--) {
+    if(is_value(*p)) {
+      alt_set_t m = as_mask((*p)->value.alt_set);
+      if(mask & m) return true;
+      mask |= m;
+    }
+    p++;
   }
   return false;
 }
 
-bool any_conflicts(cell_t const *const *p, csize_t size) {
-  uintptr_t t, as = 0;
-  for(csize_t i = 0; i < size; ++i) {
-    if(is_value(p[i])) {
-      if(as_conflict(as | (t = p[i]->value.alt_set))) return true;
-      as |= t;
+bool any_conflicts(cell_t const * const *p, csize_t size) {
+  uintptr_t as = 0;
+  while(size--) {
+    if(is_value(*p)) {
+      as |= (*p)->value.alt_set;
     }
+    p++;
   }
-  return false;
+  return as_conflict(as);
 }
 
 void show_list(cell_t const *c) {

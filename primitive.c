@@ -53,18 +53,18 @@ cell_t *_op2(val_t (*op)(val_t, val_t), cell_t *x, cell_t *y) {
   return res;
 }
 
-bool func_op2(cell_t **cp, type_t t, alt_set_t as, type_t arg_type, type_t res_type, val_t (*op)(val_t, val_t)) {
+bool func_op2(cell_t **cp, type_t t, type_t arg_type, type_t res_type, val_t (*op)(val_t, val_t)) {
+  cell_t *c = *cp;
   cell_t *res = 0;
-  assert(!is_marked(*cp));
+  assert(!is_marked(c));
 
   if(t != T_ANY && t != res_type) goto fail;
 
-  alt_set_t ctx = as;
-  if(!reduce_arg(cp, 0, &ctx, arg_type) ||
-     !reduce_arg(cp, 1, &ctx, arg_type)) goto fail;
-  cell_t *c = *cp;
+  alt_set_t alt_set = 0;
+  if(!reduce_arg(c, 0, &alt_set, arg_type) ||
+     !reduce_arg(c, 1, &alt_set, arg_type) ||
+     as_conflict(alt_set)) goto fail;
   clear_flags(c);
-  alt_set_t alt_set = AS_UNION(c, 0, 1);
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   res = is_var(p) || is_var(q) ? var(t) : _op2(op, p, q);
@@ -75,61 +75,61 @@ bool func_op2(cell_t **cp, type_t t, alt_set_t as, type_t arg_type, type_t res_t
   return true;
 
  fail:
-  fail(cp, t, as);
+  fail(cp, t);
   return false;
 }
 
 // WORD("+", add, 2, 1)
 val_t add_op(val_t x, val_t y) { return x + y; }
-bool func_add(cell_t **cp, type_t t, alt_set_t as) { return func_op2(cp, t, as, T_INT, T_INT, add_op); }
+bool func_add(cell_t **cp, type_t t) { return func_op2(cp, t, T_INT, T_INT, add_op); }
 
 
 // WORD("*", mul, 2, 1)
 val_t mul_op(val_t x, val_t y) { return x * y; }
-bool func_mul(cell_t **cp, type_t t, alt_set_t as) { return func_op2(cp, t, as, T_INT, T_INT, mul_op); }
+bool func_mul(cell_t **cp, type_t t) { return func_op2(cp, t, T_INT, T_INT, mul_op); }
 
 // WORD("-", sub, 2, 1)
 val_t sub_op(val_t x, val_t y) { return x - y; }
-bool func_sub(cell_t **cp, type_t t, alt_set_t as) { return func_op2(cp, t, as, T_INT, T_INT, sub_op); }
+bool func_sub(cell_t **cp, type_t t) { return func_op2(cp, t, T_INT, T_INT, sub_op); }
 
 // WORD(">", gt, 2, 1)
 val_t gt_op(val_t x, val_t y) { return x > y; }
-bool func_gt(cell_t **cp, type_t t, alt_set_t as) { return func_op2(cp, t, as, T_INT, T_SYMBOL, gt_op); }
+bool func_gt(cell_t **cp, type_t t) { return func_op2(cp, t, T_INT, T_SYMBOL, gt_op); }
 
 // WORD(">=", gte, 2, 1)
 val_t gte_op(val_t x, val_t y) { return x >= y; }
-bool func_gte(cell_t **cp, type_t t, alt_set_t as) { return func_op2(cp, t, as, T_INT, T_SYMBOL, gte_op); }
+bool func_gte(cell_t **cp, type_t t) { return func_op2(cp, t, T_INT, T_SYMBOL, gte_op); }
 
 // WORD("<", lt, 2, 1)
 val_t lt_op(val_t x, val_t y) { return x < y; }
-bool func_lt(cell_t **cp, type_t t, alt_set_t as) { return func_op2(cp, t, as, T_INT, T_SYMBOL, lt_op); }
+bool func_lt(cell_t **cp, type_t t) { return func_op2(cp, t, T_INT, T_SYMBOL, lt_op); }
 
 // WORD("<=", lte, 2, 1)
 val_t lte_op(val_t x, val_t y) { return x <= y; }
-bool func_lte(cell_t **cp, type_t t, alt_set_t as) { return func_op2(cp, t, as, T_INT, T_SYMBOL, lte_op); }
+bool func_lte(cell_t **cp, type_t t) { return func_op2(cp, t, T_INT, T_SYMBOL, lte_op); }
 
 // WORD("==", eq, 2, 1)
 // WORD("=:=", eq_s, 2, 1)
 val_t eq_op(val_t x, val_t y) { return x == y; }
-bool func_eq(cell_t **cp, type_t t, alt_set_t as) { return func_op2(cp, t, as, T_INT, T_SYMBOL, eq_op); }
-bool func_eq_s(cell_t **cp, type_t t, alt_set_t as) { return func_op2(cp, t, as, T_SYMBOL, T_SYMBOL, eq_op); }
+bool func_eq(cell_t **cp, type_t t) { return func_op2(cp, t, T_INT, T_SYMBOL, eq_op); }
+bool func_eq_s(cell_t **cp, type_t t) { return func_op2(cp, t, T_SYMBOL, T_SYMBOL, eq_op); }
 
 // WORD("!=", neq, 2, 1)
 // WORD("!:=", neq_s, 2, 1)
 val_t neq_op(val_t x, val_t y) { return x != y; }
-bool func_neq(cell_t **cp, type_t t, alt_set_t as) { return func_op2(cp, t, as, T_INT, T_SYMBOL, neq_op); }
-bool func_neq_s(cell_t **cp, type_t t, alt_set_t as) { return func_op2(cp, t, as, T_SYMBOL, T_SYMBOL, neq_op); }
+bool func_neq(cell_t **cp, type_t t) { return func_op2(cp, t, T_INT, T_SYMBOL, neq_op); }
+bool func_neq_s(cell_t **cp, type_t t) { return func_op2(cp, t, T_SYMBOL, T_SYMBOL, neq_op); }
 
 // WORD(".", compose, 2, 1)
-bool func_compose(cell_t **cp, UNUSED type_t t, alt_set_t as) {
-  assert(!is_marked(*cp));
-
-  alt_set_t ctx = as;
-  if(!(reduce_arg(cp, 0, &ctx, T_LIST) &&
-       reduce_arg(cp, 1, &ctx, T_LIST))) goto fail;
+bool func_compose(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
+  assert(!is_marked(c));
+
+  alt_set_t alt_set = 0;
+  if(!reduce_arg(c, 0, &alt_set, T_LIST) ||
+     !reduce_arg(c, 1, &alt_set, T_LIST) ||
+     as_conflict(alt_set)) goto fail;
   clear_flags(c);
-  alt_set_t alt_set = AS_UNION(c, 0, 1);
 
   cell_t *res = compose_nd(ref(c->expr.arg[0]), ref(c->expr.arg[1]));
   res->value.alt_set = alt_set;
@@ -139,19 +139,18 @@ bool func_compose(cell_t **cp, UNUSED type_t t, alt_set_t as) {
   return true;
 
  fail:
-  fail(cp, t, as);
+  fail(cp, t);
   return false;
 }
 
 // WORD("pushl", pushl, 2, 1)
-bool func_pushl(cell_t **cp, UNUSED type_t t, alt_set_t as) {
+bool func_pushl(cell_t **cp, UNUSED type_t t) {
+  cell_t *c = *cp;
   assert(!is_marked(*cp));
 
-  alt_set_t ctx = as;
-  if(!reduce_arg(cp, 1, &ctx, T_LIST)) goto fail;
-  cell_t *c = *cp;
+  alt_set_t alt_set = 0;
+  if(!reduce_arg(c, 1, &alt_set, T_LIST)) goto fail;
   clear_flags(c);
-  alt_set_t alt_set = AS_UNION(c, 1);
 
   cell_t *q = c->expr.arg[1];
   bool rvar = is_var(q);
@@ -164,19 +163,18 @@ bool func_pushl(cell_t **cp, UNUSED type_t t, alt_set_t as) {
   return true;
 
  fail:
-  fail(cp, t, as);
+  fail(cp, t);
   return false;
 }
 
 // WORD("pushr", pushr, 2, 1)
-bool func_pushr(cell_t **cp, UNUSED type_t t, alt_set_t as) {
-  assert(!is_marked(*cp));
-
-  alt_set_t ctx = as;
-  if(!reduce_arg(cp, 0, &ctx, T_LIST)) goto fail;
+bool func_pushr(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
+  assert(!is_marked(c));
+
+  alt_set_t alt_set = 0;
+  if(!reduce_arg(c, 0, &alt_set, T_LIST)) goto fail;
   clear_flags(c);
-  alt_set_t alt_set = AS_UNION(c, 0);
 
   cell_t *p = c->expr.arg[0];
 
@@ -192,30 +190,27 @@ bool func_pushr(cell_t **cp, UNUSED type_t t, alt_set_t as) {
   return true;
 
  fail:
-  fail(cp, t, as);
+  fail(cp, t);
   return false;
 }
 
 // WORD("'", quote, 1, 1)
-bool func_quote(cell_t **cp, UNUSED type_t t, UNUSED alt_set_t as) {
+bool func_quote(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
-  assert(!is_marked(*cp));
+  assert(!is_marked(c));
   cell_t res = { .size = 2, .value.ptr = {ref(c->expr.arg[0])} };
   store_reduced(cp, &res);
   return true;
 }
 
 // WORD("popr", popr, 1, 2)
-bool func_popr(cell_t **cp, UNUSED type_t t, alt_set_t as) {
-  cell_t *c, *d;
+bool func_popr(cell_t **cp, UNUSED type_t t) {
+  cell_t *c = *cp, *d = c->expr.arg[1];
   assert(!is_marked(*cp));
 
-  alt_set_t ctx = as;
-  if(!reduce_arg(cp, 0, &ctx, T_LIST)) goto fail;
-  c = *cp;
-  d = c->expr.arg[1];
+  alt_set_t alt_set = 0;
+  if(!reduce_arg(c, 0, &alt_set, T_LIST)) goto fail;
   clear_flags(c);
-  alt_set_t alt_set = AS_UNION(c, 0);
 
   cell_t *p = c->expr.arg[0];
   if(list_size(p) == 0) goto fail;
@@ -251,19 +246,17 @@ bool func_popr(cell_t **cp, UNUSED type_t t, alt_set_t as) {
   return true;
 
  fail:
-  c = *cp;
-  d = c->expr.arg[1];
   if(d) {
     drop(c);
     store_fail(d, d->alt);
   }
   c->expr.arg[1] = 0;
-  fail(cp, t, as);
+  fail(cp, t);
   return false;
 }
 
 // WORD("|", alt, 2, 1)
-bool func_alt(cell_t **cp, UNUSED type_t t, UNUSED alt_set_t as) {
+bool func_alt(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   uint8_t a = new_alt_id(2);
@@ -277,7 +270,7 @@ bool func_alt(cell_t **cp, UNUSED type_t t, UNUSED alt_set_t as) {
 }
 
 // WORD("||", alt2, 2, 1)
-bool func_alt2(cell_t **cp, UNUSED type_t t, UNUSED alt_set_t as) {
+bool func_alt2(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   cell_t *r0 = id(ref(c->expr.arg[0]));
@@ -291,30 +284,28 @@ bool func_alt2(cell_t **cp, UNUSED type_t t, UNUSED alt_set_t as) {
 }
 
 // WORD("!", assert, 2, 1)
-bool func_assert(cell_t **cp, type_t t, alt_set_t as) {
-  assert(!is_marked(*cp));
+bool func_assert(cell_t **cp, type_t t) {
+  cell_t *c = *cp;
+  assert(!is_marked(c));
 
-  alt_set_t alt_set = 0, ctx = as;
-  if(!reduce_arg(cp, 1, &ctx, T_SYMBOL)) goto fail;
-  cell_t *p = clear_ptr((*cp)->expr.arg[1]);
+  alt_set_t alt_set = 0;
+  if(!reduce_arg(c, 1, &alt_set, T_SYMBOL)) goto fail;
+  cell_t *p = clear_ptr(c->expr.arg[1]);
 
   if(is_var(p)) {
-    if(!reduce_arg(cp, 0, &ctx, t)) goto fail;
-    cell_t *c = *cp;
+    if(!reduce_arg(c, 0, &alt_set, t) ||
+       as_conflict(alt_set)) goto fail;
     clear_flags(c);
-    alt_set = AS_UNION(c, 0, 1);
     store_reduced(cp, var(t));
     return true;
   } else if(p->value.integer[0] == SYM_TRUE) {
-    cell_t *c = *cp;
     clear_flags(c);
-    alt_set = AS_UNION(c, 1);
     drop(p);
     store_lazy(cp, c, c->expr.arg[0], alt_set);
     return false;
   } else goto fail;
  fail:
-  fail(cp, t, as);
+  fail(cp, t);
   return false;
 }
 
@@ -337,23 +328,20 @@ bool type_check(cell_t **cp, type_t type) {
 */
 
 // WORD("id", id, 1, 1)
-bool func_id(cell_t **cp, type_t t, alt_set_t as) {
-  assert(!is_marked(*cp));
-  alt_set_t alt_set = (alt_set_t)(*cp)->expr.arg[1];
+bool func_id(cell_t **cp, type_t t) {
+  cell_t *c = *cp;
+  assert(!is_marked(c));
+  alt_set_t alt_set = (alt_set_t)c->expr.arg[1];
 
-  if(alt_set || (*cp)->alt) {
-    alt_set_t ctx = as | alt_set;
-    if(as_conflict(ctx) ||
-       !reduce_arg(cp, 0, &ctx, t)) goto fail;
-    cell_t *c = *cp;
+  if(alt_set || c->alt) {
+    if(!reduce_arg(c, 0, &alt_set, t) ||
+       as_conflict(alt_set)) goto fail;
     clear_flags(c);
-    alt_set |= AS_UNION(c, 0);
 
     cell_t *p = c->expr.arg[0];
     store_reduced(cp, mod_alt(ref(p), c->alt, alt_set));
     return true;
   } else {
-    cell_t *c = *cp;
     cell_t *p = ref(c->expr.arg[0]);
     drop(c);
     *cp = p;
@@ -361,12 +349,12 @@ bool func_id(cell_t **cp, type_t t, alt_set_t as) {
   }
 
  fail:
-  fail(cp, t, as);
+  fail(cp, t);
   return false;
 }
 
 // WORD("drop", drop, 2, 1)
-bool func_drop(cell_t **cp, UNUSED type_t t, UNUSED alt_set_t as) {
+bool func_drop(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   cell_t *p = ref(c->expr.arg[0]);
@@ -376,11 +364,11 @@ bool func_drop(cell_t **cp, UNUSED type_t t, UNUSED alt_set_t as) {
 }
 
 // WORD("swap", swap, 2, 2)
-bool func_swap(cell_t **cp, UNUSED type_t t, UNUSED alt_set_t as) {
+bool func_swap(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   cell_t *d = c->expr.arg[2];
-  store_lazy_dep(c, d, c->expr.arg[0], as); // ***
+  store_lazy_dep(c, d, c->expr.arg[0], 0);
   store_lazy(cp, c, c->expr.arg[1], 0);
   return false;
 }
@@ -392,17 +380,17 @@ cell_t *id(cell_t *c) {
 }
 
 // WORD("dup", dup, 1, 2)
-bool func_dup(cell_t **cp, UNUSED type_t t, UNUSED alt_set_t as) {
+bool func_dup(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   cell_t *d = c->expr.arg[1];
-  store_lazy_dep(c, d, ref(c->expr.arg[0]), as); // ***
+  store_lazy_dep(c, d, ref(c->expr.arg[0]), 0);
   store_lazy(cp, c, c->expr.arg[0], 0);
   return false;
 }
 
-void trace_expand_select(cell_t *c, cell_t *x, type_t t, alt_set_t as) {
-  while(reduce(&x, t, as)) { // ***
+void trace_expand_select(cell_t *c, cell_t *x, type_t t) {
+  while(reduce(&x, t)) {
     if(!is_var(x)) trace(x, c, tt_force, 0);
     trace(c, x, tt_select, 0);
     if(!is_var(x)) break;
@@ -411,14 +399,14 @@ void trace_expand_select(cell_t *c, cell_t *x, type_t t, alt_set_t as) {
 }
 
 // WORD("cut", cut, 1, 1)
-bool func_cut(cell_t **cp, type_t t, alt_set_t as) {
+bool func_cut(cell_t **cp, type_t t) {
   cell_t *c = *cp;
-  if(!reduce(&c->expr.arg[0], t, as)) goto fail;
+  if(!reduce(&c->expr.arg[0], t)) goto fail;
   cell_t *p = c->expr.arg[0];
   if(is_var(p)) {
     cell_t *alt = ref(p->alt);
     store_reduced(cp, mod_alt(ref(p), 0, p->value.alt_set));
-    trace_expand_select(*cp, alt, t, as);
+    trace_expand_select(*cp, alt, t);
     drop(alt);
   } else {
     store_reduced(cp, mod_alt(ref(p), 0, p->value.alt_set));
@@ -426,19 +414,18 @@ bool func_cut(cell_t **cp, type_t t, alt_set_t as) {
   return true;
 
  fail:
-  fail(cp, t, as);
+  fail(cp, t);
   return false;
 }
 
 /* args w/alts not handled correctly, */
 /* should probably cut them, or hide select */
 // WORD("select", select, 2, 1)
-bool func_select(cell_t **cp, type_t t, alt_set_t as) {
-  alt_set_t ctx = as; // ***
-  bool r = reduce_arg(cp, 0, &ctx, t);
+bool func_select(cell_t **cp, type_t t) {
   cell_t *c = *cp;
+  alt_set_t alt_set = 0;
+  bool r = reduce_arg(c, 0, &alt_set, t);
   clear_flags(c);
-  alt_set_t alt_set = AS_UNION(c, 0);
 
   if(r) {
     if(is_var(c->expr.arg[0])) {
@@ -453,19 +440,18 @@ bool func_select(cell_t **cp, type_t t, alt_set_t as) {
   };
 }
 
-bool func_ap(cell_t **cp, UNUSED type_t t, alt_set_t as) {
-  assert(!is_marked(*cp));
+bool func_ap(cell_t **cp, UNUSED type_t t) {
+  cell_t *c = *cp;
+  assert(!is_marked(c));
 
   const csize_t
-    in = closure_in(*cp),
-    n = closure_args(*cp),
-    out = closure_out(*cp);
+    in = closure_in(c),
+    n = closure_args(c),
+    out = closure_out(c);
 
-  alt_set_t ctx = as;
-  if(!reduce_arg(cp, in-1, &ctx, T_LIST)) goto fail;
-  cell_t *c = *cp;
+  alt_set_t alt_set = 0;
+  if(!reduce_arg(c, in-1, &alt_set, T_LIST)) goto fail;
   clear_flags(c);
-  alt_set_t alt_set = AS_UNION(c, in-1);
 
   cell_t *l = c->expr.arg[in-1];
   COUNTDOWN(i, in-1) {
@@ -508,23 +494,23 @@ bool func_ap(cell_t **cp, UNUSED type_t t, alt_set_t as) {
   drop(l);
   return false;
 fail:
-  fail(cp, t, as);
+  fail(cp, t);
   return false;
 }
 
 // WORD("print", print, 2, 1)
-bool func_print(cell_t **cp, type_t t, alt_set_t as) {
+bool func_print(cell_t **cp, type_t t) {
+  cell_t *c = *cp;
   cell_t *res = 0;
-  assert(!is_marked(*cp));
+  assert(!is_marked(c));
 
   if(t != T_ANY && t != T_SYMBOL) goto fail;
 
-  alt_set_t ctx = as;
-  if(!reduce_arg(cp, 0, &ctx, T_SYMBOL) ||
-     !reduce_arg(cp, 1, &ctx, T_ANY)) goto fail;
-  cell_t *c = *cp;
+  alt_set_t alt_set = 0;
+  if(!reduce_arg(c, 0, &alt_set, T_SYMBOL) ||
+     !reduce_arg(c, 1, &alt_set, T_ANY) ||
+     as_conflict(alt_set)) goto fail;
   clear_flags(c);
-  alt_set_t alt_set = AS_UNION(c, 0, 1);
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   if(is_var(p) || is_var(q)) {
@@ -541,6 +527,6 @@ bool func_print(cell_t **cp, type_t t, alt_set_t as) {
 
  fail:
   drop(res);
-  fail(cp, t, as);
+  fail(cp, t);
   return false;
 }
