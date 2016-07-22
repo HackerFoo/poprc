@@ -439,6 +439,7 @@ bool compile_word(cell_t **entry, cell_t *module) {
   if(!is_list(l)) return true;
   if(list_size(l) < 1) return false;
   cell_t *toks = l->value.ptr[0]; // TODO handle list_size(l) > 1
+  print_toks(toks);
   *entry = closure_alloc(1);
   cell_t *e = *entry;
   e->n = PERSISTENT;

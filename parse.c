@@ -440,10 +440,8 @@ void free_toks(cell_t *t) {
   }
 }
 
-int test_lex() {
-  cell_t *l = lex("testing\n[1 2+ 3]\n_ignore this_ 4\nDone", 0), *p = l;
-  if(!l) return -1;
-  const char *last_line = l->tok_list.line; 
+void print_toks(cell_t *p) {
+  const char *last_line = p->tok_list.line; 
   while(p) {
     if(p->tok_list.line != last_line) {
       printf("\n");
@@ -453,6 +451,12 @@ int test_lex() {
     p = p->tok_list.next;
   }
   printf("\n");
+}
+
+int test_lex() {
+  cell_t *l = lex("testing\n[1 2+ 3]\n_ignore this_ 4\nDone", 0);
+  if(!l) return -1;
+  print_toks(l);
   free_toks(l);
   return 0;
 }
@@ -689,7 +693,7 @@ int test_parse_def() {
   return e ? -1 : 0;
 }
 
-bool parse_module(cell_t **c, cell_t **e) {
+const char *parse_module(cell_t **c, cell_t **e) {
   cell_t *p = *c, *n = NULL;
   MATCH_ONLY("module");
   MATCH_IF(true, n);
@@ -700,10 +704,10 @@ bool parse_module(cell_t **c, cell_t **e) {
   modules = cmap_insert(modules, name, (uintptr_t)m);
   if(modules) modules->n = PERSISTENT;
   *c = p;
-  return !*e;
+  return !*e ? name : NULL;
 fail:
   if(!*e) *e = p;
-  return false;
+  return NULL;
 }
 
 void print_modules() {

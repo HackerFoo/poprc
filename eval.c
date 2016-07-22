@@ -324,6 +324,8 @@ bool eval_command(char *line) {
     if(!(p = p->tok_list.next)) goto fail;
     if(match(p, "m")) {
       measure_display();
+    } else if(match(p, "d")) {
+      print_modules();
     } else if(match(p, "g")) {
       write_graph = !write_graph;
       printf("graph %s\n", write_graph ? "ON" : "OFF");
@@ -457,8 +459,14 @@ bool load_file(const char *path) {
 
   cell_t *toks = lex(f->data, f->data + f->size);
   cell_t *e = NULL;
-  while(parse_module(&toks, &e));
-  print_modules();
+  const char *name = NULL;
+  printf("Load %s ", path);
+  char *s = "(";
+  while((name = parse_module(&toks, &e))) {
+    printf("%s%s", s, name);
+    s = ", ";
+  }
+  printf(")\n");
 
   if(e) {
     const char *line = e->tok_list.line;
