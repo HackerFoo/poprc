@@ -66,3 +66,21 @@ Alternatives and Assertions form both POPR's branching facility (at runtime) and
 1 [ 2 + ] pushl        __   [ [ 1 2 + ] ]
 1 [ 2 + ] pushl popr   __   [ [] 3 ]
 #+END_EXAMPLE
+* Ideals
+** Two languages
+*** Names
+**** Static
+**** Modules
+**** Operations
+***** Name (alias)
+***** Unify (merge)
+*** Computation
+**** Concatenative
+**** Functional
+**** Lazy
+**** Operations
+***** Compose
+***** Branch (alt)
+**** Asserts as types (refinement types)
+** Partial evaluation
+*** Same language for static (type inference) and dynamic code
