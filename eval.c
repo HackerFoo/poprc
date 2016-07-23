@@ -343,6 +343,11 @@ bool eval_command(char *line) {
       if(get_arity(p, &in, &out, NULL)) {
         printf("%d -> %d\n", in, out);
       }
+    } else if(match(p, "b")) {
+      if((p = p->tok_list.next)) {
+        cell_t *m, *e = module_lookup_compiled(tok_seg(p), &m);
+        if(e) print_trace_cells(e->entry.data[0]);
+      }
     } else {
       printf("unknown command\n");
     }

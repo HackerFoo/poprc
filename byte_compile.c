@@ -209,9 +209,12 @@ void trace_init() {
   map_clear(trace_index);
 }
 
-void print_trace_cells() {
-  for(cell_t *c = trace_cur; c < trace_ptr; c += closure_cells(c)) {
-    int t = c - trace_cur;
+void print_trace_cells(cell_t *trace) {
+  size_t count = trace->value.integer[0];
+  cell_t *start = trace + 1;
+  cell_t *end = start + count;
+  for(cell_t *c = start; c < end; c += closure_cells(c)) {
+    int t = c - start;
     printf("cell[%d]:", t);
     if(is_value(c)) {
       if(is_var(c)) {
@@ -235,11 +238,12 @@ void print_trace_cells() {
 
       printf(", type = %s", show_type_all_short((type_t)(uintptr_t)c->tmp));
     }
-
+/*
     pair_t *p = map_find_value(trace_index, t);
     if(p) {
       printf(" (%d)", (int)p->first);
     }
+*/
     printf(" x%d\n", c->n + 1);
   }
 }
@@ -449,7 +453,7 @@ bool compile_word(cell_t **entry, cell_t *module) {
   if(!is_list(l)) return true;
   if(list_size(l) < 1) return false;
   cell_t *toks = l->value.ptr[0]; // TODO handle list_size(l) > 1
-  print_toks(toks);
+  // print_toks(toks);
   *entry = closure_alloc(1);
   cell_t *e = *entry;
   e->n = PERSISTENT;
