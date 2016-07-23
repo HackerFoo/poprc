@@ -79,10 +79,29 @@ void gen_output_struct(cell_t *trace, const char* fname) {
   printf("} %s_output;\n", fname);
 }
 
-int test_gen_output_struct() {
+void gen_function_signature(cell_t *trace, const char *fname) {
+  cell_t *header = trace;
+  cell_t *p = header + 1;
+  size_t count = header->value.integer[0];
+  printf("%s_output %s(", fname, fname);
+  char *sep = "";
+  COUNTUP(i, count) {
+    cell_t *a = &p[i];
+    if(!is_var(a)) break;
+    type_t t = a->value.type & T_EXCLUSIVE;
+    printf("%s%s%s%d", sep, ctype[t], cname[t], i);
+    sep = ", ";
+  }
+  printf(")\n");
+}
+
+int test_gen() {
   cell_t *l = lex("[] pushl pushl dup . dup popr drop | [<= !] . popr swap drop cut", 0);
   cell_t *tr = test_compile(l, NULL);
-  gen_output_struct(tr, "test_function");
+  gen_output_struct(tr, "max");
+  printf("\n");
+  gen_function_signature(tr, "max");
+  printf("{\n  // TODO\n}\n");
   free_toks(l);
   return 0;
 }
