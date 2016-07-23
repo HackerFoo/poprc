@@ -98,7 +98,7 @@ uintptr_t map_update(map_t map, uintptr_t key, uintptr_t new_value) {
   return old_value;
 }
 
-cell_t *trace_store(const cell_t *c) {
+cell_t *trace_store(const cell_t *c, type_t t) {
 
   // entry already exists
   pair_t *e = trace_find(c);
@@ -124,6 +124,8 @@ cell_t *trace_store(const cell_t *c) {
       }
     }, ARGS | PTRS);
 
+  // stuff type in tmp
+  dest->tmp = (cell_t *)(uintptr_t)t;
   return dest;
 }
 
@@ -179,6 +181,9 @@ cell_t *trace_select(const cell_t *c, cell_t *a) {
   dest->size = 2;
   dest->n = -1;
 
+  // TODO check types
+  dest->tmp = trace_cur[tc].tmp;
+
   trace_cur[tc].n++;
   trace_cur[ta].n++;
 
@@ -192,6 +197,9 @@ cell_t *trace_update_type(const cell_t *c) {
   if(is_value(t)) {
     t->value.type = c->value.type & ~T_TRACED;
   }
+
+  // also stuff type in tmp
+  t->tmp = (cell_t *)(uintptr_t)(c->value.type & ~T_TRACED);
   return t;
 }
 
@@ -224,6 +232,8 @@ void print_trace_cells() {
       traverse(c, {
           printf(" %" PRIuPTR, trace_decode(*p));
         }, ARGS | PTRS);
+
+      printf(", type = %s", show_type_all_short((type_t)(uintptr_t)c->tmp));
     }
 
     pair_t *p = map_find_value(trace_index, t);
@@ -331,7 +341,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       COUNTUP(i, in) {
         trace(c->expr.arg[i], c, tt_force, i);
       }
-      trace_store(c);
+      trace_store(c, r->value.type);
     }
     r->value.type |= T_TRACED;
     break;
@@ -349,7 +359,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
     } else if(is_list(c)) {
       trace_store_list(c);
     } else {
-      trace_store(c);
+      trace_store(c, c->value.type);
     }
     c->value.type |= T_TRACED;
     break;
@@ -383,7 +393,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
 }
 
 void bc_arg(cell_t *c, UNUSED val_t x) {
-  trace_store(c);
+  trace_store(c, T_ANY);
   c->value.type |= T_TRACED;
 }
 
@@ -394,7 +404,7 @@ cell_t *trace_store_list(cell_t *c) {
         (*p)->value.type |= T_TRACED;
       }
     }, PTRS);
-  return trace_store(c);
+  return trace_store(c, c->value.type);
 }
 
 void print_trace_index()
@@ -427,8 +437,8 @@ cell_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
   }
 
   drop(root);
-  print_map(trace_index);
-  print_trace_cells();
+//  print_map(trace_index);
+//  print_trace_cells();
   header->value.integer[0] = trace_cnt;
   return header;
 }
@@ -461,6 +471,19 @@ fail:
   return false;
 }
 
+// for testing only; no recursion
+cell_t *test_compile(cell_t *toks, cell_t *module) {
+  csize_t in, out;
+  get_arity(toks, &in, &out, module);
+  const cell_t *p = toks;
+  cell_t *c = parse_expr(&p, module);
+  if(!c) goto fail;
+  return byte_compile(c, in, out);
+
+fail:
+  return false;
+}
+
 bool func_exec(cell_t **cp, UNUSED type_t t) {
   cell_t *c = clear_ptr(*cp);
   assert(is_closure(c));
@@ -489,6 +512,7 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
     size_t s = closure_cells(code);
     cell_t *nc = closure_alloc_cells(s);
     memcpy(nc, code, s * sizeof(cell_t));
+    nc->tmp = 0;
     code += s;
 
     map[map_idx++] = nc;

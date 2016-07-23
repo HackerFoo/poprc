@@ -13,7 +13,7 @@ Compile to direct C when possible
 **** split_args
 * major
 ** C generation
-*** STARTED Return types
+*** DONE Return types
 *** TODO function signature
 *** TODO simple expressions
 *** TODO select -> if/then

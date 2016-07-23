@@ -30,15 +30,16 @@
 #include "gen/support.h"
 #include "gen/byte_compile.h"
 #include "gen/map.h"
+#include "gen/parse.h"
 
 const char *ctype[] = {
   [T_ANY] = "cell_t *",
-  [T_INT] = "int",
+  [T_INT] = "int ",
   [T_IO] = "cell_t *",
   [T_LIST] = "cell_t *",
-  [T_SYMBOL] = "cell_t *",
-  [T_MAP] = "map_t",
-  [T_STRING] = "seg_t"
+  [T_SYMBOL] = "int ",
+  [T_MAP] = "map_t ",
+  [T_STRING] = "seg_t "
 };
 
 const char *cname[] = {
@@ -51,19 +52,37 @@ const char *cname[] = {
   [T_STRING] = "str"
 };
 
-void gen_output_struct(cell_t *l, const char* fname) {
+cell_t *trace_last(cell_t *trace) {
+  cell_t *header = trace;
+  cell_t *p = header + 1, *prev = p;
+  size_t count = header->value.integer[0];
+  cell_t *end = &p[count];
+  while(p < end) {
+    size_t s = closure_cells(p);
+    prev = p;
+    p += s;
+  }
+  return prev;
+}
+
+void gen_output_struct(cell_t *trace, const char* fname) {
+  cell_t *l = trace_last(trace);
+  cell_t *data = trace + 1;
+
   printf("typedef struct {\n");
   csize_t n = list_size(l);
   COUNTUP(i, n) {
-    // TODO add types
-    printf("  %s%s%d;\n", ctype[T_ANY], cname[T_ANY], (int)i);
+    cell_t *a = &data[trace_decode(l->value.ptr[i])];
+    type_t t = (uintptr_t)a->tmp & T_EXCLUSIVE;
+    printf("  %s%s%d;\n", ctype[t], cname[t], (int)i);
   }
   printf("} %s_output;\n", fname);
 }
 
 int test_gen_output_struct() {
-  cell_t *l = make_list(3);
-  gen_output_struct(l, "test_function");
-  drop(l);
+  cell_t *l = lex("[] pushl pushl dup . dup popr drop | [<= !] . popr swap drop cut", 0);
+  cell_t *tr = test_compile(l, NULL);
+  gen_output_struct(tr, "test_function");
+  free_toks(l);
   return 0;
 }
