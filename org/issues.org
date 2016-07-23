@@ -14,7 +14,7 @@ Compile to direct C when possible
 * major
 ** C generation
 *** DONE Return types
-*** TODO function signature
+*** DONE function signature
 *** TODO simple expressions
 *** TODO select -> if/then
 *** TODO pushl/popr
