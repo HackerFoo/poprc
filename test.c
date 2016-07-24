@@ -28,7 +28,7 @@
 #include "gen/primitive.h"
 #include "gen/test_table.h"
 
-struct __test_entry tests[] = TESTS;
+pair_t tests[] = TESTS;
 
 int test_alloc() {
   cell_t *a[30];
@@ -81,18 +81,18 @@ bool check_free() {
   return !leak;
 }
 
-#define MAX_NAME_SIZE 4096
-
 int run_test(const char *name) {
-  int name_size = strnlen(name, MAX_NAME_SIZE);
+  int name_size = strlen(name);
   int fail = 0;
   FOREACH(i, tests) {
-    struct __test_entry *entry = &tests[i];
-    int entry_name_size = strnlen(entry->name, MAX_NAME_SIZE);
-    if(strncmp(name, entry->name, min(name_size, entry_name_size)) == 0) {
-      printf("@ %s\n", entry->name);
-      int result = entry->func();
-      printf("%s => %d\n", entry->name, result);
+    pair_t *entry = &tests[i];
+    char *entry_name = (char *)entry->first;
+    int (*entry_func)() = (int (*)())entry->second;
+    int entry_name_size = strlen(entry_name);
+    if(strncmp(name, entry_name, min(name_size, entry_name_size)) == 0) {
+      printf("@ %s\n", entry_name);
+      int result = entry_func();
+      printf("%s => %d\n", entry_name, result);
       if(result && !fail) fail = result;
     }
   }

@@ -17,6 +17,13 @@ gen/test_table.h: $(SRC)
 	sed -n -e 's/^ *int test_\([a-zA-Z0-9_]*\).*/TEST(\1),\\/p' $(SRC) | LC_ALL=C sort >> $@
 	echo '}' >> $@
 
+gen/command_table.h: $(SRC)
+	@mkdir -p gen
+	sed -n -e 's/^ *void command_\([a-zA-Z0-9_]*\).*/extern void command_\1(cell_t *);/p' $(SRC) | sort > $@
+	echo '#define COMMANDS { \\' >> $@
+	sed -n -e 's/^ *void command_\([a-zA-Z0-9_]*\).*/COMMAND(\1),\\/p' $(SRC) | LC_ALL=C sort >> $@
+	echo '}' >> $@
+
 gen/%.h: %.c makeheaders/makeheaders
 	@mkdir -p gen
 	./makeheaders/makeheaders $*.c:gen/$*.h

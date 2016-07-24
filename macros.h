@@ -64,14 +64,15 @@
 
 #define TEST(name)                                       \
   {                                                      \
-    &test_##name,                                        \
-    #name                                                \
+    .first = (uintptr_t)#name,                           \
+    .second = (uintptr_t)&test_##name                    \
   }
 
-struct __test_entry {
-  int (*func)();
-  char *name;
-};
+#define COMMAND(name)                                    \
+  {                                                      \
+    .first = (uintptr_t)#name,                           \
+    .second = (uintptr_t)&command_##name                 \
+  }
 
 #define BITSET(name, size) uint8_t name[((size)+7)/8] = {0}
 #define BITSET_INDEX(name, array) BITSET(name, LENGTH(array))

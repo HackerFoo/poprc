@@ -42,6 +42,8 @@
 #include "gen/byte_compile.h"
 #include "gen/parse.h"
 #include "gen/print.h"
+#include "gen/cgen.h"
+#include "gen/command_table.h"
 
 #ifdef USE_LLVM
 #include "llvm.h"
@@ -318,43 +320,93 @@ void run_eval(bool echo) {
   }
 }
 
+static pair_t commands[] = COMMANDS;
+
+bool run_command(seg_t name, cell_t *rest) {
+  FOREACH(i, commands) {
+    pair_t *entry = &commands[i];
+    char *entry_name = (char *)entry->first;
+    int (*entry_func)() = (int (*)(cell_t *rest))entry->second;
+    int entry_name_size = strlen(entry_name);
+    if(strncmp(name.s, entry_name, min((int)name.n, entry_name_size)) == 0) {
+      entry_func(rest);
+      return true;
+    }
+  }
+  return false;
+}
+
+void command_measure(UNUSED cell_t *rest) {
+  measure_display();
+}
+
+void command_module_display(UNUSED cell_t *rest) {
+  print_modules();
+}
+
+void command_graph_toggle(UNUSED cell_t *rest) {
+  write_graph = !write_graph;
+  printf("graph %s\n", write_graph ? "ON" : "OFF");
+}
+
+void command_load_file(cell_t *rest) {
+  if(rest) load_file(rest->tok_list.location);
+}
+
+void command_test(cell_t *rest) {
+  const char *name = rest ? rest->tok_list.location : "";
+  run_test(name);
+}
+
+void command_arity(cell_t *rest) {
+  csize_t in, out;
+  if(rest) {
+    if(get_arity(rest, &in, &out, NULL)) {
+      printf("%d -> %d\n", in, out);
+    }
+  }
+}
+
+void command_bytecode(cell_t *rest) {
+  if(rest) {
+    cell_t *m, *e = module_lookup_compiled(tok_seg(rest), &m);
+    if(e) print_trace_cells(e->entry.data[0]);
+  }
+}
+
+void command_cgen(cell_t *rest) {
+  if(rest) {
+    cell_t *m, *e = module_lookup_compiled(tok_seg(rest), &m);
+    if(e) gen_function(e->entry.data[0], tok_seg(rest));
+  }
+}
+
+void command_list(cell_t *rest) {
+  seg_t name = { .s = "", .n = 0 };
+  if(rest) name = tok_seg(rest);
+  FOREACH(i, commands) {
+    pair_t *entry = &commands[i];
+    char *entry_name = (char *)entry->first;
+    int entry_name_size = strlen(entry_name);
+    if(strncmp(name.s, entry_name, min((int)name.n, entry_name_size)) == 0) {
+      printf("  %s\n", entry_name);
+    }
+  }
+}
+
 bool eval_command(char *line) {
   cell_t *p = lex(line, 0), *p0 = p;
   if(match(p, ":")) {
-    if(!(p = p->tok_list.next)) goto fail;
-    if(match(p, "m")) {
-      measure_display();
-    } else if(match(p, "d")) {
-      print_modules();
-    } else if(match(p, "g")) {
-      write_graph = !write_graph;
-      printf("graph %s\n", write_graph ? "ON" : "OFF");
-    } else if(match(p, "l")) {
-      load_file(p->tok_list.next->tok_list.location);
-    } else if(match(p, "q")) {
-      goto fail;
-    } else if(match(p, "t")) {
-      p = p->tok_list.next;
-      const char *name = p ? p->tok_list.location : "";
-      run_test(name);
-    } else if(match(p, "a")) {
-      csize_t in, out;
-      if(!(p = p->tok_list.next)) goto fail;
-      if(get_arity(p, &in, &out, NULL)) {
-        printf("%d -> %d\n", in, out);
-      }
-    } else if(match(p, "b")) {
-      if((p = p->tok_list.next)) {
-        cell_t *m, *e = module_lookup_compiled(tok_seg(p), &m);
-        if(e) print_trace_cells(e->entry.data[0]);
-      }
-    } else if(match(p, "s")) {
-      if((p = p->tok_list.next)) {
-        cell_t *m, *e = module_lookup_compiled(tok_seg(p), &m);
-        if(e) gen_function(e->entry.data[0], tok_seg(p));
-      }
-    } else {
+    p = p->tok_list.next;
+    if(!p) {
       printf("unknown command\n");
+    } else {
+      seg_t cmd = tok_seg(p);
+      if(segcmp("q", cmd) == 0) {
+        goto fail;
+      } else if(!run_command(cmd, p->tok_list.next)) {
+        printf("unknown command\n");
+      }
     }
   } else if(p) {
     cell_t *e = NULL;
