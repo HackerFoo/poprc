@@ -348,6 +348,11 @@ bool eval_command(char *line) {
         cell_t *m, *e = module_lookup_compiled(tok_seg(p), &m);
         if(e) print_trace_cells(e->entry.data[0]);
       }
+    } else if(match(p, "s")) {
+      if((p = p->tok_list.next)) {
+        cell_t *m, *e = module_lookup_compiled(tok_seg(p), &m);
+        if(e) gen_function(e->entry.data[0], tok_seg(p));
+      }
     } else {
       printf("unknown command\n");
     }
