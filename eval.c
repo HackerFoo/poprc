@@ -394,19 +394,17 @@ void command_list(cell_t *rest) {
   }
 }
 
+static bool quit = false;
+void command_quit(UNUSED cell_t *rest) {
+  quit = true;
+}
+
 bool eval_command(char *line) {
   cell_t *p = lex(line, 0), *p0 = p;
   if(match(p, ":")) {
     p = p->tok_list.next;
-    if(!p) {
+    if(!p || !run_command(tok_seg(p), p->tok_list.next)) {
       printf("unknown command\n");
-    } else {
-      seg_t cmd = tok_seg(p);
-      if(segcmp("q", cmd) == 0) {
-        goto fail;
-      } else if(!run_command(cmd, p->tok_list.next)) {
-        printf("unknown command\n");
-      }
     }
   } else if(p) {
     cell_t *e = NULL;
@@ -425,10 +423,7 @@ bool eval_command(char *line) {
     }
   }
   free_toks(p0);
-  return true;
-fail:
-  free_toks(p0);
-  return false;
+  return !quit;
 }
 
 void reduce_root(cell_t *c) {
