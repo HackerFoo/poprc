@@ -130,7 +130,7 @@ void gen_body(cell_t *trace) {
     gen_decl(trace, c);
   }
   for(cell_t *c = start; c < end; c += closure_cells(c)) {
-    gen_call(trace, c);
+    gen_instruction(trace, c);
   }
   gen_return(trace, end);
 }
@@ -155,9 +155,21 @@ void gen_decl(cell_t *trace, cell_t *c) {
   printf("  %s%s%d;\n", ctype(t), cname(t), i);
 }
 
+void gen_instruction(cell_t *trace, cell_t *c) {
+  if(c->func == func_value) {
+    gen_value(trace, c);
+  } else if(c->func == func_select) {
+    gen_select(trace, c);
+  } else if(c->func == func_assert) {
+    gen_assert(trace, c);
+  } else {
+    gen_call(trace, c);
+  }
+}
+
 void gen_call(cell_t *trace, cell_t *c) {
   cell_t *d = trace + 1;
-  int i = c - trace - 1;
+  int i = c - d;
   const char *fname = function_name(c->func);
   char *sep = "";
   printf("  %s%d = %s(", cname((uintptr_t)c->tmp), i, fname);
@@ -174,6 +186,52 @@ void gen_call(cell_t *trace, cell_t *c) {
     }, ARGS_OUT);
 
   printf(");\n");
+}
+
+void gen_value(cell_t *trace, cell_t *c) {
+  cell_t *d = trace + 1;
+  int i = c - d;
+  type_t t = c->value.type & T_EXCLUSIVE;
+  printf("  %s%d = ", cname(t), i);
+  switch(t) {
+  case T_INT:
+  case T_SYMBOL:
+    printf("%d;\n", (int)c->value.integer[0]);
+    break;
+  case T_STRING: {
+    seg_t s = c->value.str;
+    printf("{ .s = \"%*.s\", .n = %d };\n", (int)s.n, s.s, (int)s.n);
+    break;
+  }
+  default:
+    assert(false); // TODO add more types
+  }
+}
+
+void gen_select(cell_t *trace, cell_t *c) {
+  cell_t *d = trace + 1;
+  int
+    i = c - d,
+    ip = trace_decode(c->expr.arg[0]),
+    iq = trace_decode(c->expr.arg[1]);
+  const char *cn = cname((uintptr_t)c->tmp);
+  printf("label%d:\n", iq);
+  printf("  %s%d = %s%d;\n", cn, i, cname((uintptr_t)d[iq].tmp), iq);
+  printf("  goto label%d;\n", i);
+  printf("label%d:\n", ip);
+  printf("  %s%d = %s%d;\n", cn, i, cname((uintptr_t)d[ip].tmp), ip);
+  printf("label%d:\n", i);
+}
+
+void gen_assert(cell_t *trace, cell_t *c) {
+  cell_t *d = trace + 1;
+  int
+    i = c - d,
+    ip = trace_decode(c->expr.arg[0]),
+    iq = trace_decode(c->expr.arg[1]);
+  const char *cn = cname((uintptr_t)c->tmp);
+  printf("  %s%d = %s%d;\n", cn, i, cname((uintptr_t)d[ip].tmp), ip);
+  printf("  if(%s%d == SYM_TRUE) goto label%d;\n", cname((uintptr_t)d[iq].tmp), iq, i);
 }
 
 void testgen(char *name, char *src) {
