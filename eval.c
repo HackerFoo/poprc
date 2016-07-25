@@ -377,7 +377,11 @@ void command_bytecode(cell_t *rest) {
 void command_cgen(cell_t *rest) {
   if(rest) {
     cell_t *m, *e = module_lookup_compiled(tok_seg(rest), &m);
-    if(e) gen_function(e->entry.data[0], tok_seg(rest));
+    char
+      *mname = module_name(m),
+      *fname = entry_name(m, e);
+
+    if(e && fname) gen_function(e->entry.data[0], mname ? mname : "", fname);
   }
 }
 

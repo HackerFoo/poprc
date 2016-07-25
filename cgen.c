@@ -93,7 +93,7 @@ void gen_output_struct(cell_t *trace, const char* fname) {
 }
 */
 
-void gen_function_signature(cell_t *trace, seg_t fname) {
+void gen_function_signature(cell_t *trace, char *mname, char *fname) {
   cell_t *header = trace;
   cell_t *p = header + 1;
   cell_t *l = trace_last(trace);
@@ -101,7 +101,7 @@ void gen_function_signature(cell_t *trace, seg_t fname) {
   size_t count = header->value.integer[0];
   size_t ires = trace_decode(l->value.ptr[out_n - 1]);
 
-  printf("%s%.*s(", ctype((uintptr_t)p[ires].tmp), (int)fname.n, fname.s);
+  printf("%s%s_%s(", ctype((uintptr_t)p[ires].tmp), mname, fname);
   char *sep = "";
   COUNTDOWN(i, count) {
     cell_t *a = &p[i];
@@ -237,12 +237,12 @@ void gen_assert(cell_t *trace, cell_t *c) {
 void testgen(char *name, char *src) {
   cell_t *l = lex(src, 0);
   cell_t *tr = test_compile(l, NULL);
-  gen_function(tr, string_seg(name));
+  gen_function(tr, "testgen", name);
   free_toks(l);
 }
 
-void gen_function(cell_t *tr, seg_t name) {
-  gen_function_signature(tr, name);
+void gen_function(cell_t *tr, char *mname, char *fname) {
+  gen_function_signature(tr, mname, fname);
   printf("{\n");
   gen_body(tr);
   printf("}\n");

@@ -441,7 +441,7 @@ void free_toks(cell_t *t) {
 }
 
 void print_toks(cell_t *p) {
-  const char *last_line = p->tok_list.line; 
+  const char *last_line = p->tok_list.line;
   while(p) {
     if(p->tok_list.line != last_line) {
       printf("\n");
@@ -990,6 +990,26 @@ cell_t **module_lookup(seg_t path, cell_t **context) {
       *context = m;
       return x ? (cell_t **)&x->second : NULL;
     }
+  }
+  return NULL;
+}
+
+char *module_name(cell_t *module) {
+  if(!modules) return NULL;
+  map_t map = modules->value.map;
+  FORMAP(i, map) {
+    pair_t *e = &map[i];
+    if((cell_t *)e->second == module) return (char *)e->first;
+  }
+  return NULL;
+}
+
+char *entry_name(cell_t *module, cell_t *entry) {
+  if(!module || !entry) return NULL;
+  map_t map = module->value.map;
+  FORMAP(i, map) {
+    pair_t *e = &map[i];
+    if((cell_t *)e->second == entry) return (char *)e->first;
   }
   return NULL;
 }
