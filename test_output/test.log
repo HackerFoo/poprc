@@ -25,7 +25,7 @@ count => 0
 m[10] = {{eight, 7}, {five, 4}, {four, 3}, {one, 0}, {seven, 6}, {six, 5}, {three, 2}, {two, 1}, {nine, 8}, {ten, 9}}
 expand_map => 0
 @ gen
-int max(int int1, int int0)
+int testgen_max(int int1, int int0)
 {
   int sym2;
   int int3;
@@ -46,7 +46,7 @@ label3:
 label6:
   return any6;
 }
-cell_t *ifte(int int2, cell_t *any1, cell_t *any0)
+cell_t *testgen_ifte(int int2, cell_t *any1, cell_t *any0)
 {
   int int3;
   int sym4;
@@ -64,7 +64,7 @@ label5:
 label6:
   return any6;
 }
-cell_t *rot(cell_t *any2, cell_t *any1, cell_t *any0, cell_t **out_any1, cell_t **out_any0)
+cell_t *testgen_rot(cell_t *any2, cell_t *any1, cell_t *any0, cell_t **out_any1, cell_t **out_any0)
 {
   *out_any1 = any0;
   *out_any0 = any2;
