@@ -25,7 +25,7 @@ count => 0
 m[10] = {{eight, 7}, {five, 4}, {four, 3}, {one, 0}, {seven, 6}, {six, 5}, {three, 2}, {two, 1}, {nine, 8}, {ten, 9}}
 expand_map => 0
 @ gen
-int max(int int0, int int1)
+int max(int int1, int int0)
 {
   int sym2;
   int int3;
@@ -33,28 +33,41 @@ int max(int int0, int int1)
   int int5;
   int int6;
   sym2 = lte(int1, int0);
-  int3 = assert(int0, sym2);
+  int3 = int0;
+  if(sym2 == SYM_TRUE) goto label3;
   sym4 = lte(int0, int1);
-  int5 = assert(int1, sym4);
-  int6 = select(int3, int5);
+  int5 = int1;
+  if(sym4 == SYM_TRUE) goto label5;
+label5:
+  int6 = int5;
+  goto label6;
+label3:
+  int6 = int3;
+label6:
   return any6;
 }
-cell_t *ifte(cell_t *any0, cell_t *any1, int int2)
+cell_t *ifte(int int2, cell_t *any1, cell_t *any0)
 {
   int int3;
   int sym4;
   cell_t *any5;
   cell_t *any6;
-  int3 = value();
+  int3 = 0;
   sym4 = eq(int2, int3);
-  any5 = assert(any0, sym4);
-  any6 = select(any5, any1);
+  any5 = any0;
+  if(sym4 == SYM_TRUE) goto label5;
+label1:
+  any6 = any1;
+  goto label6;
+label5:
+  any6 = any5;
+label6:
   return any6;
 }
-cell_t *rot(cell_t *any0, cell_t *any1, cell_t *any2, cell_t **out_any1, cell_t **out_any2)
+cell_t *rot(cell_t *any2, cell_t *any1, cell_t *any0, cell_t **out_any1, cell_t **out_any0)
 {
   *out_any1 = any0;
-  *out_any2 = any2;
+  *out_any0 = any2;
   return any1;
 }
 gen => 0

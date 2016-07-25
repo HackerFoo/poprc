@@ -103,9 +103,9 @@ void gen_function_signature(cell_t *trace, seg_t fname) {
 
   printf("%s%.*s(", ctype((uintptr_t)p[ires].tmp), (int)fname.n, fname.s);
   char *sep = "";
-  COUNTUP(i, count) {
+  COUNTDOWN(i, count) {
     cell_t *a = &p[i];
-    if(!is_var(a)) break;
+    if(!is_var(a)) continue;
     type_t t = a->value.type & T_EXCLUSIVE;
     printf("%s%s%s%d", sep, ctype(t), cname(t), (int)i);
     sep = ", ";
@@ -114,7 +114,7 @@ void gen_function_signature(cell_t *trace, seg_t fname) {
     int ai = trace_decode(l->value.ptr[i]);
     cell_t *a = &p[ai];
     type_t t = a->value.type & T_EXCLUSIVE;
-    printf("%s%s*out_%s%d", sep, ctype(t), cname(t), (int)(out_n - i - 1));
+    printf("%s%s*out_%s%d", sep, ctype(t), cname(t), (int)i);
   }
 
   printf(")\n");
@@ -144,7 +144,7 @@ void gen_return(cell_t *trace, cell_t *l) {
     cell_t *a = &p[ai];
     type_t t = a->value.type & T_EXCLUSIVE;
     const char *n = cname(t);
-    printf("  *out_%s%d = %s%d;\n", n, (int)(out_n - i - 1), n, ai);
+    printf("  *out_%s%d = %s%d;\n", n, (int)i, n, ai);
   }
   printf("  return %s%d;\n", cname(p[ires].value.type), ires);
 }
