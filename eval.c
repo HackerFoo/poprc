@@ -385,6 +385,14 @@ void command_cgen(cell_t *rest) {
   }
 }
 
+void command_def(cell_t *rest) {
+  if(!rest || !rest->tok_list.next) return;
+  cell_t
+    *name = rest,
+    *expr = rest->tok_list.next;
+  parse_eval_def(name, expr);
+}
+
 void command_list(cell_t *rest) {
   seg_t name = { .s = "", .n = 0 };
   if(rest) name = tok_seg(rest);
@@ -438,7 +446,7 @@ void reduce_root(cell_t *c) {
 }
 
 void eval(const cell_t *p) {
-  cell_t *c = parse_expr(&p, NULL);
+  cell_t *c = parse_expr(&p, eval_module ? *eval_module : NULL);
   if(!c) return;
   csize_t s = list_size(c);
   if(s > 0 && !closure_is_ready(c->value.ptr[s-1])) {
