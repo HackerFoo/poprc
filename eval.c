@@ -326,7 +326,7 @@ bool run_command(seg_t name, cell_t *rest) {
   FOREACH(i, commands) {
     pair_t *entry = &commands[i];
     char *entry_name = (char *)entry->first;
-    int (*entry_func)() = (int (*)(cell_t *rest))entry->second;
+    void (*entry_func)(cell_t *) = (void (*)(cell_t *))entry->second;
     int entry_name_size = strlen(entry_name);
     if(strncmp(name.s, entry_name, min((int)name.n, entry_name_size)) == 0) {
       entry_func(rest);
