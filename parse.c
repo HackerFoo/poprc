@@ -602,20 +602,51 @@ fail:
   return p;
 }
 
-cell_t **cmap_get(cell_t **cp, seg_t key, uintptr_t val) {
+cell_t *cmap_set(cell_t **cp, seg_t key, cell_t *val) {
   cell_t *c = *cp;
   map_t map;
+
+  // check if already in the map
+  if(c != NULL) {
+    map = c->value.map;
+    pair_t *x = seg_map_find(map, key);
+    if(x) {
+      cell_t *old = (cell_t *)x->second;
+      x->second = (uintptr_t)val;
+      return old;
+    }
+  }
+
+  // add to map
+  c = expand_map(c);
+  map = c->value.map;
+  const char *s = seg_string(key);
+  pair_t p = {(uintptr_t)s, (uintptr_t)val};
+  string_map_insert(map, p);
+  *cp = c;
+  return NULL;
+}
+
+cell_t **cmap_get(cell_t **cp, seg_t key) {
+  cell_t *c = *cp;
+  map_t map;
+
+  // check if already in the map
   if(c != NULL) {
     map = c->value.map;
     pair_t *x = seg_map_find(map, key);
     if(x) return (cell_t **)&x->second;
   }
+
+  // add to map
   c = expand_map(c);
   map = c->value.map;
   const char *s = seg_string(key);
-  pair_t p = {(uintptr_t)s, val};
+  pair_t p = {(uintptr_t)s, (uintptr_t)NULL};
   string_map_insert(map, p);
   *cp = c;
+
+  // find and return it
   return (cell_t **)&string_map_find(map, s)->second;
 }
 
@@ -626,9 +657,10 @@ cell_t *parse_defs(cell_t **c, cell_t **e) {
     *n = NULL,
     *p = *c;
   while(parse_def(&p, &n, &l)) {
-    const char *name = seg_string(tok_seg(n));
+    seg_t name = tok_seg(n);
     cell_free(n);
-    m = cmap_insert(m, name, (uintptr_t)l);
+    cell_t *old = cmap_set(&m, name, l);
+    assert(old == NULL); // TODO append defs?
     if((*e = check_def(l))) break;
   }
   *c = p;
@@ -710,21 +742,22 @@ int test_parse_def() {
   return e ? -1 : 0;
 }
 
-const char *parse_module(cell_t **c, cell_t **e) {
+bool parse_module(cell_t **c, seg_t *name, cell_t **e) {
   cell_t *p = *c, *n = NULL;
   MATCH_ONLY("module");
   MATCH_IF(true, n);
   MATCH_ONLY(":");
-  const char *name = seg_string(tok_seg(n));
+  *name = tok_seg(n);
   cell_free(n);
   cell_t *m = parse_defs(&p, e);
-  modules = cmap_insert(modules, name, (uintptr_t)m);
+  cell_t *old = cmap_set(&modules, *name, m);
+  assert(old == NULL); // TODO append modules?
   if(modules) modules->n = PERSISTENT;
   *c = p;
-  return !*e ? name : NULL;
+  return !*e;
 fail:
   if(!*e) *e = p;
-  return NULL;
+  return false;
 }
 
 void print_modules() {
@@ -760,7 +793,14 @@ int test_parse_module() {
                   "module b:\n"
                   "f4: heres another\n", 0);
   cell_t *e = NULL;
-  while(parse_module(&p, &e));
+  seg_t n;
+  char *s = "Loaded modules (";
+  while(parse_module(&p, &n, &e)) {
+    printf("%s%.*s", s, (int)n.n, n.s);
+    s = ", ";
+  }
+  printf(")\n");
+
   print_modules();
   free_modules();
   return e ? -1 : 0;
@@ -877,14 +917,6 @@ cell_t *expand_map(cell_t *c) {
   }
 }
 
-cell_t *cmap_insert(cell_t *c, const char *key, uintptr_t val) {
-  c = expand_map(c);
-  map_t m = c->value.map;
-  pair_t p = {(uintptr_t)key, val};
-  string_map_insert(m, p);
-  return c;
-}
-
 int test_expand_map() {
   cell_t *c = NULL;
   char *strings[] = {
@@ -900,7 +932,7 @@ int test_expand_map() {
     "ten"
   };
   FOREACH(i, strings) {
-    c = cmap_insert(c, strings[i], i);
+    cmap_set(&c, string_seg(strings[i]), (cell_t *)i);
   }
   map_t m = c->value.map;
   print_string_map(m);
@@ -1045,7 +1077,6 @@ int test_module_lookup() {
                   " number three\n"
                   "module b:\n"
                   "f4: heres another\n"
-                  "module b:\n"
                   "a: module a\n"
                   "module c:\n"
                   "f5: 1 2 +\n"
@@ -1054,7 +1085,14 @@ int test_module_lookup() {
                   "module e:\n"
                   "f7: 6 5 -\n", 0);
   cell_t *e = NULL;
-  while(parse_module(&p, &e));
+  seg_t n;
+  char *s = "Loaded modules (";
+  while(parse_module(&p, &n, &e)) {
+    printf("%s%.*s", s, (int)n.n, n.s);
+    s = ", ";
+  }
+  printf(")\n");
+
   cell_t *ma = get_module(string_seg("a"));
   cell_t *ctx = ma;
   cell_t **c = module_lookup(string_seg("a.b.a.f3"), &ctx);
@@ -1089,8 +1127,8 @@ cell_t *module_lookup_compiled(seg_t path, cell_t **context) {
 }
 
 cell_t *parse_eval_def(cell_t *name, cell_t *rest) {
-  cell_t **eval_module = cmap_get(&modules, string_seg("eval"), (uintptr_t)NULL);
-  cell_t **entry = cmap_get(eval_module, tok_seg(name), (uintptr_t)NULL);
+  cell_t **eval_module = cmap_get(&modules, string_seg("eval"));
+  cell_t **entry = cmap_get(eval_module, tok_seg(name));
   *entry = quote(rest);
   if(compile_word(entry, *eval_module)) {
     return *entry;

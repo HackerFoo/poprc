@@ -536,11 +536,11 @@ bool load_file(const char *path) {
 
   cell_t *toks = lex(f->data, f->data + f->size);
   cell_t *e = NULL;
-  const char *name = NULL;
+  seg_t name;
   printf("Load %s ", path);
   char *s = "(";
-  while((name = parse_module(&toks, &e))) {
-    printf("%s%s", s, name);
+  while(parse_module(&toks, &name, &e)) {
+    printf("%s%.*s", s, (int)name.n, name.s);
     s = ", ";
   }
   printf(")\n");

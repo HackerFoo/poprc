@@ -136,6 +136,7 @@ merge => 0
 Copyright 2012-2016 Dustin DeWeese
 mmap_file => 0
 @ module_lookup
+Loaded modules (a, b, c, d, e)
 a.b.a.f3:
   number three
 a.cd.f5:
@@ -163,6 +164,7 @@ word:
   oh hey heres the third one
 parse_def => 0
 @ parse_module
+Loaded modules (a, b)
 module a:
 f1:
   the first word
