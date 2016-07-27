@@ -44,7 +44,7 @@ label5:
 label3:
   int6 = int3;
 label6:
-  return any6;
+  return int6;
 }
 cell_t *testgen_ifte(int int2, cell_t *any1, cell_t *any0)
 {

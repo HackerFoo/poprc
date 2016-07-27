@@ -93,6 +93,11 @@ void gen_output_struct(cell_t *trace, const char* fname) {
 }
 */
 
+type_t gen_type(cell_t *c) {
+  type_t t = is_value(c) ? c->value.type : (uintptr_t)c->tmp;
+  return t & T_EXCLUSIVE;
+}
+
 void gen_function_signature(cell_t *trace, char *mname, char *fname) {
   cell_t *header = trace;
   cell_t *p = header + 1;
@@ -106,14 +111,14 @@ void gen_function_signature(cell_t *trace, char *mname, char *fname) {
   COUNTDOWN(i, count) {
     cell_t *a = &p[i];
     if(!is_var(a)) continue;
-    type_t t = a->value.type & T_EXCLUSIVE;
+    type_t t = gen_type(a);
     printf("%s%s%s%d", sep, ctype(t), cname(t), (int)i);
     sep = ", ";
   }
   COUNTDOWN(i, out_n-1) {
     int ai = trace_decode(l->value.ptr[i]);
     cell_t *a = &p[ai];
-    type_t t = a->value.type & T_EXCLUSIVE;
+    type_t t = gen_type(a);
     printf("%s%s*out_%s%d", sep, ctype(t), cname(t), (int)i);
   }
 
@@ -142,16 +147,16 @@ void gen_return(cell_t *trace, cell_t *l) {
   COUNTDOWN(i, out_n-1) {
     int ai = trace_decode(l->value.ptr[i]);
     cell_t *a = &p[ai];
-    type_t t = a->value.type & T_EXCLUSIVE;
+    type_t t = gen_type(a);
     const char *n = cname(t);
     printf("  *out_%s%d = %s%d;\n", n, (int)i, n, ai);
   }
-  printf("  return %s%d;\n", cname(p[ires].value.type), ires);
+  printf("  return %s%d;\n", cname((uintptr_t)p[ires].tmp), ires);
 }
 
 void gen_decl(cell_t *trace, cell_t *c) {
   int i = c - trace - 1;
-  type_t t = (uintptr_t)c->tmp;
+  type_t t = gen_type(c);
   printf("  %s%s%d;\n", ctype(t), cname(t), i);
 }
 
@@ -191,7 +196,7 @@ void gen_call(cell_t *trace, cell_t *c) {
 void gen_value(cell_t *trace, cell_t *c) {
   cell_t *d = trace + 1;
   int i = c - d;
-  type_t t = c->value.type & T_EXCLUSIVE;
+  type_t t = gen_type(c);
   printf("  %s%d = ", cname(t), i);
   switch(t) {
   case T_INT:
