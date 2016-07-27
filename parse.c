@@ -602,13 +602,13 @@ fail:
   return p;
 }
 
-pair_t *cmap_get(cell_t **cp, seg_t key, uintptr_t val) {
+cell_t **cmap_get(cell_t **cp, seg_t key, uintptr_t val) {
   cell_t *c = *cp;
   map_t map;
   if(c != NULL) {
     map = c->value.map;
     pair_t *x = seg_map_find(map, key);
-    if(x) return x;
+    if(x) return (cell_t **)&x->second;
   }
   c = expand_map(c);
   map = c->value.map;
@@ -616,7 +616,7 @@ pair_t *cmap_get(cell_t **cp, seg_t key, uintptr_t val) {
   pair_t p = {(uintptr_t)s, val};
   string_map_insert(map, p);
   *cp = c;
-  return string_map_find(map, s);
+  return (cell_t **)&string_map_find(map, s)->second;
 }
 
 cell_t *parse_defs(cell_t **c, cell_t **e) {
@@ -1088,13 +1088,9 @@ cell_t *module_lookup_compiled(seg_t path, cell_t **context) {
   }
 }
 
-cell_t **eval_module = NULL;
-
 cell_t *parse_eval_def(cell_t *name, cell_t *rest) {
-  if(!eval_module) {
-    eval_module = (cell_t **)(&cmap_get(&modules, string_seg("eval"), (uintptr_t)NULL)->second);
-  }
-  cell_t **entry = (cell_t **)(&cmap_get(eval_module, tok_seg(name), 0)->second);
+  cell_t **eval_module = cmap_get(&modules, string_seg("eval"), (uintptr_t)NULL);
+  cell_t **entry = cmap_get(eval_module, tok_seg(name), (uintptr_t)NULL);
   *entry = quote(rest);
   if(compile_word(entry, *eval_module)) {
     return *entry;

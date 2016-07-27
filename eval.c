@@ -369,14 +369,18 @@ void command_arity(cell_t *rest) {
 
 void command_bytecode(cell_t *rest) {
   if(rest) {
-    cell_t *m, *e = module_lookup_compiled(tok_seg(rest), &m);
+    cell_t
+      *m = eval_module(),
+      *e = module_lookup_compiled(tok_seg(rest), &m);
     if(e) print_trace_cells(e->entry.data[0]);
   }
 }
 
 void command_cgen(cell_t *rest) {
   if(rest) {
-    cell_t *m, *e = module_lookup_compiled(tok_seg(rest), &m);
+    cell_t
+      *m = eval_module(),
+      *e = module_lookup_compiled(tok_seg(rest), &m);
     char
       *mname = module_name(m),
       *fname = entry_name(m, e);
@@ -445,8 +449,12 @@ void reduce_root(cell_t *c) {
   if(write_graph) make_graph_all(REDUCED_GRAPH_FILE);
 }
 
+cell_t *eval_module() {
+  return modules ? get_module(string_seg("eval")) : NULL;
+}
+
 void eval(const cell_t *p) {
-  cell_t *c = parse_expr(&p, eval_module ? *eval_module : NULL);
+  cell_t *c = parse_expr(&p, eval_module());
   if(!c) return;
   csize_t s = list_size(c);
   if(s > 0 && !closure_is_ready(c->value.ptr[s-1])) {
