@@ -458,6 +458,7 @@ bool compile_word(cell_t **entry, cell_t *module) {
   cell_t *e = *entry;
   e->n = PERSISTENT;
   e->func = func_placeholder;
+  e->entry.out = 1;
   get_arity(toks, &e->entry.in, &e->entry.out, module);
 
   e->func = func_self;
