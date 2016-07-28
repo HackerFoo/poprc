@@ -13,3 +13,5 @@ f2: pushl pushl popr 1 + swap pushl popr swap popr swap drop +
 f1: [] [] ifte pushl
 
 f6: rot
+
+dec: [dup 5 > ! 1- dec] [dup 5 <= !] | pushl popr swap drop

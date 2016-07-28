@@ -385,7 +385,7 @@ void command_cgen(cell_t *rest) {
       *mname = module_name(m),
       *fname = entry_name(m, e);
 
-    if(e && fname) gen_function(e->entry.data[0], mname ? mname : "", fname);
+    if(e && fname) gen_function(e->entry.data[0], mname, fname);
   }
 }
 

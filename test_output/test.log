@@ -32,10 +32,10 @@ int testgen_max(int int1, int int0)
   int sym4;
   int int5;
   int int6;
-  sym2 = lte(int1, int0);
+  sym2 = __primitive_lte(int1, int0);
   int3 = int0;
   if(sym2 == SYM_TRUE) goto label3;
-  sym4 = lte(int0, int1);
+  sym4 = __primitive_lte(int0, int1);
   int5 = int1;
   if(sym4 == SYM_TRUE) goto label5;
 label5:
@@ -53,7 +53,7 @@ cell_t *testgen_ifte(int int2, cell_t *any1, cell_t *any0)
   cell_t *any5;
   cell_t *any6;
   int3 = 0;
-  sym4 = eq(int2, int3);
+  sym4 = __primitive_eq(int2, int3);
   any5 = any0;
   if(sym4 == SYM_TRUE) goto label5;
 label1:
