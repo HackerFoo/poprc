@@ -466,7 +466,6 @@ void eval(const cell_t *p) {
 }
 
 bool get_arity(const cell_t *p, csize_t *in, csize_t *out, cell_t *module) {
-  set_trace(NULL);
   cell_t *c = parse_expr(&p, module);
   if(!c) return false;
   *in = fill_args(c, NULL);

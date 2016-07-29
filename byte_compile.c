@@ -444,20 +444,22 @@ bool compile_word(cell_t **entry, cell_t *module) {
   e->word_name = entry_name(module, e);
   e->entry.out = 1;
   e->entry.len = 0;
-  e->entry.flags = ENTRY_NOINLINE;
+
+  // arity (HACKy)
+  // must parse twice, once for arity, and then reparse with new entry
+  e->entry.flags = ENTRY_PRIMITIVE;
+  e->func = func_placeholder;
+  if(!get_arity(toks, &e->entry.in, &e->entry.out, module)) goto fail;
 
   // parse
   const cell_t *p = toks;
-  e->func = func_placeholder;
+  e->entry.flags = ENTRY_NOINLINE;
+  e->func = func_exec;
   cell_t *c = parse_expr(&p, module);
-  if(!c) goto fail;
 
   // compile
   set_trace(bc_trace);
-  e->entry.in = fill_args(c, bc_arg);
-  // c = remove_row(c); ???
-  e->entry.out = max(1, list_size(c));
-  e->func = func_exec;
+  fill_args(c, bc_arg);
   reduce_root(c);
   trace_store_list(c)->n++;
   drop(c);
@@ -470,7 +472,6 @@ bool compile_word(cell_t **entry, cell_t *module) {
   return true;
 
 fail:
-  closure_free(*entry);
   *entry = l;
   return false;
 }
