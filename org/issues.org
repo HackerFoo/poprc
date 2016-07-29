@@ -15,8 +15,8 @@ Compile to direct C when possible
 ** C generation
 *** DONE Return types
 *** DONE function signature
-*** TODO simple expressions
-*** TODO select -> if/then
+*** DONE simple expressions
+*** DONE select -> if/then
 *** TODO pushl/popr
 ** TODO look into adding conflict-driven clause learning
 ** modules
@@ -30,7 +30,8 @@ Compile to direct C when possible
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
-** TODO annotate trace with types in byte_compile.c
+** TODO handle ENTRY_NOINLINE in func_exec
+** DONE annotate trace with types in byte_compile.c
 ** DONE replace all tables with maps
 ** DONE add string map
 ** TODO add static asserts as tests
