@@ -116,8 +116,10 @@ cell_t *trace_store(const cell_t *c, type_t t) {
   dest->n = -1;
 
   // rewrite pointers
+  // skip rewriting for the entry argument
+  cell_t *const *skip = dest->func == func_exec ? &dest->expr.arg[closure_in(dest) - 1] : NULL;
   traverse(dest, {
-      if(*p) {
+      if(*p && p != skip) {
         uintptr_t x = trace_get(*p);
         *p = trace_encode(x);
         trace_cur[x].n++;
@@ -129,6 +131,7 @@ cell_t *trace_store(const cell_t *c, type_t t) {
   return dest;
 }
 
+/*
 cell_t *trace_store_addarg(const cell_t *c) {
 
   // entry already exists
@@ -164,6 +167,7 @@ cell_t *trace_store_addarg(const cell_t *c) {
 
   return dest;
 }
+*/
 
 cell_t *trace_select(const cell_t *c, cell_t *a) {
   cell_t *dest = trace_ptr;
@@ -209,9 +213,9 @@ void trace_init() {
   map_clear(trace_index);
 }
 
-void print_trace_cells(cell_t *trace) {
-  size_t count = trace->value.integer[0];
-  cell_t *start = trace + 1;
+void print_trace_cells(cell_t *e) {
+  size_t count = e->entry.len;
+  cell_t *start = e + 1;
   cell_t *end = start + count;
   for(cell_t *c = start; c < end; c += closure_cells(c)) {
     int t = c - start;
@@ -332,8 +336,6 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       trace_index_assign(c, r);
     } else if(c->func == func_placeholder) {
       //trace_index_add(c, bc_apply_list(c));
-    } else if(c->func == func_self) {
-      trace_store_addarg(c);
     } else if(c->func == func_compose) {
       // HACKy
       cell_t *p = c->expr.arg[1];
@@ -424,49 +426,46 @@ void print_trace_index()
   print_map(tmp_trace_index);
 }
 
-
-cell_t *byte_compile(cell_t *root, UNUSED int in, UNUSED int out) {
-  trace_init();
-  cell_t *header = trace_ptr++;
-  header->func = func_id; // to pass asserts
-  trace_cur = trace_ptr;
-  set_trace(bc_trace);
-  fill_args(root, bc_arg);
-  reduce_root(root);
-  trace_store_list(root)->n++;
-
-  // make index readable for debugging
-  FORMAP(i, trace_index) {
-    trace_index[i].first = (cell_t *)trace_index[i].first - cells;
-  }
-
-  drop(root);
-//  print_map(trace_index);
-//  print_trace_cells();
-  header->value.integer[0] = trace_cnt;
-  return header;
-}
-
 bool compile_word(cell_t **entry, cell_t *module) {
   cell_t *l;
   if(!entry || !(l = *entry)) return false;
   if(!is_list(l)) return true;
   if(list_size(l) < 1) return false;
-  cell_t *toks = l->value.ptr[0]; // TODO handle list_size(l) > 1
-  // print_toks(toks);
-  *entry = closure_alloc(1);
-  cell_t *e = *entry;
-  e->n = PERSISTENT;
-  e->func = func_placeholder;
-  e->entry.out = 1;
-  get_arity(toks, &e->entry.in, &e->entry.out, module);
 
-  e->func = func_self;
+  // set up
+  trace_init();
+
+  cell_t *toks = l->value.ptr[0]; // TODO handle list_size(l) > 1
+  cell_t *e = *entry = trace_ptr;
+  trace_cur = ++trace_ptr;
+
+  e->n = PERSISTENT;
+  e->module_name = module_name(module);
+  e->word_name = entry_name(module, e);
+  e->entry.out = 1;
+  e->entry.len = 0;
+  e->entry.flags = ENTRY_NOINLINE;
+
+  // parse
   const cell_t *p = toks;
+  e->func = func_placeholder;
   cell_t *c = parse_expr(&p, module);
   if(!c) goto fail;
+
+  // compile
+  set_trace(bc_trace);
+  e->entry.in = fill_args(c, bc_arg);
+  // c = remove_row(c); ???
+  e->entry.out = max(1, list_size(c));
   e->func = func_exec;
-  e->entry.data[0] = byte_compile(c, e->entry.in, e->entry.out);
+  reduce_root(c);
+  trace_store_list(c)->n++;
+  drop(c);
+
+  // finish
+  e->entry.flags = 0;
+  e->entry.len = trace_cnt;
+
   free_def(l);
   return true;
 
@@ -476,27 +475,14 @@ fail:
   return false;
 }
 
-// for testing only; no recursion
-cell_t *test_compile(cell_t *toks, cell_t *module) {
-  csize_t in, out;
-  get_arity(toks, &in, &out, module);
-  const cell_t *p = toks;
-  cell_t *c = parse_expr(&p, module);
-  if(!c) goto fail;
-  return byte_compile(c, in, out);
-
-fail:
-  return false;
-}
-
 bool func_exec(cell_t **cp, UNUSED type_t t) {
   cell_t *c = clear_ptr(*cp);
   assert(is_closure(c));
 
   size_t data = closure_in(c) - 1;
-  cell_t *header = c->expr.arg[data];
-  cell_t *code = header + 1;
-  size_t count = header->value.integer[0];
+  cell_t *entry = c->expr.arg[data];
+  cell_t *code = entry + 1;
+  size_t count = entry->entry.len;
   cell_t *map[count];
   size_t map_idx = 0;
   cell_t *last, *res;
@@ -527,8 +513,12 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
   // rewrite pointers
   for(size_t i = data; i < map_idx; i++) {
     cell_t *t = map[i];
+
+    // skip rewriting for the entry argument
+    cell_t **skip = t->func == func_exec ? &t->expr.arg[closure_in(t) - 1] : NULL;
+
     traverse(t, {
-        if(*p) {
+        if(*p && p != skip) {
           uintptr_t x = trace_decode(*p);
           if(x < map_idx) {
             *p = map[x];
@@ -537,12 +527,6 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
           }
         }
       }, ARGS | PTRS);
-    if(t->func == func_self) {
-      assert(t->size == c->size &&
-             t->expr.out == c->expr.out);
-      t->func = func_exec;
-      t->expr.arg[data] = header;
-    }
   }
 
   size_t

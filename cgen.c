@@ -64,10 +64,9 @@ const char *cname(type_t t) {
   return table[t];
 }
 
-cell_t *trace_last(cell_t *trace) {
-  cell_t *header = trace;
-  cell_t *p = header + 1, *prev = p;
-  size_t count = header->value.integer[0];
+cell_t *trace_last(cell_t *e) {
+  cell_t *p = e + 1, *prev = p;
+  size_t count = e->entry.len;
   cell_t *end = &p[count];
   while(p < end) {
     size_t s = closure_cells(p);
@@ -77,43 +76,19 @@ cell_t *trace_last(cell_t *trace) {
   return prev;
 }
 
-/*
-void gen_output_struct(cell_t *trace, const char* fname) {
-  cell_t *l = trace_last(trace);
-  cell_t *data = trace + 1;
-
-  printf("typedef struct {\n");
-  csize_t n = list_size(l);
-  COUNTUP(i, n) {
-    cell_t *a = &data[trace_decode(l->value.ptr[i])];
-    type_t t = (uintptr_t)a->tmp & T_EXCLUSIVE;
-    printf("  %s%s%d;\n", ctype[t], cname[t], (int)i);
-  }
-  printf("} %s_output;\n", fname);
-}
-*/
-
 type_t gen_type(cell_t *c) {
-  type_t t = is_value(c) ? c->value.type : (uintptr_t)c->tmp;
+  type_t t = is_value(c) ? c->value.type : c->expr_type;
   return t & T_EXCLUSIVE;
 }
 
-#if INTERFACE
-typedef struct fullname {
-  const char *module;
-  const char *word;
-} fullname_t;
-#endif
-
-void gen_function_signature(cell_t *trace, fullname_t name) {
-  cell_t *header = trace;
-  cell_t *p = header + 1;
-  cell_t *l = trace_last(trace);
+void gen_function_signature(cell_t *e) {
+  cell_t *p = e + 1;
+  cell_t *l = trace_last(e);
   csize_t out_n = list_size(l);
-  size_t count = header->value.integer[0];
+  size_t count = e->entry.len;
   size_t ires = trace_decode(l->value.ptr[out_n - 1]);
 
-  printf("%s%s_%s(", ctype((uintptr_t)p[ires].tmp), name.module, name.word);
+  printf("%s%s_%s(", ctype(gen_type(&p[ires])), e->module_name, e->word_name);
   char *sep = "";
   COUNTDOWN(i, count) {
     cell_t *a = &p[i];
@@ -132,23 +107,23 @@ void gen_function_signature(cell_t *trace, fullname_t name) {
   printf(")\n");
 }
 
-void gen_body(cell_t *trace, fullname_t name) {
+void gen_body(cell_t *e) {
   cell_t
-    *start = trace + 1,
-    *end = trace_last(trace);
+    *start = e + 1,
+    *end = trace_last(e);
   while(is_var(start)) start++;
 
   for(cell_t *c = start; c < end; c += closure_cells(c)) {
-    gen_decl(trace, c);
+    gen_decl(e, c);
   }
   for(cell_t *c = start; c < end; c += closure_cells(c)) {
-    gen_instruction(trace, c, name);
+    gen_instruction(e, c);
   }
-  gen_return(trace, end);
+  gen_return(e, end);
 }
 
-void gen_return(cell_t *trace, cell_t *l) {
-  cell_t *p = trace + 1;
+void gen_return(cell_t *e, cell_t *l) {
+  cell_t *p = e + 1;
   csize_t out_n = list_size(l);
   int ires = trace_decode(l->value.ptr[out_n - 1]);
   COUNTDOWN(i, out_n-1) {
@@ -158,59 +133,62 @@ void gen_return(cell_t *trace, cell_t *l) {
     const char *n = cname(t);
     printf("  *out_%s%d = %s%d;\n", n, (int)i, n, ai);
   }
-  printf("  return %s%d;\n", cname((uintptr_t)p[ires].tmp), ires);
+  printf("  return %s%d;\n", cname(gen_type(&p[ires])), ires);
 }
 
-void gen_decl(cell_t *trace, cell_t *c) {
-  int i = c - trace - 1;
+void gen_decl(cell_t *e, cell_t *c) {
+  int i = c - e - 1;
   type_t t = gen_type(c);
   printf("  %s%s%d;\n", ctype(t), cname(t), i);
 }
 
-void gen_instruction(cell_t *trace, cell_t *c, fullname_t name) {
+void gen_instruction(cell_t *e, cell_t *c) {
   if(c->func == func_value) {
-    gen_value(trace, c);
+    gen_value(e, c);
   } else if(c->func == func_select) {
-    gen_select(trace, c);
+    gen_select(e, c);
   } else if(c->func == func_assert) {
-    gen_assert(trace, c);
-  } else if(c->func == func_self) {
-    gen_call_with_name(trace, c, name);
+    gen_assert(e, c);
   } else {
-    gen_call(trace, c);
+    gen_call(e, c);
   }
 }
 
-void gen_call(cell_t *trace, cell_t *c) {
-  fullname_t name = {
-    .module = "__primitive",
-    .word = function_name(c->func)
-  };
-  gen_call_with_name(trace, c, name);
+void get_name(cell_t *c, const char **module_name, const char **word_name) {
+  if(c->func == func_exec) {
+    cell_t *e = c->expr.arg[closure_in(c) - 1];
+    *module_name = e->module_name;
+    *word_name = e->word_name;
+  } else {
+    *module_name = "__primitive";
+    *word_name = function_name(c->func);
+  }
 }
 
-void gen_call_with_name(cell_t *trace, cell_t *c, fullname_t name) {
-  cell_t *d = trace + 1;
+void gen_call(cell_t *e, cell_t *c) {
+  cell_t *d = e + 1;
   int i = c - d;
   char *sep = "";
-  printf("  %s%d = %s_%s(", cname((uintptr_t)c->tmp), i, name.module, name.word);
+  const char *module_name, *word_name;
+  get_name(c, &module_name, &word_name);
+  printf("  %s%d = %s_%s(", cname(gen_type(c)), i, module_name, word_name);
 
   traverse(c, {
       int a = trace_decode(*p);
-      printf("%s%s%d", sep, cname((uintptr_t)d[a].tmp), a);
+      printf("%s%s%d", sep, cname(gen_type(&d[a])), a);
       sep = ", ";
     }, ARGS_IN);
   traverse(c, {
       int a = trace_decode(*p);
-      printf("%s&%s%d", sep, cname((uintptr_t)d[a].tmp), a);
+      printf("%s&%s%d", sep, cname(gen_type(&d[a])), a);
       sep = ", ";
     }, ARGS_OUT);
 
   printf(");\n");
 }
 
-void gen_value(cell_t *trace, cell_t *c) {
-  cell_t *d = trace + 1;
+void gen_value(cell_t *e, cell_t *c) {
+  cell_t *d = e + 1;
   int i = c - d;
   type_t t = gen_type(c);
   printf("  %s%d = ", cname(t), i);
@@ -229,53 +207,35 @@ void gen_value(cell_t *trace, cell_t *c) {
   }
 }
 
-void gen_select(cell_t *trace, cell_t *c) {
-  cell_t *d = trace + 1;
+void gen_select(cell_t *e, cell_t *c) {
+  cell_t *d = e + 1;
   int
     i = c - d,
     ip = trace_decode(c->expr.arg[0]),
     iq = trace_decode(c->expr.arg[1]);
-  const char *cn = cname((uintptr_t)c->tmp);
+  const char *cn = cname(gen_type(c));
   printf("label%d:\n", iq);
-  printf("  %s%d = %s%d;\n", cn, i, cname((uintptr_t)d[iq].tmp), iq);
+  printf("  %s%d = %s%d;\n", cn, i, cname(gen_type(&d[iq])), iq);
   printf("  goto label%d;\n", i);
   printf("label%d:\n", ip);
-  printf("  %s%d = %s%d;\n", cn, i, cname((uintptr_t)d[ip].tmp), ip);
+  printf("  %s%d = %s%d;\n", cn, i, cname(gen_type(&d[ip])), ip);
   printf("label%d:\n", i);
 }
 
-void gen_assert(cell_t *trace, cell_t *c) {
-  cell_t *d = trace + 1;
+void gen_assert(cell_t *e, cell_t *c) {
+  cell_t *d = e + 1;
   int
     i = c - d,
     ip = trace_decode(c->expr.arg[0]),
     iq = trace_decode(c->expr.arg[1]);
-  const char *cn = cname((uintptr_t)c->tmp);
-  printf("  %s%d = %s%d;\n", cn, i, cname((uintptr_t)d[ip].tmp), ip);
-  printf("  if(%s%d == SYM_TRUE) goto label%d;\n", cname((uintptr_t)d[iq].tmp), iq, i);
+  const char *cn = cname(gen_type(c));
+  printf("  %s%d = %s%d;\n", cn, i, cname(gen_type(&d[ip])), ip);
+  printf("  if(%s%d == SYM_TRUE) goto label%d;\n", cname(gen_type(&d[iq])), iq, i);
 }
 
-void testgen(char *name, char *src) {
-  cell_t *l = lex(src, 0);
-  cell_t *tr = test_compile(l, NULL);
-  gen_function(tr, "testgen", name);
-  free_toks(l);
-}
-
-void gen_function(cell_t *tr, char *mname, char *fname) {
-  fullname_t name = {
-    .module = mname ? mname : "",
-    .word = fname
-  };
-  gen_function_signature(tr, name);
+void gen_function(cell_t *e) {
+  gen_function_signature(e);
   printf("{\n");
-  gen_body(tr, name);
+  gen_body(e);
   printf("}\n");
-}
-
-int test_gen() {
-  testgen("max", "[] pushl pushl dup . dup popr drop | [<= !] . popr swap drop cut");
-  testgen("ifte", "[] pushl pushl swap pushr [0 == !] [drop drop] | . popr swap drop cut");
-  testgen("rot", "[] pushl swap pushr pushl popr swap popr swap popr swap drop");
-  return 0;
 }

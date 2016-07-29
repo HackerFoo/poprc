@@ -54,10 +54,13 @@
     .first = (uintptr_t)__name,                          \
     .second = (uintptr_t)&(cell_t) {                     \
       .func = func_##__func,                             \
-        .entry = {                                       \
-          .in = __in,                                    \
-          .out = __out,                                  \
-          .data[0] = NULL                                \
+      .module_name = "__builtin",                        \
+      .word_name = #__name,                              \
+      .entry = {                                         \
+        .in = __in,                                      \
+        .out = __out,                                    \
+        .len = 0,                                        \
+        .flags = ENTRY_PRIMITIVE                         \
       }                                                  \
     }                                                    \
   }

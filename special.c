@@ -185,11 +185,13 @@ bool func_placeholder(cell_t **cp, UNUSED type_t t) {
   return false;
 }
 
+/*
 bool func_self(cell_t **cp, UNUSED type_t t) {
   func_placeholder(cp, t);
   store_reduced(cp, var(t));
   return true;
 }
+*/
 
 bool is_placeholder(cell_t const *c) {
   return c && clear_ptr(c->func) == (void *)func_placeholder;

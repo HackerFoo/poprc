@@ -372,7 +372,7 @@ void command_bytecode(cell_t *rest) {
     cell_t
       *m = eval_module(),
       *e = module_lookup_compiled(tok_seg(rest), &m);
-    if(e) print_trace_cells(e->entry.data[0]);
+    if(e) print_trace_cells(e);
   }
 }
 
@@ -381,11 +381,8 @@ void command_cgen(cell_t *rest) {
     cell_t
       *m = eval_module(),
       *e = module_lookup_compiled(tok_seg(rest), &m);
-    char
-      *mname = module_name(m),
-      *fname = entry_name(m, e);
 
-    if(e && fname) gen_function(e->entry.data[0], mname, fname);
+    if(e) gen_function(e);
   }
 }
 

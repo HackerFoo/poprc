@@ -66,6 +66,7 @@ char const *show_alt_set(uintptr_t as) {
   return out;
 }
 
+// TODO eliminate this function
 char const *function_name(reduce_t *f) {
   f = (reduce_t *)clear_ptr(f);
   //  int i;
@@ -98,7 +99,7 @@ char const *function_name(reduce_t *f) {
   //CASE(fib);
   CASE(select);
   CASE(placeholder);
-  CASE(self);
+//  CASE(self);
   CASE(exec);
   CASE(ap);
   CASE(print);

@@ -103,11 +103,14 @@ struct __attribute__((packed)) mem {
   cell_t *prev, *next;
 };
 
+#define ENTRY_PRIMITIVE 0x1
+#define ENTRY_NOINLINE  0x2
+
 /* word entry */
 struct __attribute__((packed)) entry {
   csize_t __padding;
+  uintptr_t len, flags;
   csize_t in, out;
-  cell_t *data[1];
 };
 
 struct __attribute__((packed, aligned(4))) cell {
@@ -120,8 +123,15 @@ struct __attribute__((packed, aligned(4))) cell {
     uintptr_t raw[8];
     struct {
       reduce_t *func;
-      cell_t *alt;
-      cell_t *tmp;
+      union {
+        cell_t *alt;
+        const char *word_name;
+      };
+      union {
+        cell_t *tmp;
+        const char *module_name;
+        type_t expr_type;
+      };
       refcount_t n;
       csize_t size;
       union {

@@ -155,10 +155,14 @@ cell_t *parse_word(seg_t w, cell_t *module) {
     cell_t *e = lookup_word(w);
     if(!e) e = module_lookup_compiled(w, &module);
     if(e) {
-      c = func(e->func, e->entry.in + (e->entry.data[0] ? 1 : 0), e->entry.out);
+      if(e->entry.flags & ENTRY_PRIMITIVE) {
+        c = func(e->func, e->entry.in, e->entry.out);
+      } else {
+        c = func(e->func, e->entry.in + 1, e->entry.out);
+        data = e;
+      }
       in = e->entry.in;
       out = e->entry.out;
-      data = e->entry.data[0];
     } else {
       // trace the name ***
       c = func(func_placeholder, 0, 1);
@@ -1043,7 +1047,7 @@ cell_t **module_lookup(seg_t path, cell_t **context) {
   return NULL;
 }
 
-char *module_name(cell_t *module) {
+const char *module_name(cell_t *module) {
   if(!modules) return NULL;
   map_t map = modules->value.map;
   FORMAP(i, map) {
@@ -1053,7 +1057,7 @@ char *module_name(cell_t *module) {
   return NULL;
 }
 
-char *entry_name(cell_t *module, cell_t *entry) {
+const char *entry_name(cell_t *module, cell_t *entry) {
   if(!module || !entry) return NULL;
   map_t map = module->value.map;
   FORMAP(i, map) {
