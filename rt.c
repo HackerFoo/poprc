@@ -592,7 +592,7 @@ refcount_t nondep_n(cell_t *c) {
 void mutate_update(cell_t *r, bool m) {
   traverse(r, {
       cell_t *c = clear_ptr(*p);
-      if(is_closure(c)) {
+      if(is_closure(c) && c->n != PERSISTENT) {
         if(c->tmp) {
           *p = ref(c->tmp);
           if (m) --c->n;
@@ -602,7 +602,7 @@ void mutate_update(cell_t *r, bool m) {
 
   traverse(r, {
       cell_t *c = clear_ptr(*p);
-      if(c && c->tmp) {
+      if(c && c->n != PERSISTENT && c->tmp) {
         *p = c->tmp;
       }
     }, ARGS_OUT);

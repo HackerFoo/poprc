@@ -117,9 +117,13 @@ cell_t *trace_store(const cell_t *c, type_t t) {
 
   // rewrite pointers
   // skip rewriting for the entry argument
-  cell_t *const *skip = dest->func == func_exec ? &dest->expr.arg[closure_in(dest) - 1] : NULL;
+  cell_t **entry = NULL;
+  if(dest->func == func_exec) {
+    entry = &dest->expr.arg[closure_in(dest) - 1];
+    *entry = trace_encode(trace_cells - *entry);
+  }
   traverse(dest, {
-      if(*p && p != skip) {
+      if(p != entry && *p) {
         uintptr_t x = trace_get(*p);
         *p = trace_encode(x);
         trace_cur[x].n++;
@@ -545,10 +549,15 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
     cell_t *t = map[i];
 
     // skip rewriting for the entry argument
-    cell_t **skip = t->func == func_exec ? &t->expr.arg[closure_in(t) - 1] : NULL;
+    cell_t **t_entry = NULL;
+    if(t->func == func_exec) {
+      t_entry = &t->expr.arg[closure_in(t) - 1];
+      printf("entry: %d", (int)trace_decode(*t_entry));
+      *t_entry = &trace_cells[trace_decode(*t_entry)];
+    }
 
     traverse(t, {
-        if(*p && p != skip) {
+        if(p != t_entry && *p) {
           uintptr_t x = trace_decode(*p);
           if(x < map_idx) {
             *p = map[x];
