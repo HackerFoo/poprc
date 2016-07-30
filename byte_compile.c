@@ -331,7 +331,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
     if(c->func == func_cut ||
        c->func == func_id) {
       trace_index_assign(c, c->expr.arg[0]);
-    } else if(c->func == func_exec) {
+    } else if(c->func == func_exec && !c->expr.arg[closure_in(c) - 1]) {
       // just replace exec with it's result
       trace_index_assign(c, r);
     } else if(c->func == func_placeholder) {
@@ -344,6 +344,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       }
     } else {
       csize_t in = closure_in(c);
+      if(c->func == func_exec) in--;
       COUNTUP(i, in) {
         trace(c->expr.arg[i], c, tt_force, i);
       }
@@ -461,6 +462,7 @@ bool compile_word(cell_t **entry, cell_t *module) {
   set_trace(bc_trace);
   fill_args(c, bc_arg);
   reduce_root(c);
+  set_trace(NULL);
   trace_store_list(c)->n++;
   drop(c);
 
@@ -487,6 +489,33 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
   cell_t *map[count];
   size_t map_idx = 0;
   cell_t *last, *res;
+
+  // reduce all args and return variables
+  if(entry->entry.flags & ENTRY_NOINLINE) {
+    csize_t in = closure_in(c), n = closure_args(c);
+    alt_set_t alt_set = 0;
+    for(csize_t i = 0; i < in - 1; ++i) {
+      if(!reduce_arg(c, i, &alt_set, T_ANY)) goto fail;
+      //trace(c->expr.arg[i], c, tt_force, i);
+    }
+    for(csize_t i = in; i < n; ++i) {
+      cell_t *d = c->expr.arg[i];
+      if(d && is_dep(d)) {
+        drop(c);
+        store_var(d, T_ANY);
+        d->value.alt_set = alt_set;
+      }
+    }
+
+    cell_t *res = var(T_ANY);
+    res->value.alt_set = alt_set;
+    store_reduced(cp, res);
+    return true;
+
+  fail:
+    fail(cp, t);
+    return false;
+  }
 
   c->expr.arg[data] = 0;
   memset(map, 0, sizeof(map[0]) * count);
