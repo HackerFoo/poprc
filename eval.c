@@ -20,7 +20,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
-#include <getopt.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -122,44 +121,59 @@ void usage() {
   printf("usage: eval [-t <test name>]\n");
 }
 
-int main(UNUSED int argc, UNUSED char *argv[]) {
+char *arguments(int argc, char **argv) {
+  size_t len = argc + 1;
+  COUNTUP(i, argc) {
+    len = strlen(argv[i]);
+  }
+  char *result = malloc(len), *p = result;
+  COUNTUP(i, argc) {
+    char *a = argv[i];
+    char *np = stpcpy(p, a);
+    if(*a == '-') {
+      *p = ':';
+      if(i) {
+        *(p-1) = '\n';
+      }
+    }
+    *np = ' ';
+    p = np + 1;
+  }
+  *(p-1) = '\n';
+  *p = '\0';
+  return result;
+}
+
+static bool echo = false;
+void command_echo(UNUSED cell_t *rest) {
+  echo = true;
+}
+
+static bool stats = true;
+void command_nostats(UNUSED cell_t *rest) {
+  stats = false;
+}
+
+int main(int argc, char **argv) {
   parse_init();
   cells_init();
+  bool quit = false;
 
 #ifndef EMSCRIPTEN
-  int ch;
-  bool echo = false;
-  bool stats = true;
-
   tty = isatty(fileno(stdin));
 
-  while ((ch = getopt(argc, argv, "eSt:l:r:L:")) != -1) {
-    switch (ch) {
-    case 'e':
-      echo = true;
-      break;
-    case 'S':
-      stats = false;
-      break;
-    case 't':
-      return run_test(optarg);
-      break;
-    case 'l':
-    case 'r':
-      load_file(optarg);
-      if(ch == 'r') return 0;
-      break;
-    case '?':
-    default:
-      usage();
-      return 0;
-      break;
-    }
-  }
-  argc -= optind;
-  argv += optind;
+  char *args = arguments(argc - 1, argv + 1), *a = args;
+  // printf("__ arguments __\n%s", a);
 
-  run_eval(echo);
+  while(*a && !quit) {
+    char *e = index(a, '\n');
+    quit = !eval_command(a, e);
+    a = e + 1;
+  }
+
+  free(args);
+
+  if(!quit) run_eval(echo);
   if(stats) {
     measure_display();
     print_symbols();
@@ -311,7 +325,7 @@ void run_eval(bool echo) {
 #endif
 
     if(echo) puts(line);
-    bool run = eval_command(line);
+    bool run = eval_command(line, 0);
 
 #ifndef RAW_LINE
     free(line_raw);
@@ -412,8 +426,8 @@ void command_quit(UNUSED cell_t *rest) {
   quit = true;
 }
 
-bool eval_command(char *line) {
-  cell_t *p = lex(line, 0), *p0 = p;
+bool eval_command(char *line, char *end) {
+  cell_t *p = lex(line, end), *p0 = p;
   if(match(p, ":")) {
     p = p->tok_list.next;
     if(!p || !run_command(tok_seg(p), p->tok_list.next)) {

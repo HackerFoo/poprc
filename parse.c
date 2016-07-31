@@ -674,7 +674,10 @@ cell_t *parse_defs(cell_t **c, cell_t **e) {
 
 void print_def(const cell_t *l) {
   if(!l) {
-    printf("NULL\n");
+    printf("  NULL\n");
+    return;
+  } else if(is_map(l)) {
+    printf("  submodule\n");
     return;
   }
   csize_t n = list_size(l);

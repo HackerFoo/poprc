@@ -552,7 +552,6 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
     cell_t **t_entry = NULL;
     if(t->func == func_exec) {
       t_entry = &t->expr.arg[closure_in(t) - 1];
-      printf("entry: %d", (int)trace_decode(*t_entry));
       *t_entry = &trace_cells[trace_decode(*t_entry)];
     }
 
