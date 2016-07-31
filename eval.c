@@ -145,13 +145,24 @@ char *arguments(int argc, char **argv) {
 }
 
 static bool echo = false;
-void command_echo(UNUSED cell_t *rest) {
-  echo = true;
+void command_echo(cell_t *rest) {
+  if(rest) {
+    echo = segcmp("yes", tok_seg(rest)) == 0;
+  }
 }
 
 static bool stats = true;
-void command_nostats(UNUSED cell_t *rest) {
-  stats = false;
+void command_stats(cell_t *rest) {
+  if(rest) {
+    stats = segcmp("yes", tok_seg(rest)) == 0;
+  }
+}
+
+static bool run_check_free = true;
+void command_check_free(UNUSED cell_t *rest) {
+  if(rest) {
+    run_check_free = segcmp("yes", tok_seg(rest)) == 0;
+  }
 }
 
 int main(int argc, char **argv) {
@@ -180,7 +191,7 @@ int main(int argc, char **argv) {
   }
   free_modules();
   unload_files();
-  check_free();
+  if(run_check_free) check_free();
 #else
   emscripten_exit_with_live_runtime();
 #endif
