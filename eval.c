@@ -52,7 +52,12 @@
 #include <emscripten.h>
 #endif
 
-bool tty = false;
+static bool tty = false;
+static bool echo = false;
+static bool stats = false;
+static bool run_check_free = true;
+static bool quit = false;
+static bool quiet = false;
 
 bool reduce_list(cell_t *c) {
   bool b = true;
@@ -124,7 +129,7 @@ void usage() {
 char *arguments(int argc, char **argv) {
   size_t len = argc + 1;
   COUNTUP(i, argc) {
-    len = strlen(argv[i]);
+    len += strlen(argv[i]);
   }
   char *result = malloc(len), *p = result;
   COUNTUP(i, argc) {
@@ -144,24 +149,27 @@ char *arguments(int argc, char **argv) {
   return result;
 }
 
-static bool echo = false;
 void command_echo(cell_t *rest) {
   if(rest) {
     echo = segcmp("yes", tok_seg(rest)) == 0;
   }
 }
 
-static bool stats = true;
 void command_stats(cell_t *rest) {
   if(rest) {
     stats = segcmp("yes", tok_seg(rest)) == 0;
   }
 }
 
-static bool run_check_free = true;
 void command_check_free(UNUSED cell_t *rest) {
   if(rest) {
     run_check_free = segcmp("yes", tok_seg(rest)) == 0;
+  }
+}
+
+void command_quiet(UNUSED cell_t *rest) {
+  if(rest) {
+    quiet = segcmp("yes", tok_seg(rest)) == 0;
   }
 }
 
@@ -178,6 +186,7 @@ int main(int argc, char **argv) {
 
   while(*a && !quit) {
     char *e = index(a, '\n');
+    *e = '\0'; // HACKy (fix load_file instead)
     quit = !eval_command(a, e);
     a = e + 1;
   }
@@ -353,7 +362,8 @@ bool run_command(seg_t name, cell_t *rest) {
     char *entry_name = (char *)entry->first;
     void (*entry_func)(cell_t *) = (void (*)(cell_t *))entry->second;
     int entry_name_size = strlen(entry_name);
-    if(strncmp(name.s, entry_name, min((int)name.n, entry_name_size)) == 0) {
+    if((int)name.n <= entry_name_size &&
+       strncmp(name.s, entry_name, name.n) == 0) {
       entry_func(rest);
       return true;
     }
@@ -426,13 +436,17 @@ void command_list(cell_t *rest) {
     pair_t *entry = &commands[i];
     char *entry_name = (char *)entry->first;
     int entry_name_size = strlen(entry_name);
-    if(strncmp(name.s, entry_name, min((int)name.n, entry_name_size)) == 0) {
+    if((int)name.n <= entry_name_size &&
+       strncmp(name.s, entry_name, name.n) == 0) {
       printf("  %s\n", entry_name);
     }
   }
 }
 
-static bool quit = false;
+void command_q(cell_t *rest) {
+  command_quit(rest);
+}
+
 void command_quit(UNUSED cell_t *rest) {
   quit = true;
 }
@@ -558,13 +572,14 @@ bool load_file(const char *path) {
   cell_t *toks = lex(f->data, f->data + f->size);
   cell_t *e = NULL;
   seg_t name;
-  printf("Load %s ", path);
+
+  if(!quiet) printf("Load %s ", path);
   char *s = "(";
   while(parse_module(&toks, &name, &e)) {
-    printf("%s%.*s", s, (int)name.n, name.s);
+    if(!quiet) printf("%s%.*s", s, (int)name.n, name.s);
     s = ", ";
   }
-  printf(")\n");
+  if(!quiet) printf(")\n");
 
   if(e) {
     const char *line = e->tok_list.line;

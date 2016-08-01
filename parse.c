@@ -693,7 +693,8 @@ void print_def(const cell_t *l) {
 }
 
 void free_def(cell_t *l) {
-  if(!is_closure(l)) {
+  if(!is_closure(l) ||
+     l->n == PERSISTENT) {
     return;
   }
   if(is_list(l)) {
