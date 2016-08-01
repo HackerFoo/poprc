@@ -38,20 +38,22 @@ pair_t primitive_module[] = WORDS;
 cell_t *modules = NULL;
 
 #define MAX_SYMBOLS 64
+#define ENTRY(name) [SYM_##name] = #name
 static const char *symbol_index[MAX_SYMBOLS] = {
-  [SYM_FALSE] = "False",
-  [SYM_TRUE] = "True",
-  [SYM_IO] = "IO",
-  [SYM_DICT] = "Dict"
+  ENTRY(False),
+  ENTRY(True),
+  ENTRY(IO),
+  ENTRY(Dict)
 };
+#undef ENTRY
 
-#define ENTRY(str, name) {(uintptr_t)str, SYM_##name}
+#define ENTRY(name) {(uintptr_t)#name, SYM_##name}
 static pair_t symbols[MAX_SYMBOLS+1] = {
   {MAX_SYMBOLS, 4},
-  ENTRY("Dict", DICT),
-  ENTRY("False",  FALSE),
-  ENTRY("IO", IO),
-  ENTRY("True",  TRUE)
+  ENTRY(Dict),
+  ENTRY(False),
+  ENTRY(IO),
+  ENTRY(True)
 };
 #undef ENTRY
 

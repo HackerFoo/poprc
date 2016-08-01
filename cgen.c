@@ -230,7 +230,7 @@ void gen_assert(cell_t *e, cell_t *c) {
     iq = trace_decode(c->expr.arg[1]);
   const char *cn = cname(gen_type(c));
   printf("  %s%d = %s%d;\n", cn, i, cname(gen_type(&d[ip])), ip);
-  printf("  if(%s%d == SYM_TRUE) goto label%d;\n", cname(gen_type(&d[iq])), iq, i);
+  printf("  if(%s%d == SYM_True) goto label%d;\n", cname(gen_type(&d[iq])), iq, i);
 }
 
 void gen_function(cell_t *e) {

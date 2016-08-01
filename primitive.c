@@ -298,7 +298,7 @@ bool func_assert(cell_t **cp, type_t t) {
     clear_flags(c);
     store_reduced(cp, var(c->expr.arg[0]->value.type));
     return true;
-  } else if(p->value.integer[0] == SYM_TRUE) {
+  } else if(p->value.integer[0] == SYM_True) {
     clear_flags(c);
     drop(p);
     store_lazy(cp, c, c->expr.arg[0], alt_set);

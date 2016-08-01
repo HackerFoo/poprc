@@ -191,10 +191,10 @@ typedef enum trace_type_t {
 #define AS_MASK ((alt_set_t)0x5555555555555555)
 #define ALT_SET_IDS AS_SIZE
 
-#define SYM_FALSE 0
-#define SYM_TRUE  1
+#define SYM_False 0
+#define SYM_True  1
 #define SYM_IO    2
-#define SYM_DICT  3
+#define SYM_Dict  3
 
 #define PERSISTENT ((refcount_t)-15)
 
