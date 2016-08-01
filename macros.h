@@ -55,7 +55,7 @@
     .second = (uintptr_t)&(cell_t) {                     \
       .func = func_##__func,                             \
       .module_name = "__builtin",                        \
-      .word_name = #__name,                              \
+      .word_name = __name "\0" #__func,                  \
       .entry = {                                         \
         .in = __in,                                      \
         .out = __out,                                    \

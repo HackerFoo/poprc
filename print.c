@@ -66,45 +66,27 @@ char const *show_alt_set(uintptr_t as) {
   return out;
 }
 
+// only valid on primitives
+char const *entry_function_name(cell_t *e) {
+  if(e->func == func_exec) return NULL;
+  const char *s = e->word_name;
+  while(*s++);
+  return s;
+}
+
 // TODO eliminate this function
 char const *function_name(reduce_t *f) {
   f = (reduce_t *)clear_ptr(f);
-  //  int i;
-# define CASE(n) if(f == func_##n) return #n
-  CASE(add);
-  CASE(sub);
-  CASE(mul);
-  CASE(value);
-  CASE(compose);
-  CASE(pushl);
-  CASE(pushr);
-  CASE(quote);
-  CASE(dep);
-  CASE(popr);
-  CASE(alt);
-  CASE(assert);
-  CASE(id);
-  //  CASE(collect);
-  CASE(gt);
-  CASE(gte);
-  CASE(lt);
-  CASE(lte);
-  CASE(eq);
-  CASE(neq);
-  CASE(dup);
-  CASE(swap);
-  CASE(drop);
-  CASE(cut);
-  CASE(alt2);
-  //CASE(fib);
-  CASE(select);
-  CASE(placeholder);
-//  CASE(self);
-  CASE(exec);
-  CASE(ap);
-  CASE(print);
-  return "?";
-# undef CASE
+  const char *s = NULL;
+  FORMAP(i, primitive_module) {
+    cell_t *e = (cell_t *)primitive_module[i].second;
+    if(e->func == f) {
+      s = entry_function_name(e);
+      break;
+    }
+  }
+  assert(s);
+  return s;
 }
 
 char const *function_token(reduce_t *f) {
