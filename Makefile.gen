@@ -24,6 +24,15 @@ gen/command_table.h: $(SRC)
 	sed -n -e 's/^ *void command_\([a-zA-Z0-9_]*\).*/COMMAND(\1),\\/p' $(SRC) | LC_ALL=C sort >> $@
 	echo '}' >> $@
 
+gen/git_log.h: LOG = $(shell git log -1 --oneline)
+gen/git_log.h: $(SRC)
+	@mkdir -p gen
+	if git diff-index --quiet HEAD --; then \
+		echo "#define GIT_LOG \"$(LOG)\"" > $@; \
+	else \
+		echo "#define GIT_LOG \"$(LOG) [DIRTY]\"" > $@; \
+	fi
+
 gen/%.h: %.c makeheaders/makeheaders
 	@mkdir -p gen
 	./makeheaders/makeheaders $*.c:gen/$*.h

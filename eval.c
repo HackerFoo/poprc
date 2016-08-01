@@ -43,6 +43,7 @@
 #include "gen/print.h"
 #include "gen/cgen.h"
 #include "gen/command_table.h"
+#include "gen/git_log.h"
 
 #ifdef USE_LLVM
 #include "llvm.h"
@@ -58,6 +59,10 @@ static bool stats = false;
 static bool run_check_free = true;
 static bool quit = false;
 static bool quiet = false;
+
+void command_git_commit(UNUSED cell_t *rest) {
+  puts(GIT_LOG);
+}
 
 bool reduce_list(cell_t *c) {
   bool b = true;
