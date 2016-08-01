@@ -1,5 +1,7 @@
 #+TITLE: POPR Language Specification
 
+* Description
+** Popr is a lazy, strictly concatenative and functional language generalized to first-class partial and multivalued functions. It also supports quoting and partial application, and has a module system. Popr is designed to allow the user to create higher level language features such as types, pattern matching, or even entirely new languages as efficiently as possible through partial evaluation.
 * Syntax
 ** Grammar
 #+BEGIN_EXAMPLE
