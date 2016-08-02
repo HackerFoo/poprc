@@ -74,9 +74,11 @@ char const *entry_function_name(cell_t *e) {
   return s;
 }
 
-// TODO eliminate this function
 char const *function_name(reduce_t *f) {
   f = (reduce_t *)clear_ptr(f);
+  if(f == func_value) return "value";
+  if(f == func_fail) return "fail";
+  if(f == func_dep) return "dep";
   const char *s = NULL;
   FORMAP(i, primitive_module) {
     cell_t *e = (cell_t *)primitive_module[i].second;
@@ -87,6 +89,17 @@ char const *function_name(reduce_t *f) {
   }
   assert(s);
   return s;
+}
+
+void get_name(const cell_t *c, const char **module_name, const char **word_name) {
+  if(c->func == func_exec) {
+    cell_t *e = &trace_cells[trace_decode(c->expr.arg[closure_in(c) - 1])];
+    *module_name = e->module_name;
+    *word_name = e->word_name;
+  } else {
+    *module_name = "__primitive";
+    *word_name = function_name(c->func);
+  }
 }
 
 char const *function_token(reduce_t *f) {
@@ -133,9 +146,7 @@ void make_graph_all(char const *path) {
              "];\n", path);
   zero(visited);
   FOREACH(i, cells) {
-    if(cells[i].n != PERSISTENT) {
-      graph_cell(f, &cells[i]);
-    }
+    graph_cell(f, &cells[i]);
   }
   fprintf(f, "}\n");
   fclose(f);
@@ -154,12 +165,19 @@ void graph_cell(FILE *f, cell_t const *c) {
 
   for(csize_t i = 0; i < s; ++i) set_bit(visited, node+i);
 
+  if(c->n == PERSISTENT || is_map(c)) return; // HACK
+
   /* print node attributes */
   fprintf(f, "node%" PRIuPTR " [\nlabel =<", node);
-  fprintf(f, "<table border=\"%d\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%" PRIuPTR ") %s%s %x ",
+
+  const char *module_name, *word_name;
+  get_name(c, &module_name, &word_name);
+
+  fprintf(f, "<table border=\"%d\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%" PRIuPTR ") %s.%s%s %x ",
           border,
           node,
-          function_name(c->func),
+          module_name,
+          word_name,
           closure_is_ready(c) ? "" : "*",
           (int)c->size);
   if(!is_value(c)) {
@@ -505,15 +523,4 @@ int count(cell_t const **cnt, cell_t const *const *reset, int size) {
     }
   }
   return i;
-}
-
-void get_name(cell_t *c, const char **module_name, const char **word_name) {
-  if(c->func == func_exec) {
-    cell_t *e = &trace_cells[trace_decode(c->expr.arg[closure_in(c) - 1])];
-    *module_name = e->module_name;
-    *word_name = e->word_name;
-  } else {
-    *module_name = "__primitive";
-    *word_name = function_name(c->func);
-  }
 }
