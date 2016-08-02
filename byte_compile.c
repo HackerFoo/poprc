@@ -238,7 +238,9 @@ void print_trace_cells(cell_t *e) {
       }
       printf(", type = %s", show_type_all_short(c->value.type));
     } else {
-      printf(" %s", function_name(c->func));
+      const char *module_name, *word_name;
+      get_name(c, &module_name, &word_name);
+      printf(" %s.%s", module_name, word_name);
 
       traverse(c, {
           printf(" %" PRIuPTR, trace_decode(*p));

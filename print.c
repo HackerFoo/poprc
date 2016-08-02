@@ -507,3 +507,13 @@ int count(cell_t const **cnt, cell_t const *const *reset, int size) {
   return i;
 }
 
+void get_name(cell_t *c, const char **module_name, const char **word_name) {
+  if(c->func == func_exec) {
+    cell_t *e = &trace_cells[trace_decode(c->expr.arg[closure_in(c) - 1])];
+    *module_name = e->module_name;
+    *word_name = e->word_name;
+  } else {
+    *module_name = "__primitive";
+    *word_name = function_name(c->func);
+  }
+}
