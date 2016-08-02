@@ -247,6 +247,7 @@ void print_trace_cells(cell_t *e) {
         }, ARGS | PTRS);
 
       printf(", type = %s", show_type_all_short((type_t)(uintptr_t)c->tmp));
+      if(c->alt) printf("-> %d", (int)(c->alt - cells));
     }
 /*
     pair_t *p = map_find_value(trace_index, t);
@@ -471,6 +472,8 @@ bool compile_word(cell_t **entry, cell_t *module) {
   set_trace(NULL);
   trace_store_list(c)->n++;
   drop(c);
+
+  print_trace_index();
 
   // finish
   e->entry.flags = 0;

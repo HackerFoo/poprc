@@ -296,8 +296,14 @@ bool func_assert(cell_t **cp, type_t t) {
     if(!reduce_arg(c, 0, &alt_set, t) ||
        as_conflict(alt_set)) goto fail;
     clear_flags(c);
+    cell_t *alt = c->alt;
     store_reduced(cp, var(c->expr.arg[0]->value.type));
-    return true;
+    if(alt) {
+      *cp = alt;
+      return false;
+    } else {
+      return true;
+    }
   } else if(p->value.integer[0] == SYM_True) {
     clear_flags(c);
     drop(p);

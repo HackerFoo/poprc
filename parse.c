@@ -991,15 +991,17 @@ cell_t *build_module(cell_t *c) {
 
   if(n == 1) {
     m = c->value.ptr[0];
-    closure_free(c);
-    return m;
+    goto done;
   }
 
   m = make_map(ms);
   COUNTUP(i, n) {
     string_map_union(m->value.map, c->value.ptr[i]->value.map);
   }
+
+done:
   closure_free(c);
+  m->n = PERSISTENT;
   return m;
 }
 
