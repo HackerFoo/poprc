@@ -1,5 +1,13 @@
 #+TITLE: PoprC Notes
 
+* jump to alt on failed assert
+** label _before_ reduction on assert
+** need labels in bytecode
+*** label is just forward alt pointer
+**** only stored on assert
+*** support forward alts in bytecode
+**** split exec on alt blocks
+**** store PC somewhere, though, maybe tmp for now?
 * simple etif (else/then/if)
 :c etif ! swap | cut
 * things that must not escape functions
