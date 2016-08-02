@@ -229,7 +229,7 @@ profile:
 .PHONY: lldb
 lldb:
 	make BUILD=lldb-debug eval
-	lldb eval
+	lldb eval || gdb --nx eval
 
 # remove compilation products
 .PHONY: clean
