@@ -177,7 +177,8 @@ typedef enum trace_type_t {
   tt_select,
   tt_copy,
   tt_compose_placeholders,
-  tt_placeholder_dep
+  tt_placeholder_dep,
+  tt_fail
 } trace_type_t;
 
 #ifdef EMSCRIPTEN

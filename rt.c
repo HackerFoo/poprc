@@ -400,6 +400,7 @@ void store_var(cell_t *c, type_t t) {
 void fail(cell_t **cp, type_t t) {
   cell_t *c = clear_ptr(*cp);
   assert(!is_marked(c));
+  trace(c, c->alt, tt_fail, 0);
   cell_t *alt = ref(c->alt);
   if(c->n && t == T_ANY) { // HACK this should be more sophisticated
     traverse(c, {

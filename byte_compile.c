@@ -247,7 +247,7 @@ void print_trace_cells(cell_t *e) {
         }, ARGS | PTRS);
 
       printf(", type = %s", show_type_all_short((type_t)(uintptr_t)c->tmp));
-      if(c->alt) printf("-> %d", (int)(c->alt - cells));
+      if(c->alt) printf("-> %" PRIuPTR, trace_decode(c->alt));
     }
 /*
     pair_t *p = map_find_value(trace_index, t);
@@ -403,6 +403,33 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
     trace_index_add(r, bc_apply_list(r));
     break;
   }
+
+  case tt_fail: {
+    update_alt(c, r);
+    break;
+  }
+  }
+}
+
+// TODO replace with something more efficient
+void update_alt(cell_t *c, cell_t *r) {
+  for(cell_t *p = trace_cur; p < trace_ptr; p += closure_cells(p)) {
+    if(p->alt == c) p->alt = r;
+  }
+}
+
+void trace_final_pass() {
+  // replace alts with trace cells
+  for(cell_t *p = trace_cur; p < trace_ptr; p += closure_cells(p)) {
+    if(p->alt) p->alt = trace_encode(trace_get(p->alt));
+  }
+
+  for(cell_t *p = trace_cur; p < trace_ptr; p += closure_cells(p)) {
+    intptr_t a = trace_decode(p->alt);
+    while(a > 0) {
+      p->alt = trace_encode(a);
+      a = trace_decode(trace_cur[a].alt);
+    }
   }
 }
 
@@ -471,6 +498,7 @@ bool compile_word(cell_t **entry, cell_t *module) {
   reduce_root(c);
   set_trace(NULL);
   trace_store_list(c)->n++;
+  trace_final_pass();
   drop(c);
 
   print_trace_index();
