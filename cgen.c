@@ -110,20 +110,21 @@ void gen_function_signature(cell_t *e) {
 void gen_body(cell_t *e) {
   cell_t
     *start = e + 1,
-    *end = trace_last(e);
+    *end = start + e->entry.len;
   while(is_var(start)) start++;
 
   for(cell_t *c = start; c < end; c += closure_cells(c)) {
     gen_decl(e, c);
   }
+  printf("\n");
   for(cell_t *c = start; c < end; c += closure_cells(c)) {
     gen_instruction(e, c);
   }
-  gen_return(e, end);
 }
 
 void gen_return(cell_t *e, cell_t *l) {
   cell_t *p = e + 1;
+  cell_t *end = p + e->entry.len;
   csize_t out_n = list_size(l);
   int ires = trace_decode(l->value.ptr[out_n - 1]);
   COUNTDOWN(i, out_n-1) {
@@ -134,16 +135,24 @@ void gen_return(cell_t *e, cell_t *l) {
     printf("  *out_%s%d = %s%d;\n", n, (int)i, n, ai);
   }
   printf("  return %s%d;\n", cname(gen_type(&p[ires])), ires);
+  cell_t *next = l + closure_cells(l);
+  if(next < end) {
+    printf("\nblock%d:\n", (int)(next - (e + 1)));
+  }
 }
 
 void gen_decl(cell_t *e, cell_t *c) {
   int i = c - e - 1;
   type_t t = gen_type(c);
-  printf("  %s%s%d;\n", ctype(t), cname(t), i);
+  if(t != T_RETURN) {
+    printf("  %s%s%d;\n", ctype(t), cname(t), i);
+  }
 }
 
 void gen_instruction(cell_t *e, cell_t *c) {
-  if(c->func == func_value) {
+  if(gen_type(c) == T_RETURN) {
+    gen_return(e, c);
+  } else if(c->func == func_value) {
     gen_value(e, c);
   } else if(c->func == func_select) {
     gen_select(e, c);
@@ -162,16 +171,21 @@ void gen_call(cell_t *e, cell_t *c) {
   get_name(c, &module_name, &word_name);
   printf("  %s%d = %s_%s(", cname(gen_type(c)), i, module_name, word_name);
 
-  traverse(c, {
-      int a = trace_decode(*p);
-      printf("%s%s%d", sep, cname(gen_type(&d[a])), a);
-      sep = ", ";
-    }, ARGS_IN);
-  traverse(c, {
-      int a = trace_decode(*p);
-      printf("%s&%s%d", sep, cname(gen_type(&d[a])), a);
-      sep = ", ";
-    }, ARGS_OUT);
+  csize_t in = closure_in(c), start_out = in;
+  csize_t n = closure_args(c);
+  if(c->func == func_exec) in--;
+
+  for(csize_t i = 0; i < in; i++) {
+    int a = trace_decode(c->expr.arg[i]);
+    printf("%s%s%d", sep, cname(gen_type(&d[a])), a);
+    sep = ", ";
+  };
+
+  for(csize_t i = start_out; i < n; i++) {
+    int a = trace_decode(c->expr.arg[i]);
+    printf("%s&%s%d", sep, cname(gen_type(&d[a])), a);
+    sep = ", ";
+  }
 
   printf(");\n");
 }
@@ -203,12 +217,12 @@ void gen_select(cell_t *e, cell_t *c) {
     ip = trace_decode(c->expr.arg[0]),
     iq = trace_decode(c->expr.arg[1]);
   const char *cn = cname(gen_type(c));
-  printf("label%d:\n", iq);
+  printf("phi%d:\n", iq);
   printf("  %s%d = %s%d;\n", cn, i, cname(gen_type(&d[iq])), iq);
-  printf("  goto label%d;\n", i);
-  printf("label%d:\n", ip);
+  printf("  goto phi%d;\n", i);
+  printf("phi%d:\n", ip);
   printf("  %s%d = %s%d;\n", cn, i, cname(gen_type(&d[ip])), ip);
-  printf("label%d:\n", i);
+  printf("phi%d:\n", i);
 }
 
 void gen_assert(cell_t *e, cell_t *c) {
@@ -216,10 +230,34 @@ void gen_assert(cell_t *e, cell_t *c) {
   int
     i = c - d,
     ip = trace_decode(c->expr.arg[0]),
-    iq = trace_decode(c->expr.arg[1]);
+    iq = trace_decode(c->expr.arg[1]),
+    done = trace_decode(c->alt);
   const char *cn = cname(gen_type(c));
-  printf("  %s%d = %s%d;\n", cn, i, cname(gen_type(&d[ip])), ip);
-  printf("  if(%s%d == SYM_True) goto label%d;\n", cname(gen_type(&d[iq])), iq, i);
+  if(done >= 0) {
+
+    int next = done;
+    while(next > 0) {
+      done = next;
+      next = trace_decode(d[next].alt);
+    }
+    printf("  if(%s%d) {", cname(gen_type(&d[iq])), iq);
+    printf(" %s%d = %s%d;", cname(gen_type(&d[done])), done, cname(gen_type(&d[ip])), ip);
+    printf(" goto phi%d; }\n", done);
+  } else {
+    cell_t *end = d + e->entry.len;
+    printf("  %s%d = %s%d;\n", cn, i, cname(gen_type(&d[ip])), ip);
+    for(cell_t *p = c + closure_cells(c); p < end; p += closure_cells(p)) {
+      if(gen_type(p) == T_RETURN) {
+        cell_t *next = p + closure_cells(p);
+        if(next < end) {
+          printf("  if(!%s%d) ", cname(gen_type(&d[iq])), iq);
+          printf("goto block%d;\n", (int)(next - d));
+        }
+        break;
+      }
+    }
+  }
+  printf("phi%d:\n", i);
 }
 
 void gen_function(cell_t *e) {

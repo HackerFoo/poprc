@@ -8,7 +8,7 @@ imports:
 module num:
 
 __ max of two values
-max: [] pushl pushl dup . dup popr drop | [<= !] . popr swap drop cut
+max: [] pushl pushl dup . dup popr drop | [<= !] . popr swap drop
 
 __ min of two values
 min: [] pushl pushl dup . dup popr drop | [> !] . popr swap drop cut
