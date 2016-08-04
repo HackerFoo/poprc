@@ -77,17 +77,10 @@ bool reduce_list(cell_t *c) {
   return b;
 }
 
-bool reduce_one(cell_t **cp) {
-  if(!closure_is_ready(*cp)) return true;
-  bool b = reduce(cp, T_ANY);
-  //if(is_list(*cp)) reduce_list(*cp); // *** hack to force things that might be needed later
-  return b;
-}
-
 cell_t *reduce_alt(cell_t *c) {
   cell_t *r, *p = c;
   cell_t **q = &r;
-  while(p && reduce_one(&p)) {
+  while(p && reduce(&p, T_ANY)) {
     *q = p;
     q = &p->alt;
     p = p->alt;
@@ -132,6 +125,7 @@ void usage() {
 }
 
 char *arguments(int argc, char **argv) {
+  if(argc == 0) return NULL;
   size_t len = argc + 1;
   COUNTUP(i, argc) {
     len += strlen(argv[i]);
@@ -186,17 +180,19 @@ int main(int argc, char **argv) {
 #ifndef EMSCRIPTEN
   tty = isatty(fileno(stdin));
 
-  char *args = arguments(argc - 1, argv + 1), *a = args;
-  // printf("__ arguments __\n%s", a);
+  if(argc > 1) {
+    char *args = arguments(argc - 1, argv + 1), *a = args;
+    // printf("__ arguments __\n%s", a);
 
-  while(*a && !quit) {
-    char *e = index(a, '\n');
-    *e = '\0'; // HACKy (fix load_file instead)
-    quit = !eval_command(a, e);
-    a = e + 1;
+    while(*a && !quit) {
+      char *e = index(a, '\n');
+      *e = '\0'; // HACKy (fix load_file instead)
+      quit = !eval_command(a, e);
+      a = e + 1;
+    }
+
+    free(args);
   }
-
-  free(args);
 
   if(!quit) run_eval(echo);
   if(stats) {
