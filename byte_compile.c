@@ -539,7 +539,7 @@ bool compile_word(cell_t **entry, cell_t *module) {
   set_trace(bc_trace);
   fill_args(c, bc_arg);
   cell_t *r = trace_reduce(c);
-  resolve_types(r);
+  //resolve_types(r);
   drop(c);
   set_trace(NULL);
   trace_final_pass();
@@ -573,11 +573,11 @@ void resolve_types(cell_t *c) {
     COUNTUP(i, n) {
       type_t *t = trace_type(tref(c->value.ptr[i]));
       type_t *pt = trace_type(tref(p->value.ptr[i]));
-      if((*t & T_EXCLUSIVE) == T_NONE) {
+      if((*t & T_EXCLUSIVE) == T_BOTTOM) {
         *t &= ~T_EXCLUSIVE;
         *t |= *pt & T_EXCLUSIVE;
       } else if((*t & T_EXCLUSIVE) != (*pt & T_EXCLUSIVE) &&
-                (*pt & T_EXCLUSIVE) != T_NONE) {
+                (*pt & T_EXCLUSIVE) != T_BOTTOM) {
         *t &= ~T_EXCLUSIVE;
         *t |= T_ANY;
       }
@@ -590,7 +590,7 @@ void resolve_types(cell_t *c) {
     COUNTUP(i, n) {
       type_t *t = trace_type(tref(c->value.ptr[i]));
       type_t *pt = trace_type(tref(p->value.ptr[i]));
-      if((*pt & T_EXCLUSIVE) == T_NONE) {
+      if((*pt & T_EXCLUSIVE) == T_BOTTOM) {
         *pt &= ~T_EXCLUSIVE;
         *pt |= *t & T_EXCLUSIVE;
       }
@@ -623,12 +623,12 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
       cell_t *d = c->expr.arg[i];
       if(d && is_dep(d)) {
         drop(c);
-        store_var(d, T_NONE);
+        store_var(d, T_BOTTOM);
         d->value.alt_set = alt_set;
       }
     }
 
-    cell_t *res = var(t == T_ANY ? T_NONE : t);
+    cell_t *res = var(t == T_ANY ? T_BOTTOM : t);
     res->value.alt_set = alt_set;
     store_reduced(cp, res);
     return true;

@@ -124,6 +124,14 @@ void gen_return(cell_t *e, cell_t *l) {
   cell_t *end = p + e->entry.len;
   csize_t out_n = list_size(l);
   int ires = trace_decode(l->value.ptr[out_n - 1]);
+
+  // skip if T_BOTTOM
+  COUNTDOWN(i, out_n) {
+    int ai = trace_decode(l->value.ptr[i]);
+    type_t t = gen_type(&p[ai]);
+    if(t == T_BOTTOM) goto end;
+  }
+
   COUNTDOWN(i, out_n-1) {
     int ai = trace_decode(l->value.ptr[i]);
     cell_t *a = &p[ai];
@@ -132,16 +140,20 @@ void gen_return(cell_t *e, cell_t *l) {
     printf("  *out_%s%d = %s%d;\n", n, (int)i, n, ai);
   }
   printf("  return %s%d;\n", cname(gen_type(&p[ires])), ires);
-  cell_t *next = closure_next(l);
-  if(next < end) {
-    printf("\nblock%d:\n", (int)(next - (e + 1)));
+
+end:
+  {
+    cell_t *next = closure_next(l);
+    if(closure_next(l) < end) {
+      printf("\nblock%d:\n", (int)(next - (e + 1)));
+    }
   }
 }
 
 void gen_decl(cell_t *e, cell_t *c) {
   int i = c - e - 1;
   type_t t = gen_type(c);
-  if(t != T_RETURN) {
+  if(t != T_RETURN && t != T_BOTTOM) {
     if(c->func == func_value) {
       printf("  %s%s%d = ", ctype(t), cname(t), i);
       gen_value_rhs(c);
@@ -257,6 +269,7 @@ void gen_assert(cell_t *e, cell_t *c) {
     iq = trace_decode(c->expr.arg[1]),
     done = trace_decode(c->alt);
   const char *cn = cname(gen_type(c));
+  printf("\n  // assert\n");
   if(done >= 0) {
 
     int next = done;
