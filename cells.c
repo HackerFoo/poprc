@@ -409,3 +409,7 @@ void clear_bit(uint8_t *m, unsigned int x) {
 bool check_bit(uint8_t *m, unsigned int x) {
   return m[x >> 3] & (1 << (x & 7));
 }
+
+cell_t *closure_next(cell_t *c) {
+  return c + closure_cells(c);
+}

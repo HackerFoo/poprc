@@ -65,23 +65,17 @@ const char *cname(type_t t) {
 }
 
 cell_t *trace_last(cell_t *e) {
-  cell_t *p = e + 1, *prev = p;
+  cell_t *last = e + 1;
   size_t count = e->entry.len;
-  cell_t *end = &p[count];
-  while(p < end) {
-    prev = p;
-    p = gen_next(p);
+  cell_t *end = &e[count + 1];
+  FOR_TRACE(p, e + 1, end) {
+    last = p;
   }
-  return prev;
+  return last;
 }
 
 type_t gen_type(cell_t *c) {
-  type_t t = is_value(c) ? c->value.type : c->expr_type;
-  return t & T_EXCLUSIVE;
-}
-
-cell_t *gen_next(cell_t *c) {
-  return c + closure_cells(c);
+  return *trace_type(c) & T_EXCLUSIVE;
 }
 
 void gen_function_signature(cell_t *e) {
@@ -116,11 +110,11 @@ void gen_body(cell_t *e) {
     *end = start + e->entry.len;
   while(is_var(start)) start++;
 
-  for(cell_t *c = start; c < end; c = gen_next(c)) {
+  FOR_TRACE(c, start, end) {
     gen_decl(e, c);
   }
   printf("\nbody:\n");
-  for(cell_t *c = start; c < end; c = gen_next(c)) {
+  FOR_TRACE(c, start, end) {
     gen_instruction(e, c);
   }
 }
@@ -138,7 +132,7 @@ void gen_return(cell_t *e, cell_t *l) {
     printf("  *out_%s%d = %s%d;\n", n, (int)i, n, ai);
   }
   printf("  return %s%d;\n", cname(gen_type(&p[ires])), ires);
-  cell_t *next = gen_next(l);
+  cell_t *next = closure_next(l);
   if(next < end) {
     printf("\nblock%d:\n", (int)(next - (e + 1)));
   }
@@ -183,7 +177,7 @@ void gen_call(cell_t *e, cell_t *c) {
   char *sep = "";
   const char *module_name, *word_name;
 
-  if(get_entry(c) == e && gen_type(gen_next(c)) == T_RETURN) {
+  if(get_entry(c) == e && gen_type(closure_next(c)) == T_RETURN) {
     csize_t in = closure_in(c) - 1;
     for(csize_t i = 0; i < in; i++) {
       int a = trace_decode(c->expr.arg[i]);
@@ -276,7 +270,7 @@ void gen_assert(cell_t *e, cell_t *c) {
   } else {
     cell_t *end = d + e->entry.len;
     printf("  %s%d = %s%d;\n", cn, i, cname(gen_type(&d[ip])), ip);
-    for(cell_t *p = gen_next(c); p < end; p = gen_next(p)) {
+    FOR_TRACE(p, closure_next(c), end) {
       if(gen_type(p) == T_RETURN) {
         cell_t *next = p + closure_cells(p);
         if(next < end) {

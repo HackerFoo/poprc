@@ -45,6 +45,10 @@ static MAP(trace_index, 1 << 10);
 
 #define DEBUG 0
 
+#if INTERFACE
+#define FOR_TRACE(c, start, end) for(cell_t *(c) = (start); c < (end); c = closure_next(c))
+#endif
+
 static
 pair_t *trace_find(const cell_t *c) {
   c = clear_ptr(c);
@@ -222,7 +226,7 @@ void print_trace_cells(cell_t *e) {
   size_t count = e->entry.len;
   cell_t *start = e + 1;
   cell_t *end = start + count;
-  for(cell_t *c = start; c < end; c += closure_cells(c)) {
+  FOR_TRACE(c, start, end) {
     int t = c - start;
     printf("cell[%d]:", t);
     if(is_value(c)) {
@@ -416,19 +420,19 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
 
 // TODO replace with something more efficient
 void update_alt(cell_t *c, cell_t *r) {
-  for(cell_t *p = trace_cur; p < trace_ptr; p += closure_cells(p)) {
+  FOR_TRACE(p, trace_cur, trace_ptr) {
     if(p->alt == c) p->alt = r;
   }
 }
 
 void trace_final_pass() {
   // replace alts with trace cells
-  for(cell_t *p = trace_cur; p < trace_ptr; p += closure_cells(p)) {
+  FOR_TRACE(p, trace_cur, trace_ptr) {
     if(p->alt && !(is_value(p) && p->value.type == T_RETURN)) p->alt = trace_encode(trace_get(p->alt));
   }
 
   /*
-  for(cell_t *p = trace_cur; p < trace_ptr; p += closure_cells(p)) {
+  FOR_TRACE(p, trace_cur, trace_ptr) {
     intptr_t a = trace_decode(p->alt);
     while(a > 0) {
       p->alt = trace_encode(a);
@@ -558,7 +562,7 @@ cell_t *tref(cell_t *c) {
   return i < 0 ? NULL : &trace_cur[i];
 }
 
-type_t *bc_type(cell_t *c) {
+type_t *trace_type(cell_t *c) {
   return is_value(c) ? &c->value.type : &c->expr_type;
 }
 
@@ -567,8 +571,8 @@ void resolve_types(cell_t *c) {
   cell_t *p = tref(c->alt);
   while(p) {
     COUNTUP(i, n) {
-      type_t *t = bc_type(tref(c->value.ptr[i]));
-      type_t *pt = bc_type(tref(p->value.ptr[i]));
+      type_t *t = trace_type(tref(c->value.ptr[i]));
+      type_t *pt = trace_type(tref(p->value.ptr[i]));
       if((*t & T_EXCLUSIVE) == T_NONE) {
         *t &= ~T_EXCLUSIVE;
         *t |= *pt & T_EXCLUSIVE;
@@ -584,8 +588,8 @@ void resolve_types(cell_t *c) {
   p = c;
   while(p) {
     COUNTUP(i, n) {
-      type_t *t = bc_type(tref(c->value.ptr[i]));
-      type_t *pt = bc_type(tref(p->value.ptr[i]));
+      type_t *t = trace_type(tref(c->value.ptr[i]));
+      type_t *pt = trace_type(tref(p->value.ptr[i]));
       if((*pt & T_EXCLUSIVE) == T_NONE) {
         *pt &= ~T_EXCLUSIVE;
         *pt |= *t & T_EXCLUSIVE;
