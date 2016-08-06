@@ -5,7 +5,7 @@ LOAD=""
 
 for i in $LIBS
 do
-    LOAD="$LOAD -lo $i"
+    LOAD+=" -lo $i"
 done
 
 ./eval -quiet yes $LOAD -main $1 -c $1 -q | tee /dev/tty | clang -g -O2 -o ${1//./_} -xc -

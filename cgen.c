@@ -43,7 +43,8 @@ const char *ctype(type_t t) {
     [T_LIST]   = "cell_t *",
     [T_SYMBOL] = "int ",
     [T_MAP]    = "map_t ",
-    [T_STRING] = "seg_t "
+    [T_STRING] = "seg_t ",
+    [T_BOTTOM] = "void ",
   };
   t &= T_EXCLUSIVE;
   assert(t < LENGTH(table));
@@ -58,7 +59,8 @@ const char *cname(type_t t) {
     [T_LIST]   = "lst",
     [T_SYMBOL] = "sym",
     [T_MAP]    = "map",
-    [T_STRING] = "str"
+    [T_STRING] = "str",
+    [T_BOTTOM] = "bot"
   };
   t &= T_EXCLUSIVE;
   assert(t < LENGTH(table));
@@ -88,9 +90,8 @@ void gen_function_signature(cell_t *e) {
 
   printf("%s%s_%s(", ctype(gen_type(&p[ires])), e->module_name, e->word_name);
   char *sep = "";
-  COUNTDOWN(i, count) {
+  COUNTDOWN(i, e->entry.in) {
     cell_t *a = &p[i];
-    if(!is_var(a)) continue;
     type_t t = gen_type(a);
     printf("%s%s%s%d", sep, ctype(t), cname(t), (int)i);
     sep = ", ";
@@ -192,14 +193,14 @@ void gen_call(cell_t *e, cell_t *c) {
 
   if(get_entry(c) == e && gen_type(closure_next(c)) == T_RETURN) {
     csize_t in = closure_in(c) - 1;
+    printf("\n  // tail call\n");
     for(csize_t i = 0; i < in; i++) {
       int a = trace_decode(c->expr.arg[i]);
-      printf("\n  // tail call\n");
       printf("  %s%d = %s%d;\n", cname(gen_type(&d[i])), i, cname(gen_type(&d[a])), a);
     };
     printf("  goto body;\n");
   } else {
-    get_name(c, &module_name, &word_name);
+    trace_get_name(c, &module_name, &word_name);
     printf("  %s%d = %s_%s(", cname(gen_type(c)), i, module_name, word_name);
 
     csize_t in = closure_in(c), start_out = in;

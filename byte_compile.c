@@ -246,7 +246,7 @@ void print_trace_cells(cell_t *e) {
       if(c->alt) printf(" -> %" PRIuPTR, trace_decode(c->alt));
     } else {
       const char *module_name, *word_name;
-      get_name(c, &module_name, &word_name);
+      trace_get_name(c, &module_name, &word_name);
       printf(" %s.%s", module_name, word_name);
 
       traverse(c, {
@@ -362,6 +362,13 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       COUNTUP(i, in) {
         trace(c->expr.arg[i], c, tt_force, i);
       }
+
+      // need to trace deps first
+      for(csize_t i = closure_in(c); i < closure_args(c); i++) {
+        cell_t *a = c->expr.arg[i];
+        trace_store(a, a->value.type);
+      }
+
       trace_store(c, r->value.type);
     }
     r->value.type |= T_TRACED;
@@ -700,4 +707,16 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
 
   store_lazy(cp, c, res, 0);
   return false;
+}
+
+// very similar to get_name() but decodes entry
+void trace_get_name(const cell_t *c, const char **module_name, const char **word_name) {
+  if((reduce_t *)clear_ptr(c->func) == func_exec) {
+    cell_t *e = &trace_cells[trace_decode(c->expr.arg[closure_in(c) - 1])];
+    *module_name = e->module_name;
+    *word_name = e->word_name;
+  } else {
+    *module_name = "__primitive";
+    *word_name = function_name(c->func);
+  }
 }

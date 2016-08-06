@@ -92,8 +92,8 @@ char const *function_name(reduce_t *f) {
 }
 
 void get_name(const cell_t *c, const char **module_name, const char **word_name) {
-  if(c->func == func_exec) {
-    cell_t *e = &trace_cells[trace_decode(c->expr.arg[closure_in(c) - 1])];
+  if((reduce_t *)clear_ptr(c->func) == func_exec) {
+    cell_t *e = c->expr.arg[closure_in(c) - 1];
     *module_name = e->module_name;
     *word_name = e->word_name;
   } else {
