@@ -69,9 +69,8 @@ cell_t *trace_last(cell_t *e) {
   size_t count = e->entry.len;
   cell_t *end = &p[count];
   while(p < end) {
-    size_t s = closure_cells(p);
     prev = p;
-    p += s;
+    p = gen_next(p);
   }
   return prev;
 }
@@ -79,6 +78,10 @@ cell_t *trace_last(cell_t *e) {
 type_t gen_type(cell_t *c) {
   type_t t = is_value(c) ? c->value.type : c->expr_type;
   return t & T_EXCLUSIVE;
+}
+
+cell_t *gen_next(cell_t *c) {
+  return c + closure_cells(c);
 }
 
 void gen_function_signature(cell_t *e) {
@@ -113,11 +116,11 @@ void gen_body(cell_t *e) {
     *end = start + e->entry.len;
   while(is_var(start)) start++;
 
-  for(cell_t *c = start; c < end; c += closure_cells(c)) {
+  for(cell_t *c = start; c < end; c = gen_next(c)) {
     gen_decl(e, c);
   }
-  printf("\n");
-  for(cell_t *c = start; c < end; c += closure_cells(c)) {
+  printf("\nbody:\n");
+  for(cell_t *c = start; c < end; c = gen_next(c)) {
     gen_instruction(e, c);
   }
 }
@@ -135,7 +138,7 @@ void gen_return(cell_t *e, cell_t *l) {
     printf("  *out_%s%d = %s%d;\n", n, (int)i, n, ai);
   }
   printf("  return %s%d;\n", cname(gen_type(&p[ires])), ires);
-  cell_t *next = l + closure_cells(l);
+  cell_t *next = gen_next(l);
   if(next < end) {
     printf("\nblock%d:\n", (int)(next - (e + 1)));
   }
@@ -145,7 +148,12 @@ void gen_decl(cell_t *e, cell_t *c) {
   int i = c - e - 1;
   type_t t = gen_type(c);
   if(t != T_RETURN) {
-    printf("  %s%s%d;\n", ctype(t), cname(t), i);
+    if(c->func == func_value) {
+      printf("  %s%s%d = ", ctype(t), cname(t), i);
+      gen_value_rhs(c);
+    } else {
+      printf("  %s%s%d;\n", ctype(t), cname(t), i);
+    }
   }
 }
 
@@ -153,7 +161,8 @@ void gen_instruction(cell_t *e, cell_t *c) {
   if(gen_type(c) == T_RETURN) {
     gen_return(e, c);
   } else if(c->func == func_value) {
-    gen_value(e, c);
+    // values are already declared
+    // gen_value(e, c);
   } else if(c->func == func_select) {
     gen_select(e, c);
   } else if(c->func == func_assert) {
@@ -163,38 +172,51 @@ void gen_instruction(cell_t *e, cell_t *c) {
   }
 }
 
+cell_t *get_entry(cell_t *c) {
+  if(c->func != func_exec) return NULL;
+  return &trace_cells[trace_decode(c->expr.arg[closure_in(c) - 1])];
+}
+
 void gen_call(cell_t *e, cell_t *c) {
   cell_t *d = e + 1;
   int i = c - d;
   char *sep = "";
   const char *module_name, *word_name;
-  get_name(c, &module_name, &word_name);
-  printf("  %s%d = %s_%s(", cname(gen_type(c)), i, module_name, word_name);
 
-  csize_t in = closure_in(c), start_out = in;
-  csize_t n = closure_args(c);
-  if(c->func == func_exec) in--;
+  if(get_entry(c) == e && gen_type(gen_next(c)) == T_RETURN) {
+    csize_t in = closure_in(c) - 1;
+    for(csize_t i = 0; i < in; i++) {
+      int a = trace_decode(c->expr.arg[i]);
+      printf("\n  // tail call\n");
+      printf("  %s%d = %s%d;\n", cname(gen_type(&d[i])), i, cname(gen_type(&d[a])), a);
+    };
+    printf("  goto body;\n");
+  } else {
+    get_name(c, &module_name, &word_name);
+    printf("  %s%d = %s_%s(", cname(gen_type(c)), i, module_name, word_name);
 
-  for(csize_t i = 0; i < in; i++) {
-    int a = trace_decode(c->expr.arg[i]);
-    printf("%s%s%d", sep, cname(gen_type(&d[a])), a);
-    sep = ", ";
-  };
+    csize_t in = closure_in(c), start_out = in;
+    csize_t n = closure_args(c);
+    if(c->func == func_exec) in--;
 
-  for(csize_t i = start_out; i < n; i++) {
-    int a = trace_decode(c->expr.arg[i]);
-    printf("%s&%s%d", sep, cname(gen_type(&d[a])), a);
-    sep = ", ";
+    for(csize_t i = 0; i < in; i++) {
+      int a = trace_decode(c->expr.arg[i]);
+      printf("%s%s%d", sep, cname(gen_type(&d[a])), a);
+      sep = ", ";
+    };
+
+    for(csize_t i = start_out; i < n; i++) {
+      int a = trace_decode(c->expr.arg[i]);
+      printf("%s&%s%d", sep, cname(gen_type(&d[a])), a);
+      sep = ", ";
+    }
+
+    printf(");\n");
   }
-
-  printf(");\n");
 }
 
-void gen_value(cell_t *e, cell_t *c) {
-  cell_t *d = e + 1;
-  int i = c - d;
+void gen_value_rhs(cell_t *c) {
   type_t t = gen_type(c);
-  printf("  %s%d = ", cname(t), i);
   switch(t) {
   case T_INT:
   case T_SYMBOL:
@@ -208,6 +230,14 @@ void gen_value(cell_t *e, cell_t *c) {
   default:
     assert(false); // TODO add more types
   }
+}
+
+void gen_value(cell_t *e, cell_t *c) {
+  cell_t *d = e + 1;
+  int i = c - d;
+  type_t t = gen_type(c);
+  printf("  %s%d = ", cname(t), i);
+  gen_value_rhs(c);
 }
 
 void gen_select(cell_t *e, cell_t *c) {
@@ -246,7 +276,7 @@ void gen_assert(cell_t *e, cell_t *c) {
   } else {
     cell_t *end = d + e->entry.len;
     printf("  %s%d = %s%d;\n", cn, i, cname(gen_type(&d[ip])), ip);
-    for(cell_t *p = c + closure_cells(c); p < end; p += closure_cells(p)) {
+    for(cell_t *p = gen_next(c); p < end; p = gen_next(p)) {
       if(gen_type(p) == T_RETURN) {
         cell_t *next = p + closure_cells(p);
         if(next < end) {
