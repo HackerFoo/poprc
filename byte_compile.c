@@ -564,21 +564,18 @@ type_t *bc_type(cell_t *c) {
 
 void resolve_types(cell_t *c) {
   csize_t n = list_size(c);
-  COUNTUP(i, n) {
-    *bc_type(tref(c->value.ptr[i])) &= T_EXCLUSIVE;
-  }
-
   cell_t *p = tref(c->alt);
   while(p) {
     COUNTUP(i, n) {
       type_t *t = bc_type(tref(c->value.ptr[i]));
       type_t *pt = bc_type(tref(p->value.ptr[i]));
-      *pt &= T_EXCLUSIVE;
-      if(*t == T_NONE) {
-        *t = *pt;
-      } else if(*t != *pt &&
-                *pt != T_NONE) {
-        *t = T_ANY;
+      if((*t & T_EXCLUSIVE) == T_NONE) {
+        *t &= ~T_EXCLUSIVE;
+        *t |= *pt & T_EXCLUSIVE;
+      } else if((*t & T_EXCLUSIVE) != (*pt & T_EXCLUSIVE) &&
+                (*pt & T_EXCLUSIVE) != T_NONE) {
+        *t &= ~T_EXCLUSIVE;
+        *t |= T_ANY;
       }
     }
     p = tref(p->alt);
@@ -589,8 +586,9 @@ void resolve_types(cell_t *c) {
     COUNTUP(i, n) {
       type_t *t = bc_type(tref(c->value.ptr[i]));
       type_t *pt = bc_type(tref(p->value.ptr[i]));
-      if(*pt == T_NONE) {
-        *pt = *t;
+      if((*pt & T_EXCLUSIVE) == T_NONE) {
+        *pt &= ~T_EXCLUSIVE;
+        *pt |= *t & T_EXCLUSIVE;
       }
     }
     p = tref(p->alt);
