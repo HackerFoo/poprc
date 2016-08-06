@@ -452,6 +452,10 @@ char *show_type(type_t t) {
   _case(T_IO);
   _case(T_LIST);
   _case(T_SYMBOL);
+  _case(T_MAP);
+  _case(T_STRING);
+  _case(T_RETURN);
+  _case(T_NONE);
   default: return "???";
   }
 #undef case
@@ -484,6 +488,10 @@ char type_char(type_t t) {
   case T_IO: return 'w';
   case T_LIST: return 'l';
   case T_SYMBOL: return 's';
+  case T_MAP: return 'm';
+  case T_STRING: return 'S';
+  case T_RETURN: return 'r';
+  case T_NONE: return '0';
   }
   return 'x';
 }

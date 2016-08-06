@@ -239,6 +239,7 @@ void print_trace_cells(cell_t *e) {
         printf(" val %" PRIdPTR, c->value.integer[0]);
       }
       printf(", type = %s", show_type_all_short(c->value.type));
+      if(c->alt) printf(" -> %" PRIuPTR, trace_decode(c->alt));
     } else {
       const char *module_name, *word_name;
       get_name(c, &module_name, &word_name);
@@ -423,7 +424,7 @@ void update_alt(cell_t *c, cell_t *r) {
 void trace_final_pass() {
   // replace alts with trace cells
   for(cell_t *p = trace_cur; p < trace_ptr; p += closure_cells(p)) {
-    if(p->alt) p->alt = trace_encode(trace_get(p->alt));
+    if(p->alt && !(is_value(p) && p->value.type == T_RETURN)) p->alt = trace_encode(trace_get(p->alt));
   }
 
   /*
@@ -465,18 +466,21 @@ void print_trace_index()
   print_map(tmp_trace_index);
 }
 
-void trace_reduce(cell_t *c) {
+cell_t *trace_reduce(cell_t *c) {
   csize_t n = list_size(c);
+  cell_t *r = NULL;
+  cell_t *first;
 
   // first one
   COUNTUP(i, n) {
     reduce(&c->expr.arg[n], T_ANY);
   }
   if(!any_conflicts((cell_t const *const *)c->value.ptr, n)) {
-    cell_t *r = trace_store_list(c);
+    r = trace_store_list(c);
     r->n++;
     r->value.type = T_RETURN;
   }
+  first = r;
 
   // rest
   cell_t *p = copy(c);
@@ -485,12 +489,15 @@ void trace_reduce(cell_t *c) {
       reduce(&p->expr.arg[n], T_ANY);
     }
     if(!any_conflicts((cell_t const *const *)p->value.ptr, n)) {
-      cell_t *r = trace_store_list(p);
+      cell_t *prev = r;
+      r = trace_store_list(p);
       r->n++;
       r->value.type = T_RETURN;
+      prev->alt = trace_encode(r - trace_cur);
     }
   }
   closure_free(p);
+  return first;
 }
 
 bool compile_word(cell_t **entry, cell_t *module) {
@@ -527,7 +534,8 @@ bool compile_word(cell_t **entry, cell_t *module) {
   // compile
   set_trace(bc_trace);
   fill_args(c, bc_arg);
-  trace_reduce(c);
+  cell_t *r = trace_reduce(c);
+  resolve_types(r);
   drop(c);
   set_trace(NULL);
   trace_final_pass();
@@ -543,6 +551,50 @@ bool compile_word(cell_t **entry, cell_t *module) {
 fail:
   *entry = l;
   return false;
+}
+
+cell_t *tref(cell_t *c) {
+  intptr_t i = trace_decode(c);
+  return i < 0 ? NULL : &trace_cur[i];
+}
+
+type_t *bc_type(cell_t *c) {
+  return is_value(c) ? &c->value.type : &c->expr_type;
+}
+
+void resolve_types(cell_t *c) {
+  csize_t n = list_size(c);
+  COUNTUP(i, n) {
+    *bc_type(tref(c->value.ptr[i])) &= T_EXCLUSIVE;
+  }
+
+  cell_t *p = tref(c->alt);
+  while(p) {
+    COUNTUP(i, n) {
+      type_t *t = bc_type(tref(c->value.ptr[i]));
+      type_t *pt = bc_type(tref(p->value.ptr[i]));
+      *pt &= T_EXCLUSIVE;
+      if(*t == T_NONE) {
+        *t = *pt;
+      } else if(*t != *pt &&
+                *pt != T_NONE) {
+        *t = T_ANY;
+      }
+    }
+    p = tref(p->alt);
+  }
+
+  p = c;
+  while(p) {
+    COUNTUP(i, n) {
+      type_t *t = bc_type(tref(c->value.ptr[i]));
+      type_t *pt = bc_type(tref(p->value.ptr[i]));
+      if(*pt == T_NONE) {
+        *pt = *t;
+      }
+    }
+    p = tref(p->alt);
+  }
 }
 
 bool func_exec(cell_t **cp, UNUSED type_t t) {
@@ -569,12 +621,12 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
       cell_t *d = c->expr.arg[i];
       if(d && is_dep(d)) {
         drop(c);
-        store_var(d, T_ANY);
+        store_var(d, T_NONE);
         d->value.alt_set = alt_set;
       }
     }
 
-    cell_t *res = var(T_ANY);
+    cell_t *res = var(T_NONE);
     res->value.alt_set = alt_set;
     store_reduced(cp, res);
     return true;

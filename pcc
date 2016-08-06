@@ -1,0 +1,12 @@
+#!/bin/bash
+
+LOAD=""
+
+for i in lib.peg tests_m.peg
+do
+    LOAD="$LOAD -lo $i"
+done
+
+echo '#include "cgen/primitives.h"'
+echo
+./eval -quiet yes $LOAD -c $1 -q
