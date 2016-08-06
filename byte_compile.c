@@ -477,7 +477,7 @@ cell_t *trace_reduce(cell_t *c) {
 
   // first one
   COUNTUP(i, n) {
-    reduce(&c->expr.arg[n], T_ANY);
+    reduce(&c->value.ptr[i], T_ANY);
   }
   if(!any_conflicts((cell_t const *const *)c->value.ptr, n)) {
     r = trace_store_list(c);
@@ -490,7 +490,7 @@ cell_t *trace_reduce(cell_t *c) {
   cell_t *p = copy(c);
   while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, n) >= 0) {
     COUNTUP(i, n) {
-      reduce(&p->expr.arg[n], T_ANY);
+      reduce(&p->value.ptr[i], T_ANY);
     }
     if(!any_conflicts((cell_t const *const *)p->value.ptr, n)) {
       cell_t *prev = r;
