@@ -30,9 +30,11 @@ Compile to direct C when possible
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
+** TODO remove cut
+** TODO update refcnt for cells in genc
 ** TODO adapt func_exec to new bytecode format
 ** TODO use refcounts properly for maps and lists in modules
-** TODO handle ENTRY_NOINLINE in func_exec
+** DONE handle ENTRY_NOINLINE in func_exec
 ** DONE annotate trace with types in byte_compile.c
 ** DONE replace all tables with maps
 ** DONE add string map
