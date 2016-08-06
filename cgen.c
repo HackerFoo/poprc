@@ -33,6 +33,7 @@
 #include "gen/parse.h"
 #include "gen/print.h"
 #include "gen/cgen.h"
+#include "gen/eval.h"
 
 const char *ctype(type_t t) {
   static const char *table[] = {
@@ -101,7 +102,7 @@ void gen_function_signature(cell_t *e) {
     printf("%s%s*out_%s%d", sep, ctype(t), cname(t), (int)i);
   }
 
-  printf(")\n");
+  printf(")");
 }
 
 void gen_body(cell_t *e) {
@@ -299,7 +300,72 @@ void gen_assert(cell_t *e, cell_t *c) {
 
 void gen_function(cell_t *e) {
   gen_function_signature(e);
-  printf("{\n");
+  printf("\n{\n");
   gen_body(e);
   printf("}\n");
+}
+
+// for now assumes int
+void gen_main(cell_t *e) {
+  printf("#include <stdio.h>\n"
+         "#include <stdlib.h>\n"
+         "#include \"macros.h\"\n"
+         "#include \"cgen/primitives.h\"\n\n");
+
+  gen_function_signature(e);
+  printf(";\n\n");
+
+  printf("int main(int argc, char **argv)\n{\n");
+  printf("  int in[%d];\n", e->entry.in);
+  printf("  int out[%d];\n", e->entry.out);
+  printf("  if(argc < LENGTH(in) + 1) {\n"
+         "    printf(\"not enough arguments\\n\");\n"
+         "    return -1;\n"
+         "  }\n\n");
+
+  printf("  FOREACH(i, in) {\n"
+         "    in[i] = atoi(argv[i + 1]);\n"
+         "  }\n");
+
+  char *sep = "";
+  printf("  out[0] = %s_%s(", e->module_name, e->word_name);
+  COUNTUP(i, e->entry.in) {
+    printf("%sin[%d]", sep, (int)i);
+    sep = ", ";
+  }
+  COUNTUP(i, e->entry.out - 1) {
+    printf("%s&out[%d]", sep, (int)i + 1);
+    sep = ", ";
+  }
+  printf(");\n");
+  printf("  FOREACH(i, in) {\n"
+         "    printf(\"%%d \", in[i]);\n"
+         " }\n");
+  printf("  printf(\"%s_%s =>\");\n", e->module_name, e->word_name);
+  printf("  FOREACH(i, out) {\n"
+         "    printf(\" %%d\", out[i]);\n"
+         "  }\n");
+  printf("  printf(\"\\n\");\n\n"
+         "  return 0;\n"
+         "}\n");
+}
+
+void command_cgen(cell_t *rest) {
+  if(rest) {
+    cell_t
+      *m = eval_module(),
+      *e = module_lookup_compiled(tok_seg(rest), &m);
+
+    if(e) gen_function(e);
+  }
+}
+
+void command_main(cell_t *rest) {
+  if(rest) {
+    cell_t
+      *m = eval_module(),
+      *e = module_lookup_compiled(tok_seg(rest), &m);
+
+    if(e) gen_main(e);
+  }
 }
