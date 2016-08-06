@@ -16,4 +16,4 @@ f6: rot
 
 dec: [dup 5 > ! 1- dec] [dup 5 <= !] | pushl popr swap drop
 
-fib: [1 <= 1 swap!] [1- dup 1- _fib_ swap _fib_ +] | pushl popr swap drop
+fib: [1 <= 1 swap!] [1- dup 1- fib swap fib +] | pushl popr swap drop

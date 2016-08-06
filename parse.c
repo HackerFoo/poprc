@@ -850,15 +850,16 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
     } else {
       cell_t *c = parse_word(w, module);
       bool f = !is_value(c);
-      csize_t in = 0;
       if(f) {
-        in = closure_in(c);
+        csize_t in = closure_in(c);
+        if(clear_ptr(c->func) == (void *)func_exec) in--;
         COUNTDOWN(i, min(n, in)) {
           arg(&c, arg_stack[--n]);
         }
       }
       arg_stack[n++] = c;
       if(f) {
+        csize_t in = closure_in(c);
         csize_t out = closure_out(c);
         COUNTUP(i, out) {
           arg_stack[n++] = c->expr.arg[in+i];

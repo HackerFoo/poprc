@@ -624,7 +624,7 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
       }
     }
 
-    cell_t *res = var(T_NONE);
+    cell_t *res = var(t == T_ANY ? T_NONE : t);
     res->value.alt_set = alt_set;
     store_reduced(cp, res);
     return true;
