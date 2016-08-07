@@ -67,28 +67,27 @@ const char *cname(type_t t) {
   return table[t];
 }
 
-cell_t *trace_last(cell_t *e) {
-  cell_t *last = e + 1;
-  size_t count = e->entry.len;
-  cell_t *end = &e[count + 1];
-  FOR_TRACE(p, e + 1, end) {
-    last = p;
-  }
-  return last;
-}
-
 type_t gen_type(cell_t *c) {
-  return *trace_type(c) & T_EXCLUSIVE;
+  return trace_type(c) & T_EXCLUSIVE;
 }
 
 void gen_function_signature(cell_t *e) {
   cell_t *p = e + 1;
-  cell_t *l = trace_last(e);
-  csize_t out_n = list_size(l);
   size_t count = e->entry.len;
-  size_t ires = trace_decode(l->value.ptr[out_n - 1]);
 
-  printf("%s%s_%s(", ctype(gen_type(&p[ires])), e->module_name, e->word_name);
+  // find first return
+  cell_t *l = NULL;
+  for(size_t i = e->entry.in; i < count; i++) {
+    if(gen_type(&p[i]) == T_RETURN) {
+      l = &p[i];
+      break;
+    }
+  }
+  csize_t out_n = list_size(l);
+  type_t rtypes[out_n];
+  resolve_types(l, rtypes);
+
+  printf("%s%s_%s(", ctype(rtypes[out_n - 1]), e->module_name, e->word_name);
   char *sep = "";
   COUNTDOWN(i, e->entry.in) {
     cell_t *a = &p[i];
@@ -96,11 +95,9 @@ void gen_function_signature(cell_t *e) {
     printf("%s%s%s%d", sep, ctype(t), cname(t), (int)i);
     sep = ", ";
   }
+
   COUNTDOWN(i, out_n-1) {
-    int ai = trace_decode(l->value.ptr[i]);
-    cell_t *a = &p[ai];
-    type_t t = gen_type(a);
-    printf("%s%s*out_%s%d", sep, ctype(t), cname(t), (int)i);
+    printf("%s%s*out_%s%d", sep, ctype(rtypes[i]), cname(rtypes[i]), (int)i);
   }
 
   printf(")");
@@ -196,10 +193,10 @@ void gen_call(cell_t *e, cell_t *c) {
     printf("\n  // tail call\n");
     for(csize_t i = 0; i < in; i++) {
       int a = trace_decode(c->expr.arg[i]);
-      printf("  %s%d = %s%d;\n", cname(gen_type(&d[i])), i, cname(gen_type(&d[a])), a);
+      printf("  %s%d = %s%d;\n", cname(gen_type(&d[in - 1 - i])), in - 1 - i, cname(gen_type(&d[a])), a);
     };
     printf("  goto body;\n");
-  } else {
+  } else if(gen_type(c) != T_BOTTOM) {
     trace_get_name(c, &module_name, &word_name);
     printf("  %s%d = %s_%s(", cname(gen_type(c)), i, module_name, word_name);
 

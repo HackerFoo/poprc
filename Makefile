@@ -240,6 +240,7 @@ clean:
 	rm -f $(DIAGRAMS_FILE)
 	rm -f *.dot
 	rm -f eval_prof.out
+	rm -rf pcc_out
 
 .PHONY: clean-dot
 clean-dot:
