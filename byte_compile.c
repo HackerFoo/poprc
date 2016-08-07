@@ -574,14 +574,14 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
   cell_t *map[count];
   size_t map_idx = 0;
   cell_t *last, *res;
+  cell_t *returns = NULL;
 
-  // reduce all args and return variables
+  // don't execute, just reduce all args and return variables
   if(entry->entry.flags & ENTRY_NOINLINE) {
     csize_t in = closure_in(c), n = closure_args(c);
     alt_set_t alt_set = 0;
     for(csize_t i = 0; i < in - 1; ++i) {
       if(!reduce_arg(c, i, &alt_set, T_ANY)) goto fail;
-      //trace(c->expr.arg[i], c, tt_force, i);
     }
     for(csize_t i = in; i < n; ++i) {
       cell_t **d = &c->expr.arg[i];
@@ -615,6 +615,10 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
 
   // allocate, copy, and index
   LOOP(count) {
+    if((trace_type(code) & T_EXCLUSIVE) == T_RETURN) {
+      if(!returns) returns = code;
+      continue;
+    }
     size_t s = closure_cells(code);
     cell_t *nc = closure_alloc_cells(s);
     memcpy(nc, code, s * sizeof(cell_t));
@@ -645,22 +649,46 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
             *p = NULL;
           }
         }
-      }, ARGS | PTRS);
+      }, ARGS | PTRS | ALT);
   }
 
+  // handle returns
+  // TODO set alt_sets
+  code = entry + 1;
   size_t
-    last_out = list_size(last) - 1,
-    last_arg = c->size - 1;
-  res = ref(last->value.ptr[last_out]);
-  COUNTUP(i, last_out) {
-    cell_t *d = c->expr.arg[last_arg - i];
+    out = closure_out(c),
+    n = closure_args(c);
+  cell_t **results[out + 1];
+  results[out] = &res;
+  COUNTUP(i, out) {
+    results[i] = &c->expr.arg[n - 1 - i];
+  }
+#define GET_RETURN_ARG(x) ref(map[trace_decode(returns->value.ptr[(x)])])
+
+  // first one
+  res = GET_RETURN_ARG(out);
+  COUNTUP(i, out) {
+    cell_t *d = c->expr.arg[n - 1 - i];
     d->func = func_id;
-    d->expr.arg[0] = ref(last->value.ptr[i]);
+    d->expr.arg[0] = GET_RETURN_ARG(i);
     d->expr.arg[1] = 0;
+  }
+
+  // rest
+  intptr_t next = trace_decode(returns->alt);
+  while(next >= 0) {
+    returns = &code[next];
+    FOREACH(i, results) {
+      results[i] = &(*results[i])->alt;
+      cell_t *a = GET_RETURN_ARG(i);
+      *results[i] = a ? id(a) : NULL;
+    }
+  }
+
+  // drop c from deps
+  LOOP(out) {
     drop(c);
   }
-
-  drop(last);
 
   store_lazy(cp, c, res, 0);
   return false;
