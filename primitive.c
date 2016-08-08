@@ -315,24 +315,6 @@ bool func_assert(cell_t **cp, type_t t) {
   return false;
 }
 
-/*
-bool type_check(cell_t **cp, type_t type) {
-  cell_t *c = *cp;
-  assert(!is_marked(c));
-  if(!reduce(&c->expr.arg[0], type)) goto fail;
-  c->alt = closure_split1(c, 0);
-  cell_t *p = get(c->expr.arg[0]);
-  if(!((p->value.type == type) ||
-       is_var(p))) goto fail;
-  store_reduced(c, mod_alt(c->expr.arg[0], c->alt,
-                           c->expr.arg[0]->value.alt_set));
-  return true;
- fail:
-  fail(cp);
-  return false;
-}
-*/
-
 // WORD("id", id, 1, 1)
 bool func_id(cell_t **cp, type_t t) {
   cell_t *c = *cp;

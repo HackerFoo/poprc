@@ -45,10 +45,6 @@
 #include "gen/command_table.h"
 #include "gen/git_log.h"
 
-#ifdef USE_LLVM
-#include "llvm.h"
-#endif
-
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
 #endif
@@ -511,32 +507,6 @@ bool get_arity(const cell_t *p, csize_t *in, csize_t *out, cell_t *module) {
   drop(c);
   return true;
 }
-
-#ifdef USE_LLVM
-void compile_expr(char const *name, char *str, unsigned int n) {
-  word_entry_t *e =
-    lookup_linear(user_word_table,
-                  WIDTH(user_word_table),
-                  user_word_table_length,
-                  name);
-  if(!e) e = new_user_word_entry++;
-  strcpy(e->name, name);
-  e->func = func_placeholder;
-  e->in = 0;
-  e->out = 1;
-  char *s = malloc(n+1);
-  memcpy(s, str, n+1);
-  get_arity(s, n, &e->in, &e->out);
-  free(s);
-  e->func = func_self;
-  cell_t *c = build(str, n);
-  if(!c) {
-    --new_user_word_entry;
-    return;
-  }
-  e->func = compile(c, e->in, e->out);
-}
-#endif
 
 cell_t *remove_row(cell_t *c) {
   assert(is_list(c));

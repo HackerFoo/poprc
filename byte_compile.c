@@ -331,14 +331,6 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       COUNTUP(i, in) {
         trace(c->expr.arg[i], c, tt_force, i);
       }
-
-      // need to trace deps first
-      /*
-      for(csize_t i = closure_in(c); i < closure_args(c); i++) {
-        cell_t *a = c->expr.arg[i];
-        trace_store(a, a->value.type);
-      }
-      */
       trace_store(c, r->value.type);
     }
     r->value.type |= T_TRACED;
@@ -406,18 +398,7 @@ void trace_final_pass() {
   // replace alts with trace cells
   FOR_TRACE(p, trace_cur, trace_ptr) {
     trace_rewrite(p);
-    //if(p->alt) p->alt = trace_encode(trace_get(p->alt));
   }
-
-  /*
-  FOR_TRACE(p, trace_cur, trace_ptr) {
-    intptr_t a = trace_decode(p->alt);
-    while(a > 0) {
-      p->alt = trace_encode(a);
-      a = trace_decode(trace_cur[a].alt);
-    }
-  }
-  */
 }
 
 void bc_arg(cell_t *c, UNUSED val_t x) {
@@ -518,7 +499,7 @@ bool compile_word(cell_t **entry, cell_t *module) {
   // compile
   set_trace(bc_trace);
   fill_args(c, bc_arg);
-  cell_t *r = trace_reduce(c);
+  trace_reduce(c);
   drop(c);
   set_trace(NULL);
   trace_final_pass();

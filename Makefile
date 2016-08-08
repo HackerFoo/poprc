@@ -15,8 +15,6 @@ ifeq ($(USE_LINENOISE),y)
 	USE_READLINE = n
 endif
 
-USE_LLVM ?= n
-
 OS := $(shell uname)
 
 ifeq ($(CC),cc)
@@ -37,7 +35,6 @@ endif
 ifeq ($(findstring emcc, $(CC)),emcc)
 	CFLAGS = -Wall -DNDEBUG -DEMSCRIPTEN -s ALIASING_FUNCTION_POINTERS=0
 	USE_LINENOISE=n
-	USE_LLVM=n
 	USE_READLINE=n
 	OPT_FLAG=-Os
 endif
@@ -99,17 +96,6 @@ ifeq ($(USE_LINENOISE),y)
 	CFLAGS += -DUSE_LINENOISE
 endif
 
-ifeq ($(USE_LLVM),y)
-	OBJS += $(BUILD_DIR)/llvm.o $(BUILD_DIR)/llvm_ext.o
-	CFLAGS += -DUSE_LLVM
-	LLVM_COMPONENTS = engine #core mcjit native
-	LLVM_CONFIG = llvm-config
-	LLVM_CXXFLAGS = $(shell $(LLVM_CONFIG) --cxxflags | sed -e s/-I/-isystem\ /g)
-	LDFLAGS += $(shell $(LLVM_CONFIG) --ldflags)
-	LIBS += $(shell $(LLVM_CONFIG) --libs --system-libs $(LLVM_COMPONENTS)) -lc++
-	CXXFLAGS += -isystem $(shell llvm-config --includedir)/c++/v1
-endif
-
 UNAME_S := $(shell uname -s)
 
 ifeq ($(UNAME_S),Darwin)
@@ -144,14 +130,6 @@ js/eval.js:
 
 # pull in dependency info for *existing* .o files
 -include $(OBJS:.o=.d)
-
-$(BUILD_DIR)/llvm_ext.o: llvm_ext.cpp llvm_ext.h
-	@mkdir -p $(BUILD_DIR)
-	$(CC) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -O0 llvm_ext.cpp -o $(BUILD_DIR)/llvm_ext.o
-
-$(BUILD_DIR)/llvm.o: llvm.cpp llvm.h llvm_ext.h rt_types.h
-	@mkdir -p $(BUILD_DIR)
-	$(CC) -c $(CXXFLAGS) $(LLVM_CXXFLAGS) -O0 llvm.cpp -o $(BUILD_DIR)/llvm.o
 
 # compile and generate dependency info;
 $(BUILD_DIR)/%.o: %.c
