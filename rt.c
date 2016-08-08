@@ -213,7 +213,8 @@ cell_t *expand_inplace_dep(cell_t *c, csize_t s) {
   c->expr.out += s;
   csize_t i;
   for(i = c->size - c->expr.out + s; i < c->size; ++i) {
-    if(c->expr.arg[i]) c->expr.arg[i]->expr.arg[0] = c;
+    cell_t *d = c->expr.arg[i];
+    if(d && is_dep(d)) d->expr.arg[0] = c;
   }
   return c;
 }

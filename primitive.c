@@ -221,15 +221,16 @@ bool func_popr(cell_t **cp, UNUSED type_t t) {
   // also marks result as a variable
   cell_t *res;
   cell_t **l = p->value.ptr;
-  if(is_placeholder(l[0])) {
-    closure_set_ready(l[0], true);
-    cell_t *h = expand_inplace_dep(l[0], 1); // *** no shift here
-    l[0] = h->expr.arg[closure_in(h)] = dep(ref(h));
-    l[1] = h;
+  cell_t *res_d;
+  if(is_placeholder(*l)) {
+    //closure_set_ready(l[0], true);
+    *l = expand_inplace_dep(*l, 1); // *** no shift here
+    res_d = ref((*l)->expr.arg[closure_in(*l)] = dep(ref(*l)));
     res_type |= T_VAR;
     res = ref(p);
-  } else if(closure_is_ready(l[0])) {
+  } else if(closure_is_ready(*l)) {
     /* drop the right list element */
+    res_d = ref(*l);
     res = closure_alloc(closure_args(p)-1);
     res->func = func_value;
     csize_t elems = list_size(res);
@@ -239,7 +240,7 @@ bool func_popr(cell_t **cp, UNUSED type_t t) {
     }
   } else goto fail;
 
-  store_lazy_dep(c, d, ref(p->value.ptr[0]), alt_set);
+  store_lazy_dep(c, d, res_d, alt_set);
   res->value.alt_set = alt_set;
   res->alt = c->alt;
   store_reduced(cp, res);
