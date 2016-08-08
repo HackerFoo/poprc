@@ -616,11 +616,11 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
   size_t s = 0;
   for(size_t i = in; i < len; i += s) {
     cell_t *p = &code[i];
+    s = closure_cells(p);
     if((trace_type(p) & T_EXCLUSIVE) == T_RETURN) {
       if(!returns) returns = p;
       continue;
     }
-    s = closure_cells(p);
     cell_t *nc = closure_alloc_cells(s);
     memcpy(nc, p, s * sizeof(cell_t));
     nc->tmp = 0;
