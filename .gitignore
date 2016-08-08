@@ -21,3 +21,5 @@ _darcs
 /config.mk
 /diagrams.html
 /diagrams
+/compile_commands.json
+/poprc_out

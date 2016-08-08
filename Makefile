@@ -185,18 +185,18 @@ scan: clean
 .PHONY: test
 test: eval
 	./eval -test '' -check_free no -stats no -quit | $(DIFF_TEST) test_output/test.log -
-	./eval -echo yes -stats no < tests.peg | $(DIFF_TEST) test_output/tests.peg.log -
+	./eval -echo yes -stats no < tests.txt | $(DIFF_TEST) test_output/tests.txt.log -
 
 test_output/test.log: eval
 	@mkdir -p test_output
 	./eval -test '' -check_free no -stats no -quit > $@
 
-test_output/tests.peg.log: eval tests.peg
+test_output/tests.txt.log: eval tests.txt
 	@mkdir -p test_output
-	./eval -echo yes -stats no < tests.peg > $@
+	./eval -echo yes -stats no < tests.txt > $@
 
 .PHONY: test_output
-test_output: test_output/test.log test_output/tests.peg.log
+test_output: test_output/test.log test_output/tests.txt.log
 
 .PHONY: rtags
 rtags: make-eval.log
@@ -240,7 +240,7 @@ clean:
 	rm -f $(DIAGRAMS_FILE)
 	rm -f *.dot
 	rm -f eval_prof.out
-	rm -rf pcc_out
+	rm -rf poprc_out
 
 .PHONY: clean-dot
 clean-dot:

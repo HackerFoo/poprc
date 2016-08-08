@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LIBS="lib.peg tests_m.peg"
+LIBS="*.peg"
 LOAD=""
 
 for i in $LIBS
@@ -9,7 +9,7 @@ do
 done
 
 OUT=${1//./_}
-DIR=pcc_out
+DIR=poprc_out
 
 mkdir -p $DIR
 ./eval -quiet yes $LOAD -main $1 -c $1 -q > ${DIR}/${OUT}.c
