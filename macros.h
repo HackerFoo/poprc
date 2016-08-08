@@ -54,7 +54,7 @@
     .first = (uintptr_t)__name,                          \
     .second = (uintptr_t)&(cell_t) {                     \
       .func = func_##__func,                             \
-      .module_name = "__builtin",                        \
+      .module_name = "__primitive",                      \
       .word_name = __name "\0" #__func,                  \
       .entry = {                                         \
         .in = __in,                                      \

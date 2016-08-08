@@ -20,7 +20,7 @@ fib: [dup 1 <= !] [1- dup 1- fib swap fib +] | pushl popr swap drop
 
 fact: [1 == 1 swap !] [dup 1- fact *] | pushl popr swap drop
 
-fact2: [1 == 1 swap !] [dup 1- swap [*] pushl swap pushr pushl popr swap popr swap drop swap fact2] | pushl pushl popr swap popr swap drop swap
-
 __ doesn't work yet
 get2: popr swap popr swap drop swap
+fact2: [1 == 1 swap !] [dup 1- swap [*] pushl swap pushr pushl get2 fact2] | pushl pushl get2
+

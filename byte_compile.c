@@ -128,7 +128,7 @@ void trace_rewrite(cell_t *c) {
   cell_t **entry = NULL;
   if(c->func == func_exec) {
     entry = &c->expr.arg[closure_in(c) - 1];
-    *entry = trace_encode(trace_cells - *entry);
+    *entry = trace_encode(*entry - trace_cells);
   }
 
   traverse(c, {
@@ -465,30 +465,74 @@ cell_t *trace_reduce(cell_t *c) {
   return first;
 }
 
-bool compile_word(cell_t **entry, cell_t *module) {
+cell_t *module_lookup_compiled(seg_t path, cell_t **context) {
+  cell_t **p = module_lookup(path, context);
+  if(!p) return NULL;
+  if(!*p) {
+    return lookup_word(string_seg("_"));
+  }
+  if(!is_list(*p)) return *p;
+  csize_t in, out;
+  cell_t *l = *p;
+  *p = NULL;
+  if(!pre_compile_word(l, *context, &in, &out)) return NULL;
+  p = module_lookup(path, context);
+  *p = l;
+  if(compile_word(p, *context, in, out)) {
+    return *p;
+  } else {
+    return NULL;
+  }
+}
+
+cell_t *parse_eval_def(cell_t *name, cell_t *rest) {
+  cell_t **eval_module = cmap_get(&modules, string_seg("eval"));
+  cell_t **entry = cmap_get(eval_module, tok_seg(name));
+  *entry = quote(rest);
+  csize_t in, out;
+  cell_t *l = *entry;
+  *entry = NULL;
+  if(!pre_compile_word(l, *eval_module, &in, &out)) return NULL;
+  entry = cmap_get(eval_module, tok_seg(name));
+  *entry = l;
+  if(compile_word(entry, *eval_module, in, out)) {
+    return *entry;
+  } else {
+    return NULL;
+  }
+}
+
+bool pre_compile_word(cell_t *l, cell_t *module, csize_t *in, csize_t *out) {
+  cell_t *toks = l->value.ptr[0]; // TODO handle list_size(l) > 1
+  // arity (HACKy)
+  // must parse twice, once for arity, and then reparse with new entry
+  // also compiles dependencies
+  // TODO make mutual recursive words compile correctly
+  bool res = get_arity(toks, in, out, module);
+  return res;
+}
+
+bool compile_word(cell_t **entry, cell_t *module, csize_t in, csize_t out) {
   cell_t *l;
   if(!entry || !(l = *entry)) return false;
   if(!is_list(l)) return true;
   if(list_size(l) < 1) return false;
 
+  cell_t *toks = l->value.ptr[0]; // TODO handle list_size(l) > 1
+
   // set up
   trace_init();
 
-  cell_t *toks = l->value.ptr[0]; // TODO handle list_size(l) > 1
+  // must look up again
   cell_t *e = *entry = trace_ptr;
   trace_cur = ++trace_ptr;
 
   e->n = PERSISTENT;
   e->module_name = module_name(module);
   e->word_name = entry_name(module, e);
-  e->entry.out = 1;
+  e->entry.in = in;
+  e->entry.out = out;
   e->entry.len = 0;
-
-  // arity (HACKy)
-  // must parse twice, once for arity, and then reparse with new entry
-  e->entry.flags = ENTRY_PRIMITIVE;
-  e->func = func_placeholder;
-  if(!get_arity(toks, &e->entry.in, &e->entry.out, module)) goto fail;
 
   // parse
   const cell_t *p = toks;
@@ -511,10 +555,6 @@ bool compile_word(cell_t **entry, cell_t *module) {
 
   free_def(l);
   return true;
-
-fail:
-  *entry = l;
-  return false;
 }
 
 cell_t *tref(cell_t *c) {

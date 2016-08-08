@@ -1104,25 +1104,3 @@ int test_module_lookup() {
   modules = orig_modules;
   return e ? -1 : 0;
 }
-
-cell_t *module_lookup_compiled(seg_t path, cell_t **context) {
-  cell_t **p = module_lookup(path, context);
-  if(!p || !*p) return NULL;
-  if(!is_list(*p)) return *p;
-  if(compile_word(p, *context)) {
-    return *p;
-  } else {
-    return NULL;
-  }
-}
-
-cell_t *parse_eval_def(cell_t *name, cell_t *rest) {
-  cell_t **eval_module = cmap_get(&modules, string_seg("eval"));
-  cell_t **entry = cmap_get(eval_module, tok_seg(name));
-  *entry = quote(rest);
-  if(compile_word(entry, *eval_module)) {
-    return *entry;
-  } else {
-    return NULL;
-  }
-}

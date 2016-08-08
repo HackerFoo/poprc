@@ -12,5 +12,5 @@ OUT=${1//./_}
 DIR=poprc_out
 
 mkdir -p $DIR
-./eval -quiet yes $LOAD -main $1 -c $1 -q > ${DIR}/${OUT}.c
+./eval -quiet yes -check_free no $LOAD -main $1 -c $1 -q > ${DIR}/${OUT}.c
 clang -g -O2 -I. -o ${DIR}/${OUT} ${DIR}/${OUT}.c
