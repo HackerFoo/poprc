@@ -172,6 +172,26 @@ void command_quiet(UNUSED cell_t *rest) {
   }
 }
 
+void command_eval(cell_t *rest) {
+  cell_t *p = rest;
+  if(p) {
+    cell_t *e = NULL;
+    if((e = check_reserved(p))) {
+      const char *line = e->tok_list.line;
+      const char *loc = e->tok_list.location;
+      size_t size = strlen(line);
+      find_line(loc, &line, &size);
+      int pos = loc - line;
+      COUNTUP(i, pos + 2) putchar(' ');
+      printf("^--- Parse error\n");
+    } else {
+      measure_start();
+      eval(p);
+      measure_stop();
+    }
+  }
+}
+
 int main(int argc, char **argv) {
   parse_init();
   cells_init();
@@ -449,21 +469,8 @@ bool eval_command(char *line, char *end) {
     if(!p || !run_command(tok_seg(p), p->tok_list.next)) {
       printf("unknown command\n");
     }
-  } else if(p) {
-    cell_t *e = NULL;
-    if((e = check_reserved(p))) {
-      const char *line = e->tok_list.line;
-      const char *loc = e->tok_list.location;
-      size_t size = strlen(line);
-      find_line(loc, &line, &size);
-      int pos = loc - line;
-      COUNTUP(i, pos + 2) putchar(' ');
-      printf("^--- Parse error\n");
-    } else {
-      measure_start();
-      eval(p);
-      measure_stop();
-    }
+  } else {
+    command_eval(p);
   }
   free_toks(p0);
   return !quit;
