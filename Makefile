@@ -126,7 +126,7 @@ $(BUILD_DIR)/eval: $(OBJS)
 js/eval.js: EMCC_OBJS := $(patsubst %.c, build/emcc/$(BUILD)/%.o, $(SRC))
 js/eval.js:
 	make CC=emcc $(EMCC_OBJS)
-	emcc $(EMCC_OBJS) -o js/eval.js -s EXPORTED_FUNCTIONS="['_main', '_eval_command']" --embed-file lib.peg
+	emcc $(EMCC_OBJS) -o js/eval.js -s EXPORTED_FUNCTIONS="['_main', '_emscripten_eval']" --embed-file lib.peg
 
 # pull in dependency info for *existing* .o files
 -include $(OBJS:.o=.d)

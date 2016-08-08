@@ -458,6 +458,12 @@ void command_quit(UNUSED cell_t *rest) {
   quit = true;
 }
 
+#ifdef EMSCRIPTEN
+void emscripten_eval(char *str, int len) {
+  eval_command(str, str + len);
+}
+#endif
+
 bool eval_command(char *line, char *end) {
   cell_t *p = lex(line, end), *p0 = p;
   if(match(p, ":")) {
