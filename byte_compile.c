@@ -108,19 +108,21 @@ cell_t *trace_store(const cell_t *c, type_t t) {
   trace_ptr += size;
   trace_cnt++;
   memcpy(dest, c, sizeof(cell_t) * size);
+  if(c->func != func_assert) dest->alt = NULL;
   trace_index_add(c, dest - trace_cur);
 
   dest->n = -1;
 
-  // stuff type in tmp
-  dest->tmp = (cell_t *)(uintptr_t)t;
+  // stuff type in expr_type
+  dest->expr_type = t | T_TRACED;
   return dest;
 }
 
 void trace_rewrite(cell_t *c) {
 
   // skip returns (already rewritten)
-  if((trace_type(c) & T_EXCLUSIVE) == T_RETURN) return;
+  if((c->expr_type & T_TRACED) == 0) return;
+  c->expr_type &= ~T_TRACED;
 
   // skip rewriting for the entry argument
   cell_t **entry = NULL;
@@ -219,7 +221,7 @@ void print_trace_cells(cell_t *e) {
           printf(" %" PRIuPTR, trace_decode(*p));
         }, ARGS | PTRS);
 
-      printf(", type = %s", show_type_all_short((type_t)(uintptr_t)c->tmp));
+      printf(", type = %s", show_type_all_short(c->expr_type));
       if(c->alt) printf(" -> %" PRIuPTR, trace_decode(c->alt));
     }
 /*
@@ -567,23 +569,22 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
   cell_t *c = clear_ptr(*cp);
   assert(is_closure(c));
 
-  size_t data = closure_in(c) - 1;
-  cell_t *entry = c->expr.arg[data];
+  size_t in = closure_in(c) - 1;
+  cell_t *entry = c->expr.arg[in];
   cell_t *code = entry + 1;
-  size_t count = entry->entry.len;
-  cell_t *map[count];
-  size_t map_idx = 0;
-  cell_t *last, *res;
+  size_t len = entry->entry.len;
+  cell_t *map[len];
+  cell_t *res;
   cell_t *returns = NULL;
 
   // don't execute, just reduce all args and return variables
   if(entry->entry.flags & ENTRY_NOINLINE) {
-    csize_t in = closure_in(c), n = closure_args(c);
+    csize_t c_in = closure_in(c), n = closure_args(c);
     alt_set_t alt_set = 0;
-    for(csize_t i = 0; i < in - 1; ++i) {
+    for(csize_t i = 0; i < c_in - 1; ++i) {
       if(!reduce_arg(c, i, &alt_set, T_ANY)) goto fail;
     }
-    for(csize_t i = in; i < n; ++i) {
+    for(csize_t i = c_in; i < n; ++i) {
       cell_t **d = &c->expr.arg[i];
       if(*d && is_dep(*d)) {
         cell_t *v = var(T_BOTTOM);
@@ -602,36 +603,34 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
     return false;
   }
 
-  c->expr.arg[data] = 0;
-  memset(map, 0, sizeof(map[0]) * count);
+  c->expr.arg[in] = 0;
+  memset(map, 0, sizeof(map[0]) * len);
 
-  COUNTDOWN(i, data) {
-    assert(is_var(code));
-    map[map_idx++] = c->expr.arg[i];
-    refn(c->expr.arg[i], code->n);
-    code++;
+  COUNTUP(i, in) {
+    cell_t *p = &code[i];
+    assert(is_var(p));
+    map[i] = refn(c->expr.arg[in - 1 - i], p->n);
   }
-  count -= data;
 
   // allocate, copy, and index
-  LOOP(count) {
-    if((trace_type(code) & T_EXCLUSIVE) == T_RETURN) {
-      if(!returns) returns = code;
+  size_t s = 0;
+  for(size_t i = in; i < len; i += s) {
+    cell_t *p = &code[i];
+    if((trace_type(p) & T_EXCLUSIVE) == T_RETURN) {
+      if(!returns) returns = p;
       continue;
     }
-    size_t s = closure_cells(code);
+    s = closure_cells(p);
     cell_t *nc = closure_alloc_cells(s);
-    memcpy(nc, code, s * sizeof(cell_t));
+    memcpy(nc, p, s * sizeof(cell_t));
     nc->tmp = 0;
-    code += s;
-
-    map[map_idx++] = nc;
-    last = nc;
+    map[i] = nc;
   }
 
   // rewrite pointers
-  for(size_t i = data; i < map_idx; i++) {
+  for(size_t i = in; i < len; i++) {
     cell_t *t = map[i];
+    if(!t) continue;
 
     // skip rewriting for the entry argument
     cell_t **t_entry = NULL;
@@ -643,7 +642,7 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
     traverse(t, {
         if(p != t_entry && *p) {
           uintptr_t x = trace_decode(*p);
-          if(x < map_idx) {
+          if(x < len) {
             *p = map[x];
           } else {
             *p = NULL;
@@ -654,7 +653,6 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
 
   // handle returns
   // TODO set alt_sets
-  code = entry + 1;
   size_t
     out = closure_out(c),
     n = closure_args(c);
@@ -679,10 +677,11 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
   while(next >= 0) {
     returns = &code[next];
     FOREACH(i, results) {
-      results[i] = &(*results[i])->alt;
       cell_t *a = GET_RETURN_ARG(i);
+      results[i] = &(*results[i])->alt;
       *results[i] = a ? id(a) : NULL;
     }
+    next = trace_decode(returns->alt);
   }
 
   // drop c from deps
