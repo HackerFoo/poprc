@@ -100,30 +100,7 @@ void parse_init() {
   primitive_module[0] = (pair_t) {LENGTH(primitive_module) - 1,
                                   LENGTH(primitive_module) - 1};
 }
-/*
-word_entry_t *alloc_user_word(seg_t w) {
-  pair_t *p = seg_map_find(word_index, w);
-  word_entry_t *e;
-  const char *name;
-  if(p) {
-    e = (word_entry_t *)p->second;
-    if(e >= word_table && e < word_table + 1) return NULL; // primitive
-    else return e;
-  } else {
-    if(new_user_word_entry >= user_word_table + 1) return NULL; // user table is full
-    if(!(name = seg_string(w))) return NULL; // strings full
-    e = new_user_word_entry++;
-    e->name = name;
-    e->func = func_self;
-    e->in = 0;
-    e->out = 1;
-    e->data = NULL;
-    pair_t x = {(uintptr_t)e->name, (uintptr_t)e};
-    string_map_insert(word_index, x);
-    return e;
-  }
-}
-*/
+
 bool is_num(char const *str) {
   return char_class(str[0]) == CC_NUMERIC ||
     (str[0] == '-' && char_class(str[1]) == CC_NUMERIC);
