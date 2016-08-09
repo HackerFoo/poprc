@@ -1,0 +1,400 @@
+#+TITLE: Popr Language and Compiler
+#+AUTHOR: Dustin DeWeese
+#+DATE: 2016.8.8
+
+#+REVEAL_ROOT: file:///Users/dusty/reveal.js-3.3.0
+#+REVEAL_MATHJAX_URL: file:///Users/dusty/MathJax-2.6.1/MathJax.js
+#+REVEAL_THEME: sky
+#+REVEAL_TRANS: linear
+
+* Why another language?
+- Limited language choice for embedded real-time applications
+  - C, C++, or ASM
+- Weak type systems, hard to reason about
+- Very brittle
+* What is Popr?
+** Goals
+- High-level language with strong static guarantees
+- Functional
+- Simple syntax and semantics
+- Efficient and predictable timing
+- No garbage collection
+- Interoperable with C and C++
+** Features
+- Concatenative
+- Lazy
+- Partial Evaluation
+- First-class Partial and Multi-valued Functions
+- Quoted functions
+- Modules
+- Compiles to C
+* Big Ideas
+** Concatenative Language
+- Composition only language; juxtaposition denotes composition
+  - No application
+  - Easy to convert into a graph
+- No need to litter code and spend time on names that just move data around
+- Operations are named
+- Easy to see patterns in the code and name them
+** Functional
+- More declarative than procedural code
+- Can be reduced to efficient machine code
+- Expressive
+** Lazy
+- Arguments (sub-graphs) are not reduced until required
+- Allows control flow to be expressed functionally
+** Multi-valued Functions / "Non-determinism"
+- Functions can return multiple values, or none at all
+  - Similar to set-valued functions
+- Each returned value introduces a branch
+- Assertions can prune results
+- Allows pattern matching and branching to be expressed functionally without special forms
+- Also allows partial evaluation
+** Type = Static Assertion
+- Types are nothing more than static information gathered through analysis
+  - Doesn't need to be limited to a single value
+  - Assertions that will never fail
+- Allows a single language for both computation and types
+- Often much easier to express a complex type as an assertion
+  - Even numbers: 2 mod 0 == !
+  - Assertions can involve multiple arguments
+** Modules
+- Modules allow abstraction of functionality into names in a namespace
+- Names are still necessary for abstraction
+- Only functions are named (words)
+- All names are statically determined during compilation
+- Module language is a separate language for naming:
+  - Functions
+  - Unions of other modules
+** Partial Evaluation
+- Partial evaluation is computing with partial data to produce a specialized program
+- Compilation is partial evaluation of an interpreter given a source program
+- Information gathered about partial programs:
+  - Ordering: reduction order
+  - Storage: record reference counts during reduction
+  - Types: also recorded during reduction
+- Dynamic during interpretation, but these can be determined through symbolic interpretation
+  - Replace unknowns with variables
+  - Trace operations on these variables
+** Aggressive "Inlining"
+- Macro expansion from partial evaluation
+- If an expression can not be efficiently implemented, it will be expanded on use
+  - Function arguments
+  - Multiple returns / failure
+- Allows expensive features to be removed during compilation
+** "Monad-like" composition
+- Monads make it easy to compose encapsulated functions (side data)
+- Since composition is easier in Poprc, monads are not needed for IO
+  - Side data can easily be passed as a separate argument
+- Instead, thread a special IO symbol through functions that perform IO, such as print
+* Tutorial
+** Simple Arithmetic
+- Usually the first expression I use to check sanity.
+#+BEGIN_EXAMPLE
+: 1 2 + __ user input
+ [ 3 ] __ output
+#+END_EXAMPLE
+- Line comments start with "__".
+** Stack shuffling
+#+BEGIN_EXAMPLE
+: 1 2 swap
+ [ 2 1 ] __ okay
+: 1 dup
+ [ 1 1 ] __ exciting
+: 1 drop
+incomplete expression __ what?
+: 1 2 drop
+ [ 1 ] __ okay, at least that works
+#+END_EXAMPLE
+- ~dup~ & ~swap~ work like you'd expect
+- ~drop~ is a little different, it takes 2 arguments and returns the first
+  - All functions must have an output arity of at least 1
+  - Every closure must reduce to something to be part of the graph
+  - A closure that had no value could never be reduced
+    - No pointer to it
+** Quotes / Lists (I don't have a great name for this)
+#+BEGIN_EXAMPLE
+: 1 2 3 __ how to rotate these?
+: 1 2 3 [] pushl __ push the thing to the left into the list
+ [ 1 2 [ 3 ] ] __ neat
+: 1 2 3 [] pushl pushl
+ [ 1 [ 2 3 ] ] __ I can just keep doing this
+: 1 [2 3] swap pushr __ push the thing on the right (after swap) into the list
+ [ [ 2 3 1 ] ] __ okay, how do I get them out?
+#+END_EXAMPLE
+- Quotes are first-class values, but words by themselves are not
+- They must be wrapped in a quote to be passed or returned
+** Popr
+#+BEGIN_EXAMPLE
+: [ 2 3 1 ] popr
+ [ [ 2 3 ] 1 ] __ cool, it's the inverse of pushr
+: [ 2 3 1 ] popr swap popr swap popr swap drop
+ [ 1 3 2 ] __ not quite what we wanted, but you get the idea 
+#+END_EXAMPLE
+- Why no ~popl~?
+  - This is a concatenative language.
+  - Things go in from the left and pop out on the right.
+  - You can't pull something out after it has been fed into the machine. (Partial composition)
+#+BEGIN_EXAMPLE
+: 2 [1 +] pushl
+ [ 2 1 + ]
+: 2 [1 +] pushl popr
+ [ [] 3 ]
+#+END_EXAMPLE
+** Alternatives
+- A form of branching where /both/ branches are followed
+#+BEGIN_EXAMPLE
+: 1 2 | 3 +
+ [ { 4 | 5 } ] __ woah
+: 1 2 | dup
+ { [ 1 1 ] | [ 2 2 ] }
+: 1 2 | dup 1 ==
+ { [ 1 True ] | [ 2 False ] }
+#+END_EXAMPLE
+- How to destroy branches?
+- Assert (~!~) is like ~drop~, except it fails if the second argument is not ~True~
+#+BEGIN_EXAMPLE
+: 1 2 | dup 1 == !
+ [ 1 ]
+#+END_EXAMPLE
+** Popr is lazy
+#+BEGIN_EXAMPLE
+: Hi There False ! drop
+ [ Hi ]
+: Hi There False ! [] pushl drop
+ [ Hi ]
+#+END_EXAMPLE
+- Computation is only performed (and failures propagated) when arguments are forced
+** Symbols
+- Words starting with an uppercase letter are symbols
+- They are can only be tested for equality
+- Allows pattern matching
+#+BEGIN_EXAMPLE
+: Yes Yes =:=
+ True
+#+END_EXAMPLE
+- There are some predefined symbols, such as ~True~ and ~False~
+- Can be used together with lists to build records
+** IO
+#+BEGIN_EXAMPLE
+: IO Hi print There print
+ Hi There [ IO ]
+: IO Hi You | print There print
+ Hi There You There [ { IO | IO } ] __ does not handle IO alts correctly yet
+#+END_EXAMPLE
+- ~IO~ symbol is threaded through both ~print~ s so that they are properly sequenced
+- I will probably need to restrict alts in IO, though.
+** Modules
+- Modules are the top level expressions in a file
+- Modules are flat, they can not be nested
+  - But they can refer to other modules
+#+BEGIN_EXAMPLE
+module a:
+f1: 1 +
+f2: 2 * dup
+other_module:
+  module b
+  module c
+
+module b:
+f3: swap drop
+
+module c:
+f4: dup dup
+#+END_EXAMPLE
+#+REVEAL: split
+- Definitions end when non-whitespace text returns to the left edge (beginning of the line)
+  - definitions can have multiple clauses by returning to the left-most non-edge text
+- Modules extend to next module declaration
+- Definitions are referenced with ~<module>.<word>~
+- ~a.other_module~ is the union of modules b & c (contains definitions from both)
+- A module can be incomplete
+  - Use words not defined in that module
+  - Can be merged with a module containing the missing definitions
+** That's Pretty Much It (So Far)
+- Pretty simple, right?
+* How Does It All Work?
+** Parsing
+- Parsing proceeds like a basic stack machine
+  - Every word takes a number of inputs (possibly zero) from the stack
+    - But these are just pointers to closures
+  - Also puts at least one output back on the stack
+    - First output is a pointer to the new closure
+    - Others are 'dep's (dependencies)
+- The result of parsing is a graph
+- Sort of like an AST
+*** Parsing (Diagram)
+#+attr_html: :width 1000pt
+[[./ttpl_slides_img/cells.svg]]
+#+BEGIN_EXAMPLE
+: 1 2 | 3 +
+#+END_EXAMPLE
+** Reduction
+- Reduction starts at the root and recursively reduces all inputs until the root is reduced
+- Results of reduction stay in graph until completely de-referenced
+  - Should not depend on how reduced
+  - I cheat a little with passed down types, but failure due to type mismatch is not stored
+#+REVEAL: split
+#+attr_html: :width 1000pt
+[[./ttpl_slides_img/graph000.svg]]
+- Notice how the alternative (alt) has been split
+*** Reduced Graph
+#+attr_html: :width 1000pt
+[[./ttpl_slides_img/reduced.svg]]
+#+BEGIN_EXAMPLE
+ [ { 4 | 5 } ]
+#+END_EXAMPLE
+*** Alts
+- Closures that have arguments with alts split themselves on reduction
+- The splits lazily proceed towards the root like unraveling ropes
+- relationships are tracked in ~alt_set~ s, which store which branch produced which values
+*** Binary Unification
+- Extremely simple form of "unification" based on bit sets
+- Stored in the form ~abababa ... ababa~ :
+
+|     | a | b |
+|-----+---+---|
+| *X* | 0 | 0 |
+| *0* | 0 | 1 |
+| *1* | 1 | 0 |
+| *E* | 1 | 1 |
+
+#+BEGIN_EXAMPLE
+X1X + XX0 => X10
+X1X + X00 => XE0 __ conflict (E)
+#+END_EXAMPLE
+*** Type & ~alt_set~ propagation
+- Types
+  - Down: passed as argument to ~reduce()~
+  - Up: stored in ~.value.type~
+- alt_set
+  - Up: stored in ~.value.alt_set~
+    - Merged from all arguments
+  - Across: merged and checked with ~as_conflict()~ across arguments
+    - After ~reduce_arg()~
+    - No arguments may conflict with each other
+*** ~alt_set~ Example
+#+attr_html: :width 1000pt
+[[./ttpl_slides_img/as_reduced.svg]]
+#+BEGIN_EXAMPLE
+: 1 2 | dup 10 *
+ { [ 1 10 ] | [ 2 20 ] }
+#+END_EXAMPLE
+- Notice how ~alt_set~ s correlate the results so that, for example, ~[ 1 20 ]~ is not valid 
+*** Placeholders
+- Sometimes a function is unknown at the time
+  - Recursion
+  - Quote passed as an argument
+- Placeholders are used
+- They consume all inputs, and produce as many outputs as requested
+- When reduced, all outputs are variables linked to the placeholder (as deps)
+- Sort of like row variables
+- Allows calculation of arity and detection of recursion
+** Tracing
+- When a reduction happens on variables, a trace is produced.
+- For example, compiling ~1 +~ produces the following trace:
+#+BEGIN_EXAMPLE
+cell[0]: var, type = ?i x1
+cell[1]: val 1, type = i x1
+cell[2]: __primitive.add 0 1, type = ?i x1
+cell[3]: return [ 2 ], type = r x1
+#+END_EXAMPLE
+* So How Good is the Compiler?
+- Tail call optimization
+  - Produces loops
+  - Will work even for mutual recursion, since the functions will be expanded together
+- Removes dynamic allocation
+** Factorial - Source
+#+BEGIN_EXAMPLE
+module tests:
+fact2: [1 == 1 swap !] [dup 1- swap [*] pushl swap pushr pushl get2 fact2] | pushl pushl get2
+get2: popr swap popr swap drop swap
+#+END_EXAMPLE
+** Factorial - Generated C
+#+BEGIN_SRC C
+int tests_fact2(int int1, int int0, int *out_int0)
+{
+  int int2 = 1; int sym3; int int4 = 1; int int5;
+  int int7; int int8 = 1; int int9;
+
+body:
+  sym3 = __primitive_eq(int0, int2);
+
+  // assert
+  int5 = int4;
+  if(!sym3) goto block7;
+phi5:
+  *out_int0 = int5;
+  return int1;
+
+block7:
+  int7 = __primitive_mul(int1, int0);
+  int9 = __primitive_sub(int0, int8);
+
+  // tail call
+  int1 = int7;
+  int0 = int9;
+  goto body;
+}
+#+END_SRC
+** Fibonacci - Source
+#+BEGIN_EXAMPLE
+module tests:
+fib: [dup 1 <= !] [1- dup 1- fib swap fib +] | pushl popr swap drop
+#+END_EXAMPLE
+** Fibonacci - Generated C
+#+BEGIN_SRC C
+int tests_fib(int int0)
+{
+  int int1 = 1; int sym2; int int3; int int5 = 1;
+  int int6; int int7 = 1; int int8; int int9;
+  int int10; int int11;
+
+body:
+  sym2 = __primitive_lte(int0, int1);
+
+  // assert
+  int3 = int0;
+  if(!sym2) goto block5;
+phi3:
+  return int3;
+
+block5:
+  int6 = __primitive_sub(int0, int5);
+  int8 = __primitive_sub(int6, int7);
+  int9 = tests_fib(int8);
+  int10 = tests_fib(int6);
+  int11 = __primitive_add(int9, int10);
+  return int11;
+}
+#+END_SRC
+* Remaining Work
+** SMT Solver for propagating constraints
+- Options
+  - Integrate Microsoft's Z3
+    - Powerful, probably easier
+  - Add more solver capabilities to the evaluator
+    - Better integrated
+    - Simplex algorithm is fairly easy for linear programming
+** Coq integration
+- Export to Coq
+- Allow to mark a word as admitted (can't fail)
+** Fixed-point range and precision inference
+- Work with bounded ranges to automatically maximize precision
+- Using integer operations
+- Would be huge for DSP
+** More primitive types
+  - Already used internally
+    - String
+    - Map
+  - Double
+  - Vector
+** Low-level / Performance
+- Embedded C and ASM
+- libFirm or direct ARM assembly backend
+- Implement an RTOS for Poprc
+** Threading
+- Split IO to spawn a thread
+  - Like alt, but for IO
+- Join IO to combine results
+* Thank you
