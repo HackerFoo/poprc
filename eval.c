@@ -354,12 +354,14 @@ void run_eval(bool echo) {
     }
     line = line_raw;
 
+    if(tty) {
 #if defined(USE_LINENOISE)
-    linenoiseHistoryAdd(line);
-    linenoiseHistorySave(HISTORY_FILE);
+      linenoiseHistoryAdd(line);
+      linenoiseHistorySave(HISTORY_FILE);
 #elif defined(USE_READLINE)
-    add_history(line);
+      add_history(line);
 #endif
+    }
 
     if(echo) puts(line);
     bool run = eval_command(line, 0);
