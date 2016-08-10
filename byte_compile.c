@@ -42,6 +42,7 @@ cell_t *trace_cur = &trace_cells[0];
 cell_t *trace_ptr = &trace_cells[0];
 size_t trace_cnt = 0;
 static MAP(trace_index, 1 << 10);
+static MAP(trace_values, 1 << 6);
 
 #define DEBUG 0
 
@@ -103,6 +104,13 @@ uintptr_t map_update(map_t map, uintptr_t key, uintptr_t new_value) {
 }
 
 cell_t *trace_store(const cell_t *c, type_t t) {
+  if(is_value(c) && (c->value.type & T_EXCLUSIVE) == T_INT) {
+    pair_t *x = map_find(trace_values, c->value.integer[0]);
+    if(x) {
+      trace_index_add(c, x->second);
+      return &trace_cur[x->second];
+    }
+  }
   cell_t *dest = trace_ptr;
   csize_t size = closure_cells(c);
   trace_ptr += size;
@@ -110,6 +118,10 @@ cell_t *trace_store(const cell_t *c, type_t t) {
   memcpy(dest, c, sizeof(cell_t) * size);
   if(c->func != func_assert) dest->alt = NULL;
   trace_index_add(c, dest - trace_cur);
+  if(is_value(c) && (c->value.type & T_EXCLUSIVE) == T_INT) {
+    pair_t p = {c->value.integer[0], dest - trace_cur};
+    map_insert(trace_values, p);
+  }
 
   dest->n = -1;
 
@@ -188,6 +200,7 @@ void trace_init() {
   trace_cur = trace_ptr;
   trace_cnt = 0;
   map_clear(trace_index);
+  map_clear(trace_values);
 }
 
 void print_trace_cells(cell_t *e) {
@@ -427,6 +440,7 @@ void print_trace_index()
   }
 
   print_map(tmp_trace_index);
+  print_map(trace_values);
 }
 
 cell_t *trace_reduce(cell_t *c) {
@@ -547,7 +561,9 @@ bool compile_word(cell_t **entry, cell_t *module, csize_t in, csize_t out) {
   drop(c);
   set_trace(NULL);
   trace_final_pass();
-  //print_trace_index();
+#if DEBUG
+  print_trace_index();
+#endif
 
   // finish
   e->entry.flags = 0;
