@@ -1,5 +1,18 @@
 #+TITLE: PoprC Notes
 
+* (non) tail call optimization
+- move call down
+- insert delay
+  - <call return var> = <recursive case return var>
+- tail call becomes:
+top-level param = call param;
+...
+goto body;
+- <call return var> is initialized with return value of base case
+- return value changed to <call return var>
+- reverses reduction order, so only works if tail is commutative and associative
+((1 + 2) + 3) -> ((3 + 2) + 1)
+a list would be reversed
 * jump to alt on failed assert
 ** label _before_ reduction on assert
 ** need labels in bytecode
