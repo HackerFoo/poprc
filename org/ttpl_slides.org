@@ -2,8 +2,8 @@
 #+AUTHOR: Dustin DeWeese
 #+DATE: 2016.8.8
 
-#+REVEAL_ROOT: file:///Users/dusty/reveal.js-3.3.0
-#+REVEAL_MATHJAX_URL: file:///Users/dusty/MathJax-2.6.1/MathJax.js
+#+OPTIONS: ^:nil
+#+REVEAL_ROOT: /reveal.js
 #+REVEAL_THEME: sky
 #+REVEAL_TRANS: linear
 
@@ -267,7 +267,7 @@ X1X + X00 => XE0 __ conflict (E)
 - Types
   - Down: passed as argument to ~reduce()~
   - Up: stored in ~.value.type~
-- alt_set
+- ~alt_set~
   - Up: stored in ~.value.alt_set~
     - Merged from all arguments
   - Across: merged and checked with ~as_conflict()~ across arguments
