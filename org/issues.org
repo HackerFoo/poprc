@@ -43,6 +43,9 @@ Compile to direct C when possible
 - check symbol table
 - check builtins table order
 * bugs
+** TODO fix compiling pushr & pushl
+- f1 pushr
+- f2 popr swap pushl popr
 ** DONE smaller CELLS_SIZE breaks at module_lookup test
 ** DONE FIX: 0 [True =:=] [0 ==] | pushl popr swap drop
 - returns {} instead of True
