@@ -479,6 +479,22 @@ cell_t *trace_reduce(cell_t *c) {
   return first;
 }
 
+cell_t *compile_entry(seg_t name, cell_t *module) {
+  csize_t in, out;
+  cell_t **entry = cmap_get(&module, name);
+  cell_t *l = *entry;
+  if(!is_list(l)) return l;
+  *entry = NULL;
+  bool pc_success = pre_compile_word(l, module, &in, &out);
+  entry = cmap_get(&module, name);
+  *entry = l;
+  if(pc_success && compile_word(entry, module, in, out)) {
+    return *entry;
+  } else {
+    return NULL;
+  }
+}
+
 cell_t *module_lookup_compiled(seg_t path, cell_t **context) {
   cell_t **p = module_lookup(path, context);
   if(!p) return NULL;
@@ -486,34 +502,16 @@ cell_t *module_lookup_compiled(seg_t path, cell_t **context) {
     return lookup_word(string_seg("_"));
   }
   if(!is_list(*p)) return *p;
-  csize_t in, out;
-  cell_t *l = *p;
-  *p = NULL;
-  if(!pre_compile_word(l, *context, &in, &out)) return NULL;
-  p = module_lookup(path, context);
-  *p = l;
-  if(compile_word(p, *context, in, out)) {
-    return *p;
-  } else {
-    return NULL;
-  }
+  seg_t name = path_name(path);
+  return compile_entry(name, *context);
 }
 
-cell_t *parse_eval_def(cell_t *name, cell_t *rest) {
+cell_t *parse_eval_def(cell_t *name_tok, cell_t *rest) {
+  seg_t name = tok_seg(name_tok);
   cell_t **eval_module = cmap_get(&modules, string_seg("eval"));
-  cell_t **entry = cmap_get(eval_module, tok_seg(name));
+  cell_t **entry = cmap_get(eval_module, name);
   *entry = quote(rest);
-  csize_t in, out;
-  cell_t *l = *entry;
-  *entry = NULL;
-  if(!pre_compile_word(l, *eval_module, &in, &out)) return NULL;
-  entry = cmap_get(eval_module, tok_seg(name));
-  *entry = l;
-  if(compile_word(entry, *eval_module, in, out)) {
-    return *entry;
-  } else {
-    return NULL;
-  }
+  return compile_entry(name, *eval_module);
 }
 
 bool pre_compile_word(cell_t *l, cell_t *module, csize_t *in, csize_t *out) {
@@ -698,6 +696,7 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
   COUNTUP(i, out) {
     results[i] = &c->expr.arg[n - 1 - i];
   }
+
 #define GET_RETURN_ARG(x) ref(map[trace_decode(returns->value.ptr[(x)])])
 
   // first one
@@ -720,6 +719,8 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
     }
     next = trace_decode(returns->alt);
   }
+
+#undef GET_RETURN_ARG
 
   // drop c from deps
   LOOP(out) {

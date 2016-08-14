@@ -947,6 +947,26 @@ seg_t parse_split(char c, const char **start, const char *end) {
   return s;
 }
 
+seg_t seg_rindex(seg_t s, char c) {
+  const char *p = s.s;
+  const char *end = p + s.n;
+  while(p < end) {
+    if(*p == c) s.s = p;
+    p++;
+  }
+  s.n = end - s.s;
+  return s;
+}
+
+seg_t path_name(seg_t path) {
+  seg_t s = seg_rindex(path, '.');
+  if(*s.s == '.' && s.n > 0) {
+    s.s++;
+    s.n--;
+  }
+  return s;
+}
+
 cell_t *get_module(seg_t s) {
   pair_t *x = seg_map_find(modules->value.map, s);
   return x ? (cell_t *)x->second : NULL;
