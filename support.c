@@ -247,6 +247,17 @@ size_t seg_read(seg_t seg, char *str, size_t size) {
   return n;
 }
 
+seg_t seg_rindex(seg_t s, char c) {
+  const char *p = s.s;
+  const char *end = p + s.n;
+  while(p < end) {
+    if(*p == c) s.s = p;
+    p++;
+  }
+  s.n = end - s.s;
+  return s;
+}
+
 void *lookup(void *table, size_t width, size_t rows, seg_t key_seg) {
   size_t low = 0, high = rows, pivot;
   char const *key = key_seg.s;

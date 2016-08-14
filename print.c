@@ -32,6 +32,7 @@
 #include "gen/map.h"
 #include "gen/parse.h"
 #include "gen/print.h"
+#include "gen/module.h"
 
 static BITSET_INDEX(visited, cells);
 static BITSET_INDEX(marked, cells);

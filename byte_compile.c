@@ -36,6 +36,8 @@
 #include "gen/byte_compile.h"
 #include "gen/parse.h"
 #include "gen/print.h"
+#include "gen/lex.h"
+#include "gen/module.h"
 
 cell_t trace_cells[1 << 10];
 cell_t *trace_cur = &trace_cells[0];

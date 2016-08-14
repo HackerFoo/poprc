@@ -44,6 +44,8 @@
 #include "gen/cgen.h"
 #include "gen/command_table.h"
 #include "gen/git_log.h"
+#include "gen/lex.h"
+#include "gen/module.h"
 
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
@@ -190,6 +192,7 @@ void command_eval(cell_t *rest) {
 
 int main(int argc, char **argv) {
   parse_init();
+  module_init();
   cells_init();
   bool quit = false;
 
