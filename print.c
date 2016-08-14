@@ -98,7 +98,7 @@ void get_name(const cell_t *c, const char **module_name, const char **word_name)
     *module_name = e->module_name;
     *word_name = e->word_name;
   } else {
-    *module_name = "__primitive";
+    *module_name = PRIMITIVE_MODULE_NAME;
     *word_name = function_name(c->func);
   }
 }

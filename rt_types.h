@@ -201,4 +201,7 @@ typedef enum trace_type_t {
 
 #define PERSISTENT ((refcount_t)-15)
 
+#define PRIMITIVE_MODULE_PREFIX __primitive
+#define PRIMITIVE_MODULE_NAME STRINGIFY(PRIMITIVE_MODULE_PREFIX)
+
 #endif

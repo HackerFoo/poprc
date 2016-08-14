@@ -54,7 +54,7 @@
     .first = (uintptr_t)__name,                          \
     .second = (uintptr_t)&(cell_t) {                     \
       .func = func_##__func,                             \
-      .module_name = "__primitive",                      \
+      .module_name = PRIMITIVE_MODULE_NAME,              \
       .word_name = __name "\0" #__func,                  \
       .entry = {                                         \
         .in = __in,                                      \
@@ -116,5 +116,8 @@
 #define AS_UNION_2(c, x, ...)          \
   (c->expr.arg[x]->value.alt_set)
 #define AS_UNION(c, ...) DISPATCH(AS_UNION, 4, c, ##__VA_ARGS__)
+
+#define _STRINGIFY(x) #x
+#define STRINGIFY(x) _STRINGIFY(x)
 
 #endif
