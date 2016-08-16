@@ -43,8 +43,9 @@ cell_t trace_cells[1 << 10];
 cell_t *trace_cur = &trace_cells[0];
 cell_t *trace_ptr = &trace_cells[0];
 size_t trace_cnt = 0;
-static MAP(trace_index, 1 << 10);
-static MAP(trace_values, 1 << 6);
+static MAP(trace_index, 1 << 10); // cell_t * -> uintptr_t (index in trace)
+static MAP(trace_values, 1 << 6); // uintptr_t (value) -> uintptr_t (index in trace)
+static MAP(quote_entries, 1 << 6); // cell_t * -> cell_t * (entry)
 
 #define DEBUG 0
 
@@ -421,6 +422,7 @@ void bc_arg(cell_t *c, UNUSED val_t x) {
   c->value.type |= T_TRACED;
 }
 
+// TODO unevaluated functions instead for later compilation
 cell_t *trace_store_list(cell_t *c) {
   traverse(c, {
       if(*p && !((*p)->value.type & T_TRACED)) {
@@ -537,7 +539,6 @@ bool compile_word(cell_t **entry, cell_t *module, csize_t in, csize_t out) {
   // set up
   trace_init();
 
-  // must look up again
   cell_t *e = *entry = trace_ptr;
   trace_cur = ++trace_ptr;
 
@@ -570,6 +571,42 @@ bool compile_word(cell_t **entry, cell_t *module, csize_t in, csize_t out) {
   e->entry.len = trace_cnt;
 
   free_def(l);
+  return true;
+}
+
+bool compile_quote(cell_t **entry, cell_t *module, cell_t *c) {
+  // set up
+  trace_init();
+
+  cell_t *e = *entry = trace_ptr;
+  trace_cur = ++trace_ptr;
+
+  csize_t n = list_size(c);
+  cell_t *left = c->value.ptr[n-1];
+  e->n = PERSISTENT;
+  e->module_name = module_name(module);
+  e->word_name = entry_name(module, e);
+  e->entry.in = is_value(left) ? 0 : closure_in(left); // TODO handle variables
+  e->entry.out = n;
+  e->entry.len = 0;
+  e->entry.flags = 0;
+  e->func = func_exec;
+
+  // compile
+  set_trace(bc_trace);
+  fill_args(c, bc_arg);
+  trace_reduce(c);
+  drop(c);
+  set_trace(NULL);
+  trace_final_pass();
+#if DEBUG
+  print_trace_index();
+#endif
+
+  // finish
+  e->entry.flags = 0;
+  e->entry.len = trace_cnt;
+
   return true;
 }
 

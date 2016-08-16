@@ -8,6 +8,7 @@
   - zero args out, set function ptr
   - pass pointer to next arg
   - when not zero, it's ready to call
+- caller passes in allocated storage when size is known
 * (non) tail call optimization
 - move call down
 - insert delay
