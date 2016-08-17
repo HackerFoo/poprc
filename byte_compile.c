@@ -363,7 +363,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
     } else if(is_var(c)) {
       trace_update_type(c);
     } else if(is_list(c)) {
-      trace_store_list(c);
+      trace_store_quote(c);
     } else {
       trace_store(c, c->value.type);
     }
@@ -426,11 +426,53 @@ void bc_arg(cell_t *c, UNUSED val_t x) {
 cell_t *trace_store_list(cell_t *c) {
   traverse(c, {
       if(*p && !((*p)->value.type & T_TRACED)) {
-        trace_store_list(clear_ptr(*p));
+        trace_store_quote(clear_ptr(*p));
         (*p)->value.type |= T_TRACED;
       }
     }, PTRS);
   return trace_store(c, c->value.type);
+}
+
+cell_t *trace_store_quote(cell_t *c) {
+  cell_t *vl = 0;
+  trace_var_list(c, &vl);
+  size_t vn = tmp_list_length(vl);
+  csize_t out = list_size(c);
+  cell_t *left = c->value.ptr[out-1];
+  csize_t missing = closure_is_ready(left) ? 0 : closure_next_child(left) + 1;
+  csize_t in = vn + missing;
+  cell_t *n = trace_alloc(in + out + 1);
+
+  n->expr.out = out;
+  n->func = func_exec;
+  n->n = -1;
+
+  cell_t *p = vl;
+  COUNTUP(i, in) {
+    if(i < missing) {
+      n->expr.arg[i] = 0;
+    } else {
+      uintptr_t x = trace_get(p);
+      trace_cur[x].n++;
+      n->expr.arg[i] = trace_encode(x);
+      p = p->tmp;
+    }
+  }
+
+  clean_tmp(vl);
+
+  n->expr.arg[in] = 0; // entry is 0 for now
+
+  COUNTUP(i, out - 1) {
+    uintptr_t d = bc_func(func_dep, 1, 1, c - trace_cur);
+    n->expr.arg[in + 1 + i] = trace_encode(d);
+  }
+
+  // need this for later compilation
+  n->expr.arg[in + out] = c;
+
+  trace_index_add(c, n - trace_cur);
+  return n;
 }
 
 // builds a temporary list of referenced variables
