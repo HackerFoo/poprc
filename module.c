@@ -37,8 +37,6 @@ cell_t *modules = NULL;
 
 void module_init() {
   modules = NULL;
-  primitive_module[0] = (pair_t) {LENGTH(primitive_module) - 1,
-                                  LENGTH(primitive_module) - 1};
 }
 
 cell_t *cmap_set(cell_t **cp, seg_t key, cell_t *val) {

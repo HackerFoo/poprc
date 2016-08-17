@@ -49,6 +49,7 @@
 #define mark_ptr(p) ((void *)((uintptr_t)(p) | (MARK_BIT)))
 #define clear_ptr(p) ((void *)((uintptr_t)(p) & ~(MARK_BIT)))
 
+#define WORD_COUNT(n) { .first = (n), .second = (n) }
 #define WORD(__name, __func, __in, __out)                \
   {                                                      \
     .first = (uintptr_t)__name,                          \
