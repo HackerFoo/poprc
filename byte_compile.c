@@ -438,7 +438,7 @@ cell_t **trace_var_list(cell_t *c, cell_t **tail) {
   traverse(c, {
       if(*p && !(*p)->tmp) {
         if(is_var(*p)) {
-          *p = *tail;
+          *tail = *p;
           tail = &(*p)->tmp;
         } else {
           tail = trace_var_list(*p, tail);
@@ -455,6 +455,19 @@ size_t tmp_list_length(cell_t *c) {
     n++;
   }
   return n;
+}
+
+int test_var_count() {
+  cell_t *l = lex("? [? +] [[?] dup] [[[[?]]]] ? dup", 0);
+  const cell_t *p = l;
+  cell_t *c = parse_expr(&p, NULL);
+  cell_t *vl = 0;
+  trace_var_list(c, &vl);
+  size_t n = tmp_list_length(vl);
+  printf("length(vl) = %d\n", (int)n);
+  clean_tmp(vl);
+  drop(c);
+  return n == 5 ? 0 : -1;
 }
 
 void print_trace_index()

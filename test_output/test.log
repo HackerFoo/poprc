@@ -151,3 +151,6 @@ cow => 4
 string_map => 0
 @ strings
 strings => 0
+@ var_count
+length(vl) = 5
+var_count => 0
