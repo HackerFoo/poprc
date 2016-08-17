@@ -433,6 +433,30 @@ cell_t *trace_store_list(cell_t *c) {
   return trace_store(c, c->value.type);
 }
 
+// builds a temporary list of referenced variables
+cell_t **trace_var_list(cell_t *c, cell_t **tail) {
+  traverse(c, {
+      if(*p && !(*p)->tmp) {
+        if(is_var(*p)) {
+          *p = *tail;
+          tail = &(*p)->tmp;
+        } else {
+          tail = trace_var_list(*p, tail);
+        }
+      }
+    }, PTRS | ARGS_IN);
+  return tail;
+}
+
+size_t tmp_list_length(cell_t *c) {
+  size_t n = 0;
+  while(c) {
+    c = c->tmp;
+    n++;
+  }
+  return n;
+}
+
 void print_trace_index()
 {
   static MAP(tmp_trace_index, 1 << 10);
