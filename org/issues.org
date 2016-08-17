@@ -1,6 +1,6 @@
 #+TITLE: PoprC Issues
 
-* Compile to C
+* STARTED Compile to C
 Compile to direct C when possible
 - strict, function arguments, no backtracking
 ** simple numeric ops (e.g. :c f1 + *)
@@ -12,40 +12,55 @@ Compile to direct C when possible
 **** closure_set_ready
 **** split_args
 * major
+** STARTED  add support to return quoted functions from compiled functions
+*** TODO count inputs
+- all vars + open args on left
+*** TODO store func_exec with entry + args + outputs
+*** TODO compile auxilary functions
+** CANCELED compile all quoted functions
+- part of "add support to return quoted functions from compiled functions"
 ** C generation
 *** DONE Return types
 *** DONE function signature
 *** DONE simple expressions
 *** DONE select -> if/then
-*** TODO pushl/popr
-** TODO look into adding conflict-driven clause learning
+*** STARTED pushl/popr
+- experiments/quote
 ** modules
+*** TODO module linking
 *** DONE look up words from modules
 *** DONE build/compile on demand
-*** TODO module linking
 *** DONE add module union operation
+** TODO look into adding conflict-driven clause learning
 ** DONE add comment and symbol support to parser
-** TODO add support to return quoted functions from compiled functions
-** TODO compile all quoted functions
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
 ** TODO pass T_BOTTOM instead of T_ANY down reduce
 ** TODO remove cut
 ** TODO update refcnt for cells in genc
-** TODO adapt func_exec to new bytecode format
 ** TODO use refcounts properly for maps and lists in modules
+** TODO add static asserts as tests
+- check symbol table
+- check builtins table order
+** DONE adapt func_exec to new bytecode format
 ** DONE handle ENTRY_NOINLINE in func_exec
 ** DONE annotate trace with types in byte_compile.c
 ** DONE replace all tables with maps
 ** DONE add string map
-** TODO add static asserts as tests
-- check symbol table
-- check builtins table order
 * bugs
 ** TODO fix compiling pushr & pushl
 - f1 pushr
 - f2 popr swap pushl popr
+** TODO select seems broken
+:c f2 | popr ! cut popr swap drop
+:c rot [] pushl swap pushr pushl popr swap popr swap popr swap drop
+:c f5 [] pushl rot rot | swap pushl popr swap popr swap drop dup rot > ! cut
+** TODO :c f2 pushl pushl popr 1 + swap pushl popr swap popr swap drop +
+x y [z+] should be x + y + z + 1, gives 2y + 2z + 1
+** TODO :c f1 [] [] ifte pushl
+** STARTED :c loop dup 5 > [5- loop] [] ifte ap11 swap drop
+- self/exec arity mismatch
 ** DONE smaller CELLS_SIZE breaks at module_lookup test
 ** DONE FIX: 0 [True =:=] [0 ==] | pushl popr swap drop
 - returns {} instead of True
@@ -54,13 +69,6 @@ Compile to direct C when possible
   - use something like split_args
 ** DONE :( -> segmentation fault
 also just (
-** TODO select seems broken
-:c f2 | popr ! cut popr swap drop
-:c rot [] pushl swap pushr pushl popr swap popr swap popr swap drop
-:c f5 [] pushl rot rot | swap pushl popr swap popr swap drop dup rot > ! cut
-** TODO :c f2 pushl pushl popr 1 + swap pushl popr swap popr swap drop +
-x y [z+] should be x + y + z + 1, gives 2y + 2z + 1
-** TODO :c f1 [] [] ifte pushl
 ** DONE cut memory leak
 1 2 | cut
 ** DONE :c c1 [ 1 ] swap . popr swap drop
@@ -68,8 +76,6 @@ x y [z+] should be x + y + z + 1, gives 2y + 2z + 1
 ** DONE 100000 mod5 -> stack overflow (func_exec, func_select)
 - treat select with variable arg as alt followed by cut
 ** DONE preserve select when using exec e.g. ifte
-** STARTED :c loop dup 5 > [5- loop] [] ifte ap11 swap drop
-- self/exec arity mismatch
 ** DONE :c f1 pushl popr swap pushl popr
 - [dup] popr swap pushl popr __ crash!
 - [dup] popr swap pushl __ self referential dup
@@ -81,4 +87,5 @@ x y [z+] should be x + y + z + 1, gives 2y + 2z + 1
 ** DONE compose?
 - in compose_nd
 - fix compose_placeholders/_nd
-** TODO build incomplete closures
+** CANCELED build incomplete closures
+- part of "add support to return quoted functions from compiled functions"

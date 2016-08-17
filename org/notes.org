@@ -1,5 +1,8 @@
 #+TITLE: PoprC Notes
 
+* byte compule quotes
+- store cell + vars + out on first pass
+- replace cell with entry after compilation of quote to auxilary function
 * lightweight quote format
 - struct with function pointer and args
   - {function_ptr, arg_n-1, ..., arg_0}
