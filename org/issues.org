@@ -12,10 +12,10 @@ Compile to direct C when possible
 **** closure_set_ready
 **** split_args
 * major
-** STARTED  add support to return quoted functions from compiled functions
-*** TODO count inputs
+** STARTED add support to return quoted functions from compiled functions
+*** DONE count inputs
 - all vars + open args on left
-*** TODO store func_exec with entry + args + outputs
+*** STARTED store func_exec with entry + args + outputs
 *** TODO compile auxilary functions
 ** CANCELED compile all quoted functions
 - part of "add support to return quoted functions from compiled functions"
