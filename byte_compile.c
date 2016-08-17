@@ -229,9 +229,13 @@ void print_trace_cells(cell_t *e) {
       printf(", type = %s", show_type_all_short(c->value.type));
       if(c->alt) printf(" -> %" PRIuPTR, trace_decode(c->alt));
     } else {
-      const char *module_name, *word_name;
+      const char *module_name = NULL, *word_name = NULL;
       trace_get_name(c, &module_name, &word_name);
-      printf(" %s.%s", module_name, word_name);
+      if(word_name) {
+        printf(" %s.%s", module_name, word_name);
+      } else {
+        printf(" quote");
+      }
 
       traverse(c, {
           printf(" %" PRIuPTR, trace_decode(*p));
@@ -434,42 +438,30 @@ cell_t *trace_store_list(cell_t *c) {
 }
 
 cell_t *trace_store_quote(cell_t *c) {
+  if(list_size(c) == 0) {
+    return trace_store(c, c->value.type);
+  }
   cell_t *vl = 0;
   trace_var_list(c, &vl);
-  size_t vn = tmp_list_length(vl);
-  csize_t out = list_size(c);
-  cell_t *left = c->value.ptr[out-1];
-  csize_t missing = closure_is_ready(left) ? 0 : closure_next_child(left) + 1;
-  csize_t in = vn + missing;
-  cell_t *n = trace_alloc(in + out + 1);
+  size_t in = tmp_list_length(vl);
+  cell_t *n = trace_alloc(in + 1);
 
-  n->expr.out = out;
+  n->expr.out = 0;
   n->func = func_exec;
   n->n = -1;
 
   cell_t *p = vl;
   COUNTUP(i, in) {
-    if(i < missing) {
-      n->expr.arg[i] = 0;
-    } else {
-      uintptr_t x = trace_get(p);
-      trace_cur[x].n++;
-      n->expr.arg[i] = trace_encode(x);
-      p = p->tmp;
-    }
+    uintptr_t x = trace_get(p);
+    trace_cur[x].n++;
+    n->expr.arg[i] = trace_encode(x);
+    p = p->tmp;
   }
 
   clean_tmp(vl);
 
   n->expr.arg[in] = 0; // entry is 0 for now
-
-  COUNTUP(i, out - 1) {
-    uintptr_t d = bc_func(func_dep, 1, 1, c - trace_cur);
-    n->expr.arg[in + 1 + i] = trace_encode(d);
-  }
-
-  // need this for later compilation
-  n->expr.arg[in + out] = c;
+  n->tmp = 0;
 
   trace_index_add(c, n - trace_cur);
   return n;
