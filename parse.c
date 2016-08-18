@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <stdarg.h>
 
 #include "gen/cells.h"
 #include "gen/rt.h"
@@ -69,6 +70,25 @@ const char *seg_string(seg_t s) {
   strings_top += s.n;
   *strings_top++ = '\0';
   return str;
+}
+
+const char *string_vprintf(const char *format, va_list ap) {
+  size_t remaining = ((char *)(&strings + 1) - strings_top);
+  if(remaining > 1) {
+    char *str = strings_top;
+    int n = vsnprintf(str, remaining, format, ap);
+    if(n < 0) return NULL;
+    strings_top += n + 1;
+    return str;
+  } else return NULL;
+}
+
+const char *string_printf(const char *format, ...) {
+ va_list valist;
+ va_start(valist, format);
+ const char *ret = string_vprintf(format, valist);
+ va_end(valist);
+ return ret;
 }
 
 void strings_drop() {
