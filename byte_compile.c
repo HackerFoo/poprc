@@ -229,7 +229,7 @@ void print_trace_cells(cell_t *e) {
       if(c->alt) printf(" -> %" PRIuPTR, trace_decode(c->alt));
     } else {
       if(c->expr_type == (T_VAR | T_LIST)) {
-        printf(" quote");
+        printf(" %s.%s_%d", e->module_name, e->word_name, t);
         COUNTUP(i, closure_in(c) - 1) {
           printf(" %" PRIuPTR, trace_decode(c->expr.arg[i]));
         }
@@ -415,10 +415,19 @@ void update_alt(cell_t *c, cell_t *r) {
   }
 }
 
-void trace_final_pass() {
+void trace_final_pass(cell_t *e) {
   // replace alts with trace cells
-  FOR_TRACE(p, trace_cur, trace_ptr) {
+  cell_t
+    *start = e + 1,
+    *end = start + e->entry.len;
+
+  FOR_TRACE(p, start, end) {
     trace_rewrite(p);
+    if(p->expr_type == (T_VAR | T_LIST)) {
+      cell_t *qe = compile_quote(e, p);
+      assert(qe);
+      p->expr.arg[closure_in(p) - 1] = trace_encode(qe - trace_cells);
+    }
   }
 }
 
@@ -461,7 +470,7 @@ cell_t *trace_store_quote(cell_t *c) {
 
   clean_tmp(vl);
 
-  n->expr.arg[in] = c; // entry is c for now
+  n->expr.arg[in] = ref(c); // entry is c for now
   n->expr_type = T_VAR | T_LIST;
 
   trace_index_add(c, n - trace_cur);
@@ -633,53 +642,57 @@ bool compile_word(cell_t **entry, cell_t *module, csize_t in, csize_t out) {
   trace_reduce(c);
   drop(c);
   set_trace(NULL);
-  trace_final_pass();
+  e->entry.flags = 0;
+  e->entry.len = trace_cnt;
+  trace_final_pass(e);
 #if DEBUG
   print_trace_index();
 #endif
 
   // finish
-  e->entry.flags = 0;
-  e->entry.len = trace_cnt;
-
   free_def(l);
   return true;
 }
 
-bool compile_quote(cell_t **entry, cell_t *module, cell_t *c) {
+// takes a parent entry and offset to a quote, and creates an entry from compiling the quote
+cell_t *compile_quote(cell_t *parent_entry, cell_t *quote) {
   // set up
   trace_init();
 
-  cell_t *e = *entry = trace_ptr;
+  cell_t *e = trace_ptr;
   trace_cur = ++trace_ptr;
 
+  cell_t *module = get_module(string_seg(parent_entry->module_name));
+  csize_t in = closure_in(quote) - 1;
+  cell_t *c = quote->expr.arg[in];
   csize_t n = list_size(c);
-  cell_t *left = c->value.ptr[n-1];
   e->n = PERSISTENT;
-  e->module_name = module_name(module);
-  e->word_name = entry_name(module, e);
-  e->entry.in = is_value(left) ? 0 : closure_in(left); // TODO handle variables
+  e->module_name = parent_entry->module_name;
+  e->word_name = string_printf("%s_%d", parent_entry->word_name, (int)(quote - parent_entry) - 1);
+  e->entry.in = in;
   e->entry.out = n;
   e->entry.len = 0;
   e->entry.flags = 0;
   e->func = func_exec;
 
   // compile
+  // TODO - add free variables
   set_trace(bc_trace);
   fill_args(c, bc_arg);
   trace_reduce(c);
   drop(c);
   set_trace(NULL);
-  trace_final_pass();
+  e->entry.flags = 0;
+  e->entry.len = trace_cnt;
+  trace_final_pass(e);
 #if DEBUG
   print_trace_index();
 #endif
 
-  // finish
-  e->entry.flags = 0;
-  e->entry.len = trace_cnt;
+  cell_t **entry = cmap_get(&module, string_seg(e->word_name));
+  *entry = e;
 
-  return true;
+  return e;
 }
 
 cell_t *tref(cell_t *c) {
