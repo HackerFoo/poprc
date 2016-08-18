@@ -45,7 +45,6 @@ cell_t *trace_ptr = &trace_cells[0];
 size_t trace_cnt = 0;
 static MAP(trace_index, 1 << 10); // cell_t * -> uintptr_t (index in trace)
 static MAP(trace_values, 1 << 6); // uintptr_t (value) -> uintptr_t (index in trace)
-static MAP(quote_entries, 1 << 6); // cell_t * -> cell_t * (entry)
 
 #define DEBUG 0
 
@@ -229,17 +228,19 @@ void print_trace_cells(cell_t *e) {
       printf(", type = %s", show_type_all_short(c->value.type));
       if(c->alt) printf(" -> %" PRIuPTR, trace_decode(c->alt));
     } else {
-      const char *module_name = NULL, *word_name = NULL;
-      trace_get_name(c, &module_name, &word_name);
-      if(word_name) {
-        printf(" %s.%s", module_name, word_name);
-      } else {
+      if(c->expr_type == (T_VAR | T_LIST)) {
         printf(" quote");
+        COUNTUP(i, closure_in(c) - 1) {
+          printf(" %" PRIuPTR, trace_decode(c->expr.arg[i]));
+        }
+      } else {
+        const char *module_name = NULL, *word_name = NULL;
+        trace_get_name(c, &module_name, &word_name);
+        printf(" %s.%s", module_name, word_name);
+        traverse(c, {
+            printf(" %" PRIuPTR, trace_decode(*p));
+          }, ARGS);
       }
-
-      traverse(c, {
-          printf(" %" PRIuPTR, trace_decode(*p));
-        }, ARGS | PTRS);
 
       printf(", type = %s", show_type_all_short(c->expr_type));
       if(c->alt) printf(" -> %" PRIuPTR, trace_decode(c->alt));
@@ -460,8 +461,8 @@ cell_t *trace_store_quote(cell_t *c) {
 
   clean_tmp(vl);
 
-  n->expr.arg[in] = 0; // entry is 0 for now
-  n->tmp = 0;
+  n->expr.arg[in] = c; // entry is c for now
+  n->expr_type = T_VAR | T_LIST;
 
   trace_index_add(c, n - trace_cur);
   return n;
