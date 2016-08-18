@@ -100,21 +100,17 @@ f7:
   6 5 -
 module_lookup => 0
 @ parse_def
-and.more:
-  stuff
-  listed on
-  one line
 another:
   oh heres another
   again
-some.modules:
-  module one
-  module two
-  module three
 word:
   hi there this is the first definition
   and this is the second
   oh hey heres the third one
+some.modules:
+  module one
+  module two
+  module three
 parse_def => 0
 @ parse_module
 Loaded modules (a, b)

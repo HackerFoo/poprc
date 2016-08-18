@@ -203,8 +203,7 @@ val_t fill_args(cell_t *r, void (*argf)(cell_t *, val_t)) {
 
 const char *reserved_words[] = {
   "module",
-  ":",
-  ","
+  ":"
 };
 
 bool match(const cell_t *c, const char *str) {
@@ -265,6 +264,8 @@ bool parse_rhs_expr(cell_t **c, cell_t **res) {
       it = &(*it)->tok_list.next;
     }
     while(*it && (*it)->tok_list.line == current_line) {
+      // using ',' as syntactic sugar for lists
+      /*
       if(match(*it, ",")) {
         cell_t **tmp = it;
         it = &(*it)->tok_list.next;
@@ -274,6 +275,7 @@ bool parse_rhs_expr(cell_t **c, cell_t **res) {
           r = list_insert(r, *it);
         }
       }
+      */
       it = &(*it)->tok_list.next;
     }
   } while(*it);
@@ -368,9 +370,10 @@ int test_parse_def() {
                   " oh heres\n"
                   "  another\n"
                   " again\n"
-                  "and.more: stuff, listed on, one line\n"
+                  // "and.more: stuff, listed on, one line\n"
                   "some.modules:\n"
-                  " module one, module two\n"
+                  " module one\n"
+                  " module two\n"
                   " module three\n", 0);
   cell_t *e = NULL;
   cell_t *m = parse_defs(&p, &e);
@@ -443,6 +446,14 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
       case '(':
         arg_stack[n++] = parse_vector(l);
         continue;
+      case ',': {
+        cell_t *l = make_list(n);
+        COUNTUP(i, n) {
+          l->value.ptr[i] = arg_stack[--n];
+        }
+        arg_stack[n++] = l;
+        continue;
+      }
       default:
         break;
       }
