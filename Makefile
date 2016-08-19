@@ -209,6 +209,14 @@ lldb:
 	make BUILD=lldb-debug eval
 	lldb eval || gdb --nx eval
 
+.PHONY: git-pull
+git-pull:
+	git pull --autostash
+
+.PHONY: update
+update: git-pull all
+	./eval -git -q
+
 # remove compilation products
 .PHONY: clean
 clean:
