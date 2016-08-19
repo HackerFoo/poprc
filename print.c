@@ -93,7 +93,8 @@ char const *function_name(reduce_t *f) {
 }
 
 void get_name(const cell_t *c, const char **module_name, const char **word_name) {
-  if((reduce_t *)clear_ptr(c->func) == func_exec) {
+  if((reduce_t *)clear_ptr(c->func) == func_exec ||
+     (reduce_t *)clear_ptr(c->func) == func_quote) {
     cell_t *e = c->expr.arg[closure_in(c) - 1];
     *module_name = e->module_name;
     *word_name = e->word_name;

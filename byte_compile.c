@@ -228,7 +228,7 @@ void print_trace_cells(cell_t *e) {
       printf(", type = %s", show_type_all_short(c->value.type));
       if(c->alt) printf(" -> %" PRIuPTR, trace_decode(c->alt));
     } else {
-      if(c->expr_type == (T_VAR | T_LIST)) {
+      if(c->func == func_quote) {
         printf(" %s.%s_%d", e->module_name, e->word_name, t);
         COUNTUP(i, closure_in(c) - 1) {
           printf(" %" PRIuPTR, trace_decode(c->expr.arg[i]));
@@ -423,7 +423,7 @@ void trace_final_pass(cell_t *e) {
 
   FOR_TRACE(p, start, end) {
     trace_rewrite(p);
-    if(p->expr_type == (T_VAR | T_LIST)) {
+    if(p->func == func_quote) {
       cell_t *qe = compile_quote(e, p);
       assert(qe);
       p->expr.arg[closure_in(p) - 1] = trace_encode(qe - trace_cells);
@@ -457,21 +457,20 @@ cell_t *trace_store_quote(cell_t *c) {
   cell_t *n = trace_alloc(in + 1);
 
   n->expr.out = 0;
-  n->func = func_exec;
+  n->func = func_quote;
   n->n = -1;
 
   cell_t *p = vl;
   COUNTUP(i, in) {
     uintptr_t x = trace_get(p);
     trace_cur[x].n++;
-    n->expr.arg[i] = trace_encode(x);
+    n->expr.arg[in - i - 1] = trace_encode(x);
     p = p->tmp;
   }
 
   clean_tmp(vl);
 
   n->expr.arg[in] = ref(c); // entry is c for now
-  n->expr_type = T_VAR | T_LIST;
 
   trace_index_add(c, n - trace_cur);
   return n;
@@ -669,16 +668,22 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *quote) {
   e->n = PERSISTENT;
   e->module_name = parent_entry->module_name;
   e->word_name = string_printf("%s_%d", parent_entry->word_name, (int)(quote - parent_entry) - 1);
-  e->entry.in = in;
   e->entry.out = n;
   e->entry.len = 0;
   e->entry.flags = 0;
   e->func = func_exec;
 
+  // free variables
+  cell_t *vl = 0;
+  trace_var_list(c, &vl);
+  for(cell_t *p = vl; p; p = p->tmp) {
+    trace_store(p, p->value.type);
+  }
+  clean_tmp(vl);
+
   // compile
-  // TODO - add free variables
   set_trace(bc_trace);
-  fill_args(c, bc_arg);
+  e->entry.in = in + fill_args(c, bc_arg);
   trace_reduce(c);
   drop(c);
   set_trace(NULL);
@@ -793,7 +798,7 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
 
     // skip rewriting for the entry argument
     cell_t **t_entry = NULL;
-    if(t->func == func_exec) {
+    if(t->func == func_exec || t->func == func_quote) {
       t_entry = &t->expr.arg[closure_in(t) - 1];
       *t_entry = &trace_cells[trace_decode(*t_entry)];
     }
@@ -865,4 +870,45 @@ void trace_get_name(const cell_t *c, const char **module_name, const char **word
     *module_name = PRIMITIVE_MODULE_NAME;
     *word_name = function_name(c->func);
   }
+}
+
+// takes free variables and returns a quoted function
+bool func_quote(cell_t **cp, UNUSED type_t t) {
+  cell_t *c = clear_ptr(*cp);
+  assert(is_closure(c));
+
+  csize_t in = closure_in(c) - 1;
+  cell_t *entry = c->expr.arg[in];
+  c->expr.arg[in] = 0;
+  csize_t
+    f_in = entry->entry.in,
+    f_out = entry->entry.out;
+
+  cell_t *f = closure_alloc(f_in + f_out);
+  f->n = f_out - 1;
+  cell_t *l = make_list(f_out);
+  csize_t offset = f_in - in;
+  if(offset) {
+    f->expr.arg[0] = (cell_t *)(uintptr_t)(offset - 1);
+    f->func = (reduce_t *)mark_ptr(func_exec);
+  } else {
+    f->func = func_exec;
+  }
+
+  COUNTUP(i, in) {
+    f->expr.arg[i + offset] = ref(c->expr.arg[i]);
+  }
+
+  f->expr.arg[f_in] = entry;
+
+  COUNTUP(i, f_out - 1) {
+    cell_t *d = dep(f);
+    l->value.ptr[i] = d;
+    f->expr.arg[f_in + 1 + i] = d;
+  }
+
+  l->value.ptr[f_out - 1] = f;
+
+  store_reduced(cp, l);
+  return true;
 }

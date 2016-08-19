@@ -194,7 +194,8 @@ bool func_pushr(cell_t **cp, UNUSED type_t t) {
   return false;
 }
 
-// WORD("'", quote, 1, 1)
+// WORD//("'", quote, 1, 1)
+/*
 bool func_quote(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
@@ -202,6 +203,7 @@ bool func_quote(cell_t **cp, UNUSED type_t t) {
   store_reduced(cp, &res);
   return true;
 }
+*/
 
 // WORD("popr", popr, 1, 2)
 bool func_popr(cell_t **cp, UNUSED type_t t) {
