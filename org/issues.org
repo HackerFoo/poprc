@@ -15,8 +15,8 @@ Compile to direct C when possible
 ** STARTED add support to return quoted functions from compiled functions
 *** DONE count inputs
 - all vars + open args on left
-*** STARTED store func_exec with entry + args + outputs
-*** TODO compile auxilary functions
+*** DONE store func_exec with entry + args + outputs
+*** DONE compile auxilary functions
 ** CANCELED compile all quoted functions
 - part of "add support to return quoted functions from compiled functions"
 ** C generation
