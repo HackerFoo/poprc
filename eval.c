@@ -204,7 +204,7 @@ int main(int argc, char **argv) {
     // printf("__ arguments __\n%s", a);
 
     while(*a && !quit) {
-      char *e = index(a, '\n');
+      char *e = strchr(a, '\n');
       *e = '\0'; // HACKy (fix load_file instead)
       quit = !eval_command(a, e);
       a = e + 1;

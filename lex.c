@@ -17,7 +17,6 @@
 
 #include "rt_types.h"
 #include <string.h>
-#include <strings.h>
 #include <stdio.h>
 #include <assert.h>
 
@@ -37,7 +36,7 @@ char_class_t char_class(char c) {
     return CC_ALPHA;
   if(c == '?') return CC_VAR;
   if(c == '_') return CC_COMMENT;
-  if(index("[](){}", c))
+  if(strchr("[](){}", c))
     return CC_BRACKET;
   return CC_SYMBOL;
 }

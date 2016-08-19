@@ -17,7 +17,6 @@
 
 #include "rt_types.h"
 #include <string.h>
-#include <strings.h>
 #include <stdio.h>
 #include <assert.h>
 #include <inttypes.h>

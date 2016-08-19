@@ -17,7 +17,6 @@
 
 #include "rt_types.h"
 #include <string.h>
-#include <strings.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
@@ -107,9 +106,6 @@ int test_strings() {
   if(start != strings_top) return -2;
   return 0;
 }
-
-// for when index declaration is missing for some reason e.g. clang on Android
-char *index(const char *s, int c);
 
 void parse_init() {
   strings_top = strings;
