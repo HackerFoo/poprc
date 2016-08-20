@@ -324,7 +324,7 @@ bool func_id(cell_t **cp, type_t t) {
   assert(!is_marked(c));
   alt_set_t alt_set = (alt_set_t)c->expr.arg[1];
 
-  if(alt_set || c->alt) {
+  //if(alt_set || c->alt) {
     if(!reduce_arg(c, 0, &alt_set, t) ||
        as_conflict(alt_set)) goto fail;
     clear_flags(c);
@@ -332,13 +332,15 @@ bool func_id(cell_t **cp, type_t t) {
     cell_t *p = c->expr.arg[0];
     store_reduced(cp, mod_alt(ref(p), c->alt, alt_set));
     return true;
+    /*
   } else {
+    // makes tracing hard because of the silent rewrite
     cell_t *p = ref(c->expr.arg[0]);
     drop(c);
     *cp = p;
     return false;
   }
-
+    */
  fail:
   fail(cp, t);
   return false;

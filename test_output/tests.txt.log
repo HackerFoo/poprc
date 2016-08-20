@@ -28,12 +28,12 @@ __ pushl sharing
 [dup] dup pushl
  [ [ [ dup ] id dup ] ]
 1 [dup] dup . pushl popr
- [ [ 1 id 1 id id ] 1 ]
+ [ [ 1 id 1 id ] 1 ]
 __ [dup pushl popr] dup pushl popr
 __ [dup pushl popr swap drop] dup pushl popr swap drop
 __ infinite [1]'s
 [dup pushl popr swap 1] dup pushl popr drop popr popr popr
- [ [ 1 id id ] [ 1 id id ] [ 1 id id ] [ [ dup pushl popr swap 1 ] id id id id dup pushl popr swap ] ]
+ [ [ 1 id id ] [ 1 id id ] [ 1 id id ] [ [ dup pushl popr swap 1 ] id dup pushl popr swap ] ]
 __ [[] 1] [! drop dup 0 swap pushl pushl] [0 == ! drop 0 force [] pushl pushl] | . popr swap drop popr
 [1 2 | ] popr
  [ [] { 1 | 2 } ]

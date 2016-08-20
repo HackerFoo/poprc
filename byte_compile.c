@@ -132,6 +132,20 @@ cell_t *trace_store(const cell_t *c, type_t t) {
   return dest;
 }
 
+cell_t *trace_dep(const cell_t *d, cell_t *c, type_t t) {
+  cell_t *dest = trace_ptr++;
+  trace_cnt++;
+  trace_index_add(d, dest - trace_cur);
+  dest->func = func_dep;
+  dest->expr.arg[0] = c;
+  dest->size = 1;
+  dest->n = -2; // 1 less for weak reference
+
+  // stuff type in expr_type
+  dest->expr_type = t | T_TRACED;
+  return dest;
+}
+
 void trace_rewrite(cell_t *c) {
 
   // skip returns (already rewritten)
@@ -291,32 +305,6 @@ uintptr_t bc_func(reduce_t f, csize_t in, csize_t out, ...) {
   return c - trace_cur;
 }
 
-uintptr_t bc_apply_list(cell_t *c) {
-  csize_t in = closure_in(c);
-  csize_t out = closure_out(c);
-  uintptr_t p = trace_get(c);
-  assert(out > 0);
-
-  /* pushl inputs */
-  if(trace_cur[p].func != func_popr) { // HACKish
-    COUNTDOWN(i, in) {
-      uintptr_t x = trace_get(c->expr.arg[i]);
-      p = bc_func(func_pushl, 2, 1, x, p);
-    }
-  }
-
-  /* popr outputs */
-  COUNTDOWN(i, out) {
-    cell_t *arg = c->expr.arg[i + in];
-    if(!map_find(trace_index, (uintptr_t)clear_ptr(arg))) {
-      uintptr_t res;
-      p = bc_func(func_popr, 1, 2, p, &res);
-      trace_index_add(arg, res);
-    }
-  }
-  return p;
-}
-
 void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
   if(write_graph) {
     mark_cell(c);
@@ -327,30 +315,29 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
 
   case tt_reduction: {
     if(is_value(c) || !is_var(r)) break;
-    if(c->func == func_pushl ||
-       c->func == func_pushr ||
-       c->func == func_popr) break;
+    if(c->func == func_placeholder ||
+       c->func == func_dep) break;
     if(c->func == func_cut ||
        c->func == func_id) {
       trace_index_assign(c, c->expr.arg[0]);
     } else if(c->func == func_exec && !c->expr.arg[closure_in(c) - 1]) {
       // just replace exec with it's result
       trace_index_assign(c, r);
-    } else if(c->func == func_placeholder) {
-      //trace_index_add(c, bc_apply_list(c));
     } else if(c->func == func_compose) {
       // HACKy
       cell_t *p = c->expr.arg[1];
       if(is_var(p) && is_placeholder(p->value.ptr[0])) {
         trace_index_assign(r->value.ptr[0], p->value.ptr[0]);
       }
-    } else if(c->func == func_dep) {
-      trace_store(c, r->value.type);
     } else {
       csize_t in = closure_in(c);
-      if(c->func == func_exec) in--;
-      COUNTUP(i, in) {
+      csize_t out = closure_out(c);
+      COUNTUP(i, c->func == func_exec ? in - 1 : in) {
         trace(c->expr.arg[i], c, tt_force, i);
+      }
+      COUNTUP(i, out) {
+        cell_t *d = c->expr.arg[in + i];
+        if(d) trace_dep(d, c, d->value.type);
       }
       trace_store(c, r->value.type);
     }
@@ -393,11 +380,6 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       a = trace_get(((cell_t **)r)[0]),
       n = bc_func(func_compose, 2, 1, a, pb->second);
     pb->second = n;
-    break;
-  }
-
-  case tt_placeholder_dep: {
-    trace_index_add(r, bc_apply_list(r));
     break;
   }
 

@@ -176,7 +176,6 @@ bool func_placeholder(cell_t **cp, UNUSED type_t t) {
       drop(c);
       d->expr.arg[0] = 0;
       store_var(d, 0);
-      trace(d, c, tt_placeholder_dep, i);
     }
   }
   return false;
