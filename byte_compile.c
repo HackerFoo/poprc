@@ -343,11 +343,11 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       COUNTUP(i, c->func == func_exec ? in - 1 : in) {
         trace(c->expr.arg[i], c, tt_force, i);
       }
+      trace_store(c, r->value.type);
       COUNTUP(i, out) {
         cell_t *d = c->expr.arg[in + i];
         if(d) trace_dep(d, c, d->value.type);
       }
-      trace_store(c, r->value.type);
     }
     r->value.type |= T_TRACED;
     break;
