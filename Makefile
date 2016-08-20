@@ -45,7 +45,7 @@ ifeq ($(BUILD),debug)
 	LIBS += $(SANITIZE)
 endif
 
-ifeq ($(BUILD),lldb-debug)
+ifeq ($(BUILD),debugger)
 	CFLAGS += -g -O0 $(SANITIZE)
 	CXXFLAGS += -g -O0 $(SANITIZE)
 	LIBS += $(SANITIZE)
@@ -204,14 +204,19 @@ profile:
 	CPUPROFILE=eval_prof.out ./eval
 	pprof --web eval eval_prof.out
 
-.PHONY: lldb
-lldb:
-	make BUILD=lldb-debug eval
+.PHONY: dbg
+dbg:
+	make BUILD=debugger eval
 	lldb eval || gdb --nx eval
+
+.PHONY: autostash
+autostash:
+	git config pull.rebase true
+	git config rebase.autoStash true
 
 .PHONY: git-pull
 git-pull:
-	git pull --autostash
+	git pull
 
 .PHONY: update
 update: git-pull all
