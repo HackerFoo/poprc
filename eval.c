@@ -203,10 +203,10 @@ int main(int argc, char **argv) {
     char *args = arguments(argc - 1, argv + 1), *a = args;
     // printf("__ arguments __\n%s", a);
 
-    while(*a && !quit) {
+    while(*a) {
       char *e = strchr(a, '\n');
       *e = '\0'; // HACKy (fix load_file instead)
-      quit = !eval_command(a, e);
+      quit = !eval_command(a, e) || quit;
       a = e + 1;
     }
 
@@ -421,15 +421,6 @@ void command_arity(cell_t *rest) {
     if(get_arity(rest, &in, &out, NULL)) {
       printf("%d -> %d\n", in, out);
     }
-  }
-}
-
-void command_bytecode(cell_t *rest) {
-  if(rest) {
-    cell_t
-      *m = eval_module(),
-      *e = module_lookup_compiled(tok_seg(rest), &m);
-    if(e) print_trace_cells(e);
   }
 }
 

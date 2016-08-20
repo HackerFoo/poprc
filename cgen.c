@@ -297,10 +297,27 @@ void gen_assert(cell_t *e, cell_t *c) {
 }
 
 void gen_function(cell_t *e) {
+  cell_t *start = e + 1;
+  cell_t *end = start + e->entry.len;
+
+  FOR_TRACE(c, start, end) {
+    if(c->func != func_quote) continue;
+    cell_t *e = &trace_cells[trace_decode(c->expr.arg[closure_in(c) - 1])];
+    gen_function_signature(e);
+    printf(";\n");
+  }
+
   gen_function_signature(e);
   printf("\n{\n");
   gen_body(e);
   printf("}\n");
+
+  FOR_TRACE(c, start, end) {
+    if(c->func != func_quote) continue;
+    cell_t *e = &trace_cells[trace_decode(c->expr.arg[closure_in(c) - 1])];
+    printf("\n");
+    gen_function(e);
+  }
 }
 
 // for now assumes int
@@ -350,6 +367,7 @@ void gen_main(cell_t *e) {
 
 void command_cgen(cell_t *rest) {
   if(rest) {
+    command_def(rest);
     cell_t
       *m = eval_module(),
       *e = module_lookup_compiled(tok_seg(rest), &m);

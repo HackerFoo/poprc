@@ -219,13 +219,14 @@ void trace_init() {
   map_clear(trace_values);
 }
 
-void print_trace_cells(cell_t *e) {
+void print_bytecode(cell_t *e) {
   size_t count = e->entry.len;
   cell_t *start = e + 1;
   cell_t *end = start + count;
+  printf("___ %s.%s (%d -> %d) ___\n", e->module_name, e->word_name, e->entry.in, e->entry.out);
   FOR_TRACE(c, start, end) {
     int t = c - start;
-    printf("cell[%d]:", t);
+    printf("[%d]", t);
     if(is_value(c)) {
       if(is_var(c)) {
         printf(" var");
@@ -266,6 +267,13 @@ void print_trace_cells(cell_t *e) {
     }
 */
     printf(" x%d\n", c->n + 1);
+  }
+
+  FOR_TRACE(c, start, end) {
+    if(c->func != func_quote) continue;
+    cell_t *e = &trace_cells[trace_decode(c->expr.arg[closure_in(c) - 1])];
+    printf("\n");
+    print_bytecode(e);
   }
 }
 
@@ -893,4 +901,16 @@ bool func_quote(cell_t **cp, UNUSED type_t t) {
 
   store_reduced(cp, l);
   return true;
+}
+
+void command_bytecode(cell_t *rest) {
+  if(rest) {
+    command_def(rest);
+    cell_t
+      *m = eval_module(),
+      *e = module_lookup_compiled(tok_seg(rest), &m);
+    if(e) {
+      print_bytecode(e);
+    }
+  }
 }
