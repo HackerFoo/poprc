@@ -17,6 +17,10 @@ Compile to direct C when possible
 - all vars + open args on left
 *** DONE store func_exec with entry + args + outputs
 *** DONE compile auxilary functions
+*** TODO handle pushl
+- :d f1 1 swap pushl popr swap drop
+- pushl before argument
+- delay until lazy argument is evaluated?
 ** CANCELED compile all quoted functions
 - part of "add support to return quoted functions from compiled functions"
 ** C generation
@@ -53,6 +57,7 @@ Compile to direct C when possible
 ** TODO fix compiling pushr & pushl
 - f1 pushr
 - f2 popr swap pushl popr
+- f3 swap pushl
 ** TODO select seems broken
 :c f2 | popr ! cut popr swap drop
 :c rot [] pushl swap pushr pushl popr swap popr swap popr swap drop

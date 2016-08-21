@@ -55,11 +55,13 @@ static MAP(trace_values, 1 << 6); // uintptr_t (value) -> uintptr_t (index in tr
 static
 pair_t *trace_find(const cell_t *c) {
   c = clear_ptr(c);
+  /*
   if(is_list(c) && c->value.ptr[0] && is_placeholder(c->value.ptr[0])) {
     cell_t *ph = clear_ptr(c->value.ptr[0]);
     pair_t *res = map_find(trace_index, (uintptr_t)ph);
     if(res) return res;
   }
+  */
   return map_find(trace_index, (uintptr_t)c);
 }
 
@@ -243,29 +245,22 @@ void print_bytecode(cell_t *e) {
       printf(", type = %s", show_type_all_short(c->value.type));
       if(c->alt) printf(" -> %" PRIuPTR, trace_decode(c->alt));
     } else {
-      if(c->func == func_quote) {
-        printf(" %s.%s_%d", e->module_name, e->word_name, t);
-        COUNTUP(i, closure_in(c) - 1) {
-          printf(" %" PRIuPTR, trace_decode(c->expr.arg[i]));
-        }
-      } else {
-        const char *module_name = NULL, *word_name = NULL;
-        trace_get_name(c, &module_name, &word_name);
-        printf(" %s.%s", module_name, word_name);
-        traverse(c, {
-            printf(" %" PRIuPTR, trace_decode(*p));
-          }, ARGS);
-      }
-
+      const char *module_name = NULL, *word_name = NULL;
+      trace_get_name(c, &module_name, &word_name);
+      printf(" %s.%s", module_name, word_name);
+      cell_t **e = (c->func == func_exec || c->func == func_quote) ? &c->expr.arg[closure_in(c) - 1] : NULL;
+      traverse(c, {
+          if(p != e) printf(" %" PRIuPTR, trace_decode(*p));
+        }, ARGS);
       printf(", type = %s", show_type_all_short(c->expr_type));
       if(c->alt) printf(" -> %" PRIuPTR, trace_decode(c->alt));
     }
-/*
+#if DEBUG
     pair_t *p = map_find_value(trace_index, t);
     if(p) {
-      printf(" (%d)", (int)p->first);
+      printf(" (%d)", (int)(((cell_t *)p->first) - cells));
     }
-*/
+#endif
     printf(" x%d\n", c->n + 1);
   }
 
@@ -343,11 +338,11 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       COUNTUP(i, c->func == func_exec ? in - 1 : in) {
         trace(c->expr.arg[i], c, tt_force, i);
       }
-      trace_store(c, r->value.type);
       COUNTUP(i, out) {
         cell_t *d = c->expr.arg[in + i];
         if(d) trace_dep(d, c, d->value.type);
       }
+      trace_store(c, r->value.type);
     }
     r->value.type |= T_TRACED;
     break;
@@ -359,7 +354,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
     if(!is_value(c)) break;
     if(is_list(c) && is_placeholder(c->value.ptr[0])) {
       // kind of hacky; replaces placeholder its list var to be overwritten later
-      trace_index_assign(c->value.ptr[0], c);
+      //trace_index_assign(c->value.ptr[0], c);
     } else if(is_var(c)) {
       trace_update_type(c);
     } else if(is_list(c)) {
@@ -852,7 +847,8 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
 
 // very similar to get_name() but decodes entry
 void trace_get_name(const cell_t *c, const char **module_name, const char **word_name) {
-  if((reduce_t *)clear_ptr(c->func) == func_exec) {
+  if((reduce_t *)clear_ptr(c->func) == func_exec ||
+     (reduce_t *)clear_ptr(c->func) == func_quote) {
     cell_t *e = &trace_cells[trace_decode(c->expr.arg[closure_in(c) - 1])];
     *module_name = e->module_name;
     *word_name = e->word_name;

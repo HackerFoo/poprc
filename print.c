@@ -68,7 +68,7 @@ char const *show_alt_set(uintptr_t as) {
 
 // only valid on primitives
 char const *entry_function_name(cell_t *e) {
-  if(e->func == func_exec) return NULL;
+  if(e->func == func_exec || e->func == func_quote) return NULL;
   const char *s = e->word_name;
   while(*s++);
   return s;
