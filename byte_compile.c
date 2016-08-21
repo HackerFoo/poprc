@@ -323,6 +323,8 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
     if(c->func == func_cut ||
        c->func == func_id) {
       trace_index_assign(c, c->expr.arg[0]);
+//    } else if(c->func == func_pushl) {
+//      trace_index_assign(c, c->expr.arg[1]);
     } else if(c->func == func_exec && !c->expr.arg[closure_in(c) - 1]) {
       // just replace exec with it's result
       trace_index_assign(c, r);
@@ -336,7 +338,10 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       csize_t in = closure_in(c);
       csize_t out = closure_out(c);
       COUNTUP(i, c->func == func_exec ? in - 1 : in) {
-        trace(c->expr.arg[i], c, tt_force, i);
+        cell_t *a = c->expr.arg[i];
+        if(is_value(a) && !(a->value.type & T_TRACED)) {
+          trace_store(a, a->value.type);
+        }
       }
       COUNTUP(i, out) {
         cell_t *d = c->expr.arg[in + i];
@@ -358,7 +363,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
     } else if(is_var(c)) {
       trace_update_type(c);
     } else if(is_list(c)) {
-      trace_store_quote(c);
+      trace_store_list(c);
     } else {
       trace_store(c, c->value.type);
     }
@@ -424,7 +429,7 @@ void bc_arg(cell_t *c, UNUSED val_t x) {
 // TODO unevaluated functions instead for later compilation
 cell_t *trace_store_list(cell_t *c) {
   traverse(c, {
-      if(*p && !((*p)->value.type & T_TRACED)) {
+      if(*p && is_list(*p) && !((*p)->value.type & T_TRACED)) {
         trace_store_quote(clear_ptr(*p));
         (*p)->value.type |= T_TRACED;
       }
