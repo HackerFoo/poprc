@@ -129,8 +129,10 @@ cell_t *trace_store(const cell_t *c, type_t t) {
 
   dest->n = -1;
 
+  if(is_value(c)) dest->value.type = (dest->value.type & ~T_EXCLUSIVE) | t;
+
   // stuff type in expr_type
-  dest->expr_type = t | T_TRACED;
+  dest->expr_type = (dest->expr_type & ~T_EXCLUSIVE) | T_TRACED | t;
   return dest;
 }
 
@@ -323,8 +325,6 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
     if(c->func == func_cut ||
        c->func == func_id) {
       trace_index_assign(c, c->expr.arg[0]);
-//    } else if(c->func == func_pushl) {
-//      trace_index_assign(c, c->expr.arg[1]);
     } else if(c->func == func_exec && !c->expr.arg[closure_in(c) - 1]) {
       // just replace exec with it's result
       trace_index_assign(c, r);
@@ -340,7 +340,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       COUNTUP(i, c->func == func_exec ? in - 1 : in) {
         cell_t *a = c->expr.arg[i];
         if(is_value(a) && !(a->value.type & T_TRACED)) {
-          trace_store(a, a->value.type);
+          trace_store(a, a->value.type | T_LAZY);
         }
       }
       COUNTUP(i, out) {
@@ -365,7 +365,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
     } else if(is_list(c)) {
       trace_store_list(c);
     } else {
-      trace_store(c, c->value.type);
+      trace_store(c, c->value.type | T_LAZY);
     }
     c->value.type |= T_TRACED;
     break;
@@ -429,8 +429,12 @@ void bc_arg(cell_t *c, UNUSED val_t x) {
 // TODO unevaluated functions instead for later compilation
 cell_t *trace_store_list(cell_t *c) {
   traverse(c, {
-      if(*p && is_list(*p) && !((*p)->value.type & T_TRACED)) {
-        trace_store_quote(clear_ptr(*p));
+      if(*p && is_value(*p) && !((*p)->value.type & T_TRACED)) {
+        if(is_list(*p)) {
+          trace_store_quote(clear_ptr(*p));
+        } else {
+          trace_store(*p, (*p)->value.type);
+        }
         (*p)->value.type |= T_TRACED;
       }
     }, PTRS);
@@ -469,7 +473,7 @@ cell_t *trace_store_quote(cell_t *c) {
 // builds a temporary list of referenced variables
 cell_t **trace_var_list(cell_t *c, cell_t **tail) {
   traverse(c, {
-      if(*p && !(*p)->tmp) {
+      if(*p && !(*p)->tmp && &(*p)->tmp != tail) {
         if(is_var(*p)) {
           *tail = *p;
           tail = &(*p)->tmp;
