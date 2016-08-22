@@ -378,7 +378,9 @@ void show_func(cell_t const *c) {
       show_one(arg);
     }
   }
-  printf(" %s", s);
+  if(c->func != func_id) { // to reduce noise and allow diff'ing test output
+    printf(" %s", s);
+  }
 }
 
 void show_var(cell_t const *c) {
