@@ -302,7 +302,8 @@ bool is_any(cell_t const *c) {
     cell_t **p;                                                 \
     if(is_value(r)) {                                           \
       if(((flags) & PTRS) &&                                    \
-         (r->value.type & T_EXCLUSIVE) == T_LIST) {             \
+        ((r->value.type & T_EXCLUSIVE) == T_LIST ||             \
+         (r->value.type & T_EXCLUSIVE) == T_RETURN)) {          \
         n = list_size(r);                                       \
         for(i = 0; i < n; ++i) {                                \
           p = (r)->value.ptr + i;                               \

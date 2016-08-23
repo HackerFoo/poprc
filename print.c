@@ -472,7 +472,6 @@ char *show_type_all(type_t t) {
     "T_INDIRECT",
     "T_FAIL",
     "T_TRACED",
-    "T_LAZY"
   };
   static char buf[64];
   char *p = buf;
@@ -508,9 +507,8 @@ char *show_type_all_short(type_t t) {
     '*',
     '!',
     '.',
-    '~'
   };
-  static char buf[] = "XXXXXX";
+  static char buf[LENGTH(type_flag_char) + 1];
 
   char *p = buf;
 

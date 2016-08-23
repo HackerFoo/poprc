@@ -121,4 +121,8 @@
 #define _STRINGIFY(x) #x
 #define STRINGIFY(x) _STRINGIFY(x)
 
+#define LIST_ADD(f, l, v) (*(l) = (v), (l) = &(v)->f)
+
+#define FLIP_PTR(p) ((void *)~(uintptr_t)(p))
+
 #endif

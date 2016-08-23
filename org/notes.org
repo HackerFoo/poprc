@@ -1,6 +1,12 @@
 #+TITLE: PoprC Notes
 
-* byte compule quotes
+* byte compile quotes
+- special pushl instruction
+  - quote + compose
+  - breaks quote apart, so that each element of list can be evaluated separately
+- in func_quote, unpack quotes: either
+  - pushl left & pushr right, or
+  - unpack with special instruction
 - store cell + vars + out on first pass
 - replace cell with entry after compilation of quote to auxilary function
 * lightweight quote format

@@ -154,7 +154,6 @@ bool func_pushl(cell_t **cp, UNUSED type_t t) {
 
   cell_t *q = c->expr.arg[1];
   bool rvar = is_var(q);
-  if(rvar && !reduce_arg(c, 0, &alt_set, T_ANY)) goto fail;
   cell_t *res = pushl_nd(ref(c->expr.arg[0]), ref(q));
   if(rvar) res->value.type |= T_VAR;
   drop(res->alt);

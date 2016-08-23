@@ -112,7 +112,6 @@ bool reduce(cell_t **cp, type_t t) {
   cell_t *c;
   while((c = clear_ptr(*cp))) {
     if(!closure_is_ready(c)) close_placeholders(c);
-    if(is_placeholder(c)) break;
     assert(is_closure(c));
     if(!closure_is_ready(c)) {
       fail(cp, t);
@@ -394,8 +393,9 @@ void store_fail(cell_t *c, cell_t *alt) {
 void store_var(cell_t *c, type_t t) {
   closure_shrink(c, 1);
   c->func = func_value;
+  c->value.alt_set = 0;
   c->value.type = T_VAR | t;
-  c->size = 0;
+  c->size = 1;
 }
 
 void fail(cell_t **cp, type_t t) {
@@ -421,12 +421,12 @@ void fail(cell_t **cp, type_t t) {
 void store_reduced(cell_t **cp, cell_t *r) {
   cell_t *c = *cp;
   assert(!is_marked(c));
-  refcount_t n = c->n;
   r->func = func_value;
   trace(c, r, tt_reduction, 0);
   drop_multi(c->expr.arg, closure_in(c));
   csize_t size = is_closure(r) ? closure_cells(r) : 0;
   if(size <= closure_cells(c)) {
+    refcount_t n = c->n;
     closure_shrink(c, size);
     memcpy(c, r, sizeof(cell_t) * size);
     assert(is_cell(r));

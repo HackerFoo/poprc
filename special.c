@@ -61,6 +61,7 @@ cell_t *var(type_t t) {
   cell_t *c = closure_alloc(1);
   c->func = func_value;
   c->value.type = T_VAR | t;
+  c->size = 1;
   return c;
 }
 
@@ -178,7 +179,8 @@ bool func_placeholder(cell_t **cp, UNUSED type_t t) {
       store_var(d, 0);
     }
   }
-  return false;
+  store_reduced(cp, var(t));
+  return true;
 
  fail:
   fail(cp, t);
