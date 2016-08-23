@@ -17,10 +17,11 @@ Compile to direct C when possible
 - all vars + open args on left
 *** DONE store func_exec with entry + args + outputs
 *** DONE compile auxilary functions
-*** TODO handle pushl
+*** DONE handle pushl
 - :d f1 1 swap pushl popr swap drop
 - pushl before argument
 - delay until lazy argument is evaluated?
+  - just force both args when list is a var
 ** CANCELED compile all quoted functions
 - part of "add support to return quoted functions from compiled functions"
 ** C generation
@@ -40,7 +41,7 @@ Compile to direct C when possible
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
-** TODO fix get2 in tests.peg
+** DONE fix get2 in tests.peg
 ** TODO pass T_BOTTOM instead of T_ANY down reduce
 ** TODO remove cut
 ** TODO update refcnt for cells in genc
@@ -54,15 +55,15 @@ Compile to direct C when possible
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
-** TODO fix compiling pushr & pushl
+** DONE fix compiling pushr & pushl
 - f1 pushr
 - f2 popr swap pushl popr
 - f3 swap pushl
-** TODO select seems broken
+** CANCELED select seems broken
 :c f2 | popr ! cut popr swap drop
 :c rot [] pushl swap pushr pushl popr swap popr swap popr swap drop
 :c f5 [] pushl rot rot | swap pushl popr swap popr swap drop dup rot > ! cut
-** TODO :c f2 pushl pushl popr 1 + swap pushl popr swap popr swap drop +
+** DONE :c f2 pushl pushl popr 1 + swap pushl popr swap popr swap drop +
 x y [z+] should be x + y + z + 1, gives 2y + 2z + 1
 ** TODO :c f1 [] [] ifte pushl
 ** STARTED :c loop dup 5 > [5- loop] [] ifte ap11 swap drop
