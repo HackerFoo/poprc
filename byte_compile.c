@@ -249,6 +249,7 @@ void print_bytecode(cell_t *e) {
     } else {
       const char *module_name = NULL, *word_name = NULL;
       trace_get_name(c, &module_name, &word_name);
+      if(c->func == func_quote) printf(" quote");
       printf(" %s.%s", module_name, word_name);
       cell_t **e = (c->func == func_exec || c->func == func_quote) ? &c->expr.arg[closure_in(c) - 1] : NULL;
       traverse(c, {

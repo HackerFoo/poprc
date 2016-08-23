@@ -172,6 +172,8 @@ void gen_instruction(cell_t *e, cell_t *c) {
     gen_select(e, c);
   } else if(c->func == func_assert) {
     gen_assert(e, c);
+  } else if(c->func == func_quote) {
+    gen_quote(e, c);
   } else {
     gen_call(e, c);
   }
@@ -294,6 +296,25 @@ void gen_assert(cell_t *e, cell_t *c) {
     }
   }
   printf("phi%d:\n", i);
+}
+
+void gen_quote(cell_t *e, cell_t *c) {
+  const char *module_name, *word_name;
+  cell_t *d = e + 1;
+  const int ic = c - d;
+  csize_t n = closure_in(c);
+  cell_t *qe = &trace_cells[trace_decode(c->expr.arg[n - 1])];
+  trace_get_name(c, &module_name, &word_name);
+  printf("  %s%d = __primitive_quote(%s_%s, %d, %d);\n",
+         cname(gen_type(c)), ic,
+         module_name, word_name,
+         qe->entry.in, qe->entry.out);
+  COUNTUP(i, n - 1) {
+    uintptr_t ai = trace_decode(c->expr.arg[i]);
+    printf("  %1$s%2$d = __primitive_pushl(%3$s%4$d, %1$s%2$d);\n",
+           cname(gen_type(c)), ic,
+           cname(gen_type(&d[ai])), (int)ai);
+  }
 }
 
 void gen_function(cell_t *e) {
