@@ -299,6 +299,7 @@ void trace_init() {
   map_clear(trace_values);
 }
 
+#define PRINT_DECODE(x) (rewritten ? trace_decode(x) : (x) - cells)
 void print_bytecode(cell_t *e) {
   size_t count = e->entry.len;
   cell_t *start = e + 1;
@@ -306,6 +307,8 @@ void print_bytecode(cell_t *e) {
   printf("___ %s.%s (%d -> %d) ___\n", e->module_name, e->word_name, e->entry.in, e->entry.out);
   FOR_TRACE(c, start, end) {
     int t = c - start;
+    bool rewritten = (c->expr_type & T_TRACED) == 0;
+    if(!rewritten) printf("-- ");
     printf("[%d]", t);
     if(is_value(c)) {
       if(is_var(c)) {
@@ -314,14 +317,14 @@ void print_bytecode(cell_t *e) {
         if(c->value.type == T_RETURN) printf(" return");
         printf(" [");
         COUNTDOWN(i, list_size(c)) {
-          printf(" %" PRIuPTR, trace_decode(c->value.ptr[i]));
+          printf(" %" PRIuPTR, PRINT_DECODE(c->value.ptr[i]));
         }
         printf(" ]");
       } else {
         printf(" val %" PRIdPTR, c->value.integer[0]);
       }
       printf(", type = %s", show_type_all_short(c->value.type));
-      if(c->alt) printf(" -> %" PRIuPTR, trace_decode(c->alt));
+      if(c->alt) printf(" -> %" PRIuPTR, PRINT_DECODE(c->alt));
     } else {
       const char *module_name = NULL, *word_name = NULL;
       trace_get_name(c, &module_name, &word_name);
@@ -329,10 +332,10 @@ void print_bytecode(cell_t *e) {
       printf(" %s.%s", module_name, word_name);
       cell_t **e = (c->func == func_exec || c->func == func_quote) ? &c->expr.arg[closure_in(c) - 1] : NULL;
       traverse(c, {
-          if(p != e) printf(" %" PRIuPTR, trace_decode(*p));
+          if(p != e) printf(" %" PRIuPTR, PRINT_DECODE(*p));
         }, ARGS);
       printf(", type = %s", show_type_all_short(c->expr_type));
-      if(c->alt) printf(" -> %" PRIuPTR, trace_decode(c->alt));
+      if(c->alt) printf(" -> %" PRIuPTR, PRINT_DECODE(c->alt));
     }
 #if DEBUG
     pair_t *p = map_find_value(trace_index, t);
