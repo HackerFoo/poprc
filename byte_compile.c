@@ -529,38 +529,33 @@ bool any_unreduced(cell_t *c) {
 
 // TODO unevaluated functions instead for later compilation
 cell_t *trace_store_list(cell_t *c) {
-  traverse(c, {
-      if(*p && is_value(*p)) {
-        if(is_list(*p)) {
-          if(any_unreduced(*p)) {
-            //trace_store_quote(clear_ptr(*p));
-          } else {
-            //trace_store_list(*p);
-          }
-        } else if(!is_var(*p)) {
-          trace_store(*p, (*p)->value.type);
-        }
-        (*p)->value.type |= T_TRACED;
-      }
-    }, PTRS);
-  return trace_store(c, c->value.type);
+  csize_t n = list_size(c);
+  uintptr_t li = is_placeholder(c->value.ptr[n-1]) ? trace_get(c->value.ptr[n-1]) : -1;
+  COUNTUP(i, n) {
+    li = trace_build_quote(c->value.ptr[i], li) - trace_cur;
+  }
+  trace_index_add(c, li);
+  return &trace_cur[li];
 }
 
 cell_t *trace_store_pushl(cell_t *c) {
+  cell_t *n = trace_build_quote(c->expr.arg[0], trace_get(c->expr.arg[1]));
+  trace_index_add(c, n - trace_cur);
+  return n;
+}
+
+cell_t *trace_build_quote(cell_t *q, intptr_t li) {
   cell_t *vl = 0;
   cell_t **vlp = &vl;
 
-  cell_t
-    *quote = c->expr.arg[0],
-    *l = c->expr.arg[1];
-
-  vlp = trace_var_list(quote, vlp);
+  vlp = trace_var_list(q, vlp);
   size_t in = tmp_list_length(vl);
   cell_t *n = trace_alloc(in + 2);
 
   n->expr.out = 0;
   n->func = func_quote;
   n->n = -1;
+  n->expr_type = T_LIST;
 
   cell_t *p = vl;
   COUNTUP(i, in) {
@@ -572,12 +567,10 @@ cell_t *trace_store_pushl(cell_t *c) {
 
   clean_tmp(vl);
 
-  uintptr_t li = trace_get(l);
-  trace_cur[li].n++;
+  if(li >= 0) trace_cur[li].n++;
   n->expr.arg[in] = trace_encode(li);
-  n->expr.arg[in + 1] = ref(quote); // entry points to the quote for now
+  n->expr.arg[in + 1] = ref(q); // entry points to the quote for now
 
-  trace_index_add(c, n - trace_cur);
   return n;
 }
 
@@ -679,9 +672,10 @@ cell_t *trace_reduce(cell_t *c) {
   // first one
   COUNTUP(i, n) {
     reduce(&c->value.ptr[i], T_ANY);
+    trace(c->value.ptr[i], c, tt_force, i);
   }
   if(!any_conflicts((cell_t const *const *)c->value.ptr, n)) {
-    r = trace_store_list(c);
+    r = trace_store(c, T_LIST);
     trace_rewrite(r);
     r->n++;
     r->value.type = T_RETURN;
@@ -693,10 +687,11 @@ cell_t *trace_reduce(cell_t *c) {
   while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, n) >= 0) {
     COUNTUP(i, n) {
       reduce(&p->value.ptr[i], T_ANY);
+      trace(c->value.ptr[i], c, tt_force, i);
     }
     if(!any_conflicts((cell_t const *const *)p->value.ptr, n)) {
       cell_t *prev = r;
-      r = trace_store_list(p);
+      r = trace_store(p, T_LIST);
       trace_rewrite(r);
       r->n++;
       r->value.type = T_RETURN;
@@ -1059,10 +1054,16 @@ bool func_quote(cell_t **cp, UNUSED type_t t) {
 
   f->expr.arg[f_in] = entry;
 
-  cell_t *res = closure_alloc(2);
-  res->func = func_pushl;
-  res->expr.arg[0] = f;
-  res->expr.arg[1] = ref(c->expr.arg[in]);
+  cell_t *res, *l = c->expr.arg[in];
+  if(l) {
+    res = closure_alloc(2);
+    res->func = func_pushl;
+    res->expr.arg[0] = f;
+    res->expr.arg[1] = ref(c->expr.arg[in]);
+  } else {
+    res = make_list(1);
+    res->value.ptr[0] = f;
+  }
 
   store_lazy(cp, c, res, 0);
   return false;
