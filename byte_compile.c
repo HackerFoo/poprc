@@ -48,6 +48,8 @@ static MAP(trace_values, 1 << 6); // uintptr_t (value) -> uintptr_t (index in tr
 
 #define DEBUG 0
 
+#define NIL_INDEX (-3)
+
 #if INTERFACE
 #define FOR_TRACE(c, start, end) for(cell_t *(c) = (start); c < (end); c = closure_next(c))
 #endif
@@ -317,14 +319,14 @@ void print_bytecode(cell_t *e) {
         if(c->value.type == T_RETURN) printf(" return");
         printf(" [");
         COUNTDOWN(i, list_size(c)) {
-          printf(" %" PRIuPTR, PRINT_DECODE(c->value.ptr[i]));
+          printf(" %" PRIdPTR, PRINT_DECODE(c->value.ptr[i]));
         }
         printf(" ]");
       } else {
         printf(" val %" PRIdPTR, c->value.integer[0]);
       }
       printf(", type = %s", show_type_all_short(c->value.type));
-      if(c->alt) printf(" -> %" PRIuPTR, PRINT_DECODE(c->alt));
+      if(c->alt) printf(" -> %" PRIdPTR, PRINT_DECODE(c->alt));
     } else {
       const char *module_name = NULL, *word_name = NULL;
       trace_get_name(c, &module_name, &word_name);
@@ -332,10 +334,10 @@ void print_bytecode(cell_t *e) {
       printf(" %s.%s", module_name, word_name);
       cell_t **e = (c->func == func_exec || c->func == func_quote) ? &c->expr.arg[closure_in(c) - 1] : NULL;
       traverse(c, {
-          if(p != e) printf(" %" PRIuPTR, PRINT_DECODE(*p));
+          if(p != e) printf(" %" PRIdPTR, PRINT_DECODE(*p));
         }, ARGS);
       printf(", type = %s", show_type_all_short(c->expr_type));
-      if(c->alt) printf(" -> %" PRIuPTR, PRINT_DECODE(c->alt));
+      if(c->alt) printf(" -> %" PRIdPTR, PRINT_DECODE(c->alt));
     }
 #if DEBUG
     pair_t *p = map_find_value(trace_index, t);
@@ -530,7 +532,7 @@ bool any_unreduced(cell_t *c) {
 // TODO unevaluated functions instead for later compilation
 cell_t *trace_store_list(cell_t *c) {
   csize_t n = list_size(c);
-  uintptr_t li = is_placeholder(c->value.ptr[n-1]) ? trace_get(c->value.ptr[n-1]) : -1;
+  uintptr_t li = is_placeholder(c->value.ptr[n-1]) ? trace_get(c->value.ptr[n-1]) : NIL_INDEX;
   COUNTUP(i, n) {
     li = trace_build_quote(c->value.ptr[i], li) - trace_cur;
   }
@@ -960,9 +962,11 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
     }
 
     traverse(t, {
-        if(p != t_entry && *p) {
-          uintptr_t x = trace_decode(*p);
-          if(x < len) {
+        if(p != t_entry) {
+          intptr_t x = trace_decode(*p);
+          if(x == NIL_INDEX) {
+            *p = &nil_cell;
+          } else if(x >= 0 && x < (int)len) {
             *p = map[x];
           } else {
             *p = NULL;
@@ -1054,16 +1058,10 @@ bool func_quote(cell_t **cp, UNUSED type_t t) {
 
   f->expr.arg[f_in] = entry;
 
-  cell_t *res, *l = c->expr.arg[in];
-  if(l) {
-    res = closure_alloc(2);
-    res->func = func_pushl;
-    res->expr.arg[0] = f;
-    res->expr.arg[1] = ref(c->expr.arg[in]);
-  } else {
-    res = make_list(1);
-    res->value.ptr[0] = f;
-  }
+  cell_t *res = closure_alloc(2);
+  res->func = func_pushl;
+  res->expr.arg[0] = f;
+  res->expr.arg[1] = ref(c->expr.arg[in]);
 
   store_lazy(cp, c, res, 0);
   return false;

@@ -92,6 +92,7 @@ cell_t *empty_list() {
 }
 
 cell_t *make_list(csize_t n) {
+  if(n == 0) return &nil_cell;
   cell_t *c = closure_alloc(n + 1);
   c->func = func_value;
   c->value.type = T_LIST;

@@ -46,7 +46,16 @@ cell_t *cells_ptr;
 // Predefined failure cell
 cell_t fail_cell = {
   .func = func_value,
+  .size = 1,
+  .n = PERSISTENT,
   .value.type = T_FAIL
+};
+
+cell_t nil_cell = {
+  .func = func_value,
+  .size = 1,
+  .n = PERSISTENT,
+  .value.type = T_LIST
 };
 
 // Structs for storing statistics
@@ -307,7 +316,7 @@ bool is_any(cell_t const *c) {
         n = list_size(r);                                       \
         for(i = 0; i < n; ++i) {                                \
           p = (r)->value.ptr + i;                               \
-          action                                                \
+          {action; }                                            \
         }                                                       \
       }                                                         \
     } else if((flags) & ARGS) {                                 \
@@ -316,12 +325,12 @@ bool is_any(cell_t const *c) {
       n = (~(flags) & ARGS_OUT) ? __in : closure_args(r);       \
       for(; i < n; ++i) {                                       \
         p = (r)->expr.arg + i;                                  \
-        if(*p) {action}                                         \
+        {action; }                                              \
       }                                                         \
     }                                                           \
     if((flags) & ALT) {                                         \
       p = &(r)->alt;                                            \
-      action                                                    \
+      {action; }                                                \
     }                                                           \
   } while(0)
 #endif
