@@ -41,7 +41,7 @@ Compile to direct C when possible
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
-** TODO f1: [1+]
+** DONE f1: [1+]
 ** DONE fix get2 in tests.peg
 ** TODO pass T_BOTTOM instead of T_ANY down reduce
 ** TODO remove cut
@@ -56,7 +56,7 @@ Compile to direct C when possible
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
-** TODO f1: [] pushl
+** STARTED f1: [] pushl
 ** TODO f1: dup f1 [] pushl
 ** TODO f2: popr swap pushl popr (regression)
 ** DONE :d f1 |
