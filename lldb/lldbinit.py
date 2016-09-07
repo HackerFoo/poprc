@@ -3,6 +3,7 @@ import os
 
 def __lldb_init_module(debugger, internal_dict):
     dbgcall("command script add -f lldbinit.make make")
+    dbgcall("command script add -f lldbinit.graph graph")
     dbgcall("command script add -f lldbinit.cleandot cleandot")
     dbgcall("command script add -f lldbinit.diagrams diagrams")
     return
@@ -17,6 +18,9 @@ def make(debugger, command, result, dict):
     os.system("make BUILD=debugger eval")
     dbgcall("target delete")
     dbgcall("target create \"eval\"")
+
+def graph(debugger, command, result, dict):
+    dbgcall("p make_graph_all(0)")
 
 def cleandot(debugger, command, result, dict):
     os.system("make clean-dot")
