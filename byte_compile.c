@@ -43,8 +43,8 @@ cell_t trace_cells[1 << 10];
 cell_t *trace_cur = &trace_cells[0];
 cell_t *trace_ptr = &trace_cells[0];
 size_t trace_cnt = 0;
-static MAP(trace_index, 1 << 10); // cell_t * -> uintptr_t (index in trace)
-static MAP(trace_values, 1 << 6); // uintptr_t (value) -> uintptr_t (index in trace)
+static MAP(trace_index, 1 << 10); // cell_t * -> intptr_t (index in trace)
+static MAP(trace_values, 1 << 6); // intptr_t (value) -> intptr_t (index in trace)
 
 #define DEBUG 0
 
@@ -60,15 +60,15 @@ pair_t *trace_find(const cell_t *c) {
   /*
   if(is_list(c) && c->value.ptr[0] && is_placeholder(c->value.ptr[0])) {
     cell_t *ph = clear_ptr(c->value.ptr[0]);
-    pair_t *res = map_find(trace_index, (uintptr_t)ph);
+    pair_t *res = map_find(trace_index, (intptr_t)ph);
     if(res) return res;
   }
   */
-  return map_find(trace_index, (uintptr_t)c);
+  return map_find(trace_index, (intptr_t)c);
 }
 
 static
-uintptr_t trace_get(cell_t *c) {
+intptr_t trace_get(cell_t *c) {
   pair_t *e = trace_find(c);
 #if(DEBUG)
   if(!e) {
@@ -80,8 +80,8 @@ uintptr_t trace_get(cell_t *c) {
   return e->second;
 }
 
-void trace_index_add(const cell_t *c, uintptr_t x) {
-  pair_t p = {(uintptr_t)c, x};
+void trace_index_add(const cell_t *c, intptr_t x) {
+  pair_t p = {(intptr_t)c, x};
   map_insert(trace_index, p);
 }
 
@@ -92,19 +92,19 @@ void trace_index_assign(cell_t *new, cell_t *old) {
   }
 }
 
-cell_t *trace_encode(uintptr_t index) {
+cell_t *trace_encode(intptr_t index) {
   return FLIP_PTR((cell_t *)index);
 }
 
-uintptr_t trace_decode(cell_t *c) {
+intptr_t trace_decode(cell_t *c) {
   return (intptr_t)FLIP_PTR(c);
 }
 
 static
-uintptr_t map_update(map_t map, uintptr_t key, uintptr_t new_value) {
+intptr_t map_update(map_t map, intptr_t key, intptr_t new_value) {
   pair_t *e = map_find(map, key);
   assert(e);
-  uintptr_t old_value = e->second;
+  intptr_t old_value = e->second;
   e->second = new_value;
   return old_value;
 }
@@ -199,7 +199,7 @@ void trace_rewrite(cell_t *c) {
 
   traverse(c, {
       if(p != entry && *p) {
-        uintptr_t x = trace_get(*p);
+        intptr_t x = trace_get(*p);
         *p = trace_encode(x);
         trace_cur[x].n++;
       }
@@ -208,7 +208,7 @@ void trace_rewrite(cell_t *c) {
   c->expr_type &= ~T_TRACED;
 }
 
-void trace_move_rewrite(cell_t *c, uintptr_t from, uintptr_t back) {
+void trace_move_rewrite(cell_t *c, intptr_t from, intptr_t back) {
 
   // skip rewriting for the entry argument
   cell_t **entry = NULL;
@@ -219,7 +219,7 @@ void trace_move_rewrite(cell_t *c, uintptr_t from, uintptr_t back) {
 
   traverse(c, {
       if(p != entry && *p) {
-        if(trace_decode(*p) > from) *(uintptr_t *)p += back;
+        if(trace_decode(*p) > from) *(intptr_t *)p += back;
       }
     }, ARGS | PTRS | ALT);
 }
@@ -227,8 +227,8 @@ void trace_move_rewrite(cell_t *c, uintptr_t from, uintptr_t back) {
 /*
 size_t trace_delete(cell_t *e, cell_t *c) {
   cell_t *start = e + 1, *end = start + e->entry.len;
-  uintptr_t x = c - start;
-  uintptr_t s = closure_cells(c);
+  intptr_t x = c - start;
+  intptr_t s = closure_cells(c);
   cell_t *n = c + s;
   memmove(c, n, (char *)end - (char *)n);
   end -= s;
@@ -256,8 +256,8 @@ cell_t *trace_select(const cell_t *c, cell_t *a) {
   trace_ptr += size;
   trace_cnt++;
 
-  uintptr_t tc = map_update(trace_index, (uintptr_t)clear_ptr(c), dest - trace_cur);
-  uintptr_t ta = trace_get(a);
+  intptr_t tc = map_update(trace_index, (intptr_t)clear_ptr(c), dest - trace_cur);
+  intptr_t ta = trace_get(a);
 
   memset(dest, 0, sizeof(cell_t));
   dest->func = func_select;
@@ -364,7 +364,7 @@ cell_t *trace_alloc(csize_t args) {
   return c;
 }
 
-uintptr_t bc_func(reduce_t f, csize_t in, csize_t out, ...) {
+intptr_t bc_func(reduce_t f, csize_t in, csize_t out, ...) {
   assert(out > 0);
   va_list argp;
   csize_t args = in + out - 1;
@@ -376,14 +376,14 @@ uintptr_t bc_func(reduce_t f, csize_t in, csize_t out, ...) {
   va_start(argp, out);
 
   COUNTUP(i, in) {
-    uintptr_t x = va_arg(argp, uintptr_t);
+    intptr_t x = va_arg(argp, intptr_t);
     trace_cur[x].n++;
     c->expr.arg[i] = trace_encode(x);
   }
 
   COUNTUP(i, out - 1) {
-    uintptr_t d = bc_func(func_dep, 1, 1, c - trace_cur);
-    uintptr_t *res = va_arg(argp, uintptr_t *);
+    intptr_t d = bc_func(func_dep, 1, 1, c - trace_cur);
+    intptr_t *res = va_arg(argp, intptr_t *);
     c->expr.arg[in + i] = trace_encode(d);
     *res = d;
   }
@@ -468,7 +468,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
   case tt_compose_placeholders: {
     /* to do *** */
     pair_t *pb = trace_find(((cell_t **)r)[1]);
-    uintptr_t
+    intptr_t
       a = trace_get(((cell_t **)r)[0]),
       n = bc_func(func_compose, 2, 1, a, pb->second);
     pb->second = n;
@@ -532,7 +532,7 @@ bool any_unreduced(cell_t *c) {
 // TODO unevaluated functions instead for later compilation
 cell_t *trace_store_list(cell_t *c) {
   csize_t n = list_size(c);
-  uintptr_t li = is_placeholder(c->value.ptr[n-1]) ? trace_get(c->value.ptr[n-1]) : NIL_INDEX;
+  intptr_t li = is_placeholder(c->value.ptr[n-1]) ? trace_get(c->value.ptr[n-1]) : NIL_INDEX;
   COUNTUP(i, n) {
     li = trace_build_quote(c->value.ptr[i], li) - trace_cur;
   }
@@ -561,7 +561,7 @@ cell_t *trace_build_quote(cell_t *q, intptr_t li) {
 
   cell_t *p = vl;
   COUNTUP(i, in) {
-    uintptr_t x = trace_get(p);
+    intptr_t x = trace_get(p);
     trace_cur[x].n++;
     n->expr.arg[in - i - 1] = trace_encode(x);
     p = p->tmp;
@@ -599,7 +599,7 @@ cell_t *trace_store_quote(cell_t *c) {
 
   cell_t *p = vl;
   COUNTUP(i, in) {
-    uintptr_t x = trace_get(p);
+    intptr_t x = trace_get(p);
     trace_cur[x].n++;
     n->expr.arg[in - i - 1] = trace_encode(x);
     p = p->tmp;
@@ -1046,7 +1046,7 @@ bool func_quote(cell_t **cp, UNUSED type_t t) {
   cell_t *f = closure_alloc(f_in + 1);
   csize_t offset = f_in - in;
   if(offset) {
-    f->expr.arg[0] = (cell_t *)(uintptr_t)(offset - 1);
+    f->expr.arg[0] = (cell_t *)(intptr_t)(offset - 1);
     f->func = (reduce_t *)mark_ptr(func_exec);
   } else {
     f->func = func_exec;
