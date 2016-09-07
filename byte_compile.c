@@ -287,11 +287,11 @@ void trace_update_type(const cell_t *c) {
      (tt & T_EXCLUSIVE) != T_BOTTOM) return;
 
   if(is_value(t)) {
-    t->value.type = c->value.type & ~T_TRACED;
+    t->value.type = (t->value.type & ~T_EXCLUSIVE) | (ct & T_EXCLUSIVE);
   }
 
   // also stuff type in expr_type
-  t->expr_type = c->value.type & ~T_TRACED;
+  t->expr_type = (t->expr_type & ~T_EXCLUSIVE) | (ct & T_EXCLUSIVE);
 }
 
 void trace_init() {
@@ -404,6 +404,8 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
     if(is_value(c) || !is_var(r)) break;
     if(c->func == func_dep ||
        c->func == func_placeholder) break;
+
+    r->value.type |= T_TRACED;
     if(c->func == func_cut ||
        c->func == func_id) {
       trace_index_assign(c, c->expr.arg[0]);
@@ -433,7 +435,6 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       }
       trace_store(c, r->value.type);
     }
-    r->value.type |= T_TRACED;
     break;
   }
 

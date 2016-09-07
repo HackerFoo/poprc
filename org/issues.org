@@ -56,7 +56,7 @@ Compile to direct C when possible
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
-** STARTED f1: [] pushl
+** DONE f1: [] pushl
 ** TODO f1: dup f1 [] pushl
 ** TODO f2: popr swap pushl popr (regression)
 ** DONE :d f1 |
