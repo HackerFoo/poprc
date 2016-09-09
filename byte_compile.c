@@ -987,7 +987,7 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
     results[i] = &c->expr.arg[n - 1 - i];
   }
 
-#define GET_RETURN_ARG(x) ref(map[trace_decode(returns->value.ptr[(x)])])
+#define GET_RETURN_ARG(x) map[trace_decode(returns->value.ptr[(x)])]
 
   // first one
   res = GET_RETURN_ARG(out);
