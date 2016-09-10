@@ -48,7 +48,9 @@ static MAP(trace_values, 1 << 6); // intptr_t (value) -> intptr_t (index in trac
 
 #define DEBUG 0
 
-#define NIL_INDEX (-3)
+// use NIL_INDEX < -256
+// so that is_offset() is false, otherwise problems with traverse/closure_next_child
+#define NIL_INDEX (-4096)
 
 #if INTERFACE
 #define FOR_TRACE(c, start, end) for(cell_t *(c) = (start); c < (end); c = closure_next(c))
@@ -1054,7 +1056,7 @@ bool func_quote(cell_t **cp, UNUSED type_t t) {
   }
 
   COUNTUP(i, in) {
-    f->expr.arg[i + offset] = ref(c->expr.arg[i]);
+    f->expr.arg[i + offset] = c->expr.arg[i];
   }
 
   f->expr.arg[f_in] = entry;
@@ -1062,7 +1064,7 @@ bool func_quote(cell_t **cp, UNUSED type_t t) {
   cell_t *res = closure_alloc(2);
   res->func = func_pushl;
   res->expr.arg[0] = f;
-  res->expr.arg[1] = ref(c->expr.arg[in]);
+  res->expr.arg[1] = c->expr.arg[in];
 
   store_lazy(cp, c, res, 0);
   return false;
