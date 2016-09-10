@@ -18,6 +18,7 @@
 #include "rt_types.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 
 #include "gen/cells.h"
@@ -130,13 +131,13 @@ int test_comments() {
   return 0;
 }
 
-seg_t tok(const char *s, const char* e) {
+seg_t tok(const char *s, const char* e, char_class_t *class) {
   seg_t seg = {NULL, 0};
   char_class_t cc = CC_NONE;
 
   /* skip spaces & comments */
   for(;;) {
-    if(s >= e || !*s) return seg;
+    if(s >= e || !*s) goto done;
     cc = char_class(*s);
     if(cc == CC_COMMENT) {
       const char *n = skip_comment(s, e);
@@ -154,7 +155,7 @@ seg_t tok(const char *s, const char* e) {
   if(cc == CC_BRACKET ||
      cc == CC_COMMENT) {
     seg.n = 1;
-    return seg;
+    goto done;
   }
 
   while(++s < e && *s) {
@@ -178,7 +179,18 @@ seg_t tok(const char *s, const char* e) {
       }
       break;
     case CC_SYMBOL:
-      if(cc == CC_ALPHA && s[0] == '.') continue; // allow dots in alpha identifiers
+      if(s[0] == '.') {
+        if(cc == CC_ALPHA) continue; // allow dots in alpha identifiers
+        if(cc == CC_NUMERIC) {
+          char *end;
+          strtod(seg.s, &end);
+          if(end != seg.s) {
+            seg.n = end - seg.s;
+            if(class) *class = CC_FLOAT;
+            return seg;
+          }
+        }
+      }
       break;
     default:
       break;
@@ -186,6 +198,8 @@ seg_t tok(const char *s, const char* e) {
     break;
   }
   seg.n = s - seg.s;
+done:
+  if(class) *class = cc;
   return seg;
 }
 
@@ -219,7 +233,8 @@ cell_t *lex(const char* s, const char* e) {
   seg_t t;
   const char *line = s;
   cell_t *ret = NULL, **prev = &ret;
-  while(t = tok(s, e), t.s) {
+  char_class_t cc;
+  while(t = tok(s, e, &cc), t.s) {
     const char *next = seg_end(t);
     update_line(s, next, &line);
     s = next;
@@ -228,6 +243,7 @@ cell_t *lex(const char* s, const char* e) {
     c->n = PERSISTENT;
     tok_set_seg(c, t);
     c->tok_list.line = line;
+    c->char_class = cc;
     *prev = c;
     prev = &c->tok_list.next;
   }

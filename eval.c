@@ -231,7 +231,7 @@ int main(int argc, char **argv) {
 /*
 static seg_t last_tok(const char *str, const char *e) {
   seg_t last, n;
-  while(n = tok(str, e), n.s) {
+  while(n = tok(str, e, NULL), n.s) {
     last = n;
     str = seg_end(n);
   }

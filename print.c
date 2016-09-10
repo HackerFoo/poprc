@@ -258,6 +258,11 @@ void show_int(cell_t const *c) {
   }
 }
 
+void show_float(cell_t const *c) {
+  assert(c && type_match(T_FLOAT, c));
+  printf(" %g", c->value.flt[0]);
+}
+
 bool any_alt_overlap(cell_t const * const *p, csize_t size) {
   uintptr_t  mask = 0;
   while(size--) {
@@ -405,6 +410,8 @@ void show_one(cell_t const *c) {
     show_var(c);
   } else if(type_match(T_INT, c)) {
     show_int(c);
+  } else if(type_match(T_FLOAT, c)) {
+    show_float(c);
   } else if(type_match(T_LIST, c)) {
     show_list(c);
   } else if(type_match(T_SYMBOL, c)) {

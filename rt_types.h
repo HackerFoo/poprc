@@ -35,6 +35,7 @@ typedef type_or_csize_t csize_t;
 #define T_MAP       0x0005
 #define T_STRING    0x0006
 #define T_RETURN    0x0007
+#define T_FLOAT     0x0008
 #define T_BOTTOM    0x00FF
 #define T_TRACED    0x0800
 #define T_FAIL      0x1000
@@ -86,6 +87,7 @@ struct __attribute__((packed)) value {
   alt_set_t alt_set;
   union {
     val_t integer[1]; /* integer */
+    double flt[1];    /* float */
     cell_t *ptr[1];   /* list */
     pair_t map[1];    /* map */
     seg_t str;        /* string */
@@ -115,6 +117,17 @@ struct __attribute__((packed)) entry {
   csize_t in, out;
 };
 
+typedef enum char_class_t {
+  CC_NONE,
+  CC_NUMERIC,
+  CC_FLOAT,
+  CC_ALPHA,
+  CC_SYMBOL,
+  CC_BRACKET,
+  CC_VAR,
+  CC_COMMENT
+} char_class_t;
+
 struct __attribute__((packed, aligned(4))) cell {
   /* func indicates the type:
    * NULL         -> mem
@@ -133,6 +146,7 @@ struct __attribute__((packed, aligned(4))) cell {
         cell_t *tmp;
         const char *module_name;
         type_t expr_type;
+        char_class_t char_class;
       };
       refcount_t n;
       csize_t size;
@@ -148,16 +162,6 @@ struct __attribute__((packed, aligned(4))) cell {
 };
 
 static_assert(sizeof(cell_t) == sizeof_field(cell_t, raw), "cell_t wrong size");
-
-typedef enum char_class_t {
-  CC_NONE,
-  CC_NUMERIC,
-  CC_ALPHA,
-  CC_SYMBOL,
-  CC_BRACKET,
-  CC_VAR,
-  CC_COMMENT
-} char_class_t;
 
 typedef struct measure_t {
   unsigned int reduce_cnt, fail_cnt, alloc_cnt, max_alloc_cnt;

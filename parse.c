@@ -129,9 +129,7 @@ cell_t *parse_word(seg_t w, cell_t *module) {
   cell_t *c;
   cell_t *data = NULL;
   csize_t in = 0, out = 1;
-  if(is_num(w.s)) {
-    c = val(atoi(w.s));
-  } else if(w.s[0] == '?') {
+  if(w.s[0] == '?') {
     c = var(T_ANY);
   } else if(w.n == 4 &&
             w.s[0] == 'a' && w.s[1] == 'p' &&
@@ -444,6 +442,15 @@ bool is_uppercase(char c) {
   return c >= 'A' && c <= 'Z';
 }
 
+cell_t *array_to_list(cell_t **a, csize_t n) {
+  if(n == 0) return &nil_cell;
+  cell_t *l = make_list(n);
+  COUNTUP(i, n) {
+    l->value.ptr[i] = a[--n];
+  }
+  return l;
+}
+
 #define MAX_ARGS 64
 cell_t *parse_expr(const cell_t **l, cell_t *module) {
   cell_t *arg_stack[MAX_ARGS]; // TODO use allocated storage
@@ -452,61 +459,79 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
 
   while((t = *l)) {
     *l = t->tok_list.next;
-    if(t->tok_list.length == 1) {
-      switch(*t->tok_list.location) {
+    seg_t seg = tok_seg(t);
+
+    switch(t->char_class) {
+
+    case CC_NUMERIC:
+      arg_stack[n++] = int_val(atoi(seg.s));
+      break;
+    case CC_FLOAT:
+    {
+      char *end;
+      double x = strtod(seg.s, &end);
+      if(end != seg.s) {
+        arg_stack[n++] = float_val(x);
+      }
+      break;
+    }
+
+    case CC_SYMBOL:
+      if(seg.n == 1 && *seg.s == ',') {
+        arg_stack[0] = array_to_list(arg_stack, n);
+        n = 1;
+        break;
+      }
+      // otherwise continue below
+    case CC_ALPHA:
+    case CC_VAR:
+    {
+      if(is_uppercase(*seg.s)) {
+        arg_stack[n++] = symbol(seg);
+      } else {
+        cell_t *c = parse_word(seg, module);
+        bool f = !is_value(c);
+        if(f) {
+          csize_t in = closure_in(c);
+          if(clear_ptr(c->func) == (void *)func_exec) in--;
+          COUNTDOWN(i, min(n, in)) {
+            arg(&c, arg_stack[--n]);
+          }
+        }
+        arg_stack[n++] = c;
+        if(f) {
+          csize_t in = closure_in(c);
+          csize_t out = closure_out(c);
+          COUNTUP(i, out) {
+            arg_stack[n++] = c->expr.arg[in+i];
+          }
+        }
+      }
+    }
+
+    case CC_BRACKET:
+    if(seg.n == 1) {
+      switch(*seg.s) {
       case ']':
-        goto make_list;
+        goto done;
       case '[':
         arg_stack[n++] = parse_expr(l, module);
-        continue;
+        break;
       case '(':
         arg_stack[n++] = parse_vector(l);
-        continue;
-      case ',': {
-        cell_t *l = make_list(n);
-        COUNTUP(i, n) {
-          l->value.ptr[i] = arg_stack[--n];
-        }
-        arg_stack[n++] = l;
-        continue;
-      }
+        break;
       default:
         break;
       }
     }
 
-    seg_t w = {t->tok_list.location, t->tok_list.length};
-
-    if(is_uppercase(*t->tok_list.location)) {
-      arg_stack[n++] = symbol(w);
-    } else {
-      cell_t *c = parse_word(w, module);
-      bool f = !is_value(c);
-      if(f) {
-        csize_t in = closure_in(c);
-        if(clear_ptr(c->func) == (void *)func_exec) in--;
-        COUNTDOWN(i, min(n, in)) {
-          arg(&c, arg_stack[--n]);
-        }
-      }
-      arg_stack[n++] = c;
-      if(f) {
-        csize_t in = closure_in(c);
-        csize_t out = closure_out(c);
-        COUNTUP(i, out) {
-          arg_stack[n++] = c->expr.arg[in+i];
-        }
-      }
+    default:
+      break;
     }
   }
 
-make_list: { // build list from stack and return
-    cell_t *l = make_list(n);
-    COUNTUP(i, n) {
-      l->value.ptr[i] = arg_stack[--n];
-    }
-    return l;
-  }
+done:
+  return array_to_list(arg_stack, n);
 }
 
 uintptr_t intern(seg_t sym) {
