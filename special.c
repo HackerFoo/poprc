@@ -45,7 +45,7 @@ bool func_value(cell_t **cp, type_t t) {
   }
 }
 
-cell_t *int_val(intptr_t x) {
+cell_t *int_val(val_t x) {
   cell_t *c = closure_alloc(2);
   c->func = func_value;
   c->value.type = T_INT;
@@ -58,6 +58,14 @@ cell_t *float_val(double x) {
   c->func = func_value;
   c->value.type = T_FLOAT;
   c->value.flt[0] = x;
+  return c;
+}
+
+cell_t *symbol(val_t sym) {
+  cell_t *c = closure_alloc(2);
+  c->func = func_value;
+  c->value.type = T_SYMBOL;
+  c->value.integer[0] = sym;
   return c;
 }
 

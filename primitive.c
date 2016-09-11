@@ -526,3 +526,30 @@ bool func_print(cell_t **cp, type_t t) {
   fail(cp, t);
   return false;
 }
+
+// WORD("is_nil", is_nil, 1, 1)
+bool func_is_nil(cell_t **cp, UNUSED type_t t) {
+  cell_t *c = *cp;
+  assert(!is_marked(*cp));
+
+  alt_set_t alt_set = 0;
+  if(!reduce_arg(c, 0, &alt_set, T_LIST)) goto fail;
+  clear_flags(c);
+
+  cell_t *p = c->expr.arg[0];
+  cell_t *res;
+  if(is_var(p)) {
+    res = var(T_LIST);
+  } else {
+    res = symbol(list_size(p) == 0 ? SYM_True : SYM_False);
+  }
+
+  res->value.alt_set = alt_set;
+  res->alt = c->alt;
+  store_reduced(cp, res);
+  return true;
+
+ fail:
+  fail(cp, t);
+  return false;
+}

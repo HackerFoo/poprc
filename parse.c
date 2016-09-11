@@ -487,7 +487,7 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
     case CC_VAR:
     {
       if(is_uppercase(*seg.s)) {
-        arg_stack[n++] = symbol(seg);
+        arg_stack[n++] = string_symbol(seg);
       } else {
         cell_t *c = parse_word(seg, module);
         bool f = !is_value(c);
@@ -552,12 +552,8 @@ uintptr_t intern(seg_t sym) {
   return v;
 }
 
-cell_t *symbol(seg_t sym) {
-  cell_t *c = closure_alloc(2);
-  c->func = func_value;
-  c->value.type = T_SYMBOL;
-  c->value.integer[0] = intern(sym);
-  return c;
+cell_t *string_symbol(seg_t sym) {
+  return symbol(intern(sym));
 }
 
 const char *symbol_string(val_t x) {
