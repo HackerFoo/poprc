@@ -707,16 +707,17 @@ cell_t *trace_reduce(cell_t *c) {
   return first;
 }
 
-cell_t *compile_entry(seg_t name, cell_t *module) {
+cell_t *compile_entry(seg_t name, cell_t **module) {
   csize_t in, out;
-  cell_t **entry = cmap_get(&module, name);
+  cell_t **entry = cmap_get(module, name);
   cell_t *l = *entry;
   if(!is_list(l)) return l;
   *entry = NULL;
-  bool pc_success = pre_compile_word(l, module, &in, &out);
-  entry = cmap_get(&module, name);
+  bool pc_success = pre_compile_word(l, *module, &in, &out);
+  entry = cmap_get(module, name); // entry could have moved
   *entry = l;
-  if(pc_success && compile_word(entry, module, in, out)) {
+  if(pc_success && compile_word(entry, *module, in, out)) {
+    entry = cmap_get(module, name); // entry could have moved (again)
     return *entry;
   } else {
     return NULL;
@@ -731,7 +732,7 @@ cell_t *module_lookup_compiled(seg_t path, cell_t **context) {
   }
   if(!is_list(*p)) return *p;
   seg_t name = path_name(path);
-  return compile_entry(name, *context);
+  return compile_entry(name, context);
 }
 
 cell_t *parse_eval_def(cell_t *name_tok, cell_t *rest) {
@@ -739,7 +740,7 @@ cell_t *parse_eval_def(cell_t *name_tok, cell_t *rest) {
   cell_t **eval_module = cmap_get(&modules, string_seg("eval"));
   cell_t **entry = cmap_get(eval_module, name);
   *entry = quote(rest);
-  return compile_entry(name, *eval_module);
+  return compile_entry(name, eval_module);
 }
 
 bool pre_compile_word(cell_t *l, cell_t *module, csize_t *in, csize_t *out) {
@@ -841,7 +842,6 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   set_trace(NULL);
   e->entry.flags = 0;
   e->entry.len = trace_cnt;
-  trace_final_pass(e);
   if(is_id(e)) {
     trace_ptr = trace_cur; // reset
     return NULL;
@@ -849,13 +849,14 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
 
   e->module_name = parent_entry->module_name;
   e->word_name = string_printf("%s_%d", parent_entry->word_name, (int)(q - parent_entry) - 1);
+  trace_final_pass(e);
 
 #if DEBUG
   print_trace_index();
 #endif
 
-  cell_t *module = get_module(string_seg(parent_entry->module_name));
-  cell_t **entry = cmap_get(&module, string_seg(e->word_name));
+  cell_t **module = cmap_get(&modules, string_seg(parent_entry->module_name));
+  cell_t **entry = cmap_get(module, string_seg(e->word_name));
   *entry = e;
 
   return e;
