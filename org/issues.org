@@ -56,6 +56,7 @@ Compile to direct C when possible
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
+** TODO f1: [] pushl f1 __ why is arity 1 -> 2 instead of 1 -> 1?
 ** DONE f1: [] pushl
 ** TODO f1: dup f1 [] pushl
 ** DONE f2: popr swap pushl popr (regression)
