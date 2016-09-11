@@ -157,6 +157,9 @@ cell_t *trace_dep(const cell_t *d, cell_t *c, type_t t) {
   cell_t *dest = trace_ptr++;
   trace_cnt++;
   trace_index_add(d, dest - trace_cur);
+  if(d->func == func_id) {
+    trace_index_add(d->expr.arg[0], dest - trace_cur);
+  }
   dest->func = func_dep;
   dest->expr.arg[0] = c;
   dest->size = 1;
@@ -788,10 +791,10 @@ bool compile_word(cell_t **entry, cell_t *module, csize_t in, csize_t out) {
   set_trace(NULL);
   e->entry.flags = 0;
   e->entry.len = trace_cnt;
-  trace_final_pass(e);
 #if DEBUG
   print_trace_index();
 #endif
+  trace_final_pass(e);
 
   // finish
   free_def(l);
@@ -849,11 +852,10 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
 
   e->module_name = parent_entry->module_name;
   e->word_name = string_printf("%s_%d", parent_entry->word_name, (int)(q - parent_entry) - 1);
-  trace_final_pass(e);
-
 #if DEBUG
   print_trace_index();
 #endif
+  trace_final_pass(e);
 
   cell_t **module = cmap_get(&modules, string_seg(parent_entry->module_name));
   cell_t **entry = cmap_get(module, string_seg(e->word_name));

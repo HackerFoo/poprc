@@ -58,7 +58,7 @@ Compile to direct C when possible
 * bugs
 ** DONE f1: [] pushl
 ** TODO f1: dup f1 [] pushl
-** TODO f2: popr swap pushl popr (regression)
+** DONE f2: popr swap pushl popr (regression)
 ** DONE :d f1 |
 ** DONE fix compiling pushr & pushl
 - f1 pushr
