@@ -539,7 +539,7 @@ bool func_is_nil(cell_t **cp, UNUSED type_t t) {
   cell_t *p = c->expr.arg[0];
   cell_t *res;
   if(is_var(p)) {
-    res = var(T_LIST);
+    res = var(T_SYMBOL);
   } else {
     res = symbol(list_size(p) == 0 ? SYM_True : SYM_False);
   }

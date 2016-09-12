@@ -429,9 +429,10 @@ void store_reduced(cell_t **cp, cell_t *r) {
     refcount_t n = c->n;
     closure_shrink(c, size);
     memcpy(c, r, sizeof(cell_t) * size);
-    assert(is_cell(r));
-    traverse_ref(r, ALT | PTRS);
-    drop(r);
+    if(is_cell(r)) {
+      traverse_ref(r, ALT | PTRS);
+      drop(r);
+    }
     c->n = n;
    } else { /* TODO: must copy if not cell */
     /*

@@ -23,3 +23,5 @@ fact: [1 == 1 swap !] [dup 1- fact *] | pushl popr swap drop
 fact2: [1 == 1 swap !] [dup 1- swap [*] pushl swap pushr pushl get2 fact2] | pushl pushl get2
 get2: popr swap popr swap drop swap
 
+not: False =:=
+len: dup is_nil [0 swap!] [swap popr drop len 1+ swap not!] | pushl pushl popr swap drop
