@@ -622,15 +622,15 @@ cell_t *trace_store_quote(cell_t *c) {
 
 // builds a temporary list of referenced variables
 cell_t **trace_var_list(cell_t *c, cell_t **tail) {
-  if(c && !c->tmp) {
+  if(c && !c->tmp && tail != &c->tmp) {
     if(is_var(c)) {
       LIST_ADD(tmp, tail, c);
     } else {
-      c->tmp = FLIP_PTR(c->tmp); // prevent loops
+      c->tmp = FLIP_PTR(0); // prevent loops
       traverse(c, {
           tail = trace_var_list(*p, tail);
         }, PTRS | ARGS_IN);
-      c->tmp = FLIP_PTR(c->tmp);
+      c->tmp = 0;
     }
   }
   return tail;
