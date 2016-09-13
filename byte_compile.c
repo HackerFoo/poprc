@@ -834,6 +834,23 @@ void resolve_types(cell_t *c, type_t *t) {
   }
 }
 
+static
+cell_t *map_cell(cell_t **map, intptr_t x) {
+  return
+    x == NIL_INDEX ? &nil_cell :
+    x < 0 ? NULL :
+    map[x];
+}
+
+static
+cell_t *get_return_arg(cell_t **map, cell_t *returns, intptr_t x) {
+  trace_index_t i = trace_decode(returns->value.ptr[x]);
+  return
+    i == NIL_INDEX ? empty_list() :
+    i < 0 ? NULL :
+    map[i];
+}
+
 bool func_exec(cell_t **cp, UNUSED type_t t) {
   cell_t *c = clear_ptr(*cp);
   assert(is_closure(c));
@@ -898,7 +915,7 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
 
   // rewrite pointers
   for(size_t i = in; i < len; i++) {
-    cell_t *t = map[i];
+    cell_t *t = map_cell(map, i);
     if(!t) continue;
 
     // skip rewriting for the entry argument
@@ -911,13 +928,7 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
     traverse(t, {
         if(p != t_entry) {
           trace_index_t x = trace_decode(*p);
-          if(x == NIL_INDEX) {
-            *p = &nil_cell;
-          } else if(x >= 0 && x < (int)len) {
-            *p = map[x];
-          } else {
-            *p = NULL;
-          }
+          *p = map_cell(map, x);
         }
       }, ARGS | PTRS | ALT);
   }
@@ -933,14 +944,12 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
     results[i] = &c->expr.arg[n - 1 - i];
   }
 
-#define GET_RETURN_ARG(x) map[trace_decode(returns->value.ptr[(x)])]
-
   // first one
-  res = GET_RETURN_ARG(out);
+  res = get_return_arg(map, returns, out);
   COUNTUP(i, out) {
     cell_t *d = c->expr.arg[n - 1 - i];
     d->func = func_id;
-    d->expr.arg[0] = GET_RETURN_ARG(i);
+    d->expr.arg[0] = get_return_arg(map, returns, i);
     d->expr.arg[1] = 0;
   }
 
@@ -949,14 +958,12 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
   while(next >= 0) {
     returns = &code[next];
     FOREACH(i, results) {
-      cell_t *a = GET_RETURN_ARG(i);
+      cell_t *a = get_return_arg(map, returns, i);
       results[i] = &(*results[i])->alt;
       *results[i] = a ? id(a) : NULL;
     }
     next = trace_decode(returns->alt);
   }
-
-#undef GET_RETURN_ARG
 
   // drop c from deps
   LOOP(out) {
