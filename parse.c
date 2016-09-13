@@ -297,6 +297,7 @@ done:
   if(*c == *it) {
     return false;
   } else {
+    r->n = PERSISTENT;
     *res = r;
     *c = *it;
     *it = NULL;

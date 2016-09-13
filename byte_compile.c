@@ -43,10 +43,23 @@ cell_t trace_cells[1 << 10];
 cell_t *trace_cur = &trace_cells[0];
 cell_t *trace_ptr = &trace_cells[0];
 size_t trace_cnt = 0;
-static MAP(trace_index, 1 << 10); // cell_t * -> intptr_t (index in trace)
-static MAP(trace_values, 1 << 6); // intptr_t (value) -> intptr_t (index in trace)
+static MAP(trace_index, 1 << 10); // cell_t * -> trace_index_t (index in trace)
+static MAP(trace_values, 1 << 6); // val_t -> trace_index_t
 
-#define DEBUG 0
+#if INTERFACE
+typedef intptr_t trace_index_t;
+#endif
+
+static void trace_rewrite(cell_t *c);
+static void update_alt(cell_t *c, cell_t *r);
+static trace_index_t trace_store_list(cell_t *c);
+static trace_index_t trace_store_pushl(cell_t *c);
+static trace_index_t trace_build_quote(cell_t *q, trace_index_t li);
+static bool pre_compile_word(cell_t *l, cell_t *module, csize_t *in, csize_t *out);
+static bool compile_word(cell_t **entry, cell_t *module, csize_t in, csize_t out);
+static cell_t *compile_quote(cell_t *parent_entry, cell_t *q);
+
+#define DEBUG 1
 
 // use NIL_INDEX < -256
 // so that is_offset() is false, otherwise problems with traverse/closure_next_child
@@ -70,7 +83,7 @@ pair_t *trace_find(const cell_t *c) {
 }
 
 static
-intptr_t trace_get(cell_t *c) {
+trace_index_t trace_get(cell_t *c) {
   pair_t *e = trace_find(c);
 #if(DEBUG)
   if(!e) {
@@ -82,11 +95,13 @@ intptr_t trace_get(cell_t *c) {
   return e->second;
 }
 
-void trace_index_add(const cell_t *c, intptr_t x) {
+static
+void trace_index_add(const cell_t *c, trace_index_t x) {
   pair_t p = {(intptr_t)c, x};
   map_insert(trace_index, p);
 }
 
+static
 void trace_index_assign(cell_t *new, cell_t *old) {
   pair_t *p = trace_find(old);
   if(p) {
@@ -94,29 +109,30 @@ void trace_index_assign(cell_t *new, cell_t *old) {
   }
 }
 
-cell_t *trace_encode(intptr_t index) {
+cell_t *trace_encode(trace_index_t index) {
   return FLIP_PTR((cell_t *)index);
 }
 
-intptr_t trace_decode(cell_t *c) {
-  return (intptr_t)FLIP_PTR(c);
+trace_index_t trace_decode(cell_t *c) {
+  return (trace_index_t)FLIP_PTR(c);
 }
 
 static
-intptr_t map_update(map_t map, intptr_t key, intptr_t new_value) {
+uintptr_t map_update(map_t map, uintptr_t key, uintptr_t new_value) {
   pair_t *e = map_find(map, key);
   assert(e);
-  intptr_t old_value = e->second;
+  trace_index_t old_value = e->second;
   e->second = new_value;
   return old_value;
 }
 
-cell_t *trace_store(const cell_t *c, type_t t) {
+static
+trace_index_t trace_store(const cell_t *c, type_t t) {
   if(is_value(c) && (c->value.type & T_EXCLUSIVE) == T_INT) {
     pair_t *x = map_find(trace_values, c->value.integer[0]);
     if(x) {
       trace_index_add(c, x->second);
-      return &trace_cur[x->second];
+      return x->second;
     }
   }
   cell_t *dest = trace_ptr;
@@ -150,10 +166,11 @@ cell_t *trace_store(const cell_t *c, type_t t) {
   }
 
   dest->n = -1;
-  return dest;
+  return dest - trace_cur;
 }
 
-cell_t *trace_dep(const cell_t *d, cell_t *c, type_t t) {
+static
+trace_index_t trace_dep(const cell_t *d, cell_t *c, type_t t) {
   cell_t *dest = trace_ptr++;
   trace_cnt++;
   trace_index_add(d, dest - trace_cur);
@@ -167,23 +184,10 @@ cell_t *trace_dep(const cell_t *d, cell_t *c, type_t t) {
 
   // stuff type in expr_type
   dest->expr_type = t | T_TRACED;
-  return dest;
+  return dest - trace_cur;
 }
 
-cell_t *trace_var(cell_t *c, type_t t) {
-  cell_t *dest = trace_ptr++;
-  trace_cnt++;
-  trace_index_add(c, dest - trace_cur);
-  dest->func = func_value;
-  dest->size = 1;
-  dest->n = -1;
-  dest->value.type = t | T_VAR;
-
-  // stuff type in expr_type
-  dest->expr_type = t | T_VAR | T_TRACED;
-  return dest;
-}
-
+static
 void trace_rewrite(cell_t *c) {
 
   // skip returns (already rewritten)
@@ -204,7 +208,7 @@ void trace_rewrite(cell_t *c) {
 
   traverse(c, {
       if(p != entry && *p) {
-        intptr_t x = trace_get(*p);
+        trace_index_t x = trace_get(*p);
         *p = trace_encode(x);
         trace_cur[x].n++;
       }
@@ -213,56 +217,15 @@ void trace_rewrite(cell_t *c) {
   c->expr_type &= ~T_TRACED;
 }
 
-void trace_move_rewrite(cell_t *c, intptr_t from, intptr_t back) {
-
-  // skip rewriting for the entry argument
-  cell_t **entry = NULL;
-  if(c->func == func_exec ||
-     c->func == func_quote) {
-    entry = &c->expr.arg[closure_in(c) - 1];
-  }
-
-  traverse(c, {
-      if(p != entry && *p) {
-        if(trace_decode(*p) > from) *(intptr_t *)p += back;
-      }
-    }, ARGS | PTRS | ALT);
-}
-
-/*
-size_t trace_delete(cell_t *e, cell_t *c) {
-  cell_t *start = e + 1, *end = start + e->entry.len;
-  intptr_t x = c - start;
-  intptr_t s = closure_cells(c);
-  cell_t *n = c + s;
-  memmove(c, n, (char *)end - (char *)n);
-  end -= s;
-  e->entry.len -= s;
-  FOR_TRACE(p, c, end) {
-    trace_move_rewrite(p, x, s);
-  }
-  return s;
-}
-
-void trace_cleanup(cell_t *e) {
-  cell_t *start = e + 1, *end = start + e->entry.len;
-  cell_t *p = start;
-  while(p < end) {
-    if(p->expr_type & T_TRACED) {
-      end -= trace_delete(e, p);
-    } else p += closure_cells(p);
-  }
-}
-*/
-
-cell_t *trace_select(const cell_t *c, cell_t *a) {
+static
+trace_index_t trace_select(const cell_t *c, cell_t *a) {
   cell_t *dest = trace_ptr;
   csize_t size = closure_cells(c);
   trace_ptr += size;
   trace_cnt++;
 
-  intptr_t tc = map_update(trace_index, (intptr_t)clear_ptr(c), dest - trace_cur);
-  intptr_t ta = trace_get(a);
+  trace_index_t tc = map_update(trace_index, (uintptr_t)clear_ptr(c), dest - trace_cur);
+  trace_index_t ta = trace_get(a);
 
   memset(dest, 0, sizeof(cell_t));
   dest->func = func_select;
@@ -277,9 +240,10 @@ cell_t *trace_select(const cell_t *c, cell_t *a) {
   trace_cur[tc].n++;
   trace_cur[ta].n++;
 
-  return dest;
+  return dest - trace_cur;
 }
 
+static
 void trace_update_type(const cell_t *c) {
   if(!is_value(c)) return;
   pair_t *p = trace_find(c);
@@ -299,6 +263,7 @@ void trace_update_type(const cell_t *c) {
   t->expr_type = (t->expr_type & ~T_EXCLUSIVE) | (ct & T_EXCLUSIVE);
 }
 
+static
 void trace_init() {
   trace_cur = trace_ptr;
   trace_cnt = 0;
@@ -361,6 +326,7 @@ void print_bytecode(cell_t *e) {
   }
 }
 
+static
 cell_t *trace_alloc(csize_t args) {
   cell_t *c = trace_ptr;
   trace_ptr += calculate_cells(args);
@@ -369,7 +335,8 @@ cell_t *trace_alloc(csize_t args) {
   return c;
 }
 
-intptr_t bc_func(reduce_t f, csize_t in, csize_t out, ...) {
+static
+trace_index_t bc_func(reduce_t f, csize_t in, csize_t out, ...) {
   assert(out > 0);
   va_list argp;
   csize_t args = in + out - 1;
@@ -381,14 +348,14 @@ intptr_t bc_func(reduce_t f, csize_t in, csize_t out, ...) {
   va_start(argp, out);
 
   COUNTUP(i, in) {
-    intptr_t x = va_arg(argp, intptr_t);
+    trace_index_t x = va_arg(argp, trace_index_t);
     trace_cur[x].n++;
     c->expr.arg[i] = trace_encode(x);
   }
 
   COUNTUP(i, out - 1) {
-    intptr_t d = bc_func(func_dep, 1, 1, c - trace_cur);
-    intptr_t *res = va_arg(argp, intptr_t *);
+    trace_index_t d = bc_func(func_dep, 1, 1, c - trace_cur);
+    trace_index_t *res = va_arg(argp, trace_index_t *);
     c->expr.arg[in + i] = trace_encode(d);
     *res = d;
   }
@@ -474,7 +441,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
   case tt_compose_placeholders: {
     /* to do *** */
     pair_t *pb = trace_find(((cell_t **)r)[1]);
-    intptr_t
+    trace_index_t
       a = trace_get(((cell_t **)r)[0]),
       n = bc_func(func_compose, 2, 1, a, pb->second);
     pb->second = n;
@@ -489,12 +456,14 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
 }
 
 // TODO replace with something more efficient
+static
 void update_alt(cell_t *c, cell_t *r) {
   FOR_TRACE(p, trace_cur, trace_ptr) {
     if(p->alt == c) p->alt = r;
   }
 }
 
+static
 void trace_final_pass(cell_t *e) {
   // replace alts with trace cells
   cell_t
@@ -536,23 +505,26 @@ bool any_unreduced(cell_t *c) {
 }
 
 // TODO unevaluated functions instead for later compilation
-cell_t *trace_store_list(cell_t *c) {
+static
+trace_index_t trace_store_list(cell_t *c) {
   csize_t n = list_size(c);
-  intptr_t li = is_placeholder(c->value.ptr[n-1]) ? trace_get(c->value.ptr[n-1]) : NIL_INDEX;
+  trace_index_t li = n > 0 && is_placeholder(c->value.ptr[n-1]) ? trace_get(c->value.ptr[n-1]) : NIL_INDEX;
   COUNTUP(i, n) {
-    li = trace_build_quote(c->value.ptr[i], li) - trace_cur;
+    li = trace_build_quote(c->value.ptr[i], li);
   }
   trace_index_add(c, li);
-  return &trace_cur[li];
+  return li;
 }
 
-cell_t *trace_store_pushl(cell_t *c) {
-  cell_t *n = trace_build_quote(c->expr.arg[0], trace_get(c->expr.arg[1]));
-  trace_index_add(c, n - trace_cur);
+static
+trace_index_t trace_store_pushl(cell_t *c) {
+  trace_index_t n = trace_build_quote(c->expr.arg[0], trace_get(c->expr.arg[1]));
+  trace_index_add(c, n);
   return n;
 }
 
-cell_t *trace_build_quote(cell_t *q, intptr_t li) {
+static
+trace_index_t trace_build_quote(cell_t *q, trace_index_t li) {
   cell_t *vl = 0;
   cell_t **vlp = &vl;
 
@@ -567,7 +539,7 @@ cell_t *trace_build_quote(cell_t *q, intptr_t li) {
 
   cell_t *p = vl;
   COUNTUP(i, in) {
-    intptr_t x = trace_get(p);
+    trace_index_t x = trace_get(p);
     trace_cur[x].n++;
     n->expr.arg[in - i - 1] = trace_encode(x);
     p = p->tmp;
@@ -579,46 +551,8 @@ cell_t *trace_build_quote(cell_t *q, intptr_t li) {
   n->expr.arg[in] = trace_encode(li);
   n->expr.arg[in + 1] = ref(q); // entry points to the quote for now
 
-  return n;
+  return n - trace_cur;
 }
-
-/*
-cell_t *trace_store_quote(cell_t *c) {
-  if(list_size(c) == 0) {
-    return trace_store(c, c->value.type);
-  }
-  cell_t *vl = 0;
-  cell_t **vlp = &vl;
-  cell_t *left = c->value.ptr[list_size(c) - 1];
-
-  // treat placeholder as a free variable
-  vlp = trace_var_list(c, vlp);
-  if(is_placeholder(left)) {
-    LIST_ADD(tmp, vlp, left);
-  }
-  size_t in = tmp_list_length(vl);
-  cell_t *n = trace_alloc(in + 1);
-
-  n->expr.out = 0;
-  n->func = func_quote;
-  n->n = -1;
-
-  cell_t *p = vl;
-  COUNTUP(i, in) {
-    intptr_t x = trace_get(p);
-    trace_cur[x].n++;
-    n->expr.arg[in - i - 1] = trace_encode(x);
-    p = p->tmp;
-  }
-
-  clean_tmp(vl);
-
-  n->expr.arg[in] = ref(c); // entry is c for now
-
-  trace_index_add(c, n - trace_cur);
-  return n;
-}
-*/
 
 // builds a temporary list of referenced variables
 cell_t **trace_var_list(cell_t *c, cell_t **tail) {
@@ -672,6 +606,7 @@ void print_trace_index()
   print_map(trace_values);
 }
 
+static
 cell_t *trace_reduce(cell_t *c) {
   csize_t n = list_size(c);
   cell_t *r = NULL;
@@ -683,7 +618,7 @@ cell_t *trace_reduce(cell_t *c) {
     trace(c->value.ptr[i], c, tt_force, i);
   }
   if(!any_conflicts((cell_t const *const *)c->value.ptr, n)) {
-    r = trace_store(c, T_LIST);
+    r = &trace_cur[trace_store(c, T_LIST)];
     trace_rewrite(r);
     r->n++;
     r->value.type = T_RETURN;
@@ -699,7 +634,7 @@ cell_t *trace_reduce(cell_t *c) {
     }
     if(!any_conflicts((cell_t const *const *)p->value.ptr, n)) {
       cell_t *prev = r;
-      r = trace_store(p, T_LIST);
+      r = &trace_cur[trace_store(p, T_LIST)];
       trace_rewrite(r);
       r->n++;
       r->value.type = T_RETURN;
@@ -710,6 +645,7 @@ cell_t *trace_reduce(cell_t *c) {
   return first;
 }
 
+static
 cell_t *compile_entry(seg_t name, cell_t **module) {
   csize_t in, out;
   cell_t **entry = cmap_get(module, name);
@@ -746,6 +682,7 @@ cell_t *parse_eval_def(cell_t *name_tok, cell_t *rest) {
   return compile_entry(name, eval_module);
 }
 
+static
 bool pre_compile_word(cell_t *l, cell_t *module, csize_t *in, csize_t *out) {
   cell_t *toks = l->value.ptr[0]; // TODO handle list_size(l) > 1
   // arity (HACKy)
@@ -756,6 +693,7 @@ bool pre_compile_word(cell_t *l, cell_t *module, csize_t *in, csize_t *out) {
   return res;
 }
 
+static
 bool compile_word(cell_t **entry, cell_t *module, csize_t in, csize_t out) {
   cell_t *l;
   if(!entry || !(l = *entry)) return false;
@@ -801,6 +739,7 @@ bool compile_word(cell_t **entry, cell_t *module, csize_t in, csize_t out) {
   return true;
 }
 
+static
 bool is_id(cell_t *e) {
   cell_t *in_var = &e[1], *ret = &e[2];
   return
@@ -814,6 +753,7 @@ bool is_id(cell_t *e) {
 }
 
 // takes a parent entry and offset to a quote, and creates an entry from compiling the quote
+static
 cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   // set up
   trace_init();
@@ -864,8 +804,9 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   return e;
 }
 
+static
 cell_t *tref(cell_t *c) {
-  intptr_t i = trace_decode(c);
+  trace_index_t i = trace_decode(c);
   return i < 0 ? NULL : &trace_cur[i];
 }
 
@@ -969,7 +910,7 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
 
     traverse(t, {
         if(p != t_entry) {
-          intptr_t x = trace_decode(*p);
+          trace_index_t x = trace_decode(*p);
           if(x == NIL_INDEX) {
             *p = &nil_cell;
           } else if(x >= 0 && x < (int)len) {
@@ -1004,7 +945,7 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
   }
 
   // rest
-  intptr_t next = trace_decode(returns->alt);
+  trace_index_t next = trace_decode(returns->alt);
   while(next >= 0) {
     returns = &code[next];
     FOREACH(i, results) {
@@ -1052,7 +993,7 @@ bool func_quote(cell_t **cp, UNUSED type_t t) {
   cell_t *f = closure_alloc(f_in + 1);
   csize_t offset = f_in - in;
   if(offset) {
-    f->expr.arg[0] = (cell_t *)(intptr_t)(offset - 1);
+    f->expr.arg[0] = (cell_t *)(trace_index_t)(offset - 1);
     f->func = (reduce_t *)mark_ptr(func_exec);
   } else {
     f->func = func_exec;
