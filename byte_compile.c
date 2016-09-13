@@ -630,7 +630,7 @@ cell_t *trace_reduce(cell_t *c) {
   while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, n) >= 0) {
     COUNTUP(i, n) {
       reduce(&p->value.ptr[i], T_ANY);
-      trace(c->value.ptr[i], c, tt_force, i);
+      trace(p->value.ptr[i], p, tt_force, i);
     }
     if(!any_conflicts((cell_t const *const *)p->value.ptr, n)) {
       cell_t *prev = r;
