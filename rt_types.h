@@ -112,7 +112,7 @@ struct __attribute__((packed)) mem {
 
 /* word entry */
 struct __attribute__((packed)) entry {
-  csize_t __padding;
+  csize_t alts;
   uintptr_t len, flags;
   csize_t in, out;
 };

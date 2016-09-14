@@ -731,6 +731,8 @@ void store_lazy_dep(cell_t *c, cell_t *d, cell_t *r, alt_set_t alt_set) {
   } else drop(r);
 }
 
-uint8_t new_alt_id(UNUSED uintptr_t n) {
-  return alt_cnt++;
+uint8_t new_alt_id(unsigned int n) {
+  uint8_t r = alt_cnt;
+  alt_cnt += n;
+  return r;
 }

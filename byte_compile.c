@@ -59,7 +59,7 @@ static bool pre_compile_word(cell_t *l, cell_t *module, csize_t *in, csize_t *ou
 static bool compile_word(cell_t **entry, cell_t *module, csize_t in, csize_t out);
 static cell_t *compile_quote(cell_t *parent_entry, cell_t *q);
 
-#define DEBUG 1
+#define DEBUG 0
 
 // use NIL_INDEX < -256
 // so that is_offset() is false, otherwise problems with traverse/closure_next_child
@@ -153,7 +153,10 @@ trace_index_t trace_store(const cell_t *c, type_t t) {
   } else {
     size = closure_cells(c);
     memcpy(dest, c, sizeof(cell_t) * size);
-    if(is_value(c)) dest->value.type = (dest->value.type & ~T_EXCLUSIVE) | t;
+    if(is_value(c)) {
+      dest->value.alt_set = 0;
+      dest->value.type = (dest->value.type & ~T_EXCLUSIVE) | t;
+    }
     dest->expr_type = (dest->expr_type & ~T_EXCLUSIVE) | T_TRACED | t;
   }
 
@@ -607,10 +610,11 @@ void print_trace_index()
 }
 
 static
-cell_t *trace_reduce(cell_t *c) {
+unsigned int trace_reduce(cell_t *c) {
   csize_t n = list_size(c);
   cell_t *r = NULL;
   cell_t *first;
+  unsigned int alts = 0;
 
   // first one
   COUNTUP(i, n) {
@@ -622,6 +626,7 @@ cell_t *trace_reduce(cell_t *c) {
     trace_rewrite(r);
     r->n++;
     r->value.type = T_RETURN;
+    alts++;
   }
   first = r;
 
@@ -639,10 +644,11 @@ cell_t *trace_reduce(cell_t *c) {
       r->n++;
       r->value.type = T_RETURN;
       prev->alt = trace_encode(r - trace_cur);
+      alts++;
     }
   }
   closure_free(p);
-  return first;
+  return alts;
 }
 
 static
@@ -724,7 +730,7 @@ bool compile_word(cell_t **entry, cell_t *module, csize_t in, csize_t out) {
   // compile
   set_trace(bc_trace);
   fill_args(c, bc_arg);
-  trace_reduce(c);
+  e->entry.alts = trace_reduce(c);
   drop(c);
   set_trace(NULL);
   e->entry.flags = 0;
@@ -780,7 +786,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   // compile
   set_trace(bc_trace);
   e->entry.in = in + fill_args(c, bc_arg) - 1;
-  trace_reduce(c);
+  e->entry.alts = trace_reduce(c);
   drop(c);
   set_trace(NULL);
   e->entry.flags = 0;
@@ -934,7 +940,9 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
   }
 
   // handle returns
-  // TODO set alt_sets
+  uint8_t alt_n = int_log2(entry->entry.alts);
+  uint8_t alt_id = new_alt_id(alt_n);
+  unsigned int branch = 0;
   size_t
     out = closure_out(c),
     n = closure_args(c);
@@ -945,22 +953,24 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
   }
 
   // first one
-  res = get_return_arg(map, returns, out);
+  alt_set_t alt_set = as_multi(alt_id, alt_n, branch++);
+  res = id(get_return_arg(map, returns, out), alt_set);
   COUNTUP(i, out) {
     cell_t *d = c->expr.arg[n - 1 - i];
     d->func = func_id;
     d->expr.arg[0] = get_return_arg(map, returns, i);
-    d->expr.arg[1] = 0;
+    d->expr.arg[1] = (cell_t *)alt_set;
   }
 
   // rest
   trace_index_t next = trace_decode(returns->alt);
   while(next >= 0) {
+    alt_set_t as = as_multi(alt_id, alt_n, branch++);
     returns = &code[next];
     FOREACH(i, results) {
       cell_t *a = get_return_arg(map, returns, i);
       results[i] = &(*results[i])->alt;
-      *results[i] = a ? id(a) : NULL;
+      *results[i] = a ? mod_alt(a, 0, as) : NULL;
     }
     next = trace_decode(returns->alt);
   }

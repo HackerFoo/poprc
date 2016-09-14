@@ -265,11 +265,9 @@ bool func_popr(cell_t **cp, UNUSED type_t t) {
 bool func_alt(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
-  uint8_t a = new_alt_id(2);
-  cell_t *r0 = id(c->expr.arg[0]);
-  r0->expr.arg[1] = (cell_t *)as_single(a, 0);
-  cell_t *r1 = id(c->expr.arg[1]);
-  r1->expr.arg[1] = (cell_t *)as_single(a, 1);
+  uint8_t a = new_alt_id(1);
+  cell_t *r0 = id(c->expr.arg[0], as_single(a, 0));
+  cell_t *r1 = id(c->expr.arg[1], as_single(a, 1));
   r0->alt = r1;
   store_lazy(cp, c, r0, 0);
   return false;
@@ -279,10 +277,8 @@ bool func_alt(cell_t **cp, UNUSED type_t t) {
 bool func_alt2(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
-  cell_t *r0 = id(ref(c->expr.arg[0]));
-  r0->expr.arg[1] = 0;
-  cell_t *r1 = id(ref(c->expr.arg[1]));
-  r1->expr.arg[1] = 0;
+  cell_t *r0 = id(ref(c->expr.arg[0]), 0);
+  cell_t *r1 = ref(c->expr.arg[1]);
   r0->alt = r1;
   *cp = r0;
   drop(c);
@@ -369,9 +365,11 @@ bool func_swap(cell_t **cp, UNUSED type_t t) {
   return false;
 }
 
-cell_t *id(cell_t *c) {
-  cell_t *i = func(func_id, 1, 1);
-  arg(&i, c);
+cell_t *id(cell_t *c, alt_set_t as) {
+  cell_t *i = closure_alloc(1);
+  i->func = func_id;
+  i->expr.arg[0] = c;
+  i->expr.arg[1] = (cell_t *)as;
   return i;
 }
 

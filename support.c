@@ -383,3 +383,7 @@ bool find_line(const char *x, const char **s, size_t *size) {
   *size = le - ls;
   return true;
 }
+
+unsigned int int_log2(unsigned int x) {
+  return x <= 1 ? 0 : (sizeof(x) * 8) - __builtin_clz(x - 1);
+}

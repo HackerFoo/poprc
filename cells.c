@@ -369,6 +369,17 @@ alt_set_t as_single(unsigned int k, unsigned int v) {
   return (alt_set_t)1 << ((k << 1) + (v & 1));
 }
 
+alt_set_t as_multi(unsigned int k, unsigned n, unsigned int v) {
+  if(n == 0) return 0;
+  alt_set_t alt_set = 0;
+  while(n--) {
+    alt_set |= as_single(k, v);
+    k++;
+    v >>= 1;
+  }
+  return alt_set;
+}
+
 alt_set_t as_intersect(alt_set_t a, alt_set_t b) {
   return a & b;
 }
@@ -400,10 +411,13 @@ int test_alt_sets() {
     b1 = as_single(1, 1),
     c = a0 | b0,
     m0 = as_mask(a0 | b1),
-    m1 = as_mask(a1 | b0);
+    m1 = as_mask(a1 | b0),
+    d = as_single(2, 1),
+    e = as_multi(0, 3, 5);
   ok &= !as_conflict(a0 | b1);
   ok &= !!as_conflict(a1 | c);
   ok &= m0 == m1;
+  ok &= (a1 | b0 | d) == e;
 //  ok &= !!as_more_general_than(a0, c);
   return ok ? 0 : -1;
 }
