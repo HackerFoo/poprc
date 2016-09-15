@@ -83,7 +83,7 @@ pair_t *trace_find(const cell_t *c) {
 }
 
 static
-trace_index_t trace_get(cell_t *c) {
+trace_index_t trace_get(const cell_t *c) {
   pair_t *e = trace_find(c);
 #if(DEBUG)
   if(!e) {
@@ -128,11 +128,16 @@ uintptr_t map_update(map_t map, uintptr_t key, uintptr_t new_value) {
 
 static
 trace_index_t trace_store(const cell_t *c, type_t t) {
-  if(is_value(c) && (c->value.type & T_EXCLUSIVE) == T_INT) {
-    pair_t *x = map_find(trace_values, c->value.integer[0]);
-    if(x) {
-      trace_index_add(c, x->second);
-      return x->second;
+  if(is_value(c)) {
+    if(c->value.type & T_TRACED) {
+      return trace_get(c);
+    }
+    if((c->value.type & T_EXCLUSIVE) == T_INT) {
+      pair_t *x = map_find(trace_values, c->value.integer[0]);
+      if(x) {
+        trace_index_add(c, x->second);
+        return x->second;
+      }
     }
   }
   cell_t *dest = trace_ptr;
@@ -510,6 +515,9 @@ bool any_unreduced(cell_t *c) {
 // TODO unevaluated functions instead for later compilation
 static
 trace_index_t trace_store_list(cell_t *c) {
+  if(c->value.type & T_TRACED) {
+    return trace_get(c);
+  }
   csize_t n = list_size(c);
   trace_index_t li = n > 0 && is_placeholder(c->value.ptr[n-1]) ? trace_get(c->value.ptr[n-1]) : NIL_INDEX;
   COUNTUP(i, n) {
@@ -779,6 +787,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   cell_t *vl = 0;
   trace_var_list(c, &vl);
   for(cell_t *p = vl; p; p = p->tmp) {
+    p->value.type &= ~T_TRACED;
     trace_store(p, p->value.type);
   }
   clean_tmp(vl);
