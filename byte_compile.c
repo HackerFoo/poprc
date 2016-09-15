@@ -970,7 +970,7 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
     FOREACH(i, results) {
       cell_t *a = get_return_arg(map, returns, i);
       results[i] = &(*results[i])->alt;
-      *results[i] = a ? mod_alt(a, 0, as) : NULL;
+      *results[i] = a ? id(a, as) : NULL;
     }
     next = trace_decode(returns->alt);
   }

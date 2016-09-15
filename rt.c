@@ -685,6 +685,7 @@ void clean_tmp(cell_t *l) {
 }
 
 cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
+  assert(is_value(c));
   cell_t *n;
   if(c->alt == alt &&
      c->value.alt_set == alt_set) return c;
