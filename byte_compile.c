@@ -938,6 +938,7 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
     if(t->func == func_exec || t->func == func_quote) {
       t_entry = &t->expr.arg[closure_in(t) - 1];
       *t_entry = &trace_cells[trace_decode(*t_entry)];
+      t->func = func_exec_recursive;
     }
 
     traverse(t, {
@@ -990,6 +991,24 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
   }
 
   store_lazy(cp, c, res, 0);
+  return false;
+}
+
+bool func_exec_recursive(cell_t **cp, type_t t) {
+  cell_t *c = clear_ptr(*cp);
+  assert(is_closure(c));
+
+  csize_t c_in = closure_in(c);
+  alt_set_t alt_set = 0;
+  for(csize_t i = 0; i < c_in - 1; ++i) {
+    if(!reduce_arg(c, i, &alt_set, T_ANY)) goto fail;
+  }
+
+  c->func = func_exec;
+  return func_exec(cp, t);
+
+fail:
+  fail(cp, t);
   return false;
 }
 
