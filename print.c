@@ -153,6 +153,16 @@ void make_graph_all(char const *path) {
   fclose(f);
 }
 
+void print_cell_pointer(FILE *f, cell_t *p) {
+  if(p == &fail_cell) {
+    fprintf(f, "<font color=\"red\">0xFAIL_CELL</font>");
+  } else if(p == &nil_cell) {
+    fprintf(f, "<font color=\"lightgray\">0xNIL_CELL</font>");
+  } else {
+    fprintf(f, "<font color=\"lightgray\">%p</font>", (void *)p);
+  }
+}
+
 void graph_cell(FILE *f, cell_t const *c) {
   c = clear_ptr(c);
   if(!is_closure(c) || !is_cell(c)) return;
@@ -186,16 +196,19 @@ void graph_cell(FILE *f, cell_t const *c) {
   } else {
     fprintf(f, "%s (%u)</b></font></td></tr>", show_type_all_short(c->value.type), (unsigned int)c->n);
   }
-  fprintf(f, "<tr><td port=\"alt\">alt: <font color=\"lightgray\">%p</font></td></tr>",
-          (void *)c->alt);
+  fprintf(f, "<tr><td port=\"alt\">alt: ");
+  print_cell_pointer(f, c->alt);
+  fprintf(f, "</td></tr>");
   if(is_value(c)) {
     fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
             show_alt_set(c->value.alt_set));
     if(is_list(c)) {
       csize_t n = list_size(c);
-      while(n--)
-        fprintf(f, "<tr><td port=\"ptr%u\">ptr: <font color=\"lightgray\">%p</font></td></tr>",
-                (unsigned int)n, (void *)c->value.ptr[n]);
+      while(n--) {
+        fprintf(f, "<tr><td port=\"ptr%u\">ptr: ", (unsigned int)n);
+        print_cell_pointer(f, c->value.ptr[n]);
+        fprintf(f, "</td></tr>");
+      }
     } else if(is_fail(c)) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
     } else {
@@ -205,7 +218,9 @@ void graph_cell(FILE *f, cell_t const *c) {
     }
   } else {
     for(csize_t i = 0; i < n; i++) {
-      fprintf(f, "<tr><td port=\"arg%u\"><font color=\"lightgray\">%p</font></td></tr>", (unsigned int)i, (void *)c->expr.arg[i]);
+      fprintf(f, "<tr><td port=\"arg%u\">", (unsigned int)i);
+      print_cell_pointer(f, c->expr.arg[i]);
+      fprintf(f, "</td></tr>");
     }
     if(c->func == func_id) {
       fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
