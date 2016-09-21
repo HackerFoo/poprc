@@ -938,7 +938,6 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
     if(t->func == func_exec || t->func == func_quote) {
       t_entry = &t->expr.arg[closure_in(t) - 1];
       *t_entry = &trace_cells[trace_decode(*t_entry)];
-      t->func = func_exec_recursive;
     }
 
     traverse(t, {

@@ -295,11 +295,13 @@ bool func_assert(cell_t **cp, type_t t) {
   cell_t *p = clear_ptr(c->expr.arg[1]);
 
   if(is_var(p)) {
+    cell_t *res = var(t);
+    trace(c, res, tt_reduction, 0);
     if(!reduce_arg(c, 0, &alt_set, t) ||
        as_conflict(alt_set)) goto fail;
     clear_flags(c);
     cell_t *alt = c->alt;
-    store_reduced(cp, var(c->expr.arg[0]->value.type));
+    store_reduced_no_trace(cp, res);
     if(alt) {
       *cp = alt;
       return false;
