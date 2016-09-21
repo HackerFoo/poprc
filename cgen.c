@@ -271,27 +271,29 @@ void gen_assert(cell_t *e, cell_t *c) {
     done = trace_decode(c->alt);
   const char *cn = cname(gen_type(c));
   printf("\n  // assert\n");
-  if(done >= 0) {
+  if(gen_type(c) != T_BOTTOM) {
+    if(done >= 0) {
 
-    int next = done;
-    while(next > 0) {
-      done = next;
-      next = trace_decode(d[next].alt);
-    }
-    printf("  if(%s%d) {", cname(gen_type(&d[iq])), iq);
-    printf(" %s%d = %s%d;", cname(gen_type(&d[done])), done, cname(gen_type(&d[ip])), ip);
-    printf(" goto phi%d; }\n", done);
-  } else {
-    cell_t *end = d + e->entry.len;
-    printf("  %s%d = %s%d;\n", cn, i, cname(gen_type(&d[ip])), ip);
-    FOR_TRACE(p, closure_next(c), end) {
-      if(gen_type(p) == T_RETURN) {
-        cell_t *next = p + closure_cells(p);
-        if(next < end) {
-          printf("  if(!%s%d) ", cname(gen_type(&d[iq])), iq);
-          printf("goto block%d;\n", (int)(next - d));
+      int next = done;
+      while(next > 0) {
+        done = next;
+        next = trace_decode(d[next].alt);
+      }
+      printf("  if(%s%d) {", cname(gen_type(&d[iq])), iq);
+      printf(" %s%d = %s%d;", cname(gen_type(&d[done])), done, cname(gen_type(&d[ip])), ip);
+      printf(" goto phi%d; }\n", done);
+    } else {
+      cell_t *end = d + e->entry.len;
+      printf("  %s%d = %s%d;\n", cn, i, cname(gen_type(&d[ip])), ip);
+      FOR_TRACE(p, closure_next(c), end) {
+        if(gen_type(p) == T_RETURN) {
+          cell_t *next = p + closure_cells(p);
+          if(next < end) {
+            printf("  if(!%s%d) ", cname(gen_type(&d[iq])), iq);
+            printf("goto block%d;\n", (int)(next - d));
+          }
+          break;
         }
-        break;
       }
     }
   }

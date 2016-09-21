@@ -58,6 +58,7 @@ static trace_index_t trace_build_quote(cell_t *q, trace_index_t li);
 static bool pre_compile_word(cell_t *l, cell_t *module, csize_t *in, csize_t *out);
 static bool compile_word(cell_t **entry, cell_t *module, csize_t in, csize_t out);
 static cell_t *compile_quote(cell_t *parent_entry, cell_t *q);
+static void trace_update_type(const cell_t *c, type_t ct);
 
 #define DEBUG 0
 
@@ -252,13 +253,11 @@ trace_index_t trace_select(const cell_t *c, cell_t *a) {
 }
 
 static
-void trace_update_type(const cell_t *c) {
-  if(!is_value(c)) return;
+void trace_update_type(const cell_t *c, type_t ct) {
   pair_t *p = trace_find(c);
   if(!p) return;
   cell_t *t = &trace_cur[p->second];
   type_t tt = trace_type(t);
-  type_t ct = c->value.type;
   if((ct & T_EXCLUSIVE) == T_ANY) return;
   if((tt & T_EXCLUSIVE) != T_ANY &&
      (tt & T_EXCLUSIVE) != T_BOTTOM) return;
@@ -269,6 +268,13 @@ void trace_update_type(const cell_t *c) {
 
   // also stuff type in expr_type
   t->expr_type = (t->expr_type & ~T_EXCLUSIVE) | (ct & T_EXCLUSIVE);
+}
+
+static
+void trace_update_var_type(const cell_t *c) {
+  if(is_var(c)) {
+    trace_update_type(c, c->value.type);
+  }
 }
 
 static
@@ -381,6 +387,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
   switch(tt) {
 
   case tt_reduction: {
+    bool was_traced = (r->value.type & T_TRACED) != 0;
     if(is_value(c) || !is_var(r)) break;
     if(c->func == func_dep ||
        c->func == func_placeholder) break;
@@ -400,6 +407,8 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       }
     } else if(c->func == func_pushl) {
       trace_store_pushl(c);
+    } else if(c->func == func_assert && was_traced) {
+      trace_update_type(c, r->value.type);
     } else {
       csize_t in = closure_in(c);
       csize_t out = closure_out(c);
@@ -426,7 +435,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       // kind of hacky; replaces placeholder its list var to be overwritten later
       trace_index_assign(c->value.ptr[0], c);
     } else if(is_var(c)) {
-      trace_update_type(c);
+      trace_update_var_type(c);
     } else if(is_list(c)) {
       trace_store_list(c);
     } else {

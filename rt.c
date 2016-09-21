@@ -446,34 +446,6 @@ void store_reduced(cell_t **cp, cell_t *r) {
   }
 }
 
-// HACKy, clean up later
-void store_reduced_no_trace(cell_t **cp, cell_t *r) {
-  cell_t *c = *cp;
-  assert(!is_marked(c));
-  r->func = func_value;
-  drop_multi(c->expr.arg, closure_in(c));
-  csize_t size = is_closure(r) ? closure_cells(r) : 0;
-  if(size <= closure_cells(c)) {
-    refcount_t n = c->n;
-    closure_shrink(c, size);
-    memcpy(c, r, sizeof(cell_t) * size);
-    if(is_cell(r)) {
-      traverse_ref(r, ALT | PTRS);
-      drop(r);
-    }
-    c->n = n;
-   } else { /* TODO: must copy if not cell */
-    /*
-    if(!is_cell(r)) {
-      cell_t *t = closure_alloc_cells(size);
-      memcpy(t, r, sizeof(cell_t) * size);
-      r = t;
-    }
-    */
-    store_lazy(cp, c, r, 0);
-  }
-}
-
 bool is_weak(cell_t const *p, cell_t const *c) {
   return c && is_dep(c) && (!c->expr.arg[0] || c->expr.arg[0] == p);
 }
