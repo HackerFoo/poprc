@@ -300,7 +300,7 @@ bool func_assert(cell_t **cp, type_t t) {
     if(!reduce_arg(c, 0, &alt_set, t) ||
        as_conflict(alt_set)) goto fail;
     clear_flags(c);
-    res->value.type = c->expr.arg[0]->value.type;
+    res->value.type = c->expr.arg[0]->value.type | T_VAR | T_TRACED;
     cell_t *alt = c->alt;
     store_reduced(cp, res);
     if(alt) {

@@ -407,8 +407,6 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       }
     } else if(c->func == func_pushl) {
       trace_store_pushl(c);
-    } else if(c->func == func_assert && was_traced) {
-      trace_update_type(c, r->value.type);
     } else {
       csize_t in = closure_in(c);
       csize_t out = closure_out(c);
@@ -418,11 +416,15 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
           trace_store(a, a->value.type);
         }
       }
-      COUNTUP(i, out) {
-        cell_t *d = c->expr.arg[in + i];
-        if(d) trace_dep(d, c, d->value.type);
+      if(c->func == func_assert && was_traced) {
+        trace_update_type(c, r->value.type);
+      } else {
+        COUNTUP(i, out) {
+          cell_t *d = c->expr.arg[in + i];
+          if(d) trace_dep(d, c, d->value.type);
+        }
+        trace_store(c, r->value.type);
       }
-      trace_store(c, r->value.type);
     }
     break;
   }

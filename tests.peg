@@ -20,10 +20,10 @@ dec: [dup 5 <= !] [dup 1- dec swap 5 > !] | pushl popr swap drop
 
 fib: [dup 1 <= !] [dup 1- dup 1- fib swap fib + swap 1 > !] | pushl popr swap drop
 
+fact: [1 == 1 swap !] [dup dup 1- fact * swap 1 > !] | pushl popr swap drop
+
 ___ these need fixed
 ___ from here
-
-fact: [1 == 1 swap !] [dup dup 1- fact * swap 1 > !] | pushl popr swap drop
 
 fact2: [1 == 1 swap !] [dup 1- swap [*] pushl swap pushr pushl get2 fact2] | pushl pushl get2
 get2: popr swap popr swap drop swap
