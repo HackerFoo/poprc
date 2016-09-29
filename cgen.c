@@ -284,7 +284,7 @@ void gen_assert(cell_t *e, cell_t *c) {
       printf(" goto phi%d; }\n", done);
     } else {
       cell_t *end = d + e->entry.len;
-      printf("  %s%d = %s%d;\n", cn, i, cname(gen_type(&d[ip])), ip);
+      printf("  #define %s%d %s%d\n", cn, i, cname(gen_type(&d[ip])), ip); // a little HACKy
       FOR_TRACE(p, closure_next(c), end) {
         if(gen_type(p) == T_RETURN) {
           cell_t *next = p + closure_cells(p);
