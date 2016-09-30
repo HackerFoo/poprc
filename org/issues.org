@@ -41,6 +41,7 @@ Compile to direct C when possible
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
+** TODO get cgen working with simple popr & pushl functions
 ** TODO fix func_exec to work when branching and recursive
 ** TODO add compilation tests
 ** DONE handle alts correctly in func_exec

@@ -62,11 +62,11 @@ static void trace_update_type(const cell_t *c, type_t ct);
 
 #define DEBUG 0
 
+#if INTERFACE
 // use NIL_INDEX < -256
 // so that is_offset() is false, otherwise problems with traverse/closure_next_child
 #define NIL_INDEX (-4096)
 
-#if INTERFACE
 #define FOR_TRACE(c, start, end) for(cell_t *(c) = (start); c < (end); c = closure_next(c))
 #endif
 

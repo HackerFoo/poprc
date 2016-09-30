@@ -208,7 +208,11 @@ void gen_call(cell_t *e, cell_t *c) {
 
     for(csize_t i = 0; i < in; i++) {
       int a = trace_decode(c->expr.arg[i]);
-      printf("%s%s%d", sep, cname(gen_type(&d[a])), a);
+      if(a == NIL_INDEX) {
+        printf("%sNULL", sep);
+      } else {
+        printf("%s%s%d", sep, cname(gen_type(&d[a])), a);
+      }
       sep = ", ";
     };
 
