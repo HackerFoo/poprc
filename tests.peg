@@ -33,4 +33,4 @@ ___ to here
 not: False =:=
 len: dup is_nil [0 swap!] [swap popr drop len 1+ swap not!] | pushl pushl popr swap drop
 
-iota: [0 == [] swap !] [dup [dup [1- iota] pushl swap] pushl swap 0 != !] | pushl popr swap drop
+iota: [0 == [] swap !] [dup [dup 1- iota swap] pushl swap 0 != !] | pushl popr swap drop
