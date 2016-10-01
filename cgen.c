@@ -37,10 +37,10 @@
 
 const char *ctype(type_t t) {
   static const char *table[] = {
-    [T_ANY]    = "cell_t *",
+    [T_ANY]    = "void *",
     [T_INT]    = "int ",
-    [T_IO]     = "cell_t *",
-    [T_LIST]   = "cell_t *",
+    [T_IO]     = "void *",
+    [T_LIST]   = "slot_t *",
     [T_SYMBOL] = "int ",
     [T_MAP]    = "map_t ",
     [T_STRING] = "seg_t ",
@@ -85,7 +85,7 @@ void gen_function_signature(cell_t *e) {
   }
   csize_t out_n = list_size(l);
   type_t rtypes[out_n];
-  resolve_types(l, rtypes);
+  resolve_types(e, l, rtypes);
 
   printf("%s%s_%s(", ctype(rtypes[out_n - 1]), e->module_name, e->word_name);
   char *sep = "";
@@ -174,6 +174,8 @@ void gen_instruction(cell_t *e, cell_t *c) {
     gen_assert(e, c);
   } else if(c->func == func_quote) {
     gen_quote(e, c);
+  } else if(c->func == func_dep) {
+    // don't generate anything
   } else {
     gen_call(e, c);
   }

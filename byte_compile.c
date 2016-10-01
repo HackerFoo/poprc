@@ -433,10 +433,11 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
     if(!is_var(c)) break;
   case tt_force: {
     if(!is_value(c)) break;
-    if(is_list(c) && is_placeholder(c->value.ptr[0])) {
-      // kind of hacky; replaces placeholder its list var to be overwritten later
-      trace_index_assign(c->value.ptr[0], c);
-    } else if(is_var(c)) {
+    if(is_var(c)) {
+      if(is_list(c) && is_placeholder(c->value.ptr[0])) {
+        // kind of hacky; replaces placeholder its list var to be overwritten later
+        trace_index_assign(c->value.ptr[0], c);
+      }
       trace_update_var_type(c);
     } else if(is_list(c)) {
       trace_store_list(c);
@@ -831,24 +832,24 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
 }
 
 static
-cell_t *tref(cell_t *c) {
+cell_t *tref(cell_t *e, cell_t *c) {
   trace_index_t i = trace_decode(c);
-  return i < 0 ? NULL : &trace_cur[i];
+  return i < 0 ? NULL : &e[i+1];
 }
 
 type_t trace_type(cell_t *c) {
   return is_value(c) ? c->value.type : c->expr_type;
 }
 
-void resolve_types(cell_t *c, type_t *t) {
+void resolve_types(cell_t *e, cell_t *c, type_t *t) {
   csize_t n = list_size(c);
   COUNTUP(i, n) {
-    t[i] = trace_type(tref(c->value.ptr[i])) & T_EXCLUSIVE;
+    t[i] = trace_type(tref(e, c->value.ptr[i])) & T_EXCLUSIVE;
   }
-  cell_t *p = tref(c->alt);
+  cell_t *p = tref(e, c->alt);
   while(p) {
     COUNTUP(i, n) {
-      type_t pt = trace_type(tref(p->value.ptr[i])) & T_EXCLUSIVE;
+      type_t pt = trace_type(tref(e, p->value.ptr[i])) & T_EXCLUSIVE;
       if(t[i] == T_BOTTOM) {
         *t = pt;
       } else if(t[i] != pt &&
@@ -856,7 +857,7 @@ void resolve_types(cell_t *c, type_t *t) {
         *t = T_ANY;
       }
     }
-    p = tref(p->alt);
+    p = tref(e, p->alt);
   }
 }
 
