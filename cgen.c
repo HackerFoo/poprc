@@ -37,7 +37,7 @@
 
 const char *ctype(type_t t) {
   static const char *table[] = {
-    [T_ANY]    = "void *",
+    [T_ANY]    = "any_t ",
     [T_INT]    = "int ",
     [T_IO]     = "void *",
     [T_LIST]   = "slot_t *",
