@@ -413,7 +413,11 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       COUNTUP(i, c->func == func_exec ? in - 1 : in) {
         cell_t *a = c->expr.arg[i];
         if(is_value(a) && !(a->value.type & T_TRACED) && !is_var(a)) {
-          trace_store(a, a->value.type);
+          if(is_list(a)) {
+            trace_store_list(a);
+          } else {
+            trace_store(a, a->value.type);
+          }
         }
       }
       if(c->func == func_assert && was_traced) {
@@ -753,12 +757,12 @@ bool compile_word(cell_t **entry, cell_t *module, csize_t in, csize_t out) {
   e->entry.alts = trace_reduce(c);
   drop(c);
   set_trace(NULL);
-  e->entry.flags = 0;
   e->entry.len = trace_cnt;
 #if DEBUG
   print_trace_index();
 #endif
   trace_final_pass(e);
+  e->entry.flags = 0;
 
   // finish
   free_def(l);

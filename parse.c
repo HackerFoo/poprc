@@ -479,6 +479,11 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
 
     case CC_SYMBOL:
       if(seg.n == 1 && *seg.s == ',') {
+        if(n == 1) {
+          arg_stack[1] = arg_stack[0];
+          arg_stack[0] = &nil_cell;
+          n = 2;
+        }
         arg_stack[0] = array_to_list(arg_stack, n);
         n = 1;
         break;
