@@ -681,6 +681,9 @@ cell_t *compile_entry(seg_t name, cell_t *module) {
   cell_t **entry = implicit_lookup(name, module);
   cell_t *l = *entry;
   if(!is_list(l)) return l;
+  if(l->module_name) {
+    module = get_module(string_seg(l->module_name)); // switch modules for words from other modules
+  }
   *entry = NULL;
   bool pc_success = pre_compile_word(l, module, &in, &out);
   entry = implicit_lookup(name, module); // entry could have moved
