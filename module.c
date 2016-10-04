@@ -29,6 +29,7 @@
 #include "gen/word_table.h"
 #include "gen/lex.h"
 #include "gen/module.h"
+#include "gen/byte_compile.h"
 
 pair_t primitive_module[] = WORDS;
 
@@ -397,5 +398,6 @@ void command_import(cell_t *rest) {
   cell_t **eval_module = cmap_get(&modules, string_seg("eval"));
   cell_t **eval_imports = cmap_get(eval_module, string_seg("imports"));
   cell_t *import = get_module(tok_seg(rest));
+  compile_module(import);
   *eval_imports = merge_into_module(*eval_imports, import);
 }

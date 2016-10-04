@@ -326,18 +326,23 @@ bool string_map_merge(map_t map, pair_t *x, size_t n) {
 }
 
 bool _map_union(map_t a, map_t b, cmp_t cmp) {
-  uintptr_t n = *map_cnt(b);
+  uintptr_t
+    na = *map_cnt(a), n = na,
+    nb = *map_cnt(b);
   pair_t *x = map_elems(b);
-  if(n == 0) return true;
-  if(n > map_size(a) - *map_cnt(a)) return false;
+  if(nb == 0) return true;
+  if(na + nb > map_size(a)) return false;
   uintptr_t bit = 1 << __builtin_ctz(n);
-  while(bit) {
+  while(bit < na && bit < nb) {
     if(bit & n) {
       _map_merge(a, x, bit, cmp);
       x += bit;
+      n += bit;
+      nb -= bit;
     }
-    bit >>= 1;
+    bit = 1 << __builtin_ctz(n);
   }
+  _map_merge(a, x, nb, cmp);
   return true;
 }
 
@@ -350,17 +355,19 @@ bool string_map_union(map_t a, map_t b) {
 }
 
 int test_map_union() {
-  MAP(a, 16);
-  MAP(b, 8);
-  COUNTUP(i, 8) {
-    pair_t
-      pa = {i*2, 0},
-      pb = {i*2 + 1, 1};
-    map_insert(a, pa);
-    map_insert(b, pb);
+  COUNTUP(n, 9) {
+    MAP(a, 16);
+    MAP(b, 8);
+    COUNTUP(i, 16-n) {
+      pair_t
+        pa = {i*2, 0},
+        pb = {i*2 + 1, 1};
+      map_insert(a, pa);
+      if(i < n) map_insert(b, pb);
+    }
+    map_union(a, b);
+    print_map(a);
   }
-  map_union(a, b);
-  print_map(a);
   return 0;
 }
 

@@ -2,15 +2,16 @@ module tests:
 
 imports:
   module list
+  module stack
 
-f2b: | popr ! cut popr swap drop
+__ f2b: | popr ! cut popr swap drop
 
-f5: [] pushl rot rot | swap pushl popr swap popr swap drop dup rot > ! cut
+__ f5: [] pushl rot rot | swap pushl popr swap popr swap drop dup rot > ! cut
 
 __ x y [z+] should be x + y + z + 1, gives 2y + 2z + 1
-f2: pushl pushl popr 1 + swap pushl popr swap popr swap drop +
+__ f2: pushl pushl popr 1 + swap pushl popr swap popr swap drop +
 
-f1: [] [] ifte pushl
+__ f1: [] [] ifte pushl
 
 f6: rot
 
@@ -35,3 +36,5 @@ len: dup is_nil [0 swap!] [swap popr drop len 1+ swap not!] | pushl pushl popr s
 
 iota: [0 == [] swap !] [dup [dup 1- iota swap] pushl swap 0 != !] | pushl popr swap drop
 sum: [is_nil 0 swap !] [dup get2 swap sum + swap is_nil not!] | pushl popr swap drop
+
+range: dup2

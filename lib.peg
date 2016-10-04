@@ -5,6 +5,7 @@ imports:
   module list
   module control
 
+
 module num:
 
 __ max of two values
@@ -19,8 +20,11 @@ module list:
 __ take rightmost value from quote
 head: popr swap drop
 
+
+module stack:
+
 __ rotate top 3
-rot:               __ x y z
+rotl:              __ x y z
   [] pushl         __ x y [z]
     swap pushr     __ x [z y]
     pushl          __ [x z y]
@@ -28,7 +32,10 @@ rot:               __ x y z
     popr swap      __ y z [x]
     popr swap drop __ y z x
 
+rotr: rotl rotl
+
 dup2: swap [] pushl pushl dup . popr swap popr swap popr swap popr swap drop
+
 
 module control:
 
