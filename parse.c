@@ -278,18 +278,6 @@ bool parse_rhs_expr(cell_t **c, cell_t **res) {
       it = &(*it)->tok_list.next;
     }
     while(*it && (*it)->tok_list.line == current_line) {
-      // using ',' as syntactic sugar for lists
-      /*
-      if(match(*it, ",")) {
-        cell_t **tmp = it;
-        it = &(*it)->tok_list.next;
-        cell_free(*tmp);
-        *tmp = NULL;
-        if(*it) {
-          r = list_insert(r, *it);
-        }
-      }
-      */
       it = &(*it)->tok_list.next;
     }
   } while(*it);
@@ -354,7 +342,7 @@ fail:
   return p;
 }
 
-cell_t *parse_defs(cell_t **c, cell_t **e) {
+cell_t *parse_defs(cell_t **c, cell_t **err) {
   cell_t
     *l = NULL,
     *m = NULL,
@@ -365,7 +353,7 @@ cell_t *parse_defs(cell_t **c, cell_t **e) {
     cell_free(n);
     cell_t *old = cmap_set(&m, name, l);
     assert(old == NULL); // TODO append defs?
-    if((*e = check_def(l))) break;
+    if((*err = check_def(l))) break;
   }
   *c = p;
   if(m) m->n = PERSISTENT;
@@ -390,28 +378,28 @@ int test_parse_def() {
                   " module one\n"
                   " module two\n"
                   " module three\n", 0);
-  cell_t *e = NULL;
-  cell_t *m = parse_defs(&p, &e);
+  cell_t *err = NULL;
+  cell_t *m = parse_defs(&p, &err);
   print_defs(m);
   free_defs(m);
-  return e ? -1 : 0;
+  return err ? -1 : 0;
 }
 
-bool parse_module(cell_t **c, seg_t *name, cell_t **e) {
+bool parse_module(cell_t **c, seg_t *name, cell_t **err) {
   cell_t *p = *c, *n = NULL;
   MATCH_ONLY("module");
   MATCH_IF(true, n);
   MATCH_ONLY(":");
   *name = tok_seg(n);
   cell_free(n);
-  cell_t *m = parse_defs(&p, e);
+  cell_t *m = parse_defs(&p, err);
   cell_t *old = cmap_set(&modules, *name, m);
   assert(old == NULL); // TODO append modules?
   if(modules) modules->n = PERSISTENT;
   *c = p;
-  return !*e;
+  return !*err;
 fail:
-  if(!*e) *e = p;
+  if(!*err) *err = p;
   return false;
 }
 

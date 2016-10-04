@@ -54,7 +54,7 @@ cell_t *cmap_set(cell_t **cp, seg_t key, cell_t *val) {
   }
 
   // add to map
-  c = expand_map(c);
+  c = expand_map(c, 1);
   map = c->value.map;
   const char *s = seg_string(key);
   pair_t p = {(uintptr_t)s, (uintptr_t)val};
@@ -75,7 +75,7 @@ cell_t **cmap_get(cell_t **cp, seg_t key) {
   }
 
   // add to map
-  c = expand_map(c);
+  c = expand_map(c, 1);
   map = c->value.map;
   const char *s = seg_string(key);
   pair_t p = {(uintptr_t)s, (uintptr_t)NULL};
@@ -162,15 +162,14 @@ void free_modules() {
   modules = NULL;
 }
 
-cell_t *expand_map(cell_t *c) {
-  if(c == NULL) return make_map(1);
+cell_t *expand_map(cell_t *c, csize_t n) {
+  if(c == NULL) return make_map(n);
   map_t m = c->value.map;
   uintptr_t
     size = map_size(m),
     cnt = *map_cnt(m);
-  if(cnt == size) {
-    csize_t new_size = size * 2 + 1;
-    cell_t *nc = make_map(new_size);
+  if(cnt + n > size) {
+    cell_t *nc = make_map(size + n);
     memcpy(&nc->value.map[0].second, &c->value.map[0].second, sizeof_field(pair_t, second) + size * sizeof(pair_t));
     closure_free(c);
     return nc;
@@ -242,6 +241,15 @@ done:
   closure_free(c);
   m->n = PERSISTENT;
   return m;
+}
+
+cell_t *merge_into_module(cell_t *a, cell_t *b) {
+  assert(is_map(b));
+  if(!a) return b;
+  assert(is_map(a));
+  a = expand_map(a, *map_cnt(b->value.map));
+  string_map_union(a->value.map, b->value.map);
+  return a;
 }
 
 cell_t *get_submodule(cell_t *m, seg_t s) {
@@ -382,4 +390,12 @@ int test_module_lookup() {
   free_modules();
   modules = orig_modules;
   return e ? -1 : 0;
+}
+
+void command_import(cell_t *rest) {
+  if(!rest) return;
+  cell_t **eval_module = cmap_get(&modules, string_seg("eval"));
+  cell_t **eval_imports = cmap_get(eval_module, string_seg("imports"));
+  cell_t *import = get_module(tok_seg(rest));
+  *eval_imports = merge_into_module(*eval_imports, import);
 }

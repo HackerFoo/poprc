@@ -28,6 +28,8 @@ rot:               __ x y z
     popr swap      __ y z [x]
     popr swap drop __ y z x
 
+dup2: swap [] pushl pushl dup . popr swap popr swap popr swap popr swap drop
+
 module control:
 
 __ if then else

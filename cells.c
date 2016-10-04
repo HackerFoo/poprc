@@ -181,9 +181,9 @@ cell_t *closure_alloc_cells(csize_t size) {
   return c;
 }
 
-#define calc_size(f, n)                         \
-  ((sizeof(cell_t)                              \
-    + (offset(cell_t, f[n]) - 1))               \
+#define calc_size(f, n)     \
+  ((offset(cell_t, f[n])    \
+    + (sizeof(cell_t) - 1)) \
    / sizeof(cell_t))
 
 csize_t calculate_cells(csize_t n) {
