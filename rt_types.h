@@ -36,6 +36,7 @@ typedef type_or_csize_t csize_t;
 #define T_STRING    0x0006
 #define T_RETURN    0x0007
 #define T_FLOAT     0x0008
+#define T_MODULE    0x00FE
 #define T_BOTTOM    0x00FF
 #define T_TRACED    0x0800
 #define T_FAIL      0x1000

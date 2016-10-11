@@ -345,19 +345,18 @@ fail:
 cell_t *parse_defs(cell_t **c, const char *module_name, cell_t **err) {
   cell_t
     *l = NULL,
-    *m = NULL,
+    *m = make_module(),
     *n = NULL,
     *p = *c;
   while(parse_def(&p, &n, &l)) {
     seg_t name = tok_seg(n);
     cell_free(n);
     l->module_name = module_name;
-    cell_t *old = cmap_set(&m, name, l);
+    cell_t *old = module_set(m, name, l);
     assert(old == NULL); // TODO append defs?
     if((*err = check_def(l))) break;
   }
   *c = p;
-  if(m) m->n = PERSISTENT;
   return m;
 }
 
@@ -395,7 +394,7 @@ bool parse_module(cell_t **c, seg_t *name, cell_t **err) {
   cell_free(n);
   const char *strname = seg_string(*name); // TODO remove redundant string allocation
   cell_t *m = parse_defs(&p, strname, err);
-  cell_t *old = cmap_set(&modules, *name, m);
+  cell_t *old = module_set(modules, *name, m);
   assert(old == NULL); // TODO append modules?
   if(modules) modules->n = PERSISTENT;
   *c = p;
@@ -406,7 +405,8 @@ fail:
 }
 
 int test_parse_module() {
-  modules = NULL;
+  cell_t *orig_modules = modules;
+  modules = make_module();
   cell_t *p = lex("module a:\n"
                   "f1: the first word\n"
                   "f2: the\n"
@@ -426,6 +426,8 @@ int test_parse_module() {
 
   print_modules();
   free_modules();
+  closure_free(modules);
+  modules = orig_modules;
   return e ? -1 : 0;
 }
 

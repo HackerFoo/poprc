@@ -41,8 +41,11 @@ Compile to direct C when possible
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
+** DONE stable references in modules
+** TODO handle module scope chain when compiling a word
+look for word in parent module, parent imports, context module, context imports, ...
 ** TODO get cgen working with simple popr & pushl functions
-** TODO fix func_exec to work when branching and recursive
+** STARTED fix func_exec to work when branching and recursive
 ** TODO add compilation tests
 ** DONE handle alts correctly in func_exec
 ** DONE f1: [1+]
@@ -60,6 +63,7 @@ Compile to direct C when possible
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
+** DONE 1 2 3 | | dup 3 < !
 ** DONE f1: [ 1 ] [ 2 ] | pushl popr __ 3 f1
 ** TODO f1: [] pushl f1 __ why is arity 1 -> 2 instead of 1 -> 1?
 ** DONE f1: [] pushl

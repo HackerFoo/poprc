@@ -191,9 +191,9 @@ void command_eval(cell_t *rest) {
 }
 
 int main(int argc, char **argv) {
+  cells_init();
   parse_init();
   module_init();
-  cells_init();
   bool quit = false;
 
 #ifndef EMSCRIPTEN

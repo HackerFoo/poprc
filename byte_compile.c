@@ -56,7 +56,7 @@ static trace_index_t trace_store_list(cell_t *c);
 static trace_index_t trace_store_pushl(cell_t *c);
 static trace_index_t trace_build_quote(cell_t *q, trace_index_t li);
 static bool pre_compile_word(cell_t *l, cell_t *module, csize_t *in, csize_t *out);
-static bool compile_word(cell_t **entry, cell_t *module, csize_t in, csize_t out);
+static bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_t out);
 static cell_t *compile_quote(cell_t *parent_entry, cell_t *q);
 static void trace_update_type(const cell_t *c, type_t ct);
 
@@ -676,23 +676,28 @@ unsigned int trace_reduce(cell_t *c) {
 }
 
 static
+void store_entries(cell_t *e, cell_t *module) {
+  size_t count = e->entry.len;
+  cell_t *start = e + 1;
+  cell_t *end = start + count;
+  module_set(module, string_seg(e->word_name), e);
+  FOR_TRACE(c, start, end) {
+    if(c->func != func_quote) continue;
+    cell_t *e = &trace_cells[trace_decode(c->expr.arg[closure_in(c) - 1])];
+    store_entries(e, module);
+  }
+}
+
+static
 cell_t *compile_entry(seg_t name, cell_t *module) {
   csize_t in, out;
-  cell_t **entry = implicit_lookup(name, module);
-  cell_t *l = *entry;
-  if(!is_list(l)) return l;
-/*
-  if(l->module_name) {
-    module = get_module(string_seg(l->module_name)); // switch modules for words from other modules
-  }
-*/
-  *entry = NULL;
-  bool pc_success = pre_compile_word(l, module, &in, &out);
-  entry = implicit_lookup(name, module); // entry could have moved
-  *entry = l;
-  if(pc_success && compile_word(entry, module, in, out)) {
-    entry = implicit_lookup(name, module); // entry could have moved (again)
-    return *entry;
+  cell_t *entry = implicit_lookup(name, module);
+  if(!is_list(entry)) return entry;
+  cell_t *ctx = get_module(string_seg(entry->module_name)); // switch context module for words from other modules
+  if(pre_compile_word(entry, ctx, &in, &out) &&
+     compile_word(&entry, name, ctx, in, out)) {
+    store_entries(entry, module);
+    return entry;
   } else {
     return NULL;
   }
@@ -710,22 +715,26 @@ void compile_module(cell_t *module) {
 }
 
 cell_t *module_lookup_compiled(seg_t path, cell_t **context) {
-  cell_t **p = module_lookup(path, context);
+  cell_t *p = module_lookup(path, context);
   if(!p) return NULL;
-  if(!*p) {
-    return lookup_word(string_seg("_"));
+  if(!is_list(p)) return p;
+  if(p->value.type & T_TRACED) {
+    if(p->alt) { // HACKy
+      return p->alt;
+    } else {
+      return lookup_word(string_seg("_"));
+    }
   }
-  if(!is_list(*p)) return *p;
+  p->value.type |= T_TRACED;
   seg_t name = path_name(path);
   return compile_entry(name, *context);
 }
 
 cell_t *parse_eval_def(cell_t *name_tok, cell_t *rest) {
   seg_t name = tok_seg(name_tok);
-  cell_t **eval_module = cmap_get(&modules, string_seg("eval"));
-  cell_t **entry = cmap_get(eval_module, name);
-  *entry = quote(rest);
-  return compile_entry(name, *eval_module);
+  cell_t *eval_module = module_get_or_create(modules, string_seg("eval"));
+  module_set(eval_module, name, quote(rest));
+  return compile_entry(name, eval_module);
 }
 
 static
@@ -740,11 +749,14 @@ bool pre_compile_word(cell_t *l, cell_t *module, csize_t *in, csize_t *out) {
 }
 
 static
-bool compile_word(cell_t **entry, cell_t *module, csize_t in, csize_t out) {
+bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_t out) {
   cell_t *l;
   if(!entry || !(l = *entry)) return false;
   if(!is_list(l)) return true;
   if(list_size(l) < 1) return false;
+
+  // make recursive return this entry
+  (*entry)->alt = trace_ptr;
 
   cell_t *toks = l->value.ptr[0]; // TODO handle list_size(l) > 1
 
@@ -756,7 +768,7 @@ bool compile_word(cell_t **entry, cell_t *module, csize_t in, csize_t out) {
 
   e->n = PERSISTENT;
   e->module_name = module_name(module);
-  e->word_name = entry_name(module, e);
+  e->word_name = seg_string(name); // TODO fix unnecessary alloc
   e->entry.in = in;
   e->entry.out = out;
   e->entry.len = 0;
@@ -843,11 +855,6 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   print_trace_index();
 #endif
   trace_final_pass(e);
-
-  cell_t **module = cmap_get(&modules, string_seg(parent_entry->module_name));
-  cell_t **entry = cmap_get(module, string_seg(e->word_name));
-  *entry = e;
-
   return e;
 }
 
