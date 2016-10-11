@@ -68,3 +68,6 @@ False True | dup !
 
 __ type mismatch test
 0 [True =:=] [0 ==] | pushl popr swap drop
+
+__ test assert with > 2 alts
+1 2 3 | | dup 3 < !

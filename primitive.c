@@ -310,10 +310,11 @@ bool func_assert(cell_t **cp, type_t t) {
       return true;
     }
   } else if(p->value.integer[0] == SYM_True) {
+    if(!reduce_arg(c, 0, &alt_set, t) ||
+       as_conflict(alt_set)) goto fail;
     clear_flags(c);
-    drop(p);
-    store_lazy(cp, c, c->expr.arg[0], alt_set);
-    return false;
+    store_reduced(cp, mod_alt(ref(c->expr.arg[0]), c->alt, alt_set));
+    return true;
   } else goto fail;
  fail:
   fail(cp, t);
