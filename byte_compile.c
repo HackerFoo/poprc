@@ -733,7 +733,9 @@ cell_t *module_lookup_compiled(seg_t path, cell_t **context) {
 cell_t *parse_eval_def(cell_t *name_tok, cell_t *rest) {
   seg_t name = tok_seg(name_tok);
   cell_t *eval_module = module_get_or_create(modules, string_seg("eval"));
-  module_set(eval_module, name, quote(rest));
+  cell_t *l = quote(rest);
+  l->module_name = "eval";
+  module_set(eval_module, name, l);
   return compile_entry(name, eval_module);
 }
 
@@ -790,7 +792,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   print_trace_index();
 #endif
   trace_final_pass(e);
-  e->entry.flags = 0;
+  e->entry.flags &= ~ENTRY_NOINLINE;
 
   // finish
   free_def(l);
@@ -824,7 +826,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   e->n = PERSISTENT;
   e->entry.out = 1;
   e->entry.len = 0;
-  e->entry.flags = 0;
+  e->entry.flags = ENTRY_NOINLINE;
   e->func = func_exec;
 
   // free variables
@@ -842,7 +844,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   e->entry.alts = trace_reduce(c);
   drop(c);
   set_trace(NULL);
-  e->entry.flags = 0;
+  e->entry.flags &= ~ENTRY_NOINLINE;
   e->entry.len = trace_cnt;
   if(is_id(e)) {
     trace_ptr = trace_cur; // reset
@@ -918,12 +920,18 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
   cell_t *returns = NULL;
 
   // don't execute, just reduce all args and return variables
-  if(entry->entry.flags & ENTRY_NOINLINE) {
+  if(entry->entry.flags & (ENTRY_NOINLINE | ENTRY_RECURSIVE)) {
+    entry->entry.flags |= ENTRY_RECURSIVE;
     csize_t c_in = closure_in(c), n = closure_args(c);
     alt_set_t alt_set = 0;
+    bool expnd = true;
     for(csize_t i = 0; i < c_in - 1; ++i) {
       if(!reduce_arg(c, i, &alt_set, T_ANY)) goto fail;
+      // if any vars in a recursive function, don't expand
+      // TODO make this less dumb
+      if(is_var(clear_ptr(c->expr.arg[i]))) expnd = false;
     }
+    if(expnd) goto expand;
     for(csize_t i = c_in; i < n; ++i) {
       cell_t **d = &c->expr.arg[i];
       if(*d && is_dep(*d)) {
@@ -942,6 +950,8 @@ bool func_exec(cell_t **cp, UNUSED type_t t) {
     fail(cp, t);
     return false;
   }
+
+expand:
 
   c->expr.arg[in] = 0;
   memset(map, 0, sizeof(map[0]) * len);
