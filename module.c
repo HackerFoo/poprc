@@ -289,13 +289,18 @@ cell_t *build_module(cell_t *c) {
   return r;
 }
 
+cell_t *persistent(cell_t *c) {
+  c->n = PERSISTENT;
+  return c;
+}
+
 void merge_into_module(cell_t *ma, cell_t *mb) {
   cell_t
     *a = *module_ref(ma),
     *b = *module_ref(mb);
   if(!b) return;
   if(!a) {
-    *module_ref(ma) = b;
+    *module_ref(ma) = persistent(copy(b));
   } else {
     assert(is_map(a));
     a = expand_map(a, *map_cnt(b->value.map));
