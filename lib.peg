@@ -36,6 +36,7 @@ rotr: rotl rotl
 
 dup2: swap [] pushl pushl dup . popr swap popr swap popr swap popr swap drop
 
+under: swap dup rotr
 
 module control:
 
