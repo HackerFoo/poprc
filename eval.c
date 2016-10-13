@@ -418,7 +418,7 @@ void command_test(cell_t *rest) {
 void command_arity(cell_t *rest) {
   csize_t in, out;
   if(rest) {
-    if(get_arity(rest, &in, &out, NULL)) {
+    if(get_arity(rest, &in, &out, eval_module())) {
       printf("%d -> %d\n", in, out);
     }
   }
