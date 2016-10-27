@@ -5,7 +5,7 @@
 gen/word_table.h: $(SRC)
 	@mkdir -p gen
 	sed -n -e 's/.*WORD([^,]*, *\([a-zA-Z0-9_]*\).*).*/extern reduce_t func_\1;/p' $(SRC) | sort > $@
-	echo '#define WORDS {\\' >> $@
+	echo '#define WORDS {\' >> $@
 	N=$$(cat $(SRC) | grep -e 'WORD(.*)' -c); echo "WORD_COUNT($$N),\\" >> $@
 	sed -n -e 's/.*\(WORD(.*)\).*/\1,\\/p' $(SRC) | LC_ALL=C sort -t \" -k 2,2 >> $@
 	echo '}' >> $@
@@ -13,14 +13,14 @@ gen/word_table.h: $(SRC)
 gen/test_table.h: $(SRC)
 	@mkdir -p gen
 	sed -n -e 's/^ *int test_\([a-zA-Z0-9_]*\).*/extern int test_\1();/p' $(SRC) | sort > $@
-	echo '#define TESTS { \\' >> $@
+	echo '#define TESTS {\' >> $@
 	sed -n -e 's/^ *int test_\([a-zA-Z0-9_]*\).*/TEST(\1),\\/p' $(SRC) | LC_ALL=C sort >> $@
 	echo '}' >> $@
 
 gen/command_table.h: $(SRC)
 	@mkdir -p gen
 	sed -n -e 's/^ *void command_\([a-zA-Z0-9_]*\).*/extern void command_\1(cell_t *);/p' $(SRC) | sort > $@
-	echo '#define COMMANDS { \\' >> $@
+	echo '#define COMMANDS {\' >> $@
 	sed -n -e 's/^ *void command_\([a-zA-Z0-9_]*\).*/COMMAND(\1),\\/p' $(SRC) | LC_ALL=C sort >> $@
 	echo '}' >> $@
 
