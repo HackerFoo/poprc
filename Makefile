@@ -152,7 +152,7 @@ $(DIAGRAMS_FILE): $(DOTSVG)
 ifeq ($(DOTSVG),)
 	$(error "no dot files")
 else
-	bash wrap-svgs.sh $(sort $^) > $@
+	bash scripts/wrap-svgs.sh $(sort $^) > $@
 endif
 
 .PHONY: scan
