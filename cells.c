@@ -20,7 +20,7 @@
 #include "rt_types.h"
 #include "gen/cells.h"
 #include "gen/special.h"
-//#include "gen/rt.h"
+#include "gen/rt.h"
 
 // to catch errors that result in large allocations
 #define MAX_ALLOC_SIZE 32
@@ -274,9 +274,11 @@ csize_t closure_next_child(cell_t const *c) {
 
 cell_t *copy(cell_t const *c) {
   csize_t size = closure_cells(c);
-  cell_t *new = closure_alloc_cells(size);
-  memcpy(new, c, size * sizeof(cell_t));
-  return new;
+  cell_t *new_c = closure_alloc_cells(size);
+  memcpy(new_c, c, size * sizeof(cell_t));
+  trace(new_c, (cell_t *)c, tt_copy, 0);
+  new_c->n = 0;
+  return new_c;
 }
 
 cell_t *ref(cell_t *c) {

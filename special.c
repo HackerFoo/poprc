@@ -74,10 +74,16 @@ bool is_value(cell_t const *c) {
 }
 
 cell_t *var(type_t t) {
-  cell_t *c = closure_alloc(1);
-  c->func = func_value;
+  cell_t *c;
+  if((t & T_EXCLUSIVE) == T_LIST) {
+    c = make_list(1);
+    c->value.ptr[0] = func(func_placeholder, 0, 1);
+  } else {
+    c = closure_alloc(1);
+    c->func = func_value;
+    c->size = 1;
+  }
   c->value.type = T_VAR | t;
-  c->size = 1;
   return c;
 }
 
@@ -162,6 +168,7 @@ bool func_dep(cell_t **cp, UNUSED type_t t) {
   } else {
     // shouldn't happen
     // can be caused by circular reference
+    assert(false);
     fail(cp, t);
   }
   return false;

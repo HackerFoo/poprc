@@ -294,29 +294,22 @@ bool func_assert(cell_t **cp, type_t t) {
   if(!reduce_arg(c, 1, &alt_set, T_SYMBOL)) goto fail;
   cell_t *p = clear_ptr(c->expr.arg[1]);
 
+  if(!(p->value.integer[0] == SYM_True || is_var(p))) goto fail;
+  if(is_var(p)) trace(c, 0, tt_reduction, 0);
+  if(!reduce_arg(c, 0, &alt_set, t) ||
+     as_conflict(alt_set)) goto fail;
+  clear_flags(c);
+  cell_t *res;
   if(is_var(p)) {
-    cell_t *res = var(t);
-    trace(c, res, tt_reduction, 0);
-    if(!reduce_arg(c, 0, &alt_set, t) ||
-       as_conflict(alt_set)) goto fail;
-    clear_flags(c);
-    res->value.type = c->expr.arg[0]->value.type | T_VAR | T_TRACED;
-    cell_t *alt = c->alt;
-    store_reduced(cp, res);
-    if(alt) {
-      *cp = alt;
-      return false;
-    } else {
-      return true;
-    }
-  } else if(p->value.integer[0] == SYM_True) {
-    if(!reduce_arg(c, 0, &alt_set, t) ||
-       as_conflict(alt_set)) goto fail;
-    clear_flags(c);
-    store_reduced(cp, mod_alt(ref(c->expr.arg[0]), c->alt, alt_set));
-    return true;
-  } else goto fail;
- fail:
+    res = var(t);
+    res->value.alt_set = alt_set;
+    res->alt = c->alt;
+  } else {
+    res = mod_alt(ref(c->expr.arg[0]), c->alt, alt_set);
+  }
+  store_reduced(cp, res);
+  return true;
+fail:
   fail(cp, t);
   return false;
 }

@@ -387,12 +387,10 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
   switch(tt) {
 
   case tt_reduction: {
-    bool was_traced = (r->value.type & T_TRACED) != 0;
-    if(is_value(c) || !is_var(r)) break;
+    if(is_value(c) || (c->func != func_assert && r && !is_var(r))) break;
     if(c->func == func_dep ||
        c->func == func_placeholder) break;
 
-    r->value.type |= T_TRACED;
     if(c->func == func_cut ||
        c->func == func_id) {
       trace_index_assign(c, c->expr.arg[0]);
@@ -420,16 +418,23 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
           }
         }
       }
-      if(c->func == func_assert && was_traced) {
-        trace_update_type(c, r->value.type);
+      if(c->func == func_assert && r) {
+        // update the traced assert
+        pair_t *x = trace_find(c);
+        if(x) {
+          cell_t *t = &trace_cur[x->second];
+          t->expr.arg[0] = c->expr.arg[0];
+          t->value.type = r->value.type;
+        }
       } else {
         COUNTUP(i, out) {
           cell_t *d = c->expr.arg[in + i];
           if(d) trace_dep(d, c, d->value.type);
         }
-        trace_store(c, r->value.type);
+        trace_store(c, r ? r->value.type : T_ANY);
       }
     }
+    if(r) r->value.type |= T_TRACED;
     break;
   }
 

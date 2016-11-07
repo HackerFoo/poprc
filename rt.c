@@ -696,7 +696,6 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
     --c->n;
     n = copy(c);
     traverse_ref(n, ARGS | PTRS);
-    n->n = 0;
   }
   n->alt = alt;
   n->value.alt_set = alt_set;
