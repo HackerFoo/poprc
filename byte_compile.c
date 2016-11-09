@@ -424,7 +424,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
         if(x) {
           cell_t *t = &trace_cur[x->second];
           t->expr.arg[0] = c->expr.arg[0];
-          t->value.type = r->value.type;
+          t->expr_type |= (r->value.type & ~T_TRACED);
         }
       } else {
         COUNTUP(i, out) {

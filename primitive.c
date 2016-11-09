@@ -301,7 +301,7 @@ bool func_assert(cell_t **cp, type_t t) {
   clear_flags(c);
   cell_t *res;
   if(is_var(p)) {
-    res = var(t);
+    res = var(c->expr.arg[0]->value.type);
     res->value.alt_set = alt_set;
     res->alt = c->alt;
   } else {
