@@ -133,7 +133,7 @@ trace_index_t trace_store(const cell_t *c, type_t t) {
     if(c->value.type & T_TRACED) {
       return trace_get(c);
     }
-    if((c->value.type & T_EXCLUSIVE) == T_INT) {
+    if(!is_var(c) && (c->value.type & T_EXCLUSIVE) == T_INT) {
       pair_t *x = map_find(trace_values, c->value.integer[0]);
       if(x) {
         trace_index_add(c, x->second);
@@ -169,7 +169,7 @@ trace_index_t trace_store(const cell_t *c, type_t t) {
   trace_ptr += size;
   if(c->func != func_assert) dest->alt = NULL;
   trace_index_add(c, dest - trace_cur);
-  if(is_value(c) && (c->value.type & T_EXCLUSIVE) == T_INT) {
+  if(is_value(c) && !is_var(c) && (c->value.type & T_EXCLUSIVE) == T_INT) {
     pair_t p = {c->value.integer[0], dest - trace_cur};
     map_insert(trace_values, p);
   }
