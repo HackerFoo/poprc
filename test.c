@@ -74,9 +74,13 @@ bool check_free() {
   bool leak = false;
   FOREACH(i, cells) {
     cell_t *c = &cells[i];
-    if(is_closure(c) && c->n != PERSISTENT) {
-      printf("LEAK: %" PRIuPTR " (%u)\n", i, (unsigned int)cells[i].n);
-      leak = true;
+    if(is_closure(c)) {
+      if(c->n == PERSISTENT) {
+        i += closure_cells(c);
+      } else {
+        printf("LEAK: %" PRIuPTR " (%u)\n", i, (unsigned int)cells[i].n);
+        leak = true;
+      }
     }
   }
   return !leak;
