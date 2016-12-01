@@ -1,5 +1,10 @@
 #+TITLE: PoprC Notes
 
+* full relations
+- send down allocated memory in addition to type
+- type flag to indicate if variable or value
+- if value, it works as an addition argument to invert computation
+- ?x 1 + 3 == ! -->> (add ?x 1 3)
 * byte compile quotes
 - special pushl instruction
   - quote + compose
