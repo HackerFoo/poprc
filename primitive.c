@@ -285,6 +285,20 @@ bool func_alt2(cell_t **cp, UNUSED type_t t) {
   return false;
 }
 
+
+cell_t *map_assert(cell_t *c, cell_t *t) {
+  if(!(is_list(c) && list_size(c) > 0)) return ref(c);
+  cell_t *nc = copy(c);
+  traverse(nc, {
+      cell_t *np = closure_alloc(2);
+      np->func = func_assert;
+      np->expr.arg[0] = ref(*p);
+      np->expr.arg[1] = ref(t);
+      *p = np;
+    }, PTRS);
+  return nc;
+}
+
 // WORD("!", assert, 2, 1)
 bool func_assert(cell_t **cp, type_t t) {
   cell_t *c = *cp;
@@ -301,7 +315,7 @@ bool func_assert(cell_t **cp, type_t t) {
   clear_flags(c);
   cell_t *res;
   if(is_var(p)) {
-    res = var(c->expr.arg[0]->value.type);
+    res = map_assert(c->expr.arg[0], p);
     res->value.alt_set = alt_set;
     res->alt = c->alt;
   } else {

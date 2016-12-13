@@ -44,3 +44,10 @@ range: __ with inputs i and n __
   dup2 [drop] [swap 1+ swap range] | pushl2
     rotr <= ! __ make sure i <= n
     head __ get the value
+
+nested: [[0 swap False =:= !]
+           [1 swap True  =:= !] | swap False =:= !]
+          [[2 swap False =:= !]
+           [3 swap True  =:= !] | swap True  =:= !] |
+           pushl popr swap drop __ first arg
+           pushl popr swap drop __ second arg
