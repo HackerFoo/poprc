@@ -160,7 +160,7 @@ bool func_dep(cell_t **cp, UNUSED type_t t) {
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
   /* must make weak reference strong during reduction */
-  cell_t *p = ref(c->expr.arg[0]);
+  cell_t *p = c->expr.arg[0];
   if(p) {
     c->expr.arg[0] = 0;
     reduce_dep(&p);

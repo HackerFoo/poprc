@@ -67,7 +67,7 @@ bool reduce_list(cell_t *c) {
   csize_t n = list_size(c);
   cell_t **p = c->value.ptr;
   while(n--) {
-    *p = reduce_alt(*p);
+    reduce_alt(p);
     b &= *p != 0;
     if(*p == 0) *p = &fail_cell;
     ++p;
@@ -75,16 +75,12 @@ bool reduce_list(cell_t *c) {
   return b;
 }
 
-cell_t *reduce_alt(cell_t *c) {
-  cell_t *r, *p = c;
-  cell_t **q = &r;
-  while(p && reduce(&p, T_ANY)) {
-    *q = p;
-    q = &p->alt;
-    p = p->alt;
+void reduce_alt(cell_t **cp) {
+  cell_t **p = cp;
+  while(*p && reduce(p, T_ANY)) {
+    p = &(*p)->alt;
   }
-  *q = 0;
-  return r;
+  *p = 0;
 }
 
 void measure_start() {
@@ -476,6 +472,7 @@ bool eval_command(char *line, char *end) {
 
 void reduce_root(cell_t *c) {
   rt_init();
+  rt_root = &c;
   if(write_graph) make_graph_all(GRAPH_FILE);
   reduce_list(c);
   if(write_graph) make_graph_all(REDUCED_GRAPH_FILE);

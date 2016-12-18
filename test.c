@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
+#include <assert.h>
 
 #include "linenoise/linenoise.h"
 #include "gen/cells.h"
@@ -26,6 +27,7 @@
 #include "gen/test.h"
 #include "gen/eval.h"
 #include "gen/primitive.h"
+#include "gen/special.h"
 #include "gen/test_table.h"
 
 pair_t tests[] = TESTS;
@@ -111,4 +113,89 @@ int test_macro_dispatch() {
   DISPATCH(TEST, 5, "1", "2", "3");
   DISPATCH(TEST, 5, "1", "2", "3", "4");
   return 0;
+}
+
+static
+cell_t **flatten(cell_t *c, cell_t **tail) {
+  c = clear_ptr(c);
+  if(c && !c->tmp && tail != &c->tmp && c->n != PERSISTENT) {
+    LIST_ADD(tmp, tail, c);
+    traverse(c, {
+        tail = flatten(*p, tail);
+      }, PTRS | ALT | ARGS_IN);
+  }
+  return tail;
+}
+
+void print_list(cell_t *c) {
+  if(c) {
+    printf("{%d", (int)(c-cells));
+    while((c = c->tmp)) {
+      printf(", %d", (int)(c-cells));
+    }
+    printf("}\n");
+  } else {
+    printf("{}\n");
+  }
+}
+
+static
+void assert_ref_dec(cell_t *c) {
+  while(c) {
+    traverse(c, {
+        cell_t *x = clear_ptr(*p);
+        if(x && x->n != PERSISTENT) --x->n;
+      }, PTRS | ALT | ARGS_IN);
+    traverse(c, {
+        cell_t *x = clear_ptr(*p);
+        if(x && x->expr.arg[0] == 0) --c->n;
+      }, ARGS_OUT);
+    c = c->tmp;
+  }
+}
+
+static
+void assert_ref_inc(cell_t *c) {
+  while(c) {
+    traverse(c, {
+        cell_t *x = clear_ptr(*p);
+        if(x && x->n != PERSISTENT) ++x->n;
+      }, PTRS | ALT | ARGS_IN);
+    traverse(c, {
+        cell_t *x = clear_ptr(*p);
+        if(x && x->expr.arg[0] == 0) ++c->n;
+      }, ARGS_OUT);
+    c = c->tmp;
+  }
+}
+
+static
+bool assert_ref_check(cell_t *c) {
+  bool res = true;
+  while(c) {
+    refcount_t n = c->n + 1;
+    /* next line needed because of possible ref in trace_build_quote */
+    if(is_value(c) && !(~c->value.type & (T_VAR | T_TRACED))) n = 0;
+    if(n) {
+      printf("assert_ref: cell[%d].n == %d\n", (int)(c - cells), (int)n);
+      res = false;
+    }
+    c = c->tmp;
+  }
+  return res;
+}
+
+// check ref counts starting at root
+void assert_ref(cell_t *root) {
+  cell_t *list = 0;
+  refcount_t n = root->n;
+  flatten(root, &list);
+  //print_list(root);
+  assert_ref_dec(list);
+  root->n = -1;
+  bool check = assert_ref_check(list);
+  root->n = n;
+  assert_ref_inc(list);
+  clean_tmp(list);
+  assert(check);
 }

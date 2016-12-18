@@ -25,9 +25,13 @@
 #include "gen/special.h"
 #include "gen/eval.h"
 #include "gen/print.h"
+#include "gen/test.h"
 
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
+
+cell_t **rt_root = NULL;
+#define ASSERT_REF() assert_ref(*rt_root)
 
 // Default tracing function that does nothing
 void trace_noop(UNUSED cell_t *c, UNUSED cell_t *r, UNUSED trace_type_t tt, UNUSED csize_t n) {}
@@ -110,6 +114,7 @@ void clear_flags(cell_t *c) {
 // Reduce *cp with type t
 bool reduce(cell_t **cp, type_t t) {
   cell_t *c;
+  ASSERT_REF();
   while((c = clear_ptr(*cp))) {
     if(!closure_is_ready(c)) close_placeholders(c);
     assert(is_closure(c));
@@ -118,7 +123,9 @@ bool reduce(cell_t **cp, type_t t) {
       continue;
     }
     unsigned int m = measure.reduce_cnt++;
-    if(c->func(cp, t)) {
+    bool success = c->func(cp, t);
+    ASSERT_REF();
+    if(success) {
       cell_t *n = clear_ptr(*cp);
       if(write_graph && measure.reduce_cnt > m) {
         mark_cell(n);
@@ -722,7 +729,7 @@ void store_lazy(cell_t **cp, cell_t *c, cell_t *r, alt_set_t alt_set) {
 
 void store_lazy_dep(cell_t *c, cell_t *d, cell_t *r, alt_set_t alt_set) {
   if(d) {
-    drop(c);
+    drop(d->expr.arg[0]);
     d->func = func_id;
     d->size = 1;
     d->expr.out = 0;
