@@ -7,14 +7,14 @@ imports:
 
 __ f2b: | popr ! cut popr swap drop
 
-__ f5: [] pushl rot rot | swap pushl popr swap popr swap drop dup rot > ! cut
+__ f5: [] pushl rotl rotl | swap pushl popr swap popr swap drop dup rotl > ! cut
 
 __ x y [z+] should be x + y + z + 1, gives 2y + 2z + 1
 __ f2: pushl pushl popr 1 + swap pushl popr swap popr swap drop +
 
 __ f1: [] [] ifte pushl
 
-f6: rot
+f6: rotl
 
 __ this expands forever because laziness expands backwards; assert must be *later* than recursive call
 __ dec: [dup 5 <= !] [dup 5 > ! 1- dec] | pushl popr swap drop
