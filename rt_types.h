@@ -79,7 +79,13 @@ typedef bool (reduce_t)(cell_t **cell, type_t type);
 /* unevaluated expression */
 struct __attribute__((packed)) expr {
   csize_t out;
-  cell_t *arg[1];
+  union {
+    cell_t *arg[2];
+    struct {
+      cell_t *arg0;
+      alt_set_t alt_set;
+    };
+  };
 };
 
 /* reduced value */

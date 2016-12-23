@@ -318,7 +318,7 @@ fail:
 bool func_id(cell_t **cp, type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
-  alt_set_t alt_set = (alt_set_t)c->expr.arg[1];
+  alt_set_t alt_set = c->expr.alt_set;
 
   //if(alt_set || c->alt) {
     if(!reduce_arg(c, 0, &alt_set, t) ||
@@ -366,7 +366,7 @@ cell_t *id(cell_t *c, alt_set_t as) {
   cell_t *i = closure_alloc(1);
   i->func = func_id;
   i->expr.arg[0] = c;
-  i->expr.arg[1] = (cell_t *)as;
+  i->expr.alt_set = as;
   return i;
 }
 

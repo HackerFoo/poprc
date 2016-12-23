@@ -1022,7 +1022,7 @@ expand:
     cell_t *d = c->expr.arg[n - 1 - i];
     d->func = func_id;
     d->expr.arg[0] = get_return_arg(map, returns, i);
-    d->expr.arg[1] = (cell_t *)alt_set;
+    d->expr.alt_set = alt_set;
   }
 
   // rest

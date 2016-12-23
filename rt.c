@@ -710,7 +710,7 @@ void store_lazy(cell_t **cp, cell_t *c, cell_t *r, alt_set_t alt_set) {
     c->expr.out = 0;
     c->expr.arg[0] = r;
     if(c->n) ref(r);
-    c->expr.arg[1] = (cell_t *)alt_set;
+    c->expr.alt_set = alt_set;
   }
 
   if(!alt_set) {
@@ -727,7 +727,7 @@ void store_lazy_dep(cell_t *c, cell_t *d, cell_t *r, alt_set_t alt_set) {
     d->size = 1;
     d->expr.out = 0;
     d->expr.arg[0] = r;
-    d->expr.arg[1] = (cell_t *)alt_set;
+    d->expr.alt_set = alt_set;
   } else drop(r);
 }
 
