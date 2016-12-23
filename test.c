@@ -148,7 +148,7 @@ void assert_ref_dec(cell_t *c) {
       }, PTRS | ALT | ARGS_IN);
     traverse(c, {
         cell_t *x = clear_ptr(*p);
-        if(x && x->expr.arg[0] == 0) --c->n;
+        if(x && x->func == func_dep_entered) --c->n;
       }, ARGS_OUT);
     c = c->tmp;
   }
@@ -163,7 +163,7 @@ void assert_ref_inc(cell_t *c) {
       }, PTRS | ALT | ARGS_IN);
     traverse(c, {
         cell_t *x = clear_ptr(*p);
-        if(x && x->expr.arg[0] == 0) ++c->n;
+        if(x && x->func == func_dep_entered) ++c->n;
       }, ARGS_OUT);
     c = c->tmp;
   }

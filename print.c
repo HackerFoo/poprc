@@ -79,6 +79,7 @@ char const *function_name(reduce_t *f) {
   if(f == func_value) return "value";
   if(f == func_fail) return "fail";
   if(f == func_dep) return "dep";
+  if(f == func_dep_entered) return "dep_entered";
   const char *s = NULL;
   FORMAP(i, primitive_module) {
     cell_t *e = (cell_t *)primitive_module[i].second;

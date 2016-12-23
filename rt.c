@@ -727,7 +727,7 @@ void store_lazy(cell_t **cp, cell_t *c, cell_t *r, alt_set_t alt_set) {
   }
 }
 
-void store_lazy_dep(cell_t *c, cell_t *d, cell_t *r, alt_set_t alt_set) {
+void store_lazy_dep(cell_t *d, cell_t *r, alt_set_t alt_set) {
   if(d) {
     drop(d->expr.arg[0]);
     d->func = func_id;

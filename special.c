@@ -159,18 +159,18 @@ bool func_dep(cell_t **cp, UNUSED type_t t) {
   assert(!is_marked(c));
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
-  /* must make weak reference strong during reduction */
-  cell_t *p = c->expr.arg[0];
-  if(p) {
-    c->expr.arg[0] = 0;
-    reduce_dep(&p);
-    drop(p);
-  } else {
-    // shouldn't happen
-    // can be caused by circular reference
-    assert(false);
-    fail(cp, t);
-  }
+  /* must temporarily reference to avoid replacement of p which is referenced elsewhere */
+  cell_t *p = ref(c->expr.arg[0]);
+  c->func = func_dep_entered;
+  reduce_dep(&p);
+  drop(p);
+  return false;
+}
+
+bool func_dep_entered(cell_t **cp, UNUSED type_t t) {
+  // shouldn't happen; circular dependency
+  assert(false);
+  fail(cp, t);
   return false;
 }
 

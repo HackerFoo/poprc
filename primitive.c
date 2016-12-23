@@ -245,7 +245,7 @@ bool func_popr(cell_t **cp, UNUSED type_t t) {
     }
   } else goto fail;
 
-  store_lazy_dep(c, d, res_d, alt_set);
+  store_lazy_dep(d, res_d, alt_set);
   res->value.alt_set = alt_set;
   res->alt = c->alt;
   store_reduced(cp, res);
@@ -357,7 +357,7 @@ bool func_swap(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   cell_t *d = c->expr.arg[2];
-  store_lazy_dep(c, d, c->expr.arg[0], 0);
+  store_lazy_dep(d, c->expr.arg[0], 0);
   store_lazy(cp, c, c->expr.arg[1], 0);
   return false;
 }
@@ -375,7 +375,7 @@ bool func_dup(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   cell_t *d = c->expr.arg[1];
-  store_lazy_dep(c, d, ref(c->expr.arg[0]), 0);
+  store_lazy_dep(d, ref(c->expr.arg[0]), 0);
   store_lazy(cp, c, c->expr.arg[0], 0);
   return false;
 }
@@ -459,7 +459,7 @@ bool func_ap(cell_t **cp, UNUSED type_t t) {
   csize_t stop = min(ln, out);
   csize_t i;
   for(i = 0; i < stop; i++) {
-    store_lazy_dep(c, c->expr.arg[n-1-i], ref(l->value.ptr[i]), alt_set);
+    store_lazy_dep(c->expr.arg[n-1-i], ref(l->value.ptr[i]), alt_set);
   }
 
   for(; i < out; i++) {
