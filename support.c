@@ -387,3 +387,61 @@ bool find_line(const char *x, const char **s, size_t *size) {
 unsigned int int_log2(unsigned int x) {
   return x <= 1 ? 0 : (sizeof(x) * 8) - __builtin_clz(x - 1);
 }
+
+bool set_insert(uintptr_t x, uintptr_t *set, size_t size) {
+  assert(x);
+  size_t offset = x % size;
+  for(size_t i = 0; i < size; i++) {
+    uintptr_t *p = &set[(i + offset) % size];
+    if(*p == x) return true;
+    if(!*p) {
+      *p = x;
+      return false;
+    }
+  }
+  // set is full
+  assert(false);
+  return false;
+}
+
+bool set_member(uintptr_t x, uintptr_t *set, size_t size) {
+  if(!x) return false;
+  size_t offset = x % size;
+  for(size_t i = 0; i < size; i++) {
+    uintptr_t *p = &set[(i + offset) % size];
+    if(*p == x) return true;
+  }
+  return false;
+}
+
+bool set_remove(uintptr_t x, uintptr_t *set, size_t size) {
+  if(!x) return false;
+  size_t offset = x % size;
+  for(size_t i = 0; i < size; i++) {
+    uintptr_t *p = &set[(i + offset) % size];
+    if(*p == x) {
+      *p = 0;
+      return true;
+    }
+  }
+  return false;
+}
+
+int test_set() {
+  uintptr_t set[7] = {0};
+  const size_t size = LENGTH(set);
+  uintptr_t data[] = {1, 100, 210, 32, 31};
+  FOREACH(i, data) {
+    if(set_insert(data[i], set, size)) return -1;
+  }
+  FOREACH(i, set) {
+    if(data[i]) printf("data[%d] = %d\n", (int)i, (int)data[i]);
+  }
+  FOREACH(i, data) {
+    if(!set_member(data[i], set, size)) return -2;
+  }
+  FOREACH(i, data) {
+    if(!set_remove(data[i], set, size)) return -3;
+  }
+  return 0;
+}

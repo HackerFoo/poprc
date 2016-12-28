@@ -146,10 +146,6 @@ void assert_ref_dec(cell_t *c) {
         cell_t *x = clear_ptr(*p);
         if(x && x->n != PERSISTENT) --x->n;
       }, PTRS | ALT | ARGS_IN);
-    traverse(c, {
-        cell_t *x = clear_ptr(*p);
-        if(x && x->func == func_dep_entered) --c->n;
-      }, ARGS_OUT);
     c = c->tmp;
   }
 }
@@ -161,22 +157,31 @@ void assert_ref_inc(cell_t *c) {
         cell_t *x = clear_ptr(*p);
         if(x && x->n != PERSISTENT) ++x->n;
       }, PTRS | ALT | ARGS_IN);
-    traverse(c, {
-        cell_t *x = clear_ptr(*p);
-        if(x && x->func == func_dep_entered) ++c->n;
-      }, ARGS_OUT);
     c = c->tmp;
   }
 }
 
 static
-bool assert_ref_check(cell_t *c) {
+bool is_root(cell_t *c, cell_t ***roots, size_t n) {
+  COUNTUP(i, n) {
+    if(roots[i] && c == *roots[i]) return true;
+  }
+  return false;
+}
+
+static
+void print_roots(cell_t ***roots, size_t n) {
+  COUNTUP(i, n) {
+    if(roots[i]) printf("root: %d\n", (int)((*roots[i])-cells));
+  }
+}
+
+static
+bool assert_ref_check(cell_t *c, cell_t ***roots, size_t roots_n) {
   bool res = true;
   while(c) {
     refcount_t n = c->n + 1;
-    /* next line needed because of possible ref in trace_build_quote */
-    if(is_value(c) && !(~c->value.type & (T_VAR | T_TRACED))) n = 0;
-    if(n) {
+    if(n && !is_root(c, roots, roots_n)) {
       printf("assert_ref: cell[%d].n == %d\n", (int)(c - cells), (int)n);
       res = false;
     }
@@ -186,16 +191,16 @@ bool assert_ref_check(cell_t *c) {
 }
 
 // check ref counts starting at root
-void assert_ref(cell_t *root) {
-  cell_t *list = 0;
-  refcount_t n = root->n;
-  flatten(root, &list);
-  //print_list(root);
+void assert_ref(cell_t ***roots, size_t n) {
+  cell_t *list = 0, **tail = &list;
+  COUNTUP(i, n) {
+    if(!roots[i]) continue;
+    tail = flatten(*roots[i], tail);
+  }
   assert_ref_dec(list);
-  root->n = -1;
-  bool check = assert_ref_check(list);
-  root->n = n;
+  bool check = assert_ref_check(list, roots, n);
   assert_ref_inc(list);
   clean_tmp(list);
+  if(!check) print_roots(roots, n);
   assert(check);
 }

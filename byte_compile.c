@@ -582,6 +582,7 @@ trace_index_t trace_build_quote(cell_t *q, trace_index_t li) {
   if(li >= 0) trace_cur[li].n++;
   n->expr.arg[in] = trace_encode(li);
   n->expr.arg[in + 1] = ref(q); // entry points to the quote for now
+  insert_root(&n->expr.arg[in + 1]);
 
   return n - trace_cur;
 }
@@ -645,6 +646,8 @@ unsigned int trace_reduce(cell_t *c) {
   cell_t *first;
   unsigned int alts = 0;
 
+  insert_root(&c);
+
   // first one
   COUNTUP(i, n) {
     reduce(&c->value.ptr[i], T_ANY);
@@ -676,6 +679,8 @@ unsigned int trace_reduce(cell_t *c) {
       alts++;
     }
   }
+
+  remove_root(&c);
   closure_free(p);
   return alts;
 }
@@ -827,6 +832,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   trace_cur = ++trace_ptr;
 
   csize_t in = closure_in(q) - 1;
+  assert(remove_root(&q->expr.arg[in]));
   cell_t *c = quote(q->expr.arg[in]);
   e->n = PERSISTENT;
   e->entry.out = 1;

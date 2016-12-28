@@ -26,12 +26,22 @@
 #include "gen/eval.h"
 #include "gen/print.h"
 #include "gen/test.h"
+#include "gen/support.h"
 
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
 
-cell_t **rt_root = NULL;
-#define ASSERT_REF() assert_ref(*rt_root)
+static const size_t rt_roots_n = 31;
+static cell_t **rt_roots[rt_roots_n];
+#define ASSERT_REF() assert_ref(rt_roots, rt_roots_n)
+
+bool insert_root(cell_t **r) {
+  return set_insert((uintptr_t)r, (uintptr_t *)rt_roots, rt_roots_n);
+}
+
+bool remove_root(cell_t **r) {
+  return set_remove((uintptr_t)r, (uintptr_t *)rt_roots, rt_roots_n);
+}
 
 // Default tracing function that does nothing
 void trace_noop(UNUSED cell_t *c, UNUSED cell_t *r, UNUSED trace_type_t tt, UNUSED csize_t n) {}
@@ -47,6 +57,7 @@ void set_trace(void (*t)(cell_t *, cell_t *, trace_type_t, csize_t)) {
 // Initialize run time
 void rt_init() {
   alt_cnt = 0;
+  memset(rt_roots, 0, sizeof(rt_roots));
 }
 
 // Duplicate c to c->alt and return it

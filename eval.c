@@ -472,10 +472,11 @@ bool eval_command(char *line, char *end) {
 
 void reduce_root(cell_t *c) {
   rt_init();
-  rt_root = &c;
+  insert_root(&c);
   if(write_graph) make_graph_all(GRAPH_FILE);
   reduce_list(c);
   if(write_graph) make_graph_all(REDUCED_GRAPH_FILE);
+  remove_root(&c);
 }
 
 cell_t *eval_module() {

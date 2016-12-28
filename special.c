@@ -161,8 +161,10 @@ bool func_dep(cell_t **cp, UNUSED type_t t) {
   /* don't need to drop arg, handled by other function */
   /* must temporarily reference to avoid replacement of p which is referenced elsewhere */
   cell_t *p = ref(c->expr.arg[0]);
+  insert_root(&p);
   c->func = func_dep_entered;
   reduce_dep(&p);
+  remove_root(&p);
   drop(p);
   return false;
 }
