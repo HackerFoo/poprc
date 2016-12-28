@@ -101,10 +101,18 @@ UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 	OPEN_DIAGRAMS := open
 else
+ifndef OPEN_DIAGRAMS
 	OPEN_DIAGRAMS := $(shell command -v termux-share 2> /dev/null)
-	OPEN_DIAGRAMS ?= $(shell command -v chrome 2> /dev/null)
-	OPEN_DIAGRAMS ?= $(shell command -v chromium 2> /dev/null)
-	OPEN_DIAGRAMS ?= $(shell command -v firefox 2> /dev/null)
+endif
+ifndef OPEN_DIAGRAMS
+	OPEN_DIAGRAMS := $(shell command -v google-chrome 2> /dev/null)
+endif
+ifndef OPEN_DIAGRAMS
+	OPEN_DIAGRAMS := $(shell command -v chromium-browser 2> /dev/null)
+endif
+ifndef OPEN_DIAGRAMS
+	OPEN_DIAGRAMS := $(shell command -v firefox 2> /dev/null)
+endif
 endif
 
 #DIFF_TEST := diff -u -F '^@ '
