@@ -390,11 +390,21 @@ unsigned int int_log2(unsigned int x) {
 
 bool set_insert(uintptr_t x, uintptr_t *set, size_t size) {
   assert(x);
-  size_t offset = x % size;
-  for(size_t i = 0; i < size; i++) {
-    uintptr_t *p = &set[(i + offset) % size];
+  size_t j = x % size;
+  size_t d = 0;
+  for(size_t i = 0; i < size; i++, d++, j = (j + 1) % size) {
+    uintptr_t *p = &set[j];
     if(*p == x) return true;
-    if(!*p) {
+    if(*p) {
+      /* Robin Hood hash */
+      size_t dx = (size + j - *p % size) % size;
+      if(dx < d) {
+        d = dx;
+        uintptr_t tmp = *p;
+        *p = x;
+        x = tmp;
+      }
+    } else {
       *p = x;
       return false;
     }
@@ -430,12 +440,12 @@ bool set_remove(uintptr_t x, uintptr_t *set, size_t size) {
 int test_set() {
   uintptr_t set[7] = {0};
   const size_t size = LENGTH(set);
-  uintptr_t data[] = {1, 100, 210, 32, 31};
+  uintptr_t data[] = {7, 8, 9, 14, 21, 28};
   FOREACH(i, data) {
     if(set_insert(data[i], set, size)) return -1;
   }
   FOREACH(i, set) {
-    if(data[i]) printf("data[%d] = %d\n", (int)i, (int)data[i]);
+    if(set[i]) printf("set[%d] = %d\n", (int)i, (int)set[i]);
   }
   FOREACH(i, data) {
     if(!set_member(data[i], set, size)) return -2;
