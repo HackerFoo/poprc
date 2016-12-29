@@ -211,6 +211,8 @@ cell_t *expand_inplace(cell_t *c, csize_t s) {
 
   // shift and update deps
   memmove(&c->expr.arg[s], &c->expr.arg[0], (c->size - 1) * sizeof(cell_t *));
+  memset(c->expr.arg, 0, s * sizeof(c->expr.arg[0]));
+
   csize_t i;
   for(i = c->size - c->expr.out; i < c->size; ++i) {
     if(c->expr.arg[i]) c->expr.arg[i]->expr.arg[0] = c;
@@ -596,6 +598,7 @@ void check_tmps() {
 }
 
 /* ref count not from deps */
+static
 refcount_t nondep_n(cell_t *c) {
   if(!is_closure(c)) return 0;
   refcount_t nd = c->n;
@@ -610,6 +613,9 @@ refcount_t nondep_n(cell_t *c) {
   return nd;
 }
 
+/* replace references in r with corresponding tmp references */
+/* m => in-place, update ref counts for replaced references */
+static
 void mutate_update(cell_t *r, bool m) {
   traverse(r, {
       cell_t *c = clear_ptr(*p);
@@ -629,6 +635,9 @@ void mutate_update(cell_t *r, bool m) {
     }, ARGS_OUT);
 }
 
+/* traverse r and make copies to tmp */
+/* u => subtree is unique, exp => to be expanded */
+static
 bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u, int exp) {
   r = clear_ptr(r);
   if(!is_closure(r)) return false;
@@ -650,6 +659,7 @@ bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u, int exp) {
   if(dirty) {
     if(u) {
       // if unique, rewrite pointers inplace
+      if(exp && r == c) r = expand_inplace(r, exp); // *** TODO how to update value of r?
       mutate_update(r, true);
     } else {
       // otherwise, add to the list and defer
@@ -664,6 +674,7 @@ bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u, int exp) {
   return dirty && !u;
 }
 
+/* make a path copy from the root (r) to the cell to modify (c) and store in tmps */
 cell_t *mutate(cell_t *c, cell_t *r, int exp) {
   cell_t *l = 0;
 
@@ -690,6 +701,7 @@ cell_t *mutate(cell_t *c, cell_t *r, int exp) {
   return l;
 }
 
+// execute deferred drops and zero tmps
 void clean_tmp(cell_t *l) {
   while(l) {
     cell_t *next = l->tmp;
