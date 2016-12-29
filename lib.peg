@@ -55,13 +55,13 @@ __ apply a quote to a single input yielding two outputs
 ap12: pushl popr swap popr swap drop swap
 
 __ apply a quote underneath the top, 1 -> 1
-dip11: swap pushr pushl popr swap popr swap drop swap
+__ dip11: swap pushr pushl popr swap popr swap drop swap
 
 __ apply a quote underneath the top, 1 -> 2
-dip12: swap pushr pushl popr swap pushl [swap] . popr swap popr swap popr swap drop
+__ dip12: swap pushr pushl popr swap pushl [swap] . popr swap popr swap popr swap drop
 
 __ apply a quote underneath the top, 2 -> 1
-dip21: swap pushr pushl pushl popr swap popr swap drop swap
+__ dip21: swap pushr pushl pushl popr swap popr swap drop swap
 
 
 module logic:

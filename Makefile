@@ -172,6 +172,7 @@ scan: clean
 test: eval
 	./eval -test '' -check_free no -stats no -quit | $(DIFF_TEST) test_output/test.log -
 	./eval -echo yes -stats no < tests.txt | $(DIFF_TEST) test_output/tests.txt.log -
+	./eval -quiet yes -stats no -lo lib.peg -lo tests.peg -all -q | $(DIFF_TEST) test_output/bytecode.log -
 
 test_output/test.log: eval
 	@mkdir -p test_output
@@ -181,8 +182,12 @@ test_output/tests.txt.log: eval tests.txt
 	@mkdir -p test_output
 	./eval -echo yes -stats no < tests.txt > $@
 
+test_output/bytecode.log: eval lib.peg tests.peg
+	@mkdir -p test_output
+	./eval -quiet yes -stats no -lo lib.peg -lo tests.peg -all -q > $@
+
 .PHONY: test_output
-test_output: test_output/test.log test_output/tests.txt.log
+test_output: test_output/test.log test_output/tests.txt.log test_output/bytecode.log
 
 .PHONY: rtags
 rtags: make-eval.log

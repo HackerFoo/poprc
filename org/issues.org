@@ -49,7 +49,7 @@ Compile to direct C when possible
 look for word in parent module, parent imports, context module, context imports, ...
 ** TODO get cgen working with simple popr & pushl functions
 ** STARTED fix func_exec to work when branching and recursive
-** TODO add compilation tests
+** DONE add compilation tests
 ** DONE handle alts correctly in func_exec
 ** DONE f1: [1+]
 ** DONE fix get2 in tests.peg

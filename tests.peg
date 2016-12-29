@@ -22,21 +22,21 @@ dec: [dup 5 <= !] [dup 1- dec swap 5 > !] | pushl popr swap drop
 
 fib: [dup 1 <= !] [dup 1- dup 1- fib swap fib + swap 1 > !] | pushl popr swap drop
 
-fact: [1 == 1 swap !] [dup dup 1- fact * swap 1 > !] | pushl popr swap drop
+__ fact: [1 == 1 swap !] [dup dup 1- fact * swap 1 > !] | pushl popr swap drop
 
 ___ these need fixed
 ___ from here
 
-fact2: [1 == 1 swap !] [dup 1- swap [*] pushl swap pushr pushl get2 fact2] | pushl pushl get2
+__ fact2: [1 == 1 swap !] [dup 1- swap [*] pushl swap pushr pushl get2 fact2] | pushl pushl get2
 get2: popr swap popr swap drop swap
 
 ___ to here
 
 not: False =:=
-len: dup is_nil [0 swap!] [swap popr drop len 1+ swap not!] | pushl pushl popr swap drop
+__ len: dup is_nil [0 swap!] [swap popr drop len 1+ swap not!] | pushl pushl popr swap drop
 
-iota: [0 == [] swap !] [dup [dup 1- iota swap] pushl swap 0 != !] | pushl popr swap drop
-sum: [is_nil 0 swap !] [dup get2 swap sum + swap is_nil not!] | pushl popr swap drop
+__ iota: [0 == [] swap !] [dup [dup 1- iota swap] pushl swap 0 != !] | pushl popr swap drop
+__ sum: [is_nil 0 swap !] [dup get2 swap sum + swap is_nil not!] | pushl popr swap drop
 
 pushl2: pushl pushl
 range: __ with inputs i and n __
@@ -45,9 +45,11 @@ range: __ with inputs i and n __
     rotr <= ! __ make sure i <= n
     head __ get the value
 
+__[
 nested: [[0 swap False =:= !]
            [1 swap True  =:= !] | swap False =:= !]
           [[2 swap False =:= !]
            [3 swap True  =:= !] | swap True  =:= !] |
            pushl popr swap drop __ first arg
            pushl popr swap drop __ second arg
+]__
