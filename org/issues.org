@@ -66,6 +66,9 @@ look for word in parent module, parent imports, context module, context imports,
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
+** TODO f1 [1] swap ! popr swap drop
+** TODO f1: 1 swap pushl popr ! popr swap drop
+** TODO ? [dup 1- swap 3 <] [dup 1+ swap 3 >] | pushl popr ! popr swap drop
 ** DONE 1 2 3 | | dup 3 < !
 ** DONE f1: [ 1 ] [ 2 ] | pushl popr __ 3 f1
 ** TODO f1: [] pushl f1 __ why is arity 1 -> 2 instead of 1 -> 1?
