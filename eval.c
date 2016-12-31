@@ -571,3 +571,7 @@ bool unload_files() {
   }
   return success;
 }
+
+void command_pointer_bits(UNUSED cell_t *rest) {
+  printf("%d\n", (int)sizeof(void *) * 8);
+}

@@ -29,7 +29,7 @@ ifeq ($(findstring gcc, $(CC)),gcc)
 endif
 ifeq ($(findstring clang, $(CC)),clang)
 	CFLAGS = -Wall -Wextra -pedantic -std=gnu11 -Wno-gnu-zero-variadic-macro-arguments
-	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -std=c++98
+	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -std=c++98 -m32
 	OPT_FLAG=-O3
 endif
 ifeq ($(findstring emcc, $(CC)),emcc)
@@ -37,6 +37,11 @@ ifeq ($(findstring emcc, $(CC)),emcc)
 	USE_LINENOISE=n
 	USE_READLINE=n
 	OPT_FLAG=-Os
+endif
+
+ifeq ($(FORCE_32_BIT),y)
+	CFLAGS += -m32
+	LDFLAGS += -m32
 endif
 
 ifeq ($(BUILD),debug)
@@ -172,7 +177,7 @@ scan: clean
 test: eval
 	./eval -test '' -check_free no -stats no -quit | $(DIFF_TEST) test_output/test.log -
 	./eval -echo yes -stats no < tests.txt | $(DIFF_TEST) test_output/tests.txt.log -
-	./eval -quiet yes -stats no -lo lib.peg -lo tests.peg -all -q | $(DIFF_TEST) test_output/bytecode.log -
+	./eval -quiet yes -stats no -lo lib.peg -lo tests.peg -all -q | $(DIFF_TEST) test_output/bytecode`./eval -pointer-bits -q`.log -
 
 test_output/test.log: eval
 	@mkdir -p test_output
@@ -182,12 +187,16 @@ test_output/tests.txt.log: eval tests.txt
 	@mkdir -p test_output
 	./eval -echo yes -stats no < tests.txt > $@
 
-test_output/bytecode.log: eval lib.peg tests.peg
+test_output/bytecode32.log: eval lib.peg tests.peg
 	@mkdir -p test_output
-	./eval -quiet yes -stats no -lo lib.peg -lo tests.peg -all -q > $@
+	if [[ `./eval -pointer-bits -q` = 32 ]]; then ./eval -quiet yes -stats no -lo lib.peg -lo tests.peg -all -q > $@; fi
+
+test_output/bytecode64.log: eval lib.peg tests.peg
+	@mkdir -p test_output
+	if [[ `./eval -pointer-bits -q` = 64 ]]; then ./eval -quiet yes -stats no -lo lib.peg -lo tests.peg -all -q > $@; fi
 
 .PHONY: test_output
-test_output: test_output/test.log test_output/tests.txt.log test_output/bytecode.log
+test_output: test_output/test.log test_output/tests.txt.log test_output/bytecode32.log test_output/bytecode64.log
 
 .PHONY: rtags
 rtags: make-eval.log
