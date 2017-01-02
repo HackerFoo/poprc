@@ -156,9 +156,9 @@ void make_graph_all(char const *path) {
 
 void print_cell_pointer(FILE *f, cell_t *p) {
   if(p == &fail_cell) {
-    fprintf(f, "<font color=\"red\">0xFAIL_CELL</font>");
+    fprintf(f, "<font color=\"red\">&amp;fail_cell</font>");
   } else if(p == &nil_cell) {
-    fprintf(f, "<font color=\"lightgray\">0xNIL_CELL</font>");
+    fprintf(f, "<font color=\"lightgray\">&amp;nil_cell</font>");
   } else {
     fprintf(f, "<font color=\"lightgray\">%p</font>", (void *)p);
   }

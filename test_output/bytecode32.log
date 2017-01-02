@@ -103,6 +103,19 @@ ___ tests.f6 (3 -> 3) ___
 [2] var, type = ?a x1
 [3] return [ 1 0 2 ], type = r x1
 
+___ tests.fact (1 -> 1) ___
+[0] var, type = ?i x4
+[1] val 1, type = i x4
+[2] __primitive.eq 0 1, type = ?s x1
+[3] __primitive.assert 1 2, type = ?i x1
+[4] return [ 3 ], type = r -> 10 x1
+[5] __primitive.gt 0 1, type = ?s x1
+[6] __primitive.assert 9 5, type = ?i x1
+[7] __primitive.sub 0 1, type = ?i x1
+[8] tests.fact 7, type = ?i x1
+[9] __primitive.mul 0 8, type = ?i x1
+[10] return [ 6 ], type = r x1
+
 ___ tests.fib (1 -> 1) ___
 [0] var, type = ?i x4
 [1] val 1, type = i x4
@@ -125,6 +138,21 @@ ___ tests.get2 (1 -> 2) ___
 [3] __primitive.dep 4, type = a x1
 [4] __primitive.popr 2 3, type = ?l x1
 [5] return [ 3 1 ], type = r x1
+
+___ tests.len (1 -> 1) ___
+[0] var, type = ?l x2
+[1] __primitive.is_nil 0, type = ?s x2
+[2] __primitive.assert 3 1, type = ?i x1
+[3] val 0, type = i x1
+[4] return [ 2 ], type = r -> 12 x1
+[5] val 0, type = s x1
+[6] __primitive.eq_s 1 5, type = ?s x1
+[7] __primitive.assert 11 6, type = ?i x1
+[8] __primitive.popr 0 -1, type = ?l x1
+[9] tests.len 8, type = ?i x1
+[10] val 1, type = i x1
+[11] __primitive.add 9 10, type = ?i x1
+[12] return [ 7 ], type = r x1
 
 ___ tests.not (1 -> 1) ___
 [0] var, type = ?s x1
