@@ -287,7 +287,7 @@ bool func_alt2(cell_t **cp, UNUSED type_t t) {
 
 
 cell_t *map_assert(cell_t *c, cell_t *t) {
-  if(!(is_list(c) && list_size(c) > 0)) return ref(c);
+  if(!(is_list(c) && list_size(c) > 0)) return var(c->value.type);
   cell_t *nc = copy(c);
   traverse(nc, {
       cell_t *np = closure_alloc(2);
@@ -309,7 +309,7 @@ bool func_assert(cell_t **cp, type_t t) {
   cell_t *p = clear_ptr(c->expr.arg[1]);
 
   if(!(p->value.integer[0] == SYM_True || is_var(p))) goto fail;
-  if(is_var(p)) trace(c, 0, tt_reduction, 0);
+  if(is_var(p) && t != T_LIST) trace(c, 0, tt_reduction, 0); // *** HACKy, e.g. t == T_ANY
   if(!reduce_arg(c, 0, &alt_set, t) ||
      as_conflict(alt_set)) goto fail;
   clear_flags(c);

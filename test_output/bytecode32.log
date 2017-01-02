@@ -141,25 +141,14 @@ ___ tests.pushl2 (3 -> 1) ___
 [5] return [ 4 ], type = r x1
 
 ___ tests.range (2 -> 1) ___
-[0] var, type = ?i x3
-[1] var, type = ?i x5
-[2] __primitive.lte 1 0, type = ?s x4
-[3] __primitive.assert 4 2, type = l x0
-[4] quote tests.range_4 0 1 -4096, type = l x1
-[6] __primitive.assert 1 2, type = ?i x1
-[7] return [ 6 ], type = r -> 15 x1
-[8] __primitive.assert 9 2, type = l x0
-[9] quote tests.range_9 0 1 -4096, type = l x1
-[11] __primitive.assert 14 2, type = ?0 x1
-[12] val 1, type = i x1
-[13] __primitive.add 1 12, type = ?i x0
-
-___ tests.range_4 (2 -> 1) ___
-[0] var, type = ?i x1
-[1] var, type = ?i x0
-[2] return [ 0 ], type = r x1
-
-___ tests.range_9 (2 -> 1) ___
-[0] var, type = ?0 x1
-[1] return [ 0 ], type = r x1
+[0] var, type = ?i x2
+[1] var, type = ?i x3
+[2] __primitive.lte 1 0, type = ?s x2
+[3] __primitive.assert 1 2, type = ?i x1
+[4] return [ 3 ], type = r -> 9 x1
+[5] __primitive.assert 8 2, type = ?0 x1
+[6] val 1, type = i x1
+[7] __primitive.add 1 6, type = ?i x1
+[8] tests.range 7 0, type = ?0 x1
+[9] return [ 5 ], type = r x1
 

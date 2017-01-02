@@ -405,6 +405,8 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       }
     } else if(c->func == func_pushl) {
       trace_store_pushl(c);
+    } else if(c->func == func_assert && is_list(c->expr.arg[0])) {
+      trace_index_assign(c, c->expr.arg[0]);
     } else {
       csize_t in = closure_in(c);
       csize_t out = closure_out(c);
