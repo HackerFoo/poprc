@@ -839,7 +839,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   e->n = PERSISTENT;
   e->entry.out = 1;
   e->entry.len = 0;
-  e->entry.flags = ENTRY_NOINLINE;
+  e->entry.flags = ENTRY_NOINLINE | ENTRY_QUOTE;
   e->func = func_exec;
 
   // free variables

@@ -459,12 +459,11 @@ void print_module_bytecode(cell_t *m) {
   assert(is_module(m));
   map_t map = module_map((cell_t *)m);
   if(!map) return;
-  csize_t n = *map_cnt(map);
-  COUNTUP(i, n) {
-    char *name = (char *)map[i+1].first;
+  FORMAP(i, map) {
+    char *name = (char *)map[i].first;
     if(strcmp("imports", name) == 0) continue;
     cell_t *e = module_lookup_compiled(string_seg(name), &m);
-    if(e) {
+    if(e && !(e->entry.flags & ENTRY_QUOTE)) {
       print_bytecode(e);
       printf("\n");
     }
@@ -476,9 +475,8 @@ void print_all_bytecode() {
   assert(is_module(modules));
   map_t map = module_map(modules);
   if(!map) return;
-  csize_t n = *map_cnt(map);
-  COUNTUP(i, n) {
-    print_module_bytecode((cell_t *)map[i+1].second);
+  FORMAP(i, map) {
+    print_module_bytecode((cell_t *)map[i].second);
   }
 }
 
