@@ -421,10 +421,14 @@ void command_arity(cell_t *rest) {
 }
 
 void command_def(cell_t *rest) {
-  if(!rest || !rest->tok_list.next) return;
-  cell_t
-    *name = rest,
-    *expr = rest->tok_list.next;
+  cell_t *p = rest;
+  cell_t *name = p;
+  if(!name) return;
+  p = p->tok_list.next;
+  if(!p || segcmp(":", tok_seg(p)) != 0) return;
+  p = p->tok_list.next;
+  cell_t *expr = p;
+  if(!expr) return;
   parse_eval_def(name, expr);
 }
 
