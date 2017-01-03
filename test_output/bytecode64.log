@@ -97,6 +97,28 @@ ___ tests.dec (1 -> 1) ___
 [9] tests.dec 8, type = ?0 x1
 [10] return [ 6 ], type = r x1
 
+___ tests.f2 (3 -> 1) ___
+[0] var, type = ?l x1
+[1] var, type = ?a x1
+[2] var, type = ?a x1
+[3] __primitive.pushl 1 0, type = l x1
+[4] __primitive.pushl 2 3, type = l x1
+[5] __primitive.dep 6, type = a x1
+[6] __primitive.popr 4 5, type = ?l x2
+[7] quote tests.f2_7 5 6, type = l x1
+[8] __primitive.dep 9, type = i x1
+[9] __primitive.popr 7 8, type = ?l x2
+[10] __primitive.dep 11, type = i x1
+[11] __primitive.popr 9 10, type = ?l x1
+[12] __primitive.add 8 10, type = ?i x1
+[13] return [ 12 ], type = r x1
+
+___ tests.f2_7 (1 -> 1) ___
+[0] var, type = ?i x1
+[1] val 1, type = i x1
+[2] __primitive.add 0 1, type = ?i x1
+[3] return [ 2 ], type = r x1
+
 ___ tests.f6 (3 -> 3) ___
 [0] var, type = ?a x1
 [1] var, type = ?a x1
@@ -139,6 +161,12 @@ ___ tests.get2 (1 -> 2) ___
 [4] __primitive.popr 2 3, type = ?l x1
 [5] return [ 3 1 ], type = r x1
 
+___ tests.not (1 -> 1) ___
+[0] var, type = ?s x1
+[1] val 0, type = s x1
+[2] __primitive.eq_s 0 1, type = ?s x1
+[3] return [ 2 ], type = r x1
+
 ___ tests.len (1 -> 1) ___
 [0] var, type = ?l x2
 [1] __primitive.is_nil 0, type = ?s x2
@@ -153,12 +181,6 @@ ___ tests.len (1 -> 1) ___
 [10] val 1, type = i x1
 [11] __primitive.add 9 10, type = ?i x1
 [12] return [ 7 ], type = r x1
-
-___ tests.not (1 -> 1) ___
-[0] var, type = ?s x1
-[1] val 0, type = s x1
-[2] __primitive.eq_s 0 1, type = ?s x1
-[3] return [ 2 ], type = r x1
 
 ___ tests.pushl2 (3 -> 1) ___
 [0] var, type = ?l x1
