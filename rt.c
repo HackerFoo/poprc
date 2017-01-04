@@ -420,6 +420,10 @@ void store_var(cell_t *c, type_t t) {
 
 void fail(cell_t **cp, type_t t) {
   cell_t *c = clear_ptr(*cp);
+  if(!is_cell(c)) {
+    *cp = NULL;
+    return;
+  }
   assert(!is_marked(c));
   trace(c, c->alt, tt_fail, 0);
   cell_t *alt = ref(c->alt);
