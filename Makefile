@@ -45,14 +45,16 @@ ifeq ($(FORCE_32_BIT),y)
 endif
 
 ifeq ($(BUILD),debug)
-	CFLAGS += -g -O0 $(SANITIZE)
-	CXXFLAGS += -g -O0 $(SANITIZE)
+	OPT_FLAG = -O0
+	CFLAGS += -g  $(OPT_FLAG) $(SANITIZE)
+	CXXFLAGS += -g  $(OPT_FLAG) $(SANITIZE)
 	LIBS += $(SANITIZE)
 endif
 
 ifeq ($(BUILD),debugger)
-	CFLAGS += -g -O0 $(SANITIZE)
-	CXXFLAGS += -g -O0 $(SANITIZE)
+	OPT_FLAG = -O0
+	CFLAGS += -g  $(OPT_FLAG) $(SANITIZE)
+	CXXFLAGS += -g  $(OPT_FLAG) $(SANITIZE)
 	LIBS += $(SANITIZE)
 	USE_LINENOISE = n
 	USE_READLINE = n
