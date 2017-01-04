@@ -579,3 +579,46 @@ bool unload_files() {
 void command_pointer_bits(UNUSED cell_t *rest) {
   printf("%d\n", (int)sizeof(void *) * 8);
 }
+
+void command_lex(UNUSED cell_t *rest) {
+  char *line_raw, *line;
+  char buf[1024];
+  while((line_raw = fgets(buf, sizeof(buf), stdin)))
+  {
+    char *p = line_raw;
+    while(*p && *p != '\n') ++p;
+    *p = 0;
+    if(line_raw[0] == '\0') {
+      continue;
+    }
+    line = line_raw;
+
+    cell_t *l = lex(line, 0);
+    print_toks(l);
+    free_toks(l);
+  }
+  quit = true;
+}
+
+void command_parse(UNUSED cell_t *rest) {
+  char *line_raw, *line;
+  char buf[1024];
+  while((line_raw = fgets(buf, sizeof(buf), stdin)))
+  {
+    char *p = line_raw;
+    while(*p && *p != '\n') ++p;
+    *p = 0;
+    if(line_raw[0] == '\0') {
+      continue;
+    }
+    line = line_raw;
+
+    cell_t *l = lex(line, 0), *l0 = l;
+    cell_t *c = parse_expr((const cell_t **)&l, eval_module());
+    free_toks(l0);
+    if(c) show_list(c);
+    drop(c);
+    putchar('\n');
+  }
+  quit = true;
+}
