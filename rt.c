@@ -750,6 +750,7 @@ void store_lazy(cell_t **cp, cell_t *c, cell_t *r, alt_set_t alt_set) {
     c->size = 1;
     c->expr.out = 0;
     c->expr.arg[0] = r;
+    c->alt = 0;
     if(c->n) ref(r);
     c->expr.alt_set = alt_set;
   }
