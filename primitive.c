@@ -485,6 +485,8 @@ bool func_is_nil(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(*cp));
 
+  if(t != T_ANY && t != T_SYMBOL) goto fail;
+
   alt_set_t alt_set = 0;
   if(!reduce_arg(c, 0, &alt_set, T_LIST)) goto fail;
   clear_flags(c);
