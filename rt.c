@@ -428,6 +428,13 @@ void fail(cell_t **cp, type_t t) {
         cell_t *x = clear_ptr(*p);
         drop(x);
       }, ARGS_IN);
+    traverse(c, {
+        cell_t *d = clear_ptr(*p);
+        if(d) {
+          drop(c);
+          store_fail(d, d->alt);
+        }
+      }, ARGS_OUT);
     closure_shrink(c, 1);
     memset(&c->value, 0, sizeof(c->value));
     c->func = func_value;

@@ -252,11 +252,6 @@ bool func_popr(cell_t **cp, UNUSED type_t t) {
   return true;
 
  fail:
-  if(d) {
-    drop(c);
-    store_fail(d, d->alt);
-  }
-  c->expr.arg[1] = 0;
   fail(cp, t);
   return false;
 }
