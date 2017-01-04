@@ -1,12 +1,12 @@
-FUZZ_N := $(shell pgrep afl-fuzz | wc -l | bc)
+FUZZ_N := $(strip $(shell pgrep afl-fuzz | wc -l))
 FUZZ_FLAGS := -i input -o output -t 1000 -x popr.dict
-ifeq ($FUZZ_N,0)
+ifeq ($(FUZZ_N),0)
 	FUZZ_FLAGS += -M master
 else
 	FUZZ_FLAGS += -S slave$(FUZZ_N)
 endif
 
-CC ?= afl-clang
+CC := afl-clang
 
 .PHONY: all
 all: eval input output
