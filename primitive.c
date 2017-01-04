@@ -232,7 +232,7 @@ bool func_popr(cell_t **cp, UNUSED type_t t) {
     */
     res_d = var(T_ANY);
     res_type |= T_VAR;
-    res = ref(p);
+    res = mod_alt(ref(p), c->alt, alt_set);
   } else if(closure_is_ready(*l)) {
     /* drop the right list element */
     res_d = ref(*l);
@@ -243,11 +243,11 @@ bool func_popr(cell_t **cp, UNUSED type_t t) {
     for(csize_t i = 0; i < elems; ++i) {
       res->value.ptr[i] = ref(l[i+1]);
     }
+    res->value.alt_set = alt_set;
+    res->alt = c->alt;
   } else goto fail;
 
   store_lazy_dep(d, res_d, alt_set);
-  res->value.alt_set = alt_set;
-  res->alt = c->alt;
   store_reduced(cp, res);
   return true;
 
