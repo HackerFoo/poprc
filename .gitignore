@@ -24,3 +24,6 @@ _darcs
 /compile_commands.json
 /poprc_out
 *.dSYM
+/afl/eval
+/afl/input
+/afl/output

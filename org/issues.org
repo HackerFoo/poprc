@@ -5,6 +5,7 @@ Compile to direct C when possible
 - strict, function arguments, no backtracking
 ** simple numeric ops (e.g. :c f1 + *)
 * improvements
+** DONE add afl fuzzing
 ** add more tests to tests.peg
 ** clear_flags in func_select?
 ** DONE remove unnecessary clear_ptr's
