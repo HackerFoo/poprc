@@ -594,7 +594,7 @@ void command_lex(UNUSED cell_t *rest) {
     line = line_raw;
 
     cell_t *l = lex(line, 0);
-    print_toks(l);
+    if(l) print_toks(l);
     free_toks(l);
   }
   quit = true;
@@ -616,9 +616,11 @@ void command_parse(UNUSED cell_t *rest) {
     cell_t *l = lex(line, 0), *l0 = l;
     cell_t *c = parse_expr((const cell_t **)&l, eval_module());
     free_toks(l0);
-    if(c) show_list(c);
-    drop(c);
-    putchar('\n');
+    if(c) {
+      show_list(c);
+      drop(c);
+      putchar('\n');
+    }
   }
   quit = true;
 }
