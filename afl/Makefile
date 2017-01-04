@@ -24,7 +24,7 @@ output:
 
 .PHONY: fuzz
 fuzz: eval input output popr.dict
-	afl-fuzz $(FUZZ_FLAGS)  -- ./eval
+	afl-fuzz $(FUZZ_FLAGS)  -- ./eval -commands no
 
 .PHONY: clean
 clean:

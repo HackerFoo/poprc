@@ -57,6 +57,8 @@ static bool stats = false;
 static bool run_check_free = true;
 static bool quit = false;
 static bool quiet = false;
+static bool will_eval_commands = true;
+static bool eval_commands = true;
 
 void command_git_commit(UNUSED cell_t *rest) {
   puts(GIT_LOG);
@@ -166,6 +168,12 @@ void command_quiet(UNUSED cell_t *rest) {
   }
 }
 
+void command_commands(cell_t *rest) {
+  if(rest) {
+    will_eval_commands = segcmp("yes", tok_seg(rest)) == 0;
+  }
+}
+
 void command_eval(cell_t *rest) {
   cell_t *p = rest;
   if(p) {
@@ -208,6 +216,8 @@ int main(int argc, char **argv) {
 
     free(args);
   }
+
+  eval_commands = will_eval_commands;
 
   if(!quit) run_eval(echo);
   if(stats) {
@@ -463,9 +473,11 @@ void emscripten_eval(char *str, int len) {
 bool eval_command(char *line, char *end) {
   cell_t *p = lex(line, end), *p0 = p;
   if(match(p, ":")) {
-    p = p->tok_list.next;
-    if(!p || !run_command(tok_seg(p), p->tok_list.next)) {
-      printf("unknown command\n");
+    if(eval_commands) {
+      p = p->tok_list.next;
+      if(!p || !run_command(tok_seg(p), p->tok_list.next)) {
+        printf("unknown command\n");
+      }
     }
   } else {
     command_eval(p);
