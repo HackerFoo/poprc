@@ -73,9 +73,11 @@ cell_t *dup_alt(cell_t *c, csize_t n, cell_t *b) {
 
   // update deps
   for(; i < c->size; ++i) {
-    if(a->expr.arg[i]) a->expr.arg[i] = dep(a);
-    c->expr.arg[i]->alt = conc_alt(a->expr.arg[i], c->expr.arg[i]->alt);
-    ++out;
+    if(c->expr.arg[i]) {
+      a->expr.arg[i] = dep(a);
+      c->expr.arg[i]->alt = conc_alt(a->expr.arg[i], c->expr.arg[i]->alt);
+      ++out;
+    }
   }
 
   a->expr.arg[n] = b;
