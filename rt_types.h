@@ -189,7 +189,6 @@ typedef enum trace_type_t {
   tt_reduction,
   tt_touched,
   tt_force,
-  tt_select,
   tt_copy,
   tt_compose_placeholders,
   tt_fail

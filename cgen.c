@@ -168,8 +168,6 @@ void gen_instruction(cell_t *e, cell_t *c) {
   } else if(c->func == func_value) {
     // values are already declared
     // gen_value(e, c);
-  } else if(c->func == func_select) {
-    gen_select(e, c);
   } else if(c->func == func_assert) {
     gen_assert(e, c);
   } else if(c->func == func_quote) {
@@ -251,21 +249,6 @@ void gen_value(cell_t *e, cell_t *c) {
   type_t t = gen_type(c);
   printf("  %s%d = ", cname(t), i);
   gen_value_rhs(c);
-}
-
-void gen_select(cell_t *e, cell_t *c) {
-  cell_t *d = e + 1;
-  int
-    i = c - d,
-    ip = trace_decode(c->expr.arg[0]),
-    iq = trace_decode(c->expr.arg[1]);
-  const char *cn = cname(gen_type(c));
-  printf("phi%d:\n", iq);
-  printf("  %s%d = %s%d;\n", cn, i, cname(gen_type(&d[iq])), iq);
-  printf("  goto phi%d;\n", i);
-  printf("phi%d:\n", ip);
-  printf("  %s%d = %s%d;\n", cn, i, cname(gen_type(&d[ip])), ip);
-  printf("phi%d:\n", i);
 }
 
 void gen_assert(cell_t *e, cell_t *c) {

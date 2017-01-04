@@ -394,57 +394,6 @@ bool func_dup(cell_t **cp, UNUSED type_t t) {
   return false;
 }
 
-void trace_expand_select(cell_t *c, cell_t *x, type_t t) {
-  while(reduce(&x, t)) {
-    if(!is_var(x)) trace(x, c, tt_force, 0);
-    trace(c, x, tt_select, 0);
-    if(!is_var(x)) break;
-    x = x->alt;
-  }
-}
-
-// WORD("cut", cut, 1, 1)
-bool func_cut(cell_t **cp, type_t t) {
-  cell_t *c = *cp;
-  if(!reduce(&c->expr.arg[0], t)) goto fail;
-  cell_t *p = c->expr.arg[0];
-  if(is_var(p)) {
-    cell_t *alt = ref(p->alt);
-    store_reduced(cp, mod_alt(ref(p), 0, p->value.alt_set));
-    trace_expand_select(*cp, alt, t);
-    drop(alt);
-  } else {
-    store_reduced(cp, mod_alt(ref(p), 0, p->value.alt_set));
-  }
-  return true;
-
- fail:
-  fail(cp, t);
-  return false;
-}
-
-/* args w/alts not handled correctly, */
-/* should probably cut them, or hide select */
-// WORD("select", select, 2, 1)
-bool func_select(cell_t **cp, type_t t) {
-  cell_t *c = *cp;
-  alt_set_t alt_set = 0;
-  bool r = reduce_arg(c, 0, &alt_set, t);
-  clear_flags(c);
-
-  if(r) {
-    if(is_var(c->expr.arg[0])) {
-      store_reduced(cp, var(t));
-    } else {
-      store_reduced(cp, ref(c->expr.arg[0]));
-    }
-    return true;
-  } else {
-    store_lazy(cp, c, c->expr.arg[1], alt_set);
-    return false;
-  };
-}
-
 bool func_ap(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));

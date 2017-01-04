@@ -7,7 +7,7 @@ Compile to direct C when possible
 * improvements
 ** DONE add afl fuzzing
 ** add more tests to tests.peg
-** clear_flags in func_select?
+** CANCELED clear_flags in func_select?
 ** DONE remove unnecessary clear_ptr's
 *** mark_ptr
 **** closure_set_ready
@@ -55,7 +55,7 @@ look for word in parent module, parent imports, context module, context imports,
 ** DONE f1: [1+]
 ** DONE fix get2 in tests.peg
 ** TODO pass T_BOTTOM instead of T_ANY down reduce
-** TODO remove cut
+** DONE remove cut
 ** TODO update refcnt for cells in genc
 ** TODO use refcounts properly for maps and lists in modules
 ** TODO add static asserts as tests

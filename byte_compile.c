@@ -118,6 +118,7 @@ trace_index_t trace_decode(cell_t *c) {
   return (trace_index_t)FLIP_PTR(c);
 }
 
+/*
 static
 uintptr_t map_update(map_t map, uintptr_t key, uintptr_t new_value) {
   pair_t *e = map_find(map, key);
@@ -126,6 +127,7 @@ uintptr_t map_update(map_t map, uintptr_t key, uintptr_t new_value) {
   e->second = new_value;
   return old_value;
 }
+*/
 
 static
 trace_index_t trace_store(const cell_t *c, type_t t) {
@@ -224,32 +226,6 @@ void trace_rewrite(cell_t *c) {
     }, ARGS | PTRS | ALT);
 
   c->expr_type &= ~T_TRACED;
-}
-
-static
-trace_index_t trace_select(const cell_t *c, cell_t *a) {
-  cell_t *dest = trace_ptr;
-  csize_t size = closure_cells(c);
-  trace_ptr += size;
-  trace_cnt++;
-
-  trace_index_t tc = map_update(trace_index, (uintptr_t)clear_ptr(c), dest - trace_cur);
-  trace_index_t ta = trace_get(a);
-
-  memset(dest, 0, sizeof(cell_t));
-  dest->func = func_select;
-  dest->expr.arg[0] = trace_encode(tc);
-  dest->expr.arg[1] = trace_encode(ta);
-  dest->size = 2;
-  dest->n = -1;
-
-  // TODO check types
-  dest->tmp = trace_cur[tc].tmp;
-
-  trace_cur[tc].n++;
-  trace_cur[ta].n++;
-
-  return dest - trace_cur;
 }
 
 static
@@ -391,8 +367,7 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
     if(c->func == func_dep ||
        c->func == func_placeholder) break;
 
-    if(c->func == func_cut ||
-       c->func == func_id) {
+    if(c->func == func_id) {
       trace_index_assign(c, c->expr.arg[0]);
     } else if(c->func == func_exec && !c->expr.arg[closure_in(c) - 1]) {
       // just replace exec with it's result
@@ -456,11 +431,6 @@ void bc_trace(cell_t *c, cell_t *r, trace_type_t tt, UNUSED csize_t n) {
       trace_store(c, c->value.type);
     }
     c->value.type |= T_TRACED;
-    break;
-  }
-
-  case tt_select: {
-    trace_select(c, r);
     break;
   }
 
