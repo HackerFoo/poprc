@@ -734,7 +734,7 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
     n = c;
     drop(c->alt);
   } else {
-    --c->n;
+    if(c->n != PERSISTENT) --c->n;
     n = copy(c);
     traverse_ref(n, ARGS | PTRS);
   }
