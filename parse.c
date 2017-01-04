@@ -151,8 +151,7 @@ cell_t *parse_word(seg_t w, cell_t *module) {
       in = e->entry.in;
       out = e->entry.out;
     } else {
-      // trace the name ***
-      c = func(func_placeholder, 0, 1);
+      return NULL;
     }
   }
   COUNTUP(i, out-1) {
@@ -185,10 +184,12 @@ cell_t *parse_vector(const cell_t **l) {
     if(s[0] == ')') {
       t = tl->next;
       break;
-    } else {
-      assert(is_num(s));
+    } else if(is_num(s)) {
       c = pushl_val(atoi(s), c);
       t = tl->next;
+    } else {
+      drop(c);
+      return NULL;
     }
   }
 
@@ -488,6 +489,7 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
         arg_stack[n++] = string_symbol(seg);
       } else {
         cell_t *c = parse_word(seg, module);
+        if(!c) goto fail;
         bool f = !is_value(c);
         if(f) {
           csize_t in = closure_in(c);
@@ -513,11 +515,25 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
       case ']':
         goto done;
       case '[':
-        arg_stack[n++] = parse_expr(l, module);
+      {
+        cell_t *c = parse_expr(l, module);
+        if(c) {
+          arg_stack[n++] = c;
+        } else {
+          goto fail;
+        }
         break;
+      }
       case '(':
-        arg_stack[n++] = parse_vector(l);
+      {
+        cell_t *v = parse_vector(l);
+        if(v) {
+          arg_stack[n++] = v;
+        } else {
+          goto fail;
+        }
         break;
+      }
       default:
         break;
       }
@@ -530,6 +546,11 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
 
 done:
   return array_to_list(arg_stack, n);
+fail:
+  COUNTUP(i, n) {
+    drop(arg_stack[i]);
+  }
+  return NULL;
 }
 
 uintptr_t intern(seg_t sym) {
