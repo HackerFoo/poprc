@@ -6,12 +6,14 @@ else
 	FUZZ_FLAGS += -S slave$(FUZZ_N)
 endif
 
+CC ?= afl-clang
+
 .PHONY: all
 all: eval input output
 
 eval:
-	make -C .. OPT_FLAG=-O3 CC=afl-clang
-	ln -s ../build/afl-clang/debug/eval .
+	make -C .. OPT_FLAG=-O3 CC=$(CC)
+	ln -s ../build/$(CC)/debug/eval .
 
 input: eval ../tests.txt
 	@mkdir input
