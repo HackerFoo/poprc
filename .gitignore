@@ -27,3 +27,4 @@ _darcs
 /afl/eval
 /afl/input
 /afl/output
+/afl/summary.txt
