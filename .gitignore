@@ -12,7 +12,7 @@ _darcs
 /eval.js
 /eval.js.map
 /js
-/.poprc_history
+.poprc_history
 /.ycm_extra_conf.pyc
 /GPATH
 /GRTAGS
@@ -27,4 +27,5 @@ _darcs
 /afl/eval
 /afl/input
 /afl/output
-/afl/summary.txt
+/afl/crashes.txt
+/afl/hangs.txt

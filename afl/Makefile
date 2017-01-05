@@ -28,10 +28,13 @@ output:
 fuzz: eval input output popr.dict
 	afl-fuzz $(FUZZ_FLAGS)  -- ./eval -commands no
 
-summary.txt: $(wildcard output/*/crashes/id*)
-	(shopt -s nullglob; for i in output/*/crashes/id*; do echo "___ $$i"; ./eval -lex < "$$i"; ./eval -commands no < "$$i"; done) | tee summary.txt
+crashes.txt: $(wildcard output/*/crashes)
+	(shopt -s nullglob; for i in output/*/crashes/id*; do echo "___ $$i"; ./eval -lex < "$$i"; ./eval -commands no < "$$i" || true; done) | tee crashes.txt
+
+hangs.txt: $(wildcard output/*/hangs)
+	(shopt -s nullglob; for i in output/*/hangs/id*; do echo "___ $$i"; ./eval -lex < "$$i"; done) | tee hangs.txt
 
 .PHONY: clean
 clean:
-	rm -f eval summary.txt
+	rm -f eval crashes.txt hangs.txt
 	rm -rf input output
