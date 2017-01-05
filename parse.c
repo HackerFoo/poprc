@@ -563,7 +563,7 @@ uintptr_t intern(seg_t sym) {
     strings_drop();
   } else {
     v = *map_cnt(symbols);
-    assert(v < MAX_SYMBOLS);
+    assert_throw(v < MAX_SYMBOLS);
     pair_t p = {(uintptr_t)s, v};
     string_map_insert(symbols, p);
     symbol_index[v] = s;

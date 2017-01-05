@@ -21,6 +21,12 @@ comments => 0
 1 2 4
 1 2 5
 count => 0
+@ error
+i = 0
+i = 1
+i = 2
+support.c:508: test_error: Assertion `i < 3' failed.
+error => 0
 @ expand_map
 map[10] = {{eight, 7}, {five, 4}, {four, 3}, {one, 0}, {seven, 6}, {six, 5}, {three, 2}, {two, 1}, {nine, 8}, {ten, 9}}
 expand_map => 0

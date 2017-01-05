@@ -21,6 +21,7 @@
 #include "gen/cells.h"
 #include "gen/special.h"
 #include "gen/rt.h"
+#include "gen/support.h"
 
 // to catch errors that result in large allocations
 #define MAX_ALLOC_SIZE 32
@@ -134,7 +135,7 @@ void cells_init() {
 
 void cell_alloc(cell_t *c) {
   assert(is_cell(c) && !is_closure(c));
-  assert(measure.current_alloc_cnt < MAX_ALLOC);
+  assert_throw(measure.current_alloc_cnt < MAX_ALLOC);
   cell_t *prev = c->mem.prev;
   assert(is_cell(prev) && !is_closure(prev));
   cell_t *next = c->mem.next;
@@ -154,7 +155,7 @@ cell_t *closure_alloc(csize_t args) {
 }
 
 cell_t *closure_alloc_cells(csize_t size) {
-  assert(size < MAX_ALLOC_SIZE);
+  assert_throw(size < MAX_ALLOC_SIZE);
   cell_t *ptr = cells_next(), *c = ptr;
   cell_t *mark = ptr;
   csize_t cnt = 0;
@@ -367,7 +368,7 @@ void drop_multi(cell_t **a, csize_t n) {
 }
 
 alt_set_t as_single(unsigned int k, unsigned int v) {
-  assert(k < AS_SIZE);
+  assert_throw(k < AS_SIZE);
   return (alt_set_t)1 << ((k << 1) + (v & 1));
 }
 

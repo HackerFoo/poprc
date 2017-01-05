@@ -28,6 +28,10 @@
 
 #include "gen/support.h"
 
+#if INTERFACE
+#include <setjmp.h>
+#endif
+
 // find the median of 3 integers
 unsigned int median3(pair_t *array, unsigned int lo, unsigned int hi) {
   unsigned int mid = lo + (hi - lo) / 2;
@@ -453,5 +457,58 @@ int test_set() {
   FOREACH(i, data) {
     if(!set_remove(data[i], set, size)) return -3;
   }
+  return 0;
+}
+
+#if INTERFACE
+typedef struct {
+  jmp_buf env;
+  const char *msg;
+  const char *file;
+  int line;
+  char function[64];
+} error_t;
+
+#define assert_throw(cond) \
+  do { \
+    if(!(cond)) {                                                       \
+      throw_error(__FILE__, __LINE__, __func__, "Assertion `" #cond "' failed."); \
+    } \
+  } while(0)
+
+#define catch_error(e) (current_error = (e), !!setjmp((e)->env))
+#endif
+
+error_t *current_error = NULL;
+
+void throw_error(const char *file, int line, const char *function, const char *msg) {
+  if(!current_error) {
+    printf("%s:%d: %s: %s\n", file, line, function, msg);
+    assert(false);
+  } else {
+    current_error->msg = msg;
+    current_error->file = file;
+    current_error->line = line;
+    strncpy(current_error->function, function, sizeof(current_error->function));
+    longjmp(current_error->env, 1);
+  }
+}
+
+void print_error(error_t *error) {
+    printf("%s:%d: %s: %s\n", error->file, error->line, error->function, error->msg);
+}
+
+int test_error() {
+  error_t *prev_error = current_error;
+  error_t test_error;
+  if(catch_error(&test_error)) {
+    print_error(&test_error);
+  } else {
+    for(int i = 0; i < 5; i++) {
+      assert_throw(i < 3);
+      printf("i = %d\n", i);
+    }
+  }
+  current_error = prev_error;
   return 0;
 }

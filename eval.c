@@ -195,38 +195,43 @@ void command_eval(cell_t *rest) {
 }
 
 int main(int argc, char **argv) {
-  cells_init();
-  parse_init();
-  module_init();
-  bool quit = false;
+  error_t error;
+  if(catch_error(&error)) {
+    print_error(&error);
+  } else {
+    cells_init();
+    parse_init();
+    module_init();
+    bool quit = false;
 
 #ifndef EMSCRIPTEN
-  tty = isatty(fileno(stdin));
+    tty = isatty(fileno(stdin));
 
-  if(argc > 1) {
-    char *args = arguments(argc - 1, argv + 1), *a = args;
-    // printf("__ arguments __\n%s", a);
+    if(argc > 1) {
+      char *args = arguments(argc - 1, argv + 1), *a = args;
+      // printf("__ arguments __\n%s", a);
 
-    while(*a) {
-      char *e = strchr(a, '\n');
-      *e = '\0'; // HACKy (fix load_file instead)
-      quit = !eval_command(a, e) || quit;
-      a = e + 1;
+      while(*a) {
+        char *e = strchr(a, '\n');
+        *e = '\0'; // HACKy (fix load_file instead)
+        quit = !eval_command(a, e) || quit;
+        a = e + 1;
+      }
+
+      free(args);
     }
 
-    free(args);
-  }
+    eval_commands = will_eval_commands;
 
-  eval_commands = will_eval_commands;
-
-  if(!quit) run_eval(echo);
-  if(stats) {
-    measure_display();
-    print_symbols();
+    if(!quit) run_eval(echo);
+    if(stats) {
+      measure_display();
+      print_symbols();
+    }
+    free_modules();
+    unload_files();
+    if(run_check_free) check_free();
   }
-  free_modules();
-  unload_files();
-  if(run_check_free) check_free();
 #else
   emscripten_exit_with_live_runtime();
 #endif
