@@ -1,5 +1,7 @@
 -include config.mk
 
+SHELL := /bin/bash
+
 # defaults
 BUILD ?= debug
 

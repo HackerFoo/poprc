@@ -26,13 +26,13 @@ output:
 
 .PHONY: fuzz
 fuzz: eval input output popr.dict
-	afl-fuzz $(FUZZ_FLAGS)  -- ./eval -commands no
+	afl-fuzz $(FUZZ_FLAGS)  -- ./eval -commands no $(POPRC_FLAGS)
 
 crashes.txt: $(wildcard output/*/crashes)
 	(shopt -s nullglob; \
          for i in output/*/crashes/id*; \
          do \
-	   if ! (./eval -commands no < "$$i" &> tmp.txt || false) &> /dev/null; \
+	   if ! (./eval -commands no $(POPRC_FLAGS) < "$$i" &> tmp.txt || false) &> /dev/null; \
            then \
              echo "___ $$i"; \
              ./eval -lex < "$$i"; \
