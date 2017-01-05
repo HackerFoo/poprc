@@ -712,8 +712,7 @@ cell_t *module_lookup_compiled(seg_t path, cell_t **context) {
   return compile_entry(name, *context);
 }
 
-cell_t *parse_eval_def(cell_t *name_tok, cell_t *rest) {
-  seg_t name = tok_seg(name_tok);
+cell_t *parse_eval_def(seg_t name, cell_t *rest) {
   cell_t *eval_module = module_get_or_create(modules, string_seg("eval"));
   cell_t *l = quote(rest);
   l->module_name = "eval";

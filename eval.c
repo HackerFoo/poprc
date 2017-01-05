@@ -444,7 +444,7 @@ void command_def(cell_t *rest) {
   p = p->tok_list.next;
   cell_t *expr = p;
   if(!expr) return;
-  parse_eval_def(name, expr);
+  parse_eval_def(tok_seg(name), expr);
 }
 
 void command_list(cell_t *rest) {
@@ -637,6 +637,32 @@ void command_parse(UNUSED cell_t *rest) {
       show_list(c);
       drop(c);
       putchar('\n');
+    }
+  }
+  quit = true;
+}
+
+void command_bcpl(UNUSED cell_t *rest) {
+  char *line_raw, *line;
+  char buf[1024];
+  char name_buf[128];
+  unsigned int n = 0;
+  while((line_raw = fgets(buf, sizeof(buf), stdin)))
+  {
+    char *p = line_raw;
+    while(*p && *p != '\n') ++p;
+    *p = 0;
+    if(line_raw[0] == '\0') {
+      continue;
+    }
+    line = line_raw;
+
+    cell_t *l = lex(line, 0);
+    if(l) {
+      sprintf(name_buf, "fn%d", n++);
+      cell_t *e = parse_eval_def(string_seg(name_buf), l);
+      free_toks(l);
+      print_bytecode(e);
     }
   }
   quit = true;
