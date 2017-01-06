@@ -268,7 +268,7 @@ bool func_alt(cell_t **cp, UNUSED type_t t) {
   return false;
 }
 
-// WORD("||", alt2, 2, 1)
+// WORD_DISABLED("||", alt2, 2, 1)
 bool func_alt2(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
   assert(!is_marked(c));

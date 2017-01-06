@@ -1,6 +1,6 @@
 -include config.mk
 
-SHELL := /bin/bash
+SHELL := bash
 
 # defaults
 BUILD ?= debug
@@ -71,6 +71,12 @@ ifeq ($(BUILD),profile)
 	CFLAGS += -DNDEBUG $(OPT_FLAG)
 	CXXFLAGS += -DNDEBUG $(OPT_FLAG)
 	LIBS += -lprofiler
+endif
+
+ifeq ($(BUILD),gprof)
+	CFLAGS += -DNDEBUG -pg $(OPT_FLAG)
+	CXXFLAGS += -DNDEBUG -pg $(OPT_FLAG)
+	LDFLAGS += -pg
 endif
 
 CFLAGS += $(COPT)

@@ -2,7 +2,7 @@
 
 -include $(OBJS:.o=.d)
 
-SHELL := /bin/bash
+SHELL := bash
 
 gen/word_table.h: $(SRC)
 	@mkdir -p gen

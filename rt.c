@@ -31,8 +31,9 @@
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
 
-static const size_t rt_roots_n = 31;
-static cell_t **rt_roots[rt_roots_n];
+#define RT_ROOTS_N 31
+static const size_t rt_roots_n = RT_ROOTS_N;
+static cell_t **rt_roots[RT_ROOTS_N];
 #define ASSERT_REF() assert_ref(rt_roots, rt_roots_n)
 
 bool insert_root(cell_t **r) {

@@ -383,7 +383,7 @@ void run_eval(bool echo) {
 #ifndef RAW_LINE
     free(line_raw);
 #endif
-    if(!run) break;
+    if(!run || !eval_commands) break;
   }
 }
 

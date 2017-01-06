@@ -131,6 +131,7 @@ cell_t *parse_word(seg_t w, cell_t *module) {
   csize_t in = 0, out = 1;
   if(w.s[0] == '?') {
     c = var(T_ANY);
+#if FUNC_AP
   } else if(w.n == 4 &&
             w.s[0] == 'a' && w.s[1] == 'p' &&
             char_class(w.s[2]) == CC_NUMERIC &&
@@ -138,6 +139,7 @@ cell_t *parse_word(seg_t w, cell_t *module) {
     in = w.s[2] - '0' + 1;
     out = w.s[3] - '0' + 1;
     c = func(func_ap, in, out);
+#endif
   } else {
     cell_t *e = lookup_word(w);
     if(!e) e = module_lookup_compiled(w, &module);

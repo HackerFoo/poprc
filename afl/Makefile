@@ -1,4 +1,4 @@
-SHELL := /bin/bash
+SHELL := bash
 
 FUZZ_N := $(strip $(shell pgrep afl-fuzz | wc -l))
 FUZZ_FLAGS := -i input -o output -t 1000 -x popr.dict
