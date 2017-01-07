@@ -712,7 +712,21 @@ cell_t *mutate(cell_t *c, cell_t *r, int exp) {
     mutate_update(t, false);
     li = t->tmp;
   }
+  assert(check_deps(r));
   return l;
+}
+
+bool check_deps(cell_t *c) {
+  bool ret = true;
+  if(c && is_cell(c)) {
+    traverse(c, {
+        if(*p && (*p)->expr.arg[0] != c) ret = false;
+      }, ARGS_OUT);
+    traverse(c, {
+        if(!check_deps(*p)) ret = false;
+      }, ARGS_IN | ALT | PTRS);
+  }
+  return ret;
 }
 
 // execute deferred drops and zero tmps
