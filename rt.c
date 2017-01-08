@@ -707,6 +707,7 @@ cell_t *mutate(cell_t *c, cell_t *r, int exp) {
 
   // traverse list and rewrite pointers
   cell_t *li = l;
+  assert(check_tmp_loop(li));
   while(li) {
     cell_t *t = li->tmp;
     mutate_update(t, false);
@@ -720,13 +721,30 @@ bool check_deps(cell_t *c) {
   bool ret = true;
   if(c && is_cell(c)) {
     traverse(c, {
-        if(*p && (*p)->expr.arg[0] != c) ret = false;
+        if(*p && (*p)->expr.arg[0] != c) {
+          printf("bad dep %d -> %d, should be %d\n",
+                 (int)(*p - cells),
+                 (int)((*p)->expr.arg[0] - cells),
+                 (int)(c - cells));
+          ret = false;
+        }
       }, ARGS_OUT);
     traverse(c, {
         if(!check_deps(*p)) ret = false;
       }, ARGS_IN | ALT | PTRS);
   }
   return ret;
+}
+
+bool check_tmp_loop(cell_t *c) {
+  if(!c) return true;
+  cell_t *tortoise = c, *hare = c;
+  do {
+    tortoise = tortoise->tmp;
+    hare = hare->tmp ? hare->tmp->tmp : NULL;
+    if(!(tortoise && hare)) return true;
+  } while(tortoise != hare);
+  return false;
 }
 
 // execute deferred drops and zero tmps

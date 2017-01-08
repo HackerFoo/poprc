@@ -184,7 +184,7 @@ cell_t *dep(cell_t *c) {
 }
 
 bool is_dep(cell_t const *c) {
-  return c->func == func_dep;
+  return c->func == func_dep || c->func == func_dep_entered;
 }
 
 // this shouldn't reduced directly, but is called through reduce_partial from func_dep
