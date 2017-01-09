@@ -303,6 +303,9 @@ bool any_conflicts(cell_t const * const *p, csize_t size) {
   return as_conflict(as);
 }
 
+// must be at least 2
+#define SHOW_LIST_LIMIT 16
+
 void show_list(cell_t const *c) {
   assert(c && is_list(c));
   int n = list_size(c), i;
@@ -349,11 +352,17 @@ void show_list(cell_t const *c) {
           i = n; while(i--) show_one(m2->value.ptr[i]);
           printf(" ]");
           /* remaining matches */
+          int limit = SHOW_LIST_LIMIT - 2;
           while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, n) >= 0) {
             if(!any_conflicts((cell_t const *const *)p->value.ptr, n)) {
-              printf(" | [");
-              i = n; while(i--) show_one(p->value.ptr[i]);
-              printf(" ]");
+              if(!limit--) {
+                printf(" | ...");
+                break;
+              } else {
+                printf(" | [");
+                i = n; while(i--) show_one(p->value.ptr[i]);
+                printf(" ]");
+              }
             }
           }
           printf(" }");
