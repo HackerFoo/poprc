@@ -185,6 +185,8 @@ cell_t *append(cell_t *a, cell_t *b) {
   return e;
 }
 
+// TODO clean up these expand functions
+
 cell_t *expand(cell_t *c, csize_t s) {
   if(!c) return 0;
   csize_t n = closure_args(c);
@@ -206,6 +208,7 @@ cell_t *expand(cell_t *c, csize_t s) {
   }
 }
 
+// destructive in-place expand
 cell_t *expand_inplace(cell_t *c, csize_t s) {
   refcount_t n = c->n;
   c->n = 0;
@@ -223,12 +226,28 @@ cell_t *expand_inplace(cell_t *c, csize_t s) {
   return c;
 }
 
+// destructive in-place expansion for more outputs
 cell_t *expand_inplace_dep(cell_t *c, csize_t s) {
   refcount_t n = c->n;
   csize_t in = closure_in(c);
   c->n = 0;
   c = expand(c, s);
   c->n = n;
+
+  // shift and update deps
+  memmove(&c->expr.arg[in+s], &c->expr.arg[in], c->expr.out * sizeof(cell_t *));
+  c->expr.out += s;
+  csize_t i;
+  for(i = c->size - c->expr.out + s; i < c->size; ++i) {
+    cell_t *d = c->expr.arg[i];
+    if(d && is_dep(d)) d->expr.arg[0] = c;
+  }
+  return c;
+}
+
+cell_t *expand_dep(cell_t *c, csize_t s) {
+  csize_t in = closure_in(c);
+  c = expand(c, s);
 
   // shift and update deps
   memmove(&c->expr.arg[in+s], &c->expr.arg[in], c->expr.out * sizeof(cell_t *));
@@ -259,6 +278,7 @@ cell_t *compose_placeholders(cell_t *a, cell_t *b) {
   return c;
 }
 
+// non-destructive (_nd) compose
 cell_t *compose_nd(cell_t *a, cell_t *b) {
   csize_t n = list_size(b);
   csize_t n_a = list_size(a);
@@ -273,7 +293,7 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
           ++i;
           break;
         }
-        a->value.ptr[i] = x = expand_inplace_dep(x, 1);
+        a->value.ptr[i] = x = expand_dep(x, 1);
         b = arg_nd(l, x->expr.arg[closure_in(x)] = dep(ref(x)), b);
       } else {
         b = arg_nd(l, ref(x), b);
@@ -358,6 +378,7 @@ void close_placeholders(cell_t *c) {
   }
 }
 
+// non-destructive (_nd) version of arg
 cell_t *arg_nd(cell_t *c, cell_t *a, cell_t *r) {
   cell_t *l = _arg_nd(c, a, r);
   r = r->tmp ? r->tmp : r;
@@ -546,6 +567,7 @@ cell_t *pushl_val(intptr_t x, cell_t *c) {
   return c;
 }
 
+// non-destructive (_nd) pushl
 cell_t *pushl_nd(cell_t *a, cell_t *b) {
   assert(is_closure(a) &&
          is_list(b));
@@ -644,6 +666,7 @@ void mutate_update(cell_t *r, bool m) {
   traverse(r, {
       cell_t *c = clear_ptr(*p);
       if(c && c->n != PERSISTENT && c->tmp) {
+        // if(m) fix deps?
         *p = c->tmp;
       }
     }, ARGS_OUT);
