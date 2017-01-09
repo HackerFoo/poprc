@@ -11,7 +11,7 @@ endif
 CC := afl-clang
 
 .PHONY: all
-all: eval input output
+all: eval input
 
 eval:
 	make -C .. OPT_FLAG=-O3 CC=$(CC)
@@ -21,11 +21,8 @@ input: eval ../tests.txt
 	@mkdir input
 	cd input && ../eval -lex < ../../tests.txt | split -l 1 - test_
 
-output:
-	@mkdir output
-
 .PHONY: fuzz
-fuzz: eval input output popr.dict
+fuzz: eval input popr.dict
 	afl-fuzz $(FUZZ_FLAGS)  -- ./eval -commands no $(POPRC_FLAGS)
 
 crashes.txt: $(wildcard output/*/crashes)
