@@ -153,6 +153,14 @@ bool is_string(cell_t const *c) {
   return c && is_value(c) && (c->value.type & T_EXCLUSIVE) == T_STRING;
 }
 
+bool is_dep_of(cell_t *d, cell_t *c) {
+  bool ret = false;
+  traverse(c, {
+      if(*p == d) ret = true;
+    }, ARGS_OUT);
+  return ret;
+}
+
 /* todo: propagate types here */
 bool func_dep(cell_t **cp, UNUSED type_t t) {
   cell_t *c = *cp;
@@ -161,9 +169,11 @@ bool func_dep(cell_t **cp, UNUSED type_t t) {
   /* don't need to drop arg, handled by other function */
   /* must temporarily reference to avoid replacement of p which is referenced elsewhere */
   cell_t *p = ref(c->expr.arg[0]);
+  assert(is_dep_of(c, p));
   insert_root(&p);
   c->func = func_dep_entered;
   reduce_dep(&p);
+  assert(c->func != func_dep_entered);
   remove_root(&p);
   drop(p);
   return false;
