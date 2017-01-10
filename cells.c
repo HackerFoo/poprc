@@ -115,7 +115,7 @@ bool check_cycle() {
 #endif
 
 void cells_init() {
-  size_t const n = LENGTH(cells)-1;
+  size_t const n = LENGTH(cells);
 
   // zero the cells
   memset(&cells, 0, sizeof(cells));
@@ -169,7 +169,7 @@ cell_t *closure_alloc_cells(csize_t size) {
     } else {
       cnt = 0;
       c = ptr = cells_next();
-      assert(c != mark);
+      assert_throw(c != mark); // could not allocate
     }
   }
 
