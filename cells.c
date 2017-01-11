@@ -141,6 +141,7 @@ void cell_alloc(cell_t *c) {
   cell_t *next = c->mem.next;
   assert(is_cell(next) && !is_closure(next));
   if(cells_ptr == c) cells_next();
+  assert_throw(prev != next); // ran out of cells
   prev->mem.next = next;
   next->mem.prev = prev;
   measure.alloc_cnt++;
