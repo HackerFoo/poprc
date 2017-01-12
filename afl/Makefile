@@ -1,11 +1,21 @@
 SHELL := bash
 
 FUZZ_N := $(strip $(shell pgrep afl-fuzz | wc -l))
-FUZZ_FLAGS := -i input -o output -t 1000 -x popr.dict
+
+FUZZ_FLAGS := -t 10000 -o output -x popr.dict
+
 ifeq ($(FUZZ_N),0)
-	FUZZ_FLAGS += -M master
+	FUZZ_ID := master
+	FUZZ_FLAGS += -M $(FUZZ_ID)
 else
-	FUZZ_FLAGS += -S slave$(FUZZ_N)
+	FUZZ_ID := slave$(FUZZ_N)
+	FUZZ_FLAGS += -S $(FUZZ_ID)
+endif
+
+ifneq ("$(wildcard output/$(FUZZ_ID))","")
+	FUZZ_FLAGS += -i -
+else
+	FUZZ_FLAGS += -i input
 endif
 
 CC := afl-clang
