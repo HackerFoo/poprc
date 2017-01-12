@@ -28,7 +28,7 @@
 #include "gen/lex.h"
 
 char_class_t char_class(char c) {
-  assert_throw(c < 127);
+  assert_throw(c < 127, "ASCII only please");
   if(c <= ' ' || c > '~')
     return CC_NONE;
   if(c >= '0' && c <= '9')

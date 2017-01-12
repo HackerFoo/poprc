@@ -141,7 +141,7 @@ void cell_alloc(cell_t *c) {
   cell_t *next = c->mem.next;
   assert(is_cell(next) && !is_closure(next));
   if(cells_ptr == c) cells_next();
-  assert_throw(prev != next); // ran out of cells
+  assert_throw(c != prev && c != next, "can't alloc the last cell");
   prev->mem.next = next;
   next->mem.prev = prev;
   measure.alloc_cnt++;
@@ -170,7 +170,7 @@ cell_t *closure_alloc_cells(csize_t size) {
     } else {
       cnt = 0;
       c = ptr = cells_next();
-      assert_throw(c != mark); // could not allocate
+      assert_throw(c != mark, "could not find cells to allocate");
     }
   }
 

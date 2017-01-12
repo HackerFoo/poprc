@@ -413,8 +413,8 @@ bool set_insert(uintptr_t x, uintptr_t *set, size_t size) {
       return false;
     }
   }
-  // set is full
-  assert(false);
+
+  assert_throw(false, "set is full");
   return false;
 }
 
@@ -469,11 +469,20 @@ typedef struct {
   char function[64];
 } error_t;
 
-#define assert_throw(cond) \
-  do { \
+#define assert_throw(...) DISPATCH(assert_throw, 2, ##__VA_ARGS__)
+
+#define assert_throw_0(cond, msg, ...)                                  \
+  do {                                                                  \
+    if(!(cond)) {                                                       \
+      throw_error(__FILE__, __LINE__, __func__, "Assertion `" #cond "' failed: " msg); \
+    }                                                                   \
+  } while(0)
+
+#define assert_throw_1(cond, ...)                                       \
+  do {                                                                  \
     if(!(cond)) {                                                       \
       throw_error(__FILE__, __LINE__, __func__, "Assertion `" #cond "' failed."); \
-    } \
+    }                                                                   \
   } while(0)
 
 #define catch_error(e) (current_error = (e), !!setjmp((e)->env))
@@ -505,7 +514,7 @@ int test_error() {
     print_error(&test_error);
   } else {
     for(int i = 0; i < 5; i++) {
-      assert_throw(i < 3);
+      assert_throw(i < 3, "Don't worry, it's okay.");
       printf("i = %d\n", i);
     }
   }
