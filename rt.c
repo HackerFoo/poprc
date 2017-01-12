@@ -719,12 +719,14 @@ cell_t *mutate(cell_t *c, cell_t *r, int exp) {
 
 bool check_deps(cell_t *c) {
   bool ret = true;
+  c = clear_ptr(c);
   if(c && is_cell(c)) {
     traverse(c, {
-        if(*p && (*p)->expr.arg[0] != c) {
+        cell_t *x = clear_ptr(*p);
+        if(x && x->expr.arg[0] != c) {
           printf("bad dep %d -> %d, should be %d\n",
-                 (int)(*p - cells),
-                 (int)((*p)->expr.arg[0] - cells),
+                 (int)(x - cells),
+                 (int)(x->expr.arg[0] - cells),
                  (int)(c - cells));
           ret = false;
         }

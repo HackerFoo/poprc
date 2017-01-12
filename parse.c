@@ -460,6 +460,7 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
     switch(t->char_class) {
 
     case CC_NUMERIC:
+      assert_throw(n < MAX_ARGS);
       arg_stack[n++] = int_val(atoi(seg.s));
       break;
     case CC_FLOAT:
@@ -467,6 +468,7 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
       char *end;
       double x = strtod(seg.s, &end);
       if(end != seg.s) {
+        assert_throw(n < MAX_ARGS);
         arg_stack[n++] = float_val(x);
       }
       break;
@@ -488,6 +490,7 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
     case CC_VAR:
     {
       if(is_uppercase(*seg.s)) {
+        assert_throw(n < MAX_ARGS);
         arg_stack[n++] = string_symbol(seg);
       } else {
         cell_t *c = parse_word(seg, module);
@@ -500,11 +503,13 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
             arg(&c, arg_stack[--n]);
           }
         }
+        assert_throw(n < MAX_ARGS);
         arg_stack[n++] = c;
         if(f) {
           csize_t in = closure_in(c);
           csize_t out = closure_out(c);
           COUNTUP(i, out) {
+            assert_throw(n < MAX_ARGS);
             arg_stack[n++] = c->expr.arg[in+i];
           }
         }
@@ -520,6 +525,7 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
       {
         cell_t *c = parse_expr(l, module);
         if(c) {
+          assert_throw(n < MAX_ARGS);
           arg_stack[n++] = c;
         } else {
           goto fail;
@@ -530,6 +536,7 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
       {
         cell_t *v = parse_vector(l);
         if(v) {
+          assert_throw(n < MAX_ARGS);
           arg_stack[n++] = v;
         } else {
           goto fail;
