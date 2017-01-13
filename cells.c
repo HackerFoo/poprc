@@ -283,6 +283,19 @@ cell_t *copy(cell_t const *c) {
   return new_c;
 }
 
+cell_t *copy_expand(cell_t const *c, csize_t s) {
+  csize_t n = closure_args(c);
+  csize_t old_size = calculate_cells(n);
+  csize_t new_size = calculate_cells(n + s);
+  cell_t *new_c = closure_alloc_cells(new_size);
+  memcpy(new_c, c, (uintptr_t)&((cell_t *)0)->expr.arg);
+  memset(new_c->expr.arg, 0, s * sizeof(cell_t *));
+  memcpy(&new_c->expr.arg[s], c->expr.arg, n * sizeof(cell_t *));
+  new_c->size = n + s;
+  new_c->n = 0;
+  return new_c;
+}
+
 cell_t *ref(cell_t *c) {
   return(refn(c, 1));
 }
