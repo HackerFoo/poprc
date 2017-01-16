@@ -227,7 +227,7 @@ bool func_popr(cell_t **cp, UNUSED type_t t) {
   if(is_placeholder(*l)) {
     //closure_set_ready(l[0], true);
     /* just hand out a variable, let the compiler track it
-    *l = expand_inplace_dep(*l, 1); // *** no shift here
+    *l = expand_deps_inplace(*l, 1); // *** no shift here
     res_d = ref((*l)->expr.arg[closure_in(*l)] = dep(ref(*l)));
     */
     res_d = var(T_ANY);

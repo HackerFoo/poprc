@@ -212,55 +212,77 @@ cell_t *expand(cell_t *c, csize_t s) {
   }
 }
 
-// destructive in-place expand
-cell_t *expand_inplace(cell_t *c, csize_t s) {
+void update_deps(cell_t *c) {
+  for(csize_t i = c->size - c->expr.out; i < c->size; ++i) {
+    cell_t *d = c->expr.arg[i];
+    if(d) {
+      assert(is_dep(d));
+      d->expr.arg[0] = c;
+    }
+  }
+}
+
+void new_deps(cell_t *c) {
+  for(csize_t i = c->size - c->expr.out; i < c->size; ++i) {
+    cell_t **d = &c->expr.arg[i];
+    if(*d) {
+      assert(is_dep(*d));
+      *d = dep(c);
+    }
+  }
+}
+
+// add more inputs
+cell_t *expand_args(cell_t *c, csize_t s) {
   refcount_t n = c->n;
-  c->n = 0;
+  csize_t args = closure_args(c);
   c = expand(c, s);
-  c->n = n;
 
   // shift and update deps
-  memmove(&c->expr.arg[s], &c->expr.arg[0], (c->size - 1) * sizeof(cell_t *));
-  memset(c->expr.arg, 0, s * sizeof(c->expr.arg[0]));
-
-  csize_t i;
-  for(i = c->size - c->expr.out; i < c->size; ++i) {
-    if(c->expr.arg[i]) c->expr.arg[i]->expr.arg[0] = c;
+  memmove(&c->expr.arg[s], &c->expr.arg[0], args * sizeof(cell_t *));
+  memset(c->expr.arg, 0, s * sizeof(cell_t *));
+  if(n) {
+    new_deps(c);
+  } else {
+    update_deps(c);
   }
+
   return c;
 }
 
-// destructive in-place expansion for more outputs
-cell_t *expand_inplace_dep(cell_t *c, csize_t s) {
+// destructive version
+cell_t *expand_args_inplace(cell_t *c, csize_t s) {
+  refcount_t n = c->n;
+  c->n = 0;
+  c = expand_args(c, s);
+  c->n = n;
+  return c;
+}
+
+// add more outputs
+cell_t *expand_deps(cell_t *c, csize_t s) {
   refcount_t n = c->n;
   csize_t in = closure_in(c);
-  c->n = 0;
   c = expand(c, s);
-  c->n = n;
 
   // shift and update deps
   memmove(&c->expr.arg[in+s], &c->expr.arg[in], c->expr.out * sizeof(cell_t *));
   c->expr.out += s;
-  csize_t i;
-  for(i = c->size - c->expr.out + s; i < c->size; ++i) {
-    cell_t *d = c->expr.arg[i];
-    if(d && is_dep(d)) d->expr.arg[0] = c;
+  if(n) {
+    new_deps(c);
+  } else {
+    update_deps(c);
   }
+
   return c;
 }
 
-cell_t *expand_dep(cell_t *c, csize_t s) {
-  csize_t in = closure_in(c);
-  c = expand(c, s);
-
-  // shift and update deps
-  memmove(&c->expr.arg[in+s], &c->expr.arg[in], c->expr.out * sizeof(cell_t *));
-  c->expr.out += s;
-  csize_t i;
-  for(i = c->size - c->expr.out + s; i < c->size; ++i) {
-    cell_t *d = c->expr.arg[i];
-    if(d && is_dep(d)) d->expr.arg[0] = c;
-  }
+// destructive version
+cell_t *expand_deps_inplace(cell_t *c, csize_t s) {
+  refcount_t n = c->n;
+  c->n = 0;
+  c = expand_deps(c, s);
+  c->n = n;
   return c;
 }
 
@@ -297,7 +319,7 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
           ++i;
           break;
         }
-        a->value.ptr[i] = x = expand_dep(x, 1);
+        a->value.ptr[i] = x = expand_deps(x, 1);
         b = arg_nd(l, x->expr.arg[closure_in(x)] = dep(ref(x)), b);
       } else {
         b = arg_nd(l, ref(x), b);
@@ -334,7 +356,7 @@ void arg(cell_t **cp, cell_t *a) {
   if(is_placeholder(c) &&
      (closure_in(c) == 0 ||
       closure_is_ready(c->expr.arg[0]))) {
-    c = expand_inplace(c, 1);
+    c = expand_args_inplace(c, 1);
     c->expr.arg[0] = a;
   } else if(!is_data(c->expr.arg[i])) {
     c->expr.arg[0] = (cell_t *)(intptr_t)
@@ -637,22 +659,6 @@ void check_tmps() {
   }
 }
 
-/* ref count not from deps */
-static
-refcount_t nondep_n(cell_t *c) {
-  if(!is_closure(c)) return 0;
-  refcount_t nd = c->n;
-  if(is_dep(c)) return nd;
-  else if(!is_value(c)) {
-    csize_t n = closure_args(c);
-    while(n-- &&
-          is_closure(c->expr.arg[n]) &&
-          is_dep(c->expr.arg[n]) &&
-          c->expr.arg[n]->expr.arg[0] == c) --nd;
-  }
-  return nd;
-}
-
 /* replace references in r with corresponding tmp references */
 /* m => in-place, update ref counts for replaced references */
 static
@@ -679,28 +685,28 @@ void mutate_update(cell_t *r, bool m) {
 /* traverse r and make copies to tmp */
 /* u => subtree is unique, exp => to be expanded */
 static
-bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u, int exp) {
+bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, int exp) {
   r = clear_ptr(r);
   if(!is_closure(r)) return false;
   if(r->tmp) return true;
-  u &= !nondep_n(r);
 
-  bool dirty = false;
+  bool unique = !~r->n; // only referenced by the root
+  bool dirty = false; // references c
   if(r == c) {
     dirty = true;
   } else {
     // prevent looping
     r->tmp = r;
     traverse(r, {
-        dirty |= mutate_sweep(c, *p, l, u, exp);
+        dirty |= mutate_sweep(c, *p, l, exp);
       }, ARGS | PTRS | ALT);
     r->tmp = 0;
   }
 
   if(dirty) {
-    if(u) {
+    if(unique) {
       // if unique, rewrite pointers inplace
-      if(exp && r == c) r = expand_inplace(r, exp); // *** TODO how to update value of r?
+      if(exp && r == c) r = expand_args_inplace(r, exp); // *** TODO how to update value of r?
       mutate_update(r, true);
     } else {
       // otherwise, add to the list and defer
@@ -712,17 +718,25 @@ bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, bool u, int exp) {
       *l = r;
     }
   }
-  return dirty && !u;
+  return dirty && !unique;
 }
 
 /* make a path copy from the root (r) to the cell to modify (c) and store in tmps */
+/* r references c. Optimization over: */
+/* r' = deep_copy(r) */
+/* drop(r) */
+/* modify c' in r' without affecting c */
+// make drop list
+// mutate_update others
 cell_t *mutate(cell_t *c, cell_t *r, int exp) {
   cell_t *l = 0;
 
   // make sure c is copied if it is to be expanded
   if(exp) ref(c);
 
-  mutate_sweep(c, r, &l, true, exp);
+  fake_drop(r);
+  mutate_sweep(c, r, &l, exp);
+  fake_undrop(r);
   if(r->tmp) {
     ++r->tmp->n;
     --r->n;

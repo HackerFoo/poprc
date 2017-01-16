@@ -381,6 +381,27 @@ void drop_multi(cell_t **a, csize_t n) {
   for(csize_t i = 0; i < n; i++) drop(*a++);
 }
 
+void fake_drop(cell_t *c) {
+  if(!is_cell(c) || c->n == PERSISTENT) return;
+  assert(~c->n && is_closure(c));
+  if(!c->n) {
+    traverse(c, {
+        fake_drop(clear_ptr(*p));
+      }, ALT | ARGS_IN | PTRS);
+  }
+  --c->n;
+}
+
+void fake_undrop(cell_t *c) {
+  if(!is_cell(c) || c->n == PERSISTENT) return;
+  assert(is_closure(c));
+  if(!++c->n) {
+    traverse(c, {
+        fake_undrop(clear_ptr(*p));
+      }, ALT | ARGS_IN | PTRS);
+  }
+}
+
 alt_set_t as_single(unsigned int k, unsigned int v) {
   assert_throw(k < AS_SIZE);
   return (alt_set_t)1 << ((k << 1) + (v & 1));
