@@ -121,7 +121,8 @@
 #define _STRINGIFY(x) #x
 #define STRINGIFY(x) _STRINGIFY(x)
 
-#define LIST_ADD(f, l, v) (*(l) = (v), (l) = &(v)->f)
+#define LIST_ADD(f, l, v) (*(l) = (v), (l) = &(v)->f) // insert at l = tail
+#define CONS(f, l, v) ((v)->f = *(l), *(l) = (v)) // insert at l = head
 
 #define FLIP_PTR(p) ((void *)~(uintptr_t)(p))
 

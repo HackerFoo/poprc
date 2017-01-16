@@ -227,7 +227,7 @@ void new_deps(cell_t *c) {
     cell_t **d = &c->expr.arg[i];
     if(*d) {
       assert(is_dep(*d));
-      *d = dep(c);
+      *d = dep(ref(c));
     }
   }
 }
@@ -267,6 +267,7 @@ cell_t *expand_deps(cell_t *c, csize_t s) {
 
   // shift and update deps
   memmove(&c->expr.arg[in+s], &c->expr.arg[in], c->expr.out * sizeof(cell_t *));
+  memset(&c->expr.arg[in], 0, s * sizeof(cell_t *));
   c->expr.out += s;
   if(n) {
     new_deps(c);
@@ -308,18 +309,27 @@ cell_t *compose_placeholders(cell_t *a, cell_t *b) {
 cell_t *compose_nd(cell_t *a, cell_t *b) {
   csize_t n = list_size(b);
   csize_t n_a = list_size(a);
-  csize_t i = 0;
+  csize_t i = 0, new = 0;
   if(n && n_a) {
     cell_t *l;
     while(!closure_is_ready(l = b->value.ptr[n-1]) && i < n_a) {
       cell_t *x = a->value.ptr[i];
       if(is_placeholder(x)) {
         if(is_placeholder(l)) {
+          assert_throw(false, "composing placeholders doesn't work right now.");
           b->value.ptr[n-1] = compose_placeholders(x, l);
           ++i;
           break;
         }
-        a->value.ptr[i] = x = expand_deps(x, 1);
+
+        // only expand inplace after copying if necessary the first time
+        if(i >= new) {
+          new = i + 1;
+          x = expand_deps(x, 1);
+        } else {
+          x = expand_deps_inplace(x, 1);
+        }
+        a->value.ptr[i] = x;
         b = arg_nd(l, x->expr.arg[closure_in(x)] = dep(ref(x)), b);
       } else {
         b = arg_nd(l, ref(x), b);
@@ -404,45 +414,68 @@ void close_placeholders(cell_t *c) {
   }
 }
 
-// non-destructive (_nd) version of arg
-cell_t *arg_nd(cell_t *c, cell_t *a, cell_t *r) {
-  cell_t *l = _arg_nd(c, a, r);
-  r = r->tmp ? r->tmp : r;
-  clean_tmp(l);
-  //check_tmps();
-  return r;
+void update_ready(cell_t *c, cell_t *a) {
+  cell_t *p = c, *q = 0;
+  cell_t *l = 0;
+
+  // build stack
+  while(p != a) {
+    csize_t i = closure_next_child(p);
+    if(i == 0) {
+      // last arg, push to stack
+      CONS(tmp, &l, p);
+    } else {
+      // not last arg, clear the stack
+      clean_tmp(l);
+      l = 0;
+      q = p;
+    }
+    p = p->expr.arg[i];
+  }
+
+  // set ready
+  p = l;
+  while(p) {
+    cell_t *n = p->tmp;
+    closure_set_ready(p, true);
+    p->tmp = 0;
+    p = n;
+  }
+
+  if(q) --*(intptr_t *)&q->expr.arg[0]; // decrement offset
 }
 
-cell_t *_arg_nd(cell_t *c, cell_t *a, cell_t *r) {
-  cell_t *l = 0;
-  assert(is_closure(c) && is_closure(a));
-  assert(!closure_is_ready(c));
-  csize_t i = closure_next_child(c);
+// non-destructive (_nd) version of arg
+cell_t *arg_nd(cell_t *c, cell_t *a, cell_t *r) {
+  assert(is_closure(a));
+  cell_t *p = c;
+loop:
+  assert(!closure_is_ready(p));
+  csize_t i = closure_next_child(p);
   // *** shift args if placeholder
-  if(is_placeholder(c) &&
-     (closure_in(c) == 0 ||
-      closure_is_ready(c->expr.arg[0]))) {
-    l = mutate(c, r, 1);
-    c = c->tmp ? c->tmp : c;
-    r = r->tmp ? r->tmp : r;
-    c->expr.arg[0] = a;
-    r->value.ptr[list_size(r)-1] = c; // ***
-  } else if(!is_data(c->expr.arg[i])) {
-    l = mutate(c, r, 0);
-    c = c->tmp ? c->tmp : c;
-    c->expr.arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
-    c->expr.arg[i] = a;
-    if(i == 0 && !is_placeholder(c)) closure_set_ready(c, closure_is_ready(a));
-  } else {
-    l = _arg_nd(c->expr.arg[i], a, r);
-    c = c->tmp ? c->tmp : c;
-    if(!is_placeholder(c) &&
-       closure_is_ready(c->expr.arg[i])) {
-      if(i == 0) closure_set_ready(c, true);
-      else --*(intptr_t *)&c->expr.arg[0]; // decrement offset
+  if(is_placeholder(p) &&
+     (closure_in(p) == 0 ||
+      closure_is_ready(p->expr.arg[0]))) {
+    cell_t *l = mutate(&p, &r, 1);
+    if(c->tmp) c = c->tmp;
+    clean_tmp(l);
+    assert(!p->expr.arg[0]);
+    p->expr.arg[0] = a;
+    r->value.ptr[list_size(r)-1] = p; // *** why is this done here?
+  } else if(!is_data(p->expr.arg[i])) {
+    cell_t *l = mutate(&p, &r, 0);
+    if(c->tmp) c = c->tmp;
+    clean_tmp(l);
+    p->expr.arg[i] = a;
+    if(!is_placeholder(p) &&
+       closure_is_ready(a)) {
+        update_ready(c, a);
     }
+  } else {
+    p = p->expr.arg[i];
+    goto loop;
   }
-  return l;
+  return r;
 }
 
 cell_t *traverse_ref(cell_t *c, uint8_t flags) {
@@ -682,43 +715,48 @@ void mutate_update(cell_t *r, bool m) {
     }, ARGS_OUT);
 }
 
+static
+cell_t *add_to_list(cell_t *c, cell_t *nc, cell_t **l) {
+  nc->n = -1;
+  CONS(tmp, l, nc);
+  CONS(tmp, l, c);
+  assert(check_tmp_loop(*l));
+  return nc;
+}
+
+static
+cell_t *add_copy_to_list(cell_t *c, cell_t **l) {
+  return add_to_list(c, copy(c), l);
+}
+
 /* traverse r and make copies to tmp */
 /* u => subtree is unique, exp => to be expanded */
 static
-bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, int exp) {
+bool mutate_sweep(cell_t *r, cell_t **l) {
   r = clear_ptr(r);
   if(!is_closure(r)) return false;
   if(r->tmp) return true;
 
   bool unique = !~r->n; // only referenced by the root
   bool dirty = false; // references c
-  if(r == c) {
-    dirty = true;
-  } else {
-    // prevent looping
-    r->tmp = r;
-    traverse(r, {
-        dirty |= mutate_sweep(c, *p, l, exp);
-      }, ARGS | PTRS | ALT);
-    r->tmp = 0;
-  }
 
-  if(dirty) {
-    if(unique) {
-      // if unique, rewrite pointers inplace
-      if(exp && r == c) r = expand_args_inplace(r, exp); // *** TODO how to update value of r?
-      mutate_update(r, true);
-    } else {
-      // otherwise, add to the list and defer
-      cell_t *n = copy(r);
-      n->n = -1;
-      if(exp && r == c) n = expand_inplace(n, exp); // *** TODO optimize
-      n->tmp = *l;
-      r->tmp = n;
-      *l = r;
-    }
+  // prevent looping
+  r->tmp = r;
+  traverse(r, {
+      dirty |= mutate_sweep(*p, l);
+    }, ARGS | PTRS | ALT);
+  r->tmp = 0;
+
+  if(!dirty) return false;
+
+  if(unique) {
+    // rewrite pointers inplace
+    mutate_update(r, true);
+    return false;
+  } else {
+    add_copy_to_list(r, l);
+    return true;
   }
-  return dirty && !unique;
 }
 
 /* make a path copy from the root (r) to the cell to modify (c) and store in tmps */
@@ -726,24 +764,33 @@ bool mutate_sweep(cell_t *c, cell_t *r, cell_t **l, int exp) {
 /* r' = deep_copy(r) */
 /* drop(r) */
 /* modify c' in r' without affecting c */
-// make drop list
-// mutate_update others
-cell_t *mutate(cell_t *c, cell_t *r, int exp) {
-  cell_t *l = 0;
-
-  // make sure c is copied if it is to be expanded
-  if(exp) ref(c);
+cell_t *mutate(cell_t **cp, cell_t **rp, int exp) {
+  cell_t *c = *cp, *r = *rp;
+  cell_t *l = NULL;
 
   fake_drop(r);
-  mutate_sweep(c, r, &l, exp);
+  if(!~c->n) {
+    fake_undrop(r);
+    if(exp) {
+      *cp = expand_args(c, exp);
+    }
+    return NULL;
+  }
+
+  // expand c if needed
+  if(exp) {
+    cell_t *nc = copy_expand(c, exp);
+    add_to_list(c, nc, &l);
+  } else {
+    add_copy_to_list(c, &l);
+  }
+
+  mutate_sweep(r, &l);
   fake_undrop(r);
+
   if(r->tmp) {
     ++r->tmp->n;
     --r->n;
-  }
-
-  if(exp) {
-    --c->n;
   }
 
   // traverse list and rewrite pointers
@@ -755,6 +802,8 @@ cell_t *mutate(cell_t *c, cell_t *r, int exp) {
     li = t->tmp;
   }
   assert(check_deps(r));
+  if(c->tmp) *cp = c->tmp;
+  if(r->tmp) *rp = r->tmp;
   return l;
 }
 
@@ -782,11 +831,19 @@ bool check_deps(cell_t *c) {
 bool check_tmp_loop(cell_t *c) {
   if(!c) return true;
   cell_t *tortoise = c, *hare = c;
+  size_t cnt = 0;
   do {
+    cnt += 2;
     tortoise = tortoise->tmp;
     hare = hare->tmp ? hare->tmp->tmp : NULL;
     if(!(tortoise && hare)) return true;
   } while(tortoise != hare);
+
+  while(cnt--) {
+    printf("%d -> ", (int)(c - cells));
+    c = c->tmp;
+  }
+  printf("...\n");
   return false;
 }
 
@@ -795,10 +852,7 @@ void clean_tmp(cell_t *l) {
   while(l) {
     cell_t *next = l->tmp;
     l->tmp = 0;
-    if(l->n + 1 == 0) {
-      l->n = 0;
-      drop(l);
-    }
+    assert(~l->n);
     l = next;
   }
 }
