@@ -40,6 +40,10 @@ bool insert_root(cell_t **r) {
   return set_insert((uintptr_t)r, (uintptr_t *)rt_roots, rt_roots_n);
 }
 
+bool is_root(const cell_t *c) {
+  return count_root(c, rt_roots, rt_roots_n) > 0;
+}
+
 bool remove_root(cell_t **r) {
   return set_remove((uintptr_t)r, (uintptr_t *)rt_roots, rt_roots_n);
 }

@@ -161,12 +161,12 @@ void assert_ref_inc(cell_t *c) {
   }
 }
 
-static
-bool is_root(cell_t *c, cell_t ***roots, size_t n) {
+size_t count_root(const cell_t *c, cell_t ***roots, size_t n) {
+  size_t cnt = 0;
   COUNTUP(i, n) {
-    if(roots[i] && c == *roots[i]) return true;
+    if(roots[i] && c == *roots[i]) cnt++;
   }
-  return false;
+  return cnt;
 }
 
 static
@@ -181,7 +181,8 @@ bool assert_ref_check(cell_t *c, cell_t ***roots, size_t roots_n) {
   bool res = true;
   while(c) {
     refcount_t n = c->n + 1;
-    if(n && !is_root(c, roots, roots_n)) {
+    n -= count_root(c, roots, roots_n);
+    if(n) {
       printf("assert_ref: cell[%d].n == %d\n", (int)(c - cells), (int)n);
       res = false;
     }
