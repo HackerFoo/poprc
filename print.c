@@ -193,10 +193,11 @@ void graph_cell(FILE *f, cell_t const *c) {
           closure_is_ready(c) ? "" : "*",
           (int)c->size);
   if(!is_value(c)) {
-    fprintf(f, "%x (%u)</b></font></td></tr>", (unsigned int)c->expr.out, (unsigned int)c->n);
+    fprintf(f, "%x ", (unsigned int)c->expr.out);
   } else {
-    fprintf(f, "%s (%u)</b></font></td></tr>", show_type_all_short(c->value.type), (unsigned int)c->n);
+    fprintf(f, "%s ", show_type_all_short(c->value.type));
   }
+  fprintf(f, "(%u%s)</b></font></td></tr>", (unsigned int)c->n, is_root(c) ? "*" : "");
   fprintf(f, "<tr><td port=\"alt\">alt: ");
   print_cell_pointer(f, c->alt);
   fprintf(f, "</td></tr>");
