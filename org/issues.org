@@ -67,7 +67,7 @@ look for word in parent module, parent imports, context module, context imports,
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
-** TODO [ 3 ] ? [ 2 * ] [ 2 - ] | .
+** DONE ? [ id ] [ id ] | .
 eval: test.c:206: void assert_ref(cell_t ***, size_t): Assertion `check' failed.
 ** TODO P [ 2 + 2 2 ] ? [ 2 * ] [ 1 ] | . .
 eval: rt.c:804: cell_t *mutate(cell_t **, cell_t **, int): Assertion `check_deps(r)' failed.

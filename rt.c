@@ -325,7 +325,8 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
         // only expand inplace after copying if necessary the first time
         if(i >= new) {
           new = i + 1;
-          x = expand_deps(x, 1);
+          drop(x);
+          x = func(func_placeholder, 0, 2);
         } else {
           x = expand_deps_inplace(x, 1);
         }
