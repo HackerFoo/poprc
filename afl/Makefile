@@ -49,6 +49,23 @@ crashes.txt: $(wildcard output/*/crashes)
          | tee crashes.txt
 	rm tmp.txt
 
+errors.txt: crashes.txt
+	grep -o 'eval:.*' crashes.txt | sort | uniq -c | sort -nr | tee errors.txt
+
+queue.txt: $(wildcard output/*/queue)
+	(shopt -s nullglob; \
+         for i in output/*/queue/id*; \
+         do \
+	   if ! (./eval -commands no $(POPRC_FLAGS) < "$$i" &> tmp.txt || false) &> /dev/null; \
+           then \
+             echo "___ $$i"; \
+             ./eval -lex < "$$i"; \
+             cat tmp.txt; \
+	   fi; \
+         done) \
+         | tee queue.txt
+	rm tmp.txt
+
 hangs.txt: $(wildcard output/*/hangs)
 	(shopt -s nullglob; \
          for i in output/*/hangs/id*; \
