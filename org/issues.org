@@ -67,12 +67,15 @@ look for word in parent module, parent imports, context module, context imports,
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
+** [ id 2 ] ? [ id ] . .
 ** DONE ? [ id ] [ id ] | .
 eval: test.c:206: void assert_ref(cell_t ***, size_t): Assertion `check' failed.
-** TODO P [ 2 + 2 2 ] ? [ 2 * ] [ 1 ] | . .
+** TODO [ id 2 2 ] ? [ id ] . .
 eval: rt.c:804: cell_t *mutate(cell_t **, cell_t **, int): Assertion `check_deps(r)' failed.
-** TODO 1 ? dup [ swap . swap . swap [ 1 ] swap 2 ] swap | . swap [ 1 ] swap .
-eval: rt.c:855: void clean_tmp(cell_t *): Assertion `~l->n' failed.
+** TODO [] ? dup [id] swap | . [] .
+eval: rt.c:856: void clean_tmp(cell_t *): Assertion `~l->n' failed.
+also: id , ? .
+
 ** TODO VV L JsC ! Js ! [ - ] ? | [ ] ? | [ * ! . . . * . * . Q [ G * ] dup - ] ? | [ ] ? | [ * ! . . . * . * ] . . popr
 eval: rt.c:723: cell_t *add_to_list(cell_t *, cell_t *, cell_t **): Assertion `check_tmp_loop(*l)' failed.
 ** TODO [ 3 2 - ] > , [ 2 C - ] ? | .
