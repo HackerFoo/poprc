@@ -773,7 +773,7 @@ cell_t *mutate(cell_t **cp, cell_t **rp, int exp) {
   if(!~c->n) {
     fake_undrop(r);
     if(exp) {
-      *cp = expand_args(c, exp);
+      *cp = expand_args_inplace(c, exp);
     }
     return NULL;
   }

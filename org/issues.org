@@ -67,10 +67,10 @@ look for word in parent module, parent imports, context module, context imports,
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
-** [ id 2 ] ? [ id ] . .
+** DONE [ id 2 ] ? [ id ] . .
 ** DONE ? [ id ] [ id ] | .
 eval: test.c:206: void assert_ref(cell_t ***, size_t): Assertion `check' failed.
-** TODO [ id 2 2 ] ? [ id ] . .
+** DONE [ id 2 2 ] ? [ id ] . .
 eval: rt.c:804: cell_t *mutate(cell_t **, cell_t **, int): Assertion `check_deps(r)' failed.
 ** TODO [] ? dup [id] swap | . [] .
 eval: rt.c:856: void clean_tmp(cell_t *): Assertion `~l->n' failed.
@@ -84,7 +84,7 @@ eval: cells.c:263: csize_t closure_in(const cell_t *): Assertion `is_closure(c) 
 ** TODO ? dup [+] . swap .
 ** TODO [ swap ] dup pushl popr drop dup pushl popr
 Assertion failed: (check), function assert_ref, file test.c, line 205.
-** TODO [ 3 ] ? [ ! ] . [ ] | . __ hang
+** DONE [ 3 ] ? [ ! ] . [ ] | . __ hang
 ** TODO f: . popr swap drop
 ** TODO f: pushr popr swap drop __ unreferenced pushr
 ** TODO fix tests.sum
