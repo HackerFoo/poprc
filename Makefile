@@ -234,7 +234,7 @@ graph: eval
 profile:
 	make BUILD=profile test
 	CPUPROFILE=eval_prof.out ./eval
-	pprof --web eval eval_prof.out
+	google-pprof --web eval eval_prof.out
 
 .PHONY: dbg
 dbg:
