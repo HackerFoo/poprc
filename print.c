@@ -293,15 +293,18 @@ bool any_alt_overlap(cell_t const * const *p, csize_t size) {
   return false;
 }
 
-bool any_conflicts(cell_t const * const *p, csize_t size) {
+csize_t any_conflicts(cell_t const * const *p, csize_t size) {
   uintptr_t as = 0;
-  while(size--) {
+  COUNTUP(i, size) {
     if(is_value(*p)) {
       as |= (*p)->value.alt_set;
+      if(as_conflict(as)) {
+        return size - i;
+      }
     }
     p++;
   }
-  return as_conflict(as);
+  return 0;
 }
 
 // must be at least 2
@@ -309,19 +312,20 @@ bool any_conflicts(cell_t const * const *p, csize_t size) {
 
 void show_list(cell_t const *c) {
   assert(c && is_list(c));
-  int n = list_size(c), i;
+  csize_t n = list_size(c), i;
+  csize_t conflict = 0;
   if(n) {
     if(any_alt_overlap((cell_t const *const *)c->value.ptr, n)) {
       cell_t *p = 0, *free_this = 0;
       cell_t const *m1 = 0, *m2 = 0;
 
       /* find first match */
-      if(!any_conflicts((cell_t const *const *)c->value.ptr, n)) {
+      if(!(conflict = any_conflicts((cell_t const *const *)c->value.ptr, n))) {
         m1 = c;
       } else {
         p = copy(c);
-        while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, n) >= 0) {
-          if(!any_conflicts((cell_t const *const *)p->value.ptr, n)) {
+        while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, conflict, n)) {
+          if(!(conflict = any_conflicts((cell_t const *const *)p->value.ptr, n))) {
             m1 = p;
             free_this = p;
             break;
@@ -335,8 +339,8 @@ void show_list(cell_t const *c) {
       } else {
         /* find second match */
         p = copy(m1);
-        while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, n) >= 0) {
-          if(!any_conflicts((cell_t const *const *)p->value.ptr, n)) {
+        while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, conflict, n)) {
+          if(!(conflict = any_conflicts((cell_t const *const *)p->value.ptr, n))) {
             m2 = p;
             break;
           }
@@ -354,8 +358,8 @@ void show_list(cell_t const *c) {
           printf(" ]");
           /* remaining matches */
           int limit = SHOW_LIST_LIMIT - 2;
-          while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, n) >= 0) {
-            if(!any_conflicts((cell_t const *const *)p->value.ptr, n)) {
+          while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, conflict, n)) {
+            if(!(conflict = any_conflicts((cell_t const *const *)p->value.ptr, n))) {
               if(!limit--) {
                 printf(" | ...");
                 break;
@@ -391,11 +395,14 @@ int test_count() {
   cell_t const *reset[3] = {&test[0], &test[2], &test[3]};
   memcpy(cnt, reset, sizeof(reset));
   int n = 0;
-  do {
-    n++;
-    printf("%d %d %d\n", (int)(cnt[0]-test), (int)(cnt[1]-test), (int)(cnt[2]-test));
-  } while(count((const cell_t **)cnt, reset, 3) >= 0);
-  return n == 6 ? 0 : -1;
+  FOREACH(i, reset) {
+    printf("___ conflict = %d ___\n", (int)i);
+    do {
+      n++;
+      printf("%d %d %d\n", (int)(cnt[0]-test), (int)(cnt[1]-test), (int)(cnt[2]-test));
+    } while(count((const cell_t **)cnt, reset, i, 3));
+  }
+  return n == 16 ? 0 : -1;
 }
 
 void show_func(cell_t const *c) {
@@ -556,15 +563,16 @@ char *show_type_all_short(type_t t) {
   return buf;
 }
 
-int count(cell_t const **cnt, cell_t const *const *reset, int size) {
-  int i = size;
-  while(i--) {
+bool count(cell_t const **cnt, cell_t const *const *reset, csize_t conflict, csize_t size) {
+  csize_t i= conflict;
+  while(i && !cnt[i]->alt) i--; // find the nost significant with an alt
+  for(; i < size; i++) {
     if(!cnt[i]->alt) {
       cnt[i] = reset[i];
     } else {
       cnt[i] = cnt[i]->alt;
-      break;
+      return true;
     }
   }
-  return i;
+  return false;
 }

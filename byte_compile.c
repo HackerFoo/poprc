@@ -617,6 +617,7 @@ unsigned int trace_reduce(cell_t *c) {
   cell_t *r = NULL;
   cell_t *first;
   unsigned int alts = 0;
+  csize_t conflict = 0;
 
   insert_root(&c);
 
@@ -625,7 +626,7 @@ unsigned int trace_reduce(cell_t *c) {
     reduce(&c->value.ptr[i], T_ANY);
     trace(c->value.ptr[i], c, tt_force, i);
   }
-  if(!any_conflicts((cell_t const *const *)c->value.ptr, n)) {
+  if(!(conflict = any_conflicts((cell_t const *const *)c->value.ptr, n))) {
     r = &trace_cur[trace_store(c, T_LIST)];
     trace_rewrite(r);
     r->n++;
@@ -636,12 +637,12 @@ unsigned int trace_reduce(cell_t *c) {
 
   // rest
   cell_t *p = copy(c);
-  while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, n) >= 0) {
+  while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, conflict, n)) {
     COUNTUP(i, n) {
       reduce(&p->value.ptr[i], T_ANY);
       trace(p->value.ptr[i], p, tt_force, i);
     }
-    if(!any_conflicts((cell_t const *const *)p->value.ptr, n)) {
+    if(!(conflict = any_conflicts((cell_t const *const *)p->value.ptr, n))) {
       cell_t *prev = r;
       r = &trace_cur[trace_store(p, T_LIST)];
       trace_rewrite(r);
