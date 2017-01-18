@@ -31,10 +31,16 @@
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
 
-#define RT_ROOTS_N 31
-static const size_t rt_roots_n = RT_ROOTS_N;
-static cell_t **rt_roots[RT_ROOTS_N];
+cell_t **rt_roots[31];
+const size_t rt_roots_n = LENGTH(rt_roots);
+
+#if INTERFACE
+#if defined(NDEBUG)
+#define ASSERT_REF()
+#else
 #define ASSERT_REF() assert_ref(rt_roots, rt_roots_n)
+#endif
+#endif
 
 bool insert_root(cell_t **r) {
   return set_insert((uintptr_t)r, (uintptr_t *)rt_roots, rt_roots_n);
@@ -132,7 +138,6 @@ void clear_flags(cell_t *c) {
 // Reduce *cp with type t
 bool reduce(cell_t **cp, type_t t) {
   cell_t *c;
-  ASSERT_REF();
   while((c = clear_ptr(*cp))) {
     if(!closure_is_ready(c)) close_placeholders(c);
     assert(is_closure(c));
@@ -142,7 +147,6 @@ bool reduce(cell_t **cp, type_t t) {
     }
     unsigned int m = measure.reduce_cnt++;
     bool success = c->func(cp, t);
-    ASSERT_REF();
     if(success) {
       cell_t *n = clear_ptr(*cp);
       if(write_graph && measure.reduce_cnt > m) {

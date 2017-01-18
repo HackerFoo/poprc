@@ -24,6 +24,7 @@
 #include "gen/primitive.h"
 #include "gen/special.h"
 #include "gen/print.h"
+#include "gen/test.h"
 
    /*-----------------------------------------------,
     |          VARIABLE NAME CONVENTIONS            |
@@ -136,6 +137,7 @@ bool func_compose(cell_t **cp, UNUSED type_t t) {
   drop(res->alt);
   res->alt = c->alt;
   store_reduced(cp, res);
+  ASSERT_REF();
   return true;
 
  fail:
@@ -160,6 +162,7 @@ bool func_pushl(cell_t **cp, UNUSED type_t t) {
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   store_reduced(cp, res);
+  ASSERT_REF();
   return true;
 
  fail:
@@ -187,6 +190,7 @@ bool func_pushr(cell_t **cp, UNUSED type_t t) {
   res->alt = c->alt;
 
   store_reduced(cp, res);
+  ASSERT_REF();
   return true;
 
  fail:
@@ -249,6 +253,7 @@ bool func_popr(cell_t **cp, UNUSED type_t t) {
 
   store_lazy_dep(d, res_d, alt_set);
   store_reduced(cp, res);
+  ASSERT_REF();
   return true;
 
  fail:

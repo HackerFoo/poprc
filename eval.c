@@ -513,6 +513,7 @@ void eval(const cell_t *p) {
   } else {
     reduce_root(c);
     c = remove_row(c);
+    ASSERT_REF();
     show_list(c);
     printf("\n");
   }
