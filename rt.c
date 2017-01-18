@@ -35,11 +35,7 @@ cell_t **rt_roots[31];
 const size_t rt_roots_n = LENGTH(rt_roots);
 
 #if INTERFACE
-#if defined(NDEBUG)
-#define ASSERT_REF()
-#else
-#define ASSERT_REF() assert_ref(rt_roots, rt_roots_n)
-#endif
+#define ASSERT_REF() assert(assert_ref(rt_roots, rt_roots_n))
 #endif
 
 bool insert_root(cell_t **r) {
