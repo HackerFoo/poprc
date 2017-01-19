@@ -37,9 +37,9 @@ fuzz: eval input popr.dict
 
 crashes.txt: $(wildcard output/*/crashes)
 	(shopt -s nullglob; \
-         for i in output/*/crashes/id*; \
+         for i in `ls -brS1 output/*/crashes/id*`; \
          do \
-	   if ! (./eval -commands no $(POPRC_FLAGS) < "$$i" &> tmp.txt || false) &> /dev/null; \
+	   if ! (./eval -commands no $(POPRC_FLAGS) < $$i &> tmp.txt || false) &> /dev/null; \
            then \
              echo "___ $$i"; \
              ./eval -lex < "$$i"; \
@@ -47,16 +47,16 @@ crashes.txt: $(wildcard output/*/crashes)
 	   fi; \
          done) \
          | tee crashes.txt
-	rm tmp.txt
+	rm -f tmp.txt
 
 errors.txt: crashes.txt
 	grep -o 'eval:.*' crashes.txt | sort | uniq -c | sort -nr | tee errors.txt
 
 queue.txt: $(wildcard output/*/queue)
 	(shopt -s nullglob; \
-         for i in output/*/queue/id*; \
+         for i in `ls -brS1 output/*/queue/id*`; \
          do \
-	   if ! (./eval -commands no $(POPRC_FLAGS) < "$$i" &> tmp.txt || false) &> /dev/null; \
+	   if ! (./eval -commands no $(POPRC_FLAGS) < $$i &> tmp.txt || false) &> /dev/null; \
            then \
              echo "___ $$i"; \
              ./eval -lex < "$$i"; \
@@ -68,7 +68,7 @@ queue.txt: $(wildcard output/*/queue)
 
 hangs.txt: $(wildcard output/*/hangs)
 	(shopt -s nullglob; \
-         for i in output/*/hangs/id*; \
+         for i in `ls -brS1 output/*/hangs/id*`; \
          do \
            echo "___ $$i"; \
            ./eval -lex < "$$i"; \
