@@ -735,7 +735,7 @@ cell_t *add_copy_to_list(cell_t *c, cell_t **l) {
 static
 bool mutate_sweep(cell_t *r, cell_t **l) {
   r = clear_ptr(r);
-  if(!is_closure(r)) return false;
+  if(!is_closure(r) || r->n == PERSISTENT) return false;
   if(r->tmp) return true;
 
   bool unique = !~r->n; // only referenced by the root
