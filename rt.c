@@ -760,6 +760,13 @@ bool mutate_sweep(cell_t *r, cell_t **l) {
   }
 }
 
+bool deps_are_unique(cell_t *c) {
+  traverse(c, {
+      if(*p && ~(*p)->n) return false;
+    }, ARGS_OUT);
+  return true;
+}
+
 /* make a path copy from the root (r) to the cell to modify (c) and store in tmps */
 /* r references c. Optimization over: */
 /* r' = deep_copy(r) */
@@ -771,6 +778,7 @@ cell_t *mutate(cell_t **cp, cell_t **rp, int exp) {
 
   fake_drop(r);
   if(!~c->n) {
+    assert(deps_are_unique(c));
     fake_undrop(r);
     if(exp) {
       *cp = expand_args_inplace(c, exp);
