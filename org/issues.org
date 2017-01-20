@@ -67,7 +67,9 @@ look for word in parent module, parent imports, context module, context imports,
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
-** TODO [1 2] [] | ? [id] [4] | . .
+** TODO ? [swap] ? [swap] . .
+eval: primitive.c:140: _Bool func_compose(cell_t **, type_t): Assertion `assert_ref(rt_roots, rt_roots_n)' failed.
+** DONE [1 2] [] | ? [id] [3] | . .
 ** DONE [ id 2 ] ? [ id ] . .
 ** DONE ? [ id ] [ id ] | .
 eval: test.c:206: void assert_ref(cell_t ***, size_t): Assertion `check' failed.

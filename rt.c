@@ -307,43 +307,54 @@ cell_t *compose_placeholders(cell_t *a, cell_t *b) {
 
 // non-destructive (_nd) compose
 cell_t *compose_nd(cell_t *a, cell_t *b) {
-  csize_t n = list_size(b);
+  csize_t n_b = list_size(b);
   csize_t n_a = list_size(a);
-  csize_t i = 0, new = 0;
-  if(n && n_a) {
-    cell_t *l;
-    while(!closure_is_ready(l = b->value.ptr[n-1]) && i < n_a) {
-      cell_t *x = a->value.ptr[i];
-      if(is_placeholder(x)) {
-        if(is_placeholder(l)) {
-          assert_throw(false, "composing placeholders doesn't work right now.");
-          b->value.ptr[n-1] = compose_placeholders(x, l);
-          ++i;
-          break;
-        }
+  if(n_b == 0) return a;
+  if(n_a == 0) return b;
+  csize_t i = 0;
+  cell_t *left_b;
 
-        // only expand inplace after copying if necessary the first time
-        if(i >= new) {
-          new = i + 1;
-          drop(x);
-          x = func(func_placeholder, 0, 2);
-        } else {
-          x = expand_deps_inplace(x, 1);
-        }
-        a->value.ptr[i] = x;
-        b = arg_nd(l, x->expr.arg[closure_in(x)] = dep(ref(x)), b);
-      } else {
-        b = arg_nd(l, ref(x), b);
-        ++i;
-      }
+  // fill the leftmost element of b
+  while(!closure_is_ready(left_b = b->value.ptr[n_b - 1]) && i < n_a) {
+    cell_t *x = a->value.ptr[i++];
+    if(is_placeholder(x)) goto fill_with_placeholder;
+    b = arg_nd(left_b, ref(x), b);
+  }
+
+  if(i < n_a) {
+    goto prepend_remainder;
+  } else {
+    goto finish;
+  }
+
+  // if there is a placeholder in a, use it to fill the leftmost element of a
+fill_with_placeholder: {
+    cell_t *x = func(func_placeholder, 0, 1);
+    while(!closure_is_ready(left_b = b->value.ptr[n_b - 1])) {
+      assert_throw(!is_placeholder(left_b), "composing placeholders doesn't work right now.");
+      x = expand_deps_inplace(x, 1);
+      b = arg_nd(left_b, x->expr.arg[0] = dep(ref(x)), b);
     }
+    b = expand(b, 1);
+    b->value.ptr[n_b] = x;
   }
-  cell_t *e = expand(b, n_a - i);
-  for(unsigned j = n; i < n_a; ++i, ++j) {
-    e->value.ptr[j] = ref(a->value.ptr[i]);
+
+  if(i >= n_a) {
+    goto finish;
   }
+
+// prepend b with the remainder of a
+prepend_remainder:
+  b = expand(b, n_a - i);
+  cell_t **p = &b->value.ptr[n_b];
+  while(i < n_a) {
+    cell_t *x = a->value.ptr[i++];
+    *p++ = ref(x);
+  }
+
+finish:
   drop(a);
-  return e;
+  return b;
 }
 
 cell_t *func(reduce_t *f, csize_t in, csize_t out) {
