@@ -67,24 +67,19 @@ look for word in parent module, parent imports, context module, context imports,
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
-** TODO ? [swap] ? [swap] . .
-eval: primitive.c:140: _Bool func_compose(cell_t **, type_t): Assertion `assert_ref(rt_roots, rt_roots_n)' failed.
+** DONE ? [swap] ? [swap] . .
 ** DONE [1 2] [] | ? [id] [3] | . .
 ** DONE [ id 2 ] ? [ id ] . .
 ** DONE ? [ id ] [ id ] | .
-eval: test.c:206: void assert_ref(cell_t ***, size_t): Assertion `check' failed.
 ** DONE [ id 2 2 ] ? [ id ] . .
-eval: rt.c:804: cell_t *mutate(cell_t **, cell_t **, int): Assertion `check_deps(r)' failed.
-** TODO [] ? dup [id] swap | . [] .
-eval: rt.c:856: void clean_tmp(cell_t *): Assertion `~l->n' failed.
+** DONE [] ? dup [id] swap | . [] .
 ** TODO VV L JsC ! Js ! [ - ] ? | [ ] ? | [ * ! . . . * . * . Q [ G * ] dup - ] ? | [ ] ? | [ * ! . . . * . * ] . . popr
 eval: rt.c:723: cell_t *add_to_list(cell_t *, cell_t *, cell_t **): Assertion `check_tmp_loop(*l)' failed.
-** TODO [ 3 2 - ] > , [ 2 C - ] ? | .
-eval: cells.c:263: csize_t closure_in(const cell_t *): Assertion `is_closure(c) && !is_value(c)' failed.
+** DONE [ 3 2 - ] > , [ 2 C - ] ? | .
 ** TODO ? dup [+] . .
 ** TODO ? dup [+] . swap .
 ** TODO [ swap ] dup pushl popr drop dup pushl popr
-Assertion failed: (check), function assert_ref, file test.c, line 205.
+Creates a cycle that can't be freed
 ** DONE [ 3 ] ? [ ! ] . [ ] | . __ hang
 ** TODO f: . popr swap drop
 ** TODO f: pushr popr swap drop __ unreferenced pushr
