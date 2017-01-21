@@ -463,16 +463,18 @@ bool func_print(cell_t **cp, type_t t) {
      as_conflict(alt_set)) goto fail;
   clear_flags(c);
 
+  if(c->alt) {
+    drop(c->alt);
+    c->alt = 0;
+  }
+
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   if(is_var(p) || is_var(q)) {
     res = var(t);
   } else if(p->value.integer[0] == SYM_IO) {
     show_one(q);
-    res = mod_alt(ref(p), NULL, alt_set);
+    res = ref(p);
   } else goto fail;
-  res->value.type |= T_SYMBOL;
-  res->alt = c->alt;
-  res->value.alt_set = alt_set;
   store_reduced(cp, res);
   return true;
 
