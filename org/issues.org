@@ -67,6 +67,7 @@ look for word in parent module, parent imports, context module, context imports,
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
+** DONE [] [] | [id] .
 ** DONE ? [swap] ? [swap] . .
 ** DONE [1 2] [] | ? [id] [3] | . .
 ** DONE [ id 2 ] ? [ id ] . .

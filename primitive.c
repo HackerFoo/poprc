@@ -133,10 +133,7 @@ bool func_compose(cell_t **cp, UNUSED type_t t) {
   clear_flags(c);
 
   cell_t *res = compose_nd(ref(c->expr.arg[0]), ref(c->expr.arg[1]));
-  res->value.alt_set = alt_set;
-  drop(res->alt);
-  res->alt = c->alt;
-  store_reduced(cp, res);
+  store_reduced(cp, mod_alt(res, c->alt, alt_set));
   ASSERT_REF();
   return true;
 

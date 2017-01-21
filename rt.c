@@ -309,8 +309,13 @@ cell_t *compose_placeholders(cell_t *a, cell_t *b) {
 cell_t *compose_nd(cell_t *a, cell_t *b) {
   csize_t n_b = list_size(b);
   csize_t n_a = list_size(a);
-  if(n_b == 0) return a;
-  if(n_a == 0) return b;
+  if(n_b == 0) {
+    drop(b);
+    return a;
+  }
+  if(n_a == 0) {
+    goto finish;
+  }
   csize_t i = 0;
   cell_t *left_b;
 
