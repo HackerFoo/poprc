@@ -218,7 +218,6 @@ bool func_popr(cell_t **cp, UNUSED type_t t) {
   cell_t *p = c->expr.arg[0];
   if(list_size(p) == 0) goto fail;
 
-  type_t res_type = T_LIST;
   // adds an extra output dep to the placeholder, and puts the dep in front of it
   // [P[in|out] -> [P[in|out+d], d]
   // also marks result as a variable
@@ -232,7 +231,6 @@ bool func_popr(cell_t **cp, UNUSED type_t t) {
     res_d = ref((*l)->expr.arg[closure_in(*l)] = dep(ref(*l)));
     */
     res_d = var(T_ANY);
-    res_type |= T_VAR;
     res = mod_alt(ref(p), c->alt, alt_set);
   } else if(closure_is_ready(*l)) {
     /* drop the right list element */
@@ -240,7 +238,7 @@ bool func_popr(cell_t **cp, UNUSED type_t t) {
     res = closure_alloc(closure_args(p)-1);
     res->func = func_value;
     csize_t elems = list_size(res);
-    res->value.type = res_type;
+    res->value.type = T_LIST | (is_var(p) ? T_VAR : 0);
     for(csize_t i = 0; i < elems; ++i) {
       res->value.ptr[i] = ref(l[i+1]);
     }

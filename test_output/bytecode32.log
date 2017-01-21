@@ -84,6 +84,32 @@ ___ control.ifte (3 -> 1) ___
 [6] return [ 5 ], type = r -> 7 x1
 [7] return [ 1 ], type = r x1
 
+___ control.dip11 (3 -> 2) ___
+[0] var, type = ?l x1
+[1] var, type = ?a x3
+[2] var, type = ?a x1
+[3] __primitive.pushr 0 1, type = ?l x1
+[4] __primitive.pushl 2 3, type = l x1
+[5] __primitive.dep 6, type = a x-1
+[6] __primitive.popr 4 1, type = ?l x2
+[7] __primitive.dep 8, type = a x1
+[8] __primitive.popr 6 7, type = ?l x1
+[9] return [ 7 1 ], type = r x1
+
+___ control.dip21 (4 -> 2) ___
+[0] var, type = ?l x1
+[1] var, type = ?a x3
+[2] var, type = ?a x1
+[3] var, type = ?a x1
+[4] __primitive.pushr 0 1, type = ?l x1
+[5] __primitive.pushl 2 4, type = l x1
+[6] __primitive.pushl 3 5, type = l x1
+[7] __primitive.dep 8, type = a x-1
+[8] __primitive.popr 6 1, type = ?l x2
+[9] __primitive.dep 10, type = a x1
+[10] __primitive.popr 8 9, type = ?l x1
+[11] return [ 9 1 ], type = r x1
+
 ___ tests.dec (1 -> 1) ___
 [0] var, type = ?i x4
 [1] val 5, type = i x2
