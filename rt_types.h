@@ -36,6 +36,7 @@ typedef type_or_csize_t csize_t;
 #define T_STRING    0x0006
 #define T_RETURN    0x0007
 #define T_FLOAT     0x0008
+#define T_FUNCTION  0x0009
 #define T_MODULE    0x00FE
 #define T_BOTTOM    0x00FF
 #define T_TRACED    0x0800
@@ -81,6 +82,7 @@ struct __attribute__((packed)) expr {
   csize_t out;
   union {
     cell_t *arg[2];
+    val_t idx[2];
     struct {
       cell_t *arg0;
       alt_set_t alt_set;
@@ -187,9 +189,7 @@ typedef struct measure_t {
 
 typedef enum trace_type_t {
   tt_reduction,
-  tt_touched,
-  tt_force,
-  tt_copy,
+  tt_update,
   tt_compose_placeholders,
   tt_fail
 } trace_type_t;

@@ -130,7 +130,7 @@ cell_t *parse_word(seg_t w, cell_t *module) {
   cell_t *data = NULL;
   csize_t in = 0, out = 1;
   if(w.s[0] == '?') {
-    c = var(T_ANY);
+    c = var(T_ANY, NULL);
 #if FUNC_AP
   } else if(w.n == 4 &&
             w.s[0] == 'a' && w.s[1] == 'p' &&
@@ -201,19 +201,16 @@ cell_t *parse_vector(const cell_t **l) {
   return c;
 }
 
-void argf_noop(UNUSED cell_t *c, UNUSED val_t i) {}
-val_t fill_args(cell_t *r, void (*argf)(cell_t *, val_t)) {
-  if(!argf) argf = argf_noop;
+val_t fill_args(cell_t *r) {
   csize_t n = list_size(r);
   if(n < 1) return 0;
   cell_t **l = &r->value.ptr[n-1];
   val_t i = 0;
   close_placeholders(*l);
   while(!closure_is_ready(*l)) {
-    cell_t *v = var(T_ANY);
-    v->value.integer[0] = i;
+    cell_t *v = var(T_ANY, NULL);
+    trace(v, v, tt_update);
     arg_noexpand(l, v);
-    argf(v, i);
     ++i;
   }
   return i;

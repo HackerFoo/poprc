@@ -76,6 +76,9 @@ look for word in parent module, parent imports, context module, context imports,
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
+** TODO ? popr swap popr swap drop
+placeholders *do* need to be shared, unless an input is modified
+new_deps() should not create unreferenced deps
 ** TODO [1 2 3 4 5] ? [] [] | . .
 ** DONE [] [] . IO | dup print
 ** DONE [] [] | [id] .

@@ -278,7 +278,6 @@ cell_t *copy(cell_t const *c) {
   csize_t size = closure_cells(c);
   cell_t *new_c = closure_alloc_cells(size);
   memcpy(new_c, c, size * sizeof(cell_t));
-  trace(new_c, (cell_t *)c, tt_copy, 0);
   new_c->n = 0;
   return new_c;
 }

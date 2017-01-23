@@ -68,7 +68,7 @@ bool func_op2(cell_t **cp, type_t t, type_t arg_type, type_t res_type, val_t (*o
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
-  res = is_var(p) || is_var(q) ? var(t) : _op2(op, p, q);
+  res = is_var(p) || is_var(q) ? var(t, c) : _op2(op, p, q);
   res->value.type |= res_type;
   res->alt = c->alt;
   res->value.alt_set = alt_set;
@@ -225,12 +225,10 @@ bool func_popr(cell_t **cp, UNUSED type_t t) {
   cell_t **l = p->value.ptr;
   cell_t *res_d;
   if(is_placeholder(*l)) {
-    //closure_set_ready(l[0], true);
-    /* just hand out a variable, let the compiler track it
-    *l = expand_deps_inplace(*l, 1); // *** no shift here
-    res_d = ref((*l)->expr.arg[closure_in(*l)] = dep(ref(*l)));
-    */
-    res_d = var(T_ANY);
+    closure_set_ready(*l, true);
+    *l = expand_deps(*l, 1); // *** only need last dep
+    res_d = dep(ref(*l));
+    (*l)->expr.arg[closure_in(*l)] = res_d;
     res = mod_alt(ref(p), c->alt, alt_set);
   } else if(closure_is_ready(*l)) {
     /* drop the right list element */
@@ -282,7 +280,7 @@ bool func_alt2(cell_t **cp, UNUSED type_t t) {
 
 
 cell_t *map_assert(cell_t *c, cell_t *t) {
-  if(!(is_list(c) && list_size(c) > 0)) return var(c->value.type);
+  assert(is_list(c));
   cell_t *nc = copy(c);
   traverse(nc, {
       cell_t *np = closure_alloc(2);
@@ -304,17 +302,29 @@ bool func_assert(cell_t **cp, type_t t) {
   cell_t *p = clear_ptr(c->expr.arg[1]);
 
   if(!(p->value.integer[0] == SYM_True || is_var(p))) goto fail;
-  if(is_var(p) && t != T_LIST) trace(c, 0, tt_reduction, 0); // *** HACKy, e.g. t == T_ANY
+
+  cell_t *res;
+  if(is_var(p) && t != T_LIST) {
+    res = var(t, c);
+  }
   if(!reduce_arg(c, 0, &alt_set, t) ||
      as_conflict(alt_set)) goto fail;
   clear_flags(c);
-  cell_t *res;
+  cell_t *q = c->expr.arg[0];
   if(is_var(p)) {
-    res = map_assert(c->expr.arg[0], p);
+    if(is_list(q)) {
+      res = map_assert(q, p);
+    } else {
+      res->value.type = q->value.type | T_VAR;
+    }
+    res->value.alt_set = alt_set;
+    res->alt = c->alt;
+  } else if(is_var(q)) {
+    res = var(q->value.type, c);
     res->value.alt_set = alt_set;
     res->alt = c->alt;
   } else {
-    res = mod_alt(ref(c->expr.arg[0]), c->alt, alt_set);
+    res = mod_alt(ref(q), c->alt, alt_set);
   }
   store_reduced(cp, res);
   return true;
@@ -468,7 +478,7 @@ bool func_print(cell_t **cp, type_t t) {
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   if(is_var(p) || is_var(q)) {
-    res = var(t);
+    res = var(t, c);
   } else if(p->value.integer[0] == SYM_IO) {
     show_one(q);
     res = ref(p);
@@ -496,7 +506,7 @@ bool func_is_nil(cell_t **cp, UNUSED type_t t) {
   cell_t *p = c->expr.arg[0];
   cell_t *res;
   if(is_var(p)) {
-    res = var(T_SYMBOL);
+    res = var(T_SYMBOL, c);
   } else {
     res = symbol(list_size(p) == 0 ? SYM_True : SYM_False);
   }

@@ -20,6 +20,7 @@
 #include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/special.h"
+#include "gen/byte_compile.h"
 
 bool func_value(cell_t **cp, type_t t) {
   cell_t *c = clear_ptr(*cp); // TODO remove clear_ptr
@@ -30,12 +31,13 @@ bool func_value(cell_t **cp, type_t t) {
     if(is_any(c)) {
       /* create placeholder */
       if((t & T_EXCLUSIVE) == T_LIST) {
-        c->value.ptr[0] = func(func_placeholder, 0, 1);
+        cell_t *ph = func(func_placeholder, 1, 1);
+        ph->expr.arg[0] = var_create(T_FUNCTION, c->value.ptr[0]);
+        c->value.ptr[0] = ph;
         c->size = 2;
-        c->value.type &= ~T_TRACED;
       }
       c->value.type |= t;
-      trace(c, 0, tt_touched, 0);
+      trace(c, c, tt_update);
     }
     return true;
   }
@@ -73,18 +75,25 @@ bool is_value(cell_t const *c) {
   return c && c->func == func_value;
 }
 
-cell_t *var(type_t t) {
+cell_t *var_create(type_t t, cell_t *tc) {
   cell_t *c;
   if((t & T_EXCLUSIVE) == T_LIST) {
     c = make_list(1);
-    c->value.ptr[0] = func(func_placeholder, 0, 1);
+    cell_t *ph = func(func_placeholder, 1, 1);
+    ph->expr.arg[0] = var_create(T_FUNCTION, tc);
+    c->value.ptr[0] = ph;
   } else {
     c = closure_alloc(1);
     c->func = func_value;
-    c->size = 1;
+    c->size = 2;
+    c->value.ptr[0] = tc;
   }
   c->value.type = T_VAR | t;
   return c;
+}
+
+cell_t *var(type_t t, cell_t *c) {
+  return var_create(t, trace_alloc(c ? c->size : 2));
 }
 
 bool is_var(cell_t const *c) {
@@ -205,17 +214,17 @@ bool func_placeholder(cell_t **cp, UNUSED type_t t) {
   csize_t in = closure_in(c), n = closure_args(c);
   for(csize_t i = 0; i < in; ++i) {
     if(!reduce(&c->expr.arg[i], T_ANY)) goto fail; // TODO why not reduce_arg?
-    trace(c->expr.arg[i], c, tt_force, i);
   }
+  cell_t *res = var(t, c);
   for(csize_t i = in; i < n; ++i) {
     cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {
       drop(c);
-      d->expr.arg[0] = 0;
+      d->expr.arg[0] = res;
       store_var(d, 0);
     }
   }
-  store_reduced(cp, var(t));
+  store_reduced(cp, res);
   return true;
 
  fail:

@@ -426,6 +426,12 @@ pair_t *map_find(map_t map, uintptr_t key) {
   return result;
 }
 
+uintptr_t map_get(map_t map, uintptr_t key) {
+  pair_t *x = map_find(map, key);
+  assert(x);
+  return x->second;
+}
+
 pair_t *string_map_find(map_t map, const char *key) {
   uintptr_t x = *map_cnt(map);
   pair_t *elems = map_elems(map);

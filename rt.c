@@ -27,6 +27,7 @@
 #include "gen/print.h"
 #include "gen/test.h"
 #include "gen/support.h"
+#include "gen/byte_compile.h"
 
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
@@ -48,17 +49,6 @@ bool is_root(const cell_t *c) {
 
 bool remove_root(cell_t **r) {
   return set_remove((uintptr_t)r, (uintptr_t *)rt_roots, rt_roots_n);
-}
-
-// Default tracing function that does nothing
-void trace_noop(UNUSED cell_t *c, UNUSED cell_t *r, UNUSED trace_type_t tt, UNUSED csize_t n) {}
-
-// Pointer to tracing function
-void (*trace)(cell_t *, cell_t *, trace_type_t, csize_t) = trace_noop;
-
-// Set the tracing function
-void set_trace(void (*t)(cell_t *, cell_t *, trace_type_t, csize_t)) {
-  trace = t ? t : trace_noop;
 }
 
 // Initialize run time
@@ -203,7 +193,6 @@ cell_t *expand(cell_t *c, csize_t s) {
     /* copy */
     cell_t *new = closure_alloc(n + s);
     memcpy(new, c, cn_p * sizeof(cell_t));
-    if(is_placeholder(c)) trace(new, c, tt_copy, 0);
     new->n = 0;
     traverse_ref(new, ARGS_IN | PTRS | ALT);
     new->size = n + s;
@@ -227,9 +216,17 @@ void new_deps(cell_t *c) {
     cell_t **d = &c->expr.arg[i];
     if(*d) {
       assert(is_dep(*d));
-      *d = dep(ref(c));
+      *d = 0; //dep(ref(c)); // these would be dangling
     }
   }
+}
+
+csize_t count_deps(cell_t *c) {
+  csize_t deps = 0;
+  for(csize_t i = c->size - c->expr.out; i < c->size; ++i) {
+    if(c->expr.arg[i]) deps++;
+  }
+  return deps;
 }
 
 // add more inputs
@@ -261,6 +258,8 @@ cell_t *expand_args_inplace(cell_t *c, csize_t s) {
 
 // add more outputs
 cell_t *expand_deps(cell_t *c, csize_t s) {
+  csize_t deps = count_deps(c);
+  c->n -= deps;
   refcount_t n = c->n;
   csize_t in = closure_in(c);
   c = expand(c, s);
@@ -274,6 +273,8 @@ cell_t *expand_deps(cell_t *c, csize_t s) {
   } else {
     update_deps(c);
   }
+
+  c->n += deps;
 
   return c;
 }
@@ -301,7 +302,7 @@ cell_t *compose_placeholders(cell_t *a, cell_t *b) {
     c->expr.arg[b_in + i] = a->expr.arg[i];
   //drop(a); // dropping here will cause func_compose to break in store_reduced
   cell_t *ab[] = {a, b};
-  trace(c, (cell_t *)ab, tt_compose_placeholders, 0);
+  trace(c, (cell_t *)ab, tt_compose_placeholders);
   return c;
 }
 
@@ -334,7 +335,7 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
 
   // if there is a placeholder in a, use it to fill the leftmost element of a
 fill_with_placeholder: {
-    cell_t *x = func(func_placeholder, 0, 1);
+    cell_t *x = func(func_placeholder, 0, 1); // TODO copy function var arg ***
     while(!closure_is_ready(left_b = b->value.ptr[n_b - 1])) {
       assert_throw(!is_placeholder(left_b), "composing placeholders doesn't work right now.");
       x = expand_deps_inplace(x, 1);
@@ -511,11 +512,18 @@ void store_fail(cell_t *c, cell_t *alt) {
 }
 
 void store_var(cell_t *c, type_t t) {
+  cell_t v = {
+    .func = func_value,
+    .size = 2,
+    .value = {
+      .alt_set = 0,
+      .type = T_VAR | t,
+      .ptr = { trace_alloc(c->size) }
+    }
+  };
+  trace(c, &v, tt_update);
   closure_shrink(c, 1);
-  c->func = func_value;
-  c->value.alt_set = 0;
-  c->value.type = T_VAR | t;
-  c->size = 1;
+  *c = v;
 }
 
 void fail(cell_t **cp, type_t t) {
@@ -525,7 +533,6 @@ void fail(cell_t **cp, type_t t) {
     return;
   }
   assert(!is_marked(c));
-  trace(c, c->alt, tt_fail, 0);
   cell_t *alt = ref(c->alt);
   if(c->n && t == T_ANY) { // HACK this should be more sophisticated
     traverse(c, {
@@ -553,7 +560,7 @@ void store_reduced(cell_t **cp, cell_t *r) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   r->func = func_value;
-  trace(c, r, tt_reduction, 0);
+  trace(c, r, tt_reduction);
   drop_multi(c->expr.arg, closure_in(c));
   csize_t size = is_closure(r) ? closure_cells(r) : 0;
   if(size <= closure_cells(c)) {
@@ -653,7 +660,6 @@ cell_t *pushl_nd(cell_t *a, cell_t *b) {
     cell_t *l = b->value.ptr[n-1];
     if(!closure_is_ready(l)) {
       cell_t *_b = arg_nd(l, a, b);
-      if(is_placeholder(l)) trace(_b->value.ptr[n-1], l, tt_copy, 0);
       return _b;
     }
   }
