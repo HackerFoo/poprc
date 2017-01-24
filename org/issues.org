@@ -13,6 +13,12 @@ Compile to direct C when possible
 **** closure_set_ready
 **** split_args
 * major
+** TODO every cell has a pointer to previous item in stack/list at arg[0] (left arg)
+fixes map_assert
+formalizes placeholders
+every function must have at least one input and one output, but last input is not evaluated, breaking the chain
+assert also works this way
+** TODO overhaul byte_compile to use variable ids
 ** TODO don't trace pushl/pushr/popr again, let assertion mapping enforce assertions
 ** STARTED map assertions over lists to avoid unnecessary pushl-assert-popr
 ** DONE add reference checking assert to help find leaks (mini-valgrind)
