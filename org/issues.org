@@ -52,6 +52,7 @@ assert also works this way
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
+** TODO allocate all vars from trace (preallocate)
 ** DONE memory leak in tests.pushl2
 ** DONE stable references in modules
 ** TODO handle module scope chain when compiling a word
