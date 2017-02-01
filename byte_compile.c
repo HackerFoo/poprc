@@ -98,6 +98,7 @@ cell_t *trace_alloc(csize_t args) {
   if(!trace_enabled) return NULL;
   size_t size = calculate_cells(args);
   cell_t *tc = trace_ptr;
+  tc->n = -1;
   trace_ptr += size;
   tc->size = args;
   trace_cnt++;
@@ -117,7 +118,9 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
   cell_t *tc = trace_get(r);
   if(tc->func) return tc;
   assert(tc->size == c->size);
+  refcount_t n = tc->n;
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
+  tc->n = n;
   if(tc->func == func_dep_entered) tc->func = func_dep;
   traverse(tc, {
       if(*p) {
@@ -125,7 +128,13 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
         *p = trace_encode(x);
         trace_cur[x].n++;
       }
-    }, ARGS);
+    }, ARGS_IN);
+  traverse(tc, {
+      if(*p) {
+        trace_index_t x = trace_get_value(*p);
+        *p = trace_encode(x);
+      }
+    }, ARGS_OUT);
   type_t t = r->value.type;
   if(is_value(c)) {
     tc->value.alt_set = 0;
@@ -133,8 +142,6 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
   }
   tc->expr_type = (tc->expr_type & ~T_EXCLUSIVE) | t;
   tc->alt = NULL;
-
-  tc->n = -1;
   return tc;
 }
 
@@ -210,7 +217,13 @@ void print_bytecode(cell_t *e) {
               printf(" %" PRIdPTR, x);
             }
           }
-        }, ARGS);
+        }, ARGS_IN);
+      if(closure_out(c)) {
+        printf(" ->");
+        traverse(c, {
+            printf(" %" PRIdPTR, trace_decode(*p));
+          }, ARGS_OUT);
+      }
       printf(", type = %s", show_type_all_short(c->expr_type));
       if(c->alt) printf(" -> %" PRIdPTR, trace_decode(c->alt));
     }
@@ -289,6 +302,8 @@ void trace_final_pass(cell_t *e) {
         p->size = 2;
         p->func = func_pushl;
       }
+    } else if(p->func == func_placeholder) {
+      p->func = func_ap;
     }
   }
 }

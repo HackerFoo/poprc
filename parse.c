@@ -35,6 +35,7 @@
 #include "gen/lex.h"
 #include "gen/module.h"
 
+#define FUNC_AP 1
 #define MAX_SYMBOLS 64
 #define ENTRY(name) [SYM_##name] = #name
 static const char *symbol_index[MAX_SYMBOLS] = {

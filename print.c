@@ -76,10 +76,13 @@ char const *entry_function_name(cell_t *e) {
 
 char const *function_name(reduce_t *f) {
   f = (reduce_t *)clear_ptr(f);
-  if(f == func_value) return "value";
-  if(f == func_fail) return "fail";
-  if(f == func_dep) return "dep";
-  if(f == func_dep_entered) return "dep_entered";
+#define CASE(x) if(f == func_##x) return #x
+  CASE(value);
+  CASE(fail);
+  CASE(dep);
+  CASE(dep_entered);
+  CASE(ap);
+#undef CASE
   const char *s = NULL;
   FORMAP(i, primitive_module) {
     cell_t *e = (cell_t *)primitive_module[i].second;
