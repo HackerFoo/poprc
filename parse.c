@@ -181,7 +181,7 @@ cell_t *parse_vector(const cell_t **l) {
   const char *s;
   const cell_t *t = *l;
   cell_t *c = vector(0);
-  c->value.type = T_INT; // for now
+  c->value.type.exclusive = T_INT; // for now
   while(t) {
     tl = &t->tok_list;
     s = tl->location;

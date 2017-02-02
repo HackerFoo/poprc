@@ -105,7 +105,7 @@ void split_arg(cell_t *c, csize_t n) {
 bool reduce_arg(cell_t *c,
                 csize_t n,
                 alt_set_t *ctx,
-                type_t t) {
+                int t) {
   cell_t **ap = &c->expr.arg[n];
   bool r = reduce(ap, t);
   *ctx |= ((cell_t *)clear_ptr(*ap))->value.alt_set;
@@ -122,7 +122,7 @@ void clear_flags(cell_t *c) {
 }
 
 // Reduce *cp with type t
-bool reduce(cell_t **cp, type_t t) {
+bool reduce(cell_t **cp, int t) {
   cell_t *c;
   while((c = clear_ptr(*cp))) {
     if(!closure_is_ready(c)) close_placeholders(c);
@@ -153,22 +153,20 @@ bool reduce(cell_t **cp, type_t t) {
 // Perform one reduction step on *cp
 void reduce_dep(cell_t **cp) {
   cell_t *c = clear_ptr(*cp);
-  const type_t t = T_ANY;
   if(!closure_is_ready(c)) close_placeholders(c);
   if(!c || !closure_is_ready(c)) {
-    fail(cp, t);
+    fail(cp, T_ANY);
   } else {
     assert(is_closure(c) &&
            closure_is_ready(c));
     measure.reduce_cnt++;
-    c->func(cp, t);
+    c->func(cp, T_ANY);
   }
 }
 
-bool type_match(type_t t, cell_t const *c) {
-  type_t ta = t & T_EXCLUSIVE;
-  type_t tb = c->value.type & T_EXCLUSIVE;
-  return ta == T_ANY || tb == T_ANY || ta == tb;
+bool type_match(int t, cell_t const *c) {
+  int tc = c->value.type.exclusive;
+  return t == T_ANY || tc == T_ANY || t == tc;
 }
 
 cell_t *append(cell_t *a, cell_t *b) {
@@ -507,17 +505,20 @@ void store_fail(cell_t *c, cell_t *alt) {
   closure_shrink(c, 1);
   memset(&c->value, 0, sizeof(c->value));
   c->func = func_value;
-  c->value.type = T_FAIL;
+  c->value.type.flags |= T_FAIL;
   c->alt = alt;
 }
 
-void store_var(cell_t *c, type_t t) {
+void store_var(cell_t *c, int t) {
   cell_t v = {
     .func = func_value,
     .size = 2,
     .value = {
       .alt_set = 0,
-      .type = T_VAR | t,
+      .type = {
+        .flags = T_VAR,
+        .exclusive = t
+      },
       .ptr = { trace_alloc(c->size) }
     }
   };
@@ -526,7 +527,7 @@ void store_var(cell_t *c, type_t t) {
   *c = v;
 }
 
-void fail(cell_t **cp, type_t t) {
+void fail(cell_t **cp, int t) {
   cell_t *c = clear_ptr(*cp);
   if(!is_cell(c)) {
     *cp = NULL;
@@ -549,7 +550,7 @@ void fail(cell_t **cp, type_t t) {
     closure_shrink(c, 1);
     memset(&c->value, 0, sizeof(c->value));
     c->func = func_value;
-    c->value.type = T_FAIL;
+    c->value.type.flags = T_FAIL;
   }
   drop(c);
   *cp = alt;

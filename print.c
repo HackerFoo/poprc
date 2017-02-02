@@ -492,7 +492,7 @@ void show_alt(cell_t const *c) {
 
 char *show_type(type_t t) {
 #define _case(x) case x: return #x
-  switch(t & T_EXCLUSIVE) {
+  switch(t.exclusive) {
   _case(T_ANY);
   _case(T_INT);
   _case(T_IO);
@@ -521,7 +521,7 @@ char *show_type_all(type_t t) {
   char *p = buf;
   p += sprintf(p, "%s", show_type(t));
   FOREACH(i, type_flag_name) {
-    if(t & (0x8000 >> i)) {
+    if(t.flags & (0x80 >> i)) {
       p += sprintf(p, "|%s", type_flag_name[i]);
     }
   }
@@ -529,7 +529,7 @@ char *show_type_all(type_t t) {
 }
 
 char type_char(type_t t) {
-  switch(t & T_EXCLUSIVE) {
+  switch(t.exclusive) {
   case T_ANY: return 'a';
   case T_INT: return 'i';
   case T_IO: return 'w';
@@ -558,7 +558,7 @@ char *show_type_all_short(type_t t) {
   char *p = buf;
 
   FOREACH(i, type_flag_char) {
-    if(t & (0x8000 >> i)) {
+    if(t.flags & (0x80 >> i)) {
       *p++ = type_flag_char[i];
     }
   }

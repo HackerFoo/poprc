@@ -533,7 +533,7 @@ bool get_arity(const cell_t *p, csize_t *in, csize_t *out, cell_t *module) {
 cell_t *remove_row(cell_t *c) {
   assert(is_list(c));
   csize_t n = list_size(c);
-  if(n == 0 || !(c->value.ptr[n-1]->value.type & T_ROW)) return c;
+  if(n == 0 || !(c->value.ptr[n-1]->value.type.flags & T_ROW)) return c;
   return remove_left(c);
 }
 

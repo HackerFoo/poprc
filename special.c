@@ -22,21 +22,21 @@
 #include "gen/special.h"
 #include "gen/byte_compile.h"
 
-bool func_value(cell_t **cp, type_t t) {
+bool func_value(cell_t **cp, int t) {
   cell_t *c = clear_ptr(*cp); // TODO remove clear_ptr
   assert(is_closure(c));
   measure.reduce_cnt--;
-  if(c->value.type != T_FAIL &&
+  if((c->value.type.flags & T_FAIL) == 0 &&
      type_match(t, c)) {
     if(is_any(c)) {
       /* create placeholder */
-      if((t & T_EXCLUSIVE) == T_LIST) {
+      if(t == T_LIST) {
         cell_t *ph = func(func_placeholder, 1, 1);
         ph->expr.arg[0] = var_create(T_FUNCTION, c->value.ptr[0]);
         c->value.ptr[0] = ph;
         c->size = 2;
       }
-      c->value.type |= t;
+      c->value.type.exclusive = t;
       trace(c, c, tt_update);
     }
     return true;
@@ -50,7 +50,7 @@ bool func_value(cell_t **cp, type_t t) {
 cell_t *int_val(val_t x) {
   cell_t *c = closure_alloc(2);
   c->func = func_value;
-  c->value.type = T_INT;
+  c->value.type.exclusive = T_INT;
   c->value.integer[0] = x;
   return c;
 }
@@ -58,7 +58,7 @@ cell_t *int_val(val_t x) {
 cell_t *float_val(double x) {
   cell_t *c = closure_alloc(2);
   c->func = func_value;
-  c->value.type = T_FLOAT;
+  c->value.type.exclusive = T_FLOAT;
   c->value.flt[0] = x;
   return c;
 }
@@ -66,7 +66,7 @@ cell_t *float_val(double x) {
 cell_t *symbol(val_t sym) {
   cell_t *c = closure_alloc(2);
   c->func = func_value;
-  c->value.type = T_SYMBOL;
+  c->value.type.exclusive = T_SYMBOL;
   c->value.integer[0] = sym;
   return c;
 }
@@ -75,9 +75,9 @@ bool is_value(cell_t const *c) {
   return c && c->func == func_value;
 }
 
-cell_t *var_create(type_t t, cell_t *tc) {
+cell_t *var_create(int t, cell_t *tc) {
   cell_t *c;
-  if((t & T_EXCLUSIVE) == T_LIST) {
+  if(t == T_LIST) {
     c = make_list(1);
     cell_t *ph = func(func_placeholder, 1, 1);
     ph->expr.arg[0] = var_create(T_FUNCTION, tc);
@@ -88,29 +88,30 @@ cell_t *var_create(type_t t, cell_t *tc) {
     c->size = 2;
     c->value.ptr[0] = tc;
   }
-  c->value.type = T_VAR | t;
+  c->value.type.flags = T_VAR;
+  c->value.type.exclusive = t;
   return c;
 }
 
-cell_t *var(type_t t, cell_t *c) {
+cell_t *var(int t, cell_t *c) {
   return var_create(t, trace_alloc(c ? c->size : 2));
 }
 
 bool is_var(cell_t const *c) {
-  return c && is_value(c) && (c->value.type & T_VAR) != 0;
+  return c && is_value(c) && (c->value.type.flags & T_VAR) != 0;
 }
 
 cell_t *vector(csize_t n) {
   cell_t *c = closure_alloc(n+1);
   c->func = func_value;
-  c->value.type = T_ANY;
+  c->value.type.exclusive = T_ANY;
   return c;
 }
 
 cell_t *quote(cell_t *x) {
   cell_t *c = closure_alloc(2);
   c->func = func_value;
-  c->value.type = T_LIST;
+  c->value.type.exclusive = T_LIST;
   c->value.ptr[0] = x;
   return c;
 }
@@ -118,7 +119,7 @@ cell_t *quote(cell_t *x) {
 cell_t *empty_list() {
   cell_t *c = closure_alloc(1);
   c->func = func_value;
-  c->value.type = T_LIST;
+  c->value.type.exclusive = T_LIST;
   return c;
 }
 
@@ -126,12 +127,12 @@ cell_t *make_list(csize_t n) {
   if(n == 0) return &nil_cell;
   cell_t *c = closure_alloc(n + 1);
   c->func = func_value;
-  c->value.type = T_LIST;
+  c->value.type.exclusive = T_LIST;
   return c;
 }
 
 bool is_list(cell_t const *c) {
-  return c && is_value(c) && (c->value.type & T_EXCLUSIVE) == T_LIST;
+  return c && is_value(c) && c->value.type.exclusive == T_LIST;
 }
 
 cell_t *make_map(csize_t s) {
@@ -140,26 +141,26 @@ cell_t *make_map(csize_t s) {
   uintptr_t size = (sizeof(cell_t) * cs - offset(cell_t, value.map)) / sizeof(pair_t) - 1;
   c->func = func_value;
   c->size = 2 * (size + 1) + 1;
-  c->value.type = T_MAP;
+  c->value.type.exclusive = T_MAP;
   c->value.map[0].first = size;
   c->value.map[0].second = 0;
   return c;
 }
 
 bool is_map(cell_t const *c) {
-  return c && is_value(c) && (c->value.type & T_EXCLUSIVE) == T_MAP;
+  return c && is_value(c) && c->value.type.exclusive == T_MAP;
 }
 
 cell_t *make_string(seg_t s) {
   cell_t *c = closure_alloc(1);
   c->func = func_value;
-  c->value.type = T_STRING;
+  c->value.type.exclusive = T_STRING;
   c->value.str = s;
   return c;
 }
 
 bool is_string(cell_t const *c) {
-  return c && is_value(c) && (c->value.type & T_EXCLUSIVE) == T_STRING;
+  return c && is_value(c) && c->value.type.exclusive == T_STRING;
 }
 
 bool is_dep_of(cell_t *d, cell_t *c) {
@@ -171,7 +172,7 @@ bool is_dep_of(cell_t *d, cell_t *c) {
 }
 
 /* todo: propagate types here */
-bool func_dep(cell_t **cp, UNUSED type_t t) {
+bool func_dep(cell_t **cp, UNUSED int t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   /* rely on another cell for reduction */
@@ -188,7 +189,7 @@ bool func_dep(cell_t **cp, UNUSED type_t t) {
   return false;
 }
 
-bool func_dep_entered(cell_t **cp, UNUSED type_t t) {
+bool func_dep_entered(cell_t **cp, int t) {
   // shouldn't happen; circular dependency
   assert(false);
   fail(cp, t);
@@ -208,7 +209,7 @@ bool is_dep(cell_t const *c) {
 
 // this shouldn't reduced directly, but is called through reduce_partial from func_dep
 // WORD("_", placeholder, 0, 1)
-bool func_placeholder(cell_t **cp, UNUSED type_t t) {
+bool func_placeholder(cell_t **cp, UNUSED int t) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   csize_t in = closure_in(c), n = closure_args(c);
@@ -233,7 +234,7 @@ bool func_placeholder(cell_t **cp, UNUSED type_t t) {
 }
 
 /*
-bool func_self(cell_t **cp, UNUSED type_t t) {
+bool func_self(cell_t **cp, UNUSED int t) {
   func_placeholder(cp, t);
   store_reduced(cp, var(t));
   return true;
@@ -244,7 +245,7 @@ bool is_placeholder(cell_t const *c) {
   return c && clear_ptr(c->func) == (void *)func_placeholder;
 }
 
-bool func_fail(cell_t **cp, UNUSED type_t t) {
+bool func_fail(cell_t **cp, UNUSED int t) {
   cell_t *c = clear_ptr(*cp); // TODO remove clear_ptr
   assert(is_closure(c));
   measure.reduce_cnt--;

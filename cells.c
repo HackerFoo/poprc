@@ -49,14 +49,14 @@ cell_t fail_cell = {
   .func = func_value,
   .size = 1,
   .n = PERSISTENT,
-  .value.type = T_FAIL
+  .value.type.flags = T_FAIL
 };
 
 cell_t nil_cell = {
   .func = func_value,
   .size = 1,
   .n = PERSISTENT,
-  .value.type = T_LIST
+  .value.type.exclusive = T_LIST
 };
 
 // Structs for storing statistics
@@ -312,11 +312,11 @@ bool is_nil(cell_t const *c) {
 }
 
 bool is_fail(cell_t const *c) {
-  return (is_value(c) && c->value.type & T_FAIL) != 0;
+  return is_value(c) && (c->value.type.flags & T_FAIL) != 0;
 }
 
 bool is_any(cell_t const *c) {
-  return (is_value(c) && c->value.type & T_EXCLUSIVE) == T_ANY;
+  return is_value(c) && c->value.type.exclusive == T_ANY;
 }
 
 #if INTERFACE
@@ -326,8 +326,8 @@ bool is_any(cell_t const *c) {
     cell_t **p;                                                 \
     if(is_value(r)) {                                           \
       if(((flags) & PTRS) &&                                    \
-        ((r->value.type & T_EXCLUSIVE) == T_LIST ||             \
-         (r->value.type & T_EXCLUSIVE) == T_RETURN)) {          \
+         (r->value.type.exclusive == T_LIST ||                  \
+          r->value.type.exclusive == T_RETURN)) {               \
         n = list_size(r);                                       \
         for(i = 0; i < n; ++i) {                                \
           p = (r)->value.ptr + i;                               \
