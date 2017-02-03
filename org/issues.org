@@ -13,6 +13,7 @@ Compile to direct C when possible
 **** closure_set_ready
 **** split_args
 * major
+** DONE avoid expanding placeholders
 ** TODO overhaul byte_compile to use variable ids
 ** TODO don't trace pushl/pushr/popr again, let assertion mapping enforce assertions
 ** CANCELED every cell has a pointer to previous item in stack/list at arg[0] (left arg)

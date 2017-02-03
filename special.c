@@ -31,17 +31,15 @@ bool func_value(cell_t **cp, type_request_t treq) {
     if(is_any(c)) {
       /* create placeholder */
       if(treq.t == T_LIST) {
-        cell_t *ph = func(func_placeholder, 1, 1);
-        ph->expr.arg[0] = var_create(T_FUNCTION, c->value.ptr[0]);
-        c->value.ptr[0] = ph;
-        c->size = 2;
+        store_lazy(cp, c, var_create(T_LIST, c->value.ptr[0], treq.in, treq.out), c->value.alt_set);
+      } else {
+        c->value.type.exclusive = treq.t;
       }
-      c->value.type.exclusive = treq.t;
+      c = *cp;
       trace(c, c, tt_update);
     }
     return true;
-  }
-  else {
+  } else {
     fail(cp, treq);
     return false;
   }
@@ -75,13 +73,19 @@ bool is_value(cell_t const *c) {
   return c && c->func == func_value;
 }
 
-cell_t *var_create(int t, cell_t *tc) {
+cell_t *var_create(int t, cell_t *tc, int in, int out) {
   cell_t *c;
   if(t == T_LIST) {
-    c = make_list(1);
-    cell_t *ph = func(func_placeholder, 1, 1);
-    ph->expr.arg[0] = var_create(T_FUNCTION, tc);
-    c->value.ptr[0] = ph;
+    c = make_list(out + 1);
+    cell_t *ph = func(func_placeholder, in + 1, out + 1);
+    COUNTUP(i, out) {
+      cell_t *d = dep(ph);
+      c->value.ptr[i] = d;
+      arg(&ph, d);
+    }
+    arg(&ph, var_create(T_FUNCTION, tc, 0, 0));
+    refn(ph, out);
+    c->value.ptr[out] = ph;
   } else {
     c = closure_alloc(1);
     c->func = func_value;
@@ -94,7 +98,7 @@ cell_t *var_create(int t, cell_t *tc) {
 }
 
 cell_t *var(int t, cell_t *c) {
-  return var_create(t, trace_alloc(c ? c->size : 2));
+  return var_create(t, trace_alloc(c ? c->size : 2), 0, 0);
 }
 
 bool is_var(cell_t const *c) {

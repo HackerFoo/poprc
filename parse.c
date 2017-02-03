@@ -207,7 +207,6 @@ val_t fill_args(cell_t *r) {
   if(n < 1) return 0;
   cell_t **l = &r->value.ptr[n-1];
   val_t i = 0;
-  close_placeholders(*l);
   while(!closure_is_ready(*l)) {
     cell_t *v = var(T_ANY, NULL);
     trace(v, v, tt_update);

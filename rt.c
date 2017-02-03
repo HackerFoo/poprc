@@ -125,7 +125,6 @@ void clear_flags(cell_t *c) {
 bool reduce(cell_t **cp, type_request_t treq) {
   cell_t *c;
   while((c = clear_ptr(*cp))) {
-    if(!closure_is_ready(c)) close_placeholders(c);
     assert(is_closure(c));
     if(!closure_is_ready(c)) {
       fail(cp, treq);
@@ -153,7 +152,6 @@ bool reduce(cell_t **cp, type_request_t treq) {
 // Perform one reduction step on *cp
 void reduce_dep(cell_t **cp) {
   cell_t *c = clear_ptr(*cp);
-  if(!closure_is_ready(c)) close_placeholders(c);
   if(!c || !closure_is_ready(c)) {
     fail(cp, req_any);
   } else {
@@ -368,7 +366,7 @@ cell_t *func(reduce_t *f, csize_t in, csize_t out) {
   c->expr.out = out - 1;
   c->func = f;
   if(args) c->expr.arg[0] = (cell_t *)(intptr_t)(args - 1);
-  closure_set_ready(c, !args && f != func_placeholder);
+  closure_set_ready(c, !args);
   return c;
 }
 
@@ -378,22 +376,15 @@ void arg(cell_t **cp, cell_t *a) {
   assert(is_closure(c) && is_closure(a));
   assert(!closure_is_ready(c));
   csize_t i = closure_next_child(c);
-  // *** shift args if placeholder
-  if(is_placeholder(c) &&
-     (closure_in(c) == 0 ||
-      closure_is_ready(c->expr.arg[0]))) {
-    c = expand_args_inplace(c, 1);
-    c->expr.arg[0] = a;
-  } else if(!is_data(c->expr.arg[i])) {
+  if(!is_data(c->expr.arg[i])) {
     c->expr.arg[0] = (cell_t *)(intptr_t)
       (i - (closure_is_ready(a) ? 1 : 0));
     c->expr.arg[i] = a;
-    if(i == 0 && !is_placeholder(c))
+    if(i == 0)
       closure_set_ready(c, closure_is_ready(a));
   } else {
     arg(&c->expr.arg[i], a);
-    if(!is_placeholder(c) &&
-       closure_is_ready(c->expr.arg[i])) {
+    if(closure_is_ready(c->expr.arg[i])) {
       if(i == 0) closure_set_ready(c, true);
       else --*(intptr_t *)&c->expr.arg[0]; // decrement offset
     }
@@ -418,16 +409,6 @@ void arg_noexpand(cell_t **cp, cell_t *a) {
     }
   }
   *cp = c;
-}
-
-void close_placeholders(cell_t *c) {
-  if(!is_closure(c) ||
-     closure_is_ready(c)) return;
-  if(is_placeholder(c)) {
-    closure_set_ready(c, closure_in(c) == 0 ? true : closure_is_ready(c->expr.arg[0]));
-  } else if(is_data(c->expr.arg[0])) {
-    close_placeholders(c->expr.arg[0]);
-  }
 }
 
 void update_ready(cell_t *c, cell_t *a) {
@@ -468,23 +449,12 @@ cell_t *arg_nd(cell_t *c, cell_t *a, cell_t *r) {
 loop:
   assert(!closure_is_ready(p));
   csize_t i = closure_next_child(p);
-  // *** shift args if placeholder
-  if(is_placeholder(p) &&
-     (closure_in(p) == 0 ||
-      closure_is_ready(p->expr.arg[0]))) {
-    cell_t *l = mutate(&p, &r, 1);
-    if(c->tmp) c = c->tmp;
-    clean_tmp(l);
-    assert(!p->expr.arg[0]);
-    p->expr.arg[0] = a;
-    r->value.ptr[list_size(r)-1] = p; // *** why is this done here?
-  } else if(!is_data(p->expr.arg[i])) {
-    cell_t *l = mutate(&p, &r, 0);
+  if(!is_data(p->expr.arg[i])) {
+    cell_t *l = mutate(&p, &r);
     if(c->tmp) c = c->tmp;
     clean_tmp(l);
     p->expr.arg[i] = a;
-    if(!is_placeholder(p) &&
-       closure_is_ready(a)) {
+    if(closure_is_ready(a)) {
         update_ready(c, a);
     }
   } else {
@@ -795,27 +765,17 @@ bool deps_are_unique(cell_t *c) {
 /* r' = deep_copy(r) */
 /* drop(r) */
 /* modify c' in r' without affecting c */
-cell_t *mutate(cell_t **cp, cell_t **rp, int exp) {
+cell_t *mutate(cell_t **cp, cell_t **rp) {
   cell_t *c = *cp, *r = *rp;
   cell_t *l = NULL;
 
   fake_drop(r);
   if(!~c->n) {
-    assert(deps_are_unique(c));
     fake_undrop(r);
-    if(exp) {
-      *cp = expand_args_inplace(c, exp);
-    }
     return NULL;
   }
 
-  // expand c if needed
-  if(exp) {
-    cell_t *nc = copy_expand(c, exp);
-    add_to_list(c, nc, &l);
-  } else {
-    add_copy_to_list(c, &l);
-  }
+  add_copy_to_list(c, &l);
 
   mutate_sweep(r, &l);
   fake_undrop(r);

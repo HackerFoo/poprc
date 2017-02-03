@@ -218,13 +218,7 @@ bool func_popr(cell_t **cp, type_request_t treq) {
   cell_t *res;
   cell_t **l = p->value.ptr;
   cell_t *res_d;
-  if(is_placeholder(*l)) {
-    closure_set_ready(*l, true);
-    *l = expand_deps(*l, 1); // *** only need last dep
-    res_d = dep(ref(*l));
-    (*l)->expr.arg[closure_in(*l)] = res_d;
-    res = mod_alt(ref(p), c->alt, alt_set);
-  } else if(closure_is_ready(*l)) {
+  if(closure_is_ready(*l)) {
     /* drop the right list element */
     res_d = ref(*l);
     res = closure_alloc(closure_args(p)-1);
