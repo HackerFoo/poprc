@@ -22,27 +22,27 @@
 #include "gen/special.h"
 #include "gen/byte_compile.h"
 
-bool func_value(cell_t **cp, int t) {
+bool func_value(cell_t **cp, type_request_t treq) {
   cell_t *c = clear_ptr(*cp); // TODO remove clear_ptr
   assert(is_closure(c));
   measure.reduce_cnt--;
   if((c->value.type.flags & T_FAIL) == 0 &&
-     type_match(t, c)) {
+     type_match(treq.t, c)) {
     if(is_any(c)) {
       /* create placeholder */
-      if(t == T_LIST) {
+      if(treq.t == T_LIST) {
         cell_t *ph = func(func_placeholder, 1, 1);
         ph->expr.arg[0] = var_create(T_FUNCTION, c->value.ptr[0]);
         c->value.ptr[0] = ph;
         c->size = 2;
       }
-      c->value.type.exclusive = t;
+      c->value.type.exclusive = treq.t;
       trace(c, c, tt_update);
     }
     return true;
   }
   else {
-    fail(cp, t);
+    fail(cp, treq);
     return false;
   }
 }
@@ -172,7 +172,7 @@ bool is_dep_of(cell_t *d, cell_t *c) {
 }
 
 /* todo: propagate types here */
-bool func_dep(cell_t **cp, UNUSED int t) {
+bool func_dep(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   /* rely on another cell for reduction */
@@ -189,10 +189,10 @@ bool func_dep(cell_t **cp, UNUSED int t) {
   return false;
 }
 
-bool func_dep_entered(cell_t **cp, int t) {
+bool func_dep_entered(cell_t **cp, type_request_t treq) {
   // shouldn't happen; circular dependency
   assert(false);
-  fail(cp, t);
+  fail(cp, treq);
   return false;
 }
 
@@ -209,14 +209,14 @@ bool is_dep(cell_t const *c) {
 
 // this shouldn't reduced directly, but is called through reduce_partial from func_dep
 // WORD("_", placeholder, 0, 1)
-bool func_placeholder(cell_t **cp, UNUSED int t) {
+bool func_placeholder(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   csize_t in = closure_in(c), n = closure_args(c);
   for(csize_t i = 0; i < in; ++i) {
-    if(!reduce(&c->expr.arg[i], T_ANY)) goto fail; // TODO why not reduce_arg?
+    if(!reduce(&c->expr.arg[i], req_any)) goto fail; // TODO why not reduce_arg?
   }
-  cell_t *res = var(t, c);
+  cell_t *res = var(treq.t, c);
   for(csize_t i = in; i < n; ++i) {
     cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {
@@ -229,26 +229,18 @@ bool func_placeholder(cell_t **cp, UNUSED int t) {
   return true;
 
  fail:
-  fail(cp, t);
+  fail(cp, treq);
   return false;
 }
-
-/*
-bool func_self(cell_t **cp, UNUSED int t) {
-  func_placeholder(cp, t);
-  store_reduced(cp, var(t));
-  return true;
-}
-*/
 
 bool is_placeholder(cell_t const *c) {
   return c && clear_ptr(c->func) == (void *)func_placeholder;
 }
 
-bool func_fail(cell_t **cp, UNUSED int t) {
+bool func_fail(cell_t **cp, type_request_t treq) {
   cell_t *c = clear_ptr(*cp); // TODO remove clear_ptr
   assert(is_closure(c));
   measure.reduce_cnt--;
-  fail(cp, t);
+  fail(cp, treq);
   return false;
 }

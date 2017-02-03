@@ -54,21 +54,22 @@ cell_t *_op2(val_t (*op)(val_t, val_t), cell_t *x, cell_t *y) {
   return res;
 }
 
-bool func_op2(cell_t **cp, int t, int arg_type, int res_type, val_t (*op)(val_t, val_t)) {
+bool func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t, val_t)) {
   cell_t *c = *cp;
   cell_t *res = 0;
   assert(!is_marked(c));
 
-  if(t != T_ANY && t != res_type) goto fail;
+  if(treq.t != T_ANY && treq.t != res_type) goto fail;
 
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 0, &alt_set, arg_type) ||
-     !reduce_arg(c, 1, &alt_set, arg_type) ||
+  type_request_t atr = req_simple(arg_type);
+  if(!reduce_arg(c, 0, &alt_set, atr) ||
+     !reduce_arg(c, 1, &alt_set, atr) ||
      as_conflict(alt_set)) goto fail;
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
-  res = is_var(p) || is_var(q) ? var(t, c) : _op2(op, p, q);
+  res = is_var(p) || is_var(q) ? var(treq.t, c) : _op2(op, p, q);
   res->value.type.exclusive = res_type;
   res->alt = c->alt;
   res->value.alt_set = alt_set;
@@ -76,59 +77,60 @@ bool func_op2(cell_t **cp, int t, int arg_type, int res_type, val_t (*op)(val_t,
   return true;
 
  fail:
-  fail(cp, t);
+  fail(cp, treq);
   return false;
 }
 
 // WORD("+", add, 2, 1)
 val_t add_op(val_t x, val_t y) { return x + y; }
-bool func_add(cell_t **cp, int t) { return func_op2(cp, t, T_INT, T_INT, add_op); }
+bool func_add(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, add_op); }
 
 
 // WORD("*", mul, 2, 1)
 val_t mul_op(val_t x, val_t y) { return x * y; }
-bool func_mul(cell_t **cp, int t) { return func_op2(cp, t, T_INT, T_INT, mul_op); }
+bool func_mul(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, mul_op); }
 
 // WORD("-", sub, 2, 1)
 val_t sub_op(val_t x, val_t y) { return x - y; }
-bool func_sub(cell_t **cp, int t) { return func_op2(cp, t, T_INT, T_INT, sub_op); }
+bool func_sub(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, sub_op); }
 
 // WORD(">", gt, 2, 1)
 val_t gt_op(val_t x, val_t y) { return x > y; }
-bool func_gt(cell_t **cp, int t) { return func_op2(cp, t, T_INT, T_SYMBOL, gt_op); }
+bool func_gt(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, gt_op); }
 
 // WORD(">=", gte, 2, 1)
 val_t gte_op(val_t x, val_t y) { return x >= y; }
-bool func_gte(cell_t **cp, int t) { return func_op2(cp, t, T_INT, T_SYMBOL, gte_op); }
+bool func_gte(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, gte_op); }
 
 // WORD("<", lt, 2, 1)
 val_t lt_op(val_t x, val_t y) { return x < y; }
-bool func_lt(cell_t **cp, int t) { return func_op2(cp, t, T_INT, T_SYMBOL, lt_op); }
+bool func_lt(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, lt_op); }
 
 // WORD("<=", lte, 2, 1)
 val_t lte_op(val_t x, val_t y) { return x <= y; }
-bool func_lte(cell_t **cp, int t) { return func_op2(cp, t, T_INT, T_SYMBOL, lte_op); }
+bool func_lte(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, lte_op); }
 
 // WORD("==", eq, 2, 1)
 // WORD("=:=", eq_s, 2, 1)
 val_t eq_op(val_t x, val_t y) { return x == y; }
-bool func_eq(cell_t **cp, int t) { return func_op2(cp, t, T_INT, T_SYMBOL, eq_op); }
-bool func_eq_s(cell_t **cp, int t) { return func_op2(cp, t, T_SYMBOL, T_SYMBOL, eq_op); }
+bool func_eq(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, eq_op); }
+bool func_eq_s(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_SYMBOL, T_SYMBOL, eq_op); }
 
 // WORD("!=", neq, 2, 1)
 // WORD("!:=", neq_s, 2, 1)
 val_t neq_op(val_t x, val_t y) { return x != y; }
-bool func_neq(cell_t **cp, int t) { return func_op2(cp, t, T_INT, T_SYMBOL, neq_op); }
-bool func_neq_s(cell_t **cp, int t) { return func_op2(cp, t, T_SYMBOL, T_SYMBOL, neq_op); }
+bool func_neq(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, neq_op); }
+bool func_neq_s(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_SYMBOL, T_SYMBOL, neq_op); }
 
 // WORD(".", compose, 2, 1)
-bool func_compose(cell_t **cp, UNUSED int t) {
+bool func_compose(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
 
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 0, &alt_set, T_LIST) ||
-     !reduce_arg(c, 1, &alt_set, T_LIST) ||
+  type_request_t atr = req_simple(T_LIST); // TODO
+  if(!reduce_arg(c, 0, &alt_set, atr) ||
+     !reduce_arg(c, 1, &alt_set, atr) ||
      as_conflict(alt_set)) goto fail;
   clear_flags(c);
 
@@ -138,17 +140,18 @@ bool func_compose(cell_t **cp, UNUSED int t) {
   return true;
 
  fail:
-  fail(cp, t);
+  fail(cp, treq);
   return false;
 }
 
 // WORD("pushl", pushl, 2, 1)
-bool func_pushl(cell_t **cp, UNUSED int t) {
+bool func_pushl(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(*cp));
 
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 1, &alt_set, T_LIST)) goto fail;
+  type_request_t atr = req_list(&treq, 1, 0); // TODO
+  if(!reduce_arg(c, 1, &alt_set, atr)) goto fail;
   clear_flags(c);
 
   cell_t *q = c->expr.arg[1];
@@ -163,17 +166,18 @@ bool func_pushl(cell_t **cp, UNUSED int t) {
   return true;
 
  fail:
-  fail(cp, t);
+  fail(cp, treq);
   return false;
 }
 
 // WORD("pushr", pushr, 2, 1)
-bool func_pushr(cell_t **cp, UNUSED int t) {
+bool func_pushr(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
 
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 0, &alt_set, T_LIST)) goto fail;
+  type_request_t atr = req_simple(T_LIST); // TODO 
+  if(!reduce_arg(c, 0, &alt_set, atr)) goto fail;
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
@@ -191,28 +195,18 @@ bool func_pushr(cell_t **cp, UNUSED int t) {
   return true;
 
  fail:
-  fail(cp, t);
+  fail(cp, treq);
   return false;
 }
 
-// WORD//("'", quote, 1, 1)
-/*
-bool func_quote(cell_t **cp, UNUSED int t) {
-  cell_t *c = *cp;
-  assert(!is_marked(c));
-  cell_t res = { .size = 2, .value.ptr = {ref(c->expr.arg[0])} };
-  store_reduced(cp, &res);
-  return true;
-}
-*/
-
 // WORD("popr", popr, 1, 2)
-bool func_popr(cell_t **cp, UNUSED int t) {
+bool func_popr(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp, *d = c->expr.arg[1];
   assert(!is_marked(*cp));
 
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 0, &alt_set, T_LIST)) goto fail;
+  type_request_t atr = req_list(&treq, 0, 1);
+  if(!reduce_arg(c, 0, &alt_set, atr)) goto fail;
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
@@ -251,12 +245,12 @@ bool func_popr(cell_t **cp, UNUSED int t) {
   return true;
 
  fail:
-  fail(cp, t);
+  fail(cp, treq);
   return false;
 }
 
 // WORD("|", alt, 2, 1)
-bool func_alt(cell_t **cp, UNUSED int t) {
+bool func_alt(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   uint8_t a = new_alt_id(1);
@@ -268,7 +262,7 @@ bool func_alt(cell_t **cp, UNUSED int t) {
 }
 
 // WORD_DISABLED("||", alt2, 2, 1)
-bool func_alt2(cell_t **cp, UNUSED int t) {
+bool func_alt2(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   cell_t *r0 = id(ref(c->expr.arg[0]), 0);
@@ -294,21 +288,21 @@ cell_t *map_assert(cell_t *c, cell_t *t) {
 }
 
 // WORD("!", assert, 2, 1)
-bool func_assert(cell_t **cp, int t) {
+bool func_assert(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
 
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 1, &alt_set, T_SYMBOL)) goto fail;
+  if(!reduce_arg(c, 1, &alt_set, req_symbol)) goto fail;
   cell_t *p = clear_ptr(c->expr.arg[1]);
 
   if(!(p->value.integer[0] == SYM_True || is_var(p))) goto fail;
 
   cell_t *res;
-  if(is_var(p) && t != T_LIST) {
-    res = var(t, c);
+  if(is_var(p) && treq.t == T_LIST) {
+    res = var(T_LIST, c); // ***
   }
-  if(!reduce_arg(c, 0, &alt_set, t) ||
+  if(!reduce_arg(c, 0, &alt_set, treq) ||
      as_conflict(alt_set)) goto fail;
   clear_flags(c);
   cell_t *q = c->expr.arg[0];
@@ -331,18 +325,18 @@ bool func_assert(cell_t **cp, int t) {
   store_reduced(cp, res);
   return true;
 fail:
-  fail(cp, t);
+  fail(cp, treq);
   return false;
 }
 
 // WORD("id", id, 1, 1)
-bool func_id(cell_t **cp, int t) {
+bool func_id(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   alt_set_t alt_set = c->expr.alt_set;
 
   //if(alt_set || c->alt) {
-    if(!reduce_arg(c, 0, &alt_set, t) ||
+    if(!reduce_arg(c, 0, &alt_set, treq) ||
        as_conflict(alt_set)) goto fail;
     clear_flags(c);
 
@@ -359,12 +353,12 @@ bool func_id(cell_t **cp, int t) {
   }
     */
  fail:
-  fail(cp, t);
+  fail(cp, treq);
   return false;
 }
 
 // WORD("drop", drop, 2, 1)
-bool func_drop(cell_t **cp, UNUSED int t) {
+bool func_drop(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   cell_t *p = ref(c->expr.arg[0]);
@@ -374,7 +368,7 @@ bool func_drop(cell_t **cp, UNUSED int t) {
 }
 
 // WORD("swap", swap, 2, 2)
-bool func_swap(cell_t **cp, UNUSED int t) {
+bool func_swap(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   cell_t *d = c->expr.arg[2];
@@ -392,7 +386,7 @@ cell_t *id(cell_t *c, alt_set_t as) {
 }
 
 // WORD("dup", dup, 1, 2)
-bool func_dup(cell_t **cp, UNUSED int t) {
+bool func_dup(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   cell_t *d = c->expr.arg[1];
@@ -401,7 +395,7 @@ bool func_dup(cell_t **cp, UNUSED int t) {
   return false;
 }
 
-bool func_ap(cell_t **cp, UNUSED int t) {
+bool func_ap(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
 
@@ -411,7 +405,8 @@ bool func_ap(cell_t **cp, UNUSED int t) {
     out = closure_out(c);
 
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, in-1, &alt_set, T_LIST)) goto fail;
+  type_request_t atr = req_list(&treq, in, out);
+  if(!reduce_arg(c, in-1, &alt_set, atr)) goto fail;
   clear_flags(c);
 
   cell_t *l = c->expr.arg[in-1];
@@ -455,21 +450,21 @@ bool func_ap(cell_t **cp, UNUSED int t) {
   drop(l);
   return false;
 fail:
-  fail(cp, t);
+  fail(cp, treq);
   return false;
 }
 
 // WORD("print", print, 2, 1)
-bool func_print(cell_t **cp, int t) {
+bool func_print(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   cell_t *res = 0;
   assert(!is_marked(c));
 
-  if(t != T_ANY && t != T_SYMBOL) goto fail;
+  if(treq.t != T_ANY && treq.t != T_SYMBOL) goto fail;
 
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 0, &alt_set, T_SYMBOL) ||
-     !reduce_arg(c, 1, &alt_set, T_ANY) ||
+  if(!reduce_arg(c, 0, &alt_set, req_symbol) ||
+     !reduce_arg(c, 1, &alt_set, req_any) ||
      as_conflict(alt_set)) goto fail;
   clear_flags(c);
 
@@ -480,7 +475,7 @@ bool func_print(cell_t **cp, int t) {
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   if(is_var(p) || is_var(q)) {
-    res = var(t, c);
+    res = var(T_SYMBOL, c);
   } else if(p->value.integer[0] == SYM_IO) {
     show_one(q);
     res = ref(p);
@@ -490,19 +485,19 @@ bool func_print(cell_t **cp, int t) {
 
  fail:
   drop(res);
-  fail(cp, t);
+  fail(cp, treq);
   return false;
 }
 
 // WORD("is_nil", is_nil, 1, 1)
-bool func_is_nil(cell_t **cp, UNUSED int t) {
+bool func_is_nil(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(*cp));
 
-  if(t != T_ANY && t != T_SYMBOL) goto fail;
+  if(treq.t != T_ANY && treq.t != T_SYMBOL) goto fail;
 
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 0, &alt_set, T_LIST)) goto fail;
+  if(!reduce_arg(c, 0, &alt_set, req_simple(T_LIST))) goto fail;
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
@@ -519,6 +514,6 @@ bool func_is_nil(cell_t **cp, UNUSED int t) {
   return true;
 
  fail:
-  fail(cp, t);
+  fail(cp, treq);
   return false;
 }

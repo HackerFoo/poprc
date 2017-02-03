@@ -467,7 +467,7 @@ unsigned int trace_reduce(cell_t *c) {
   // first one
   COUNTUP(i, n) {
     cell_t **a = &c->value.ptr[i];
-    reduce(a, T_ANY);
+    reduce(a, req_any);
     if(!is_list(*a)) {
       trace_store(*a, *a);
     }
@@ -484,7 +484,7 @@ unsigned int trace_reduce(cell_t *c) {
   while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, conflict, n)) {
     COUNTUP(i, n) {
       cell_t **a = &p->value.ptr[i];
-      reduce(a, T_ANY);
+      reduce(a, req_any);
       trace_store(*a, *a);
     }
     if(!(conflict = any_conflicts((cell_t const *const *)p->value.ptr, n))) {
@@ -733,7 +733,7 @@ cell_t *get_return_arg(cell_t **map, cell_t *returns, intptr_t x) {
     map[i];
 }
 
-bool func_exec(cell_t **cp, UNUSED int t) {
+bool func_exec(cell_t **cp, type_request_t treq) {
   cell_t *c = clear_ptr(*cp);
   assert(is_closure(c));
 
@@ -752,7 +752,7 @@ bool func_exec(cell_t **cp, UNUSED int t) {
     alt_set_t alt_set = 0;
     bool expnd = true;
     for(csize_t i = 0; i < c_in - 1; ++i) {
-      if(!reduce_arg(c, i, &alt_set, T_ANY)) goto fail;
+      if(!reduce_arg(c, i, &alt_set, req_any)) goto fail;
       // if any vars in a recursive function, don't expand
       // TODO make this less dumb
       if(is_var(clear_ptr(c->expr.arg[i]))) expnd = false;
@@ -767,13 +767,13 @@ bool func_exec(cell_t **cp, UNUSED int t) {
       }
     }
 
-    cell_t *res = var(t == T_ANY ? T_BOTTOM : t, c);
+    cell_t *res = var(treq.t == T_ANY ? T_BOTTOM : treq.t, c);
     res->value.alt_set = alt_set;
     store_reduced(cp, res);
     return true;
 
   fail:
-    fail(cp, t);
+    fail(cp, treq);
     return false;
   }
 
@@ -868,21 +868,21 @@ expand:
   return false;
 }
 
-bool func_exec_recursive(cell_t **cp, int t) {
+bool func_exec_recursive(cell_t **cp, type_request_t treq) {
   cell_t *c = clear_ptr(*cp);
   assert(is_closure(c));
 
   csize_t c_in = closure_in(c);
   alt_set_t alt_set = 0;
   for(csize_t i = 0; i < c_in - 1; ++i) {
-    if(!reduce_arg(c, i, &alt_set, T_ANY)) goto fail;
+    if(!reduce_arg(c, i, &alt_set, req_any)) goto fail;
   }
 
   c->func = func_exec;
-  return func_exec(cp, t);
+  return func_exec(cp, treq);
 
 fail:
-  fail(cp, t);
+  fail(cp, treq);
   return false;
 }
 
@@ -900,7 +900,7 @@ void trace_get_name(const cell_t *c, const char **module_name, const char **word
 }
 
 // takes free variables and returns a quoted function
-bool func_quote(cell_t **cp, UNUSED int t) {
+bool func_quote(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = clear_ptr(*cp);
   assert(is_closure(c));
 

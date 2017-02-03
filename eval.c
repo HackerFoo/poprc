@@ -79,7 +79,7 @@ bool reduce_list(cell_t *c) {
 
 void reduce_alt(cell_t **cp) {
   cell_t **p = cp;
-  while(*p && reduce(p, T_ANY)) {
+  while(*p && reduce(p, req_any)) {
     p = &(*p)->alt;
   }
   *p = 0;

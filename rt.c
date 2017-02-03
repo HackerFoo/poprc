@@ -105,9 +105,9 @@ void split_arg(cell_t *c, csize_t n) {
 bool reduce_arg(cell_t *c,
                 csize_t n,
                 alt_set_t *ctx,
-                int t) {
+                type_request_t treq) {
   cell_t **ap = &c->expr.arg[n];
-  bool r = reduce(ap, t);
+  bool r = reduce(ap, treq);
   *ctx |= ((cell_t *)clear_ptr(*ap))->value.alt_set;
   split_arg(c, n);
   return r;
@@ -122,17 +122,17 @@ void clear_flags(cell_t *c) {
 }
 
 // Reduce *cp with type t
-bool reduce(cell_t **cp, int t) {
+bool reduce(cell_t **cp, type_request_t treq) {
   cell_t *c;
   while((c = clear_ptr(*cp))) {
     if(!closure_is_ready(c)) close_placeholders(c);
     assert(is_closure(c));
     if(!closure_is_ready(c)) {
-      fail(cp, t);
+      fail(cp, treq);
       continue;
     }
     unsigned int m = measure.reduce_cnt++;
-    bool success = c->func(cp, t);
+    bool success = c->func(cp, treq);
     if(success) {
       cell_t *n = clear_ptr(*cp);
       if(write_graph && measure.reduce_cnt > m) {
@@ -155,12 +155,12 @@ void reduce_dep(cell_t **cp) {
   cell_t *c = clear_ptr(*cp);
   if(!closure_is_ready(c)) close_placeholders(c);
   if(!c || !closure_is_ready(c)) {
-    fail(cp, T_ANY);
+    fail(cp, req_any);
   } else {
     assert(is_closure(c) &&
            closure_is_ready(c));
     measure.reduce_cnt++;
-    c->func(cp, T_ANY);
+    c->func(cp, req_any);
   }
 }
 
@@ -527,7 +527,7 @@ void store_var(cell_t *c, int t) {
   *c = v;
 }
 
-void fail(cell_t **cp, int t) {
+void fail(cell_t **cp, type_request_t treq) {
   cell_t *c = clear_ptr(*cp);
   if(!is_cell(c)) {
     *cp = NULL;
@@ -535,7 +535,7 @@ void fail(cell_t **cp, int t) {
   }
   assert(!is_marked(c));
   cell_t *alt = ref(c->alt);
-  if(c->n && t == T_ANY) { // HACK this should be more sophisticated
+  if(c->n && treq.t == T_ANY) { // HACK this should be more sophisticated
     traverse(c, {
         cell_t *x = clear_ptr(*p);
         drop(x);
@@ -941,4 +941,28 @@ uint8_t new_alt_id(unsigned int n) {
   uint8_t r = alt_cnt;
   alt_cnt += n;
   return r;
+}
+
+type_request_t req_list(type_request_t *p, int in, int out) {
+  if(p) {
+    in += p->in;
+    out += p->out;
+  }
+  type_request_t req = {
+    .t = T_LIST,
+    .in = in,
+    .out = out,
+  };
+  return req;
+}
+
+const type_request_t req_any = { .t = T_ANY };
+const type_request_t req_int = { .t = T_INT };
+const type_request_t req_symbol = { .t = T_SYMBOL };
+
+type_request_t req_simple(int t) {
+  type_request_t req = {
+    .t = t
+  };
+  return req;
 }

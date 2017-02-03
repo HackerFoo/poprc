@@ -51,6 +51,10 @@ static_assert(sizeof(csize_t) == sizeof(type_t), "csize_t and type_t are differe
 #define T_ROW       0x40
 #define T_VAR       0x80
 
+typedef struct type_request {
+  int t, in, out;
+} type_request_t;
+
 typedef struct cell cell_t;
 typedef struct expr expr_t;
 typedef struct value value_t;
@@ -80,7 +84,7 @@ typedef struct seg_t {
   size_t n;
 } seg_t;
 
-typedef bool (reduce_t)(cell_t **cell, int type);
+typedef bool (reduce_t)(cell_t **cell, type_request_t treq);
 
 /* unevaluated expression */
 struct __attribute__((packed)) expr {
