@@ -159,10 +159,10 @@ cell_t *parse_word(seg_t w, cell_t *module) {
   }
   COUNTUP(i, out-1) {
     cell_t *d = dep(ref(c));
-    arg(&c, d);
+    arg(c, d);
   }
   if(data) {
-    arg(&c, data);
+    arg(c, data);
   }
   return c;
 }
@@ -205,12 +205,12 @@ cell_t *parse_vector(const cell_t **l) {
 val_t fill_args(cell_t *r) {
   csize_t n = list_size(r);
   if(n < 1) return 0;
-  cell_t **l = &r->value.ptr[n-1];
+  cell_t *l = r->value.ptr[n-1];
   val_t i = 0;
-  while(!closure_is_ready(*l)) {
+  while(!closure_is_ready(l)) {
     cell_t *v = var(T_ANY, NULL);
     trace(v, v, tt_update);
-    arg_noexpand(l, v);
+    arg(l, v);
     ++i;
   }
   return i;
@@ -480,7 +480,7 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
             arg_stack[0] = &nil_cell;
             n = 2;
           } else {
-            arg(&arg_stack[0], &nil_cell);
+            arg(arg_stack[0], &nil_cell);
           }
         }
         arg_stack[0] = array_to_list(arg_stack, n);
@@ -502,7 +502,7 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
           csize_t in = closure_in(c);
           if(clear_ptr(c->func) == (void *)func_exec) in--;
           COUNTDOWN(i, min(n, in)) {
-            arg(&c, arg_stack[--n]);
+            arg(c, arg_stack[--n]);
           }
         }
         assert_throw(n < MAX_ARGS);

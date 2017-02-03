@@ -81,9 +81,9 @@ cell_t *var_create(int t, cell_t *tc, int in, int out) {
     COUNTUP(i, out) {
       cell_t *d = dep(ph);
       c->value.ptr[i] = d;
-      arg(&ph, d);
+      arg(ph, d);
     }
-    arg(&ph, var_create(T_FUNCTION, tc, 0, 0));
+    arg(ph, var_create(T_FUNCTION, tc, 0, 0));
     refn(ph, out);
     c->value.ptr[out] = ph;
   } else {

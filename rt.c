@@ -370,9 +370,8 @@ cell_t *func(reduce_t *f, csize_t in, csize_t out) {
   return c;
 }
 
-/* arg is destructive to *cp */
-void arg(cell_t **cp, cell_t *a) {
-  cell_t *c = *cp;
+/* arg is destructive to c */
+void arg(cell_t *c, cell_t *a) {
   assert(is_closure(c) && is_closure(a));
   assert(!closure_is_ready(c));
   csize_t i = closure_next_child(c);
@@ -383,32 +382,12 @@ void arg(cell_t **cp, cell_t *a) {
     if(i == 0)
       closure_set_ready(c, closure_is_ready(a));
   } else {
-    arg(&c->expr.arg[i], a);
+    arg(c->expr.arg[i], a);
     if(closure_is_ready(c->expr.arg[i])) {
       if(i == 0) closure_set_ready(c, true);
       else --*(intptr_t *)&c->expr.arg[0]; // decrement offset
     }
   }
-  *cp = c;
-}
-
-void arg_noexpand(cell_t **cp, cell_t *a) {
-  cell_t *c = *cp;
-  assert(is_closure(c) && is_closure(a));
-  assert(!closure_is_ready(c));
-  csize_t i = closure_next_child(c);
-  if(!is_data(c->expr.arg[i])) {
-    c->expr.arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
-    c->expr.arg[i] = a;
-    if(i == 0) closure_set_ready(c, closure_is_ready(a));
-  } else {
-    arg_noexpand(&c->expr.arg[i], a);
-    if(closure_is_ready(c->expr.arg[i])) {
-      if(i == 0) closure_set_ready(c, true);
-      else --*(intptr_t *)&c->expr.arg[0]; // decrement offset
-    }
-  }
-  *cp = c;
 }
 
 void update_ready(cell_t *c, cell_t *a) {
@@ -577,27 +556,27 @@ cell_t *compose_expand(cell_t *a, csize_t n, cell_t *b) {
   bool ph_a = is_placeholder(a);
   csize_t i, bs = list_size(b);
   if(bs) {
-    cell_t **l = &b->value.ptr[bs-1];
+    cell_t *l = b->value.ptr[bs-1];
     cell_t *d = 0;
-    if(ph_a && is_placeholder(*l)) {
-      *l = compose_placeholders(a, *l);
+    if(ph_a && is_placeholder(l)) {
+      l = compose_placeholders(a, l);
       return b;
     }
     while((ph_a || n > 1) &&
-          !closure_is_ready(*l)) {
+          !closure_is_ready(l)) {
       d = dep(NULL);
       arg(l, d);
-      arg(&a, d);
+      arg(a, d);
       d->expr.arg[0] = ref(a);
       if(ph_a) ++a->expr.out;
       else --n;
     }
-    if(!closure_is_ready(*l)) {
+    if(!closure_is_ready(l)) {
       arg(l, a);
       // *** messy
-      for(i = closure_in(*l); i < closure_args(*l); ++i) {
-        drop((*l)->expr.arg[i]->expr.arg[0]);
-        (*l)->expr.arg[i]->expr.arg[0] = ref(*l);
+      for(i = closure_in(l); i < closure_args(l); ++i) {
+        drop((l)->expr.arg[i]->expr.arg[0]);
+        l->expr.arg[i]->expr.arg[0] = ref(l);
       }
       return b;
     }
@@ -608,7 +587,7 @@ cell_t *compose_expand(cell_t *a, csize_t n, cell_t *b) {
   for(i = 0; i < n-1; ++i) {
     cell_t *d = dep(ref(a));
     b->value.ptr[bs+i] = d;
-    arg(&a, d);
+    arg(a, d);
   }
   b->value.ptr[bs+n-1] = a;
   return b;
