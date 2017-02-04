@@ -268,16 +268,21 @@ bool func_alt2(cell_t **cp, UNUSED type_request_t treq) {
 }
 
 
-cell_t *map_assert(cell_t *c, cell_t *t) {
+cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
   assert(is_list(c));
-  cell_t *nc = copy(c);
+  cell_t *nc = copy_expand(c, 1);
+  v->value.type.exclusive = T_FUNCTION;
+  nc->value.ptr[list_size(nc) - 1] = 0;
   traverse(nc, {
-      cell_t *np = closure_alloc(2);
-      np->func = func_assert;
-      np->expr.arg[0] = ref(*p);
-      np->expr.arg[1] = ref(t);
-      *p = np;
+      if(*p) {
+        cell_t *np = closure_alloc(2);
+        np->func = func_assert;
+        np->expr.arg[0] = ref(*p);
+        np->expr.arg[1] = ref(t);
+        *p = np;
+      }
     }, PTRS);
+  nc->value.ptr[list_size(nc) - 1] = v;
   return nc;
 }
 
@@ -292,17 +297,16 @@ bool func_assert(cell_t **cp, type_request_t treq) {
 
   if(!(p->value.integer[0] == SYM_True || is_var(p))) goto fail;
 
-  cell_t *res;
-  if(is_var(p) && treq.t == T_LIST) {
-    res = var(T_LIST, c); // ***
-  }
+  cell_t *res = var(treq.t, c);
+
   if(!reduce_arg(c, 0, &alt_set, treq) ||
      as_conflict(alt_set)) goto fail;
   clear_flags(c);
   cell_t *q = c->expr.arg[0];
   if(is_var(p)) {
     if(is_list(q)) {
-      res = map_assert(q, p);
+      trace(c, res, tt_update);
+      res = map_assert(q, p, res);
     } else {
       res->value.type = q->value.type;
       res->value.type.flags |= T_VAR;

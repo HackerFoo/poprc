@@ -89,6 +89,9 @@ trace_index_t trace_get_value(const cell_t *r) {
   } else if(r->value.type.exclusive == T_INT) { // for now
     pair_t *x = map_find(trace_values, r->value.integer[0]);
     if(x) return x->second;
+  } else if(is_list(r)) {
+    // assertion on a list
+    return NIL_INDEX;
   }
   assert(false);
   return -1;
@@ -329,9 +332,9 @@ trace_index_t trace_store_list(cell_t *c) {
     cell_t *p = c->value.ptr[n-1];
     if(is_placeholder(p)) { // unreduced placeholder
       li = trace_get_value(p->expr.arg[closure_in(p) - 1]);
-    } else if (is_var(p)) { // reduced placeholder
+    } else if (is_var(p) && p->value.type.exclusive == T_FUNCTION) { // reduced placeholder
       cell_t *t = p->value.ptr[0];
-      if(t && is_placeholder(t)) {
+      if(t) {
         li = t - trace_cur;
         n--;
       }
