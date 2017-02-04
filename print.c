@@ -512,8 +512,6 @@ char *show_type(type_t t) {
 char *show_type_all(type_t t) {
   const static char *type_flag_name[] = {
     "T_VAR",
-    "T_ROW",
-    "T_INDIRECT",
     "T_FAIL",
     "T_TRACED",
   };
@@ -548,8 +546,6 @@ char type_char(type_t t) {
 char *show_type_all_short(type_t t) {
   const static char type_flag_char[] = {
     '?',
-    '@',
-    '*',
     '!',
     '.',
   };

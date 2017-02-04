@@ -26,23 +26,28 @@ bool func_value(cell_t **cp, type_request_t treq) {
   cell_t *c = clear_ptr(*cp); // TODO remove clear_ptr
   assert(is_closure(c));
   measure.reduce_cnt--;
-  if((c->value.type.flags & T_FAIL) == 0 &&
-     type_match(treq.t, c)) {
-    if(is_any(c)) {
-      /* create placeholder */
-      if(treq.t == T_LIST) {
-        store_lazy(cp, c, var_create(T_LIST, c->value.ptr[0], treq.in, treq.out), c->value.alt_set);
-      } else {
-        c->value.type.exclusive = treq.t;
-      }
-      c = *cp;
-      trace(c, c, tt_update);
+
+  if((c->value.type.flags & T_FAIL) ||
+     !type_match(treq.t, c)) goto fail;
+
+  if(is_any(c)) {
+    if(treq.t == T_LIST) {
+      store_lazy(cp, c, var_create(T_LIST, c->value.ptr[0], treq.in, treq.out), c->value.alt_set);
+    } else {
+      c->value.type.exclusive = treq.t;
     }
-    return true;
-  } else {
-    fail(cp, treq);
-    return false;
-  }
+  } else if(is_list(c) && list_size(c) == 1 && c->value.ptr[0]->value.type.exclusive == T_FUNCTION) {
+    cell_t *f = c->value.ptr[0];
+    store_lazy(cp, c, var_create(T_LIST, f->value.ptr[0], treq.in, treq.out), c->value.alt_set);
+    drop(f);
+  } else goto done;
+  c = *cp;
+  trace(c, c, tt_update);
+done:
+  return true;
+fail:
+  fail(cp, treq);
+  return false;
 }
 
 cell_t *int_val(val_t x) {
@@ -216,11 +221,12 @@ bool is_dep(cell_t const *c) {
 bool func_placeholder(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
+  if(treq.t != T_ANY && treq.t != T_FUNCTION) goto fail;
   csize_t in = closure_in(c), n = closure_args(c);
   for(csize_t i = 0; i < in; ++i) {
     if(!reduce(&c->expr.arg[i], req_any)) goto fail; // TODO why not reduce_arg?
   }
-  cell_t *res = var(treq.t, c);
+  cell_t *res = var(T_FUNCTION, c);
   for(csize_t i = in; i < n; ++i) {
     cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {

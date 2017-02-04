@@ -45,10 +45,8 @@ static_assert(sizeof(csize_t) == sizeof(type_t), "csize_t and type_t are differe
 #define T_BOTTOM    0x0b
 
 // type flags
-#define T_TRACED    0x08
-#define T_FAIL      0x10
-#define T_INDIRECT  0x20
-#define T_ROW       0x40
+#define T_TRACED    0x20
+#define T_FAIL      0x40
 #define T_VAR       0x80
 
 typedef struct type_request {
