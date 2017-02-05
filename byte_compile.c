@@ -337,6 +337,16 @@ void trace_final_pass(cell_t *e) {
   }
 }
 
+trace_index_t trace_tail(trace_index_t t, csize_t out) {
+  if(out == 0) return t;
+  cell_t *tc = trace_alloc(out + 1);
+  tc->func = func_ap;
+  tc->expr.out = out;
+  tc->expr.arg[0] = trace_encode(t);
+  trace_cur[t].n++;
+  return tc - trace_cur;
+}
+
 bool any_unreduced(cell_t *c) {
   traverse(c, {
       if(*p) {
@@ -359,6 +369,7 @@ trace_index_t trace_store_list(cell_t *c) {
     if(is_placeholder(p)) { // unreduced placeholder
       csize_t in = closure_in(p);
       li = trace_get_value(p->expr.arg[in-1]);
+      li = trace_tail(li, p->expr.out);
       COUNTDOWN(i, in-1) {
         li = trace_build_quote(p->expr.arg[i], li);
       }
