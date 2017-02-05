@@ -227,7 +227,9 @@ void print_bytecode(cell_t *e) {
       traverse(c, {
           if(p != e) {
             trace_index_t x = trace_decode(*p);
-            if(x == NIL_INDEX) {
+            if(x == -1) {
+              printf(" X");
+            } else if(x == NIL_INDEX) {
               printf(" []");
             } else {
               printf(" %" PRIdPTR, x);
@@ -237,7 +239,12 @@ void print_bytecode(cell_t *e) {
       if(closure_out(c)) {
         printf(" ->");
         traverse(c, {
-            printf(" %" PRIdPTR, trace_decode(*p));
+            trace_index_t x = trace_decode(*p);
+            if(x == -1) {
+              printf(" X");
+            } else {
+              printf(" %" PRIdPTR, x);
+            }
           }, ARGS_OUT);
       }
       printf(", type = %s", show_type_all_short(c->expr_type));
