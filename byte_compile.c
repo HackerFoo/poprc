@@ -340,7 +340,7 @@ trace_index_t trace_store_list(cell_t *c) {
     cell_t *p = c->value.ptr[n-1];
     if(is_placeholder(p)) { // unreduced placeholder
       li = trace_get_value(p->expr.arg[closure_in(p) - 1]);
-    } else if (is_var(p) && p->value.type.exclusive == T_FUNCTION) { // reduced placeholder
+    } else if (is_var(p) && is_function(p)) { // reduced placeholder
       cell_t *t = p->value.ptr[0];
       if(t) {
         li = t - trace_cur;

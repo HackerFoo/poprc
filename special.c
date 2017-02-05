@@ -36,7 +36,10 @@ bool func_value(cell_t **cp, type_request_t treq) {
     } else {
       c->value.type.exclusive = treq.t;
     }
-  } else if(is_list(c) && list_size(c) == 1 && c->value.ptr[0]->value.type.exclusive == T_FUNCTION) {
+  } else if(treq.out > 0 &&
+            is_list(c) &&
+            list_size(c) == 1 &&
+            is_function(c->value.ptr[0])) {
     cell_t *f = c->value.ptr[0];
     store_lazy(cp, c, var_create(T_LIST, f->value.ptr[0], treq.in, treq.out), c->value.alt_set);
     drop(f);
@@ -142,6 +145,10 @@ cell_t *make_list(csize_t n) {
 
 bool is_list(cell_t const *c) {
   return c && is_value(c) && c->value.type.exclusive == T_LIST;
+}
+
+bool is_function(cell_t const *c) {
+  return c && is_value(c) && c->value.type.exclusive == T_FUNCTION;
 }
 
 cell_t *make_map(csize_t s) {
