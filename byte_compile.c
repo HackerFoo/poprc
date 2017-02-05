@@ -129,7 +129,13 @@ cell_t *trace_copy(const cell_t *c) {
 static
 cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
   cell_t *tc = trace_get(r);
-  if(tc->func) return tc;
+  type_t t = r->value.type;
+  if(tc->func) {
+    if(is_value(tc)) {
+      tc->value.type = t;
+    }
+    return tc;
+  }
   assert(tc->size == c->size);
   refcount_t n = tc->n;
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
@@ -148,7 +154,6 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
         *p = trace_encode(x);
       }
     }, ARGS_OUT);
-  type_t t = r->value.type;
   if(is_value(c)) {
     tc->value.alt_set = 0;
     tc->value.type = t;
@@ -298,6 +303,12 @@ void update_alt(cell_t *c, cell_t *r) {
 }
 
 static
+void trace_clear(cell_t *e) {
+  size_t count = e->entry.len;
+  memset(e, 0, (count + 1) * sizeof(cell_t));
+}
+
+static
 void trace_final_pass(cell_t *e) {
   // replace alts with trace cells
   cell_t
@@ -339,7 +350,12 @@ trace_index_t trace_store_list(cell_t *c) {
   if(n > 0) {
     cell_t *p = c->value.ptr[n-1];
     if(is_placeholder(p)) { // unreduced placeholder
-      li = trace_get_value(p->expr.arg[closure_in(p) - 1]);
+      csize_t in = closure_in(p);
+      li = trace_get_value(p->expr.arg[in-1]);
+      COUNTDOWN(i, in-1) {
+        li = trace_build_quote(p->expr.arg[i], li);
+      }
+      n--;
     } else if (is_var(p) && is_function(p)) { // reduced placeholder
       cell_t *t = p->value.ptr[0];
       if(t) {
@@ -384,7 +400,6 @@ trace_index_t trace_build_quote(cell_t *q, trace_index_t li) {
   cell_t **vlp = &vl;
 
   vlp = trace_var_list(q, vlp);
-  tmp_list_filter(&vl, T_FUNCTION);
   size_t in = tmp_list_length(vl);
   cell_t *n = trace_alloc(in + 2);
 
@@ -675,6 +690,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   e->entry.flags &= ~ENTRY_NOINLINE;
   e->entry.len = trace_cnt;
   if(is_id(e)) {
+    trace_clear(e);
     trace_ptr = trace_cur; // reset
     return NULL;
   }
