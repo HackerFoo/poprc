@@ -45,7 +45,6 @@ cell_t trace_cells[1 << 10];
 cell_t *trace_cur = &trace_cells[0];
 cell_t *trace_ptr = &trace_cells[0];
 size_t trace_cnt = 0;
-static MAP(trace_values, 1 << 6); // val_t -> trace_index_t
 
 #if INTERFACE
 typedef intptr_t trace_index_t;
@@ -82,16 +81,27 @@ cell_t *trace_get(const cell_t *r) {
 }
 
 static
+cell_t *trace_lookup_value_linear(int type, val_t value) {
+  FOR_TRACE(p, trace_cur, trace_ptr) {
+    if(p->func == func_value &&
+       p->value.type.exclusive == type &&
+       p->value.integer[0] == value)
+      return p;
+  }
+  return NULL;
+}
+
+static
 trace_index_t trace_get_value(const cell_t *r) {
   assert(r && is_value(r));
   if(is_var(r)) {
     return r->value.ptr[0] - trace_cur;
-  } else if(r->value.type.exclusive == T_INT) { // for now
-    pair_t *x = map_find(trace_values, r->value.integer[0]);
-    if(x) return x->second;
   } else if(is_list(r)) {
     // assertion on a list
     return NIL_INDEX;
+  } else {
+    cell_t *t = trace_lookup_value_linear(r->value.type.exclusive, r->value.integer[0]);
+    if(t) return t - trace_cur;
   }
   assert(false);
   return -1;
@@ -150,15 +160,14 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
 
 static
 cell_t *trace_store_value(const cell_t *c) {
-  if(c->value.type.exclusive == T_INT) {
-    pair_t *x = map_find(trace_values, c->value.integer[0]);
-    if(x) return &trace_cur[x->second];
+  if(!is_list(c)) {
+    cell_t *t = trace_lookup_value_linear(c->value.type.exclusive, c->value.integer[0]);
+    if(t) return t;
   }
   cell_t *tc = trace_copy(c);
-  if(c->value.type.exclusive == T_INT) {
-    pair_t x = {c->value.integer[0], tc - trace_cur};
-    map_insert(trace_values, x);
-  }
+  tc->value.alt_set = 0;
+  tc->alt = NULL;
+  tc->n = -1;
   return tc;
 }
 
@@ -175,7 +184,6 @@ static
 void trace_init() {
   trace_cur = trace_ptr;
   trace_cnt = 0;
-  map_clear(trace_values);
 }
 
 void print_bytecode(cell_t *e) {
@@ -451,12 +459,6 @@ int test_var_count() {
   return n == 5 ? 0 : -1;
 }
 
-void print_trace_index()
-{
-  //print_map(trace_index);
-  print_map(trace_values);
-}
-
 static
 unsigned int trace_reduce(cell_t *c) {
   csize_t n = list_size(c);
@@ -616,9 +618,6 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   drop(c);
   trace_enabled = false;
   e->entry.len = trace_cnt;
-#if DEBUG
-  print_trace_index();
-#endif
   trace_final_pass(e);
   e->entry.flags &= ~ENTRY_NOINLINE;
 
@@ -682,9 +681,6 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
 
   e->module_name = parent_entry->module_name;
   e->word_name = string_printf("%s_%d", parent_entry->word_name, (int)(q - parent_entry) - 1);
-#if DEBUG
-  print_trace_index();
-#endif
   trace_final_pass(e);
   return e;
 }
