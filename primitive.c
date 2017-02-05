@@ -25,6 +25,7 @@
 #include "gen/special.h"
 #include "gen/print.h"
 #include "gen/test.h"
+#include "gen/byte_compile.h"
 
    /*-----------------------------------------------,
     |          VARIABLE NAME CONVENTIONS            |
@@ -150,7 +151,7 @@ bool func_pushl(cell_t **cp, type_request_t treq) {
   assert(!is_marked(*cp));
 
   alt_set_t alt_set = 0;
-  type_request_t atr = req_list(&treq, 1, 0); // TODO
+  type_request_t atr = req_list(&treq, 1, 0);
   if(!reduce_arg(c, 1, &alt_set, atr)) goto fail;
   clear_flags(c);
 
@@ -176,7 +177,7 @@ bool func_pushr(cell_t **cp, type_request_t treq) {
   assert(!is_marked(c));
 
   alt_set_t alt_set = 0;
-  type_request_t atr = req_simple(T_LIST); // TODO 
+  type_request_t atr = req_list(&treq, 0, -1);
   if(!reduce_arg(c, 0, &alt_set, atr)) goto fail;
   clear_flags(c);
 

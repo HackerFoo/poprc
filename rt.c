@@ -885,7 +885,7 @@ uint8_t new_alt_id(unsigned int n) {
 type_request_t req_list(type_request_t *p, int in, int out) {
   if(p) {
     in += p->in;
-    out += p->out;
+    out = max(0, out + p->out);
   }
   type_request_t req = {
     .t = T_LIST,
