@@ -127,7 +127,7 @@ cell_t *lookup_word(seg_t w) {
   }
 }
 
-cell_t *parse_word(seg_t w, cell_t *module) {
+cell_t *parse_word(seg_t w, cell_t *module, unsigned int n) {
   cell_t *c;
   cell_t *data = NULL;
   csize_t in = 0, out = 1;
@@ -147,7 +147,13 @@ cell_t *parse_word(seg_t w, cell_t *module) {
     if(!e) e = module_lookup_compiled(w, &module);
     if(e) {
       if(e->entry.flags & ENTRY_PRIMITIVE) {
-        c = func(e->func, e->entry.in, e->entry.out);
+        if(e->func == func_placeholder) {
+          c = func(func_placeholder, n + 1, 1);
+          cell_t *tc = trace_alloc(n + 2);
+          data = var_create(T_FUNCTION, tc, 0, 0);
+        } else {
+          c = func(e->func, e->entry.in, e->entry.out);
+        }
       } else {
         c = func(e->func, e->entry.in + 1, e->entry.out);
         data = e;
@@ -496,13 +502,11 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
         assert_throw(n < MAX_ARGS);
         arg_stack[n++] = string_symbol(seg);
       } else {
-        cell_t *c = parse_word(seg, module);
+        cell_t *c = parse_word(seg, module, n);
         if(!c) goto fail;
         bool f = !is_value(c);
         if(f) {
-          csize_t in = closure_in(c);
-          if(clear_ptr(c->func) == (void *)func_exec) in--;
-          COUNTDOWN(i, min(n, in)) {
+          while(n && !closure_is_ready(c)) {
             arg(c, arg_stack[--n]);
           }
         }

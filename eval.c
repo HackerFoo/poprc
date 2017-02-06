@@ -512,7 +512,6 @@ void eval(const cell_t *p) {
     printf("incomplete expression\n");
   } else {
     reduce_root(c);
-    c = remove_row(c);
     ASSERT_REF();
     show_list(c);
     printf("\n");
@@ -524,30 +523,9 @@ bool get_arity(const cell_t *p, csize_t *in, csize_t *out, cell_t *module) {
   cell_t *c = parse_expr(&p, module);
   if(!c) return false;
   *in = fill_args(c);
-  c = remove_row(c);
   *out = max(1, list_size(c));
   drop(c);
   return true;
-}
-
-// TODO I don't think this is needed anymore
-cell_t *remove_row(cell_t *c) {
-  assert(is_list(c));
-  csize_t n = list_size(c);
-  if(n == 0 || !is_function(c->value.ptr[n-1])) return c;
-  return remove_left(c);
-}
-
-cell_t *remove_left(cell_t *c) {
-  assert(is_list(c));
-  assert(list_size(c) > 0);
-  csize_t size = calculate_cells(c->size - 1);
-  cell_t *new = closure_alloc_cells(size);
-  memcpy(new, c, sizeof(cell_t) * size);
-  --new->size;
-  traverse_ref(new, PTRS | ALT);
-  drop(c);
-  return new;
 }
 
 static struct mmfile files[16] = {};
