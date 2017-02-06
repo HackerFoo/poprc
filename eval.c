@@ -523,7 +523,9 @@ bool get_arity(const cell_t *p, csize_t *in, csize_t *out, cell_t *module) {
   cell_t *c = parse_expr(&p, module);
   if(!c) return false;
   *in = fill_args(c);
-  *out = max(1, list_size(c));
+  csize_t n = list_size(c);
+  if(c->value.ptr[n-1]->func == func_placeholder) n--;
+  *out = max(1, n);
   drop(c);
   return true;
 }

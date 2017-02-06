@@ -131,7 +131,7 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n) {
   cell_t *c;
   cell_t *data = NULL;
   csize_t in = 0, out = 1;
-  if(w.s[0] == '?') {
+  if(w.s[0] == '?' && w.n == 1) {
     c = var(T_ANY, NULL);
 #if FUNC_AP
   } else if(w.n == 4 &&
@@ -455,6 +455,7 @@ cell_t *array_to_list(cell_t **a, csize_t n) {
 #define MAX_ARGS 64
 cell_t *parse_expr(const cell_t **l, cell_t *module) {
   cell_t *arg_stack[MAX_ARGS]; // TODO use allocated storage
+  cell_t *ph = NULL;
   unsigned int n = 0;
   const cell_t *t;
 
@@ -509,15 +510,26 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
           while(n && !closure_is_ready(c)) {
             arg(c, arg_stack[--n]);
           }
+          if(ph) {
+            csize_t in = closure_in(ph);
+            while(!closure_is_ready(c)) {
+              ph = expand_deps(ph, 1);
+              arg(c, ph->expr.arg[in] = dep(ref(ph)));
+            }
+          }
         }
         assert_throw(n < MAX_ARGS);
-        arg_stack[n++] = c;
-        if(f) {
-          csize_t in = closure_in(c);
-          csize_t out = closure_out(c);
-          COUNTUP(i, out) {
-            assert_throw(n < MAX_ARGS);
-            arg_stack[n++] = c->expr.arg[in+i];
+        if(clear_ptr(c->func) == (void *)func_placeholder) {
+          ph = c;
+        } else {
+          arg_stack[n++] = c;
+          if(f) {
+            csize_t in = closure_in(c);
+            csize_t out = closure_out(c);
+            COUNTUP(i, out) {
+              assert_throw(n < MAX_ARGS);
+              arg_stack[n++] = c->expr.arg[in+i];
+            }
           }
         }
       }
@@ -561,11 +573,18 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
   }
 
 done:
+  if(ph) {
+    assert_throw(n < MAX_ARGS);
+    memmove(arg_stack + 1, arg_stack, n * sizeof(arg_stack[0]));
+    arg_stack[0] = ph;
+    n++;
+  }
   return array_to_list(arg_stack, n);
 fail:
   COUNTUP(i, n) {
     drop(arg_stack[i]);
   }
+  drop(ph);
   return NULL;
 }
 

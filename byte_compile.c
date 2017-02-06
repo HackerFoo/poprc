@@ -587,7 +587,7 @@ cell_t *module_lookup_compiled(seg_t path, cell_t **context) {
     if(p->alt) { // HACKy
       return p->alt;
     } else {
-      return lookup_word(string_seg("_"));
+      return lookup_word(string_seg("??"));
     }
   }
   p->value.type.flags |= T_TRACED;

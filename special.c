@@ -224,7 +224,7 @@ bool is_dep(cell_t const *c) {
 }
 
 // this shouldn't reduced directly, but is called through reduce_partial from func_dep
-// WORD("_", placeholder, 0, 1)
+// WORD("??", placeholder, 0, 1)
 bool func_placeholder(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
