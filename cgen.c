@@ -34,6 +34,7 @@
 #include "gen/cgen.h"
 #include "gen/eval.h"
 #include "gen/lex.h"
+#include "gen/user_func.h"
 
 const char *ctype(type_t t) {
   static const char *table[] = {
