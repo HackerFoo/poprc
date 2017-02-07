@@ -71,7 +71,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
       // TODO make this less dumb
       if(is_var(clear_ptr(c->expr.arg[i]))) expnd = false;
     }
-    if(expnd) goto expand;
+    if(expnd && c_in > 1) goto expand;
     for(csize_t i = c_in; i < n; ++i) {
       cell_t **d = &c->expr.arg[i];
       if(*d && is_dep(*d)) {

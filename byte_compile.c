@@ -142,8 +142,11 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
   tc->n = n;
   if(tc->func == func_dep_entered) tc->func = func_dep;
+  cell_t **e = (tc->func == func_exec || tc->func == func_quote) ? &tc->expr.arg[closure_in(tc) - 1] : NULL;
   traverse(tc, {
-      if(*p) {
+      if(p == e) {
+        *p = trace_encode(*p - trace_cells);
+      } else if(*p) {
         trace_index_t x = trace_get_value(*p);
         *p = trace_encode(x);
         trace_cur[x].n++;
@@ -600,7 +603,7 @@ cell_t *parse_eval_def(seg_t name, cell_t *rest) {
   cell_t *l = quote(rest);
   l->module_name = "eval";
   module_set(eval_module, name, l);
-  return compile_entry(name, eval_module);
+  return module_lookup_compiled(name, &eval_module);
 }
 
 static
