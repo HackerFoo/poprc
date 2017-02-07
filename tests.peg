@@ -10,7 +10,7 @@ __ f2b: | popr ! cut popr swap drop
 __ f5: [] pushl rotl rotl | swap pushl popr swap popr swap drop dup rotl > ! cut
 
 __ x y [z+] should be x + y + z + 1
-f2: pushl pushl popr 1 + swap pushl popr swap popr swap drop +
+__ f2: pushl pushl popr 1 + swap pushl popr swap popr swap drop +
 
 __ f1: [] [] ifte pushl
 
@@ -33,17 +33,20 @@ get2: popr swap popr swap drop swap
 ___ to here
 
 not: False =:=
-len: dup is_nil [0 swap!] [swap popr drop len 1+ swap not!] | pushl pushl popr swap drop
+__ len: dup is_nil [0 swap!] [swap popr drop len 1+ swap not!] | pushl pushl popr swap drop
 
 __ iota: [0 == [] swap !] [dup [dup 1- iota swap] pushl swap 0 != !] | pushl popr swap drop
 __ sum: [is_nil 0 swap !] [dup get2 swap sum + swap is_nil not!] | pushl popr swap drop
 
 pushl2: pushl pushl
+
+__[
 range: __ with inputs i and n __
   __ return i or recursive call with i+1 __
   dup2 [drop] [swap 1+ swap range] | pushl2
     rotr <= ! __ make sure i <= n
     head __ get the value
+]__
 
 __[
 nested: [[0 swap False =:= !]

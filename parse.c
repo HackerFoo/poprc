@@ -491,6 +491,14 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
             arg(arg_stack[0], &nil_cell);
           }
         }
+
+        if(ph) { // TODO move this into array_to_list()
+          assert_throw(n < MAX_ARGS);
+          memmove(arg_stack + 1, arg_stack, n * sizeof(arg_stack[0]));
+          arg_stack[0] = ph;
+          ph = NULL;
+          n++;
+        }
         arg_stack[0] = array_to_list(arg_stack, n);
         n = 1;
         break;
@@ -520,6 +528,7 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
         }
         assert_throw(n < MAX_ARGS);
         if(clear_ptr(c->func) == (void *)func_placeholder) {
+          drop(ph); // HACK probably should chain placeholders somehow
           ph = c;
         } else {
           arg_stack[n++] = c;
