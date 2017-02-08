@@ -1,5 +1,5 @@
 ___ list.head (1 -> 1) ___
-[0] var, type = ?a x1
+[0] var, type = ?f x1
 [1] __primitive.ap 0 -> 2, type = f x1
 [2] __primitive.dep 1, type = a x1
 [3] return [ 2 ], type = r x1
@@ -47,14 +47,14 @@ ___ stack.under (2 -> 3) ___
 [2] return [ 1 0 1 ], type = r x1
 
 ___ control.ap11 (2 -> 1) ___
-[0] var, type = ?a x1
+[0] var, type = ?f x1
 [1] var, type = ?a x1
 [2] __primitive.ap 1 0 -> 3, type = f x1
 [3] __primitive.dep 2, type = a x1
 [4] return [ 3 ], type = r x1
 
 ___ control.ap12 (2 -> 2) ___
-[0] var, type = ?a x1
+[0] var, type = ?f x1
 [1] var, type = ?a x1
 [2] __primitive.ap 1 0 -> 3, type = f x2
 [3] __primitive.dep 2, type = a x1
@@ -63,7 +63,7 @@ ___ control.ap12 (2 -> 2) ___
 [6] return [ 5 3 ], type = r x1
 
 ___ control.ap21 (3 -> 1) ___
-[0] var, type = ?a x1
+[0] var, type = ?f x1
 [1] var, type = ?a x1
 [2] var, type = ?a x1
 [3] __primitive.ap 2 1 0 -> 5, type = f x1
@@ -80,14 +80,14 @@ ___ control.ifte (3 -> 1) ___
 [7] return [ 1 ], type = r x1
 
 ___ control.dip11 (3 -> 2) ___
-[0] var, type = ?a x1
+[0] var, type = ?f x1
 [1] var, type = ?a x1
 [2] var, type = ?a x1
 [3] __primitive.ap 2 0, type = f x1
 [4] return [ 3 1 ], type = r x1
 
 ___ control.dip21 (4 -> 2) ___
-[0] var, type = ?a x1
+[0] var, type = ?f x1
 [1] var, type = ?a x1
 [2] var, type = ?a x1
 [3] var, type = ?a x1
@@ -142,7 +142,7 @@ ___ tests.fib (1 -> 1) ___
 [12] return [ 6 ], type = r x1
 
 ___ tests.get2 (1 -> 2) ___
-[0] var, type = ?a x1
+[0] var, type = ?f x1
 [1] __primitive.ap 0 -> 2, type = f x2
 [2] __primitive.dep 1, type = a x1
 [3] __primitive.ap 1 -> 4, type = f x1
@@ -156,7 +156,7 @@ ___ tests.not (1 -> 1) ___
 [3] return [ 1 ], type = r x1
 
 ___ tests.pushl2 (3 -> 1) ___
-[0] var, type = ?a x1
+[0] var, type = ?f x1
 [1] var, type = ?a x1
 [2] var, type = ?a x1
 [3] __primitive.pushl 1 0, type = l x1

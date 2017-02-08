@@ -77,8 +77,9 @@ look for word in parent module, parent imports, context module, context imports,
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
-** TODO vars don't update type for T_LIST
-** TODO f: pushl
+** TODO no return in 32 bit control.ap21
+** DONE vars don't update type for T_LIST
+** DONE f: pushl
 - introduces extra T_FUNCTION into quote
 ** DONE ? popr swap popr swap drop
 placeholders *do* need to be shared, unless an input is modified
