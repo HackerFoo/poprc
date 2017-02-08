@@ -194,13 +194,6 @@ typedef struct measure_t {
 #define ARGS (ARGS_IN | ARGS_OUT)
 #define PTRS 8
 
-typedef enum trace_type_t {
-  tt_reduction,
-  tt_update,
-  tt_compose_placeholders,
-  tt_fail
-} trace_type_t;
-
 #ifdef EMSCRIPTEN
 #define strnlen(s, n) strlen(s)
 #endif

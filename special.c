@@ -45,7 +45,7 @@ bool func_value(cell_t **cp, type_request_t treq) {
     drop(f);
   } else goto done;
   c = *cp;
-  trace(c, c, tt_update);
+  trace_update(c, c);
 done:
   return true;
 fail:
@@ -102,6 +102,7 @@ cell_t *var_create(int t, cell_t *tc, int in, int out) {
   }
   c->value.type.flags = T_VAR;
   c->value.type.exclusive = t;
+  trace_update_type(c);
   return c;
 }
 
@@ -230,9 +231,15 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
   assert(!is_marked(c));
   if(treq.t != T_ANY && treq.t != T_FUNCTION) goto fail;
   csize_t in = closure_in(c), n = closure_args(c);
-  for(csize_t i = 0; i < in; ++i) {
-    if(!reduce(&c->expr.arg[i], req_any)) goto fail; // TODO why not reduce_arg?
+  alt_set_t alt_set = 0;
+  assert(in >= 1);
+  if(!reduce_arg(c, in - 1, &alt_set, req_simple(T_FUNCTION))) goto fail;
+  COUNTUP(i, in - 1) {
+    if(!reduce_arg(c, i, &alt_set, req_any) ||
+      as_conflict(alt_set)) goto fail;
   }
+  clear_flags(c);
+
   cell_t *res = var(T_FUNCTION, c);
   for(csize_t i = in; i < n; ++i) {
     cell_t *d = c->expr.arg[i];

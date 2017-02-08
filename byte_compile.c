@@ -51,7 +51,6 @@ size_t trace_cnt = 0;
 typedef intptr_t trace_index_t;
 #endif
 
-static void update_alt(cell_t *c, cell_t *r);
 static trace_index_t trace_build_quote(cell_t *q, trace_index_t li);
 static bool pre_compile_word(cell_t *l, cell_t *module, csize_t *in, csize_t *out);
 static bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_t out);
@@ -265,7 +264,34 @@ void print_bytecode(cell_t *e) {
   }
 }
 
-void trace(cell_t *c, cell_t *r, trace_type_t tt) {
+void trace_update(cell_t *c, cell_t *r) {
+  if(!trace_enabled) return;
+
+  trace_store(c, r);
+}
+
+void trace_reduction(cell_t *c, cell_t *r) {
+  if(!trace_enabled) return;
+
+  if(!is_var(r) || r->value.type.exclusive == T_LIST) return;
+
+  if(write_graph) {
+    mark_cell(c);
+    make_graph_all(0);
+  }
+
+  csize_t in = closure_in(c);
+  COUNTUP(i, c->func == func_exec ? in - 1 : in) {
+    cell_t *a = c->expr.arg[i];
+    if(is_value(a) && !is_var(a)) {
+      trace_store(a, a);
+    }
+  }
+
+  trace_store(c, r);
+}
+
+void trace_composition(cell_t *c, UNUSED cell_t *a, UNUSED cell_t *b) {
   if(!trace_enabled) return;
 
   if(write_graph) {
@@ -273,43 +299,19 @@ void trace(cell_t *c, cell_t *r, trace_type_t tt) {
     make_graph_all(0);
   }
 
-  switch(tt) {
-
-  case tt_reduction: {
-    if(!is_var(r)) break;
-    if(r->value.type.exclusive == T_LIST) break;
-
-    csize_t in = closure_in(c);
-    COUNTUP(i, c->func == func_exec ? in - 1 : in) {
-      cell_t *a = c->expr.arg[i];
-      if(is_value(a) && !is_var(a)) {
-        trace_store(a, a);
-      }
-    }
-  }
-  // continue below
-
-  case tt_update:
-    trace_store(c, r);
-    break;
-
-  case tt_compose_placeholders: {
-    assert_throw(false, "TODO: compose placeholders");
-    break;
-  }
-
-  case tt_fail: {
-    update_alt(c, r);
-    break;
-  }
-  }
+  assert_throw(false, "TODO: compose placeholders");
 }
 
-// TODO replace with something more efficient
-static
-void update_alt(cell_t *c, cell_t *r) {
-  FOR_TRACE(p, trace_cur, trace_ptr) {
-    if(p->alt == c) p->alt = r;
+void trace_update_type(cell_t *c) {
+  if(!trace_enabled) return;
+
+  int t = c->value.type.exclusive;
+
+  if(t != T_LIST) {
+    cell_t *tc = trace_get(c);
+    if(tc->func) {
+      trace_set_type(tc, t);
+    }
   }
 }
 
@@ -362,6 +364,13 @@ bool any_unreduced(cell_t *c) {
   return false;
 }
 
+void trace_set_type(cell_t *tc, int t) {
+  tc->expr_type.exclusive = t;
+  if(is_value(tc)) {
+    tc->value.type.exclusive = t;
+  }
+}
+
 // TODO unevaluated functions instead for later compilation
 static
 trace_index_t trace_store_list(cell_t *c) {
@@ -373,6 +382,7 @@ trace_index_t trace_store_list(cell_t *c) {
     if(is_placeholder(p)) { // unreduced placeholder
       csize_t in = closure_in(p);
       li = trace_get_value(p->expr.arg[in-1]);
+      trace_set_type(&trace_cur[li], T_FUNCTION);
       li = trace_tail(li, p->expr.out);
       COUNTDOWN(i, in-1) {
         li = trace_build_quote(p->expr.arg[i], li);

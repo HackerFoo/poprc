@@ -216,7 +216,7 @@ val_t fill_args(cell_t *r) {
   val_t i = 0;
   while(!closure_is_ready(l)) {
     cell_t *v = var(T_ANY, NULL);
-    trace(v, v, tt_update);
+    trace_update(v, v);
     arg(l, v);
     ++i;
   }

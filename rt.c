@@ -297,8 +297,7 @@ cell_t *compose_placeholders(cell_t *a, cell_t *b) {
   for(; i < a->size; ++i)
     c->expr.arg[b_in + i] = a->expr.arg[i];
   //drop(a); // dropping here will cause func_compose to break in store_reduced
-  cell_t *ab[] = {a, b};
-  trace(c, (cell_t *)ab, tt_compose_placeholders);
+  trace_composition(c, a, b);
   return c;
 }
 
@@ -471,7 +470,7 @@ void store_var(cell_t *c, int t) {
       .ptr = { trace_alloc(c->size) }
     }
   };
-  trace(c, &v, tt_update);
+  trace_update(c, &v);
   closure_shrink(c, 1);
   *c = v;
 }
@@ -510,7 +509,7 @@ void store_reduced(cell_t **cp, cell_t *r) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   r->func = func_value;
-  trace(c, r, tt_reduction);
+  trace_reduction(c, r);
   drop_multi(c->expr.arg, closure_in(c));
   csize_t size = is_closure(r) ? closure_cells(r) : 0;
   if(size <= closure_cells(c)) {
