@@ -298,7 +298,7 @@ bool func_assert(cell_t **cp, type_request_t treq) {
 
   if(!(p->value.integer[0] == SYM_True || is_var(p))) goto fail;
 
-  cell_t *res = var(treq.t, c);
+  cell_t *res = is_var(p) ? var(treq.t, c) : NULL;
 
   if(!reduce_arg(c, 0, &alt_set, treq) ||
      as_conflict(alt_set)) goto fail;
