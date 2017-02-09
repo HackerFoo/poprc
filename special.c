@@ -81,6 +81,31 @@ bool is_value(cell_t const *c) {
   return c && c->func == func_value;
 }
 
+void placeholder_extend(cell_t **lp, int in, int out) {
+  cell_t *l = *lp;
+  if(!(in || out)) return;
+  if(!is_var(l)) return;
+  csize_t n = list_size(l);
+  if(n != 1) return;
+  cell_t *f = l->value.ptr[0];
+  if(!closure_is_ready(f)) return;
+
+  ref(f);
+  drop(l);
+  l = make_list(out + 1);
+  cell_t *ph = func(func_placeholder, in + 1, out + 1);
+  COUNTUP(i, out) {
+    cell_t *d = dep(ph);
+    l->value.ptr[i] = d;
+    arg(ph, d);
+  }
+  arg(ph, f);
+  refn(ph, out);
+  l->value.ptr[out] = ph;
+  l->value.type.flags = T_VAR;
+  *lp = l;
+}
+
 cell_t *var_create(int t, cell_t *tc, int in, int out) {
   cell_t *c;
   if(t == T_LIST) {
@@ -94,15 +119,16 @@ cell_t *var_create(int t, cell_t *tc, int in, int out) {
     arg(ph, var_create(T_FUNCTION, tc, 0, 0));
     refn(ph, out);
     c->value.ptr[out] = ph;
+    c->value.type.flags = T_VAR;
   } else {
     c = closure_alloc(1);
     c->func = func_value;
     c->size = 2;
     c->value.ptr[0] = tc;
+    c->value.type.flags = T_VAR;
+    c->value.type.exclusive = t;
+    trace_update_type(c);
   }
-  c->value.type.flags = T_VAR;
-  c->value.type.exclusive = t;
-  trace_update_type(c);
   return c;
 }
 

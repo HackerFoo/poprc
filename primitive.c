@@ -155,6 +155,7 @@ bool func_pushl(cell_t **cp, type_request_t treq) {
   if(!reduce_arg(c, 1, &alt_set, atr)) goto fail;
   clear_flags(c);
 
+  placeholder_extend(&c->expr.arg[1], treq.in + 1, treq.out);
   cell_t *q = c->expr.arg[1];
   bool rvar = is_var(q);
   cell_t *res = pushl_nd(ref(c->expr.arg[0]), ref(q));
@@ -206,10 +207,11 @@ bool func_popr(cell_t **cp, type_request_t treq) {
   assert(!is_marked(*cp));
 
   alt_set_t alt_set = 0;
-  type_request_t atr = req_list(&treq, 0, 1);
+  type_request_t atr = req_list(treq.in ? NULL : &treq, 0, 1);
   if(!reduce_arg(c, 0, &alt_set, atr)) goto fail;
   clear_flags(c);
 
+  placeholder_extend(&c->expr.arg[0], treq.in, treq.out + 1);
   cell_t *p = c->expr.arg[0];
   if(list_size(p) == 0) goto fail;
 
@@ -219,20 +221,20 @@ bool func_popr(cell_t **cp, type_request_t treq) {
   cell_t *res;
   cell_t **l = p->value.ptr;
   cell_t *res_d;
-  if(closure_is_ready(*l)) {
-    /* drop the right list element */
-    res_d = ref(*l);
-    res = closure_alloc(closure_args(p)-1);
-    res->func = func_value;
-    csize_t elems = list_size(res);
-    res->value.type.exclusive = T_LIST;
-    res->value.type.flags = is_var(p) ? T_VAR : 0;
-    for(csize_t i = 0; i < elems; ++i) {
-      res->value.ptr[i] = ref(l[i+1]);
-    }
-    res->value.alt_set = alt_set;
-    res->alt = c->alt;
-  } else goto fail;
+  if(!closure_is_ready(*l)) goto fail;
+
+  /* drop the right list element */
+  res_d = ref(*l);
+  res = closure_alloc(closure_args(p)-1);
+  res->func = func_value;
+  csize_t elems = list_size(res);
+  res->value.type.exclusive = T_LIST;
+  res->value.type.flags = is_var(p) ? T_VAR : 0;
+  for(csize_t i = 0; i < elems; ++i) {
+    res->value.ptr[i] = ref(l[i+1]);
+  }
+  res->value.alt_set = alt_set;
+  res->alt = c->alt;
 
   store_lazy_dep(d, res_d, alt_set);
   store_reduced(cp, res);
