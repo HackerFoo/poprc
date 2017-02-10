@@ -257,6 +257,13 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
   assert(!is_marked(c));
   if(treq.t != T_ANY && treq.t != T_FUNCTION) goto fail;
   csize_t in = closure_in(c), n = closure_args(c);
+
+  if(n == 1) {
+    *cp = ref(c->expr.arg[0]);
+    drop(c);
+    return false;
+  }
+
   alt_set_t alt_set = 0;
   assert(in >= 1);
   if(!reduce_arg(c, in - 1, &alt_set, req_simple(T_FUNCTION))) goto fail;
@@ -291,6 +298,27 @@ bool func_fail(cell_t **cp, type_request_t treq) {
   cell_t *c = clear_ptr(*cp); // TODO remove clear_ptr
   assert(is_closure(c));
   measure.reduce_cnt--;
+  fail(cp, treq);
+  return false;
+}
+// WORD("fcompose", fcompose, 2, 1)
+bool func_fcompose(cell_t **cp, type_request_t treq) {
+  cell_t *c = *cp;
+  assert(!is_marked(c));
+
+  alt_set_t alt_set = 0;
+  type_request_t atr = req_simple(T_FUNCTION);
+  if(!reduce_arg(c, 0, &alt_set, atr) ||
+     !reduce_arg(c, 1, &alt_set, atr) ||
+     as_conflict(alt_set)) goto fail;
+  clear_flags(c);
+
+  cell_t *res = var(T_FUNCTION, c);
+  store_reduced(cp, mod_alt(res, c->alt, alt_set));
+  ASSERT_REF();
+  return true;
+
+ fail:
   fail(cp, treq);
   return false;
 }

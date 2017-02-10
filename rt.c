@@ -284,76 +284,75 @@ cell_t *expand_deps_inplace(cell_t *c, csize_t s) {
   return c;
 }
 
-cell_t *compose_placeholders(cell_t *a, cell_t *b) {
-  csize_t i;
-  csize_t b_in = closure_in(b);
-  csize_t b_out = closure_out(b);
-  cell_t *c = expand(b, a->size);
-  memmove(c->expr.arg + a->size + b_in,
-          c->expr.arg + b_in,
-          b_out * sizeof(cell_t *));
-  for(i = 0; i < closure_in(a); ++i)
-    c->expr.arg[b_in + i] = ref(a->expr.arg[i]);
-  for(; i < a->size; ++i)
-    c->expr.arg[b_in + i] = a->expr.arg[i];
-  //drop(a); // dropping here will cause func_compose to break in store_reduced
-  trace_composition(c, a, b);
-  return c;
+csize_t function_out(const cell_t *l) {
+  csize_t n = list_size(l);
+  return is_var(l) ? n - 1 : n;
+}
+
+csize_t function_in(const cell_t *l) {
+  csize_t n = list_size(l);
+  if(n == 0) return 0;
+  cell_t *c = l->value.ptr[n-1];
+  if(closure_is_ready(c)) return 0;
+  csize_t in = 1;
+  while(c) {
+    csize_t i = closure_next_child(c);
+    in += i;
+    c = c->expr.arg[i];
+  }
+  return in;
 }
 
 // non-destructive (_nd) compose
-cell_t *compose_nd(cell_t *a, cell_t *b) {
-  csize_t n_b = list_size(b);
-  csize_t n_a = list_size(a);
-  if(n_b == 0) {
+cell_t *compose_nd(cell_t *a, cell_t *b, int in, int out) {
+  if(list_size(b) == 0) {
     drop(b);
     return a;
   }
-  if(n_a == 0) {
-    goto finish;
+  if(list_size(a) == 0) {
+    goto done;
   }
-  csize_t i = 0;
-  cell_t *left_b;
+
+  csize_t
+    a_in = function_in(a),
+    a_out = function_out(a);
+  placeholder_extend(&b, a_out + max(0, (int)in - a_in), out);
+  csize_t
+    b_in = function_in(b),
+    b_out = function_out(b),
+    b_n = list_size(b);
 
   // fill the leftmost element of b
-  while(!closure_is_ready(left_b = b->value.ptr[n_b - 1]) && i < n_a) {
-    cell_t *x = a->value.ptr[i++];
-    if(is_placeholder(x)) goto fill_with_placeholder;
-    b = arg_nd(left_b, ref(x), b);
-  }
-
-  if(i < n_a) {
-    goto prepend_remainder;
-  } else {
-    goto finish;
-  }
-
-  // if there is a placeholder in a, use it to fill the leftmost element of a
-fill_with_placeholder: {
-    cell_t *x = func(func_placeholder, 0, 1); // TODO copy function var arg ***
-    while(!closure_is_ready(left_b = b->value.ptr[n_b - 1])) {
-      assert_throw(!is_placeholder(left_b), "composing placeholders doesn't work right now.");
-      x = expand_deps_inplace(x, 1);
-      b = arg_nd(left_b, x->expr.arg[0] = dep(ref(x)), b);
+  {
+    int n = min(a_out, b_in);
+    cell_t **ap = a->value.ptr;
+    LOOP(n) {
+      b = arg_nd(b->value.ptr[b_n-1], ref(*ap++), b);
     }
-    b = expand(b, 1);
-    b->value.ptr[n_b] = x;
   }
 
-  if(i >= n_a) {
-    goto finish;
+  // prepend b with the remainder of a
+  if(a_out > b_in) {
+    int n = a_out - b_in;
+    b = expand(b, n);
+    cell_t **bp = &b->value.ptr[b_out];
+    cell_t **ap = &a->value.ptr[b_in];
+    LOOP(n) {
+      *bp++ = ref(*ap++);
+    }
   }
 
-// prepend b with the remainder of a
-prepend_remainder:
-  b = expand(b, n_a - i);
-  cell_t **p = &b->value.ptr[n_b];
-  while(i < n_a) {
-    cell_t *x = a->value.ptr[i++];
-    *p++ = ref(x);
+  if(is_var(a)) {
+    b->value.type.flags |= T_VAR;
+    if(is_var(b)) {
+      cell_t *pc = func(func_fcompose, 2, 1);
+      arg(pc, b->value.ptr[b_n-1]);
+      arg(pc, ref(a->value.ptr[list_size(a) - 1]));
+      b->value.ptr[b_n-1] = pc;
+    }
   }
 
-finish:
+done:
   drop(a);
   return b;
 }
@@ -544,52 +543,6 @@ cell_t *conc_alt(cell_t *a, cell_t *b) {
   while((r = p->alt)) p = r;
   p->alt = b;
   return a;
-}
-
-// compose a with n outputs into the list b (destructive) returning the result
-// *** fix arg()'s
-cell_t *compose_expand(cell_t *a, csize_t n, cell_t *b) {
-  assert(is_closure(a) &&
-         is_list(b));
-  assert(n);
-  bool ph_a = is_placeholder(a);
-  csize_t i, bs = list_size(b);
-  if(bs) {
-    cell_t *l = b->value.ptr[bs-1];
-    cell_t *d = 0;
-    if(ph_a && is_placeholder(l)) {
-      l = compose_placeholders(a, l);
-      return b;
-    }
-    while((ph_a || n > 1) &&
-          !closure_is_ready(l)) {
-      d = dep(NULL);
-      arg(l, d);
-      arg(a, d);
-      d->expr.arg[0] = ref(a);
-      if(ph_a) ++a->expr.out;
-      else --n;
-    }
-    if(!closure_is_ready(l)) {
-      arg(l, a);
-      // *** messy
-      for(i = closure_in(l); i < closure_args(l); ++i) {
-        drop((l)->expr.arg[i]->expr.arg[0]);
-        l->expr.arg[i]->expr.arg[0] = ref(l);
-      }
-      return b;
-    }
-  }
-
-  b = expand(b, n);
-
-  for(i = 0; i < n-1; ++i) {
-    cell_t *d = dep(ref(a));
-    b->value.ptr[bs+i] = d;
-    arg(a, d);
-  }
-  b->value.ptr[bs+n-1] = a;
-  return b;
 }
 
 cell_t *pushl_val(intptr_t x, cell_t *c) {

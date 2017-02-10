@@ -135,7 +135,7 @@ bool func_compose(cell_t **cp, type_request_t treq) {
      as_conflict(alt_set)) goto fail;
   clear_flags(c);
 
-  cell_t *res = compose_nd(ref(c->expr.arg[0]), ref(c->expr.arg[1]));
+  cell_t *res = compose_nd(ref(c->expr.arg[0]), ref(c->expr.arg[1]), treq.in, treq.out);
   store_reduced(cp, mod_alt(res, c->alt, alt_set));
   ASSERT_REF();
   return true;

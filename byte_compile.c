@@ -339,6 +339,8 @@ void trace_final_pass(cell_t *e) {
       }
     } else if(p->func == func_placeholder) {
       p->func = func_ap;
+    } else if(p->func == func_fcompose) {
+      p->func = func_compose;
     }
   }
 }
