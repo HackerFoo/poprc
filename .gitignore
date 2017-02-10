@@ -29,3 +29,4 @@ _darcs
 /afl/output
 /afl/crashes.txt
 /afl/hangs.txt
+.tramp_history

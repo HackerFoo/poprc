@@ -27,6 +27,7 @@
 #include "gen/print.h"
 #include "gen/test.h"
 #include "gen/support.h"
+#include "gen/byte_compile.h"
 
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
@@ -48,17 +49,6 @@ bool is_root(const cell_t *c) {
 
 bool remove_root(cell_t **r) {
   return set_remove((uintptr_t)r, (uintptr_t *)rt_roots, rt_roots_n);
-}
-
-// Default tracing function that does nothing
-void trace_noop(UNUSED cell_t *c, UNUSED cell_t *r, UNUSED trace_type_t tt, UNUSED csize_t n) {}
-
-// Pointer to tracing function
-void (*trace)(cell_t *, cell_t *, trace_type_t, csize_t) = trace_noop;
-
-// Set the tracing function
-void set_trace(void (*t)(cell_t *, cell_t *, trace_type_t, csize_t)) {
-  trace = t ? t : trace_noop;
 }
 
 // Initialize run time
@@ -115,9 +105,9 @@ void split_arg(cell_t *c, csize_t n) {
 bool reduce_arg(cell_t *c,
                 csize_t n,
                 alt_set_t *ctx,
-                type_t t) {
+                type_request_t treq) {
   cell_t **ap = &c->expr.arg[n];
-  bool r = reduce(ap, t);
+  bool r = reduce(ap, treq);
   *ctx |= ((cell_t *)clear_ptr(*ap))->value.alt_set;
   split_arg(c, n);
   return r;
@@ -132,17 +122,16 @@ void clear_flags(cell_t *c) {
 }
 
 // Reduce *cp with type t
-bool reduce(cell_t **cp, type_t t) {
+bool reduce(cell_t **cp, type_request_t treq) {
   cell_t *c;
   while((c = clear_ptr(*cp))) {
-    if(!closure_is_ready(c)) close_placeholders(c);
     assert(is_closure(c));
     if(!closure_is_ready(c)) {
-      fail(cp, t);
+      fail(cp, treq);
       continue;
     }
     unsigned int m = measure.reduce_cnt++;
-    bool success = c->func(cp, t);
+    bool success = c->func(cp, treq);
     if(success) {
       cell_t *n = clear_ptr(*cp);
       if(write_graph && measure.reduce_cnt > m) {
@@ -163,22 +152,19 @@ bool reduce(cell_t **cp, type_t t) {
 // Perform one reduction step on *cp
 void reduce_dep(cell_t **cp) {
   cell_t *c = clear_ptr(*cp);
-  const type_t t = T_ANY;
-  if(!closure_is_ready(c)) close_placeholders(c);
   if(!c || !closure_is_ready(c)) {
-    fail(cp, t);
+    fail(cp, req_any);
   } else {
     assert(is_closure(c) &&
            closure_is_ready(c));
     measure.reduce_cnt++;
-    c->func(cp, t);
+    c->func(cp, req_any);
   }
 }
 
-bool type_match(type_t t, cell_t const *c) {
-  type_t ta = t & T_EXCLUSIVE;
-  type_t tb = c->value.type & T_EXCLUSIVE;
-  return ta == T_ANY || tb == T_ANY || ta == tb;
+bool type_match(int t, cell_t const *c) {
+  int tc = c->value.type.exclusive;
+  return t == T_ANY || tc == T_ANY || t == tc;
 }
 
 cell_t *append(cell_t *a, cell_t *b) {
@@ -203,7 +189,6 @@ cell_t *expand(cell_t *c, csize_t s) {
     /* copy */
     cell_t *new = closure_alloc(n + s);
     memcpy(new, c, cn_p * sizeof(cell_t));
-    if(is_placeholder(c)) trace(new, c, tt_copy, 0);
     new->n = 0;
     traverse_ref(new, ARGS_IN | PTRS | ALT);
     new->size = n + s;
@@ -227,9 +212,17 @@ void new_deps(cell_t *c) {
     cell_t **d = &c->expr.arg[i];
     if(*d) {
       assert(is_dep(*d));
-      *d = dep(ref(c));
+      *d = 0; //dep(ref(c)); // these would be dangling
     }
   }
+}
+
+csize_t count_deps(cell_t *c) {
+  csize_t deps = 0;
+  for(csize_t i = c->size - c->expr.out; i < c->size; ++i) {
+    if(c->expr.arg[i]) deps++;
+  }
+  return deps;
 }
 
 // add more inputs
@@ -261,6 +254,8 @@ cell_t *expand_args_inplace(cell_t *c, csize_t s) {
 
 // add more outputs
 cell_t *expand_deps(cell_t *c, csize_t s) {
+  csize_t deps = count_deps(c);
+  c->n -= deps;
   refcount_t n = c->n;
   csize_t in = closure_in(c);
   c = expand(c, s);
@@ -274,6 +269,8 @@ cell_t *expand_deps(cell_t *c, csize_t s) {
   } else {
     update_deps(c);
   }
+
+  c->n += deps;
 
   return c;
 }
@@ -300,8 +297,7 @@ cell_t *compose_placeholders(cell_t *a, cell_t *b) {
   for(; i < a->size; ++i)
     c->expr.arg[b_in + i] = a->expr.arg[i];
   //drop(a); // dropping here will cause func_compose to break in store_reduced
-  cell_t *ab[] = {a, b};
-  trace(c, (cell_t *)ab, tt_compose_placeholders, 0);
+  trace_composition(c, a, b);
   return c;
 }
 
@@ -334,7 +330,7 @@ cell_t *compose_nd(cell_t *a, cell_t *b) {
 
   // if there is a placeholder in a, use it to fill the leftmost element of a
 fill_with_placeholder: {
-    cell_t *x = func(func_placeholder, 0, 1);
+    cell_t *x = func(func_placeholder, 0, 1); // TODO copy function var arg ***
     while(!closure_is_ready(left_b = b->value.ptr[n_b - 1])) {
       assert_throw(!is_placeholder(left_b), "composing placeholders doesn't work right now.");
       x = expand_deps_inplace(x, 1);
@@ -369,65 +365,27 @@ cell_t *func(reduce_t *f, csize_t in, csize_t out) {
   c->expr.out = out - 1;
   c->func = f;
   if(args) c->expr.arg[0] = (cell_t *)(intptr_t)(args - 1);
-  closure_set_ready(c, !args && f != func_placeholder);
+  closure_set_ready(c, !args);
   return c;
 }
 
-/* arg is destructive to *cp */
-void arg(cell_t **cp, cell_t *a) {
-  cell_t *c = *cp;
-  assert(is_closure(c) && is_closure(a));
-  assert(!closure_is_ready(c));
-  csize_t i = closure_next_child(c);
-  // *** shift args if placeholder
-  if(is_placeholder(c) &&
-     (closure_in(c) == 0 ||
-      closure_is_ready(c->expr.arg[0]))) {
-    c = expand_args_inplace(c, 1);
-    c->expr.arg[0] = a;
-  } else if(!is_data(c->expr.arg[i])) {
-    c->expr.arg[0] = (cell_t *)(intptr_t)
-      (i - (closure_is_ready(a) ? 1 : 0));
-    c->expr.arg[i] = a;
-    if(i == 0 && !is_placeholder(c))
-      closure_set_ready(c, closure_is_ready(a));
-  } else {
-    arg(&c->expr.arg[i], a);
-    if(!is_placeholder(c) &&
-       closure_is_ready(c->expr.arg[i])) {
-      if(i == 0) closure_set_ready(c, true);
-      else --*(intptr_t *)&c->expr.arg[0]; // decrement offset
-    }
-  }
-  *cp = c;
-}
-
-void arg_noexpand(cell_t **cp, cell_t *a) {
-  cell_t *c = *cp;
+/* arg is destructive to c */
+void arg(cell_t *c, cell_t *a) {
   assert(is_closure(c) && is_closure(a));
   assert(!closure_is_ready(c));
   csize_t i = closure_next_child(c);
   if(!is_data(c->expr.arg[i])) {
-    c->expr.arg[0] = (cell_t *)(intptr_t)(i - (closure_is_ready(a) ? 1 : 0));
+    c->expr.arg[0] = (cell_t *)(intptr_t)
+      (i - (closure_is_ready(a) ? 1 : 0));
     c->expr.arg[i] = a;
-    if(i == 0) closure_set_ready(c, closure_is_ready(a));
+    if(i == 0)
+      closure_set_ready(c, closure_is_ready(a));
   } else {
-    arg_noexpand(&c->expr.arg[i], a);
+    arg(c->expr.arg[i], a);
     if(closure_is_ready(c->expr.arg[i])) {
       if(i == 0) closure_set_ready(c, true);
       else --*(intptr_t *)&c->expr.arg[0]; // decrement offset
     }
-  }
-  *cp = c;
-}
-
-void close_placeholders(cell_t *c) {
-  if(!is_closure(c) ||
-     closure_is_ready(c)) return;
-  if(is_placeholder(c)) {
-    closure_set_ready(c, closure_in(c) == 0 ? true : closure_is_ready(c->expr.arg[0]));
-  } else if(is_data(c->expr.arg[0])) {
-    close_placeholders(c->expr.arg[0]);
   }
 }
 
@@ -469,23 +427,12 @@ cell_t *arg_nd(cell_t *c, cell_t *a, cell_t *r) {
 loop:
   assert(!closure_is_ready(p));
   csize_t i = closure_next_child(p);
-  // *** shift args if placeholder
-  if(is_placeholder(p) &&
-     (closure_in(p) == 0 ||
-      closure_is_ready(p->expr.arg[0]))) {
-    cell_t *l = mutate(&p, &r, 1);
-    if(c->tmp) c = c->tmp;
-    clean_tmp(l);
-    assert(!p->expr.arg[0]);
-    p->expr.arg[0] = a;
-    r->value.ptr[list_size(r)-1] = p; // *** why is this done here?
-  } else if(!is_data(p->expr.arg[i])) {
-    cell_t *l = mutate(&p, &r, 0);
+  if(!is_data(p->expr.arg[i])) {
+    cell_t *l = mutate(&p, &r);
     if(c->tmp) c = c->tmp;
     clean_tmp(l);
     p->expr.arg[i] = a;
-    if(!is_placeholder(p) &&
-       closure_is_ready(a)) {
+    if(closure_is_ready(a)) {
         update_ready(c, a);
     }
   } else {
@@ -506,28 +453,37 @@ void store_fail(cell_t *c, cell_t *alt) {
   closure_shrink(c, 1);
   memset(&c->value, 0, sizeof(c->value));
   c->func = func_value;
-  c->value.type = T_FAIL;
+  c->value.type.flags |= T_FAIL;
   c->alt = alt;
 }
 
-void store_var(cell_t *c, type_t t) {
+void store_var(cell_t *c, int t) {
+  cell_t v = {
+    .func = func_value,
+    .size = 2,
+    .value = {
+      .alt_set = 0,
+      .type = {
+        .flags = T_VAR,
+        .exclusive = t
+      },
+      .ptr = { trace_alloc(c->size) }
+    }
+  };
+  trace_update(c, &v);
   closure_shrink(c, 1);
-  c->func = func_value;
-  c->value.alt_set = 0;
-  c->value.type = T_VAR | t;
-  c->size = 1;
+  *c = v;
 }
 
-void fail(cell_t **cp, type_t t) {
+void fail(cell_t **cp, type_request_t treq) {
   cell_t *c = clear_ptr(*cp);
   if(!is_cell(c)) {
     *cp = NULL;
     return;
   }
   assert(!is_marked(c));
-  trace(c, c->alt, tt_fail, 0);
   cell_t *alt = ref(c->alt);
-  if(c->n && t == T_ANY) { // HACK this should be more sophisticated
+  if(c->n && treq.t == T_ANY) { // HACK this should be more sophisticated
     traverse(c, {
         cell_t *x = clear_ptr(*p);
         drop(x);
@@ -542,7 +498,7 @@ void fail(cell_t **cp, type_t t) {
     closure_shrink(c, 1);
     memset(&c->value, 0, sizeof(c->value));
     c->func = func_value;
-    c->value.type = T_FAIL;
+    c->value.type.flags = T_FAIL;
   }
   drop(c);
   *cp = alt;
@@ -553,7 +509,7 @@ void store_reduced(cell_t **cp, cell_t *r) {
   cell_t *c = *cp;
   assert(!is_marked(c));
   r->func = func_value;
-  trace(c, r, tt_reduction, 0);
+  trace_reduction(c, r);
   drop_multi(c->expr.arg, closure_in(c));
   csize_t size = is_closure(r) ? closure_cells(r) : 0;
   if(size <= closure_cells(c)) {
@@ -599,27 +555,27 @@ cell_t *compose_expand(cell_t *a, csize_t n, cell_t *b) {
   bool ph_a = is_placeholder(a);
   csize_t i, bs = list_size(b);
   if(bs) {
-    cell_t **l = &b->value.ptr[bs-1];
+    cell_t *l = b->value.ptr[bs-1];
     cell_t *d = 0;
-    if(ph_a && is_placeholder(*l)) {
-      *l = compose_placeholders(a, *l);
+    if(ph_a && is_placeholder(l)) {
+      l = compose_placeholders(a, l);
       return b;
     }
     while((ph_a || n > 1) &&
-          !closure_is_ready(*l)) {
+          !closure_is_ready(l)) {
       d = dep(NULL);
       arg(l, d);
-      arg(&a, d);
+      arg(a, d);
       d->expr.arg[0] = ref(a);
       if(ph_a) ++a->expr.out;
       else --n;
     }
-    if(!closure_is_ready(*l)) {
+    if(!closure_is_ready(l)) {
       arg(l, a);
       // *** messy
-      for(i = closure_in(*l); i < closure_args(*l); ++i) {
-        drop((*l)->expr.arg[i]->expr.arg[0]);
-        (*l)->expr.arg[i]->expr.arg[0] = ref(*l);
+      for(i = closure_in(l); i < closure_args(l); ++i) {
+        drop((l)->expr.arg[i]->expr.arg[0]);
+        l->expr.arg[i]->expr.arg[0] = ref(l);
       }
       return b;
     }
@@ -630,7 +586,7 @@ cell_t *compose_expand(cell_t *a, csize_t n, cell_t *b) {
   for(i = 0; i < n-1; ++i) {
     cell_t *d = dep(ref(a));
     b->value.ptr[bs+i] = d;
-    arg(&a, d);
+    arg(a, d);
   }
   b->value.ptr[bs+n-1] = a;
   return b;
@@ -653,7 +609,6 @@ cell_t *pushl_nd(cell_t *a, cell_t *b) {
     cell_t *l = b->value.ptr[n-1];
     if(!closure_is_ready(l)) {
       cell_t *_b = arg_nd(l, a, b);
-      if(is_placeholder(l)) trace(_b->value.ptr[n-1], l, tt_copy, 0);
       return _b;
     }
   }
@@ -788,27 +743,17 @@ bool deps_are_unique(cell_t *c) {
 /* r' = deep_copy(r) */
 /* drop(r) */
 /* modify c' in r' without affecting c */
-cell_t *mutate(cell_t **cp, cell_t **rp, int exp) {
+cell_t *mutate(cell_t **cp, cell_t **rp) {
   cell_t *c = *cp, *r = *rp;
   cell_t *l = NULL;
 
   fake_drop(r);
   if(!~c->n) {
-    assert(deps_are_unique(c));
     fake_undrop(r);
-    if(exp) {
-      *cp = expand_args_inplace(c, exp);
-    }
     return NULL;
   }
 
-  // expand c if needed
-  if(exp) {
-    cell_t *nc = copy_expand(c, exp);
-    add_to_list(c, nc, &l);
-  } else {
-    add_copy_to_list(c, &l);
-  }
+  add_copy_to_list(c, &l);
 
   mutate_sweep(r, &l);
   fake_undrop(r);
@@ -934,4 +879,28 @@ uint8_t new_alt_id(unsigned int n) {
   uint8_t r = alt_cnt;
   alt_cnt += n;
   return r;
+}
+
+type_request_t req_list(type_request_t *p, int in, int out) {
+  if(p) {
+    in += p->in;
+    out = max(0, out + p->out);
+  }
+  type_request_t req = {
+    .t = T_LIST,
+    .in = in,
+    .out = out,
+  };
+  return req;
+}
+
+const type_request_t req_any = { .t = T_ANY };
+const type_request_t req_int = { .t = T_INT };
+const type_request_t req_symbol = { .t = T_SYMBOL };
+
+type_request_t req_simple(int t) {
+  type_request_t req = {
+    .t = t
+  };
+  return req;
 }

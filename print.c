@@ -32,6 +32,7 @@
 #include "gen/parse.h"
 #include "gen/print.h"
 #include "gen/module.h"
+#include "gen/user_func.h"
 
 static BITSET_INDEX(visited, cells);
 static BITSET_INDEX(marked, cells);
@@ -76,10 +77,13 @@ char const *entry_function_name(cell_t *e) {
 
 char const *function_name(reduce_t *f) {
   f = (reduce_t *)clear_ptr(f);
-  if(f == func_value) return "value";
-  if(f == func_fail) return "fail";
-  if(f == func_dep) return "dep";
-  if(f == func_dep_entered) return "dep_entered";
+#define CASE(x) if(f == func_##x) return #x
+  CASE(value);
+  CASE(fail);
+  CASE(dep);
+  CASE(dep_entered);
+  CASE(ap);
+#undef CASE
   const char *s = NULL;
   FORMAP(i, primitive_module) {
     cell_t *e = (cell_t *)primitive_module[i].second;
@@ -213,6 +217,8 @@ void graph_cell(FILE *f, cell_t const *c) {
       }
     } else if(is_fail(c)) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
+    } else if(is_var(c)) {
+        fprintf(f, "<tr><td bgcolor=\"orange\">trace: %" PRIdPTR "</td></tr>", c->value.ptr[0] - trace_cur);
     } else {
       int n = val_size(c);
       while(n--)
@@ -489,7 +495,7 @@ void show_alt(cell_t const *c) {
 
 char *show_type(type_t t) {
 #define _case(x) case x: return #x
-  switch(t & T_EXCLUSIVE) {
+  switch(t.exclusive) {
   _case(T_ANY);
   _case(T_INT);
   _case(T_IO);
@@ -498,6 +504,7 @@ char *show_type(type_t t) {
   _case(T_MAP);
   _case(T_STRING);
   _case(T_RETURN);
+  _case(T_FUNCTION);
   _case(T_BOTTOM);
   default: return "???";
   }
@@ -508,8 +515,6 @@ char *show_type(type_t t) {
 char *show_type_all(type_t t) {
   const static char *type_flag_name[] = {
     "T_VAR",
-    "T_ROW",
-    "T_INDIRECT",
     "T_FAIL",
     "T_TRACED",
   };
@@ -517,7 +522,7 @@ char *show_type_all(type_t t) {
   char *p = buf;
   p += sprintf(p, "%s", show_type(t));
   FOREACH(i, type_flag_name) {
-    if(t & (0x8000 >> i)) {
+    if(t.flags & (0x80 >> i)) {
       p += sprintf(p, "|%s", type_flag_name[i]);
     }
   }
@@ -525,7 +530,7 @@ char *show_type_all(type_t t) {
 }
 
 char type_char(type_t t) {
-  switch(t & T_EXCLUSIVE) {
+  switch(t.exclusive) {
   case T_ANY: return 'a';
   case T_INT: return 'i';
   case T_IO: return 'w';
@@ -534,6 +539,7 @@ char type_char(type_t t) {
   case T_MAP: return 'm';
   case T_STRING: return 'S';
   case T_RETURN: return 'r';
+  case T_FUNCTION: return 'f';
   case T_BOTTOM: return '0';
   }
   return 'x';
@@ -543,8 +549,6 @@ char type_char(type_t t) {
 char *show_type_all_short(type_t t) {
   const static char type_flag_char[] = {
     '?',
-    '@',
-    '*',
     '!',
     '.',
   };
@@ -553,7 +557,7 @@ char *show_type_all_short(type_t t) {
   char *p = buf;
 
   FOREACH(i, type_flag_char) {
-    if(t & (0x8000 >> i)) {
+    if(t.flags & (0x80 >> i)) {
       *p++ = type_flag_char[i];
     }
   }

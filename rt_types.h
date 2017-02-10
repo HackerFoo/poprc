@@ -23,27 +23,35 @@
 #include <time.h>
 #include "macros.h"
 
-typedef uint16_t type_or_csize_t;
-typedef type_or_csize_t type_t;
-typedef type_or_csize_t csize_t;
+typedef uint16_t csize_t;
+typedef struct __attribute__((packed)) type {
+  uint8_t exclusive, flags;
+} type_t;
 
-#define T_ANY       0x0000
-#define T_INT       0x0001
-#define T_IO        0x0002
-#define T_LIST      0x0003
-#define T_SYMBOL    0x0004
-#define T_MAP       0x0005
-#define T_STRING    0x0006
-#define T_RETURN    0x0007
-#define T_FLOAT     0x0008
-#define T_MODULE    0x00FE
-#define T_BOTTOM    0x00FF
-#define T_TRACED    0x0800
-#define T_FAIL      0x1000
-#define T_INDIRECT  0x2000
-#define T_ROW       0x4000
-#define T_VAR       0x8000
-#define T_EXCLUSIVE 0x00FF
+static_assert(sizeof(csize_t) == sizeof(type_t), "csize_t and type_t are different sizes");
+
+// exclusive types
+#define T_ANY       0x00
+#define T_INT       0x01
+#define T_IO        0x02
+#define T_LIST      0x03
+#define T_SYMBOL    0x04
+#define T_MAP       0x05
+#define T_STRING    0x06
+#define T_RETURN    0x07
+#define T_FLOAT     0x08
+#define T_FUNCTION  0x09
+#define T_MODULE    0x0a
+#define T_BOTTOM    0x0b
+
+// type flags
+#define T_TRACED    0x20
+#define T_FAIL      0x40
+#define T_VAR       0x80
+
+typedef struct type_request {
+  int t, in, out;
+} type_request_t;
 
 typedef struct cell cell_t;
 typedef struct expr expr_t;
@@ -74,13 +82,14 @@ typedef struct seg_t {
   size_t n;
 } seg_t;
 
-typedef bool (reduce_t)(cell_t **cell, type_t type);
+typedef bool (reduce_t)(cell_t **cell, type_request_t treq);
 
 /* unevaluated expression */
 struct __attribute__((packed)) expr {
   csize_t out;
   union {
     cell_t *arg[2];
+    val_t idx[2];
     struct {
       cell_t *arg0;
       alt_set_t alt_set;
@@ -184,15 +193,6 @@ typedef struct measure_t {
 #define ARGS_OUT 4
 #define ARGS (ARGS_IN | ARGS_OUT)
 #define PTRS 8
-
-typedef enum trace_type_t {
-  tt_reduction,
-  tt_touched,
-  tt_force,
-  tt_copy,
-  tt_compose_placeholders,
-  tt_fail
-} trace_type_t;
 
 #ifdef EMSCRIPTEN
 #define strnlen(s, n) strlen(s)

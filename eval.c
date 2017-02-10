@@ -79,7 +79,7 @@ bool reduce_list(cell_t *c) {
 
 void reduce_alt(cell_t **cp) {
   cell_t **p = cp;
-  while(*p && reduce(p, T_ANY)) {
+  while(*p && reduce(p, req_any)) {
     p = &(*p)->alt;
   }
   *p = 0;
@@ -512,7 +512,6 @@ void eval(const cell_t *p) {
     printf("incomplete expression\n");
   } else {
     reduce_root(c);
-    c = remove_row(c);
     ASSERT_REF();
     show_list(c);
     printf("\n");
@@ -523,30 +522,12 @@ void eval(const cell_t *p) {
 bool get_arity(const cell_t *p, csize_t *in, csize_t *out, cell_t *module) {
   cell_t *c = parse_expr(&p, module);
   if(!c) return false;
-  *in = fill_args(c, NULL);
-  c = remove_row(c);
-  *out = max(1, list_size(c));
+  *in = fill_args(c);
+  csize_t n = list_size(c);
+  if(c->value.ptr[n-1]->func == func_placeholder) n--;
+  *out = max(1, n);
   drop(c);
   return true;
-}
-
-cell_t *remove_row(cell_t *c) {
-  assert(is_list(c));
-  csize_t n = list_size(c);
-  if(n == 0 || !(c->value.ptr[n-1]->value.type & T_ROW)) return c;
-  return remove_left(c);
-}
-
-cell_t *remove_left(cell_t *c) {
-  assert(is_list(c));
-  assert(list_size(c) > 0);
-  csize_t size = calculate_cells(c->size - 1);
-  cell_t *new = closure_alloc_cells(size);
-  memcpy(new, c, sizeof(cell_t) * size);
-  --new->size;
-  traverse_ref(new, PTRS | ALT);
-  drop(c);
-  return new;
 }
 
 static struct mmfile files[16] = {};

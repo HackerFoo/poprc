@@ -34,6 +34,7 @@
 #include "gen/cgen.h"
 #include "gen/eval.h"
 #include "gen/lex.h"
+#include "gen/user_func.h"
 
 const char *ctype(type_t t) {
   static const char *table[] = {
@@ -46,9 +47,8 @@ const char *ctype(type_t t) {
     [T_STRING] = "seg_t ",
     [T_BOTTOM] = "void ",
   };
-  t &= T_EXCLUSIVE;
-  assert(t < LENGTH(table));
-  return table[t];
+  assert(t.exclusive < LENGTH(table));
+  return table[t.exclusive];
 }
 
 const char *cname(type_t t) {
@@ -62,13 +62,8 @@ const char *cname(type_t t) {
     [T_STRING] = "str",
     [T_BOTTOM] = "bot"
   };
-  t &= T_EXCLUSIVE;
-  assert(t < LENGTH(table));
-  return table[t];
-}
-
-type_t gen_type(cell_t *c) {
-  return trace_type(c) & T_EXCLUSIVE;
+  assert(t.exclusive < LENGTH(table));
+  return table[t.exclusive];
 }
 
 void gen_function_signature(cell_t *e) {
@@ -78,7 +73,7 @@ void gen_function_signature(cell_t *e) {
   // find first return
   cell_t *l = NULL;
   for(size_t i = e->entry.in; i < count; i++) {
-    if(gen_type(&p[i]) == T_RETURN) {
+    if(trace_type(&p[i]).exclusive == T_RETURN) {
       l = &p[i];
       break;
     }
@@ -91,7 +86,7 @@ void gen_function_signature(cell_t *e) {
   char *sep = "";
   COUNTDOWN(i, e->entry.in) {
     cell_t *a = &p[i];
-    type_t t = gen_type(a);
+    type_t t = trace_type(a);
     printf("%s%s%s%d", sep, ctype(t), cname(t), (int)i);
     sep = ", ";
   }
@@ -127,18 +122,18 @@ void gen_return(cell_t *e, cell_t *l) {
   // skip if T_BOTTOM
   COUNTDOWN(i, out_n) {
     int ai = trace_decode(l->value.ptr[i]);
-    type_t t = gen_type(&p[ai]);
-    if(t == T_BOTTOM) goto end;
+    type_t t = trace_type(&p[ai]);
+    if(t.exclusive == T_BOTTOM) goto end;
   }
 
   COUNTDOWN(i, out_n-1) {
     int ai = trace_decode(l->value.ptr[i]);
     cell_t *a = &p[ai];
-    type_t t = gen_type(a);
+    type_t t = trace_type(a);
     const char *n = cname(t);
     printf("  *out_%s%d = %s%d;\n", n, (int)i, n, ai);
   }
-  printf("  return %s%d;\n", cname(gen_type(&p[ires])), ires);
+  printf("  return %s%d;\n", cname(trace_type(&p[ires])), ires);
 
 end:
   {
@@ -151,8 +146,8 @@ end:
 
 void gen_decl(cell_t *e, cell_t *c) {
   int i = c - e - 1;
-  type_t t = gen_type(c);
-  if(t != T_RETURN && t != T_BOTTOM) {
+  type_t t = trace_type(c);
+  if(t.exclusive != T_RETURN && t.exclusive != T_BOTTOM) {
     if(c->func == func_value) {
       printf("  %s%s%d = ", ctype(t), cname(t), i);
       gen_value_rhs(c);
@@ -163,7 +158,7 @@ void gen_decl(cell_t *e, cell_t *c) {
 }
 
 void gen_instruction(cell_t *e, cell_t *c) {
-  if(gen_type(c) == T_RETURN) {
+  if(trace_type(c).exclusive == T_RETURN) {
     gen_return(e, c);
   } else if(c->func == func_value) {
     // values are already declared
@@ -190,17 +185,17 @@ void gen_call(cell_t *e, cell_t *c) {
   char *sep = "";
   const char *module_name, *word_name;
 
-  if(get_entry(c) == e && gen_type(closure_next(c)) == T_RETURN) {
+  if(get_entry(c) == e && trace_type(closure_next(c)).exclusive == T_RETURN) {
     csize_t in = closure_in(c) - 1;
     printf("\n  // tail call\n");
     for(csize_t i = 0; i < in; i++) {
       int a = trace_decode(c->expr.arg[i]);
-      printf("  %s%d = %s%d;\n", cname(gen_type(&d[in - 1 - i])), in - 1 - i, cname(gen_type(&d[a])), a);
+      printf("  %s%d = %s%d;\n", cname(trace_type(&d[in - 1 - i])), in - 1 - i, cname(trace_type(&d[a])), a);
     };
     printf("  goto body;\n");
-  } else if(gen_type(c) != T_BOTTOM) {
+  } else if(trace_type(c).exclusive != T_BOTTOM) {
     trace_get_name(c, &module_name, &word_name);
-    printf("  %s%d = %s_%s(", cname(gen_type(c)), i, module_name, word_name);
+    printf("  %s%d = %s_%s(", cname(trace_type(c)), i, module_name, word_name);
 
     csize_t in = closure_in(c), start_out = in;
     csize_t n = closure_args(c);
@@ -211,14 +206,14 @@ void gen_call(cell_t *e, cell_t *c) {
       if(a == NIL_INDEX) {
         printf("%sNULL", sep);
       } else {
-        printf("%s%s%d", sep, cname(gen_type(&d[a])), a);
+        printf("%s%s%d", sep, cname(trace_type(&d[a])), a);
       }
       sep = ", ";
     };
 
     for(csize_t i = start_out; i < n; i++) {
       int a = trace_decode(c->expr.arg[i]);
-      printf("%s&%s%d", sep, cname(gen_type(&d[a])), a);
+      printf("%s&%s%d", sep, cname(trace_type(&d[a])), a);
       sep = ", ";
     }
 
@@ -227,8 +222,8 @@ void gen_call(cell_t *e, cell_t *c) {
 }
 
 void gen_value_rhs(cell_t *c) {
-  type_t t = gen_type(c);
-  switch(t) {
+  type_t t = trace_type(c);
+  switch(t.exclusive) {
   case T_INT:
   case T_SYMBOL:
     printf("%d;\n", (int)c->value.integer[0]);
@@ -246,7 +241,7 @@ void gen_value_rhs(cell_t *c) {
 void gen_value(cell_t *e, cell_t *c) {
   cell_t *d = e + 1;
   int i = c - d;
-  type_t t = gen_type(c);
+  type_t t = trace_type(c);
   printf("  %s%d = ", cname(t), i);
   gen_value_rhs(c);
 }
@@ -257,22 +252,22 @@ void gen_assert(cell_t *e, cell_t *c) {
     i = c - d,
     ip = trace_decode(c->expr.arg[0]),
     iq = trace_decode(c->expr.arg[1]);
-  const char *cn = cname(gen_type(c));
+  const char *cn = cname(trace_type(c));
   printf("\n  // assert\n");
-  if(gen_type(c) != T_BOTTOM) {
+  if(trace_type(c).exclusive != T_BOTTOM) {
     cell_t *end = d + e->entry.len;
-    printf("  #define %s%d %s%d\n", cn, i, cname(gen_type(&d[ip])), ip); // a little HACKy
+    printf("  #define %s%d %s%d\n", cn, i, cname(trace_type(&d[ip])), ip); // a little HACKy
     FOR_TRACE(p, closure_next(c), end) {
-      if(gen_type(p) == T_RETURN) {
+      if(trace_type(p).exclusive == T_RETURN) {
         cell_t *next = p + closure_cells(p);
         if(next < end) {
-          printf("  if(!%s%d) ", cname(gen_type(&d[iq])), iq);
+          printf("  if(!%s%d) ", cname(trace_type(&d[iq])), iq);
           printf("goto block%d;\n", (int)(next - d));
           goto done;
         }
       }
     }
-    printf("  assert(%s%d);\n", cname(gen_type(&d[iq])), iq);
+    printf("  assert(%s%d);\n", cname(trace_type(&d[iq])), iq);
   }
 done:
   return;
@@ -286,14 +281,14 @@ void gen_quote(cell_t *e, cell_t *c) {
   cell_t *qe = &trace_cells[trace_decode(c->expr.arg[n - 1])];
   trace_get_name(c, &module_name, &word_name);
   printf("  %s%d = __primitive_quote(%s_%s, %d, %d);\n",
-         cname(gen_type(c)), ic,
+         cname(trace_type(c)), ic,
          module_name, word_name,
          qe->entry.in, qe->entry.out);
   COUNTUP(i, n - 1) {
     uintptr_t ai = trace_decode(c->expr.arg[i]);
     printf("  %1$s%2$d = __primitive_pushl(%3$s%4$d, %1$s%2$d);\n",
-           cname(gen_type(c)), ic,
-           cname(gen_type(&d[ai])), (int)ai);
+           cname(trace_type(c)), ic,
+           cname(trace_type(&d[ai])), (int)ai);
   }
 }
 

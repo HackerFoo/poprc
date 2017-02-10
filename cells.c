@@ -49,14 +49,14 @@ cell_t fail_cell = {
   .func = func_value,
   .size = 1,
   .n = PERSISTENT,
-  .value.type = T_FAIL
+  .value.type.flags = T_FAIL
 };
 
 cell_t nil_cell = {
   .func = func_value,
   .size = 1,
   .n = PERSISTENT,
-  .value.type = T_LIST
+  .value.type.exclusive = T_LIST
 };
 
 // Structs for storing statistics
@@ -278,7 +278,6 @@ cell_t *copy(cell_t const *c) {
   csize_t size = closure_cells(c);
   cell_t *new_c = closure_alloc_cells(size);
   memcpy(new_c, c, size * sizeof(cell_t));
-  trace(new_c, (cell_t *)c, tt_copy, 0);
   new_c->n = 0;
   return new_c;
 }
@@ -287,9 +286,7 @@ cell_t *copy_expand(cell_t const *c, csize_t s) {
   csize_t n = closure_args(c);
   csize_t new_size = calculate_cells(n + s);
   cell_t *new_c = closure_alloc_cells(new_size);
-  memcpy(new_c, c, (uintptr_t)&((cell_t *)0)->expr.arg);
-  memset(new_c->expr.arg, 0, s * sizeof(cell_t *));
-  memcpy(&new_c->expr.arg[s], c->expr.arg, n * sizeof(cell_t *));
+  memcpy(new_c, c, (uintptr_t)&((cell_t *)0)->expr.arg[n]);
   new_c->size = n + s;
   new_c->n = 0;
   return new_c;
@@ -313,11 +310,11 @@ bool is_nil(cell_t const *c) {
 }
 
 bool is_fail(cell_t const *c) {
-  return (is_value(c) && c->value.type & T_FAIL) != 0;
+  return is_value(c) && (c->value.type.flags & T_FAIL) != 0;
 }
 
 bool is_any(cell_t const *c) {
-  return (is_value(c) && c->value.type & T_EXCLUSIVE) == T_ANY;
+  return is_value(c) && c->value.type.exclusive == T_ANY;
 }
 
 #if INTERFACE
@@ -327,8 +324,8 @@ bool is_any(cell_t const *c) {
     cell_t **p;                                                 \
     if(is_value(r)) {                                           \
       if(((flags) & PTRS) &&                                    \
-        ((r->value.type & T_EXCLUSIVE) == T_LIST ||             \
-         (r->value.type & T_EXCLUSIVE) == T_RETURN)) {          \
+         (r->value.type.exclusive == T_LIST ||                  \
+          r->value.type.exclusive == T_RETURN)) {               \
         n = list_size(r);                                       \
         for(i = 0; i < n; ++i) {                                \
           p = (r)->value.ptr + i;                               \

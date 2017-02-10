@@ -34,7 +34,9 @@
 #include "gen/byte_compile.h"
 #include "gen/lex.h"
 #include "gen/module.h"
+#include "gen/user_func.h"
 
+#define FUNC_AP 1
 #define MAX_SYMBOLS 64
 #define ENTRY(name) [SYM_##name] = #name
 static const char *symbol_index[MAX_SYMBOLS] = {
@@ -125,12 +127,12 @@ cell_t *lookup_word(seg_t w) {
   }
 }
 
-cell_t *parse_word(seg_t w, cell_t *module) {
+cell_t *parse_word(seg_t w, cell_t *module, unsigned int n) {
   cell_t *c;
   cell_t *data = NULL;
   csize_t in = 0, out = 1;
-  if(w.s[0] == '?') {
-    c = var(T_ANY);
+  if(w.s[0] == '?' && w.n == 1) {
+    c = var(T_ANY, NULL);
 #if FUNC_AP
   } else if(w.n == 4 &&
             w.s[0] == 'a' && w.s[1] == 'p' &&
@@ -145,7 +147,13 @@ cell_t *parse_word(seg_t w, cell_t *module) {
     if(!e) e = module_lookup_compiled(w, &module);
     if(e) {
       if(e->entry.flags & ENTRY_PRIMITIVE) {
-        c = func(e->func, e->entry.in, e->entry.out);
+        if(e->func == func_placeholder) {
+          c = func(func_placeholder, n + 1, 1);
+          cell_t *tc = trace_alloc(n + 2);
+          data = var_create(T_FUNCTION, tc, 0, 0);
+        } else {
+          c = func(e->func, e->entry.in, e->entry.out);
+        }
       } else {
         c = func(e->func, e->entry.in + 1, e->entry.out);
         data = e;
@@ -158,10 +166,10 @@ cell_t *parse_word(seg_t w, cell_t *module) {
   }
   COUNTUP(i, out-1) {
     cell_t *d = dep(ref(c));
-    arg(&c, d);
+    arg(c, d);
   }
   if(data) {
-    arg(&c, data);
+    arg(c, data);
   }
   return c;
 }
@@ -180,7 +188,7 @@ cell_t *parse_vector(const cell_t **l) {
   const char *s;
   const cell_t *t = *l;
   cell_t *c = vector(0);
-  c->value.type = T_INT; // for now
+  c->value.type.exclusive = T_INT; // for now
   while(t) {
     tl = &t->tok_list;
     s = tl->location;
@@ -201,19 +209,15 @@ cell_t *parse_vector(const cell_t **l) {
   return c;
 }
 
-void argf_noop(UNUSED cell_t *c, UNUSED val_t i) {}
-val_t fill_args(cell_t *r, void (*argf)(cell_t *, val_t)) {
-  if(!argf) argf = argf_noop;
+val_t fill_args(cell_t *r) {
   csize_t n = list_size(r);
   if(n < 1) return 0;
-  cell_t **l = &r->value.ptr[n-1];
+  cell_t *l = r->value.ptr[n-1];
   val_t i = 0;
-  close_placeholders(*l);
-  while(!closure_is_ready(*l)) {
-    cell_t *v = var(T_ANY);
-    v->value.integer[0] = i;
-    arg_noexpand(l, v);
-    argf(v, i);
+  while(!closure_is_ready(l)) {
+    cell_t *v = var(T_ANY, NULL);
+    trace_update(v, v);
+    arg(l, v);
     ++i;
   }
   return i;
@@ -451,6 +455,7 @@ cell_t *array_to_list(cell_t **a, csize_t n) {
 #define MAX_ARGS 64
 cell_t *parse_expr(const cell_t **l, cell_t *module) {
   cell_t *arg_stack[MAX_ARGS]; // TODO use allocated storage
+  cell_t *ph = NULL;
   unsigned int n = 0;
   const cell_t *t;
 
@@ -483,8 +488,16 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
             arg_stack[0] = &nil_cell;
             n = 2;
           } else {
-            arg(&arg_stack[0], &nil_cell);
+            arg(arg_stack[0], &nil_cell);
           }
+        }
+
+        if(ph) { // TODO move this into array_to_list()
+          assert_throw(n < MAX_ARGS);
+          memmove(arg_stack + 1, arg_stack, n * sizeof(arg_stack[0]));
+          arg_stack[0] = ph;
+          ph = NULL;
+          n++;
         }
         arg_stack[0] = array_to_list(arg_stack, n);
         n = 1;
@@ -498,24 +511,34 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
         assert_throw(n < MAX_ARGS);
         arg_stack[n++] = string_symbol(seg);
       } else {
-        cell_t *c = parse_word(seg, module);
+        cell_t *c = parse_word(seg, module, n);
         if(!c) goto fail;
         bool f = !is_value(c);
         if(f) {
-          csize_t in = closure_in(c);
-          if(clear_ptr(c->func) == (void *)func_exec) in--;
-          COUNTDOWN(i, min(n, in)) {
-            arg(&c, arg_stack[--n]);
+          while(n && !closure_is_ready(c)) {
+            arg(c, arg_stack[--n]);
+          }
+          if(ph) {
+            csize_t in = closure_in(ph);
+            while(!closure_is_ready(c)) {
+              ph = expand_deps(ph, 1);
+              arg(c, ph->expr.arg[in] = dep(ref(ph)));
+            }
           }
         }
         assert_throw(n < MAX_ARGS);
-        arg_stack[n++] = c;
-        if(f) {
-          csize_t in = closure_in(c);
-          csize_t out = closure_out(c);
-          COUNTUP(i, out) {
-            assert_throw(n < MAX_ARGS);
-            arg_stack[n++] = c->expr.arg[in+i];
+        if(clear_ptr(c->func) == (void *)func_placeholder) {
+          drop(ph); // HACK probably should chain placeholders somehow
+          ph = c;
+        } else {
+          arg_stack[n++] = c;
+          if(f) {
+            csize_t in = closure_in(c);
+            csize_t out = closure_out(c);
+            COUNTUP(i, out) {
+              assert_throw(n < MAX_ARGS);
+              arg_stack[n++] = c->expr.arg[in+i];
+            }
           }
         }
       }
@@ -559,11 +582,18 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
   }
 
 done:
+  if(ph) {
+    assert_throw(n < MAX_ARGS);
+    memmove(arg_stack + 1, arg_stack, n * sizeof(arg_stack[0]));
+    arg_stack[0] = ph;
+    n++;
+  }
   return array_to_list(arg_stack, n);
 fail:
   COUNTUP(i, n) {
     drop(arg_stack[i]);
   }
+  drop(ph);
   return NULL;
 }
 
