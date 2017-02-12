@@ -218,7 +218,9 @@ void graph_cell(FILE *f, cell_t const *c) {
     } else if(is_fail(c)) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
     } else if(is_var(c)) {
+      if(c->value.ptr[0]) {
         fprintf(f, "<tr><td bgcolor=\"orange\">trace: %" PRIdPTR "</td></tr>", c->value.ptr[0] - trace_cur);
+      }
     } else {
       int n = val_size(c);
       while(n--)
