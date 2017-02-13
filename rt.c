@@ -167,14 +167,6 @@ bool type_match(int t, cell_t const *c) {
   return t == T_ANY || tc == T_ANY || t == tc;
 }
 
-cell_t *append(cell_t *a, cell_t *b) {
-  csize_t n = list_size(b);
-  csize_t n_a = list_size(a);
-  cell_t *e = expand(a, n);
-  while(n--) e->value.ptr[n + n_a] = b->value.ptr[n];
-  return e;
-}
-
 // TODO clean up these expand functions
 
 cell_t *expand(cell_t *c, csize_t s) {
@@ -317,15 +309,37 @@ cell_t *compose_nd(cell_t *a, cell_t *b, int in, int out) {
     a_in = function_in(a),
     a_out = function_out(a);
   placeholder_extend(&b, a_out + max(0, (int)in - a_in), out);
+
+  b = compose_args(a->value.ptr, a_out, b);
+
+  if(is_var(a)) {
+    b->value.type.flags |= T_VAR;
+    if(is_var(b)) {
+      cell_t *pc = func(func_fcompose, 2, 1);
+      csize_t b_n = list_size(b);
+      arg(pc, b->value.ptr[b_n-1]);
+      arg(pc, ref(a->value.ptr[list_size(a) - 1]));
+      b->value.ptr[b_n-1] = pc;
+    }
+  }
+
+done:
+  drop(a);
+  return b;
+}
+
+cell_t *compose_args(cell_t **aptr, csize_t a_out, cell_t *b) {
+  if(a_out == 0) goto done;
+
   csize_t
     b_in = function_in(b),
     b_out = function_out(b),
     b_n = list_size(b);
 
   // fill the leftmost element of b
+  cell_t **ap = aptr;
   {
     int n = min(a_out, b_in);
-    cell_t **ap = a->value.ptr;
     LOOP(n) {
       b = arg_nd(b->value.ptr[b_n-1], ref(*ap++), b);
     }
@@ -336,24 +350,12 @@ cell_t *compose_nd(cell_t *a, cell_t *b, int in, int out) {
     int n = a_out - b_in;
     b = expand(b, n);
     cell_t **bp = &b->value.ptr[b_out];
-    cell_t **ap = &a->value.ptr[b_in];
-    LOOP(n) {
+      LOOP(n) {
       *bp++ = ref(*ap++);
     }
   }
 
-  if(is_var(a)) {
-    b->value.type.flags |= T_VAR;
-    if(is_var(b)) {
-      cell_t *pc = func(func_fcompose, 2, 1);
-      arg(pc, b->value.ptr[b_n-1]);
-      arg(pc, ref(a->value.ptr[list_size(a) - 1]));
-      b->value.ptr[b_n-1] = pc;
-    }
-  }
-
 done:
-  drop(a);
   return b;
 }
 

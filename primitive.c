@@ -26,6 +26,7 @@
 #include "gen/print.h"
 #include "gen/test.h"
 #include "gen/byte_compile.h"
+#include "gen/support.h"
 
    /*-----------------------------------------------,
     |          VARIABLE NAME CONVENTIONS            |
@@ -342,11 +343,9 @@ bool func_ap(cell_t **cp, type_request_t treq) {
 
   placeholder_extend(&c->expr.arg[in], treq.in + in, treq.out + out);
 
-  cell_t *a = make_list(in);
-  COUNTUP(i, in) {
-    a->value.ptr[in-1-i] = ref(c->expr.arg[i]);
-  }
-  cell_t *l = compose_nd(a, ref(c->expr.arg[in]), treq.in + in, treq.out + out);
+  reverse_ptrs((void **)c->expr.arg, in);
+  cell_t *l = compose_args(c->expr.arg, in, ref(c->expr.arg[in]));
+  reverse_ptrs((void **)c->expr.arg, in);
   csize_t l_out = function_out(l);
   csize_t stop = min(l_out, out);
   COUNTUP(i, stop) {

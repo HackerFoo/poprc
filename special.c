@@ -21,6 +21,7 @@
 #include "gen/rt.h"
 #include "gen/special.h"
 #include "gen/byte_compile.h"
+#include "gen/test.h"
 
 bool func_value(cell_t **cp, type_request_t treq) {
   cell_t *c = clear_ptr(*cp); // TODO remove clear_ptr

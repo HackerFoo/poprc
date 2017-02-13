@@ -521,3 +521,15 @@ int test_error() {
   current_error = prev_error;
   return 0;
 }
+
+void swap_ptrs(void **x, void **y) {
+  void *tmp = *x;
+  *x = *y;
+  *y = tmp;
+}
+
+void reverse_ptrs(void **a, size_t n) {
+  size_t m = n / 2;
+  void **b = a + n;
+  while(m--) swap_ptrs(a++, --b);
+}
