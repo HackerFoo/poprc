@@ -226,7 +226,7 @@ bool func_quote(cell_t **cp, UNUSED type_request_t treq) {
   f->expr.arg[f_in] = entry;
 
   cell_t *res = closure_alloc(2);
-  res->func = func_pushl;
+  res->func = func_ap;
   res->expr.arg[0] = f;
   res->expr.arg[1] = c->expr.arg[in];
 

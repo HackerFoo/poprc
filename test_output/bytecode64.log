@@ -179,7 +179,7 @@ ___ tests.pushl2 (3 -> 1) ___
 [0] var, type = ?f x1
 [1] var, type = ?a x1
 [2] var, type = ?a x1
-[3] __primitive.pushl 1 0, type = l x1
-[4] __primitive.pushl 2 3, type = l x1
+[3] __primitive.ap 1 0, type = l x1
+[4] __primitive.ap 2 3, type = l x1
 [5] return [ 4 ], type = r x1
 

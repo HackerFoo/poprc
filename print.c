@@ -108,8 +108,28 @@ void get_name(const cell_t *c, const char **module_name, const char **word_name)
   }
 }
 
-char const *function_token(reduce_t *f) {
-  f = (reduce_t *)clear_ptr(f);
+char const *function_token(const cell_t *c) {
+  static char ap_str[] = "ap00";
+  reduce_t *f = (reduce_t *)clear_ptr(c->func);
+  if(f == func_ap) {
+    csize_t
+      in = closure_in(c),
+      out = closure_out(c),
+      n = closure_args(c);
+
+    if(n == 2) {
+      if(out) {
+        return "popr";
+      } else {
+        return "pushl";
+      }
+    } else {
+      ap_str[2] = in <= 10 ? '0' + in - 1 : 'X';
+      ap_str[3] = out <= 9 ? '0' + out : 'X';
+      return ap_str;
+    }
+  }
+
   FORMAP(i, primitive_module) {
     pair_t *p = &primitive_module[i];
     cell_t *e = (cell_t *)p->second;
@@ -415,7 +435,7 @@ int test_count() {
 
 void show_func(cell_t const *c) {
   int n = closure_args(c), i;
-  char const *s = function_token(c->func);
+  char const *s = function_token(c);
   if(!s) return;
   if(is_placeholder(c)) printf(" ?%" PRIuPTR " =", c - cells);
   for(i = 0; i < n; ++i) {

@@ -145,33 +145,6 @@ bool func_compose(cell_t **cp, type_request_t treq) {
   return false;
 }
 
-// WORD("pushl", pushl, 2, 1)
-bool func_pushl(cell_t **cp, type_request_t treq) {
-  cell_t *c = *cp;
-  assert(!is_marked(*cp));
-
-  alt_set_t alt_set = 0;
-  type_request_t atr = req_list(&treq, 1, 0);
-  if(!reduce_arg(c, 1, &alt_set, atr)) goto fail;
-  clear_flags(c);
-
-  placeholder_extend(&c->expr.arg[1], treq.in + 1, treq.out);
-  cell_t *q = c->expr.arg[1];
-  bool rvar = is_var(q);
-  cell_t *res = pushl_nd(ref(c->expr.arg[0]), ref(q));
-  if(rvar) res->value.type.flags |= T_VAR;
-  drop(res->alt);
-  res->alt = c->alt;
-  res->value.alt_set = alt_set;
-  store_reduced(cp, res);
-  ASSERT_REF();
-  return true;
-
- fail:
-  fail(cp, treq);
-  return false;
-}
-
 // WORD("pushr", pushr, 2, 1)
 bool func_pushr(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
@@ -192,51 +165,6 @@ bool func_pushr(cell_t **cp, type_request_t treq) {
   drop(res->alt);
   res->alt = c->alt;
 
-  store_reduced(cp, res);
-  ASSERT_REF();
-  return true;
-
- fail:
-  fail(cp, treq);
-  return false;
-}
-
-// WORD("popr", popr, 1, 2)
-bool func_popr(cell_t **cp, type_request_t treq) {
-  cell_t *c = *cp, *d = c->expr.arg[1];
-  assert(!is_marked(*cp));
-
-  alt_set_t alt_set = 0;
-  type_request_t atr = req_list(treq.in ? NULL : &treq, 0, 1);
-  if(!reduce_arg(c, 0, &alt_set, atr)) goto fail;
-  clear_flags(c);
-
-  placeholder_extend(&c->expr.arg[0], treq.in, treq.out + 1);
-  cell_t *p = c->expr.arg[0];
-  if(list_size(p) == 0) goto fail;
-
-  // adds an extra output dep to the placeholder, and puts the dep in front of it
-  // [P[in|out] -> [P[in|out+d], d]
-  // also marks result as a variable
-  cell_t *res;
-  cell_t **l = p->value.ptr;
-  cell_t *res_d;
-  if(!closure_is_ready(*l)) goto fail;
-
-  /* drop the right list element */
-  res_d = ref(*l);
-  res = closure_alloc(closure_args(p)-1);
-  res->func = func_value;
-  csize_t elems = list_size(res);
-  res->value.type.exclusive = T_LIST;
-  res->value.type.flags = is_var(p) ? T_VAR : 0;
-  for(csize_t i = 0; i < elems; ++i) {
-    res->value.ptr[i] = ref(l[i+1]);
-  }
-  res->value.alt_set = alt_set;
-  res->alt = c->alt;
-
-  store_lazy_dep(d, res_d, alt_set);
   store_reduced(cp, res);
   ASSERT_REF();
   return true;
@@ -396,60 +324,55 @@ bool func_dup(cell_t **cp, UNUSED type_request_t treq) {
   return false;
 }
 
+// WORD("pushl", ap, 2, 1)
+// WORD("popr", ap, 1, 2)
 bool func_ap(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
 
   const csize_t
-    in = closure_in(c),
+    in = closure_in(c) - 1,
     n = closure_args(c),
     out = closure_out(c);
 
   alt_set_t alt_set = 0;
-  type_request_t atr = req_list(&treq, in, out);
-  if(!reduce_arg(c, in-1, &alt_set, atr)) goto fail;
+  type_request_t atr = req_list((out && treq.in) ? NULL : &treq, in, out);
+  if(!reduce_arg(c, in, &alt_set, atr)) goto fail;
   clear_flags(c);
 
-  cell_t *l = c->expr.arg[in-1];
-  COUNTDOWN(i, in-1) {
-    l = pushl_nd(c->expr.arg[i], l);
+  placeholder_extend(&c->expr.arg[in], treq.in + in, treq.out + out);
+
+  cell_t *a = make_list(in);
+  COUNTUP(i, in) {
+    a->value.ptr[in-1-i] = ref(c->expr.arg[i]);
+  }
+  cell_t *l = compose_nd(a, ref(c->expr.arg[in]), treq.in + in, treq.out + out);
+  csize_t l_out = function_out(l);
+  csize_t stop = min(l_out, out);
+  COUNTUP(i, stop) {
+    cell_t *d = c->expr.arg[n-1-i];
+    store_lazy_dep(d, ref(l->value.ptr[i]), alt_set);
   }
 
-  csize_t ln = list_size(l);
-  //cell_t *ph = 0;
-  if(ln && is_placeholder(l->value.ptr[ln-1])) {
-    //ph = l->value.ptr[ln-1];
-    ln--;
+  if(out > l_out) {
+    drop(l);
+    goto fail;
   }
-
-  csize_t stop = min(ln, out);
-  csize_t i;
-  for(i = 0; i < stop; i++) {
-    store_lazy_dep(c->expr.arg[n-1-i], ref(l->value.ptr[i]), alt_set);
-  }
-
-  for(; i < out; i++) {
-    cell_t *p = c->expr.arg[n-1-i];
-    drop(c);
-    store_fail(p, p->alt);
-  }
-
-  if(out > ln) goto fail; // todo: handle placeholders
 
   /* drop the right list elements */
-  cell_t *res = closure_alloc(closure_args(l) - out);
-  csize_t elems = list_size(res);
-  res->value.type.exclusive = T_LIST;
-  for(csize_t i = 0; i < elems; ++i)
-    res->value.ptr[i] = ref(l->value.ptr[i+(n-in)]);
-
-  res->func = func_value;
+  csize_t elems = list_size(l) - out;
+  cell_t *res = make_list(elems);
+  res->value.type.flags = is_var(l) ? T_VAR : 0;
+  COUNTUP(i, elems) {
+    res->value.ptr[i] = ref(l->value.ptr[i + out]);
+  }
+  drop(l);
   res->value.alt_set = alt_set;
   res->alt = c->alt;
   c->alt = 0;
-  store_lazy(cp, c, res, 0);
-  drop(l);
-  return false;
+  store_reduced(cp, res);
+  ASSERT_REF();
+  return true;
 fail:
   fail(cp, treq);
   return false;

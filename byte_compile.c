@@ -335,7 +335,7 @@ void trace_final_pass(cell_t *e) {
         p->expr.arg[closure_in(p) - 1] = trace_encode(qe - trace_cells);
       } else {
         p->size = 2;
-        p->func = func_pushl;
+        p->func = func_ap;
       }
     } else if(p->func == func_placeholder) {
       p->func = func_ap;

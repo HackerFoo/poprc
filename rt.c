@@ -489,7 +489,7 @@ void fail(cell_t **cp, type_request_t treq) {
       }, ARGS_IN);
     traverse(c, {
         cell_t *d = clear_ptr(*p);
-        if(d) {
+        if(d && is_dep(d)) {
           drop(c);
           store_fail(d, d->alt);
         }
@@ -551,52 +551,6 @@ cell_t *pushl_val(intptr_t x, cell_t *c) {
   c->value.integer[n] = x;
   return c;
 }
-
-// non-destructive (_nd) pushl
-cell_t *pushl_nd(cell_t *a, cell_t *b) {
-  assert(is_closure(a) &&
-         is_list(b));
-
-  csize_t n = list_size(b);
-  if(n) {
-    cell_t *l = b->value.ptr[n-1];
-    if(!closure_is_ready(l)) {
-      cell_t *_b = arg_nd(l, a, b);
-      return _b;
-    }
-  }
-
-  cell_t *e = expand(b, 1);
-  e->value.ptr[n] = a;
-  return e;
-}
-
-//cell_t *collect;
-
-/* reassemble a fragmented cell */
-/*
-bool func_collect(cell_t *c) {
-  collect->alt = c->alt;
-  collect->n = c->n;
-  collect->func = (reduce_t *)c->arg[0];
-  cell_t **dest = collect->arg;
-  cell_t **src = c->arg+1;
-  cell_t *prev = 0;
-  int n = sizeof(c->arg)-1;
-  do {
-    while(--n > 0) {
-      *dest++ = *src++;
-    }
-    src = (cell_t **)*src;
-    cell_free(prev);
-    prev = (cell_t *)src;
-    n = sizeof(cell_t)-1;
-    src++;
-  } while(src);
-  bool b = reduce(collect);
-  return store_reduced(c, collect, b);
-}
-*/
 
 void check_tmps() {
   size_t i = 0;
