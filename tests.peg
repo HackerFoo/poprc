@@ -27,6 +27,8 @@ fact: [1 == 1 swap !] [dup dup 1- fact * swap 1 > !] | pushl popr swap drop
 ___ these need fixed
 ___ from here
 
+__ check: [|] control.dip21 [dup] swap . . popr !
+
 __ fact2: [1 == 1 swap !] [dup 1- swap [*] pushl swap pushr pushl get2 fact2] | pushl pushl get2
 get2: popr swap popr swap drop swap
 
