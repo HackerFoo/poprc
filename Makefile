@@ -30,7 +30,7 @@ ifeq ($(findstring gcc, $(CC)),gcc)
 	OPT_FLAG=-O3
 endif
 ifeq ($(findstring clang, $(CC)),clang)
-	CFLAGS = -Wall -Wextra -pedantic -std=gnu11 -Wno-gnu-zero-variadic-macro-arguments -Wno-address-of-packed-member -Wno-unknown-warning-option
+	CFLAGS = -Wall -Wextra -pedantic -std=gnu11 -Wno-gnu-zero-variadic-macro-arguments -Wno-address-of-packed-member -Wno-unknown-warning-option -Werror=implicit-function-declaration -Werror=int-conversion
 	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -std=c++98 -m32
 	OPT_FLAG=-O3
 endif
