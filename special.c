@@ -84,25 +84,25 @@ bool is_value(cell_t const *c) {
 
 void placeholder_extend(cell_t **lp, int in, int out) {
   cell_t *l = *lp;
-  if(!(in || out)) return;
   if(!is_var(l)) return;
-  csize_t n = list_size(l);
-  if(n != 1) return;
-  cell_t *f = l->value.ptr[0];
-  if(!closure_is_ready(f)) return;
+  csize_t
+    f_in = function_in(l),
+    f_out = function_out(l),
+    d_in = in - min(in, f_in),
+    d_out = out - min(out, f_out);
+  if(d_in == 0 && d_out == 0) return;
+  cell_t *f = l->value.ptr[f_out];
+  cell_t *ph = func(func_placeholder, d_in + 1, d_out + 1);
 
-  ref(f);
-  drop(l);
-  l = make_list(out + 1);
-  cell_t *ph = func(func_placeholder, in + 1, out + 1);
-  COUNTUP(i, out) {
+  l = expand(l, d_out);
+  COUNTUP(i, d_out) {
     cell_t *d = dep(ph);
-    l->value.ptr[i] = d;
+    l->value.ptr[f_out + i] = d;
     arg(ph, d);
   }
   arg(ph, f);
-  refn(ph, out);
-  l->value.ptr[out] = ph;
+  refn(ph, d_out);
+  l->value.ptr[list_size(l) - 1] = ph;
   l->value.type.flags = T_VAR;
   *lp = l;
 }

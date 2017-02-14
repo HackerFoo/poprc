@@ -124,19 +124,59 @@ val_t neq_op(val_t x, val_t y) { return x != y; }
 bool func_neq(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, neq_op); }
 bool func_neq_s(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_SYMBOL, T_SYMBOL, neq_op); }
 
+// outputs required from the left operand given the rignt operand
+csize_t function_compose_out(cell_t *c, csize_t out) {
+  c = clear_ptr(c);
+  return function_in(c) + out - min(out, function_out(c));
+}
+
+// inputs required from the right operand given the left operand
+csize_t function_compose_in(cell_t *c, csize_t in) {
+  c = clear_ptr(c);
+  return function_out(c) + in - min(in, function_in(c));
+}
+
 // WORD(".", compose, 2, 1)
 bool func_compose(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
 
   alt_set_t alt_set = 0;
-  type_request_t atr = req_simple(T_LIST); // TODO
-  if(!reduce_arg(c, 0, &alt_set, atr) ||
-     !reduce_arg(c, 1, &alt_set, atr) ||
+  if(!reduce_arg(c, 1, &alt_set, req_list(NULL, 1, treq.out)) ||
+     !reduce_arg(c, 0, &alt_set, req_list(NULL, treq.in, function_compose_out(c->expr.arg[1], treq.out))) ||
      as_conflict(alt_set)) goto fail;
   clear_flags(c);
+  placeholder_extend(&c->expr.arg[1], function_compose_in(c->expr.arg[0], treq.in), treq.out);
 
-  cell_t *res = compose_nd(ref(c->expr.arg[0]), ref(c->expr.arg[1]), treq.in, treq.out);
+  cell_t
+    *p = c->expr.arg[0],
+    *q = c->expr.arg[1],
+    *res;
+
+  if(list_size(q) == 0) { res = ref(p); goto done; }
+  if(list_size(p) == 0) { res = ref(q); goto done; }
+
+  bool
+    var_p = is_var(p),
+    var_q = is_var(q);
+
+  res = compose_args(p->value.ptr, function_out(p), ref(q));
+
+  if(var_p) {
+    csize_t res_n = list_size(res);
+    res->value.type.flags |= T_VAR;
+    if(var_q) {
+      cell_t *pc = func(func_fcompose, 2, 1);
+      arg(pc, res->value.ptr[res_n-1]);
+      arg(pc, ref(p->value.ptr[list_size(p) - 1]));
+      res->value.ptr[res_n-1] = pc;
+    } else {
+      res = expand(res, 1);
+      res->value.ptr[res_n] = ref(p->value.ptr[list_size(p) - 1]);
+    }
+  }
+
+ done:
   store_reduced(cp, mod_alt(res, c->alt, alt_set));
   ASSERT_REF();
   return true;

@@ -295,39 +295,6 @@ csize_t function_in(const cell_t *l) {
   return in;
 }
 
-// non-destructive (_nd) compose
-cell_t *compose_nd(cell_t *a, cell_t *b, int in, int out) {
-  if(list_size(b) == 0) {
-    drop(b);
-    return a;
-  }
-  if(list_size(a) == 0) {
-    goto done;
-  }
-
-  csize_t
-    a_in = function_in(a),
-    a_out = function_out(a);
-  placeholder_extend(&b, a_out + max(0, (int)in - a_in), out);
-
-  b = compose_args(a->value.ptr, a_out, b);
-
-  if(is_var(a)) {
-    b->value.type.flags |= T_VAR;
-    if(is_var(b)) {
-      cell_t *pc = func(func_fcompose, 2, 1);
-      csize_t b_n = list_size(b);
-      arg(pc, b->value.ptr[b_n-1]);
-      arg(pc, ref(a->value.ptr[list_size(a) - 1]));
-      b->value.ptr[b_n-1] = pc;
-    }
-  }
-
-done:
-  drop(a);
-  return b;
-}
-
 cell_t *compose_args(cell_t **aptr, csize_t a_out, cell_t *b) {
   if(a_out == 0) goto done;
 
