@@ -312,6 +312,7 @@ bool func_id(cell_t **cp, type_request_t treq) {
 
     cell_t *p = c->expr.arg[0];
     store_reduced(cp, mod_alt(ref(p), c->alt, alt_set));
+    ASSERT_REF();
     return true;
     /*
   } else {

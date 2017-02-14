@@ -428,6 +428,7 @@ void store_fail(cell_t *c, cell_t *alt) {
 void store_var(cell_t *c, int t) {
   cell_t v = {
     .func = func_value,
+    .n = c->n,
     .size = 2,
     .value = {
       .alt_set = 0,

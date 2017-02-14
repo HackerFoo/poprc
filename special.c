@@ -284,6 +284,7 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
     }
   }
   store_reduced(cp, res);
+  ASSERT_REF();
   return true;
 
  fail:
