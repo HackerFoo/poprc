@@ -220,33 +220,6 @@ csize_t count_deps(cell_t *c) {
   return deps;
 }
 
-// add more inputs
-cell_t *expand_args(cell_t *c, csize_t s) {
-  refcount_t n = c->n;
-  csize_t args = closure_args(c);
-  c = expand(c, s);
-
-  // shift and update deps
-  memmove(&c->expr.arg[s], &c->expr.arg[0], args * sizeof(cell_t *));
-  memset(c->expr.arg, 0, s * sizeof(cell_t *));
-  if(n) {
-    new_deps(c);
-  } else {
-    update_deps(c);
-  }
-
-  return c;
-}
-
-// destructive version
-cell_t *expand_args_inplace(cell_t *c, csize_t s) {
-  refcount_t n = c->n;
-  c->n = 0;
-  c = expand_args(c, s);
-  c->n = n;
-  return c;
-}
-
 // add more outputs
 cell_t *expand_deps(cell_t *c, csize_t s) {
   csize_t deps = count_deps(c);
@@ -267,15 +240,6 @@ cell_t *expand_deps(cell_t *c, csize_t s) {
 
   c->n += deps;
 
-  return c;
-}
-
-// destructive version
-cell_t *expand_deps_inplace(cell_t *c, csize_t s) {
-  refcount_t n = c->n;
-  c->n = 0;
-  c = expand_deps(c, s);
-  c->n = n;
   return c;
 }
 
