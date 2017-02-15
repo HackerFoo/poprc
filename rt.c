@@ -310,8 +310,13 @@ cell_t *compose_args(cell_t **aptr, csize_t a_out, cell_t *b) {
   cell_t **ap = aptr;
   {
     int n = min(a_out, b_in);
-    LOOP(n) {
+    if(n--) {
       b = arg_nd(b->value.ptr[b_n-1], ref(*ap++), b);
+      cell_t *left = b->value.ptr[b_n-1];
+      // left is now safe for arg() because arg_nd() made necessary copies
+      LOOP(n) {
+        arg(left, ref(*ap++));
+      }
     }
   }
 
