@@ -127,7 +127,7 @@ void clear_flags(cell_t *c) {
 // Reduce *cp with type t
 bool reduce(cell_t **cp, type_request_t treq) {
   cell_t *c;
-  while((c = clear_ptr(*cp))) {
+  while((c = *cp)) {
     assert(is_closure(c));
     if(!closure_is_ready(c)) {
       fail(cp, treq);
@@ -136,7 +136,7 @@ bool reduce(cell_t **cp, type_request_t treq) {
     unsigned int m = measure.reduce_cnt++;
     bool success = c->func(cp, treq);
     if(success) {
-      cell_t *n = clear_ptr(*cp);
+      cell_t *n = *cp;
       if(write_graph && measure.reduce_cnt > m) {
         mark_cell(n);
         make_graph_all(0);
@@ -154,7 +154,7 @@ bool reduce(cell_t **cp, type_request_t treq) {
 
 // Perform one reduction step on *cp
 void reduce_dep(cell_t **cp) {
-  cell_t *c = clear_ptr(*cp);
+  cell_t *c = *cp;
   if(!c || !closure_is_ready(c)) {
     fail(cp, req_any);
   } else {
@@ -448,7 +448,7 @@ void store_var(cell_t *c, int t) {
 }
 
 void fail(cell_t **cp, type_request_t treq) {
-  cell_t *c = clear_ptr(*cp);
+  cell_t *c = *cp;
   if(!is_cell(c)) {
     *cp = NULL;
     return;
@@ -457,11 +457,10 @@ void fail(cell_t **cp, type_request_t treq) {
   cell_t *alt = ref(c->alt);
   if(c->n && treq.t == T_ANY) { // HACK this should be more sophisticated
     traverse(c, {
-        cell_t *x = clear_ptr(*p);
-        drop(x);
+        drop(*p);
       }, ARGS_IN);
     traverse(c, {
-        cell_t *d = clear_ptr(*p);
+        cell_t *d = *p;
         if(d && is_dep(d)) {
           drop(c);
           store_fail(d, d->alt);
@@ -549,7 +548,7 @@ void check_tmps() {
 static
 void mutate_update(cell_t *r, bool m) {
   traverse(r, {
-      cell_t *c = clear_ptr(*p);
+      cell_t *c = *p;
       if(is_closure(c) && c->n != PERSISTENT) {
         if(c->tmp) {
           *p = ref(c->tmp);
@@ -559,7 +558,7 @@ void mutate_update(cell_t *r, bool m) {
     }, ARGS_IN | PTRS | ALT);
 
   traverse(r, {
-      cell_t *c = clear_ptr(*p);
+      cell_t *c = *p;
       if(c && c->n != PERSISTENT && c->tmp) {
         // if(m) fix deps?
         *p = c->tmp;
@@ -662,7 +661,7 @@ bool check_deps(cell_t *c) {
   c = clear_ptr(c);
   if(c && is_cell(c)) {
     traverse(c, {
-        cell_t *x = clear_ptr(*p);
+        cell_t *x = *p;
         if(x && x->expr.arg[0] != c) {
           printf("bad dep %d -> %d, should be %d\n",
                  (int)(x - cells),
