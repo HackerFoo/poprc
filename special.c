@@ -24,8 +24,8 @@
 #include "gen/test.h"
 
 bool func_value(cell_t **cp, type_request_t treq) {
-  cell_t *c = clear_ptr(*cp); // TODO remove clear_ptr
-  assert(is_closure(c));
+  cell_t *c = *cp;
+  assert(!is_marked(c));
   measure.reduce_cnt--;
 
   if((c->value.type.flags & T_FAIL) ||
@@ -284,7 +284,7 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
     }
   }
   store_reduced(cp, res);
-  ASSERT_REF();
+  //ASSERT_REF();
   return true;
 
  fail:
@@ -297,8 +297,8 @@ bool is_placeholder(cell_t const *c) {
 }
 
 bool func_fail(cell_t **cp, type_request_t treq) {
-  cell_t *c = clear_ptr(*cp); // TODO remove clear_ptr
-  assert(is_closure(c));
+  cell_t *c = *cp;
+  assert(!is_marked(c));
   measure.reduce_cnt--;
   fail(cp, treq);
   return false;

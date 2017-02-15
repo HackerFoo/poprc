@@ -107,8 +107,11 @@ bool reduce_arg(cell_t *c,
                 alt_set_t *ctx,
                 type_request_t treq) {
   cell_t **ap = &c->expr.arg[n];
+  bool marked = is_marked(*ap);
+  *ap = clear_ptr(*ap);
   bool r = reduce(ap, treq);
-  *ctx |= ((cell_t *)clear_ptr(*ap))->value.alt_set;
+  *ctx |= (*ap)->value.alt_set;
+  if(marked) *ap = mark_ptr(*ap);
   split_arg(c, n);
   return r;
 }

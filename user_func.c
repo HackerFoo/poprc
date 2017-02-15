@@ -48,8 +48,8 @@ cell_t *get_return_arg(cell_t **map, cell_t *returns, intptr_t x) {
 }
 
 bool func_exec(cell_t **cp, type_request_t treq) {
-  cell_t *c = clear_ptr(*cp);
-  assert(is_closure(c));
+  cell_t *c = *cp;
+  assert(!is_marked(c));
 
   size_t in = closure_in(c) - 1;
   cell_t *entry = c->expr.arg[in];
@@ -183,8 +183,8 @@ expand:
 }
 
 bool func_exec_recursive(cell_t **cp, type_request_t treq) {
-  cell_t *c = clear_ptr(*cp);
-  assert(is_closure(c));
+  cell_t *c = *cp;
+  assert(!is_marked(c));
 
   csize_t c_in = closure_in(c);
   alt_set_t alt_set = 0;
@@ -202,8 +202,8 @@ fail:
 
 // takes free variables and returns a quoted function
 bool func_quote(cell_t **cp, UNUSED type_request_t treq) {
-  cell_t *c = clear_ptr(*cp);
-  assert(is_closure(c));
+  cell_t *c = *cp;
+  assert(!is_marked(c));
 
   csize_t in = closure_in(c) - 2;
   cell_t *entry = c->expr.arg[in + 1];
