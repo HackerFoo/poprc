@@ -94,11 +94,11 @@ cell_t *trace_lookup_value_linear(int type, val_t value) {
 static
 trace_index_t trace_get_value(const cell_t *r) {
   assert(r && is_value(r));
-  if(is_var(r)) {
-    return r->value.ptr[0] - trace_cur;
-  } else if(is_list(r)) {
+  if(is_list(r)) {
     // assertion on a list
     return NIL_INDEX;
+  } else if(is_var(r)) {
+    return r->value.ptr[0] - trace_cur;
   } else {
     cell_t *t = trace_lookup_value_linear(r->value.type.exclusive, r->value.integer[0]);
     if(t) return t - trace_cur;
