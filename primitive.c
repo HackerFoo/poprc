@@ -305,24 +305,18 @@ bool func_id(cell_t **cp, type_request_t treq) {
   assert(!is_marked(c));
   alt_set_t alt_set = c->expr.alt_set;
 
-  //if(alt_set || c->alt) {
+  if(alt_set || c->alt) {
     if(!reduce_arg(c, 0, &alt_set, treq) ||
        as_conflict(alt_set)) goto fail;
     clear_flags(c);
 
-    cell_t *p = c->expr.arg[0];
-    store_reduced(cp, mod_alt(ref(p), c->alt, alt_set));
-    ASSERT_REF();
+    store_reduced(cp, mod_alt(ref(c->expr.arg[0]), c->alt, alt_set));
     return true;
-    /*
   } else {
-    // makes tracing hard because of the silent rewrite
-    cell_t *p = ref(c->expr.arg[0]);
+    *cp = ref(c->expr.arg[0]);
     drop(c);
-    *cp = p;
     return false;
   }
-    */
  fail:
   fail(cp, treq);
   return false;
