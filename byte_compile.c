@@ -681,6 +681,20 @@ bool is_id(cell_t *e) {
     trace_decode(ret->value.ptr[0]) == 0;
 }
 
+void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *e) {
+  trace_index_t x = (c->value.ptr[0] - e) - 1;
+  COUNTUP(j, a_n) {
+    trace_index_t y = trace_decode(a[j]);
+    if(y == x) {
+      trace_cur[j].value.type.exclusive = trace_type(c->value.ptr[0]).exclusive;
+      c->value.ptr[0] = &trace_cur[j];
+      return;
+    }
+  }
+  c->value.ptr[0] = trace_alloc(2);
+  //assert(false);
+}
+
 // takes a parent entry and offset to a quote, and creates an entry from compiling the quote
 static
 cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
@@ -700,12 +714,22 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   e->entry.flags = ENTRY_NOINLINE | ENTRY_QUOTE;
   e->func = func_exec;
 
+  // allocate variables
+  csize_t n = in - 1;
+  COUNTUP(i, n) {
+    cell_t *tc = &trace_cur[i];
+    tc->size = 2;
+    tc->func = func_value;
+    tc->value.type.flags = T_VAR;
+    tc->n = -1;
+  }
+  trace_ptr += n;
+
   // free variables
   cell_t *vl = 0;
   trace_var_list(c, &vl);
   for(cell_t *p = vl; p; p = p->tmp) {
-    p->value.ptr[0] = trace_alloc(2);
-    trace_store(p, p);
+    replace_var(p, q->expr.arg, n, parent_entry);
   }
   clean_tmp(vl);
 
