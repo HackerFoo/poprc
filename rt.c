@@ -116,6 +116,55 @@ bool reduce_arg(cell_t *c,
   return r;
 }
 
+// Duplicate c to c->alt and return it
+cell_t *dup_list_alt(cell_t *c, csize_t n, cell_t *b) {
+  csize_t i = 0, in = list_size(c);
+  assert(n < in);
+  cell_t *a = copy(c);
+
+  // ref args
+  for(; i < in; ++i) {
+    if(i != n) ref(a->value.ptr[i]);
+  }
+
+  a->value.ptr[n] = b;
+  c->alt = a;
+  return a;
+}
+
+// Lift alternates from c->value.ptr[n] to c
+void split_ptr(cell_t *c, csize_t n) {
+  cell_t
+    *a = c->value.ptr[n],
+    *p = c,
+    **pa;
+  if(!a || is_marked(a) || !a->alt) return;
+  do {
+    pa = &p->value.ptr[n];
+    if(*pa == a) {
+      // insert a copy with the alt arg
+      p = dup_list_alt(p, n, ref((*pa)->alt))->alt;
+      // mark the arg
+      *pa = mark_ptr(*pa);
+    } else p = p->alt;
+  } while(p);
+}
+
+// Reduce then split c->arg[n]
+bool reduce_ptr(cell_t *c,
+                csize_t n,
+                alt_set_t *ctx,
+                type_request_t treq) {
+  cell_t **ap = &c->value.ptr[n];
+  bool marked = is_marked(*ap);
+  *ap = clear_ptr(*ap);
+  bool r = reduce(ap, treq);
+  *ctx |= (*ap)->value.alt_set;
+  if(marked) *ap = mark_ptr(*ap);
+  split_ptr(c, n);
+  return r;
+}
+
 // Clear the flags bits in args
 void clear_flags(cell_t *c) {
   int i = 0;

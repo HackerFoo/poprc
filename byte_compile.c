@@ -511,47 +511,29 @@ int test_var_count() {
 static
 unsigned int trace_reduce(cell_t *c) {
   csize_t n = list_size(c);
-  cell_t *r = NULL;
-  cell_t *first;
+  cell_t *tc = NULL, **prev = &tc;
   unsigned int alts = 0;
-  csize_t conflict = 0;
 
   insert_root(&c);
 
-  // first one
-  COUNTUP(i, n) {
-    cell_t **a = &c->value.ptr[i];
-    reduce(a, req_any);
-    if(!is_list(*a)) {
-      trace_store(*a, *a);
-    }
-  }
-  if(!(conflict = any_conflicts((cell_t const *const *)c->value.ptr, n))) {
-    r = trace_return(c);
-    r->n++;
-    alts++;
-  }
-  first = r;
-
-  // rest
-  cell_t *p = copy(c);
-  while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, conflict, n)) {
+  cell_t **p = &c;
+  while(*p) {
+    func_list(p, req_simple(T_RETURN));
+    if(!*p) break;
     COUNTUP(i, n) {
-      cell_t **a = &p->value.ptr[i];
+      cell_t **a = &(*p)->value.ptr[i];
       reduce(a, req_any);
       trace_store(*a, *a);
     }
-    if(!(conflict = any_conflicts((cell_t const *const *)p->value.ptr, n))) {
-      cell_t *prev = r;
-      r = trace_return(p);
-      r->n++;
-      prev->alt = trace_encode(r - trace_cur);
-      alts++;
-    }
+    cell_t *r = trace_return(*p);
+    r->n++;
+    *prev = trace_encode(r - trace_cur);
+    alts++;
+    p = &(*p)->alt;
+    prev = &r->alt;
   }
 
   remove_root(&c);
-  closure_free(p);
   return alts;
 }
 

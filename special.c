@@ -324,3 +324,24 @@ bool func_fcompose(cell_t **cp, type_request_t treq) {
   fail(cp, treq);
   return false;
 }
+
+// not really a func
+bool func_list(cell_t **cp, type_request_t treq) {
+  cell_t *c = *cp;
+  assert(!is_marked(c));
+  if(treq.t == T_ANY && treq.t == T_LIST) return true;
+  if(treq.t != T_RETURN) goto fail;
+  csize_t n = list_size(c);
+
+  alt_set_t alt_set = c->value.alt_set;
+  COUNTDOWN(i, n) {
+    if(!reduce_ptr(c, i, &alt_set, req_any) ||
+      as_conflict(alt_set)) goto fail;
+  }
+  clear_flags(c);
+  return true;
+
+ fail:
+  fail(cp, treq);
+  return false;
+}
