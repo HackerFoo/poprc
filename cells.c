@@ -349,13 +349,13 @@ bool is_any(cell_t const *c) {
 #endif
 
 void drop(cell_t *c) {
+  c = clear_ptr(c);
   if(!is_cell(c) || c->n == PERSISTENT) return;
   assert(is_closure(c));
   if(!c->n) {
     cell_t *p;
     traverse(c, {
-        cell_t *x = clear_ptr(*p);
-        drop(x);
+        drop(*p);
       }, ALT | ARGS_IN | PTRS);
     if(is_dep(c) && !is_value(p = c->expr.arg[0]) && is_closure(p)) {
       /* mark dep arg as gone */
@@ -378,22 +378,24 @@ void drop_multi(cell_t **a, csize_t n) {
 }
 
 void fake_drop(cell_t *c) {
+  c = clear_ptr(c);
   if(!is_cell(c) || c->n == PERSISTENT) return;
   assert(~c->n && is_closure(c));
   if(!c->n) {
     traverse(c, {
-        fake_drop(clear_ptr(*p));
+        fake_drop(*p);
       }, ALT | ARGS_IN | PTRS);
   }
   --c->n;
 }
 
 void fake_undrop(cell_t *c) {
+  c = clear_ptr(c);
   if(!is_cell(c) || c->n == PERSISTENT) return;
   assert(is_closure(c));
   if(!++c->n) {
     traverse(c, {
-        fake_undrop(clear_ptr(*p));
+        fake_undrop(*p);
       }, ALT | ARGS_IN | PTRS);
   }
 }

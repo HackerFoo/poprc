@@ -263,13 +263,14 @@ bool func_assert(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
 
+  cell_t *res = NULL;
   alt_set_t alt_set = 0;
   if(!reduce_arg(c, 1, &alt_set, req_symbol)) goto fail;
   cell_t *p = clear_ptr(c->expr.arg[1]);
 
   if(!(p->value.integer[0] == SYM_True || is_var(p))) goto fail;
 
-  cell_t *res = is_var(p) ? var(treq.t, c) : NULL;
+  if(is_var(p)) res = var(treq.t, c);
 
   if(!reduce_arg(c, 0, &alt_set, treq) ||
      as_conflict(alt_set)) goto fail;
@@ -295,6 +296,7 @@ bool func_assert(cell_t **cp, type_request_t treq) {
   store_reduced(cp, res);
   return true;
 fail:
+  drop(res);
   fail(cp, treq);
   return false;
 }
