@@ -45,7 +45,6 @@ bool trace_enabled = false;
 cell_t trace_cells[1 << 10];
 cell_t *trace_cur = &trace_cells[0];
 cell_t *trace_ptr = &trace_cells[0];
-size_t trace_cnt = 0;
 
 #if INTERFACE
 typedef intptr_t trace_index_t;
@@ -77,7 +76,9 @@ trace_index_t trace_decode(cell_t *c) {
 static
 cell_t *trace_get(const cell_t *r) {
   assert(r && is_var(r));
-  return r->value.ptr[0];
+  cell_t *tc = r->value.ptr[0];
+  assert(tc >= trace_cur && tc < trace_ptr);
+  return tc;
 }
 
 static
@@ -98,7 +99,7 @@ trace_index_t trace_get_value(const cell_t *r) {
     // assertion on a list
     return NIL_INDEX;
   } else if(is_var(r)) {
-    return r->value.ptr[0] - trace_cur;
+    return trace_get(r) - trace_cur;
   } else {
     cell_t *t = trace_lookup_value_linear(r->value.type.exclusive, r->value.integer[0]);
     if(t) return t - trace_cur;
@@ -114,7 +115,6 @@ cell_t *trace_alloc(csize_t args) {
   tc->n = -1;
   trace_ptr += size;
   tc->size = args;
-  trace_cnt++;
   return tc;
 }
 
@@ -191,7 +191,6 @@ cell_t *trace_store(const cell_t *c, const cell_t *r) {
 static
 void trace_init() {
   trace_cur = trace_ptr;
-  trace_cnt = 0;
 }
 
 void print_bytecode(cell_t *e) {
@@ -203,7 +202,7 @@ void print_bytecode(cell_t *e) {
     int t = c - start;
     printf("[%d]", t);
     if(!c->func) {
-      printf(" NULL!\n");
+      printf("\n");
       continue;
     }
     if(is_value(c)) {
@@ -266,8 +265,18 @@ void print_bytecode(cell_t *e) {
 
 void trace_update(cell_t *c, cell_t *r) {
   if(!trace_enabled) return;
+  if(is_list(r)) return;
 
   trace_store(c, r);
+}
+
+// reclaim failed allocation if possible
+void trace_fail(cell_t *r) {
+  if(!r || !is_var(r)) return;
+  cell_t *tc = trace_get(r);
+  if(trace_ptr - tc == calculate_cells(tc->size)) {
+    trace_ptr = tc;
+  }
 }
 
 void trace_reduction(cell_t *c, cell_t *r) {
@@ -509,21 +518,23 @@ int test_var_count() {
 }
 
 static
-unsigned int trace_reduce(cell_t *c) {
-  csize_t n = list_size(c);
+unsigned int trace_reduce(cell_t **cp) {
+  csize_t n = list_size(*cp);
   cell_t *tc = NULL, **prev = &tc;
   unsigned int alts = 0;
 
-  insert_root(&c);
+  insert_root(cp);
 
-  cell_t **p = &c;
+  cell_t **p = cp;
   while(*p) {
     func_list(p, req_simple(T_RETURN));
     if(!*p) break;
     COUNTUP(i, n) {
       cell_t **a = &(*p)->value.ptr[i];
       reduce(a, req_any);
-      trace_store(*a, *a);
+      if(!is_list(*a)) {
+        trace_store(*a, *a);
+      }
     }
     cell_t *r = trace_return(*p);
     r->n++;
@@ -533,7 +544,7 @@ unsigned int trace_reduce(cell_t *c) {
     prev = &r->alt;
   }
 
-  remove_root(&c);
+  remove_root(cp);
   return alts;
 }
 
@@ -645,10 +656,10 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   // compile
   trace_enabled = true;
   fill_args(c);
-  e->entry.alts = trace_reduce(c);
+  e->entry.alts = trace_reduce(&c);
   drop(c);
   trace_enabled = false;
-  e->entry.len = trace_cnt;
+  e->entry.len = trace_ptr - trace_cur;
   trace_final_pass(e);
   e->entry.flags &= ~ENTRY_NOINLINE;
 
@@ -700,11 +711,11 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
 
   // compile
   e->entry.in = in + fill_args(c) - 1;
-  e->entry.alts = trace_reduce(c);
+  e->entry.alts = trace_reduce(&c);
   drop(c);
   trace_enabled = false;
   e->entry.flags &= ~ENTRY_NOINLINE;
-  e->entry.len = trace_cnt;
+  e->entry.len = trace_ptr - trace_cur;
   if(is_id(e)) {
     trace_clear(e);
     trace_ptr = trace_cur; // reset

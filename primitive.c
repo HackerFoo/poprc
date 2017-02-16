@@ -296,6 +296,7 @@ bool func_assert(cell_t **cp, type_request_t treq) {
   store_reduced(cp, res);
   return true;
 fail:
+  trace_fail(res);
   drop(res);
   fail(cp, treq);
   return false;
