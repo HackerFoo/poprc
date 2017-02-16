@@ -77,6 +77,8 @@ look for word in parent module, parent imports, context module, context imports,
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
+** TODO f: 3+ [[] pushl] pushl [] [[2]] | . popr swap drop
+- leak
 ** DONE ? [id] . popr
 ** TODO no return in 32 bit control.ap21
 ** DONE vars don't update type for T_LIST

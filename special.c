@@ -338,7 +338,7 @@ bool func_list(cell_t **cp, type_request_t treq) {
     if(!reduce_ptr(c, i, &alt_set, req_any) ||
       as_conflict(alt_set)) goto fail;
   }
-  clear_flags(c);
+  traverse(c, *p = clear_ptr(*p), PTRS);
   return true;
 
  fail:

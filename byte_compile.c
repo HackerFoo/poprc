@@ -472,13 +472,14 @@ trace_index_t trace_build_quote(cell_t *q, trace_index_t li) {
 // builds a temporary list of referenced variables
 cell_t **trace_var_list(cell_t *c, cell_t **tail) {
   if(c && !c->tmp && tail != &c->tmp) {
-    if(is_var(c)) {
+    if(is_var(c) && !is_list(c)) {
       LIST_ADD(tmp, tail, c);
+      tail = trace_var_list(c->alt, tail);
     } else {
       c->tmp = FLIP_PTR(0); // prevent loops
       traverse(c, {
           tail = trace_var_list(*p, tail);
-        }, PTRS | ARGS_IN);
+        }, PTRS | ARGS_IN | ALT);
       c->tmp = 0;
     }
   }
@@ -527,8 +528,7 @@ unsigned int trace_reduce(cell_t **cp) {
 
   cell_t **p = cp;
   while(*p) {
-    func_list(p, req_simple(T_RETURN));
-    if(!*p) break;
+    if(!func_list(p, req_simple(T_RETURN))) continue;
     COUNTUP(i, n) {
       cell_t **a = &(*p)->value.ptr[i];
       reduce(a, req_any);
