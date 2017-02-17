@@ -1,0 +1,14 @@
+module staging:
+
+imports:
+  module list
+  module stack
+  module control
+
+aptest: dup2 swap ap11 swap drop
+
+__ [fn] [test] initial
+iterate: dup2 swap ap11 swap drop
+
+check: [|] control.dip21 [dup] swap . . popr !
+
