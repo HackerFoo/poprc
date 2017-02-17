@@ -22,6 +22,7 @@
 #include "gen/special.h"
 #include "gen/rt.h"
 #include "gen/support.h"
+#include "gen/byte_compile.h"
 
 // to catch errors that result in large allocations
 #define MAX_ALLOC_SIZE 32
@@ -366,6 +367,9 @@ void drop(cell_t *c) {
           break;
         }
       }
+    }
+    if(is_var(c) && !is_list(c)) {
+      trace_drop(c);
     }
     closure_free(c);
   } else {

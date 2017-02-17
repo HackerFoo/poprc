@@ -271,10 +271,10 @@ void trace_update(cell_t *c, cell_t *r) {
 }
 
 // reclaim failed allocation if possible
-void trace_fail(cell_t *r) {
+void trace_drop(cell_t *r) {
   if(!r || !is_var(r)) return;
-  cell_t *tc = trace_get(r);
-  if(trace_ptr - tc == calculate_cells(tc->size)) {
+  cell_t *tc = r->value.ptr[0];
+  if(tc && !tc->func && trace_ptr - tc == calculate_cells(tc->size)) {
     trace_ptr = tc;
   }
 }

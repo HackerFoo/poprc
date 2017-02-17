@@ -270,7 +270,7 @@ bool func_assert(cell_t **cp, type_request_t treq) {
 
   if(!(p->value.integer[0] == SYM_True || is_var(p))) goto fail;
 
-  if(is_var(p)) res = var(treq.t, c);
+  if(is_var(p)) res = var(treq.t != T_LIST ? treq.t : T_FUNCTION, c);
 
   if(!reduce_arg(c, 0, &alt_set, treq) ||
      as_conflict(alt_set)) goto fail;
@@ -296,7 +296,6 @@ bool func_assert(cell_t **cp, type_request_t treq) {
   store_reduced(cp, res);
   return true;
 fail:
-  trace_fail(res);
   drop(res);
   fail(cp, treq);
   return false;
