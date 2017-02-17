@@ -6,7 +6,7 @@ Compile to direct C when possible
 ** simple numeric ops (e.g. :c f1 + *)
 * improvements
 ** DONE add afl fuzzing
-** add more tests to tests.peg
+** add more tests to tests.ppr
 ** CANCELED clear_flags in func_select?
 ** DONE remove unnecessary clear_ptr's
 *** mark_ptr

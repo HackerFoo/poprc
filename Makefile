@@ -149,7 +149,7 @@ $(BUILD_DIR)/eval: $(OBJS)
 js/eval.js: EMCC_OBJS := $(patsubst %.c, build/emcc/$(BUILD)/%.o, $(SRC))
 js/eval.js:
 	make CC=emcc $(EMCC_OBJS)
-	emcc $(EMCC_OBJS) -o js/eval.js -s EXPORTED_FUNCTIONS="['_main', '_emscripten_eval']" --embed-file lib.peg
+	emcc $(EMCC_OBJS) -o js/eval.js -s EXPORTED_FUNCTIONS="['_main', '_emscripten_eval']" --embed-file lib.ppr
 
 # pull in dependency info for *existing* .o files
 -include $(OBJS:.o=.d)
@@ -187,7 +187,7 @@ scan: clean
 test: eval
 	./eval -test '' -check_free no -stats no -quit | $(DIFF_TEST) test_output/test.log -
 	./eval -echo yes -stats no < tests.txt | $(DIFF_TEST) test_output/tests.txt.log -
-	./eval -quiet yes -stats no -lo lib.peg -lo tests.peg -all -q | $(DIFF_TEST) test_output/bytecode`./eval -pointer-bits -q`.log -
+	./eval -quiet yes -stats no -lo lib.ppr -lo tests.ppr -all -q | $(DIFF_TEST) test_output/bytecode`./eval -pointer-bits -q`.log -
 
 test_output/test.log: eval
 	@mkdir -p test_output
@@ -197,13 +197,13 @@ test_output/tests.txt.log: eval tests.txt
 	@mkdir -p test_output
 	./eval -echo yes -stats no < tests.txt > $@
 
-test_output/bytecode32.log: eval lib.peg tests.peg
+test_output/bytecode32.log: eval lib.ppr tests.ppr
 	@mkdir -p test_output
-	if [[ `./eval -pointer-bits -q` = 32 ]]; then ./eval -quiet yes -stats no -lo lib.peg -lo tests.peg -all -q > $@; fi
+	if [[ `./eval -pointer-bits -q` = 32 ]]; then ./eval -quiet yes -stats no -lo lib.ppr -lo tests.ppr -all -q > $@; fi
 
-test_output/bytecode64.log: eval lib.peg tests.peg
+test_output/bytecode64.log: eval lib.ppr tests.ppr
 	@mkdir -p test_output
-	if [[ `./eval -pointer-bits -q` = 64 ]]; then ./eval -quiet yes -stats no -lo lib.peg -lo tests.peg -all -q > $@; fi
+	if [[ `./eval -pointer-bits -q` = 64 ]]; then ./eval -quiet yes -stats no -lo lib.ppr -lo tests.ppr -all -q > $@; fi
 
 .PHONY: test_output
 test_output: test_output/test.log test_output/tests.txt.log test_output/bytecode32.log test_output/bytecode64.log
