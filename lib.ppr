@@ -3,6 +3,7 @@ module lib:
 imports:
   module num
   module list
+  module stack
   module control
 
 
@@ -38,6 +39,10 @@ dup2: swap [] pushl pushl dup . popr swap popr swap popr swap popr swap drop
 
 under: swap dup rotr
 
+swap2: [] swap pushr swap pushr pushl popr swap popr swap popr swap drop
+swap3: [] swap pushr swap pushr swap pushr pushl popr swap popr swap popr swap popr swap drop
+swap4: [] swap pushr swap pushr swap pushr swap pushr pushl popr swap popr swap popr swap popr swap popr swap drop
+
 module control:
 
 __ if then else
@@ -63,6 +68,8 @@ dip12: swap pushr pushl popr swap pushl [swap] . popr swap popr swap popr swap d
 __ apply a quote underneath the top, 2 -> 1
 dip21: swap pushr pushl pushl popr swap popr swap drop swap
 
+__ apply a quote underneath the top, 2 -> 2
+dip22: swap [] ap41 swap popr . swap pushr ap03 stack.swap3 drop
 
 module logic:
 
