@@ -510,14 +510,7 @@ void store_reduced(cell_t **cp, cell_t *r) {
       drop(r);
     }
     c->n = n;
-   } else { /* TODO: must copy if not cell */
-    /*
-    if(!is_cell(r)) {
-      cell_t *t = closure_alloc_cells(size);
-      memcpy(t, r, sizeof(cell_t) * size);
-      r = t;
-    }
-    */
+   } else {
     store_lazy(cp, c, r, 0);
   }
 }

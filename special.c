@@ -25,29 +25,47 @@
 
 bool func_value(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
+  cell_t *res = NULL;
   assert(!is_marked(c));
   measure.reduce_cnt--;
 
   if((c->value.type.flags & T_FAIL) ||
      !type_match(treq.t, c)) goto fail;
 
-  if(is_any(c)) {
-    if(treq.t == T_LIST) {
-      store_lazy(cp, c, var_create(T_LIST, c->value.ptr[0], treq.in, treq.out), c->value.alt_set);
-    } else {
-      c->value.type.exclusive = treq.t;
+  if(is_var(c)) {
+    if(is_any(c)) {
+      if(treq.t == T_LIST) {
+        res = var_create(T_LIST, c->value.ptr[0], treq.in, treq.out);
+        res->value.alt_set = c->value.alt_set;
+        res->alt = c->alt;
+      } else {
+        c->value.type.exclusive = treq.t;
+        trace_update(c, c);
+      }
+    } else if(is_list(c)) {
+      csize_t
+        in = function_in(c),
+        out = function_out(c);
+      if(treq.out > out || treq.in > in) {
+      cell_t *f = c->value.ptr[in];
+      res = var_create_list(ref(f), treq.in - in, treq.out - out, out);
+      COUNTUP(i, out) {
+        res->value.ptr[i] = ref(c->value.ptr[i]);
+      }
+      res->value.alt_set = c->value.alt_set;
+      res->alt = c->alt;
+      }
     }
-  } else if(treq.out > 0 &&
-            is_list(c) &&
-            list_size(c) == 1 &&
-            is_function(c->value.ptr[0])) {
-    cell_t *f = c->value.ptr[0];
-    store_lazy(cp, c, var_create(T_LIST, f->value.ptr[0], treq.in, treq.out), c->value.alt_set);
-    drop(f);
-  } else goto done;
-  c = *cp;
-  trace_update(c, c);
-done:
+    if(res) {
+      // HACK
+      // may result in multiple placeholder extensions,
+      // but a value cannot be expanded without breaking
+      // references; value -> id won't work (reduce_lazy)
+      // because values must remain values.
+      drop(c);
+      *cp = res;
+    }
+  }
   return true;
 fail:
   fail(cp, treq);
@@ -108,28 +126,35 @@ void placeholder_extend(cell_t **lp, int in, int out) {
 }
 
 cell_t *var_create(int t, cell_t *tc, int in, int out) {
-  cell_t *c;
-  if(t == T_LIST) {
-    c = make_list(out + 1);
-    cell_t *ph = func(func_placeholder, in + 1, out + 1);
-    COUNTUP(i, out) {
-      cell_t *d = dep(ph);
-      c->value.ptr[i] = d;
-      arg(ph, d);
-    }
-    arg(ph, var_create(T_FUNCTION, tc, 0, 0));
-    refn(ph, out);
-    c->value.ptr[out] = ph;
-    c->value.type.flags = T_VAR;
-  } else {
-    c = closure_alloc(1);
-    c->func = func_value;
-    c->size = 2;
-    c->value.ptr[0] = tc;
-    c->value.type.flags = T_VAR;
-    c->value.type.exclusive = t;
-    trace_update_type(c);
+  return t == T_LIST ?
+    var_create_list(var_create_nonlist(T_FUNCTION, tc), in, out, 0) :
+    var_create_nonlist(t, tc);
+}
+
+cell_t *var_create_nonlist(int t, cell_t *tc) {
+  cell_t *c = closure_alloc(1);
+  c->func = func_value;
+  c->size = 2;
+  c->value.ptr[0] = tc;
+  c->value.type.flags = T_VAR;
+  c->value.type.exclusive = t;
+  trace_update_type(c);
+  return c;
+}
+
+cell_t *var_create_list(cell_t *f, int in, int out, int shift) {
+  cell_t *c = make_list(out + shift + 1);
+  cell_t *ph = func(func_placeholder, in + 1, out + 1);
+  cell_t **a = &c->value.ptr[shift];
+  COUNTUP(i, out) {
+    cell_t *d = dep(ph);
+    a[i] = d;
+    arg(ph, d);
   }
+  arg(ph, f);
+  refn(ph, out);
+  a[out] = ph;
+  c->value.type.flags = T_VAR;
   return c;
 }
 
@@ -284,7 +309,7 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
     }
   }
   store_reduced(cp, res);
-  //ASSERT_REF();
+  ASSERT_REF();
   return true;
 
  fail:

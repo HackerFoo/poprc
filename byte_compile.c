@@ -396,7 +396,9 @@ trace_index_t trace_store_list(cell_t *c) {
       trace_set_type(&trace_cur[li], T_FUNCTION);
       li = trace_tail(li, p->expr.out);
       COUNTDOWN(i, in-1) {
-        li = trace_build_quote(p->expr.arg[i], li);
+        cell_t *a = p->expr.arg[i];
+        if(!a) break;
+        li = trace_build_quote(a, li);
       }
       n--;
     } else if (is_var(p) && is_function(p)) { // reduced placeholder
@@ -439,6 +441,7 @@ cell_t *trace_return(cell_t *c) {
 
 static
 trace_index_t trace_build_quote(cell_t *q, trace_index_t li) {
+  assert(is_closure(q));
   cell_t *vl = 0;
   cell_t **vlp = &vl;
 
@@ -531,8 +534,14 @@ unsigned int trace_reduce(cell_t **cp) {
     if(!func_list(p, req_simple(T_RETURN))) continue;
     COUNTUP(i, n) {
       cell_t **a = &(*p)->value.ptr[i];
-      reduce(a, req_any);
-      if(!is_list(*a)) {
+      if(is_list(*a)) {
+        if(is_var(*a)) {
+          cell_t *ph = (*a)->value.ptr[list_size(*a) - 1];
+          if(closure_is_ready(*a)) {
+            reduce(&ph, req_simple(T_FUNCTION));
+          }
+        }
+      } else {
         trace_store(*a, *a);
       }
     }
@@ -706,8 +715,10 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   trace_cur = ++trace_ptr;
 
   csize_t in = closure_in(q) - 1;
-  assert(remove_root(&q->expr.arg[in]));
-  cell_t *c = quote(q->expr.arg[in]);
+  cell_t **fp = &q->expr.arg[in];
+  assert(*fp);
+  assert(remove_root(fp));
+  cell_t *c = quote(*fp);
   e->n = PERSISTENT;
   e->entry.out = 1;
   e->entry.len = 0;
