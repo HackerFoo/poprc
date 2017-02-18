@@ -142,11 +142,11 @@ bool func_compose(cell_t **cp, type_request_t treq) {
   assert(!is_marked(c));
 
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 1, &alt_set, req_list(NULL, 1, treq.out)) ||
-     !reduce_arg(c, 0, &alt_set, req_list(NULL, treq.in, function_compose_out(c->expr.arg[1], treq.out))) ||
+  if(!reduce_arg(c, 0, &alt_set, req_list(NULL, treq.in, 0)) ||
+     !reduce_arg(c, 1, &alt_set, req_list(NULL, function_compose_in(c->expr.arg[0], treq.in), treq.out)) ||
      as_conflict(alt_set)) goto fail;
   clear_flags(c);
-  placeholder_extend(&c->expr.arg[1], function_compose_in(c->expr.arg[0], treq.in), treq.out);
+  placeholder_extend(&c->expr.arg[0], treq.in, function_compose_out(c->expr.arg[1], treq.out));
 
   cell_t
     *p = c->expr.arg[0],
