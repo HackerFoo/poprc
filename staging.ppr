@@ -5,7 +5,7 @@ imports:
   module stack
   module control
 
-aptest: dup2 swap ap11 swap drop
+dupap: dup2 swap ap11 swap drop
 
 __ [fn] [test] initial
 iterate: dup2 swap ap11 swap drop
