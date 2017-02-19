@@ -5,16 +5,18 @@ imports:
   module stack
   module control
 
-dupap: dup2 swap ap11 swap drop
-
-__ a [f] -> fa a
-thru: [dup] dip12 ap11 swap drop swap
+__ a [f] -> a fa
+peek: [dup] dip12 ap11 swap drop
 
 __ a [f] [g] -> fa ga
-fork: [thru] dip22 ap11 swap drop
+fork: [peek swap] dip22 ap11 swap drop
 
 __ a b [f] [g] -> fa gb
 para: [dip11] dip32 ap11 swap drop
+
+__ a [cond] [f] -> fa
+__ f fails if cond does not return True
+if: [peek] dip22 swap [ap11 swap drop] dip21 !
 
 __ [fn] [test] initial
 iterate: dup2 swap ap11 swap drop
