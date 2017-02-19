@@ -16,6 +16,15 @@ __ f1: [] [] ifte pushl
 
 f6: rotl
 
+__ apply a quote to a single input yielding a single output
+test_ap11: pushl popr swap drop
+
+__ apply a quote to two inputs yielding a single output
+test_ap21: pushl pushl popr swap drop
+
+__ apply a quote to a single input yielding two outputs
+test_ap12: pushl popr swap popr swap drop swap
+
 __ this expands forever because laziness expands backwards; assert must be *later* than recursive call
 __ dec: [dup 5 <= !] [dup 5 > ! 1- dec] | pushl popr swap drop
 dec: [dup 5 <= !] [dup 1- dec swap 5 > !] | pushl popr swap drop

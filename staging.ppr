@@ -7,8 +7,16 @@ imports:
 
 dupap: dup2 swap ap11 swap drop
 
+__ a [f] -> fa a
+thru: [dup] dip12 ap11 swap drop swap
+
+__ a [f] [g] -> fa ga
+fork: [thru] dip22 ap11 swap drop
+
+__ a b [f] [g] -> fa gb
+para: [dip11] dip32 ap11 swap drop
+
 __ [fn] [test] initial
 iterate: dup2 swap ap11 swap drop
 
 check: [|] control.dip21 [dup] swap . . popr !
-

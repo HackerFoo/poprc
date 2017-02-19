@@ -50,26 +50,18 @@ ifte: [] pushl pushl swap pushr [0 == !] [drop drop] | . popr swap drop
 
 __ ifte2: rot [swap drop 0 != !] [0 == !] | pushl pushl pushl popr swap drop cut
 
-__ apply a quote to a single input yielding a single output
-ap11: pushl popr swap drop
+__ apply a quote underneath the top
+dip11: swap [] ap31 swap popr . swap pushr ap02 stack.swap2 drop
+dip12: swap [] ap31 swap popr . swap pushr ap03 stack.swap3 drop
+dip13: swap [] ap31 swap popr . swap pushr ap04 stack.swap4 drop
 
-__ apply a quote to two inputs yielding a single output
-ap21: pushl pushl popr swap drop
-
-__ apply a quote to a single input yielding two outputs
-ap12: pushl popr swap popr swap drop swap
-
-__ apply a quote underneath the top, 1 -> 1
-dip11: swap pushr pushl popr swap popr swap drop swap
-
-__ apply a quote underneath the top, 1 -> 2
-dip12: swap pushr pushl popr swap pushl [swap] . popr swap popr swap popr swap drop
-
-__ apply a quote underneath the top, 2 -> 1
-dip21: swap pushr pushl pushl popr swap popr swap drop swap
-
-__ apply a quote underneath the top, 2 -> 2
+dip21: swap [] ap41 swap popr . swap pushr ap02 stack.swap2 drop
 dip22: swap [] ap41 swap popr . swap pushr ap03 stack.swap3 drop
+dip23: swap [] ap41 swap popr . swap pushr ap04 stack.swap4 drop
+
+dip31: swap [] ap51 swap popr . swap pushr ap02 stack.swap2 drop
+dip32: swap [] ap51 swap popr . swap pushr ap03 stack.swap3 drop
+dip33: swap [] ap51 swap popr . swap pushr ap04 stack.swap4 drop
 
 module logic:
 
