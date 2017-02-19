@@ -127,6 +127,28 @@ cell_t *lookup_word(seg_t w) {
   }
 }
 
+bool match_param_word(const char *pre, seg_t seg, csize_t *in, csize_t *out) {
+  const char *end = seg_end(seg);
+  const char *s = seg.s;
+  while(s < end && *pre) {
+    if(*pre != *s) return false;
+    s++;
+    pre++;
+  }
+  switch(end - s) {
+  case 2:
+    if(char_class(s[1]) != CC_NUMERIC) return false;
+    *out = s[1] - '0';
+  case 1:
+    if(char_class(s[0]) != CC_NUMERIC) return false;
+    *in = s[0] - '0';
+  case 0:
+    return true;
+  default:
+    return false;
+  }
+}
+
 cell_t *parse_word(seg_t w, cell_t *module, unsigned int n) {
   cell_t *c;
   cell_t *data = NULL;
@@ -134,13 +156,8 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n) {
   if(w.s[0] == '?' && w.n == 1) {
     c = var(T_ANY, NULL);
 #if FUNC_AP
-  } else if(w.n == 4 &&
-            w.s[0] == 'a' && w.s[1] == 'p' &&
-            char_class(w.s[2]) == CC_NUMERIC &&
-            char_class(w.s[3]) == CC_NUMERIC) {
-    in = w.s[2] - '0' + 1;
-    out = w.s[3] - '0' + 1;
-    c = func(func_ap, in, out);
+  } else if(in = 1, out = 1, match_param_word("ap", w, &in, &out)) {
+    c = func(func_ap, ++in, ++out);
 #endif
   } else {
     cell_t *e = lookup_word(w);
