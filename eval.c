@@ -418,7 +418,12 @@ void command_graph_toggle(UNUSED cell_t *rest) {
 }
 
 void command_load_file(cell_t *rest) {
-  if(rest) load_file(rest->tok_list.location);
+  char buf[64];
+  while(rest) {
+    seg_read(tok_seg(rest), buf, sizeof(buf));
+    load_file(buf);
+    rest = rest->tok_list.next;
+  }
 }
 
 void command_test(cell_t *rest) {
