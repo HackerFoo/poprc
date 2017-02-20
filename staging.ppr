@@ -4,6 +4,7 @@ imports:
   module list
   module stack
   module control
+  module logic
 
 $: ap11 swap drop
 
@@ -23,6 +24,9 @@ twice: dup para
 __ a [cond] [f] -> fa
 __ f fails if cond does not return True
 if: [peek] dip22 swap [$] dip21 !
+
+__ a [f b] -> fa if b, otherwise a
+ifdo: dup [dup] swap . [[drop] dip21 not] . | ap12 stack.swap2 drop !
 
 __ [fn] [test] initial
 iterate: dup2 swap $

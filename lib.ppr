@@ -65,6 +65,8 @@ dip33: swap [] ap51 swap popr . swap pushr ap04 stack.swap4 drop
 
 module logic:
 
+not: False =:=
+
 __ or: swap [dup 0 != !] ap11 swap | cut
 __ and: 1 rot rot 0 != ! 0 != ! 0 | cut
 __ fix, select disappears: =and 1 rot rot 0 != ! 0 != ! 0 or

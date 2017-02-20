@@ -41,7 +41,6 @@ get2: popr swap popr swap drop swap
 
 ___ to here
 
-not: False =:=
 __ len: dup is_nil [0 swap!] [swap popr drop len 1+ swap not!] | pushl pushl popr swap drop
 
 __ iota: [0 == [] swap !] [dup [dup 1- iota swap] pushl swap 0 != !] | pushl popr swap drop
