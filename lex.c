@@ -201,6 +201,8 @@ seg_t tok(const char *s, const char* e, char_class_t *class) {
   seg.n = s - seg.s;
 done:
   if(class) *class = cc;
+  // separate trailing colon
+  if(seg.n > 1 && seg.s[seg.n-1] == ':') seg.n--;
   return seg;
 }
 
