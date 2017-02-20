@@ -1,18 +1,27 @@
-(defvar popr-brecket-face 'popr-brecket-face)
+;;; package --- Major mode for editing Popr code.
+;;; Commentary:
 
-(defface popr-brecket-face
+;;; Code:
+
+(defvar popr-bracket-face 'popr-bracket-face)
+
+(defface popr-bracket-face
     '((((class color))
        :weight bold))
   "Face for displaying a popr bracket."
   :group 'faces)
 
-(setq popr-highlights
+(defvar popr-highlights
       '(("__ .*". font-lock-comment-face)
         ("_\\w.*\\w_" . font-lock-comment-face)
         ("module\\|imports" . font-lock-keyword-face)
-        ("\\[\\|\\]" . popr-brecket-face)
+        ("\\[\\|\\]" . popr-bracket-face)
         ("^\\s-*\\(\\w+\\):" . font-lock-function-name-face)))
 
 (define-derived-mode popr-mode fundamental-mode "popr"
-  "major mode for editing popr language code."
+  "Major mode for editing Popr code."
   (setq font-lock-defaults '(popr-highlights)))
+
+(provide 'popr-mode)
+
+;;; popr-mode.el ends here
