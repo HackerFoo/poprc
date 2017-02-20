@@ -78,7 +78,7 @@ bool check_free() {
     cell_t *c = &cells[i];
     if(is_closure(c)) {
       if(c->n == PERSISTENT) {
-        i += closure_cells(c);
+        i += closure_cells(c) - 1;
       } else {
         printf("LEAK: %" PRIuPTR " (%u)\n", i, (unsigned int)cells[i].n);
         leak = true;
