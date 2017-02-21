@@ -505,11 +505,11 @@ void store_reduced(cell_t **cp, cell_t *r) {
     refcount_t n = c->n;
     closure_shrink(c, size);
     memcpy(c, r, sizeof(cell_t) * size);
+    c->n = n;
     if(is_cell(r)) {
       traverse_ref(r, ALT | PTRS);
       drop(r);
     }
-    c->n = n;
    } else {
     store_lazy(cp, c, r, 0);
   }

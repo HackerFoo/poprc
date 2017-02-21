@@ -536,9 +536,9 @@ unsigned int trace_reduce(cell_t **cp) {
       cell_t **a = &(*p)->value.ptr[i];
       if(is_list(*a)) {
         if(is_var(*a)) {
-          cell_t *ph = (*a)->value.ptr[list_size(*a) - 1];
+          cell_t **ph = &(*a)->value.ptr[list_size(*a) - 1];
           if(closure_is_ready(*a)) {
-            reduce(&ph, req_simple(T_FUNCTION));
+            reduce(ph, req_simple(T_FUNCTION));
           }
         }
       } else {
