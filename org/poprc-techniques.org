@@ -1,0 +1,126 @@
+#+TITLE: PoprC: Techniques
+#+AUTHOR: Dustin DeWeese
+#+DATE: 2017.2.22
+
+#+OPTIONS: ^:nil num:nil
+#+REVEAL_ROOT: /reveal.js
+#+REVEAL_THEME: blood
+#+REVEAL_TRANS: linear
+
+* Introduction
+Sustaining a complex project is difficult.
+I have developed practices and curated tools while working on such projects, the latest of which is the PoprC compiler.
+These techniques are as vital as the technical merits to the continued progress of the project.
+* Flow & Elegance
+It is critical that the code is easy to read and changes can be made easily.
+** makeheaders
+[[http://www.hwaci.com/sw/mkhdr/][*makeheaders*]] generates headers for .c source
+- Removes C header overhead
+- Makes it easier to split files
+** File and Function Length Limits
+Files should be less than 1000 lines.
+Functions should be less than 100 lines.
+- Makes navigation easier
+- Keep related functions together
+- Increase modularity
+- Encourages abstraction
+** Make
+- Automate common tasks
+- Lightweight and makes splitting files painless
+** Code Generation
+- Composed from common Unix tools: grep, sed, sort
+- Generates simple tables in headers
+- Makes it trivial to add tests, commands, and primitives
+** Conventions
+- More powerful than expressive names, yet concise
+  + Hard to describe, easy to recognize
+- Identify and regularize patterns in the code
+- Abstract when possible with functions or macros
+** Macros
+- Some conventions can be encoded as macros
+- Function like macros are preferred
+- Provide some higher level features
+  + =COUNTUP=, =FOREACH=, =DISPATCH=, =traverse=
+- *CON*: The debugger can't step through macros
+** Commands
+- Can be used from the REPL or as command line arguments
+- Often used to test functionality
+- Integrate with other tools e.g. make, afl
+- Repeatable runs through the debugger
+* Insight & Transparency
+A clear understanding speeds debugging and improves design.
+** Diagrams
+- Most powerful tool while debugging
+- Detailed Graphviz diagrams of internal graph representation
+- Visually detect problems quickly
+- Provides clues for deeper analysis
+**
+:PROPERTIES:
+:reveal_background: ./poprc_techniques_img/diagrams.svg
+:reveal_background_trans: slide
+:END:
+**
+:PROPERTIES:
+:reveal_background: ./poprc_techniques_img/diagrams2.svg
+:reveal_background_trans: slide
+:END:
+** lldb
+- Nicer interface than GDB, Python scripting
+- Conditional breakpoints to stop at reduction of a particular cell
+- Commands for often repeated tasks, such as generating diagrams
+* Confidence & Stability
+The ability to quickly verify changes gives confidence and allows aggressive development while maintaining stability.
+** Tests
+- As easy as =void test_foo() {...}=
+- Run with =eval -t foo=
+- =make test= runs all tests and diffs with stored test output
+** Asserts
+- =assert()= is used liberally
+- Most functions have preconditions asserted
+- Selective mark-and-sweep to check reference counts
+- Very useful in conjunction with afl
+** [[http://lcamtuf.coredump.cx/afl/][American Fuzzy Lop (afl)]]
+- Powerful fuzzer which is good at triggering asserts
+- Not all asserts are bad; assert_throw() for expected failures
+  + Assert_throw() doesn't count as a crash
+  + Also allows for cleaner handling of these asserts
+- Crashes are manually reduced and logged into issues.org's bug section
+- Simple report generation in Makefile
+* Focus & Planning
+Planning provides a longer view and context. It helps me focus on what's next, or defer new tasks so I can focus on a single task.
+** org-mode
+- Simple structure
+- Checked into the repo as a simple bug tracker
+#+REVEAL: split
+- Major section is for large efforts
+  + Usually spanning months
+  + Should be done in a branch if it affects master capability
+- Minor section is for smaller efforts
+  + Less than a month
+  + May be done in a branch
+- Bug section is for regressions
+  + Usually fixed on master
+  + Periodically scanned for inadvertent fixes
+* Inspiration & Resources
+Development does not happen in isolation. I can not make something great if I don't learn from others.
+#+REVEAL: split
+- White papers, Wikipedia (check references)
+- Similar implementations
+  + Usually not usable directly because of dependencies or license
+- IRC
+  + Can be good for getting feedback and expressing ideas
+* Tools
+These are fundamental tools that enable and enhance my work.
+** emacs
+- projectile
+  + Allows quick navigation through the project
+- rtags & flycheck
+  + Provides quick feedback on compilation errors and warnings
+  + Syntax aware navigation
+- popr-mode
+  + Syntax highlighting for .ppr source
+** git
+- Branches
+  + master :: Main branch
+  + wip :: Temporary commits not ready for master; used for backup and synchronization, often rebased into logical commits
+  + {Feature Branches} :: Major/minor features in progress
