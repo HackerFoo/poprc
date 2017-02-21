@@ -28,7 +28,27 @@ if: [peek] dip22 swap [$] dip21 !
 __ a [f b] -> fa if b, otherwise a
 ifdo: dup [dup] swap . [[drop] dip21 not] . | ap12 stack.swap2 drop !
 
-__ [fn] [test] initial
-iterate: dup2 swap $
+in2: [] ap20 dup [ap02 stack.swap2 drop] dip12
+
+keep2: [] ap20 dup ap02 stack.swap2 drop
+
+in3: [] ap30 dup [ap03 swap3 drop] dip13
+
+keep3: [] ap30 dup ap03 swap3 drop
+
+dup3: in3 ap03 swap3 drop
+
+__ [f] -> [f [f]]
+self: dup [] pushl .
+
+__ [f] g -> [f [f] g]
+carry: [dup] dip12 [] ap20 .
+__ carry: [self] dip11 [] ap20
+
+__ a [fn] [test] -> apply fn to a while a [test] $ is True
+iterate:
+  in2 [iterate] .  __ a [fn] [test] [[fn] [test] iterate]
+    [swap] dip22 . swap __ a [fn [fn] [test] iterate] [test]
+    [fork] ap20 ifdo
 
 check: [|] control.dip21 [dup] swap . . popr !
