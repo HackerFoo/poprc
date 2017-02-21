@@ -167,6 +167,12 @@ ___ control.dip33 (5 -> 4) ___
 [9] __primitive.dep 5, type = a x1
 [10] return [ 7 8 9 1 ], type = r x1
 
+___ logic.not (1 -> 1) ___
+[0] var, type = ?s x1
+[1] __primitive.eq_s 0 2, type = s x1
+[2] val 0, type = s x1
+[3] return [ 1 ], type = r x1
+
 ___ tests.dec (1 -> 1) ___
 [0] var, type = ?i x4
 [1] __primitive.lte 0 2, type = s x1
@@ -258,12 +264,6 @@ ___ tests.get2 (1 -> 2) ___
 [2] __primitive.dep 1, type = a x1
 [3] __primitive.dep 1, type = a x1
 [4] return [ 2 3 ], type = r x1
-
-___ tests.not (1 -> 1) ___
-[0] var, type = ?s x1
-[1] __primitive.eq_s 0 2, type = s x1
-[2] val 0, type = s x1
-[3] return [ 1 ], type = r x1
 
 ___ tests.pushl2 (3 -> 1) ___
 [0] var, type = ?f x1
