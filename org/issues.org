@@ -77,12 +77,12 @@ look for word in parent module, parent imports, context module, context imports,
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
-** TODO staging.ifdo
-** TODO 1 [dup 2+] [3+ dup] | ap12 stack.swap2 drop
+** DONE staging.ifdo
+** DONE 1 [dup 2+] [3+ dup] | ap12 stack.swap2 drop
 ** TODO f: 3+ [[] pushl] pushl [] [[2]] | . popr swap drop
 - leak
 ** DONE ? [id] . popr
-** TODO no return in 32 bit control.ap21
+** DONE no return in 32 bit control.ap21
 ** DONE vars don't update type for T_LIST
 ** DONE f: pushl
 - introduces extra T_FUNCTION into quote
@@ -101,22 +101,25 @@ new_deps() should not create unreferenced deps
 ** TODO VV L JsC ! Js ! [ - ] ? | [ ] ? | [ * ! . . . * . * . Q [ G * ] dup - ] ? | [ ] ? | [ * ! . . . * . * ] . . popr
 eval: rt.c:723: cell_t *add_to_list(cell_t *, cell_t *, cell_t **): Assertion `check_tmp_loop(*l)' failed.
 ** DONE [ 3 2 - ] > , [ 2 C - ] ? | .
-** TODO ? dup [+] . .
-** TODO ? dup [+] . swap .
+** DONE ? dup [+] . .
+** DONE ? dup [+] . swap .
 ** TODO [ swap ] dup pushl popr drop dup pushl popr
 Creates a cycle that can't be freed
 ** DONE [ 3 ] ? [ ! ] . [ ] | . __ hang
 ** TODO f: . popr swap drop
+[1] [2] f __ leak!
 ** DONE f: pushr popr swap drop __ unreferenced pushr
 ** TODO fix tests.sum
 ** DONE f1: [1] swap ! popr swap drop
 ** TODO f1: 1 swap pushl popr ! popr swap drop
+[3<] f1 __ crashes!
 ** DONE ? [dup 1- swap 3 <] [dup 1+ swap 3 >] | pushl popr ! popr swap drop
 ** DONE 1 2 3 | | dup 3 < !
 ** DONE f1: [ 1 ] [ 2 ] | pushl popr __ 3 f1
 ** TODO f1: [] pushl f1 __ why is arity 1 -> 2 instead of 1 -> 1?
 ** DONE f1: [] pushl
 ** TODO f1: dup f1 [] pushl
+1 f1 __ crashes!
 ** DONE f2: popr swap pushl popr (regression)
 ** DONE :d f1 |
 ** DONE fix compiling pushr & pushl
