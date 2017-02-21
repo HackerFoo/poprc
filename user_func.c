@@ -106,7 +106,11 @@ expand:
   size_t s = 0;
   for(size_t i = in; i < len; i += s) {
     cell_t *p = &code[i];
-    s = closure_cells(p);
+    s = calculate_cells(p->size);
+    if(!p->func) {
+      map[i] = 0;
+      continue; // skip empty cells TODO remove these
+    }
     if(trace_type(p).exclusive == T_RETURN) {
       if(!returns) returns = p;
       continue;
@@ -155,9 +159,7 @@ expand:
   res = id(get_return_arg(map, returns, out), alt_set);
   COUNTUP(i, out) {
     cell_t *d = c->expr.arg[n - 1 - i];
-    d->func = func_id;
-    d->expr.arg[0] = get_return_arg(map, returns, i);
-    d->expr.alt_set = alt_set;
+    store_lazy_dep(d, get_return_arg(map, returns, i), alt_set);
   }
 
   // rest
@@ -171,11 +173,6 @@ expand:
       *results[i] = a ? id(a, as) : NULL;
     }
     next = trace_decode(returns->alt);
-  }
-
-  // drop c from deps
-  LOOP(out) {
-    drop(c);
   }
 
   store_lazy(cp, c, res, 0);

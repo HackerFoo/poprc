@@ -295,6 +295,7 @@ cell_t *persistent(cell_t *c) {
 }
 
 void merge_into_module(cell_t *ma, cell_t *mb) {
+  if(!mb) return;
   cell_t
     *a = *module_ref(ma),
     *b = *module_ref(mb);
