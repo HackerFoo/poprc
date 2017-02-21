@@ -451,8 +451,11 @@ void command_import(cell_t *rest) {
   if(!rest) return;
   cell_t *eval_module = module_get_or_create(modules, string_seg("eval"));
   cell_t *eval_imports = module_get_or_create(eval_module, string_seg("imports"));
-  cell_t *import = get_module(tok_seg(rest));
-  merge_into_module(eval_imports, import);
+  while(rest) {
+    cell_t *import = get_module(tok_seg(rest));
+    merge_into_module(eval_imports, import);
+    rest = rest->tok_list.next;
+  }
 }
 
 void print_module_bytecode(cell_t *m) {
