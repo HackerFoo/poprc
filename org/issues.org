@@ -77,6 +77,7 @@ look for word in parent module, parent imports, context module, context imports,
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
+** TODO staging.carry doesn't seem to work right
 ** DONE staging.ifdo
 ** DONE 1 [dup 2+] [3+ dup] | ap12 stack.swap2 drop
 ** TODO f: 3+ [[] pushl] pushl [] [[2]] | . popr swap drop
