@@ -313,6 +313,8 @@ void merge_into_module(cell_t *ma, cell_t *mb) {
 cell_t *get_submodule(cell_t *m, seg_t s) {
   cell_t *p = module_get(m, s);
 
+  if(!p) return NULL;
+
   // already built
   if(is_module(p)) return p;
 
