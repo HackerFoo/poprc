@@ -124,16 +124,6 @@ ___ control.dip23 (4 -> 4) ___
 [8] __primitive.dep 4, type = a x1
 [9] return [ 6 7 8 1 ], type = r x1
 
-___ control.dip31 (5 -> 2) ___
-[0] var, type = ?f x1
-[1] var, type = ?a x1
-[2] var, type = ?a x1
-[3] var, type = ?a x1
-[4] var, type = ?a x1
-[5] __primitive.ap 4 3 2 0 -> 7, type = f x1
-[7] __primitive.dep 5, type = a x1
-[8] return [ 7 1 ], type = r x1
-
 ___ control.ifte (3 -> 1) ___
 [0] var, type = ?a x1
 [1] var, type = ?a x1
@@ -143,6 +133,16 @@ ___ control.ifte (3 -> 1) ___
 [5] __primitive.assert 0 3, type = a x1
 [6] return [ 5 ], type = r -> 7 x1
 [7] return [ 1 ], type = r x1
+
+___ control.dip31 (5 -> 2) ___
+[0] var, type = ?f x1
+[1] var, type = ?a x1
+[2] var, type = ?a x1
+[3] var, type = ?a x1
+[4] var, type = ?a x1
+[5] __primitive.ap 4 3 2 0 -> 7, type = f x1
+[7] __primitive.dep 5, type = a x1
+[8] return [ 7 1 ], type = r x1
 
 ___ control.dip32 (5 -> 3) ___
 [0] var, type = ?f x1
@@ -172,6 +172,27 @@ ___ logic.not (1 -> 1) ___
 [1] __primitive.eq_s 0 2, type = s x1
 [2] val 0, type = s x1
 [3] return [ 1 ], type = r x1
+
+___ logic.or (2 -> 1) ___
+[0] var, type = ?s x2
+[1] var, type = ?a x1
+[2] __primitive.eq_s 0 3, type = s x1
+[3] val 0, type = s x1
+[4] __primitive.assert 1 2, type = a x1
+[5] return [ 4 ], type = r -> 8 x1
+[6] __primitive.assert 7 0, type = s x1
+[7] val 1, type = s x1
+[8] return [ 6 ], type = r x1
+
+___ logic.and (2 -> 1) ___
+[0] var, type = ?s x2
+[1] var, type = ?a x1
+[2] __primitive.assert 1 0, type = a x1
+[3] return [ 2 ], type = r -> 7 x1
+[4] __primitive.eq_s 0 5, type = s x1
+[5] val 0, type = s x2
+[6] __primitive.assert 5 4, type = s x1
+[7] return [ 6 ], type = r x1
 
 ___ tests.dec (1 -> 1) ___
 [0] var, type = ?i x4
