@@ -45,32 +45,33 @@ swap4: [] swap pushr swap pushr swap pushr swap pushr pushl popr swap popr swap 
 
 module control:
 
+imports:
+  module stack
+
 __ if then else
 ifte: [] pushl pushl swap pushr [0 == !] [drop drop] | . popr swap drop
 
 __ ifte2: rot [swap drop 0 != !] [0 == !] | pushl pushl pushl popr swap drop cut
 
 __ apply a quote underneath the top
-dip11: swap [] ap31 swap popr . swap pushr ap02 stack.swap2 drop
-dip12: swap [] ap31 swap popr . swap pushr ap03 stack.swap3 drop
-dip13: swap [] ap31 swap popr . swap pushr ap04 stack.swap4 drop
+dip11: swap [] ap31 swap popr . swap pushr ap02 swap2 drop
+dip12: swap [] ap31 swap popr . swap pushr ap03 swap3 drop
+dip13: swap [] ap31 swap popr . swap pushr ap04 swap4 drop
 
-dip21: swap [] ap41 swap popr . swap pushr ap02 stack.swap2 drop
-dip22: swap [] ap41 swap popr . swap pushr ap03 stack.swap3 drop
-dip23: swap [] ap41 swap popr . swap pushr ap04 stack.swap4 drop
+dip21: swap [] ap41 swap popr . swap pushr ap02 swap2 drop
+dip22: swap [] ap41 swap popr . swap pushr ap03 swap3 drop
+dip23: swap [] ap41 swap popr . swap pushr ap04 swap4 drop
 
-dip31: swap [] ap51 swap popr . swap pushr ap02 stack.swap2 drop
-dip32: swap [] ap51 swap popr . swap pushr ap03 stack.swap3 drop
-dip33: swap [] ap51 swap popr . swap pushr ap04 stack.swap4 drop
+dip31: swap [] ap51 swap popr . swap pushr ap02 swap2 drop
+dip32: swap [] ap51 swap popr . swap pushr ap03 swap3 drop
+dip33: swap [] ap51 swap popr . swap pushr ap04 swap4 drop
 
 module logic:
 
 not: False =:=
 
-__ or: swap [dup 0 != !] ap11 swap | cut
-__ and: 1 rot rot 0 != ! 0 != ! 0 | cut
-__ fix, select disappears: =and 1 rot rot 0 != ! 0 != ! 0 or
-
+or: [not!] [True swap!] | ap21 swap drop
+and: [!] [False swap not!] | ap21 swap drop
 
 __ module loop:
 
