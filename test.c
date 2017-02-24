@@ -77,12 +77,11 @@ bool check_free() {
   FOREACH(i, cells) {
     cell_t *c = &cells[i];
     if(is_closure(c)) {
-      if(c->n == PERSISTENT) {
-        i += closure_cells(c) - 1;
-      } else {
+      if(c->n != PERSISTENT) {
         printf("LEAK: %" PRIuPTR " (%u)\n", i, (unsigned int)cells[i].n);
         leak = true;
       }
+      i += closure_cells(c) - 1;
     }
   }
   return !leak;

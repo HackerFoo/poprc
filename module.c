@@ -306,7 +306,7 @@ void merge_into_module(cell_t *ma, cell_t *mb) {
     assert(is_map(a));
     a = expand_map(a, *map_cnt(b->value.map));
     string_map_union(a->value.map, b->value.map);
-    *module_ref(ma) = a;
+    *module_ref(ma) = persistent(a);
   }
 }
 
