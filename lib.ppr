@@ -24,47 +24,84 @@ head: popr swap drop
 
 module stack:
 
-__ rotate top 3
-rotl:              __ x y z
-  [] pushl         __ x y [z]
-    swap pushr     __ x [z y]
-    pushl          __ [x z y]
-    popr swap      __ y [x z]
-    popr swap      __ y z [x]
-    popr swap drop __ y z x
+pull: popr swap
+pull2: pull pull
+pull3: pull2 pull
+pull4: pull3 pull
+pull5: pull4 pull
 
-rotr: rotl rotl
+nip: swap drop
+tuck: [] ap20 dup . pull3 drop
+over: swap tuck
 
-dup2: swap [] pushl pushl dup . popr swap popr swap popr swap popr swap drop
+rotl: swap2
+rotr: swap2 swap2
+dup2: [] ap20 dup . ap04 swap4 drop
 
-under: swap dup rotr
-
-swap2: [] swap pushr swap pushr pushl popr swap popr swap popr swap drop
-swap3: [] swap pushr swap pushr swap pushr pushl popr swap popr swap popr swap popr swap drop
-swap4: [] swap pushr swap pushr swap pushr swap pushr pushl popr swap popr swap popr swap popr swap popr swap drop
+swap2: [] swap pushr swap pushr pushl pull3 drop
+swap3: [] swap pushr swap pushr swap pushr pushl pull4 drop
+swap4: [] swap pushr swap pushr swap pushr swap pushr pushl pull5 drop
 
 module control:
 
 imports:
   module stack
+  module logic
 
 __ if then else
-ifte: [] pushl pushl swap pushr [0 == !] [drop drop] | . popr swap drop
+ifte: [] ap20 swap pushr [not!] [swap drop!] | . pull drop
 
 __ ifte2: rot [swap drop 0 != !] [0 == !] | pushl pushl pushl popr swap drop cut
 
+__ [1 [2]] 3 -> 3 1 2
+feed: swap popr . swap pushr
+
 __ apply a quote underneath the top
-dip11: swap [] ap31 swap popr . swap pushr ap02 swap2 drop
-dip12: swap [] ap31 swap popr . swap pushr ap03 swap3 drop
-dip13: swap [] ap31 swap popr . swap pushr ap04 swap4 drop
+dip11: swap [] ap31 feed ap02 swap2 drop
+dip12: swap [] ap31 feed ap03 swap3 drop
+dip13: swap [] ap31 feed ap04 swap4 drop
 
-dip21: swap [] ap41 swap popr . swap pushr ap02 swap2 drop
-dip22: swap [] ap41 swap popr . swap pushr ap03 swap3 drop
-dip23: swap [] ap41 swap popr . swap pushr ap04 swap4 drop
+dip21: swap [] ap41 feed ap02 swap2 drop
+dip22: swap [] ap41 feed ap03 swap3 drop
+dip23: swap [] ap41 feed ap04 swap4 drop
 
-dip31: swap [] ap51 swap popr . swap pushr ap02 swap2 drop
-dip32: swap [] ap51 swap popr . swap pushr ap03 swap3 drop
-dip33: swap [] ap51 swap popr . swap pushr ap04 swap4 drop
+dip31: swap [] ap51 feed ap02 swap2 drop
+dip32: swap [] ap51 feed ap03 swap3 drop
+dip33: swap [] ap51 feed ap04 swap4 drop
+
+__ a [f] -> fa
+$: ap11 swap drop
+
+__ a [f] -> a fa
+peek: [dup] dip12 $
+
+__ a [f] -> fa a
+->: peek swap
+
+__ a [f] [g] -> fa ga
+fork: [->] dip22 $
+
+__ a b [f] [g] -> fa gb
+para: [dip11] dip32 $
+
+__ a b [f] -> fa fb
+twice: dup para
+
+__ a [cond] [f] -> fa
+__ f fails if cond does not return True
+if: [peek] dip22 swap [$] dip21 !
+
+__ a [f b] -> fa if b, otherwise a
+ifdo: dup [dup] swap . [[drop] dip21 not] . | ap12 swap2 drop !
+
+__ a b -> a b [a b]
+in2: [] ap20 dup [ap02 swap2 drop] dip12
+
+__ a [fn] [test] -> apply fn to a while a [test] $ is True
+iterate:
+  in2 [iterate] .  __ a [fn] [test] [[fn] [test] iterate]
+    [swap] dip22 . swap __ a [fn [fn] [test] iterate] [test]
+    [fork] ap20 ifdo
 
 module logic:
 
@@ -72,11 +109,3 @@ not: False =:=
 
 or: [not!] [True swap!] | ap21 swap drop
 and: [!] [False swap not!] | ap21 swap drop
-
-__ module loop:
-
-__ mod5: [dup 5 < !] [dup 5 >= swap 5- mod5 swap !] | pushl popr cut swap drop
-__ fib: dup 2 < [1 swap drop] [dup 1- fib swap 2- fib +] ifte pushl head
-__ loop: dup 1 > [1- loop] [] ifte pushl head
-__ fact: dup 1 > [dup 1- fact *] [] ifte pushl head
-__ top0 [popr] [0] | pushl popr swap drop cut

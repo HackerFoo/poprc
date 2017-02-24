@@ -6,29 +6,7 @@ imports:
   module control
   module logic
 
-$: ap11 swap drop
-
-__ a [f] -> a fa
-peek: [dup] dip12 $
-->: peek swap
-
-__ a [f] [g] -> fa ga
-fork: [->] dip22 $
-
-__ a b [f] [g] -> fa gb
-para: [dip11] dip32 $
-
-__ a b [f] -> fa fb
-twice: dup para
-
-__ a [cond] [f] -> fa
-__ f fails if cond does not return True
-if: [peek] dip22 swap [$] dip21 !
-
-__ a [f b] -> fa if b, otherwise a
-ifdo: dup [dup] swap . [[drop] dip21 not] . | ap12 stack.swap2 drop !
-
-in2: [] ap20 dup [ap02 stack.swap2 drop] dip12
+swash: swap pushr __ this compiles backwards
 
 keep2: [] ap20 dup ap02 stack.swap2 drop
 
@@ -44,11 +22,5 @@ self: dup [] pushl .
 __ [f] g -> [f [f] g]
 carry: [dup] dip12 [] ap20 .
 __ carry: [self] dip11 [] ap20
-
-__ a [fn] [test] -> apply fn to a while a [test] $ is True
-iterate:
-  in2 [iterate] .  __ a [fn] [test] [[fn] [test] iterate]
-    [swap] dip22 . swap __ a [fn [fn] [test] iterate] [test]
-    [fork] ap20 ifdo
 
 check: [|] control.dip21 [dup] swap . . popr !
