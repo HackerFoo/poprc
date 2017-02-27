@@ -196,12 +196,10 @@ bool func_pushr(cell_t **cp, type_request_t treq) {
   if(!reduce_arg(c, 0, &alt_set, atr)) goto fail;
   clear_flags(c);
 
-  cell_t *p = c->expr.arg[0];
-
-  int n = list_size(p);
-  cell_t *res = expand(ref(p), 1);
-  memmove(res->value.ptr+1, res->value.ptr, sizeof(cell_t *)*n);
+  cell_t *res = make_list(2);
+  res->value.ptr[1] = ref(c->expr.arg[0]);
   res->value.ptr[0] = ref(c->expr.arg[1]);
+  res->value.type.flags = T_ROW;
   res->value.alt_set = alt_set;
   drop(res->alt);
   res->alt = c->alt;
@@ -383,25 +381,22 @@ bool func_ap(cell_t **cp, type_request_t treq) {
   reverse_ptrs((void **)c->expr.arg, in);
   cell_t *l = compose_args(c->expr.arg, in, ref(c->expr.arg[in]));
   reverse_ptrs((void **)c->expr.arg, in);
-  csize_t l_out = function_out(l);
-  csize_t stop = min(l_out, out);
-  COUNTUP(i, stop) {
+
+  insert_root(&c->expr.arg[in]);
+  list_iterator_t it = {l, 0};
+  COUNTUP(i, out) {
+    cell_t *x = list_iterate(&it);
+    if(!x) {
+      drop(l);
+      goto fail;
+    }
     cell_t *d = c->expr.arg[n-1-i];
-    store_lazy_dep(d, ref(l->value.ptr[i]), alt_set);
+    store_lazy_dep(d, ref(x), alt_set);
   }
+  remove_root(&c->expr.arg[in]);
 
-  if(out > l_out) {
-    drop(l);
-    goto fail;
-  }
-
-  /* drop the right list elements */
-  csize_t elems = list_size(l) - out;
-  cell_t *res = make_list(elems);
+  cell_t *res = list_rest(it);
   res->value.type.flags = is_var(l) ? T_VAR : 0;
-  COUNTUP(i, elems) {
-    res->value.ptr[i] = ref(l->value.ptr[i + out]);
-  }
   drop(l);
   res->value.alt_set = alt_set;
   res->alt = c->alt;

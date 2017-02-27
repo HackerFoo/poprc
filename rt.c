@@ -293,14 +293,34 @@ cell_t *expand_deps(cell_t *c, csize_t s) {
 }
 
 csize_t function_out(const cell_t *l) {
+  csize_t n = 0;
+  while(is_row_list(l)) {
+    csize_t ln = list_size(l) - 1;
+    n += ln;
+    l = l->value.ptr[ln];
+  }
+  return n + list_size(l);
+}
+
+// *** TODO compose if needed
+cell_t **left_list(cell_t **l) {
+  while(is_row_list(*l)) {
+    l = &(*l)->value.ptr[list_size(*l) - 1];
+  }
+  return l;
+}
+
+cell_t *leftmost(const cell_t *l) {
+  while(is_row_list(l)) {
+    l = l->value.ptr[list_size(l) - 1];
+  }
   csize_t n = list_size(l);
-  return is_var(l) ? n - 1 : n;
+  return n ? l->value.ptr[n-1] : NULL; // ***
 }
 
 csize_t function_in(const cell_t *l) {
-  csize_t n = list_size(l);
-  if(n == 0) return 0;
-  cell_t *c = l->value.ptr[n-1];
+  cell_t *c = leftmost(l);
+  if(!c) return 0;
   if(closure_is_ready(c)) return 0;
   csize_t in = 1;
   while(c) {
@@ -314,18 +334,15 @@ csize_t function_in(const cell_t *l) {
 cell_t *compose_args(cell_t **aptr, csize_t a_out, cell_t *b) {
   if(a_out == 0) goto done;
 
-  csize_t
-    b_in = function_in(b),
-    b_out = function_out(b),
-    b_n = list_size(b);
+  csize_t b_in = function_in(b);
 
   // fill the leftmost element of b
   cell_t **ap = aptr;
   {
     int n = min(a_out, b_in);
     if(n--) {
-      b = arg_nd(b->value.ptr[b_n-1], ref(*ap++), b);
-      cell_t *left = b->value.ptr[b_n-1];
+      b = arg_nd(leftmost(b), ref(*ap++), b);
+      cell_t *left = leftmost(b);
       // left is now safe for arg() because arg_nd() made necessary copies
       LOOP(n) {
         arg(left, ref(*ap++));
@@ -333,11 +350,12 @@ cell_t *compose_args(cell_t **aptr, csize_t a_out, cell_t *b) {
     }
   }
 
-  // prepend b with the remainder of a
+  // prepend b with the remainder of a ***
+  cell_t **ll = left_list(&b);
   if(a_out > b_in) {
     int n = a_out - b_in;
-    b = expand(b, n);
-    cell_t **bp = &b->value.ptr[b_out];
+    *ll = expand(*ll, n);
+    cell_t **bp = &(*ll)->value.ptr[list_size(*ll) - n];
       LOOP(n) {
       *bp++ = ref(*ap++);
     }

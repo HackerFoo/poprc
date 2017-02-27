@@ -496,13 +496,14 @@ bool eval_command(char *line, char *end) {
   return !quit;
 }
 
-void reduce_root(cell_t *c) {
+void reduce_root(cell_t **cp) {
   rt_init();
-  insert_root(&c);
+  insert_root(cp);
   if(write_graph) make_graph_all(GRAPH_FILE);
-  reduce_list(c);
+  reduce_list(*cp);
   if(write_graph) make_graph_all(REDUCED_GRAPH_FILE);
-  remove_root(&c);
+  remove_root(cp);
+  func_list(cp, req_simple(T_RETURN));
 }
 
 cell_t *eval_module() {
@@ -516,9 +517,9 @@ void eval(const cell_t *p) {
   if(s > 0 && !closure_is_ready(c->value.ptr[s-1])) {
     printf("incomplete expression\n");
   } else {
-    reduce_root(c);
+    reduce_root(&c);
     ASSERT_REF();
-    show_list(c);
+    show_alt(c);
     printf("\n");
   }
   drop(c);

@@ -50,7 +50,6 @@ cell_t *trace_ptr = &trace_cells[0];
 typedef intptr_t trace_index_t;
 #endif
 
-static trace_index_t trace_build_quote(cell_t *q, trace_index_t li);
 static bool pre_compile_word(cell_t *l, cell_t *module, csize_t *in, csize_t *out);
 static bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_t out);
 static cell_t *compile_quote(cell_t *parent_entry, cell_t *q);
@@ -206,15 +205,15 @@ void print_bytecode(cell_t *e) {
       continue;
     }
     if(is_value(c)) {
-      if(is_var(c)) {
-        printf(" var");
-      } else if(is_list(c) || c->value.type.exclusive == T_RETURN) {
+      if(is_list(c) || c->value.type.exclusive == T_RETURN) {
         if(c->value.type.exclusive == T_RETURN) printf(" return");
         printf(" [");
         COUNTDOWN(i, list_size(c)) {
           printf(" %" PRIdPTR, trace_decode(c->value.ptr[i]));
         }
         printf(" ]");
+      } else if(is_var(c)) {
+        printf(" var");
       } else {
         printf(" val %" PRIdPTR, c->value.integer[0]);
       }
@@ -345,6 +344,9 @@ void trace_final_pass(cell_t *e) {
       } else {
         p->size = 2;
         p->func = func_ap;
+        cell_t *x = p->expr.arg[0];
+        p->expr.arg[0] = p->expr.arg[1];
+        p->expr.arg[1] = x;
       }
     } else if(p->func == func_placeholder) {
       p->func = func_ap;
@@ -382,72 +384,15 @@ void trace_set_type(cell_t *tc, int t) {
   }
 }
 
-// TODO unevaluated functions instead for later compilation
 static
-trace_index_t trace_store_list(cell_t *c) {
-  csize_t n = list_size(c);
-  trace_index_t li = NIL_INDEX;
-
-  if(n > 0) {
-    cell_t *p = c->value.ptr[n-1];
-    if(is_placeholder(p)) { // unreduced placeholder
-      csize_t in = closure_in(p);
-      li = trace_get_value(p->expr.arg[in-1]);
-      trace_set_type(&trace_cur[li], T_FUNCTION);
-      li = trace_tail(li, p->expr.out);
-      COUNTDOWN(i, in-1) {
-        cell_t *a = p->expr.arg[i];
-        if(!a) break;
-        li = trace_build_quote(a, li);
-      }
-      n--;
-    } else if (is_var(p) && is_function(p)) { // reduced placeholder
-      cell_t *t = p->value.ptr[0];
-      if(t) {
-        li = t - trace_cur;
-        n--;
-      }
-    }
-  }
-
-  COUNTUP(i, n) {
-    li = trace_build_quote(c->value.ptr[i], li);
-  }
-  return li;
-}
-
-static
-cell_t *trace_return(cell_t *c) {
-  c = copy(c);
-  traverse(c, {
-      if(*p) {
-        trace_index_t x;
-        if(is_list(*p)) {
-          x = trace_store_list(*p);
-        } else {
-          x = trace_store(*p, *p) - trace_cur;
-        }
-        *p = trace_encode(x);
-        trace_cur[x].n++;
-      }
-    }, PTRS);
-  cell_t *t = trace_copy(c);
-  closure_free(c);
-  t->value.type.exclusive = T_RETURN;
-  t->n = -1;
-  t->alt = NULL;
-  return t;
-}
-
-static
-trace_index_t trace_build_quote(cell_t *q, trace_index_t li) {
-  assert(is_closure(q));
+trace_index_t trace_build_quote(cell_t *l) {
+  assert(is_list(l));
   cell_t *vl = 0;
   cell_t **vlp = &vl;
 
-  vlp = trace_var_list(q, vlp);
+  vlp = trace_var_list(l, vlp);
   size_t in = tmp_list_length(vl);
-  cell_t *n = trace_alloc(in + 2);
+  cell_t *n = trace_alloc(in + 1);
 
   n->expr.out = 0;
   n->func = func_quote;
@@ -464,12 +409,33 @@ trace_index_t trace_build_quote(cell_t *q, trace_index_t li) {
 
   clean_tmp(vl);
 
-  if(li >= 0) trace_cur[li].n++;
-  n->expr.arg[in] = trace_encode(li);
-  n->expr.arg[in + 1] = ref(q); // entry points to the quote for now
-  insert_root(&n->expr.arg[in + 1]);
+  n->expr.arg[in] = ref(l); // entry points to the quote for now
+  insert_root(&n->expr.arg[in]);
 
   return n - trace_cur;
+}
+
+static
+cell_t *trace_return(cell_t *c) {
+  c = copy(c);
+  traverse(c, {
+      if(*p) {
+        trace_index_t x;
+        if(is_list(*p)) {
+          x = trace_build_quote(*p);
+        } else {
+          x = trace_store(*p, *p) - trace_cur;
+        }
+        *p = trace_encode(x);
+        trace_cur[x].n++;
+      }
+    }, PTRS);
+  cell_t *t = trace_copy(c);
+  closure_free(c);
+  t->value.type.exclusive = T_RETURN;
+  t->n = -1;
+  t->alt = NULL;
+  return t;
 }
 
 // builds a temporary list of referenced variables
@@ -535,12 +501,14 @@ unsigned int trace_reduce(cell_t **cp) {
     COUNTUP(i, n) {
       cell_t **a = &(*p)->value.ptr[i];
       if(is_list(*a)) {
+        /*
         if(is_var(*a)) {
           cell_t **ph = &(*a)->value.ptr[list_size(*a) - 1];
           if(closure_is_ready(*a)) {
-            reduce(ph, req_simple(T_FUNCTION));
+            reduce(ph, req_simple(T_FUNCTION)); // *** too strict
           }
         }
+        */
       } else {
         trace_store(*a, *a);
       }
@@ -679,15 +647,13 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
 
 static
 bool is_id(cell_t *e) {
-  cell_t *in_var = &e[1], *ret = &e[2];
+  cell_t *ret = &e[4];
   return
-    e->entry.in == 1 &&
-    e->entry.out == 1 &&
-    e->entry.len == 2 &&
-    is_var(in_var) &&
-//    ret->expr_type == T_RETURN &&
+    e->entry.in == 2 &&
+    e->entry.out == 0 &&
+    e->entry.len == 4 &&
     list_size(ret) == 1 &&
-    trace_decode(ret->value.ptr[0]) == 0;
+    trace_decode(ret->value.ptr[0]) == 2;
 }
 
 void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *e) {
@@ -718,15 +684,14 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   cell_t **fp = &q->expr.arg[in];
   assert(*fp);
   assert(remove_root(fp));
-  cell_t *c = quote(*fp);
+  cell_t *c = *fp;
   e->n = PERSISTENT;
-  e->entry.out = 1;
   e->entry.len = 0;
-  e->entry.flags = ENTRY_NOINLINE | ENTRY_QUOTE;
+  e->entry.flags = ENTRY_NOINLINE | ENTRY_QUOTE | (is_var(c) ? ENTRY_ROW : 0);
   e->func = func_exec;
 
   // allocate variables
-  csize_t n = in - 1;
+  csize_t n = in;
   COUNTUP(i, n) {
     cell_t *tc = &trace_cur[i];
     tc->size = 2;
@@ -745,8 +710,9 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   clean_tmp(vl);
 
   // compile
-  e->entry.in = in + fill_args(c) - 1;
+  e->entry.in = in + fill_args(c);
   e->entry.alts = trace_reduce(&c);
+  e->entry.out = list_size(c);
   drop(c);
   trace_enabled = false;
   e->entry.flags &= ~ENTRY_NOINLINE;

@@ -335,79 +335,27 @@ csize_t any_conflicts(cell_t const * const *p, csize_t size) {
   return 0;
 }
 
-// must be at least 2
-#define SHOW_LIST_LIMIT 16
+void show_list_elements(cell_t const *c) {
+  csize_t n = list_size(c);
+  if(!n) return;
+  if(is_row_list(c)) {
+    show_list_elements(c->value.ptr[--n]);
+  }
+  COUNTDOWN(i, n) {
+    show_one(c->value.ptr[i]);
+  }
+}
 
 void show_list(cell_t const *c) {
   assert(c && is_list(c));
-  csize_t n = list_size(c), i;
-  csize_t conflict = 0;
-  if(n) {
-    if(any_alt_overlap((cell_t const *const *)c->value.ptr, n)) {
-      cell_t *p = 0, *free_this = 0;
-      cell_t const *m1 = 0, *m2 = 0;
-
-      /* find first match */
-      if(!(conflict = any_conflicts((cell_t const *const *)c->value.ptr, n))) {
-        m1 = c;
-      } else {
-        p = copy(c);
-        while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, conflict, n)) {
-          if(!(conflict = any_conflicts((cell_t const *const *)p->value.ptr, n))) {
-            m1 = p;
-            free_this = p;
-            break;
-          }
-        }
-      }
-      if(!m1) {
-        /* no matches */
-        printf(" []");
-        if(p) closure_free(p);
-      } else {
-        /* find second match */
-        p = copy(m1);
-        while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, conflict, n)) {
-          if(!(conflict = any_conflicts((cell_t const *const *)p->value.ptr, n))) {
-            m2 = p;
-            break;
-          }
-        }
-        if(m2) printf(" {");
-        /* at least one match */
-        printf(" [");
-        i = n; while(i--) show_one(m1->value.ptr[i]);
-        printf(" ]");
-        closure_free(free_this);
-        if(m2) {
-          /* second match */
-          printf(" | [");
-          i = n; while(i--) show_one(m2->value.ptr[i]);
-          printf(" ]");
-          /* remaining matches */
-          int limit = SHOW_LIST_LIMIT - 2;
-          while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, conflict, n)) {
-            if(!(conflict = any_conflicts((cell_t const *const *)p->value.ptr, n))) {
-              if(!limit--) {
-                printf(" | ...");
-                break;
-              } else {
-                printf(" | [");
-                i = n; while(i--) show_one(p->value.ptr[i]);
-                printf(" ]");
-              }
-            }
-          }
-          printf(" }");
-        }
-        closure_free(p);
-      }
-    } else {
-      printf(" [");
-      i = n; while(i--) show_alt(c->value.ptr[i]);
-      printf(" ]");
-    }
-  } else printf(" []");
+  csize_t n = list_size(c);
+  if(!n) {
+    printf(" []");
+  } else {
+    printf(" [");
+    show_list_elements(c);
+    printf(" ]");
+  }
 }
 
 int test_count() {
