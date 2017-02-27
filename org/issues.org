@@ -53,6 +53,10 @@ assert also works this way
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
+** STARTED leftmost ptr in a list can be a row
+*** TODO pass tests
+*** TODO make quote return a function with a row arg
+*** TODO fix pushl into quote function (in compose_arg)
 ** DONE allocate all vars from trace (preallocate)
 ** DONE memory leak in tests.pushl2
 ** DONE stable references in modules
