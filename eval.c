@@ -64,27 +64,6 @@ void command_git_commit(UNUSED cell_t *rest) {
   puts(GIT_LOG);
 }
 
-bool reduce_list(cell_t *c) {
-  bool b = true;
-  csize_t n = list_size(c);
-  cell_t **p = c->value.ptr;
-  while(n--) {
-    reduce_alt(p);
-    b &= *p != 0;
-    if(*p == 0) *p = &fail_cell;
-    ++p;
-  }
-  return b;
-}
-
-void reduce_alt(cell_t **cp) {
-  cell_t **p = cp;
-  while(*p && reduce(p, req_any)) {
-    p = &(*p)->alt;
-  }
-  *p = 0;
-}
-
 void measure_start() {
   memset(&measure, 0, sizeof(measure));
   measure.start = clock();
@@ -500,10 +479,9 @@ void reduce_root(cell_t **cp) {
   rt_init();
   insert_root(cp);
   if(write_graph) make_graph_all(GRAPH_FILE);
-  reduce_list(*cp);
+  reduce_list(cp);
   if(write_graph) make_graph_all(REDUCED_GRAPH_FILE);
   remove_root(cp);
-  func_list(cp, req_simple(T_RETURN));
 }
 
 cell_t *eval_module() {
@@ -519,8 +497,7 @@ void eval(const cell_t *p) {
   } else {
     reduce_root(&c);
     ASSERT_REF();
-    show_alt(c);
-    printf("\n");
+    show_alts(c);
   }
   drop(c);
 }

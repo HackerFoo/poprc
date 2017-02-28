@@ -331,7 +331,7 @@ csize_t function_in(const cell_t *l) {
   return in;
 }
 
-cell_t *compose_args(cell_t **aptr, csize_t a_out, bool row, cell_t *b) {
+cell_t *compose_args(cell_t **aptr, csize_t a_out, uint8_t flags, cell_t *b) {
   if(a_out == 0) goto done;
 
   csize_t b_in = function_in(b);
@@ -359,7 +359,7 @@ cell_t *compose_args(cell_t **aptr, csize_t a_out, bool row, cell_t *b) {
     LOOP(n) {
       *bp++ = ref(*ap++);
     }
-    if(row) (*ll)->value.type.flags |= T_ROW;
+    (*ll)->value.type.flags |= flags & T_ROW;
   }
 
 done:

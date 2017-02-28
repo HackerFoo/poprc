@@ -436,30 +436,13 @@ void show_one(cell_t const *c) {
   }
 }
 
-void show_alt(cell_t const *c) {
-  cell_t const *p = c, *t;
-
-  if(p) {
-    if(!p->alt) {
-      /* one */
-      show_one(p);
-    } else {
-      /* many */
-      printf(" {");
-      t = p->alt;
-      show_one(p);
-      p = t;
-      do {
-        printf(" |");
-        t = p->alt;
-        show_one(p);
-        p = t;
-      } while(p);
-      printf(" }");
-    }
-  } else {
-    /* none */
-    printf(" {}");
+void show_alts(cell_t const *c) {
+  cell_t const *p = c;
+  while(p) {
+    putchar('|');
+    show_list_elements(p);
+    putchar('\n');
+    p = p->alt;
   }
 }
 
