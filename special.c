@@ -110,19 +110,31 @@ void placeholder_extend(cell_t **lp, int in, int out) {
     d_in = in - min(in, f_in),
     d_out = out - min(out, f_out);
   if(d_in == 0 && d_out == 0) return;
-  cell_t *f = l->value.ptr[f_out];
+  cell_t **left = leftmost(&l);
+  cell_t *f = *left;
   cell_t *ph = func(func_placeholder, d_in + 1, d_out + 1);
 
-  l = expand(l, d_out);
-  COUNTUP(i, d_out) {
-    cell_t *d = dep(ph);
-    l->value.ptr[f_out + i] = d;
-    arg(ph, d);
+  if(l->n) {
+    l->n--;
+    l = copy(l);
+    traverse_ref(l, ALT | PTRS);
   }
+
+  if(d_out) {
+    cell_t *l_exp = make_list(d_out + 1);
+    l_exp->value.type.flags = T_VAR;
+    COUNTUP(i, d_out) {
+      cell_t *d = dep(ph);
+      l_exp->value.ptr[i] = d;
+      arg(ph, d);
+    }
+    *left = l_exp;
+    left = &l_exp->value.ptr[d_out];
+  }
+
   arg(ph, f);
   refn(ph, d_out);
-  l->value.ptr[list_size(l) - 1] = ph;
-  l->value.type.flags = T_VAR;
+  *left = ph;
   *lp = l;
 }
 
