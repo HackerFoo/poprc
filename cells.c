@@ -306,10 +306,6 @@ cell_t *refn(cell_t *c, refcount_t n) {
   return c;
 }
 
-bool is_nil(cell_t const *c) {
-  return !c;
-}
-
 bool is_fail(cell_t const *c) {
   return is_value(c) && (c->value.type.flags & T_FAIL) != 0;
 }

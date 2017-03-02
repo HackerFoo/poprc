@@ -491,8 +491,8 @@ cell_t *eval_module() {
 void eval(const cell_t *p) {
   cell_t *c = parse_expr(&p, eval_module());
   if(!c) return;
-  csize_t s = list_size(c);
-  if(s > 0 && !closure_is_ready(c->value.ptr[s-1])) {
+  cell_t *left = *leftmost(&c);
+  if(left && !closure_is_ready(left)) {
     printf("incomplete expression\n");
   } else {
     reduce_root(&c);
@@ -505,10 +505,8 @@ void eval(const cell_t *p) {
 bool get_arity(const cell_t *p, csize_t *in, csize_t *out, cell_t *module) {
   cell_t *c = parse_expr(&p, module);
   if(!c) return false;
-  *in = fill_args(c);
-  csize_t n = list_size(c);
-  if(c->value.ptr[n-1]->func == func_placeholder) n--;
-  *out = max(1, n);
+  *in = function_in(c);
+  *out = function_out(c);
   drop(c);
   return true;
 }

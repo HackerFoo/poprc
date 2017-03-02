@@ -387,6 +387,7 @@ void trace_set_type(cell_t *tc, int t) {
 static
 trace_index_t trace_build_quote(cell_t *l) {
   assert(is_list(l));
+  if(is_empty_list(l)) return NIL_INDEX;
   cell_t *vl = 0;
   cell_t **vlp = &vl;
 
@@ -489,7 +490,6 @@ int test_var_count() {
 
 static
 unsigned int trace_reduce(cell_t **cp) {
-  csize_t n = list_size(*cp);
   cell_t *tc = NULL, **prev = &tc;
   unsigned int alts = 0;
 
@@ -498,18 +498,12 @@ unsigned int trace_reduce(cell_t **cp) {
   cell_t **p = cp;
   while(*p) {
     if(!func_list(p, req_simple(T_RETURN))) continue;
-    COUNTUP(i, n) {
-      cell_t **a = &(*p)->value.ptr[i];
-      if(is_list(*a)) {
-        /*
-        if(is_var(*a)) {
-          cell_t **ph = &(*a)->value.ptr[list_size(*a) - 1];
-          if(closure_is_ready(*a)) {
-            reduce(ph, req_simple(T_FUNCTION)); // *** too strict
-          }
-        }
-        */
-      } else {
+    cell_t *flat = flat_copy(*p);
+    drop(*p);
+    *p = flat;
+    cell_t **a;
+    FORLIST(a, *p) {
+      if(!is_list(*a)) {
         trace_store(*a, *a);
       }
     }
@@ -604,7 +598,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   cell_t *l;
   if(!entry || !(l = *entry)) return false;
   if(!is_list(l)) return true;
-  if(list_size(l) < 1) return false;
+  if(is_empty_list(l)) return false;
 
   // make recursive return this entry
   (*entry)->alt = trace_ptr;

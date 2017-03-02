@@ -227,9 +227,8 @@ cell_t *parse_vector(const cell_t **l) {
 }
 
 val_t fill_args(cell_t *r) {
-  csize_t n = list_size(r);
-  if(n < 1) return 0;
-  cell_t *l = r->value.ptr[n-1];
+  cell_t *l = *leftmost(&r);
+  if(!l) return 0;
   val_t i = 0;
   while(!closure_is_ready(l)) {
     cell_t *v = var(T_ANY, NULL);

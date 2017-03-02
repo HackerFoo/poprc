@@ -153,28 +153,10 @@ bool func_compose(cell_t **cp, type_request_t treq) {
     *q = c->expr.arg[1],
     *res;
 
-  if(list_size(q) == 0) { res = ref(p); goto done; }
-  if(list_size(p) == 0) { res = ref(q); goto done; }
+  if(is_empty_list(q)) { res = ref(p); goto done; }
+  if(is_empty_list(p)) { res = ref(q); goto done; }
 
-  bool
-    var_p = is_var(p),
-    var_q = is_var(q);
-
-  res = compose_args(p->value.ptr, var_p ? list_size(p) - 1 : list_size(p), p->value.type.flags, ref(q));
-
-  if(var_p) {
-    csize_t res_n = list_size(res);
-    res->value.type.flags |= T_VAR;
-    if(var_q) {
-      cell_t *pc = func(func_fcompose, 2, 1);
-      arg(pc, res->value.ptr[res_n-1]);
-      arg(pc, ref(p->value.ptr[list_size(p) - 1]));
-      res->value.ptr[res_n-1] = pc;
-    } else {
-      res = expand(res, 1);
-      res->value.ptr[res_n] = ref(p->value.ptr[list_size(p) - 1]);
-    }
-  }
+  res = compose_args(p->value.ptr, list_size(p), p->value.type.flags, ref(q));
 
  done:
   store_reduced(cp, mod_alt(res, c->alt, alt_set));
@@ -239,10 +221,15 @@ bool func_alt2(cell_t **cp, UNUSED type_request_t treq) {
 
 
 cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
+  cell_t *nc;
   assert(is_list(c));
-  cell_t *nc = copy_expand(c, 1);
-  v->value.type.exclusive = T_FUNCTION;
-  nc->value.ptr[list_size(nc) - 1] = 0;
+  if(~c->value.type.flags & T_ROW) {
+    nc = copy_expand(c, 1);
+    v->value.type.exclusive = T_FUNCTION;
+    nc->value.ptr[list_size(nc) - 1] = 0;
+  } else {
+    nc = copy(c);
+  }
   traverse(nc, {
       if(*p) {
         cell_t *np = closure_alloc(2);
@@ -252,7 +239,9 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
         *p = np;
       }
     }, PTRS);
-  nc->value.ptr[list_size(nc) - 1] = v;
+  if(~c->value.type.flags & T_ROW) {
+    nc->value.ptr[list_size(nc) - 1] = v;
+  }
   return nc;
 }
 
@@ -383,15 +372,15 @@ bool func_ap(cell_t **cp, type_request_t treq) {
   reverse_ptrs((void **)c->expr.arg, in);
 
   insert_root(&c->expr.arg[in]);
-  list_iterator_t it = {l, 0};
+  list_iterator_t it = list_begin(l);
   COUNTUP(i, out) {
-    cell_t *x = list_iterate(&it);
+    cell_t **x = list_next(&it);
     if(!x) {
       drop(l);
       goto fail;
     }
     cell_t *d = c->expr.arg[n-1-i];
-    store_lazy_dep(d, ref(x), alt_set);
+    store_lazy_dep(d, ref(*x), alt_set);
   }
   remove_root(&c->expr.arg[in]);
 
@@ -399,9 +388,7 @@ bool func_ap(cell_t **cp, type_request_t treq) {
   res->value.type.flags = is_var(l) ? T_VAR : 0;
   drop(l);
   res->value.alt_set = alt_set;
-  res->alt = c->alt;
-  c->alt = 0;
-  store_reduced(cp, res);
+  store_reduced(cp, mod_alt(res, c->alt, alt_set));
   ASSERT_REF();
   return true;
 fail:
@@ -460,7 +447,7 @@ bool func_is_nil(cell_t **cp, type_request_t treq) {
   if(is_var(p)) {
     res = var(T_SYMBOL, c);
   } else {
-    res = symbol(list_size(p) == 0 ? SYM_True : SYM_False);
+    res = symbol(is_empty_list(p) ? SYM_True : SYM_False);
   }
 
   res->value.alt_set = alt_set;

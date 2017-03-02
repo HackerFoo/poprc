@@ -151,10 +151,12 @@ void split_ptr(cell_t *c, csize_t n) {
 }
 
 // Reduce then split c->arg[n]
+// NOTE: c should never have a row
 bool reduce_ptr(cell_t *c,
                 csize_t n,
                 alt_set_t *ctx,
                 type_request_t treq) {
+  assert(is_list(c) && !is_row_list(c));
   cell_t **ap = &c->value.ptr[n];
   bool marked = is_marked(*ap);
   *ap = clear_ptr(*ap);
@@ -299,6 +301,16 @@ csize_t function_out(const cell_t *l) {
     n += ln;
     l = l->value.ptr[ln];
   }
+  return n + list_size(l) - (is_var(l) ? 1 : 0);
+}
+
+csize_t flat_list_size(const cell_t *l) {
+  csize_t n = 0;
+  while(is_row_list(l)) {
+    csize_t ln = list_size(l) - 1;
+    n += ln;
+    l = l->value.ptr[ln];
+  }
   return n + list_size(l);
 }
 
@@ -310,16 +322,19 @@ cell_t **left_list(cell_t **l) {
   return l;
 }
 
-cell_t *leftmost(const cell_t *l) {
-  while(is_row_list(l)) {
-    l = l->value.ptr[list_size(l) - 1];
-  }
+cell_t **left_elem(cell_t *l) {
   csize_t n = list_size(l);
-  return n ? l->value.ptr[n-1] : NULL; // ***
+  assert(n);
+  return &l->value.ptr[n-1];
+}
+
+cell_t **leftmost(cell_t **l) {
+  return is_empty_list(*l) ? l : left_elem(*left_list(l));
 }
 
 csize_t function_in(const cell_t *l) {
-  cell_t *c = leftmost(l);
+  if(is_empty_list(l)) return 0;
+  cell_t *c = *leftmost((cell_t **)&l); // ***
   if(!c) return 0;
   if(closure_is_ready(c)) return 0;
   csize_t in = 1;
@@ -334,32 +349,39 @@ csize_t function_in(const cell_t *l) {
 cell_t *compose_args(cell_t **aptr, csize_t a_out, uint8_t flags, cell_t *b) {
   if(a_out == 0) goto done;
 
-  csize_t b_in = function_in(b);
+  bool row = !!(flags & T_ROW);
 
   // fill the leftmost element of b
-  cell_t **ap = aptr;
-  {
-    int n = min(a_out, b_in);
-    if(n--) {
-      b = arg_nd(leftmost(b), ref(*ap++), b);
-      cell_t *left = leftmost(b);
-      // left is now safe for arg() because arg_nd() made necessary copies
-      LOOP(n) {
-        arg(left, ref(*ap++));
-      }
+  list_iterator_t it = {
+    .array = aptr,
+    .index = 0,
+    .size = a_out,
+    .row = row
+  };
+
+  cell_t **x;
+  cell_t **left = leftmost(&b);
+  csize_t b_in = function_in(b);
+  if(b_in-- && (x = list_next(&it))) {
+    b = arg_nd(*left, ref(*x), b);
+    left = leftmost(&b);
+    // left is now safe for arg() because arg_nd() made necessary copies
+    WHILELIST(x, it) {
+      if(!b_in--) break;
+      arg(*left, ref(*x));
     }
   }
 
   // prepend b with the remainder of a ***
-  cell_t **ll = left_list(&b);
-  if(a_out > b_in) {
-    int n = a_out - b_in;
-    *ll = expand(*ll, n);
-    cell_t **bp = &(*ll)->value.ptr[list_size(*ll) - n];
-    LOOP(n) {
-      *bp++ = ref(*ap++);
+  int remaining_a = list_remaining_size(it);
+  if(remaining_a) {
+    csize_t offset = list_size(*left);
+    *left = expand(*left, remaining_a);
+    cell_t **bp = &(*left)->value.ptr[offset];
+    WHILELIST(x, it) {
+      *bp++ = ref(*x);
     }
-    (*ll)->value.type.flags |= flags & T_ROW;
+    (*left)->value.type.flags |= flags & T_ROW;
   }
 
 done:
