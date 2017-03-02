@@ -182,9 +182,9 @@ void print_cell_pointer(FILE *f, cell_t *p) {
   if(p == &fail_cell) {
     fprintf(f, "<font color=\"red\">&amp;fail_cell</font>");
   } else if(p == &nil_cell) {
-    fprintf(f, "<font color=\"lightgray\">&amp;nil_cell</font>");
+    fprintf(f, "<font color=\"gray70\">&amp;nil_cell</font>");
   } else {
-    fprintf(f, "<font color=\"lightgray\">%p</font>", (void *)p);
+    fprintf(f, "<font color=\"gray70\">%p</font>", (void *)p);
   }
 }
 
@@ -230,6 +230,12 @@ void graph_cell(FILE *f, cell_t const *c) {
             show_alt_set(c->value.alt_set));
     if(is_list(c)) {
       csize_t n = list_size(c);
+      if(n && (c->value.type.flags & T_ROW)) {
+        n--;
+        fprintf(f, "<tr><td port=\"ptr%u\" bgcolor=\"gray90\" >row: ", (unsigned int)n);
+        print_cell_pointer(f, c->value.ptr[n]);
+        fprintf(f, "</td></tr>");
+      }
       while(n--) {
         fprintf(f, "<tr><td port=\"ptr%u\">ptr: ", (unsigned int)n);
         print_cell_pointer(f, c->value.ptr[n]);
@@ -439,7 +445,7 @@ void show_one(cell_t const *c) {
 void show_alts(cell_t const *c) {
   cell_t const *p = c;
   while(p) {
-    putchar('|');
+    putchar(' ');
     show_list_elements(p);
     putchar('\n');
     p = p->alt;
