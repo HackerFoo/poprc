@@ -53,6 +53,10 @@ assert also works this way
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
+** TODO when leftmost arg of a placeholder is a row, compose
+r x y f p -> r x y f ap20 .
+T_FUNCTION, & T_LIST | T_ROW related
+leftmost of the list can be a function
 ** STARTED leftmost ptr in a list can be a row
 *** TODO pass tests
 *** TODO make quote return a function with a row arg
@@ -81,6 +85,7 @@ look for word in parent module, parent imports, context module, context imports,
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
+** TODO [1 3] 2 pushr popr swap popr swap popr swap popr
 ** TODO imports don't always work
 ** TODO stack.nip leaks
 ** TODO staging.carry doesn't seem to work right
