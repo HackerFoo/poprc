@@ -160,7 +160,7 @@ bool func_compose(cell_t **cp, type_request_t treq) {
     var_p = is_var(p),
     var_q = is_var(q);
 
-  res = compose_args(p->value.ptr, function_out(p), ref(q));
+  res = compose_args(p->value.ptr, var_p ? list_size(p) - 1 : list_size(p), !!(p->value.type.flags & T_ROW), ref(q));
 
   if(var_p) {
     csize_t res_n = list_size(res);
@@ -379,7 +379,7 @@ bool func_ap(cell_t **cp, type_request_t treq) {
   placeholder_extend(&c->expr.arg[in], treq.in + in, treq.out + out);
 
   reverse_ptrs((void **)c->expr.arg, in);
-  cell_t *l = compose_args(c->expr.arg, in, ref(c->expr.arg[in]));
+  cell_t *l = compose_args(c->expr.arg, in, false, ref(c->expr.arg[in]));
   reverse_ptrs((void **)c->expr.arg, in);
 
   insert_root(&c->expr.arg[in]);

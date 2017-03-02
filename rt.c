@@ -331,7 +331,7 @@ csize_t function_in(const cell_t *l) {
   return in;
 }
 
-cell_t *compose_args(cell_t **aptr, csize_t a_out, cell_t *b) {
+cell_t *compose_args(cell_t **aptr, csize_t a_out, bool row, cell_t *b) {
   if(a_out == 0) goto done;
 
   csize_t b_in = function_in(b);
@@ -356,9 +356,10 @@ cell_t *compose_args(cell_t **aptr, csize_t a_out, cell_t *b) {
     int n = a_out - b_in;
     *ll = expand(*ll, n);
     cell_t **bp = &(*ll)->value.ptr[list_size(*ll) - n];
-      LOOP(n) {
+    LOOP(n) {
       *bp++ = ref(*ap++);
     }
+    if(row) (*ll)->value.type.flags |= T_ROW;
   }
 
 done:
