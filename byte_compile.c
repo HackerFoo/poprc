@@ -707,6 +707,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   e->entry.in = in + fill_args(c);
   e->entry.alts = trace_reduce(&c);
   e->entry.out = list_size(c);
+  assert(e->entry.out);
   drop(c);
   trace_enabled = false;
   e->entry.flags &= ~ENTRY_NOINLINE;
