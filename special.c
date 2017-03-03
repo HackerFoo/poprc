@@ -430,6 +430,7 @@ cell_t **list_next(list_iterator_t *it) {
 // number of remaining elements
 // NOTE: will reduce all rows
 csize_t list_remaining_size(list_iterator_t it) {
+  if(!it.array) return 0;
   csize_t n = 0;
   while(it.row) {
     cell_t **rp = &it.array[it.size];
@@ -450,9 +451,15 @@ cell_t *list_rest(list_iterator_t it) {
   if(!it.array) return NULL;
   if(!it.index) return ref(ptr_to_cell(it.array));
   csize_t elems = it.size - it.index + it.row;
-  cell_t *rest = make_list(elems);
-  COUNTUP(i, elems) {
-    rest->value.ptr[i] = ref(it.array[i + it.index]);
+  cell_t *rest;
+  if(elems == 1 && it.row) {
+    rest = ref(it.array[it.size]);
+  } else {
+    rest = make_list(elems);
+    COUNTUP(i, elems) {
+      rest->value.ptr[i] = ref(it.array[i + it.index]);
+    }
+    if(it.row) rest->value.type.flags |= T_ROW;
   }
   return rest;
 }
