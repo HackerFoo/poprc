@@ -223,12 +223,16 @@ void graph_cell(FILE *f, cell_t const *c) {
     fprintf(f, "%s ", show_type_all_short(c->value.type));
   }
   fprintf(f, "(%u%s)</b></font></td></tr>", (unsigned int)c->n, is_root(c) ? "*" : "");
-  fprintf(f, "<tr><td port=\"alt\">alt: ");
-  print_cell_pointer(f, c->alt);
-  fprintf(f, "</td></tr>");
+  if(c->alt) {
+    fprintf(f, "<tr><td port=\"alt\">alt: ");
+    print_cell_pointer(f, c->alt);
+    fprintf(f, "</td></tr>");
+  }
   if(is_value(c)) {
-    fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
-            show_alt_set(c->value.alt_set));
+    if(c->value.alt_set) {
+      fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
+              show_alt_set(c->value.alt_set));
+    }
     if(is_list(c)) {
       csize_t n = list_size(c);
       if(n && (c->value.type.flags & T_ROW)) {
