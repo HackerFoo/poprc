@@ -389,6 +389,12 @@ static
 trace_index_t trace_build_quote(cell_t *l) {
   assert(is_list(l));
   if(is_empty_list(l)) return NIL_INDEX;
+  if(is_var(l) && // ***
+     list_size(l) == 1 &&
+     is_var(l->value.ptr[0]) &&
+     is_function(l->value.ptr[0])) {
+    return trace_get(l->value.ptr[0]) - trace_cur;
+  }
   cell_t *vl = 0;
   cell_t **vlp = &vl;
 
