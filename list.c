@@ -107,13 +107,14 @@ bool list_has_more(list_iterator_t *it) {
 
 cell_t **list_next(list_iterator_t *it) {
   if(!it->array) return NULL;
+start:
   if(it->index < it->size) {
     return &it->array[it->index++];
   } else if(it->row) {
     cell_t **rp = &it->array[it->size];
     reduce(rp, req_simple(T_LIST)); // HACK fix this
     *it = list_begin(*rp);
-    return &it->array[++it->index];
+    goto start;
   } else {
     it->array = NULL;
     return NULL;
@@ -131,7 +132,7 @@ csize_t list_remaining_size(list_iterator_t it) {
     it = list_begin(it.array[it.size]);
     n += it.size;
   }
-  return n + it.size;
+  return n + it.size - it.index;
 }
 
 // finds the cell which contains a pointer
