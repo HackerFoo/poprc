@@ -368,13 +368,13 @@ bool func_ap(cell_t **cp, type_request_t treq) {
 
   placeholder_extend(&c->expr.arg[in], treq.in + in, treq.out + out);
 
+  list_iterator_t it;
+
   reverse_ptrs((void **)c->expr.arg, in);
-  list_iterator_t it = {
-    .array = c->expr.arg,
-    .index = 0,
-    .size = in,
-    .row = false
-  };
+  it.array = c->expr.arg;
+  it.index = 0;
+  it.size = in;
+  it.row = false;
   cell_t *l = compose(it, ref(c->expr.arg[in]));
   reverse_ptrs((void **)c->expr.arg, in);
 
@@ -393,7 +393,7 @@ bool func_ap(cell_t **cp, type_request_t treq) {
   if(!is_nil) remove_root(&c->expr.arg[in]);
 
   cell_t *res = list_rest(it);
-  res->value.type.flags = is_var(l) ? T_VAR : 0;
+  res->value.type.flags |= is_var(l) ? T_VAR : 0;
   drop(l);
   res->value.alt_set = alt_set;
   store_reduced(cp, mod_alt(res, c->alt, alt_set));
