@@ -154,6 +154,7 @@ cell_t *list_rest(list_iterator_t it) {
       rest->value.ptr[i] = ref(it.array[i + it.index]);
     }
     if(it.row) rest->value.type.flags |= T_ROW;
+    if(is_var(ptr_to_cell(it.array))) rest->value.type.flags |= T_VAR;
   }
   return rest;
 }
