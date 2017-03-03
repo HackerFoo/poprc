@@ -157,7 +157,7 @@ bool func_compose(cell_t **cp, type_request_t treq) {
   if(is_empty_list(q)) { res = ref(p); goto done; }
   if(is_empty_list(p)) { res = ref(q); goto done; }
 
-  res = compose_args(p->value.ptr, list_size(p), p->value.type.flags, ref(q));
+  res = compose(list_begin(p), ref(q));
 
  done:
   store_reduced(cp, mod_alt(res, c->alt, alt_set));
@@ -369,12 +369,18 @@ bool func_ap(cell_t **cp, type_request_t treq) {
   placeholder_extend(&c->expr.arg[in], treq.in + in, treq.out + out);
 
   reverse_ptrs((void **)c->expr.arg, in);
-  cell_t *l = compose_args(c->expr.arg, in, 0, ref(c->expr.arg[in]));
+  list_iterator_t it = {
+    .array = c->expr.arg,
+    .index = 0,
+    .size = in,
+    .row = false
+  };
+  cell_t *l = compose(it, ref(c->expr.arg[in]));
   reverse_ptrs((void **)c->expr.arg, in);
 
   bool is_nil = c->expr.arg[in] == &nil_cell;
   if(!is_nil) insert_root(&c->expr.arg[in]);
-  list_iterator_t it = list_begin(l);
+  it = list_begin(l);
   COUNTUP(i, out) {
     cell_t **x = list_next(&it);
     if(!x) {

@@ -347,18 +347,8 @@ csize_t function_in(const cell_t *l) {
   return in;
 }
 
-cell_t *compose_args(cell_t **aptr, csize_t a_out, uint8_t flags, cell_t *b) {
-  if(a_out == 0) goto done;
-
-  bool row = !!(flags & T_ROW);
-
-  // fill the leftmost element of b
-  list_iterator_t it = {
-    .array = aptr,
-    .index = 0,
-    .size = a_out,
-    .row = row
-  };
+cell_t *compose(list_iterator_t it, cell_t *b) {
+  if(!list_has_more(&it)) goto done;
 
   cell_t **x;
   csize_t b_in = function_in(b);
@@ -383,7 +373,7 @@ cell_t *compose_args(cell_t **aptr, csize_t a_out, uint8_t flags, cell_t *b) {
     WHILELIST(x, it) {
       *bp++ = ref(*x);
     }
-    (*ll)->value.type.flags |= flags & T_ROW;
+    if(it.row) (*ll)->value.type.flags |= T_ROW;
   }
 
 done:
