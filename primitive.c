@@ -371,7 +371,8 @@ bool func_ap(cell_t **cp, type_request_t treq) {
   cell_t *l = compose_args(c->expr.arg, in, 0, ref(c->expr.arg[in]));
   reverse_ptrs((void **)c->expr.arg, in);
 
-  insert_root(&c->expr.arg[in]);
+  bool is_nil = c->expr.arg[in] == &nil_cell;
+  if(!is_nil) insert_root(&c->expr.arg[in]);
   list_iterator_t it = list_begin(l);
   COUNTUP(i, out) {
     cell_t **x = list_next(&it);
@@ -382,7 +383,7 @@ bool func_ap(cell_t **cp, type_request_t treq) {
     cell_t *d = c->expr.arg[n-1-i];
     store_lazy_dep(d, ref(*x), alt_set);
   }
-  remove_root(&c->expr.arg[in]);
+  if(!is_nil) remove_root(&c->expr.arg[in]);
 
   cell_t *res = list_rest(it);
   res->value.type.flags = is_var(l) ? T_VAR : 0;

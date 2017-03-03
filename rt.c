@@ -360,14 +360,14 @@ cell_t *compose_args(cell_t **aptr, csize_t a_out, uint8_t flags, cell_t *b) {
   };
 
   cell_t **x;
-  cell_t **left = leftmost(&b);
   csize_t b_in = function_in(b);
   if(b_in-- && (x = list_next(&it))) {
+    cell_t **left = leftmost(&b);
     b = arg_nd(*left, ref(*x), b);
     left = leftmost(&b);
     // left is now safe for arg() because arg_nd() made necessary copies
-    WHILELIST(x, it) {
-      if(!b_in--) break;
+    while(b_in--) {
+      if((x = list_next(&it))) break;
       arg(*left, ref(*x));
     }
   }
@@ -375,13 +375,14 @@ cell_t *compose_args(cell_t **aptr, csize_t a_out, uint8_t flags, cell_t *b) {
   // prepend b with the remainder of a ***
   int remaining_a = list_remaining_size(it);
   if(remaining_a) {
-    csize_t offset = list_size(*left);
-    *left = expand(*left, remaining_a);
-    cell_t **bp = &(*left)->value.ptr[offset];
+    cell_t **ll = left_list(&b);
+    csize_t offset = list_size(*ll);
+    *ll = expand(*ll, remaining_a);
+    cell_t **bp = &(*ll)->value.ptr[offset];
     WHILELIST(x, it) {
       *bp++ = ref(*x);
     }
-    (*left)->value.type.flags |= flags & T_ROW;
+    (*ll)->value.type.flags |= flags & T_ROW;
   }
 
 done:
