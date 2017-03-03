@@ -46,6 +46,7 @@
 #include "gen/git_log.h"
 #include "gen/lex.h"
 #include "gen/module.h"
+#include "gen/list.h"
 
 #ifdef EMSCRIPTEN
 #include <emscripten.h>

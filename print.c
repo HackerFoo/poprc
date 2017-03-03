@@ -33,6 +33,7 @@
 #include "gen/print.h"
 #include "gen/module.h"
 #include "gen/user_func.h"
+#include "gen/list.h"
 
 static BITSET_INDEX(visited, cells);
 static BITSET_INDEX(marked, cells);

@@ -28,6 +28,7 @@
 #include "gen/test.h"
 #include "gen/support.h"
 #include "gen/byte_compile.h"
+#include "gen/list.h"
 #include "gen/user_func.h"
 
 static

@@ -28,6 +28,7 @@
 #include "gen/test.h"
 #include "gen/support.h"
 #include "gen/byte_compile.h"
+#include "gen/list.h"
 
 // Counter of used alt ids
 uint8_t alt_cnt = 0;

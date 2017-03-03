@@ -39,6 +39,7 @@
 #include "gen/lex.h"
 #include "gen/module.h"
 #include "gen/user_func.h"
+#include "gen/list.h"
 
 bool trace_enabled = false;
 

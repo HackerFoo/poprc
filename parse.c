@@ -35,6 +35,7 @@
 #include "gen/lex.h"
 #include "gen/module.h"
 #include "gen/user_func.h"
+#include "gen/list.h"
 
 #define FUNC_AP 1
 #define MAX_SYMBOLS 64

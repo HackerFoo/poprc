@@ -126,4 +126,7 @@
 
 #define FLIP_PTR(p) ((void *)~(uintptr_t)(p))
 
+#define FORLIST(x, l) for(list_iterator_t it = list_begin(l); (x = list_next(&it)) ; )
+#define WHILELIST(x, it) while((x = list_next(&it)))
+
 #endif

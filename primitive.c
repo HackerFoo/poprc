@@ -27,6 +27,7 @@
 #include "gen/test.h"
 #include "gen/byte_compile.h"
 #include "gen/support.h"
+#include "gen/list.h"
 
    /*-----------------------------------------------,
     |          VARIABLE NAME CONVENTIONS            |

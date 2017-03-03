@@ -30,6 +30,7 @@
 #include "gen/lex.h"
 #include "gen/module.h"
 #include "gen/byte_compile.h"
+#include "gen/list.h"
 
 pair_t primitive_module[] = WORDS;
 

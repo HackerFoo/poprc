@@ -217,4 +217,10 @@ typedef struct measure_t {
 #define PRIMITIVE_MODULE_PREFIX __primitive
 #define PRIMITIVE_MODULE_NAME STRINGIFY(PRIMITIVE_MODULE_PREFIX)
 
+typedef struct list_iterator {
+  cell_t **array;
+  csize_t index, size;
+  bool row;
+} list_iterator_t;
+
 #endif
