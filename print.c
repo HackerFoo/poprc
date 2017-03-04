@@ -481,6 +481,7 @@ char *show_type_all(type_t t) {
     "T_VAR",
     "T_FAIL",
     "T_TRACED",
+    "T_ROW"
   };
   static char buf[64];
   char *p = buf;
@@ -515,6 +516,7 @@ char *show_type_all_short(type_t t) {
     '?',
     '!',
     '.',
+    '@'
   };
   static char buf[LENGTH(type_flag_char) + 1];
 

@@ -80,6 +80,14 @@ bool func_list(cell_t **cp, type_request_t treq) {
   return false;
 }
 
+void flatten_list(cell_t **lp) {
+  cell_t *l = *lp;
+  if(is_list(l)) {
+    *lp = flat_copy(l);
+    drop(l);
+  }
+}
+
 void reduce_list(cell_t **cp) {
   if(!*cp) return;
   while(*cp) {
@@ -154,7 +162,6 @@ cell_t *list_rest(list_iterator_t it) {
       rest->value.ptr[i] = ref(it.array[i + it.index]);
     }
     if(it.row) rest->value.type.flags |= T_ROW;
-    if(is_var(ptr_to_cell(it.array))) rest->value.type.flags |= T_VAR;
   }
   return rest;
 }

@@ -122,7 +122,7 @@ void placeholder_extend(cell_t **lp, int in, int out) {
 
   if(d_out) {
     cell_t *l_exp = make_list(d_out + 1);
-    l_exp->value.type.flags = T_VAR;
+    l_exp->value.type.flags = T_ROW;
     COUNTUP(i, d_out) {
       cell_t *d = dep(ph);
       l_exp->value.ptr[i] = d;
@@ -167,7 +167,7 @@ cell_t *var_create_list(cell_t *f, int in, int out, int shift) {
   arg(ph, f);
   refn(ph, out);
   a[out] = ph;
-  c->value.type.flags = T_VAR;
+  c->value.type.flags = T_ROW;
   return c;
 }
 

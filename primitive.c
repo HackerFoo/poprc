@@ -243,6 +243,7 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
   if(~c->value.type.flags & T_ROW) {
     nc->value.ptr[list_size(nc) - 1] = v;
   }
+  c->value.type.flags |= T_ROW;
   return nc;
 }
 
@@ -393,7 +394,6 @@ bool func_ap(cell_t **cp, type_request_t treq) {
   if(!is_nil) remove_root(&c->expr.arg[in]);
 
   cell_t *res = list_rest(it);
-  res->value.type.flags |= is_var(l) ? T_VAR : 0;
   drop(l);
   res->value.alt_set = alt_set;
   store_reduced(cp, mod_alt(res, c->alt, alt_set));
