@@ -210,3 +210,42 @@ cell_t *flat_copy(cell_t *l) {
 bool is_empty_list(const cell_t *l) {
   return is_list(l) && list_size(l) == 0;
 }
+
+csize_t function_out(const cell_t *l) {
+  list_iterator_t it = list_begin((cell_t *)l);
+  return list_remaining_size(it, true);
+}
+
+// *** TODO compose if needed
+cell_t **left_list(cell_t **l) {
+  while(is_row_list(*l)) {
+    cell_t **x = &(*l)->value.ptr[list_size(*l) - 1];
+    if(!is_list(*x)) break;
+    l = x;
+  }
+  return l;
+}
+
+cell_t **left_elem(cell_t *l) {
+  csize_t n = list_size(l);
+  assert(n);
+  return &l->value.ptr[n-1];
+}
+
+cell_t **leftmost(cell_t **l) {
+  return is_empty_list(*l) ? l : left_elem(*left_list(l));
+}
+
+csize_t function_in(const cell_t *l) {
+  if(is_empty_list(l)) return 0;
+  cell_t *c = *leftmost((cell_t **)&l); // ***
+  if(!c) return 0;
+  if(closure_is_ready(c)) return 0;
+  csize_t in = 1;
+  while(c) {
+    csize_t i = closure_next_child(c);
+    in += i;
+    c = c->expr.arg[i];
+  }
+  return in;
+}

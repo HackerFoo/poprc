@@ -295,76 +295,26 @@ cell_t *expand_deps(cell_t *c, csize_t s) {
   return c;
 }
 
-csize_t function_out(const cell_t *l) {
-  csize_t n = 0;
-  while(is_row_list(l)) {
-    csize_t ln = list_size(l) - 1;
-    n += ln;
-    l = l->value.ptr[ln];
-  }
-  return n + list_size(l) - (is_var(l) ? 1 : 0);
-}
-
-csize_t flat_list_size(const cell_t *l) {
-  csize_t n = 0;
-  while(is_row_list(l)) {
-    csize_t ln = list_size(l) - 1;
-    n += ln;
-    l = l->value.ptr[ln];
-  }
-  return n + list_size(l);
-}
-
-// *** TODO compose if needed
-cell_t **left_list(cell_t **l) {
-  while(is_row_list(*l)) {
-    l = &(*l)->value.ptr[list_size(*l) - 1];
-  }
-  return l;
-}
-
-cell_t **left_elem(cell_t *l) {
-  csize_t n = list_size(l);
-  assert(n);
-  return &l->value.ptr[n-1];
-}
-
-cell_t **leftmost(cell_t **l) {
-  return is_empty_list(*l) ? l : left_elem(*left_list(l));
-}
-
-csize_t function_in(const cell_t *l) {
-  if(is_empty_list(l)) return 0;
-  cell_t *c = *leftmost((cell_t **)&l); // ***
-  if(!c) return 0;
-  if(closure_is_ready(c)) return 0;
-  csize_t in = 1;
-  while(c) {
-    csize_t i = closure_next_child(c);
-    in += i;
-    c = c->expr.arg[i];
-  }
-  return in;
-}
-
 cell_t *compose(list_iterator_t it, cell_t *b) {
-  if(!list_has_more(&it)) goto done;
+  if(!list_has_more(it)) goto done;
 
   cell_t **x;
   csize_t b_in = function_in(b);
-  if(b_in-- && (x = list_next(&it))) {
+  if(b_in && (x = list_next(&it, true))) {
+    b_in--;
     cell_t **left = leftmost(&b);
     b = arg_nd(*left, ref(*x), b);
     left = leftmost(&b);
     // left is now safe for arg() because arg_nd() made necessary copies
-    while(b_in--) {
-      if((x = list_next(&it))) break;
+    while(b_in) {
+      b_in--;
+      if((x = list_next(&it, true))) break;
       arg(*left, ref(*x));
     }
   }
 
   // prepend b with the remainder of a ***
-  int remaining_a = list_remaining_size(it);
+  int remaining_a = list_remaining_size(it, false);
   if(remaining_a) {
     cell_t **ll = left_list(&b);
     csize_t offset = list_size(*ll);
