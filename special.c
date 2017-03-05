@@ -43,7 +43,8 @@ bool func_value(cell_t **cp, type_request_t treq) {
         c->value.type.exclusive = treq.t;
         trace_update(c, c);
       }
-    } else if(is_list(c)) {
+    } else if(is_list(c)) { // *** should be unreachable
+      assert(false);
       csize_t
         in = function_in(c),
         out = function_out(c);

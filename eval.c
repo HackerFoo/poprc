@@ -497,7 +497,7 @@ void eval(const cell_t *p) {
     printf("incomplete expression\n");
   } else {
     reduce_root(&c);
-    ASSERT_REF();
+    if(c) ASSERT_REF();
     show_alts(c);
   }
   drop(c);

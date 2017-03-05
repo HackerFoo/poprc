@@ -53,7 +53,7 @@ ifte: [] ap20 swap pushr [not!] [swap drop!] | . pull drop
 
 __ ifte2: rot [swap drop 0 != !] [0 == !] | pushl pushl pushl popr swap drop cut
 
-__ [1 [2]] 3 -> 3 1 2
+__ [1 [2]] 3 -> [1 2 3]
 feed: swap popr . swap pushr
 
 __ apply a quote underneath the top
