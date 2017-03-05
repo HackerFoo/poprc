@@ -425,7 +425,7 @@ trace_index_t trace_build_quote(cell_t *l) {
 
 static
 cell_t *trace_return(cell_t *c) {
-  c = copy(c);
+  c = flat_copy(c);
   traverse(c, {
       if(*p) {
         trace_index_t x;
@@ -505,12 +505,16 @@ unsigned int trace_reduce(cell_t **cp) {
   cell_t **p = cp;
   while(*p) {
     if(!func_list(p, req_simple(T_RETURN))) continue;
-    cell_t *flat = flat_copy(*p);
-    drop(*p);
-    *p = flat;
     cell_t **a;
     FORLIST(a, *p) {
-      if(!is_list(*a)) {
+      if(is_list(*a)) {
+        if(is_row_list(*a) && list_size(*a) == 1) { // reduce wrapped placeholders
+          cell_t *x = ref((*a)->value.ptr[0]);
+          drop(*a);
+          *a = x;
+          reduce(a, req_any); // ***
+        }
+      } else {
         trace_store(*a, *a);
       }
     }

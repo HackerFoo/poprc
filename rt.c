@@ -157,7 +157,7 @@ bool reduce_ptr(cell_t *c,
                 csize_t n,
                 alt_set_t *ctx,
                 type_request_t treq) {
-  assert(is_list(c) && !is_row_list(c));
+  assert(is_list(c));
   cell_t **ap = &c->value.ptr[n];
   bool marked = is_marked(*ap);
   *ap = clear_ptr(*ap);
