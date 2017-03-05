@@ -241,3 +241,9 @@ bool func_quote(cell_t **cp, UNUSED type_request_t treq) {
   store_reduced(cp, res);
   return true;
 }
+
+void reduce_quote(cell_t **cp) {
+  if((*cp)->func == func_quote) {
+    reduce(cp, req_any);
+  }
+}

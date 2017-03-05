@@ -21,6 +21,7 @@
 #include "gen/rt.h"
 #include "gen/special.h"
 #include "gen/test.h"
+#include "gen/user_func.h"
 #include "gen/list.h"
 
 cell_t *empty_list() {
@@ -71,6 +72,9 @@ bool func_list(cell_t **cp, type_request_t treq) {
   COUNTDOWN(i, n) {
     if(!reduce_ptr(c, i, &alt_set, req_any) ||
       as_conflict(alt_set)) goto fail;
+    if(i == 0 && is_row_list(c) && is_list(c->value.ptr[0])) {
+      if(!func_list(&c->value.ptr[0], req_any)) goto fail;
+    }
   }
   traverse(c, *p = clear_ptr(*p), PTRS);
   return true;
@@ -109,38 +113,55 @@ list_iterator_t list_begin(cell_t *l) {
   return it;
 }
 
-bool list_has_more(list_iterator_t *it) {
-  return it->array && (it->row || it->index < it->size);
+bool list_has_more(list_iterator_t it) {
+  return it.array && (it.row || it.index < it.size);
 }
 
-cell_t **list_next(list_iterator_t *it) {
+cell_t **list_next(list_iterator_t *it, bool include_row) {
   if(!it->array) return NULL;
 start:
   if(it->index < it->size) {
     return &it->array[it->index++];
-  } else if(it->row) {
+  } else if(it->row && it->index == it->size) {
     cell_t **rp = &it->array[it->size];
-    reduce(rp, req_simple(T_LIST)); // HACK fix this
-    *it = list_begin(*rp);
-    goto start;
+    reduce_quote(rp); // ***
+    if(is_list(*rp)) { // ***
+      *it = list_begin(*rp);
+      goto start;
+    } else {
+      if(include_row) {
+        it->index++;
+        return &it->array[it->size];
+      } else {
+        return NULL;
+      }
+    }
   } else {
-    it->array = NULL;
     return NULL;
   }
 }
 
+// get last row variable
+cell_t *list_row(list_iterator_t it) {
+  return it.array && it.row && it.index == it.size ? it.array[it.size] : NULL;
+}
+
 // number of remaining elements
-// NOTE: will reduce all rows
-csize_t list_remaining_size(list_iterator_t it) {
+// NOTE: will reduce all quotes
+csize_t list_remaining_size(list_iterator_t it, bool count_last_row) {
   if(!it.array) return 0;
   csize_t n = 0;
   while(it.row) {
     cell_t **rp = &it.array[it.size];
-    reduce(rp, req_simple(T_LIST)); // HACK fix this
+    reduce_quote(rp); // ***
+    if(!is_list(*rp)) {
+      n += !!count_last_row;
+      break;
+    }
     it = list_begin(it.array[it.size]);
     n += it.size;
   }
-  return n + it.size - it.index;
+  return n + it.size - min(it.size, it.index);
 }
 
 // finds the cell which contains a pointer
@@ -154,7 +175,7 @@ cell_t *list_rest(list_iterator_t it) {
   if(!it.index) return ref(ptr_to_cell(it.array));
   csize_t elems = it.size - it.index + it.row;
   cell_t *rest;
-  if(elems == 1 && it.row) {
+  if(elems == 1 && it.row && is_list(it.array[it.size])) {
     rest = ref(it.array[it.size]);
   } else {
     rest = make_list(elems);
@@ -168,15 +189,20 @@ cell_t *list_rest(list_iterator_t it) {
 
 cell_t *flat_copy(cell_t *l) {
   assert(is_list(l));
-  if(!(l->value.type.flags & T_ROW)) return ref(l);
-  csize_t n = flat_list_size(l);
+  csize_t n = function_out(l);
   if(!n) return &nil_cell;
   cell_t *res = make_list(n);
   res->value.type = l->value.type;
   res->value.type.flags &= ~T_ROW;
   cell_t **p, **rp = res->value.ptr;
-  FORLIST(p, l) {
-    *rp++ = ref(*p);
+  list_iterator_t it = list_begin(l);
+  WHILELIST(p, it) {
+    *rp++ = *p;
+  }
+  // get row variable
+  if(it.array && it.row) {
+    *rp++ = it.array[it.size];
+    res->value.type.flags |= T_ROW;
   }
   return res;
 }

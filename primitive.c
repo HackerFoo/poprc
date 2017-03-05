@@ -383,7 +383,7 @@ bool func_ap(cell_t **cp, type_request_t treq) {
   if(!is_nil) insert_root(&c->expr.arg[in]);
   it = list_begin(l);
   COUNTUP(i, out) {
-    cell_t **x = list_next(&it);
+    cell_t **x = list_next(&it, false);
     if(!x) {
       drop(l);
       goto fail;
