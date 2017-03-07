@@ -43,12 +43,29 @@ error => 0
 @ expand_map
 map[10] = {{eight, 7}, {five, 4}, {four, 3}, {one, 0}, {seven, 6}, {six, 5}, {three, 2}, {two, 1}, {nine, 8}, {ten, 9}}
 expand_map => 0
+@ flat_copy_list
+_check_flat_copy: 2 + 2 = 4
+_check_flat_copy: 0 + 1 = 1
+_check_flat_copy: 1 + 0 = 1
+flat_copy_list => 0
+@ function_in
+function_in => 0
 @ lex
 testing 
 [ 1 2 + 3 ] 
 4 
 Done 
 lex => 0
+@ list_next
+_check_list_next: 2 + 2 = 4
+_check_list_next: 0 + 1 = 1
+_check_list_next: 1 + 0 = 1
+list_next => 0
+@ list_remaining_size
+_check_list_remaining_size: 2 + 2 = 4
+_check_list_remaining_size: 0 + 1 = 1
+_check_list_remaining_size: 1 + 0 = 1
+list_remaining_size => 0
 @ loops
 up: 0
 up: 1

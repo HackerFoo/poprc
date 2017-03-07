@@ -16,6 +16,7 @@
 */
 
 #include <assert.h>
+#include <stdio.h>
 #include "rt_types.h"
 #include "gen/cells.h"
 #include "gen/rt.h"
@@ -84,14 +85,6 @@ bool func_list(cell_t **cp, type_request_t treq) {
   return false;
 }
 
-void flatten_list(cell_t **lp) {
-  cell_t *l = *lp;
-  if(is_list(l)) {
-    *lp = flat_copy(l);
-    drop(l);
-  }
-}
-
 void reduce_list(cell_t **cp) {
   if(!*cp) return;
   while(*cp) {
@@ -137,6 +130,45 @@ start:
   }
 }
 
+static
+cell_t *_make_test_list(csize_t n, cell_t *row) {
+  cell_t *l = make_list(n + !!row);
+  csize_t rn = row ? list_size(row) : 0;
+  COUNTUP(i, n) {
+    l->value.ptr[i] = int_val(rn + i);
+  }
+  if(row) {
+    l->value.ptr[n] = row;
+    l->value.type.flags |= T_ROW;
+  }
+  return l;
+}
+
+static
+cell_t *_test_list_add(csize_t x, csize_t y) {
+  return _make_test_list(y, _make_test_list(x, NULL));
+}
+
+static
+bool _check_list_next(csize_t x, csize_t y) {
+  cell_t **p, *l = _test_list_add(x, y);
+  csize_t z = 0;
+  FORLIST(p, l) {
+    z++;
+  }
+  drop(l);
+  printf("_check_list_next: %d + %d = %d\n", x, y, z);
+  return x + y == z;
+}
+
+int test_list_next() {
+  bool ret = true;
+  ret &= _check_list_next(2, 2);
+  ret &= _check_list_next(0, 1);
+  ret &= _check_list_next(1, 0);
+  return ret ? 0 : -1;
+}
+
 // number of remaining elements
 // NOTE: will reduce all quotes
 csize_t list_remaining_size(list_iterator_t it, bool count_last_row) {
@@ -154,6 +186,23 @@ csize_t list_remaining_size(list_iterator_t it, bool count_last_row) {
     }
   }
   return n + it.size - min(it.size, it.index);
+}
+
+static
+bool _check_list_remaining_size(csize_t x, csize_t y) {
+  cell_t *l = _test_list_add(x, y);
+  csize_t z = list_remaining_size(list_begin(l), false);
+  drop(l);
+  printf("_check_list_remaining_size: %d + %d = %d\n", x, y, z);
+  return x + y == z;
+}
+
+int test_list_remaining_size() {
+  bool ret = true;
+  ret &= _check_list_remaining_size(2, 2);
+  ret &= _check_list_remaining_size(0, 1);
+  ret &= _check_list_remaining_size(1, 0);
+  return ret ? 0 : -1;
 }
 
 // finds the cell which contains a pointer
@@ -206,6 +255,25 @@ cell_t *flat_copy(cell_t *l) {
   return res;
 }
 
+static
+bool _check_flat_copy(csize_t x, csize_t y) {
+  cell_t *l = _test_list_add(x, y);
+  cell_t *fl = flat_copy(l);
+  csize_t z = list_size(fl);
+  closure_free(fl);
+  drop(l);
+  printf("_check_flat_copy: %d + %d = %d\n", x, y, z);
+  return x + y == z;
+}
+
+int test_flat_copy_list() {
+  bool ret = true;
+  ret &= _check_flat_copy(2, 2);
+  ret &= _check_flat_copy(0, 1);
+  ret &= _check_flat_copy(1, 0);
+  return ret ? 0 : -1;
+}
+
 bool is_empty_list(const cell_t *l) {
   return is_list(l) && list_size(l) == 0;
 }
@@ -255,4 +323,14 @@ csize_t function_in(const cell_t *l) {
     c = c->expr.arg[i];
   }
   return in;
+}
+
+int test_function_in() {
+  cell_t *l = make_list(2);
+  l->value.ptr[0] = int_val(2);
+  l->value.ptr[1] = quote(func(func_exec, 2, 1));
+  l->value.type.flags = T_ROW;
+  csize_t in = function_in(l);
+  drop(l);
+  return in == 2 ? 0 : -1;
 }

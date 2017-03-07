@@ -648,3 +648,10 @@ seg_t string_seg(const char *str) {
   seg_t seg = {str, strlen(str)};
   return seg;
 }
+
+cell_t *parse_expr_string(const char *expr) {
+  cell_t *p = lex(expr, 0);
+  cell_t *m = parse_expr((const cell_t **)&p, NULL);
+  free_toks(p);
+  return m;
+}
