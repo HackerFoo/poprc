@@ -33,40 +33,23 @@ bool func_value(cell_t **cp, type_request_t treq) {
   if((c->value.type.flags & T_FAIL) ||
      !type_match(treq.t, c)) goto fail;
 
+  // NOTE: may create multiple placeholder
+  // TODO use rows to work around this
   if(is_var(c)) {
     if(is_any(c)) {
       if(treq.t == T_LIST) {
         res = var_create(T_LIST, c->value.ptr[0], treq.in, treq.out);
         res->value.alt_set = c->value.alt_set;
         res->alt = c->alt;
+        drop(c);
+        *cp = res;
       } else {
         c->value.type.exclusive = treq.t;
         trace_update(c, c);
       }
-    } else if(is_list(c)) { // *** should be unreachable
-      assert(false);
-      csize_t
-        in = function_in(c),
-        out = function_out(c);
-      if(treq.out > out || treq.in > in) {
-      cell_t *f = c->value.ptr[in];
-      res = var_create_list(ref(f), treq.in - in, treq.out - out, out);
-      COUNTUP(i, out) {
-        res->value.ptr[i] = ref(c->value.ptr[i]);
-      }
-      res->value.alt_set = c->value.alt_set;
-      res->alt = c->alt;
-      }
     }
-    if(res) {
-      // HACK
-      // may result in multiple placeholder extensions,
-      // but a value cannot be expanded without breaking
-      // references; value -> id won't work (reduce_lazy)
-      // because values must remain values.
-      drop(c);
-      *cp = res;
-    }
+  } else if(is_row_list(c)) {
+    placeholder_extend(cp, treq.in, treq.out);
   }
   return true;
 fail:
@@ -104,15 +87,17 @@ bool is_value(cell_t const *c) {
 
 void placeholder_extend(cell_t **lp, int in, int out) {
   cell_t *l = *lp;
-  if(!is_var(l)) return;
+  if(!is_row_list(l)) return;
   csize_t
     f_in = function_in(l),
-    f_out = function_out(l),
+    f_out = function_out(l, false),
     d_in = in - min(in, f_in),
     d_out = out - min(out, f_out);
   if(d_in == 0 && d_out == 0) return;
-  cell_t **left = leftmost(&l);
+  cell_t **left = leftmost_row(&l);
+  if(!left) return;
   cell_t *f = *left;
+  if(!(is_function(f) || is_placeholder(f))) return;
   cell_t *ph = func(func_placeholder, d_in + 1, d_out + 1);
 
   if(l->n) {

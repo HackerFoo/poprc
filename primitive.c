@@ -128,13 +128,13 @@ bool func_neq_s(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_
 // outputs required from the left operand given the rignt operand
 csize_t function_compose_out(cell_t *c, csize_t out) {
   c = clear_ptr(c);
-  return function_in(c) + out - min(out, function_out(c));
+  return function_in(c) + out - min(out, function_out(c, true));
 }
 
 // inputs required from the right operand given the left operand
 csize_t function_compose_in(cell_t *c, csize_t in) {
   c = clear_ptr(c);
-  return function_out(c) + in - min(in, function_in(c));
+  return function_out(c, true) + in - min(in, function_in(c));
 }
 
 // WORD(".", compose, 2, 1)
@@ -147,7 +147,7 @@ bool func_compose(cell_t **cp, type_request_t treq) {
      !reduce_arg(c, 1, &alt_set, req_list(NULL, function_compose_in(c->expr.arg[0], treq.in), treq.out)) ||
      as_conflict(alt_set)) goto fail;
   clear_flags(c);
-  placeholder_extend(&c->expr.arg[0], treq.in, function_compose_out(c->expr.arg[1], treq.out));
+  placeholder_extend(&c->expr.arg[0], treq.in, function_compose_out(c->expr.arg[1], treq.out) - is_row_list(c->expr.arg[0]));
 
   cell_t
     *p = c->expr.arg[0],
@@ -179,10 +179,15 @@ bool func_pushr(cell_t **cp, type_request_t treq) {
   if(!reduce_arg(c, 0, &alt_set, atr)) goto fail;
   clear_flags(c);
 
-  cell_t *res = make_list(2);
-  res->value.ptr[1] = ref(c->expr.arg[0]);
-  res->value.ptr[0] = ref(c->expr.arg[1]);
-  res->value.type.flags = T_ROW;
+  cell_t *res;
+  if(is_empty_list(c->expr.arg[0])) {
+    res = quote(ref(c->expr.arg[1]));
+  } else {
+    res = make_list(2);
+    res->value.ptr[1] = ref(c->expr.arg[0]);
+    res->value.ptr[0] = ref(c->expr.arg[1]);
+    res->value.type.flags = T_ROW;
+  }
   res->value.alt_set = alt_set;
   drop(res->alt);
   res->alt = c->alt;

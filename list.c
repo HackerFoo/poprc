@@ -113,10 +113,6 @@ list_iterator_t list_begin(cell_t *l) {
   return it;
 }
 
-bool list_has_more(list_iterator_t it) {
-  return it.array && (it.row || it.index < it.size);
-}
-
 cell_t **list_next(list_iterator_t *it, bool include_row) {
   if(!it->array) return NULL;
 start:
@@ -141,11 +137,6 @@ start:
   }
 }
 
-// get last row variable
-cell_t *list_row(list_iterator_t it) {
-  return it.array && it.row && it.index == it.size ? it.array[it.size] : NULL;
-}
-
 // number of remaining elements
 // NOTE: will reduce all quotes
 csize_t list_remaining_size(list_iterator_t it, bool count_last_row) {
@@ -153,13 +144,14 @@ csize_t list_remaining_size(list_iterator_t it, bool count_last_row) {
   csize_t n = 0;
   while(it.row) {
     cell_t **rp = &it.array[it.size];
+    n += it.size;
     reduce_quote(rp); // ***
-    if(!is_list(*rp)) {
-      n += !!count_last_row;
+    if(is_list(*rp)) {
+      it = list_begin(it.array[it.size]);
+    } else {
+      it.size += !!count_last_row;
       break;
     }
-    it = list_begin(it.array[it.size]);
-    n += it.size;
   }
   return n + it.size - min(it.size, it.index);
 }
@@ -187,21 +179,28 @@ cell_t *list_rest(list_iterator_t it) {
   return rest;
 }
 
+void collapse_row(cell_t **cp) {
+  if(is_row_list(*cp) && list_size(*cp) == 1) {
+    cell_t *x = *cp;
+    *cp = ref((*cp)->value.ptr[0]);
+    drop(x);
+  }
+}
+
 cell_t *flat_copy(cell_t *l) {
   assert(is_list(l));
-  csize_t n = function_out(l);
+  csize_t n = function_out(l, true);
   if(!n) return &nil_cell;
   cell_t *res = make_list(n);
   res->value.type = l->value.type;
   res->value.type.flags &= ~T_ROW;
   cell_t **p, **rp = res->value.ptr;
   list_iterator_t it = list_begin(l);
-  WHILELIST(p, it) {
+  WHILELIST(p, it, true) {
     *rp++ = *p;
   }
-  // get row variable
-  if(it.array && it.row) {
-    *rp++ = it.array[it.size];
+
+  if(it.row) {
     res->value.type.flags |= T_ROW;
   }
   return res;
@@ -211,9 +210,9 @@ bool is_empty_list(const cell_t *l) {
   return is_list(l) && list_size(l) == 0;
 }
 
-csize_t function_out(const cell_t *l) {
+csize_t function_out(const cell_t *l, bool include_row_var) {
   list_iterator_t it = list_begin((cell_t *)l);
-  return list_remaining_size(it, true);
+  return list_remaining_size(it, include_row_var);
 }
 
 // *** TODO compose if needed
@@ -228,12 +227,20 @@ cell_t **left_list(cell_t **l) {
 
 cell_t **left_elem(cell_t *l) {
   csize_t n = list_size(l);
-  assert(n);
-  return &l->value.ptr[n-1];
+  return n ? &l->value.ptr[n-1] : NULL;
 }
 
-cell_t **leftmost(cell_t **l) {
-  return is_empty_list(*l) ? l : left_elem(*left_list(l));
+cell_t **leftmost_row(cell_t **lp) {
+  return left_elem(*left_list(lp));
+}
+
+// TODO optimize this
+cell_t **leftmost(cell_t **lp) {
+  cell_t *l = *lp, **x, **last = lp;
+  FORLIST(x, l, true) {
+    last = x;
+  }
+  return last;
 }
 
 csize_t function_in(const cell_t *l) {

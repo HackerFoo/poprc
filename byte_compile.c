@@ -411,7 +411,7 @@ trace_index_t trace_build_quote(cell_t *l) {
   COUNTUP(i, in) {
     trace_index_t x = trace_get_value(p);
     trace_cur[x].n++;
-    n->expr.arg[in - i - 1] = trace_encode(x);
+    n->expr.arg[i] = trace_encode(x);
     p = p->tmp;
   }
 
@@ -426,18 +426,17 @@ trace_index_t trace_build_quote(cell_t *l) {
 static
 cell_t *trace_return(cell_t *c) {
   c = flat_copy(c);
-  traverse(c, {
-      if(*p) {
-        trace_index_t x;
-        if(is_list(*p)) {
-          x = trace_build_quote(*p);
-        } else {
-          x = trace_store(*p, *p) - trace_cur;
-        }
-        *p = trace_encode(x);
-        trace_cur[x].n++;
-      }
-    }, PTRS);
+  cell_t **p;
+  FORLIST(p, c, true) {
+    trace_index_t x;
+    if(is_list(*p)) {
+      x = trace_build_quote(*p);
+    } else {
+      x = trace_store(*p, *p) - trace_cur;
+    }
+    *p = trace_encode(x);
+    trace_cur[x].n++;
+  }
   cell_t *t = trace_copy(c);
   closure_free(c);
   t->value.type.exclusive = T_RETURN;
@@ -506,15 +505,10 @@ unsigned int trace_reduce(cell_t **cp) {
   while(*p) {
     if(!func_list(p, req_simple(T_RETURN))) continue;
     cell_t **a;
-    FORLIST(a, *p) {
-      if(is_list(*a)) {
-        if(is_row_list(*a) && list_size(*a) == 1) { // reduce wrapped placeholders
-          cell_t *x = ref((*a)->value.ptr[0]);
-          drop(*a);
-          *a = x;
-          reduce(a, req_any); // ***
-        }
-      } else {
+    FORLIST(a, *p, true) {
+      collapse_row(a);
+      reduce(a, req_any); // ***
+      if(!is_list(*a)) {
         trace_store(*a, *a);
       }
     }
@@ -667,7 +661,7 @@ void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *e) {
     trace_index_t y = trace_decode(a[j]);
     if(y == x) {
       trace_cur[j].value.type.exclusive = trace_type(c->value.ptr[0]).exclusive;
-      c->value.ptr[0] = &trace_cur[j];
+      c->value.ptr[0] = &trace_cur[a_n - 1 - j];
       return;
     }
   }
@@ -717,7 +711,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   // compile
   e->entry.in = in + fill_args(c);
   e->entry.alts = trace_reduce(&c);
-  e->entry.out = list_size(c);
+  e->entry.out = function_out(c, true);
   assert(e->entry.out);
   drop(c);
   trace_enabled = false;

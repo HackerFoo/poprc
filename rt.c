@@ -296,8 +296,6 @@ cell_t *expand_deps(cell_t *c, csize_t s) {
 }
 
 cell_t *compose(list_iterator_t it, cell_t *b) {
-  if(!list_has_more(it)) goto done;
-
   cell_t **x;
   csize_t b_in = function_in(b);
   if(b_in && (x = list_next(&it, true))) {
@@ -308,7 +306,7 @@ cell_t *compose(list_iterator_t it, cell_t *b) {
     // left is now safe for arg() because arg_nd() made necessary copies
     while(b_in) {
       b_in--;
-      if((x = list_next(&it, true))) break;
+      if(!(x = list_next(&it, true))) break;
       arg(*left, ref(*x));
     }
   }
@@ -326,7 +324,6 @@ cell_t *compose(list_iterator_t it, cell_t *b) {
     if(it.row) (*ll)->value.type.flags |= T_ROW;
   }
 
-done:
   return b;
 }
 

@@ -94,7 +94,7 @@
   } while(0)
 
 // macro to allow handling optional macro arguments
-// DISPATCH(MAC, n, x_0 .. x_m) will reduce to MACi(x_0 .. x_m), where i = n-m, so i is the number of missing arguments
+// DISPATCH(MAC, n, x_0 .. x_m) will reduce to MAC_i(x_0 .. x_m), where i = n-m, so i is the number of missing arguments
 #define DISPATCH(m, n, ...) CONCAT(DISPATCH, n)(m, __VA_ARGS__, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9)
 #define DISPATCH0(m, argc, ...) CONCAT(m, argc)()
 #define DISPATCH1(m, x0, argc, ...) CONCAT(m, argc)(x0)
@@ -126,7 +126,12 @@
 
 #define FLIP_PTR(p) ((void *)~(uintptr_t)(p))
 
-#define FORLIST(x, l) for(list_iterator_t it = list_begin(l); (x = list_next(&it, false)) ; )
-#define WHILELIST(x, it) while((x = list_next(&it, false)))
+#define FORLIST_0(x, l, r, ...) for(list_iterator_t it = list_begin(l); (x = list_next(&it, (r))) ; )
+#define FORLIST_1(x, l, ...) FORLIST_0(x, l, false)
+#define FORLIST(...) DISPATCH(FORLIST, 3, ##__VA_ARGS__)
+
+#define WHILELIST_0(x, it, r, ...) while((x = list_next(&it, (r))))
+#define WHILELIST_1(x, it, ...) WHILELIST_0(x, it, false)
+#define WHILELIST(...) DISPATCH(WHILELIST, 3, ##__VA_ARGS__)
 
 #endif
