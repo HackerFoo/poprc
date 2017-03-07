@@ -159,6 +159,9 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n) {
 #if FUNC_AP
   } else if(in = 1, out = 1, match_param_word("ap", w, &in, &out)) {
     c = func(func_ap, ++in, ++out);
+  } else if(in = 1, out = 1, match_param_word("comp", w, &in, &out)) {
+    in += 2;
+    c = func(func_compose, in, ++out);
 #endif
   } else {
     cell_t *e = lookup_word(w);
