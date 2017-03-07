@@ -263,7 +263,7 @@ void graph_cell(FILE *f, cell_t const *c) {
       print_cell_pointer(f, c->expr.arg[i]);
       fprintf(f, "</td></tr>");
     }
-    if(c->func == func_id) {
+    if(c->func == func_id && c->expr.arg[1]) {
       fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
               show_alt_set((alt_set_t)c->expr.arg[1]));
     }
