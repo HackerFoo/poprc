@@ -168,11 +168,10 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
 
 static
 cell_t *trace_store_value(const cell_t *c) {
-  if(!is_list(c)) {
-    cell_t *t = trace_lookup_value_linear(c->value.type.exclusive, c->value.integer[0]);
-    if(t) return t;
-  }
-  cell_t *tc = trace_copy(c);
+  assert(!is_list(c));
+  cell_t *tc = trace_lookup_value_linear(c->value.type.exclusive, c->value.integer[0]);
+  if(tc) return tc;
+  tc = trace_copy(c);
   tc->value.alt_set = 0;
   tc->alt = NULL;
   tc->n = -1;
@@ -293,7 +292,11 @@ void trace_reduction(cell_t *c, cell_t *r) {
   COUNTUP(i, c->func == func_exec ? in - 1 : in) {
     cell_t *a = c->expr.arg[i];
     if(is_value(a) && !is_var(a)) {
-      trace_store(a, a);
+      if(is_list(a)) {
+        assert(false); // TODO
+      } else {
+        trace_store(a, a);
+      }
     }
   }
 
