@@ -53,14 +53,17 @@ assert also works this way
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
-** TODO when leftmost arg of a placeholder is a row, compose
+** TODO compile partially applied recursive functions
+e.g. f: [7+] [12<] control.iterate
+** DONE when leftmost arg of a placeholder is a row, compose
 r x y f p -> r x y f ap20 .
-T_FUNCTION, & T_LIST | T_ROW related
-leftmost of the list can be a function
+T_FUNCTION, T_LIST | T_ROW related
+T_ROW needs to be stored in list containing row value, because the value may not be reduced yet
+Leftmost the list can be a function
 ** STARTED leftmost ptr in a list can be a row
-*** TODO pass tests
-*** TODO make quote return a function with a row arg
-*** TODO fix pushl into quote function (in compose_arg)
+*** STARTED pass tests
+*** CANCELED make quote return a function with a row arg
+*** DONE fix pushl into quote function (in compose_arg)
 ** DONE allocate all vars from trace (preallocate)
 ** DONE memory leak in tests.pushl2
 ** DONE stable references in modules
