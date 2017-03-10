@@ -172,13 +172,13 @@ int test_list_next() {
 // number of remaining elements
 // NOTE: will reduce all quotes
 csize_t list_remaining_size(list_iterator_t it, bool count_last_row) {
-  if(!it.array) return 0;
+  if(!it.array || it.index > it.size) return 0;
   csize_t n = 0;
   while(it.row) {
     cell_t **rp = &it.array[it.size];
-    n += it.size;
     reduce_quote(rp); // ***
     if(is_list(*rp)) {
+      n += it.size;
       it = list_begin(it.array[it.size]);
     } else {
       it.size += !!count_last_row;
