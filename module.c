@@ -452,13 +452,26 @@ int test_module_lookup() {
 }
 
 void command_import(cell_t *rest) {
-  if(!rest) return;
   cell_t *eval_module = module_get_or_create(modules, string_seg("eval"));
   cell_t *eval_imports = module_get_or_create(eval_module, string_seg("imports"));
-  while(rest) {
-    cell_t *import = get_module(tok_seg(rest));
-    merge_into_module(eval_imports, import);
-    rest = rest->tok_list.next;
+  if(!rest) { // import all
+    printf("Importing all modules (");
+    map_t m = module_map(modules);
+    char *sep = "";
+    FORMAP(i, m) {
+      if(strcmp("eval", (const char *)m[i].first) != 0) {
+        printf("%s%s", sep, (const char *)m[i].first);
+        merge_into_module(eval_imports, (cell_t *)m[i].second);
+        sep = ", ";
+      }
+    }
+    printf(")\n");
+  } else {
+    while(rest) {
+      cell_t *import = get_module(tok_seg(rest));
+      merge_into_module(eval_imports, import);
+      rest = rest->tok_list.next;
+    }
   }
 }
 
