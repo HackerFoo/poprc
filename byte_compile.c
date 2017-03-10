@@ -353,7 +353,13 @@ void trace_final_pass(cell_t *e) {
         p->expr.arg[1] = x;
       }
     } else if(p->func == func_placeholder) {
-      p->func = func_ap;
+      trace_index_t left = trace_decode(p->expr.arg[0]);
+      assert(left >= 0);
+      if(closure_in(p) > 1 && trace_type(&trace_cur[left]).exclusive == T_FUNCTION) {
+        p->func = func_compose;
+      } else {
+        p->func = func_ap;
+      }
     } else if(p->func == func_fcompose) {
       p->func = func_compose;
     }
@@ -689,7 +695,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   cell_t *c = *fp;
   e->n = PERSISTENT;
   e->entry.len = 0;
-  e->entry.flags = ENTRY_NOINLINE | ENTRY_QUOTE | (is_var(c) ? ENTRY_ROW : 0);
+  e->entry.flags = ENTRY_NOINLINE | ENTRY_QUOTE | (is_row_list(c) ? ENTRY_ROW : 0);
   e->func = func_exec;
 
   // allocate variables

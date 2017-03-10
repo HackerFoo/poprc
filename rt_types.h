@@ -128,7 +128,7 @@ struct __attribute__((packed)) mem {
 #define ENTRY_NOINLINE  0x02
 #define ENTRY_RECURSIVE 0x04
 #define ENTRY_QUOTE     0x08
-#define ENTRY_ROW   0x10
+#define ENTRY_ROW       0x10
 
 /* word entry */
 struct __attribute__((packed)) entry {

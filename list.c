@@ -279,6 +279,7 @@ bool is_empty_list(const cell_t *l) {
 }
 
 csize_t function_out(const cell_t *l, bool include_row_var) {
+  if(!l) return 0;
   list_iterator_t it = list_begin((cell_t *)l);
   return list_remaining_size(it, include_row_var);
 }
@@ -312,7 +313,7 @@ cell_t **leftmost(cell_t **lp) {
 }
 
 csize_t function_in(const cell_t *l) {
-  if(is_empty_list(l)) return 0;
+  if(!l || is_empty_list(l)) return 0;
   cell_t *c = *leftmost((cell_t **)&l); // ***
   if(!c) return 0;
   if(closure_is_ready(c)) return 0;

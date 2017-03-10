@@ -134,4 +134,16 @@
 #define WHILELIST_1(x, it, ...) WHILELIST_0(x, it, false)
 #define WHILELIST(...) DISPATCH(WHILELIST, 3, ##__VA_ARGS__)
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wgnu-statement-expression"
+#endif
+
+// non-negative saturating subtraction
+#define csub(a, b)                              \
+  ({                                            \
+    __typeof__(a) _a = (a);                     \
+    __typeof__(b) _b = (b);                     \
+    _b > _a ? 0 : _a - _b;                      \
+  })
+
 #endif

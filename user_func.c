@@ -243,7 +243,7 @@ bool func_quote(cell_t **cp, UNUSED type_request_t treq) {
 }
 
 void reduce_quote(cell_t **cp) {
-  if((*cp)->func == func_quote) {
+  if((*cp)->func == func_quote || (*cp)->func == func_exec) { // HACKy
     reduce(cp, req_any);
   }
 }
