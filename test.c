@@ -180,7 +180,7 @@ bool assert_ref_check(cell_t *c, cell_t ***roots, size_t roots_n) {
   bool res = true;
   while(c) {
     refcount_t n = c->n + 1;
-    n -= count_root(c, roots, roots_n);
+    if(count_root(c, roots, roots_n)) n = 0;
     if(n) {
       printf("assert_ref: cell[%d].n == %d\n", (int)(c - cells), (int)n);
       res = false;
