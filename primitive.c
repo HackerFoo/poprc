@@ -226,6 +226,10 @@ bool func_assert(cell_t **cp, type_request_t treq) {
      as_conflict(alt_set)) goto fail;
   clear_flags(c);
   cell_t *q = c->expr.arg[0];
+
+  // bare functions should not pass through an assert
+  assert(!is_function(q));
+
   if(is_var(p)) {
     if(is_list(q)) {
       trace_update(c, res);
@@ -345,7 +349,7 @@ bool func_ap_(cell_t **cp, type_request_t treq, bool row) {
   if(!reduce_arg(c, in, &alt_set, req_list(function_compose_in(p, out ? 0 : treq.in, arg_in), treq.out + out)) ||
      as_conflict(alt_set)) goto fail;
 
-  placeholder_extend(&c->expr.arg[0], treq.in, function_compose_out(c->expr.arg[in], arg_in, treq.out + out) - is_row_list(c->expr.arg[0]));
+  placeholder_extend(&c->expr.arg[0], treq.in, function_compose_out(c->expr.arg[in], arg_in, treq.out + out));
   placeholder_extend(&c->expr.arg[in], function_compose_in(p, treq.in, arg_in), treq.out + out);
   clear_flags(c);
 
