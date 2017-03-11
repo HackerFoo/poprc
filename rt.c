@@ -586,7 +586,7 @@ bool mutate_sweep(cell_t *r, cell_t **l) {
   r->tmp = r;
   traverse(r, {
       dirty |= mutate_sweep(*p, l);
-    }, ARGS | PTRS | ALT);
+    }, ARGS_IN | PTRS | ALT);
   r->tmp = 0;
 
   if(!dirty) return false;
