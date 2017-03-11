@@ -329,7 +329,7 @@ csize_t function_compose_in(cell_t *c, csize_t req_in, csize_t arg_in) {
 }
 
 static
-bool func_ap_(cell_t **cp, type_request_t treq, bool row) {
+bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   cell_t *c = *cp;
   assert(!is_marked(c));
 
@@ -391,12 +391,12 @@ fail:
 // WORD("pushl", ap, 2, 1)
 // WORD("popr", ap, 1, 2)
 bool func_ap(cell_t **cp, type_request_t treq) {
-  return func_ap_(cp, treq, false);
+  return func_compose_ap(cp, treq, false);
 }
 
 // WORD(".", compose, 2, 1)
 bool func_compose(cell_t **cp, type_request_t treq) {
-  return func_ap_(cp, treq, true);
+  return func_compose_ap(cp, treq, true);
 }
 
 // WORD("print", print, 2, 1)
