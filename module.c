@@ -477,8 +477,9 @@ void command_import(cell_t *rest) {
 
 void print_module_bytecode(cell_t *m) {
   assert(is_module(m));
-  map_t map = module_map((cell_t *)m);
-  if(!map) return;
+  if(!*module_ref(m)) return;
+  cell_t *map_copy = copy(*module_ref(m));
+  map_t map = map_copy->value.map;
   FORMAP(i, map) {
     char *name = (char *)map[i].first;
     if(strcmp("imports", name) == 0) continue;
@@ -488,6 +489,7 @@ void print_module_bytecode(cell_t *m) {
       printf("\n");
     }
   }
+  closure_free(map_copy);
 }
 
 void print_all_bytecode() {
