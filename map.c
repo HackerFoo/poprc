@@ -293,9 +293,12 @@ bool _map_merge(map_t map, pair_t *x, size_t n, cmp_t cmp) {
   if(n == 0) return true;
   uintptr_t *size = &map[0].first;
   uintptr_t *cnt = &map[0].second;
+  pair_t *elems = map_elems(map);
+  assert(check_map(map, cmp));
+  assert(check_order(x, n, cmp));
   if(*cnt + n > *size) return false;
   if(*cnt == 0) {
-      memcpy(map + 1, x, n * sizeof(pair_t));
+      memcpy(elems, x, n * sizeof(pair_t));
       *cnt = n;
       return true;
   }
@@ -303,17 +306,18 @@ bool _map_merge(map_t map, pair_t *x, size_t n, cmp_t cmp) {
   while(n) {
     uintptr_t m = 1 << __builtin_ctz(*cnt);
     if(m > n) {
-      memcpy(map + 1 + *cnt, x, n * sizeof(pair_t));
+      memcpy(&elems[*cnt], x, n * sizeof(pair_t));
       *cnt += n;
       break;
     }
-    memcpy(map + 1 + *cnt, x, m * sizeof(pair_t));
+    memcpy(&elems[*cnt], x, m * sizeof(pair_t));
     x += m;
     n -= m;
     *cnt += m;
     map_sort(map, bit, cmp);
     bit = m; // avoid redundant sorting
   }
+  assert(check_map(map, cmp));
   return true;
 }
 
@@ -327,22 +331,22 @@ bool string_map_merge(map_t map, pair_t *x, size_t n) {
 
 bool _map_union(map_t a, map_t b, cmp_t cmp) {
   uintptr_t
-    na = *map_cnt(a), n = na,
-    nb = *map_cnt(b);
-  pair_t *x = map_elems(b);
+    na = *map_cnt(a),
+    nb = *map_cnt(b), x = nb;
   if(nb == 0) return true;
   if(na + nb > map_size(a)) return false;
-  uintptr_t bit = 1 << __builtin_ctz(n);
-  while(bit < na && bit < nb) {
-    if(bit & n) {
-      _map_merge(a, x, bit, cmp);
-      x += bit;
-      n += bit;
-      nb -= bit;
+
+  pair_t *bs = map_elems(b);
+  uintptr_t bit = (uintptr_t)1 << int_log2l(x + 1);
+  while(x) {
+    if(x & bit) {
+      _map_merge(a, bs, bit, cmp);
+      bs += bit;
+      x &= ~bit;
     }
-    bit = 1 << __builtin_ctz(n);
+    bit >>= 1;
   }
-  _map_merge(a, x, nb, cmp);
+  assert(check_map(a, cmp));
   return true;
 }
 
@@ -530,6 +534,8 @@ int test_map() {
       ret = -1;
     }
   }
+
+  if(!check_map(map, key_cmp)) ret = -2;
   return ret;
 }
 
@@ -615,4 +621,32 @@ int test_string_map() {
   printf("%s => %" PRIuPTR "\n", (char *)p->first, p->second);
   if(p->second != 4) return -1;
   return 0;
+}
+
+bool check_order(pair_t *elems, size_t size, cmp_t cmp) {
+  if(size <= 1) return true;
+  uintptr_t prev = elems[0].first;
+  for(size_t i = 1; i < size; i++) {
+    uintptr_t x = elems[i].first;
+    if(cmp(x, prev)) {
+      printf("elems[%ld] < prev\n", i);
+      return false;
+    }
+    prev = x;
+  }
+  return true;
+}
+
+bool check_map(map_t map, cmp_t cmp) {
+  uintptr_t x = *map_cnt(map);
+  pair_t *elems = map_elems(map);
+  uintptr_t bit = 1;
+  while(x) {
+    if(x & bit) {
+      x &= ~bit;
+      if(!check_order(&elems[x], bit, cmp)) return false;
+    }
+    bit <<= 1;
+  }
+  return true;
 }
