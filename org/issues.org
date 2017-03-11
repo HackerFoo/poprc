@@ -14,7 +14,7 @@ Compile to direct C when possible
 **** split_args
 * major
 ** DONE avoid expanding placeholders
-** STARTED overhaul byte_compile to use variable ids
+** DONE overhaul byte_compile to use variable ids
 ** DONE don't trace pushl/pushr/popr again, let assertion mapping enforce assertions
 ** CANCELED every cell has a pointer to previous item in stack/list at arg[0] (left arg)
 - canceled because this would force linear evaluation
@@ -60,8 +60,8 @@ r x y f p -> r x y f ap20 .
 T_FUNCTION, T_LIST | T_ROW related
 T_ROW needs to be stored in list containing row value, because the value may not be reduced yet
 Leftmost the list can be a function
-** STARTED leftmost ptr in a list can be a row
-*** STARTED pass tests
+** DONE leftmost ptr in a list can be a row
+*** DONE pass tests
 *** CANCELED make quote return a function with a row arg
 *** DONE fix pushl into quote function (in compose_arg)
 ** DONE allocate all vars from trace (preallocate)
@@ -121,7 +121,7 @@ eval: rt.c:723: cell_t *add_to_list(cell_t *, cell_t *, cell_t **): Assertion `c
 ** TODO [ swap ] dup pushl popr drop dup pushl popr
 Creates a cycle that can't be freed
 ** DONE [ 3 ] ? [ ! ] . [ ] | . __ hang
-** TODO f: . popr swap drop
+** DONE f: . popr swap drop
 [1] [2] f __ leak!
 ** DONE f: pushr popr swap drop __ unreferenced pushr
 ** TODO fix tests.sum
