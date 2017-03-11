@@ -311,7 +311,7 @@ cell_t *compose(list_iterator_t it, cell_t *b) {
     }
   }
 
-  // prepend b with the remainder of a ***
+  // prepend b with the remainder of a
   int remaining_a = list_remaining_size(it, true);
   if(remaining_a) {
     cell_t **ll = left_list(&b);

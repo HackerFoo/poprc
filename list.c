@@ -284,7 +284,6 @@ csize_t function_out(const cell_t *l, bool include_row_var) {
   return list_remaining_size(it, include_row_var);
 }
 
-// *** TODO compose if needed
 cell_t **left_list(cell_t **l) {
   while(is_row_list(*l)) {
     cell_t **x = &(*l)->value.ptr[list_size(*l) - 1];
