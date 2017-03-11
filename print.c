@@ -33,6 +33,7 @@
 #include "gen/print.h"
 #include "gen/module.h"
 #include "gen/user_func.h"
+#include "gen/list.h"
 
 static BITSET_INDEX(visited, cells);
 static BITSET_INDEX(marked, cells);
@@ -182,9 +183,9 @@ void print_cell_pointer(FILE *f, cell_t *p) {
   if(p == &fail_cell) {
     fprintf(f, "<font color=\"red\">&amp;fail_cell</font>");
   } else if(p == &nil_cell) {
-    fprintf(f, "<font color=\"lightgray\">&amp;nil_cell</font>");
+    fprintf(f, "<font color=\"gray70\">&amp;nil_cell</font>");
   } else {
-    fprintf(f, "<font color=\"lightgray\">%p</font>", (void *)p);
+    fprintf(f, "<font color=\"gray70\">%p</font>", (void *)p);
   }
 }
 
@@ -222,14 +223,24 @@ void graph_cell(FILE *f, cell_t const *c) {
     fprintf(f, "%s ", show_type_all_short(c->value.type));
   }
   fprintf(f, "(%u%s)</b></font></td></tr>", (unsigned int)c->n, is_root(c) ? "*" : "");
-  fprintf(f, "<tr><td port=\"alt\">alt: ");
-  print_cell_pointer(f, c->alt);
-  fprintf(f, "</td></tr>");
+  if(c->alt) {
+    fprintf(f, "<tr><td port=\"alt\">alt: ");
+    print_cell_pointer(f, c->alt);
+    fprintf(f, "</td></tr>");
+  }
   if(is_value(c)) {
-    fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
-            show_alt_set(c->value.alt_set));
+    if(c->value.alt_set) {
+      fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
+              show_alt_set(c->value.alt_set));
+    }
     if(is_list(c)) {
       csize_t n = list_size(c);
+      if(n && (c->value.type.flags & T_ROW)) {
+        n--;
+        fprintf(f, "<tr><td port=\"ptr%u\" bgcolor=\"gray90\" >row: ", (unsigned int)n);
+        print_cell_pointer(f, c->value.ptr[n]);
+        fprintf(f, "</td></tr>");
+      }
       while(n--) {
         fprintf(f, "<tr><td port=\"ptr%u\">ptr: ", (unsigned int)n);
         print_cell_pointer(f, c->value.ptr[n]);
@@ -252,7 +263,7 @@ void graph_cell(FILE *f, cell_t const *c) {
       print_cell_pointer(f, c->expr.arg[i]);
       fprintf(f, "</td></tr>");
     }
-    if(c->func == func_id) {
+    if(c->func == func_id && c->expr.arg[1]) {
       fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
               show_alt_set((alt_set_t)c->expr.arg[1]));
     }
@@ -335,79 +346,27 @@ csize_t any_conflicts(cell_t const * const *p, csize_t size) {
   return 0;
 }
 
-// must be at least 2
-#define SHOW_LIST_LIMIT 16
+void show_list_elements(cell_t const *c) {
+  csize_t n = list_size(c);
+  if(!n) return;
+  if(is_row_list(c)) {
+    show_list_elements(c->value.ptr[--n]);
+  }
+  COUNTDOWN(i, n) {
+    show_one(c->value.ptr[i]);
+  }
+}
 
 void show_list(cell_t const *c) {
   assert(c && is_list(c));
-  csize_t n = list_size(c), i;
-  csize_t conflict = 0;
-  if(n) {
-    if(any_alt_overlap((cell_t const *const *)c->value.ptr, n)) {
-      cell_t *p = 0, *free_this = 0;
-      cell_t const *m1 = 0, *m2 = 0;
-
-      /* find first match */
-      if(!(conflict = any_conflicts((cell_t const *const *)c->value.ptr, n))) {
-        m1 = c;
-      } else {
-        p = copy(c);
-        while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, conflict, n)) {
-          if(!(conflict = any_conflicts((cell_t const *const *)p->value.ptr, n))) {
-            m1 = p;
-            free_this = p;
-            break;
-          }
-        }
-      }
-      if(!m1) {
-        /* no matches */
-        printf(" []");
-        if(p) closure_free(p);
-      } else {
-        /* find second match */
-        p = copy(m1);
-        while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, conflict, n)) {
-          if(!(conflict = any_conflicts((cell_t const *const *)p->value.ptr, n))) {
-            m2 = p;
-            break;
-          }
-        }
-        if(m2) printf(" {");
-        /* at least one match */
-        printf(" [");
-        i = n; while(i--) show_one(m1->value.ptr[i]);
-        printf(" ]");
-        closure_free(free_this);
-        if(m2) {
-          /* second match */
-          printf(" | [");
-          i = n; while(i--) show_one(m2->value.ptr[i]);
-          printf(" ]");
-          /* remaining matches */
-          int limit = SHOW_LIST_LIMIT - 2;
-          while(count((cell_t const **)p->value.ptr, (cell_t const *const *)c->value.ptr, conflict, n)) {
-            if(!(conflict = any_conflicts((cell_t const *const *)p->value.ptr, n))) {
-              if(!limit--) {
-                printf(" | ...");
-                break;
-              } else {
-                printf(" | [");
-                i = n; while(i--) show_one(p->value.ptr[i]);
-                printf(" ]");
-              }
-            }
-          }
-          printf(" }");
-        }
-        closure_free(p);
-      }
-    } else {
-      printf(" [");
-      i = n; while(i--) show_alt(c->value.ptr[i]);
-      printf(" ]");
-    }
-  } else printf(" []");
+  csize_t n = list_size(c);
+  if(!n) {
+    printf(" []");
+  } else {
+    printf(" [");
+    show_list_elements(c);
+    printf(" ]");
+  }
 }
 
 int test_count() {
@@ -488,30 +447,13 @@ void show_one(cell_t const *c) {
   }
 }
 
-void show_alt(cell_t const *c) {
-  cell_t const *p = c, *t;
-
-  if(p) {
-    if(!p->alt) {
-      /* one */
-      show_one(p);
-    } else {
-      /* many */
-      printf(" {");
-      t = p->alt;
-      show_one(p);
-      p = t;
-      do {
-        printf(" |");
-        t = p->alt;
-        show_one(p);
-        p = t;
-      } while(p);
-      printf(" }");
-    }
-  } else {
-    /* none */
-    printf(" {}");
+void show_alts(cell_t const *c) {
+  cell_t const *p = c;
+  while(p) {
+    putchar(' ');
+    show_list_elements(p);
+    putchar('\n');
+    p = p->alt;
   }
 }
 
@@ -539,6 +481,7 @@ char *show_type_all(type_t t) {
     "T_VAR",
     "T_FAIL",
     "T_TRACED",
+    "T_ROW"
   };
   static char buf[64];
   char *p = buf;
@@ -573,6 +516,7 @@ char *show_type_all_short(type_t t) {
     '?',
     '!',
     '.',
+    '@'
   };
   static char buf[LENGTH(type_flag_char) + 1];
 

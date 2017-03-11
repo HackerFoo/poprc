@@ -23,6 +23,7 @@
 #include "gen/rt.h"
 #include "gen/support.h"
 #include "gen/byte_compile.h"
+#include "gen/list.h"
 
 // to catch errors that result in large allocations
 #define MAX_ALLOC_SIZE 32
@@ -304,10 +305,6 @@ cell_t *refn(cell_t *c, refcount_t n) {
     c->n += n;
   }
   return c;
-}
-
-bool is_nil(cell_t const *c) {
-  return !c;
 }
 
 bool is_fail(cell_t const *c) {

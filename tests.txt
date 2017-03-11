@@ -71,3 +71,5 @@ __ type mismatch test
 
 __ test assert with > 2 alts
 1 2 3 | | dup 3 < !
+
+[1] 2 pushr [3] 4 pushr .

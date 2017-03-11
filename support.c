@@ -392,6 +392,10 @@ unsigned int int_log2(unsigned int x) {
   return x <= 1 ? 0 : (sizeof(x) * 8) - __builtin_clz(x - 1);
 }
 
+unsigned int int_log2l(long unsigned int x) {
+  return x <= 1 ? 0 : (sizeof(x) * 8) - __builtin_clzl(x - 1);
+}
+
 bool set_insert(uintptr_t x, uintptr_t *set, size_t size) {
   assert(x);
   size_t j = x % size;

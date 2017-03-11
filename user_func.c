@@ -28,6 +28,7 @@
 #include "gen/test.h"
 #include "gen/support.h"
 #include "gen/byte_compile.h"
+#include "gen/list.h"
 #include "gen/user_func.h"
 
 static
@@ -202,12 +203,14 @@ bool func_quote(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
 
-  csize_t in = closure_in(c) - 2;
-  cell_t *entry = c->expr.arg[in + 1];
-  c->expr.arg[in + 1] = 0;
-  csize_t f_in = entry->entry.in;
+  csize_t in = closure_in(c) - 1;
+  cell_t *entry = c->expr.arg[in];
+  c->expr.arg[in] = 0;
+  csize_t
+    f_in = entry->entry.in,
+    f_out = entry->entry.out;
 
-  cell_t *f = closure_alloc(f_in + 1);
+  cell_t *f = closure_alloc(f_in + f_out);
   csize_t offset = f_in - in;
   if(offset) {
     f->expr.arg[0] = (cell_t *)(trace_index_t)(offset - 1);
@@ -217,16 +220,30 @@ bool func_quote(cell_t **cp, UNUSED type_request_t treq) {
   }
 
   COUNTUP(i, in) {
-    f->expr.arg[i + offset] = c->expr.arg[i];
+    f->expr.arg[i + offset] = ref(c->expr.arg[i]);
   }
 
   f->expr.arg[f_in] = entry;
 
-  cell_t *res = closure_alloc(2);
-  res->func = func_ap;
-  res->expr.arg[0] = f;
-  res->expr.arg[1] = c->expr.arg[in];
+  cell_t *res = make_list(f_out);
+  cell_t **out_arg = &f->expr.arg[f_in+1];
+  COUNTUP(i, f_out-1) {
+    cell_t *d = dep(f);
+    out_arg[f_out - 2 - i] = d;
+    res->value.ptr[i] = d;
+  }
+  f->expr.out = f_out - 1;
+  res->value.ptr[f_out-1] = f;
+  refn(f, f_out-1);
+  res->alt = c->alt;
+  if(entry->entry.flags & ENTRY_ROW) res->value.type.flags |= T_ROW;
 
-  store_lazy(cp, c, res, 0);
-  return false;
+  store_reduced(cp, res);
+  return true;
+}
+
+void reduce_quote(cell_t **cp) {
+  if((*cp)->func == func_quote || (*cp)->func == func_exec) { // HACKy
+    reduce(cp, req_any);
+  }
 }

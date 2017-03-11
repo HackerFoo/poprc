@@ -45,6 +45,7 @@ static_assert(sizeof(csize_t) == sizeof(type_t), "csize_t and type_t are differe
 #define T_BOTTOM    0x0b
 
 // type flags
+#define T_ROW       0x10
 #define T_TRACED    0x20
 #define T_FAIL      0x40
 #define T_VAR       0x80
@@ -123,10 +124,11 @@ struct __attribute__((packed)) mem {
   cell_t *prev, *next;
 };
 
-#define ENTRY_PRIMITIVE 0x1
-#define ENTRY_NOINLINE  0x2
-#define ENTRY_RECURSIVE 0x4
-#define ENTRY_QUOTE     0x8
+#define ENTRY_PRIMITIVE 0x01
+#define ENTRY_NOINLINE  0x02
+#define ENTRY_RECURSIVE 0x04
+#define ENTRY_QUOTE     0x08
+#define ENTRY_ROW       0x10
 
 /* word entry */
 struct __attribute__((packed)) entry {
@@ -214,5 +216,11 @@ typedef struct measure_t {
 
 #define PRIMITIVE_MODULE_PREFIX __primitive
 #define PRIMITIVE_MODULE_NAME STRINGIFY(PRIMITIVE_MODULE_PREFIX)
+
+typedef struct list_iterator {
+  cell_t **array;
+  csize_t index, size;
+  bool row;
+} list_iterator_t;
 
 #endif

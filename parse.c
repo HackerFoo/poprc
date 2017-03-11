@@ -35,6 +35,7 @@
 #include "gen/lex.h"
 #include "gen/module.h"
 #include "gen/user_func.h"
+#include "gen/list.h"
 
 #define FUNC_AP 1
 #define MAX_SYMBOLS 64
@@ -158,6 +159,9 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n) {
 #if FUNC_AP
   } else if(in = 1, out = 1, match_param_word("ap", w, &in, &out)) {
     c = func(func_ap, ++in, ++out);
+  } else if(in = 1, out = 1, match_param_word("comp", w, &in, &out)) {
+    in += 2;
+    c = func(func_compose, in, ++out);
 #endif
   } else {
     cell_t *e = lookup_word(w);
@@ -227,9 +231,8 @@ cell_t *parse_vector(const cell_t **l) {
 }
 
 val_t fill_args(cell_t *r) {
-  csize_t n = list_size(r);
-  if(n < 1) return 0;
-  cell_t *l = r->value.ptr[n-1];
+  cell_t *l = *leftmost(&r);
+  if(!l) return 0;
   val_t i = 0;
   while(!closure_is_ready(l)) {
     cell_t *v = var(T_ANY, NULL);
@@ -647,4 +650,11 @@ const char *symbol_string(val_t x) {
 seg_t string_seg(const char *str) {
   seg_t seg = {str, strlen(str)};
   return seg;
+}
+
+cell_t *parse_expr_string(const char *expr) {
+  cell_t *p = lex(expr, 0);
+  cell_t *m = parse_expr((const cell_t **)&p, NULL);
+  free_toks(p);
+  return m;
 }

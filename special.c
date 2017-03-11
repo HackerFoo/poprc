@@ -22,6 +22,7 @@
 #include "gen/special.h"
 #include "gen/byte_compile.h"
 #include "gen/test.h"
+#include "gen/list.h"
 
 bool func_value(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
@@ -32,39 +33,23 @@ bool func_value(cell_t **cp, type_request_t treq) {
   if((c->value.type.flags & T_FAIL) ||
      !type_match(treq.t, c)) goto fail;
 
+  // NOTE: may create multiple placeholder
+  // TODO use rows to work around this
   if(is_var(c)) {
     if(is_any(c)) {
       if(treq.t == T_LIST) {
         res = var_create(T_LIST, c->value.ptr[0], treq.in, treq.out);
         res->value.alt_set = c->value.alt_set;
         res->alt = c->alt;
+        drop(c);
+        *cp = res;
       } else {
         c->value.type.exclusive = treq.t;
         trace_update(c, c);
       }
-    } else if(is_list(c)) {
-      csize_t
-        in = function_in(c),
-        out = function_out(c);
-      if(treq.out > out || treq.in > in) {
-      cell_t *f = c->value.ptr[in];
-      res = var_create_list(ref(f), treq.in - in, treq.out - out, out);
-      COUNTUP(i, out) {
-        res->value.ptr[i] = ref(c->value.ptr[i]);
-      }
-      res->value.alt_set = c->value.alt_set;
-      res->alt = c->alt;
-      }
     }
-    if(res) {
-      // HACK
-      // may result in multiple placeholder extensions,
-      // but a value cannot be expanded without breaking
-      // references; value -> id won't work (reduce_lazy)
-      // because values must remain values.
-      drop(c);
-      *cp = res;
-    }
+  } else if(is_row_list(c)) {
+    placeholder_extend(cp, treq.in, treq.out);
   }
   return true;
 fail:
@@ -102,26 +87,40 @@ bool is_value(cell_t const *c) {
 
 void placeholder_extend(cell_t **lp, int in, int out) {
   cell_t *l = *lp;
-  if(!is_var(l)) return;
+  if(!is_row_list(l)) return;
   csize_t
     f_in = function_in(l),
-    f_out = function_out(l),
+    f_out = function_out(l, false),
     d_in = in - min(in, f_in),
     d_out = out - min(out, f_out);
   if(d_in == 0 && d_out == 0) return;
-  cell_t *f = l->value.ptr[f_out];
+  cell_t **left = leftmost_row(&l);
+  if(!left) return;
+  cell_t *f = *left;
+  if(!(is_function(f) || is_placeholder(f))) return;
   cell_t *ph = func(func_placeholder, d_in + 1, d_out + 1);
 
-  l = expand(l, d_out);
-  COUNTUP(i, d_out) {
-    cell_t *d = dep(ph);
-    l->value.ptr[f_out + i] = d;
-    arg(ph, d);
+  if(l->n) {
+    l->n--;
+    l = copy(l);
+    traverse_ref(l, ALT | PTRS);
   }
+
+  if(d_out) {
+    cell_t *l_exp = make_list(d_out + 1);
+    l_exp->value.type.flags = T_ROW;
+    COUNTUP(i, d_out) {
+      cell_t *d = dep(ph);
+      l_exp->value.ptr[i] = d;
+      arg(ph, d);
+    }
+    *left = l_exp;
+    left = &l_exp->value.ptr[d_out];
+  }
+
   arg(ph, f);
   refn(ph, d_out);
-  l->value.ptr[list_size(l) - 1] = ph;
-  l->value.type.flags = T_VAR;
+  *left = ph;
   *lp = l;
 }
 
@@ -154,7 +153,7 @@ cell_t *var_create_list(cell_t *f, int in, int out, int shift) {
   arg(ph, f);
   refn(ph, out);
   a[out] = ph;
-  c->value.type.flags = T_VAR;
+  c->value.type.flags = T_ROW;
   return c;
 }
 
@@ -171,37 +170,6 @@ cell_t *vector(csize_t n) {
   c->func = func_value;
   c->value.type.exclusive = T_ANY;
   return c;
-}
-
-cell_t *quote(cell_t *x) {
-  cell_t *c = closure_alloc(2);
-  c->func = func_value;
-  c->value.type.exclusive = T_LIST;
-  c->value.ptr[0] = x;
-  return c;
-}
-
-cell_t *empty_list() {
-  cell_t *c = closure_alloc(1);
-  c->func = func_value;
-  c->value.type.exclusive = T_LIST;
-  return c;
-}
-
-cell_t *make_list(csize_t n) {
-  if(n == 0) return &nil_cell;
-  cell_t *c = closure_alloc(n + 1);
-  c->func = func_value;
-  c->value.type.exclusive = T_LIST;
-  return c;
-}
-
-bool is_list(cell_t const *c) {
-  return c && is_value(c) && c->value.type.exclusive == T_LIST;
-}
-
-bool is_function(cell_t const *c) {
-  return c && is_value(c) && c->value.type.exclusive == T_FUNCTION;
 }
 
 cell_t *make_map(csize_t s) {
@@ -343,27 +311,6 @@ bool func_fcompose(cell_t **cp, type_request_t treq) {
   cell_t *res = var(T_FUNCTION, c);
   store_reduced(cp, mod_alt(res, c->alt, alt_set));
   ASSERT_REF();
-  return true;
-
- fail:
-  fail(cp, treq);
-  return false;
-}
-
-// not really a func
-bool func_list(cell_t **cp, type_request_t treq) {
-  cell_t *c = *cp;
-  assert(!is_marked(c));
-  if(treq.t == T_ANY && treq.t == T_LIST) return true;
-  if(treq.t != T_RETURN) goto fail;
-  csize_t n = list_size(c);
-
-  alt_set_t alt_set = c->value.alt_set;
-  COUNTDOWN(i, n) {
-    if(!reduce_ptr(c, i, &alt_set, req_any) ||
-      as_conflict(alt_set)) goto fail;
-  }
-  traverse(c, *p = clear_ptr(*p), PTRS);
   return true;
 
  fail:

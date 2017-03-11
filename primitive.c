@@ -27,6 +27,7 @@
 #include "gen/test.h"
 #include "gen/byte_compile.h"
 #include "gen/support.h"
+#include "gen/list.h"
 
    /*-----------------------------------------------,
     |          VARIABLE NAME CONVENTIONS            |
@@ -124,84 +125,25 @@ val_t neq_op(val_t x, val_t y) { return x != y; }
 bool func_neq(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, neq_op); }
 bool func_neq_s(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_SYMBOL, T_SYMBOL, neq_op); }
 
-// outputs required from the left operand given the rignt operand
-csize_t function_compose_out(cell_t *c, csize_t out) {
-  c = clear_ptr(c);
-  return function_in(c) + out - min(out, function_out(c));
-}
-
-// inputs required from the right operand given the left operand
-csize_t function_compose_in(cell_t *c, csize_t in) {
-  c = clear_ptr(c);
-  return function_out(c) + in - min(in, function_in(c));
-}
-
-// WORD(".", compose, 2, 1)
-bool func_compose(cell_t **cp, type_request_t treq) {
-  cell_t *c = *cp;
-  assert(!is_marked(c));
-
-  alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 0, &alt_set, req_list(NULL, treq.in, 0)) ||
-     !reduce_arg(c, 1, &alt_set, req_list(NULL, function_compose_in(c->expr.arg[0], treq.in), treq.out)) ||
-     as_conflict(alt_set)) goto fail;
-  clear_flags(c);
-  placeholder_extend(&c->expr.arg[0], treq.in, function_compose_out(c->expr.arg[1], treq.out));
-
-  cell_t
-    *p = c->expr.arg[0],
-    *q = c->expr.arg[1],
-    *res;
-
-  if(list_size(q) == 0) { res = ref(p); goto done; }
-  if(list_size(p) == 0) { res = ref(q); goto done; }
-
-  bool
-    var_p = is_var(p),
-    var_q = is_var(q);
-
-  res = compose_args(p->value.ptr, function_out(p), ref(q));
-
-  if(var_p) {
-    csize_t res_n = list_size(res);
-    res->value.type.flags |= T_VAR;
-    if(var_q) {
-      cell_t *pc = func(func_fcompose, 2, 1);
-      arg(pc, res->value.ptr[res_n-1]);
-      arg(pc, ref(p->value.ptr[list_size(p) - 1]));
-      res->value.ptr[res_n-1] = pc;
-    } else {
-      res = expand(res, 1);
-      res->value.ptr[res_n] = ref(p->value.ptr[list_size(p) - 1]);
-    }
-  }
-
- done:
-  store_reduced(cp, mod_alt(res, c->alt, alt_set));
-  ASSERT_REF();
-  return true;
-
- fail:
-  fail(cp, treq);
-  return false;
-}
-
 // WORD("pushr", pushr, 2, 1)
 bool func_pushr(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
 
   alt_set_t alt_set = 0;
-  type_request_t atr = req_list(&treq, 0, -1);
+  type_request_t atr = req_list(treq.in, csub(treq.out, 1));
   if(!reduce_arg(c, 0, &alt_set, atr)) goto fail;
   clear_flags(c);
 
-  cell_t *p = c->expr.arg[0];
-
-  int n = list_size(p);
-  cell_t *res = expand(ref(p), 1);
-  memmove(res->value.ptr+1, res->value.ptr, sizeof(cell_t *)*n);
-  res->value.ptr[0] = ref(c->expr.arg[1]);
+  cell_t *res;
+  if(is_empty_list(c->expr.arg[0])) {
+    res = quote(ref(c->expr.arg[1]));
+  } else {
+    res = make_list(2);
+    res->value.ptr[1] = ref(c->expr.arg[0]);
+    res->value.ptr[0] = ref(c->expr.arg[1]);
+    res->value.type.flags = T_ROW;
+  }
   res->value.alt_set = alt_set;
   drop(res->alt);
   res->alt = c->alt;
@@ -241,10 +183,15 @@ bool func_alt2(cell_t **cp, UNUSED type_request_t treq) {
 
 
 cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
+  cell_t *nc;
   assert(is_list(c));
-  cell_t *nc = copy_expand(c, 1);
-  v->value.type.exclusive = T_FUNCTION;
-  nc->value.ptr[list_size(nc) - 1] = 0;
+  if(~c->value.type.flags & T_ROW) {
+    nc = copy_expand(c, 1);
+    v->value.type.exclusive = T_FUNCTION;
+    nc->value.ptr[list_size(nc) - 1] = 0;
+  } else {
+    nc = copy(c);
+  }
   traverse(nc, {
       if(*p) {
         cell_t *np = closure_alloc(2);
@@ -254,7 +201,10 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
         *p = np;
       }
     }, PTRS);
-  nc->value.ptr[list_size(nc) - 1] = v;
+  if(~c->value.type.flags & T_ROW) {
+    nc->value.ptr[list_size(nc) - 1] = v;
+  }
+  c->value.type.flags |= T_ROW;
   return nc;
 }
 
@@ -276,6 +226,10 @@ bool func_assert(cell_t **cp, type_request_t treq) {
      as_conflict(alt_set)) goto fail;
   clear_flags(c);
   cell_t *q = c->expr.arg[0];
+
+  // bare functions should not pass through an assert
+  assert(!is_function(q));
+
   if(is_var(p)) {
     if(is_list(q)) {
       trace_update(c, res);
@@ -362,56 +316,87 @@ bool func_dup(cell_t **cp, UNUSED type_request_t treq) {
   return false;
 }
 
-// WORD("pushl", ap, 2, 1)
-// WORD("popr", ap, 1, 2)
-bool func_ap(cell_t **cp, type_request_t treq) {
+// outputs required from the left operand given the rignt operand
+csize_t function_compose_out(cell_t *c, csize_t arg_in, csize_t out) {
+  c = clear_ptr(c);
+  return csub(function_in(c) + csub(out, function_out(c, true)), arg_in);
+}
+
+// inputs required from the right operand given the left operand
+csize_t function_compose_in(cell_t *c, csize_t req_in, csize_t arg_in) {
+  c = clear_ptr(c);
+  return csub(req_in, function_in(c)) + function_out(c, true) + arg_in;
+}
+
+static
+bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   cell_t *c = *cp;
   assert(!is_marked(c));
 
   const csize_t
     in = closure_in(c) - 1,
+    arg_in = in - row,
     n = closure_args(c),
     out = closure_out(c);
 
+  cell_t *p = NULL;
+
   alt_set_t alt_set = 0;
-  type_request_t atr = req_list((out && treq.in) ? NULL : &treq, in, out);
-  if(!reduce_arg(c, in, &alt_set, atr)) goto fail;
+  if(row) {
+    if(!reduce_arg(c, 0, &alt_set, req_list(treq.in, 0))) goto fail;
+    p = clear_ptr(c->expr.arg[0]);
+  }
+  if(!reduce_arg(c, in, &alt_set, req_list(function_compose_in(p, out ? 0 : treq.in, arg_in), treq.out + out)) ||
+     as_conflict(alt_set)) goto fail;
+
+  placeholder_extend(&c->expr.arg[0], treq.in, function_compose_out(c->expr.arg[in], arg_in, treq.out + out));
+  placeholder_extend(&c->expr.arg[in], function_compose_in(p, treq.in, arg_in), treq.out + out);
   clear_flags(c);
 
-  placeholder_extend(&c->expr.arg[in], treq.in + in, treq.out + out);
+  list_iterator_t it;
 
   reverse_ptrs((void **)c->expr.arg, in);
-  cell_t *l = compose_args(c->expr.arg, in, ref(c->expr.arg[in]));
+  it.array = c->expr.arg;
+  it.index = 0;
+  it.size = in - row;
+  it.row = row;
+  cell_t *l = compose(it, ref(c->expr.arg[in]));
   reverse_ptrs((void **)c->expr.arg, in);
-  csize_t l_out = function_out(l);
-  csize_t stop = min(l_out, out);
-  COUNTUP(i, stop) {
+
+  bool is_nil = c->expr.arg[in] == &nil_cell;
+  if(!is_nil) insert_root(&c->expr.arg[in]);
+  it = list_begin(l);
+  COUNTUP(i, out) {
+    cell_t **x = list_next(&it, false);
+    if(!x) {
+      drop(l);
+      goto fail;
+    }
     cell_t *d = c->expr.arg[n-1-i];
-    store_lazy_dep(d, ref(l->value.ptr[i]), alt_set);
+    store_lazy_dep(d, ref(*x), alt_set);
   }
+  if(!is_nil) remove_root(&c->expr.arg[in]);
 
-  if(out > l_out) {
-    drop(l);
-    goto fail;
-  }
-
-  /* drop the right list elements */
-  csize_t elems = list_size(l) - out;
-  cell_t *res = make_list(elems);
-  res->value.type.flags = is_var(l) ? T_VAR : 0;
-  COUNTUP(i, elems) {
-    res->value.ptr[i] = ref(l->value.ptr[i + out]);
-  }
+  cell_t *res = list_rest(it);
   drop(l);
   res->value.alt_set = alt_set;
-  res->alt = c->alt;
-  c->alt = 0;
-  store_reduced(cp, res);
+  store_reduced(cp, mod_alt(res, c->alt, alt_set));
   ASSERT_REF();
   return true;
 fail:
   fail(cp, treq);
   return false;
+}
+
+// WORD("pushl", ap, 2, 1)
+// WORD("popr", ap, 1, 2)
+bool func_ap(cell_t **cp, type_request_t treq) {
+  return func_compose_ap(cp, treq, false);
+}
+
+// WORD(".", compose, 2, 1)
+bool func_compose(cell_t **cp, type_request_t treq) {
+  return func_compose_ap(cp, treq, true);
 }
 
 // WORD("print", print, 2, 1)
@@ -465,7 +450,7 @@ bool func_is_nil(cell_t **cp, type_request_t treq) {
   if(is_var(p)) {
     res = var(T_SYMBOL, c);
   } else {
-    res = symbol(list_size(p) == 0 ? SYM_True : SYM_False);
+    res = symbol(is_empty_list(p) ? SYM_True : SYM_False);
   }
 
   res->value.alt_set = alt_set;

@@ -46,6 +46,7 @@
 #include "gen/git_log.h"
 #include "gen/lex.h"
 #include "gen/module.h"
+#include "gen/list.h"
 
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
@@ -62,27 +63,6 @@ static bool eval_commands = true;
 
 void command_git_commit(UNUSED cell_t *rest) {
   puts(GIT_LOG);
-}
-
-bool reduce_list(cell_t *c) {
-  bool b = true;
-  csize_t n = list_size(c);
-  cell_t **p = c->value.ptr;
-  while(n--) {
-    reduce_alt(p);
-    b &= *p != 0;
-    if(*p == 0) *p = &fail_cell;
-    ++p;
-  }
-  return b;
-}
-
-void reduce_alt(cell_t **cp) {
-  cell_t **p = cp;
-  while(*p && reduce(p, req_any)) {
-    p = &(*p)->alt;
-  }
-  *p = 0;
 }
 
 void measure_start() {
@@ -496,13 +476,13 @@ bool eval_command(char *line, char *end) {
   return !quit;
 }
 
-void reduce_root(cell_t *c) {
+void reduce_root(cell_t **cp) {
   rt_init();
-  insert_root(&c);
+  insert_root(cp);
   if(write_graph) make_graph_all(GRAPH_FILE);
-  reduce_list(c);
+  reduce_list(cp);
   if(write_graph) make_graph_all(REDUCED_GRAPH_FILE);
-  remove_root(&c);
+  remove_root(cp);
 }
 
 cell_t *eval_module() {
@@ -512,14 +492,13 @@ cell_t *eval_module() {
 void eval(const cell_t *p) {
   cell_t *c = parse_expr(&p, eval_module());
   if(!c) return;
-  csize_t s = list_size(c);
-  if(s > 0 && !closure_is_ready(c->value.ptr[s-1])) {
+  cell_t *left = *leftmost(&c);
+  if(left && !closure_is_ready(left)) {
     printf("incomplete expression\n");
   } else {
-    reduce_root(c);
-    ASSERT_REF();
-    show_list(c);
-    printf("\n");
+    reduce_root(&c);
+    if(c) ASSERT_REF();
+    show_alts(c);
   }
   drop(c);
 }
@@ -527,10 +506,8 @@ void eval(const cell_t *p) {
 bool get_arity(const cell_t *p, csize_t *in, csize_t *out, cell_t *module) {
   cell_t *c = parse_expr(&p, module);
   if(!c) return false;
-  *in = fill_args(c);
-  csize_t n = list_size(c);
-  if(c->value.ptr[n-1]->func == func_placeholder) n--;
-  *out = max(1, n);
+  *in = function_in(c);
+  *out = function_out(c, false);
   drop(c);
   return true;
 }

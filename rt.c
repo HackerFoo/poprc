@@ -28,6 +28,7 @@
 #include "gen/test.h"
 #include "gen/support.h"
 #include "gen/byte_compile.h"
+#include "gen/list.h"
 
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
@@ -151,10 +152,12 @@ void split_ptr(cell_t *c, csize_t n) {
 }
 
 // Reduce then split c->arg[n]
+// NOTE: c should never have a row
 bool reduce_ptr(cell_t *c,
                 csize_t n,
                 alt_set_t *ctx,
                 type_request_t treq) {
+  assert(is_list(c));
   cell_t **ap = &c->value.ptr[n];
   bool marked = is_marked(*ap);
   *ap = clear_ptr(*ap);
@@ -292,58 +295,35 @@ cell_t *expand_deps(cell_t *c, csize_t s) {
   return c;
 }
 
-csize_t function_out(const cell_t *l) {
-  csize_t n = list_size(l);
-  return is_var(l) ? n - 1 : n;
-}
-
-csize_t function_in(const cell_t *l) {
-  csize_t n = list_size(l);
-  if(n == 0) return 0;
-  cell_t *c = l->value.ptr[n-1];
-  if(closure_is_ready(c)) return 0;
-  csize_t in = 1;
-  while(c) {
-    csize_t i = closure_next_child(c);
-    in += i;
-    c = c->expr.arg[i];
-  }
-  return in;
-}
-
-cell_t *compose_args(cell_t **aptr, csize_t a_out, cell_t *b) {
-  if(a_out == 0) goto done;
-
-  csize_t
-    b_in = function_in(b),
-    b_out = function_out(b),
-    b_n = list_size(b);
-
-  // fill the leftmost element of b
-  cell_t **ap = aptr;
-  {
-    int n = min(a_out, b_in);
-    if(n--) {
-      b = arg_nd(b->value.ptr[b_n-1], ref(*ap++), b);
-      cell_t *left = b->value.ptr[b_n-1];
-      // left is now safe for arg() because arg_nd() made necessary copies
-      LOOP(n) {
-        arg(left, ref(*ap++));
-      }
+cell_t *compose(list_iterator_t it, cell_t *b) {
+  cell_t **x;
+  csize_t b_in = function_in(b);
+  if(b_in && (x = list_next(&it, true))) {
+    b_in--;
+    cell_t **left = leftmost(&b);
+    b = arg_nd(*left, ref(*x), b);
+    left = leftmost(&b);
+    // left is now safe for arg() because arg_nd() made necessary copies
+    while(b_in) {
+      b_in--;
+      if(!(x = list_next(&it, true))) break;
+      arg(*left, ref(*x));
     }
   }
 
   // prepend b with the remainder of a
-  if(a_out > b_in) {
-    int n = a_out - b_in;
-    b = expand(b, n);
-    cell_t **bp = &b->value.ptr[b_out];
-      LOOP(n) {
-      *bp++ = ref(*ap++);
+  int remaining_a = list_remaining_size(it, true);
+  if(remaining_a) {
+    cell_t **ll = left_list(&b);
+    csize_t offset = list_size(*ll);
+    *ll = expand(*ll, remaining_a);
+    cell_t **bp = &(*ll)->value.ptr[offset];
+    WHILELIST(x, it, true) {
+      *bp++ = ref(*x);
     }
+    if(it.row) (*ll)->value.type.flags |= T_ROW;
   }
 
-done:
   return b;
 }
 
@@ -606,7 +586,7 @@ bool mutate_sweep(cell_t *r, cell_t **l) {
   r->tmp = r;
   traverse(r, {
       dirty |= mutate_sweep(*p, l);
-    }, ARGS | PTRS | ALT);
+    }, ARGS_IN | PTRS | ALT);
   r->tmp = 0;
 
   if(!dirty) return false;
@@ -771,11 +751,7 @@ uint8_t new_alt_id(unsigned int n) {
   return r;
 }
 
-type_request_t req_list(type_request_t *p, int in, int out) {
-  if(p) {
-    in += p->in;
-    out = max(0, out + p->out);
-  }
+type_request_t req_list(int in, int out) {
   type_request_t req = {
     .t = T_LIST,
     .in = in,

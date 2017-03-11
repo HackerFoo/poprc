@@ -30,6 +30,7 @@
 #include "gen/lex.h"
 #include "gen/module.h"
 #include "gen/byte_compile.h"
+#include "gen/list.h"
 
 pair_t primitive_module[] = WORDS;
 
@@ -451,20 +452,34 @@ int test_module_lookup() {
 }
 
 void command_import(cell_t *rest) {
-  if(!rest) return;
   cell_t *eval_module = module_get_or_create(modules, string_seg("eval"));
   cell_t *eval_imports = module_get_or_create(eval_module, string_seg("imports"));
-  while(rest) {
-    cell_t *import = get_module(tok_seg(rest));
-    merge_into_module(eval_imports, import);
-    rest = rest->tok_list.next;
+  if(!rest) { // import all
+    printf("Importing all modules (");
+    map_t m = module_map(modules);
+    char *sep = "";
+    FORMAP(i, m) {
+      if(strcmp("eval", (const char *)m[i].first) != 0) {
+        printf("%s%s", sep, (const char *)m[i].first);
+        merge_into_module(eval_imports, (cell_t *)m[i].second);
+        sep = ", ";
+      }
+    }
+    printf(")\n");
+  } else {
+    while(rest) {
+      cell_t *import = get_module(tok_seg(rest));
+      merge_into_module(eval_imports, import);
+      rest = rest->tok_list.next;
+    }
   }
 }
 
 void print_module_bytecode(cell_t *m) {
   assert(is_module(m));
-  map_t map = module_map((cell_t *)m);
-  if(!map) return;
+  if(!*module_ref(m)) return;
+  cell_t *map_copy = copy(*module_ref(m));
+  map_t map = map_copy->value.map;
   FORMAP(i, map) {
     char *name = (char *)map[i].first;
     if(strcmp("imports", name) == 0) continue;
@@ -474,6 +489,7 @@ void print_module_bytecode(cell_t *m) {
       printf("\n");
     }
   }
+  closure_free(map_copy);
 }
 
 void print_all_bytecode() {
