@@ -293,7 +293,7 @@ void trace_reduction(cell_t *c, cell_t *r) {
     cell_t *a = c->expr.arg[i];
     if(is_value(a) && !is_var(a)) {
       if(is_list(a)) {
-        assert(false); // TODO
+        // assert(false); // TODO
       } else {
         trace_store(a, a);
       }

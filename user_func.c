@@ -61,8 +61,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
   cell_t *returns = NULL;
 
   // don't execute, just reduce all args and return variables
-  if(entry->entry.flags & (ENTRY_NOINLINE | ENTRY_RECURSIVE)) {
-    entry->entry.flags |= ENTRY_RECURSIVE;
+  if(entry->entry.flags & ENTRY_NOINLINE || c->expr.rec) {
     csize_t c_in = closure_in(c), n = closure_args(c);
     alt_set_t alt_set = 0;
     bool expnd = true;
@@ -96,15 +95,18 @@ expand:
 
   c->expr.arg[in] = 0;
   memset(map, 0, sizeof(map[0]) * len);
+  csize_t function_args = 0;
 
   COUNTUP(i, in) {
     cell_t *p = &code[i];
     assert(is_var(p));
+    if(is_function(p)) function_args++;
     map[i] = refn(c->expr.arg[in - 1 - i], p->n);
   }
 
   // allocate, copy, and index
   size_t s = 0;
+  cell_t *encoded_entry = trace_encode(entry - trace_cells);
   for(size_t i = in; i < len; i += s) {
     cell_t *p = &code[i];
     s = calculate_cells(p->size);
@@ -116,8 +118,29 @@ expand:
       if(!returns) returns = p;
       continue;
     }
-    cell_t *nc = closure_alloc_cells(s);
-    memcpy(nc, p, s * sizeof(cell_t));
+    cell_t *nc;
+    if(trace_enabled &&
+       p->func == func_exec &&
+       p->expr.arg[closure_in(p) - 1] == encoded_entry) {
+      csize_t out = closure_out(c);
+      nc = closure_alloc(p->size - function_args);
+      nc->expr.out = out;
+      nc->expr.rec = 1;
+      nc->func = func_exec;
+      csize_t j = 0;
+      COUNTUP(i, in) {
+        if(!is_function(&code[in - 1 - i])) {
+          nc->expr.arg[j++] = p->expr.arg[i];
+        } else {
+          drop(map_cell(map, trace_decode(p->expr.arg[i])));
+        }
+      }
+      nc->expr.arg[j] = trace_encode(trace_cur - trace_cells - 1);
+      if(out) memcpy(&nc->expr.arg[j+1], &p->expr.arg[in+1], out * sizeof(cell_t));
+    } else {
+      nc = closure_alloc_cells(s);
+      memcpy(nc, p, s * sizeof(cell_t));
+    }
     nc->tmp = 0;
     map[i] = nc;
   }
@@ -132,6 +155,9 @@ expand:
     if(t->func == func_exec || t->func == func_quote) {
       t_entry = &t->expr.arg[closure_in(t) - 1];
       *t_entry = &trace_cells[trace_decode(*t_entry)];
+      if(*t_entry == entry) { // track recursion depth
+        t->expr.rec = c->expr.rec + 1;
+      }
     }
 
     traverse(t, {

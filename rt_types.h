@@ -87,7 +87,8 @@ typedef bool (reduce_t)(cell_t **cell, type_request_t treq);
 
 /* unevaluated expression */
 struct __attribute__((packed)) expr {
-  csize_t out;
+  uint8_t out;
+  uint8_t rec;
   union {
     cell_t *arg[2];
     val_t idx[2];
