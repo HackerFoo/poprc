@@ -186,7 +186,7 @@ cell_t *closure_alloc_cells(csize_t size) {
 }
 
 #define calc_size(f, n)     \
-  ((offset(cell_t, f[n])    \
+  ((offsetof(cell_t, f[n])  \
     + (sizeof(cell_t) - 1)) \
    / sizeof(cell_t))
 
@@ -245,8 +245,6 @@ void closure_free(cell_t *c) {
 bool is_offset(cell_t const *c) {
   return !((uintptr_t)c & ~0xff);
 }
-
-#define cell_offset(f) ((cell_t **)&(((cell_t *)0)->f))
 
 csize_t list_size(cell_t const *c) {
   return c->size ? c->size - 1 : 0;

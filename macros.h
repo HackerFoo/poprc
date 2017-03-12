@@ -19,7 +19,9 @@
 #define __MACROS__
 
 #define sizeof_field(s, f) sizeof(((s *)0)->f)
-#define offset(s, f) ((uintptr_t)&(((s *)0)->f))
+#if !defined(offsetof)
+#define offsetof(s, f) ((uintptr_t)&(((s *)0)->f))
+#endif
 
 #define zero(a) memset((a), 0, sizeof(a))
 

@@ -20,6 +20,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 #include <time.h>
 #include "macros.h"
 
@@ -27,8 +28,6 @@ typedef uint16_t csize_t;
 typedef struct __attribute__((packed)) type {
   uint8_t exclusive, flags;
 } type_t;
-
-static_assert(sizeof(csize_t) == sizeof(type_t), "csize_t and type_t are different sizes");
 
 // exclusive types
 #define T_ANY       0x00
@@ -71,6 +70,7 @@ typedef intptr_t val_t;
 #pragma clang diagnostic ignored "-Wnested-anon-types"
 #pragma clang diagnostic ignored "-Wgnu-folding-constant"
 #pragma clang diagnostic ignored "-Wgnu-empty-initializer"
+#pragma clang diagnostic ignored "-Wextended-offsetof"
 #endif
 
 typedef struct pair_t {
@@ -182,6 +182,7 @@ struct __attribute__((packed, aligned(4))) cell {
 };
 
 static_assert(sizeof(cell_t) == sizeof_field(cell_t, raw), "cell_t wrong size");
+static_assert(offsetof(cell_t, expr.arg[1]) == offsetof(cell_t, value.ptr[0]), "second arg not aliased with first ptr");
 
 typedef struct measure_t {
   unsigned int reduce_cnt, fail_cnt, alloc_cnt, max_alloc_cnt;
