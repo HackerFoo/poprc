@@ -196,9 +196,39 @@ cell_t *trace_store_value(const cell_t *c) {
 }
 
 static
+cell_t *trace_store_self(const cell_t *c, const cell_t *r) {
+  cell_t *tc = trace_get(r);
+  type_t t = r->value.type;
+  tc->func = func_exec;
+  tc->n += c->n;
+  cell_t *e = &trace_cur[-1];
+  csize_t
+    in = e->entry.in,
+    out = e->entry.out;
+  tc->expr.arg[in] = trace_encode(e - trace_cells);
+  trace_shrink(tc, in + out);
+  COUNTUP(i, in) { // HACK just takes the initial args from c
+    trace_index_t x = trace_get_value(c->expr.arg[i]);
+    tc->expr.arg[i] = trace_encode(x);
+    trace_cur[x].n++;
+  }
+
+  // TODO handle out args
+  assert(out == 1);
+
+  tc->expr_type.exclusive = t.exclusive;
+  tc->alt = NULL;
+  return tc;
+}
+
+static
 cell_t *trace_store(const cell_t *c, const cell_t *r) {
   if(is_var(r)) {
-    return trace_store_expr(c, r);
+    if(c->func == func_exec && c->expr.rec == 0) { // super HACKy
+      return trace_store_self(c, r);
+    } else {
+      return trace_store_expr(c, r);
+    }
   } else {
     return trace_store_value(c);
   }
