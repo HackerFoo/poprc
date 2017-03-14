@@ -61,12 +61,13 @@ bool func_exec(cell_t **cp, type_request_t treq) {
   cell_t *returns = NULL;
 
   // don't execute, just reduce all args and return variables
-  if(entry->entry.flags & ENTRY_NOINLINE || c->expr.rec) {
+  if(c->expr.rec == 0) {
     csize_t c_in = closure_in(c), n = closure_args(c);
     alt_set_t alt_set = 0;
     bool expnd = true;
     for(csize_t i = 0; i < c_in - 1; ++i) {
-      if(!reduce_arg(c, i, &alt_set, req_any)) goto fail;
+      if(!reduce_arg(c, i, &alt_set, req_any) ||
+         as_conflict(alt_set)) goto fail;
       // if any vars in a recursive function, don't expand
       // TODO make this less dumb
       if(is_var(clear_ptr(c->expr.arg[i]))) expnd = false;
@@ -95,18 +96,15 @@ expand:
 
   c->expr.arg[in] = 0;
   memset(map, 0, sizeof(map[0]) * len);
-  csize_t function_args = 0;
 
   COUNTUP(i, in) {
     cell_t *p = &code[i];
     assert(is_var(p));
-    if(is_function(p)) function_args++;
     map[i] = refn(c->expr.arg[in - 1 - i], p->n);
   }
 
   // allocate, copy, and index
   size_t s = 0;
-  cell_t *encoded_entry = trace_encode(entry - trace_cells);
   for(size_t i = in; i < len; i += s) {
     cell_t *p = &code[i];
     s = calculate_cells(p->size);
@@ -118,29 +116,8 @@ expand:
       if(!returns) returns = p;
       continue;
     }
-    cell_t *nc;
-    if(trace_enabled &&
-       p->func == func_exec &&
-       p->expr.arg[closure_in(p) - 1] == encoded_entry) {
-      csize_t out = closure_out(c);
-      nc = closure_alloc(p->size - function_args);
-      nc->expr.out = out;
-      nc->expr.rec = 1;
-      nc->func = func_exec;
-      csize_t j = 0;
-      COUNTUP(i, in) {
-        if(!is_function(&code[in - 1 - i])) {
-          nc->expr.arg[j++] = p->expr.arg[i];
-        } else {
-          drop(map_cell(map, trace_decode(p->expr.arg[i])));
-        }
-      }
-      nc->expr.arg[j] = trace_encode(trace_cur - trace_cells - 1);
-      if(out) memcpy(&nc->expr.arg[j+1], &p->expr.arg[in+1], out * sizeof(cell_t));
-    } else {
-      nc = closure_alloc_cells(s);
-      memcpy(nc, p, s * sizeof(cell_t));
-    }
+    cell_t *nc = closure_alloc_cells(s);
+    memcpy(nc, p, s * sizeof(cell_t));
     nc->tmp = 0;
     map[i] = nc;
   }
@@ -156,7 +133,7 @@ expand:
       t_entry = &t->expr.arg[closure_in(t) - 1];
       *t_entry = &trace_cells[trace_decode(*t_entry)];
       if(*t_entry == entry) { // track recursion depth
-        t->expr.rec = c->expr.rec + 1;
+        if(c->expr.rec) t->expr.rec = c->expr.rec - 1;
       }
     }
 
@@ -206,24 +183,6 @@ expand:
   return false;
 }
 
-bool func_exec_recursive(cell_t **cp, type_request_t treq) {
-  cell_t *c = *cp;
-  assert(!is_marked(c));
-
-  csize_t c_in = closure_in(c);
-  alt_set_t alt_set = 0;
-  for(csize_t i = 0; i < c_in - 1; ++i) {
-    if(!reduce_arg(c, i, &alt_set, req_any)) goto fail;
-  }
-
-  c->func = func_exec;
-  return func_exec(cp, treq);
-
-fail:
-  fail(cp, treq);
-  return false;
-}
-
 // takes free variables and returns a quoted function
 bool func_quote(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
@@ -250,6 +209,7 @@ bool func_quote(cell_t **cp, UNUSED type_request_t treq) {
   }
 
   f->expr.arg[f_in] = entry;
+  f->expr.rec = entry->entry.rec;
 
   cell_t *res = make_list(f_out);
   cell_t **out_arg = &f->expr.arg[f_in+1];
