@@ -64,3 +64,5 @@ nested: [[0 swap False =:= !]
            pushl popr swap drop __ first arg
            pushl popr swap drop __ second arg
 ]__
+
+inl_loop: [3+] [10<] iterate

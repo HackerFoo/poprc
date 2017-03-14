@@ -352,7 +352,7 @@ ___ control.in2_2 (2 -> 2) ___
 
 ___ control.iterate (3 -> 1) ___
 [0] var, type = ?f x3
-[1] var, type = ?a x2
+[1] var, type = ?f x2
 [2] var, type = ?a x4
 [3] __primitive.ap 2 0 -> 4, type = f x1
 [4] __primitive.dep 3, type = a x1
@@ -487,6 +487,21 @@ ___ tests.get2 (1 -> 2) ___
 [2] __primitive.dep 1, type = a x1
 [3] __primitive.dep 1, type = a x1
 [4] return [ 2 3 ], type = r x1
+
+___ tests.inl_loop (1 -> 1) ___
+[0] var, type = ?i x4
+[1] __primitive.lt 0 2, type = s x1
+[2] val 10, type = i x2
+[3] __primitive.assert 6 1, type = 0 x1
+[4] __primitive.add 0 5, type = i x1
+[5] val 3, type = i x1
+[6] tests.inl_loop 4, type = 0 x1
+[7] return [ 3 ], type = r -> 12 x1
+[8] __primitive.lt 0 2, type = s x1
+[9] __primitive.eq_s 8 10, type = s x1
+[10] val 0, type = s x1
+[11] __primitive.assert 0 9, type = i x1
+[12] return [ 11 ], type = r x1
 
 ___ tests.pushl2 (3 -> 1) ___
 [0] var, type = ?f x1
