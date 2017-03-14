@@ -43,7 +43,7 @@ bool func_value(cell_t **cp, type_request_t treq) {
         res->alt = c->alt;
         drop(c);
         *cp = res;
-      } else {
+      } else if(treq.t != T_ANY) {
         c->value.type.exclusive = treq.t;
         trace_update(c, c);
       }
