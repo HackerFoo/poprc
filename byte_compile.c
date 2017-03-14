@@ -118,6 +118,23 @@ cell_t *trace_alloc(csize_t args) {
   return tc;
 }
 
+void trace_shrink(cell_t *t, csize_t args) {
+  csize_t prev_size = t->size;
+  assert(args <= prev_size);
+  csize_t
+    prev_cells = calculate_cells(t->size),
+    new_cells = calculate_cells(args),
+    diff = prev_cells - new_cells;
+  t->size = args;
+
+  // blank the extra cells
+  cell_t *p = &t[prev_cells];
+  LOOP(diff) {
+    memset(p, 0, sizeof(cell_t));
+    p->size = 1;
+  }
+}
+
 static
 cell_t *trace_copy(const cell_t *c) {
   cell_t *tc = trace_alloc(c->size);
