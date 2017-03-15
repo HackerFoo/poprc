@@ -53,7 +53,7 @@ assert also works this way
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
-** TODO compile partially applied recursive functions
+** DONE compile partially applied recursive functions
 e.g. f: [7+] [12<] control.iterate
 ** DONE when leftmost arg of a placeholder is a row, compose
 r x y f p -> r x y f ap20 .

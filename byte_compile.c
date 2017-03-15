@@ -46,6 +46,7 @@ bool trace_enabled = false;
 cell_t trace_cells[1 << 10];
 cell_t *trace_cur = &trace_cells[0];
 cell_t *trace_ptr = &trace_cells[0];
+static cell_t *initial_word = NULL;
 
 #if INTERFACE
 typedef intptr_t trace_index_t;
@@ -93,11 +94,10 @@ cell_t *trace_lookup_value_linear(int type, val_t value) {
 }
 
 static
-trace_index_t trace_get_value(const cell_t *r) {
+trace_index_t trace_get_value(cell_t *r) {
   assert(r && is_value(r));
   if(is_list(r)) {
-    // assertion on a list
-    return NIL_INDEX;
+    return trace_build_quote(r); // *** TODO prevent building duplicate quotes
   } else if(is_var(r)) {
     return trace_get(r) - trace_cur;
   } else {
@@ -116,6 +116,23 @@ cell_t *trace_alloc(csize_t args) {
   trace_ptr += size;
   tc->size = args;
   return tc;
+}
+
+void trace_shrink(cell_t *t, csize_t args) {
+  csize_t prev_size = t->size;
+  assert(args <= prev_size);
+  csize_t
+    prev_cells = calculate_cells(t->size),
+    new_cells = calculate_cells(args),
+    diff = prev_cells - new_cells;
+  t->size = args;
+
+  // blank the extra cells
+  cell_t *p = &t[prev_cells];
+  LOOP(diff) {
+    memset(p, 0, sizeof(cell_t));
+    p->size = 1;
+  }
 }
 
 static
@@ -142,6 +159,7 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
   tc->n = n;
   if(tc->func == func_dep_entered) tc->func = func_dep;
   cell_t **e = (tc->func == func_exec || tc->func == func_quote) ? &tc->expr.arg[closure_in(tc) - 1] : NULL;
+  tc->expr.rec = 1;
   traverse(tc, {
       if(p == e) {
         *p = trace_encode(*p - trace_cells);
@@ -179,9 +197,52 @@ cell_t *trace_store_value(const cell_t *c) {
 }
 
 static
+cell_t *trace_store_self(const cell_t *c, const cell_t *r) {
+  cell_t *tc = trace_get(r);
+  type_t t = r->value.type;
+  tc->func = func_exec;
+  tc->n += c->n;
+  cell_t *e = &trace_cur[-1];
+  csize_t
+    in = e->entry.in,
+    out = e->entry.out;
+  tc->expr.arg[in] = trace_encode(e - trace_cells);
+  trace_shrink(tc, in + out);
+  COUNTUP(i, in) { // HACK just takes the initial args from c
+    trace_index_t x = trace_get_value(c->expr.arg[i]);
+    tc->expr.arg[i] = trace_encode(x);
+    trace_cur[x].n++;
+  }
+
+  // TODO handle out args
+  assert(out == 1);
+
+  tc->expr_type.exclusive = t.exclusive;
+  tc->alt = NULL;
+  return tc;
+}
+
+static
+bool trace_match_self(const cell_t *c) {
+  const cell_t *s = initial_word;
+  if(!s || c->expr.rec) return false;
+  if(c->func != func_exec ||
+     c->size != s->size) return false;
+  for(csize_t i = closure_next_child(s); i < c->size; i++) {
+    cell_t *a = s->expr.arg[i];
+    if(a && c->expr.arg[i] != a) return false;
+  }
+  return true;
+}
+
+static
 cell_t *trace_store(const cell_t *c, const cell_t *r) {
   if(is_var(r)) {
-    return trace_store_expr(c, r);
+    if(trace_match_self(c)) {
+      return trace_store_self(c, r);
+    } else {
+      return trace_store_expr(c, r);
+    }
   } else {
     return trace_store_value(c);
   }
@@ -293,7 +354,7 @@ void trace_reduction(cell_t *c, cell_t *r) {
     cell_t *a = c->expr.arg[i];
     if(is_value(a) && !is_var(a)) {
       if(is_list(a)) {
-        assert(false); // TODO
+        //trace_build_quote(a);
       } else {
         trace_store(a, a);
       }
@@ -366,6 +427,24 @@ void trace_final_pass(cell_t *e) {
   }
 }
 
+static
+bool trace_is_recursive(cell_t *e) {
+  bool ret = false;
+  const cell_t *encoded_entry = trace_encode(e - trace_cells);
+  cell_t
+    *start = e + 1,
+    *end = start + e->entry.len;
+
+  FOR_TRACE(p, start, end) {
+    if(p->func == func_exec &&
+       p->expr.arg[closure_in(p)-1] == encoded_entry) {
+      ret = true;
+      break;
+    }
+  }
+  return ret;
+}
+
 trace_index_t trace_tail(trace_index_t t, csize_t out) {
   if(out == 0) return t;
   cell_t *tc = trace_alloc(out + 1);
@@ -394,7 +473,6 @@ void trace_set_type(cell_t *tc, int t) {
   }
 }
 
-static
 trace_index_t trace_build_quote(cell_t *l) {
   assert(is_list(l));
   if(is_empty_list(l)) return NIL_INDEX;
@@ -640,6 +718,16 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
 
   // compile
   trace_enabled = true;
+  cell_t *left = *leftmost(&c);
+  if(!is_value(left) &&
+     (reduce_t *)clear_ptr(left->func) == func_exec &&
+     !left->expr.rec &&
+     closure_out(left) + 1 == out) {
+    left->expr.rec = 1; // always expand root
+    initial_word = copy(left);
+  } else {
+    initial_word = NULL;
+  }
   fill_args(c);
   e->entry.alts = trace_reduce(&c);
   drop(c);
@@ -647,9 +735,13 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   e->entry.len = trace_ptr - trace_cur;
   trace_final_pass(e);
   e->entry.flags &= ~ENTRY_NOINLINE;
+  if(!trace_is_recursive(e)) {
+    e->entry.rec = 1;
+  }
 
   // finish
   free_def(l);
+  closure_free(initial_word);
   return true;
 }
 
@@ -725,6 +817,9 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   drop(c);
   trace_enabled = false;
   e->entry.flags &= ~ENTRY_NOINLINE;
+  if(!trace_is_recursive(e)) {
+    e->entry.rec = 1;
+  }
   e->entry.len = trace_ptr - trace_cur;
   if(is_id(e)) {
     trace_clear(e);

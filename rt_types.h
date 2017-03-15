@@ -87,7 +87,7 @@ typedef bool (reduce_t)(cell_t **cell, type_request_t treq);
 
 /* unevaluated expression */
 struct __attribute__((packed)) expr {
-  csize_t out;
+  uint8_t out, rec;
   union {
     cell_t *arg[2];
     val_t idx[2];
@@ -132,9 +132,9 @@ struct __attribute__((packed)) mem {
 
 /* word entry */
 struct __attribute__((packed)) entry {
-  csize_t alts;
+  uint8_t out, rec;
   uintptr_t len, flags;
-  csize_t in, out;
+  csize_t in, alts;
 };
 
 typedef enum char_class_t {

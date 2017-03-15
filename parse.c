@@ -177,6 +177,7 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n) {
         }
       } else {
         c = func(e->func, e->entry.in + 1, e->entry.out);
+        c->expr.rec = e->entry.rec;
         data = e;
       }
       in = e->entry.in;
