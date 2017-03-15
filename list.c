@@ -207,7 +207,8 @@ int test_list_remaining_size() {
 
 // finds the cell which contains a pointer
 cell_t *ptr_to_cell(void *p) {
-  return &cells[(cell_t *)p - cells];
+  volatile size_t i = ((cell_t *)p) - cells; // prevent optimizing this away
+  return (cell_t *)((char *)cells + i * sizeof(cell_t));
 }
 
 // returns a copy of the rest of the list
