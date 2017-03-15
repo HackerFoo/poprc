@@ -46,6 +46,7 @@ bool trace_enabled = false;
 cell_t trace_cells[1 << 10];
 cell_t *trace_cur = &trace_cells[0];
 cell_t *trace_ptr = &trace_cells[0];
+static cell_t *initial_word = NULL;
 
 #if INTERFACE
 typedef intptr_t trace_index_t;
@@ -222,9 +223,22 @@ cell_t *trace_store_self(const cell_t *c, const cell_t *r) {
 }
 
 static
+bool trace_match_self(const cell_t *c) {
+  const cell_t *s = initial_word;
+  if(!s || c->expr.rec) return false;
+  if(c->func != func_exec ||
+     c->size != s->size) return false;
+  for(csize_t i = closure_next_child(s); i < c->size; i++) {
+    cell_t *a = s->expr.arg[i];
+    if(a && c->expr.arg[i] != a) return false;
+  }
+  return true;
+}
+
+static
 cell_t *trace_store(const cell_t *c, const cell_t *r) {
   if(is_var(r)) {
-    if(c->func == func_exec && c->expr.rec == 0) { // super HACKy
+    if(trace_match_self(c)) {
       return trace_store_self(c, r);
     } else {
       return trace_store_expr(c, r);
@@ -704,11 +718,17 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
 
   // compile
   trace_enabled = true;
-  fill_args(c);
   cell_t *left = *leftmost(&c);
-  if(!is_value(left) && !left->expr.rec) {
+  if(!is_value(left) &&
+     (reduce_t *)clear_ptr(left->func) == func_exec &&
+     !left->expr.rec &&
+     closure_out(left) + 1 == out) {
     left->expr.rec = 1; // always expand root
+    initial_word = copy(left);
+  } else {
+    initial_word = NULL;
   }
+  fill_args(c);
   e->entry.alts = trace_reduce(&c);
   drop(c);
   trace_enabled = false;
@@ -721,6 +741,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
 
   // finish
   free_def(l);
+  closure_free(initial_word);
   return true;
 }
 
