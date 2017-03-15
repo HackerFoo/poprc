@@ -53,22 +53,18 @@ ifte: [] ap20 swap pushr [not!] [swap drop!] | . pull drop
 
 __ ifte2: rot [swap drop 0 != !] [0 == !] | pushl pushl pushl popr swap drop cut
 
-__ [1 [2]] 3 -> [1 2 3]
-feed: swap popr . swap pushr
-
 __ apply a quote underneath the top
-dip11: swap [] ap31 feed ap02 swap2 drop
-__ dip11: pushr ap12 swap3 drop
-dip12: swap [] ap31 feed ap03 swap3 drop
-dip13: swap [] ap31 feed ap04 swap4 drop
+dip11: swap pushr ap12 swap2 drop
+dip12: swap pushr ap13 swap3 drop
+dip13: swap pushr ap14 swap4 drop
 
-dip21: swap [] ap41 feed ap02 swap2 drop
-dip22: swap [] ap41 feed ap03 swap3 drop
-dip23: swap [] ap41 feed ap04 swap4 drop
+dip21: swap pushr ap22 swap2 drop
+dip22: swap pushr ap23 swap3 drop
+dip23: swap pushr ap24 swap4 drop
 
-dip31: swap [] ap51 feed ap02 swap2 drop
-dip32: swap [] ap51 feed ap03 swap3 drop
-dip33: swap [] ap51 feed ap04 swap4 drop
+dip31: swap pushr ap32 swap2 drop
+dip32: swap pushr ap33 swap3 drop
+dip33: swap pushr ap34 swap4 drop
 
 __ a [f] -> fa
 $: ap11 swap drop
