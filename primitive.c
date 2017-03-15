@@ -57,7 +57,7 @@ cell_t *_op2(val_t (*op)(val_t, val_t), cell_t *x, cell_t *y) {
   return res;
 }
 
-bool func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t, val_t)) {
+bool func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t, val_t), bool nonzero) {
   cell_t *c = *cp;
   cell_t *res = 0;
   assert(!is_marked(c));
@@ -72,6 +72,7 @@ bool func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
+  if(nonzero && !is_var(q) && q->value.integer[0] == 0) goto fail; // TODO assert this for variables
   res = is_var(p) || is_var(q) ? var(treq.t, c) : _op2(op, p, q);
   res->value.type.exclusive = res_type;
   res->alt = c->alt;
@@ -86,44 +87,52 @@ bool func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_
 
 // WORD("+", add, 2, 1)
 val_t add_op(val_t x, val_t y) { return x + y; }
-bool func_add(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, add_op); }
+bool func_add(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, add_op, false); }
 
 
 // WORD("*", mul, 2, 1)
 val_t mul_op(val_t x, val_t y) { return x * y; }
-bool func_mul(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, mul_op); }
+bool func_mul(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, mul_op, false); }
 
 // WORD("-", sub, 2, 1)
 val_t sub_op(val_t x, val_t y) { return x - y; }
-bool func_sub(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, sub_op); }
+bool func_sub(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, sub_op, false); }
+
+// WORD("/", div, 2, 1)
+val_t div_op(val_t x, val_t y) { return x / y; }
+bool func_div(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, div_op, true); }
+
+// WORD("%", mod, 2, 1)
+val_t mod_op(val_t x, val_t y) { return x % y; }
+bool func_mod(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, mod_op, true); }
 
 // WORD(">", gt, 2, 1)
 val_t gt_op(val_t x, val_t y) { return x > y; }
-bool func_gt(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, gt_op); }
+bool func_gt(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, gt_op, false); }
 
 // WORD(">=", gte, 2, 1)
 val_t gte_op(val_t x, val_t y) { return x >= y; }
-bool func_gte(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, gte_op); }
+bool func_gte(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, gte_op, false); }
 
 // WORD("<", lt, 2, 1)
 val_t lt_op(val_t x, val_t y) { return x < y; }
-bool func_lt(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, lt_op); }
+bool func_lt(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, lt_op, false); }
 
 // WORD("<=", lte, 2, 1)
 val_t lte_op(val_t x, val_t y) { return x <= y; }
-bool func_lte(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, lte_op); }
+bool func_lte(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, lte_op, false); }
 
 // WORD("==", eq, 2, 1)
 // WORD("=:=", eq_s, 2, 1)
 val_t eq_op(val_t x, val_t y) { return x == y; }
-bool func_eq(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, eq_op); }
-bool func_eq_s(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_SYMBOL, T_SYMBOL, eq_op); }
+bool func_eq(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, eq_op, false); }
+bool func_eq_s(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_SYMBOL, T_SYMBOL, eq_op, false); }
 
 // WORD("!=", neq, 2, 1)
 // WORD("!:=", neq_s, 2, 1)
 val_t neq_op(val_t x, val_t y) { return x != y; }
-bool func_neq(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, neq_op); }
-bool func_neq_s(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_SYMBOL, T_SYMBOL, neq_op); }
+bool func_neq(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, neq_op, false); }
+bool func_neq_s(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_SYMBOL, T_SYMBOL, neq_op, false); }
 
 // WORD("pushr", pushr, 2, 1)
 bool func_pushr(cell_t **cp, type_request_t treq) {
