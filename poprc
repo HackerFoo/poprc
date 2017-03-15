@@ -8,4 +8,5 @@ DIR=poprc_out
 
 mkdir -p $DIR
 ./eval -quiet yes -check_free no -lo ${LIBS} -main $1 -c $1 -q > ${DIR}/${OUT}.c
+clang -S -emit-llvm -O2 -I. -o ${DIR}/${OUT}.ll ${DIR}/${OUT}.c
 clang -g -O2 -I. -o ${DIR}/${OUT} ${DIR}/${OUT}.c
