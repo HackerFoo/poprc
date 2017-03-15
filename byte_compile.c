@@ -208,11 +208,18 @@ cell_t *trace_store_self(const cell_t *c, const cell_t *r) {
     out = e->entry.out;
   tc->expr.arg[in] = trace_encode(e - trace_cells);
   trace_shrink(tc, in + out);
-  COUNTUP(i, in) { // HACK just takes the initial args from c
-    trace_index_t x = trace_get_value(c->expr.arg[i]);
-    tc->expr.arg[i] = trace_encode(x);
-    trace_cur[x].n++;
+
+  // extract variables from c and feed them into the self call
+  // a little HACKy in the way this is done, but it works
+  cell_t *vl = 0;
+  trace_var_list((cell_t *)c, &vl);
+  COUNTUP(i, in) {
+    cell_t *x = trace_get(vl);
+    tc->expr.arg[i] = trace_encode(x - trace_cur);
+    x->n++;
+    if(!(vl = vl->tmp)) break;
   }
+  clean_tmp(vl);
 
   // TODO handle out args
   assert(out == 1);
@@ -228,7 +235,7 @@ bool trace_match_self(const cell_t *c) {
   if(!s || c->expr.rec) return false;
   if(c->func != func_exec ||
      c->size != s->size) return false;
-  for(csize_t i = closure_next_child(s); i < c->size; i++) {
+  for(csize_t i = closure_next_child(s) + 1; i < c->size; i++) {
     cell_t *a = s->expr.arg[i];
     if(a && c->expr.arg[i] != a) return false;
   }
@@ -483,9 +490,7 @@ trace_index_t trace_build_quote(cell_t *l) {
     return trace_get(l->value.ptr[0]) - trace_cur;
   }
   cell_t *vl = 0;
-  cell_t **vlp = &vl;
-
-  vlp = trace_var_list(l, vlp);
+  trace_var_list(l, &vl);
   size_t in = tmp_list_length(vl);
   cell_t *n = trace_alloc(in + 1);
 

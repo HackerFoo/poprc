@@ -510,3 +510,18 @@ ___ tests.pushl2 (3 -> 1) ___
 [3] __primitive.ap 2 1 0, type = f x1
 [4] return [ 3 ], type = r x1
 
+___ tests.inl_loop2 (3 -> 1) ___
+[0] var, type = ?i x3
+[1] var, type = ?i x2
+[2] var, type = ?i x4
+[3] __primitive.lt 2 0, type = s x1
+[4] __primitive.assert 6 3, type = 0 x1
+[5] __primitive.add 2 1, type = i x1
+[6] tests.inl_loop2 5 1 0, type = 0 x1
+[7] return [ 4 ], type = r -> 12 x1
+[8] __primitive.lt 2 0, type = s x1
+[9] __primitive.eq_s 8 10, type = s x1
+[10] val 0, type = s x1
+[11] __primitive.assert 2 9, type = i x1
+[12] return [ 11 ], type = r x1
+

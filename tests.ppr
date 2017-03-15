@@ -66,3 +66,4 @@ nested: [[0 swap False =:= !]
 ]__
 
 inl_loop: [3+] [10<] iterate
+inl_loop2: swap [+] pushl swap [<] pushl iterate
