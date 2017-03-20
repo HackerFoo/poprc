@@ -100,6 +100,9 @@ iterate:
     [swap] dip22 . swap __ a [fn [fn] [test] iterate] [test]
     [fork] ap20 ifdo
 
+__ initial step test base -> result
+binrec: [iterate] dip31 $
+
 module logic:
 
 not: False =:=
