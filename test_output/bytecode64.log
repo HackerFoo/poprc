@@ -145,52 +145,46 @@ ___ control.dip11 (3 -> 2) ___
 [0] var, type = ?f x1
 [1] var, type = ?a x1
 [2] var, type = ?a x1
-[3] __primitive.ap 2 0, type = f x1
-[4] __primitive.ap 3 -> 5, type = f x1
-[5] __primitive.dep 4, type = a x1
-[6] return [ 5 1 ], type = r x1
+[3] __primitive.ap 2 0 -> 4, type = f x1
+[4] __primitive.dep 3, type = a x1
+[5] return [ 4 1 ], type = r x1
 
 ___ control.dip12 (3 -> 3) ___
 [0] var, type = ?f x1
 [1] var, type = ?a x1
 [2] var, type = ?a x1
-[3] __primitive.ap 2 0, type = f x1
-[4] __primitive.ap 3 -> 5 6, type = f x2
-[5] __primitive.dep 4, type = a x1
-[6] __primitive.dep 4, type = a x1
-[7] return [ 5 6 1 ], type = r x1
+[3] __primitive.ap 2 0 -> 4 5, type = f x2
+[4] __primitive.dep 3, type = a x1
+[5] __primitive.dep 3, type = a x1
+[6] return [ 4 5 1 ], type = r x1
 
 ___ control.dip13 (3 -> 4) ___
 [0] var, type = ?f x1
 [1] var, type = ?a x1
 [2] var, type = ?a x1
-[3] __primitive.ap 2 0, type = f x1
-[4] __primitive.ap 3 -> 5, type = f x2
-[5] __primitive.dep 4, type = a x1
-[6] __primitive.ap 4 -> 7 8, type = f x2
-[7] __primitive.dep 6, type = a x1
-[8] __primitive.dep 6, type = a x1
-[9] return [ 7 8 5 1 ], type = r x1
+[3] __primitive.ap 2 0 -> 5 6 7, type = f x3
+[5] __primitive.dep 3, type = a x1
+[6] __primitive.dep 3, type = a x1
+[7] __primitive.dep 3, type = a x1
+[8] return [ 5 6 7 1 ], type = r x1
 
 ___ control.dip21 (4 -> 2) ___
 [0] var, type = ?f x1
 [1] var, type = ?a x1
 [2] var, type = ?a x1
 [3] var, type = ?a x1
-[4] __primitive.ap 3 2 0, type = f x1
-[5] __primitive.ap 4 -> 6, type = f x1
-[6] __primitive.dep 5, type = a x1
-[7] return [ 6 1 ], type = r x1
+[4] __primitive.ap 3 2 0 -> 5, type = f x1
+[5] __primitive.dep 4, type = a x1
+[6] return [ 5 1 ], type = r x1
 
 ___ control.dip22 (4 -> 3) ___
 [0] var, type = ?f x1
 [1] var, type = ?a x1
 [2] var, type = ?a x1
 [3] var, type = ?a x1
-[4] __primitive.ap 3 2 0, type = f x1
-[5] __primitive.ap 4 -> 6 7, type = f x2
-[6] __primitive.dep 5, type = a x1
-[7] __primitive.dep 5, type = a x1
+[4] __primitive.ap 3 2 0 -> 6 7, type = f x2
+[6] __primitive.dep 4, type = a x1
+[7] __primitive.dep 4, type = a x1
 [8] return [ 6 7 1 ], type = r x1
 
 ___ control.dip23 (4 -> 4) ___
@@ -198,13 +192,11 @@ ___ control.dip23 (4 -> 4) ___
 [1] var, type = ?a x1
 [2] var, type = ?a x1
 [3] var, type = ?a x1
-[4] __primitive.ap 3 2 0, type = f x1
-[5] __primitive.ap 4 -> 6, type = f x2
-[6] __primitive.dep 5, type = a x1
-[7] __primitive.ap 5 -> 8 9, type = f x2
-[8] __primitive.dep 7, type = a x1
-[9] __primitive.dep 7, type = a x1
-[10] return [ 8 9 6 1 ], type = r x1
+[4] __primitive.ap 3 2 0 -> 6 7 8, type = f x3
+[6] __primitive.dep 4, type = a x1
+[7] __primitive.dep 4, type = a x1
+[8] __primitive.dep 4, type = a x1
+[9] return [ 6 7 8 1 ], type = r x1
 
 ___ control.dip31 (5 -> 2) ___
 [0] var, type = ?f x1
@@ -212,9 +204,8 @@ ___ control.dip31 (5 -> 2) ___
 [2] var, type = ?a x1
 [3] var, type = ?a x1
 [4] var, type = ?a x1
-[5] __primitive.ap 4 3 2 0, type = f x1
-[6] __primitive.ap 5 -> 7, type = f x1
-[7] __primitive.dep 6, type = a x1
+[5] __primitive.ap 4 3 2 0 -> 7, type = f x1
+[7] __primitive.dep 5, type = a x1
 [8] return [ 7 1 ], type = r x1
 
 ___ control.dip32 (5 -> 3) ___
@@ -223,10 +214,9 @@ ___ control.dip32 (5 -> 3) ___
 [2] var, type = ?a x1
 [3] var, type = ?a x1
 [4] var, type = ?a x1
-[5] __primitive.ap 4 3 2 0, type = f x1
-[6] __primitive.ap 5 -> 7 8, type = f x2
-[7] __primitive.dep 6, type = a x1
-[8] __primitive.dep 6, type = a x1
+[5] __primitive.ap 4 3 2 0 -> 7 8, type = f x2
+[7] __primitive.dep 5, type = a x1
+[8] __primitive.dep 5, type = a x1
 [9] return [ 7 8 1 ], type = r x1
 
 ___ control.dip33 (5 -> 4) ___
@@ -235,31 +225,11 @@ ___ control.dip33 (5 -> 4) ___
 [2] var, type = ?a x1
 [3] var, type = ?a x1
 [4] var, type = ?a x1
-[5] __primitive.ap 4 3 2 0, type = f x1
-[6] __primitive.ap 5 -> 7, type = f x2
-[7] __primitive.dep 6, type = a x1
-[8] __primitive.ap 6 -> 9 10, type = f x2
-[9] __primitive.dep 8, type = a x1
-[10] __primitive.dep 8, type = a x1
-[11] return [ 9 10 7 1 ], type = r x1
-
-___ control.feed (2 -> 1) ___
-[0] var, type = ?a x1
-[1] var, type = ?f x1
-[2] __primitive.ap 1 -> 3, type = f x2
-[3] __primitive.dep 2, type = f x1
-[4] quote control.feed_4 0 2 3, type = l x1
-[5] return [ 4 ], type = r x1
-
-___ control.feed_4 (3 -> 2) ___
-[0] var, type = ?a x1
-[1] var, type = ?f x1
-[2] var, type = ?a x1
-[3] __primitive.ap 1 -> 4, type = f x2
-[4] __primitive.dep 3, type = a x1
-[5] __primitive.ap 4 0, type = f x1
-[6] __primitive.compose 3 5, type = f x1
-[7] return [ 6 2 ], type = @r x1
+[5] __primitive.ap 4 3 2 0 -> 7 8 9, type = f x3
+[7] __primitive.dep 5, type = a x1
+[8] __primitive.dep 5, type = a x1
+[9] __primitive.dep 5, type = a x1
+[10] return [ 7 8 9 1 ], type = r x1
 
 ___ control.fork (3 -> 2) ___
 [0] var, type = ?f x1
@@ -281,6 +251,17 @@ ___ control.ifte (3 -> 1) ___
 [6] return [ 5 ], type = r -> 8 x1
 [7] __primitive.assert 1 2, type = a x1
 [8] return [ 7 ], type = r x1
+
+___ control.para (4 -> 2) ___
+[0] var, type = ?f x1
+[1] var, type = ?f x1
+[2] var, type = ?a x1
+[3] var, type = ?a x1
+[4] __primitive.ap 3 1 -> 5, type = f x1
+[5] __primitive.dep 4, type = a x1
+[6] __primitive.ap 2 0 -> 7, type = f x1
+[7] __primitive.dep 6, type = a x1
+[8] return [ 5 7 ], type = r x1
 
 ___ control.peek (2 -> 2) ___
 [0] var, type = ?f x1
@@ -318,16 +299,16 @@ ___ control.ifdo (2 -> 1) ___
 [14] __primitive.assert 10 12, type = a x1
 [15] return [ 14 ], type = r x1
 
-___ control.para (4 -> 2) ___
-[0] var, type = ?f x1
-[1] var, type = ?f x1
-[2] var, type = ?a x1
-[3] var, type = ?a x1
-[4] __primitive.ap 3 1 -> 5, type = f x1
-[5] __primitive.dep 4, type = a x1
-[6] __primitive.ap 2 0 -> 7, type = f x1
-[7] __primitive.dep 6, type = a x1
-[8] return [ 5 7 ], type = r x1
+___ control.in2 (2 -> 3) ___
+[0] var, type = ?a x2
+[1] var, type = ?a x2
+[2] quote control.in2_2 0 1, type = l x1
+[3] return [ 1 0 2 ], type = r x1
+
+___ control.in2_2 (2 -> 2) ___
+[0] var, type = ?a x1
+[1] var, type = ?a x1
+[2] return [ 0 1 ], type = r x1
 
 ___ control.twice (3 -> 2) ___
 [0] var, type = ?f x2
@@ -339,16 +320,15 @@ ___ control.twice (3 -> 2) ___
 [6] __primitive.dep 5, type = a x1
 [7] return [ 4 6 ], type = r x1
 
-___ control.in2 (2 -> 3) ___
-[0] var, type = ?a x2
-[1] var, type = ?a x2
-[2] quote control.in2_2 0 1, type = l x1
-[3] return [ 1 0 2 ], type = r x1
-
-___ control.in2_2 (2 -> 2) ___
-[0] var, type = ?a x1
+___ control.binrec (4 -> 1) ___
+[0] var, type = ?f x1
 [1] var, type = ?a x1
-[2] return [ 0 1 ], type = r x1
+[2] var, type = ?a x1
+[3] var, type = ?a x1
+[4] control.iterate 3 2 1, type = 0 x1
+[5] __primitive.ap 4 0 -> 6, type = f x1
+[6] __primitive.dep 5, type = a x1
+[7] return [ 6 ], type = r x1
 
 ___ control.iterate (3 -> 1) ___
 [0] var, type = ?f x3
