@@ -61,7 +61,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
   cell_t *returns = NULL;
 
   // don't execute, just reduce all args and return variables
-  if(c->expr.rec == 0) {
+  if(trace_enabled && c->expr.rec == 0) {
     csize_t c_in = closure_in(c), n = closure_args(c);
     alt_set_t alt_set = 0;
     bool expnd = true;
@@ -72,18 +72,24 @@ bool func_exec(cell_t **cp, type_request_t treq) {
       // TODO make this less dumb
       if(is_var(clear_ptr(c->expr.arg[i]))) expnd = false;
     }
-    if(expnd && c_in > 1) goto expand;
+
+    if(0&&expnd && c_in > 1) goto expand;
+
+    cell_t *res = var(treq.t == T_ANY ? T_BOTTOM : treq.t, c);
+    res->value.alt_set = alt_set;
+
     for(csize_t i = c_in; i < n; ++i) {
       cell_t **d = &c->expr.arg[i];
       if(*d && is_dep(*d)) {
+        assert((*d)->expr.arg[0] == c);
+        drop(c);
+        (*d)->expr.arg[0] = ref(res);
         cell_t *v = var(T_BOTTOM, *d);
         v->value.alt_set = alt_set;
         store_reduced(d, v);
       }
     }
 
-    cell_t *res = var(treq.t == T_ANY ? T_BOTTOM : treq.t, c);
-    res->value.alt_set = alt_set;
     store_reduced(cp, res);
     return true;
 
@@ -133,7 +139,7 @@ expand:
       t_entry = &t->expr.arg[closure_in(t) - 1];
       *t_entry = &trace_cells[trace_decode(*t_entry)];
       if(*t_entry == entry) { // track recursion depth
-        if(c->expr.rec) t->expr.rec = c->expr.rec - 1;
+        t->expr.rec = c->expr.rec ? c->expr.rec - 1 : c->expr.rec;
       }
     }
 

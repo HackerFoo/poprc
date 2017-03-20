@@ -194,7 +194,7 @@ bool assert_ref_check(cell_t *c, cell_t ***roots, size_t roots_n) {
 bool assert_ref(cell_t ***roots, size_t n) {
   cell_t *list = 0, **tail = &list;
   COUNTUP(i, n) {
-    if(!roots[i]) continue;
+    if(!roots[i] || !is_closure(*roots[i])) continue; // ***
     tail = flatten(*roots[i], tail);
   }
   assert_ref_dec(list);

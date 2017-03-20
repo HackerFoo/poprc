@@ -159,11 +159,11 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
   tc->n = n;
   if(tc->func == func_dep_entered) tc->func = func_dep;
   cell_t **e = (tc->func == func_exec || tc->func == func_quote) ? &tc->expr.arg[closure_in(tc) - 1] : NULL;
-  tc->expr.rec = 1;
   traverse(tc, {
       if(p == e) {
         *p = trace_encode(*p - trace_cells);
       } else if(*p) {
+        assert(!is_marked(*p));
         trace_index_t x = trace_get_value(*p);
         *p = trace_encode(x);
         trace_cur[x].n++;
@@ -346,10 +346,22 @@ void trace_drop(cell_t *r) {
   }
 }
 
+cell_t *get_list_function_var(cell_t *c) {
+  cell_t *left = *leftmost(&c);
+       if(!left)                return NULL;
+  else if(is_function(left))    return left;
+  else if(is_placeholder(left)) return left->expr.arg[closure_in(left) - 1];
+  else                          return NULL;
+}
+
 void trace_reduction(cell_t *c, cell_t *r) {
   if(!trace_enabled) return;
 
-  if(!is_var(r) || r->value.type.exclusive == T_LIST) return;
+  if(!(is_var(r) || c->func == func_exec)) return;
+  if(is_list(r)) {
+    r = get_list_function_var(r);
+    if(!r) return;
+  }
 
   if(write_graph) {
     mark_cell(c);
