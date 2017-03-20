@@ -904,3 +904,15 @@ void command_bytecode(cell_t *rest) {
     }
   }
 }
+
+void command_entry_number(cell_t *rest) {
+  if(rest) {
+    command_def(rest);
+    cell_t
+      *m = eval_module(),
+      *e = module_lookup_compiled(tok_seg(rest), &m);
+    if(e) {
+      printf("entry number: %ld\n", e - trace_cells);
+    }
+  }
+}
