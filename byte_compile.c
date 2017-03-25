@@ -256,8 +256,16 @@ cell_t *trace_store(const cell_t *c, const cell_t *r) {
 }
 
 static
-void trace_init() {
+cell_t *trace_start() {
+  trace_enabled = true;
+  cell_t *e = trace_alloc(1);
   trace_cur = trace_ptr;
+  return e;
+}
+
+static
+void trace_stop() {
+  trace_enabled = false;
 }
 
 void print_bytecode(cell_t *e) {
@@ -715,11 +723,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   cell_t *toks = l->value.ptr[0]; // TODO handle list_size(l) > 1
 
   // set up
-  trace_init();
-
-  cell_t *e = *entry = trace_ptr;
-  trace_cur = ++trace_ptr;
-
+  cell_t *e = *entry = trace_start();
   e->n = PERSISTENT;
   e->module_name = module_name(module);
   e->word_name = seg_string(name); // TODO fix unnecessary alloc
@@ -734,7 +738,6 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   cell_t *c = parse_expr(&p, module);
 
   // compile
-  trace_enabled = true;
   cell_t *left = *leftmost(&c);
   if(!is_value(left) &&
      (reduce_t *)clear_ptr(left->func) == func_exec &&
@@ -748,7 +751,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   fill_args(c);
   e->entry.alts = trace_reduce(&c);
   drop(c);
-  trace_enabled = false;
+  trace_stop();
   e->entry.len = trace_ptr - trace_cur;
   trace_final_pass(e);
   e->entry.flags &= ~ENTRY_NOINLINE;
@@ -791,12 +794,7 @@ void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *e) {
 static
 cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   // set up
-  trace_init();
-  trace_enabled = true;
-
-  cell_t *e = trace_ptr;
-  trace_cur = ++trace_ptr;
-
+  cell_t *e = trace_start();
   csize_t in = closure_in(q) - 1;
   cell_t **fp = &q->expr.arg[in];
   assert(*fp);
@@ -832,7 +830,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   e->entry.out = function_out(c, true);
   assert(e->entry.out);
   drop(c);
-  trace_enabled = false;
+  trace_stop();
   e->entry.flags &= ~ENTRY_NOINLINE;
   if(!trace_is_recursive(e)) {
     e->entry.rec = 1;
