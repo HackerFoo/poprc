@@ -752,6 +752,15 @@ uint8_t new_alt_id(unsigned int n) {
   return r;
 }
 
+#if INTERFACE
+#define REQ(type, ...) CONCAT(REQ_, type)(__VA_ARGS__)
+#define REQ_list(in, out) req_list((in), (out))
+#define REQ_any() req_any
+#define REQ_int() req_int
+#define REQ_symbol() req_symbol
+#define REQ_function() req_function
+#endif
+
 type_request_t req_list(int in, int out) {
   type_request_t req = {
     .t = T_LIST,
@@ -764,10 +773,13 @@ type_request_t req_list(int in, int out) {
 const type_request_t req_any = { .t = T_ANY };
 const type_request_t req_int = { .t = T_INT };
 const type_request_t req_symbol = { .t = T_SYMBOL };
+const type_request_t req_function = { .t = T_FUNCTION };
 
 type_request_t req_simple(int t) {
   type_request_t req = {
-    .t = t
+    .t = t,
+    .in = 0,
+    .out = 0,
   };
   return req;
 }

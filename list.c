@@ -71,10 +71,10 @@ bool func_list(cell_t **cp, type_request_t treq) {
 
   alt_set_t alt_set = c->value.alt_set;
   COUNTDOWN(i, n) {
-    if(!reduce_ptr(c, i, &alt_set, req_any) ||
+    if(!reduce_ptr(c, i, &alt_set, REQ(any)) ||
       as_conflict(alt_set)) goto fail;
     if(i == 0 && is_row_list(c) && is_list(c->value.ptr[0])) {
-      if(!func_list(&c->value.ptr[0], req_any)) goto fail;
+      if(!func_list(&c->value.ptr[0], REQ(any))) goto fail;
     }
   }
   traverse(c, *p = clear_ptr(*p), PTRS);

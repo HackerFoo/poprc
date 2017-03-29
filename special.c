@@ -260,9 +260,9 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
 
   alt_set_t alt_set = 0;
   assert(in >= 1);
-  if(!reduce_arg(c, in - 1, &alt_set, req_simple(T_FUNCTION))) goto fail;
+  if(!reduce_arg(c, in - 1, &alt_set, REQ(function))) goto fail;
   COUNTUP(i, in - 1) {
-    if(!reduce_arg(c, i, &alt_set, req_any) ||
+    if(!reduce_arg(c, i, &alt_set, REQ(any)) ||
       as_conflict(alt_set)) goto fail;
   }
   clear_flags(c);
@@ -302,7 +302,7 @@ bool func_fcompose(cell_t **cp, type_request_t treq) {
   assert(!is_marked(c));
 
   alt_set_t alt_set = 0;
-  type_request_t atr = req_simple(T_FUNCTION);
+  type_request_t atr = REQ(function);
   if(!reduce_arg(c, 0, &alt_set, atr) ||
      !reduce_arg(c, 1, &alt_set, atr) ||
      as_conflict(alt_set)) goto fail;

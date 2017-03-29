@@ -66,7 +66,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     alt_set_t alt_set = 0;
     bool expnd = true;
     for(csize_t i = 0; i < c_in - 1; ++i) {
-      if(!reduce_arg(c, i, &alt_set, req_any) ||
+      if(!reduce_arg(c, i, &alt_set, REQ(any)) ||
          as_conflict(alt_set)) goto fail;
       // if any vars in a recursive function, don't expand
       // TODO make this less dumb

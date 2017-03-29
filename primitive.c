@@ -140,7 +140,7 @@ bool func_pushr(cell_t **cp, type_request_t treq) {
   assert(!is_marked(c));
 
   alt_set_t alt_set = 0;
-  type_request_t atr = req_list(treq.in, csub(treq.out, 1));
+  type_request_t atr = REQ(list, treq.in, csub(treq.out, 1));
   if(!reduce_arg(c, 0, &alt_set, atr)) goto fail;
   clear_flags(c);
 
@@ -224,7 +224,7 @@ bool func_assert(cell_t **cp, type_request_t treq) {
 
   cell_t *res = NULL;
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 1, &alt_set, req_symbol)) goto fail;
+  if(!reduce_arg(c, 1, &alt_set, REQ(symbol))) goto fail;
   cell_t *p = clear_ptr(c->expr.arg[1]);
 
   if(!(p->value.integer[0] == SYM_True || is_var(p))) goto fail;
@@ -352,10 +352,10 @@ bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
 
   alt_set_t alt_set = 0;
   if(row) {
-    if(!reduce_arg(c, 0, &alt_set, req_list(treq.in, 0))) goto fail;
+    if(!reduce_arg(c, 0, &alt_set, REQ(list, treq.in, 0))) goto fail;
     p = clear_ptr(c->expr.arg[0]);
   }
-  if(!reduce_arg(c, in, &alt_set, req_list(function_compose_in(p, out ? 0 : treq.in, arg_in), treq.out + out)) ||
+  if(!reduce_arg(c, in, &alt_set, REQ(list, function_compose_in(p, out ? 0 : treq.in, arg_in), treq.out + out)) ||
      as_conflict(alt_set)) goto fail;
 
   placeholder_extend(&c->expr.arg[0], treq.in, function_compose_out(c->expr.arg[in], arg_in, treq.out + out));
@@ -417,8 +417,8 @@ bool func_print(cell_t **cp, type_request_t treq) {
   if(treq.t != T_ANY && treq.t != T_SYMBOL) goto fail;
 
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 0, &alt_set, req_symbol) ||
-     !reduce_arg(c, 1, &alt_set, req_any) ||
+  if(!reduce_arg(c, 0, &alt_set, REQ(symbol)) ||
+     !reduce_arg(c, 1, &alt_set, REQ(any)) ||
      as_conflict(alt_set)) goto fail;
   clear_flags(c);
 
@@ -451,7 +451,7 @@ bool func_is_nil(cell_t **cp, type_request_t treq) {
   if(treq.t != T_ANY && treq.t != T_SYMBOL) goto fail;
 
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 0, &alt_set, req_simple(T_LIST))) goto fail;
+  if(!reduce_arg(c, 0, &alt_set, REQ(list, 0, 0))) goto fail;
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
