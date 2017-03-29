@@ -33,6 +33,8 @@ fib: [dup 1 <= !] [dup 1- dup 1- fib swap fib + swap 1 > !] | pushl popr swap dr
 
 fact: [1 == 1 swap !] [dup dup 1- fact * swap 1 > !] | pushl popr swap drop
 
+count: [0 == 0 swap !] [dup 1- count 1+ swap 0 > !] | pushl popr swap drop
+
 ___ these need fixed
 ___ from here
 

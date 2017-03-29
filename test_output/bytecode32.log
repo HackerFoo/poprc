@@ -448,6 +448,20 @@ ___ tests.test_ap21 (3 -> 1) ___
 [5] __primitive.dep 3, type = a x1
 [6] return [ 5 ], type = r x1
 
+___ tests.count (1 -> 1) ___
+[0] var, type = ?i x3
+[1] __primitive.eq 0 2, type = s x1
+[2] val 0, type = i x3
+[3] __primitive.assert 2 1, type = i x1
+[4] return [ 3 ], type = r -> 11 x1
+[5] __primitive.gt 0 2, type = s x1
+[6] __primitive.assert 10 5, type = i x1
+[7] __primitive.sub 0 8, type = i x1
+[8] val 1, type = i x2
+[9] tests.count 7, type = i x1
+[10] __primitive.add 9 8, type = i x1
+[11] return [ 6 ], type = r x1
+
 ___ tests.fact (1 -> 1) ___
 [0] var, type = ?i x4
 [1] __primitive.eq 0 2, type = s x1
@@ -468,6 +482,13 @@ ___ tests.get2 (1 -> 2) ___
 [3] __primitive.dep 1, type = a x1
 [4] return [ 2 3 ], type = r x1
 
+___ tests.pushl2 (3 -> 1) ___
+[0] var, type = ?f x1
+[1] var, type = ?a x1
+[2] var, type = ?a x1
+[3] __primitive.ap 2 1 0, type = f x1
+[4] return [ 3 ], type = r x1
+
 ___ tests.inl_loop (1 -> 1) ___
 [0] var, type = ?i x4
 [1] __primitive.lt 0 2, type = s x1
@@ -483,13 +504,6 @@ ___ tests.inl_loop (1 -> 1) ___
 [11] val 0, type = s x1
 [12] __primitive.assert 0 10, type = i x1
 [13] return [ 12 ], type = r x1
-
-___ tests.pushl2 (3 -> 1) ___
-[0] var, type = ?f x1
-[1] var, type = ?a x1
-[2] var, type = ?a x1
-[3] __primitive.ap 2 1 0, type = f x1
-[4] return [ 3 ], type = r x1
 
 ___ tests.inl_loop2 (3 -> 1) ___
 [0] var, type = ?i x3
