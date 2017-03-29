@@ -15,7 +15,7 @@ def dbgcall(command):
 
 
 def make(debugger, command, result, dict):
-    os.system("make BUILD=debugger eval")
+    os.system("make -s BUILD=debugger eval")
     dbgcall("target delete")
     dbgcall("target create \"eval\"")
 
