@@ -88,9 +88,14 @@ DIAGRAMS_FILE := diagrams.html
 
 SRC := $(wildcard *.c)
 OBJS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SRC))
+DEPS := $(patsubst %.c, $(BUILD_DIR)/%.d, $(SRC))
 GEN := $(patsubst %.c, gen/%.h, $(SRC)) gen/word_table.h gen/test_table.h
 DOT := $(wildcard *.dot)
 DOTSVG := $(patsubst %.dot, $(DIAGRAMS)/%.svg, $(DOT))
+
+.PHONY: fast
+fast:
+	make -j all
 
 .PHONY: all
 all: test
@@ -152,13 +157,15 @@ js/eval.js:
 	emcc $(EMCC_OBJS) -o js/eval.js -s EXPORTED_FUNCTIONS="['_main', '_emscripten_eval']" --embed-file lib.ppr
 
 # pull in dependency info for *existing* .o files
--include $(OBJS:.o=.d)
+-include $(DEPS)
 
-# compile and generate dependency info;
-$(BUILD_DIR)/%.o: %.c
+# generate dependency info and headers
+$(BUILD_DIR)/%.d: %.c
 	@mkdir -p $(BUILD_DIR)
 	@$(CC) -MM $(CFLAGS) $*.c -MG -MP -MT $(BUILD_DIR)/$*.o -MF $(BUILD_DIR)/$*.d
-	@make -f Makefile.gen SRC="$(SRC)" OBJS="$(OBJS)" $(BUILD_DIR)/$*.o -s
+
+# compile
+$(BUILD_DIR)/%.o: %.c $(BUILD_DIR)/%.d
 	$(CC) -c $(CFLAGS) $*.c -o $(BUILD_DIR)/$*.o
 
 .SECONDARY: $(GEN)

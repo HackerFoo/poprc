@@ -4,45 +4,43 @@
 
 SHELL := bash
 
-gen/word_table.h: $(SRC)
+gen/word_table.h.new: $(SRC)
 	@mkdir -p gen
-	sed -n -e 's/.*WORD([^,]*, *\([a-zA-Z0-9_]*\).*).*/extern reduce_t func_\1;/p' $(SRC) | sort > $@.new
-	echo '#define WORDS {\' >> $@.new
-	N=$$(cat $(SRC) | grep -e 'WORD(.*)' -c); echo "WORD_COUNT($$N),\\" >> $@.new
-	sed -n -e 's/.*\(WORD(.*)\).*/\1,\\/p' $(SRC) | LC_ALL=C sort -t \" -k 2,2 >> $@.new
-	echo '}' >> $@.new
-	./scripts/update.sh $@ $@.new
+	@sed -n -e 's/.*WORD([^,]*, *\([a-zA-Z0-9_]*\).*).*/extern reduce_t func_\1;/p' $(SRC) | sort > $@
+	@echo '#define WORDS {\' >> $@
+	@N=$$(cat $(SRC) | grep -e 'WORD(.*)' -c); echo "WORD_COUNT($$N),\\" >> $@
+	@sed -n -e 's/.*\(WORD(.*)\).*/\1,\\/p' $(SRC) | LC_ALL=C sort -t \" -k 2,2 >> $@
+	@echo '}' >> $@
 
-gen/test_table.h: $(SRC)
+gen/test_table.h.new: $(SRC)
 	@mkdir -p gen
-	sed -n -e 's/^ *int test_\([a-zA-Z0-9_]*\).*/extern int test_\1();/p' $(SRC) | sort > $@.new
-	echo '#define TESTS {\' >> $@.new
-	sed -n -e 's/^ *int test_\([a-zA-Z0-9_]*\).*/TEST(\1),\\/p' $(SRC) | LC_ALL=C sort >> $@.new
-	echo '}' >> $@.new
-	./scripts/update.sh $@ $@.new
+	@sed -n -e 's/^ *int test_\([a-zA-Z0-9_]*\).*/extern int test_\1();/p' $(SRC) | sort > $@
+	@echo '#define TESTS {\' >> $@
+	@sed -n -e 's/^ *int test_\([a-zA-Z0-9_]*\).*/TEST(\1),\\/p' $(SRC) | LC_ALL=C sort >> $@
+	@echo '}' >> $@
 
-gen/command_table.h: $(SRC)
+gen/command_table.h.new: $(SRC)
 	@mkdir -p gen
-	sed -n -e 's/^ *void command_\([a-zA-Z0-9_]*\).*/extern void command_\1(cell_t *);/p' $(SRC) | sort > $@.new
-	echo '#define COMMANDS {\' >> $@.new
-	sed -n -e 's/^ *void command_\([a-zA-Z0-9_]*\).*/COMMAND(\1),\\/p' $(SRC) | LC_ALL=C sort >> $@.new
-	echo '}' >> $@.new
-	./scripts/update.sh $@ $@.new
+	@sed -n -e 's/^ *void command_\([a-zA-Z0-9_]*\).*/extern void command_\1(cell_t *);/p' $(SRC) | sort > $@
+	@echo '#define COMMANDS {\' >> $@
+	@sed -n -e 's/^ *void command_\([a-zA-Z0-9_]*\).*/COMMAND(\1),\\/p' $(SRC) | LC_ALL=C sort >> $@
+	@echo '}' >> $@
 
-gen/git_log.h: LOG = $(shell git log -1 --oneline)
-gen/git_log.h: $(SRC)
+gen/git_log.h.new: LOG = $(shell git log -1 --oneline)
+gen/git_log.h.new: $(SRC)
 	@mkdir -p gen
-	if git diff-index --quiet HEAD --; then \
-		echo "#define GIT_LOG \"$(LOG)\"" > $@.new; \
+	@if git diff-index --quiet HEAD --; then \
+		echo "#define GIT_LOG \"$(LOG)\"" > $@; \
 	else \
-		echo "#define GIT_LOG \"$(LOG) [DIRTY]\"" > $@.new; \
+		echo "#define GIT_LOG \"$(LOG) [DIRTY]\"" > $@; \
 	fi
-	./scripts/update.sh $@ $@.new
 
-gen/%.h: %.c makeheaders/makeheaders
+gen/%.h.new: %.c makeheaders/makeheaders
 	@mkdir -p gen
-	./makeheaders/makeheaders $*.c:gen/$*.h.new
-	./scripts/update.sh gen/$*.h gen/$*.h.new
+	./makeheaders/makeheaders $<:$@
+
+gen/%.h: gen/%.h.new
+	@cmp --silent $< $@ || cp $< $@
 
 linenoise/linenoise.h:
 	git submodule init
