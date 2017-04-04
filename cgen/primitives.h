@@ -12,5 +12,6 @@
 #define __primitive_gte(x, y) x >= y
 #define __primitive_lt(x, y) x < y
 #define __primitive_lte(x, y) x <= y
+#define __primitive_mod(x, y) x % y
 
 #endif

@@ -24,10 +24,3 @@ carry: [dup] dip12 [] ap20 .
 __ carry: [self] dip11 [] ap20
 
 check: [|] control.dip21 [dup] swap . . popr !
-
-gcd:
-  [] ap20 __ quote arguments [a b]
-    [[tuck %] .] __ step: [a b] -> [b (a % b)]
-    [head 0 !=] __ while: b != 0
-    [popr drop head] __ return: a
-    binrec

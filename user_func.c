@@ -61,21 +61,38 @@ bool func_exec(cell_t **cp, type_request_t treq) {
   cell_t *returns = NULL;
 
   // don't execute, just reduce all args and return variables
-  if(trace_enabled && c->expr.rec == 0) {
+  if(trace_enabled &&
+     (c->expr.rec || // the function has already been expanded once
+      entry->entry.len == 0 || // the function is being compiled
+      (initial_word && entry->entry.rec))) { // not the outermost function
     csize_t c_in = closure_in(c), n = closure_args(c);
     alt_set_t alt_set = 0;
-    bool expnd = true;
+    bool expnd = false;
+    bool specialize = false;
     for(csize_t i = 0; i < c_in - 1; ++i) {
       if(!reduce_arg(c, i, &alt_set, REQ(any)) ||
          as_conflict(alt_set)) goto fail;
-      // if any vars in a recursive function, don't expand
+      // if all vars in a recursive function, don't expand
       // TODO make this less dumb
-      if(is_var(clear_ptr(c->expr.arg[i]))) expnd = false;
+      cell_t *a = clear_ptr(c->expr.arg[i]);
+      if(!is_var(a)) expnd = true;
+      if(is_list(a)) specialize = true;
     }
+    clear_flags(c);
 
-    if(0&&expnd && c_in > 1) goto expand;
+    if(expnd && !c->expr.rec) goto expand;
 
-    cell_t *res = var(treq.t == T_ANY ? T_BOTTOM : treq.t, c);
+    cell_t *res;
+    bool disable_trace = false;
+    uint8_t t = treq.t == T_ANY ? T_BOTTOM : treq.t;
+    if(specialize && !dont_specialize) {
+      res = trace_var_specialized(t, c);
+    } else if(trace_match_self(c)) {
+      res = trace_var_self(t, c);
+      disable_trace = true;
+    } else {
+      res = var(t, c);
+    }
     res->value.alt_set = alt_set;
 
     for(csize_t i = c_in; i < n; ++i) {
@@ -91,6 +108,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     }
 
     store_reduced(cp, res);
+    trace_enabled = !disable_trace;
     return true;
 
   fail:
@@ -138,9 +156,6 @@ expand:
     if(t->func == func_exec || t->func == func_quote) {
       t_entry = &t->expr.arg[closure_in(t) - 1];
       *t_entry = &trace_cells[trace_decode(*t_entry)];
-      if(*t_entry == entry) { // track recursion depth
-        t->expr.rec = c->expr.rec ? c->expr.rec - 1 : c->expr.rec;
-      }
     }
 
     traverse(t, {
@@ -149,6 +164,16 @@ expand:
           *p = map_cell(map, x);
         }
       }, ARGS | PTRS | ALT);
+
+    if(trace_enabled &&
+       t_entry &&
+       *t_entry == entry &&
+       !initial_word) { // mark recursion
+      t->expr.rec = 1;
+      initial_word = copy(c);
+      initial_word->expr.arg[in] = entry;
+      traverse_ref(initial_word, ARGS_IN | ALT);
+    }
   }
 
   // handle returns
@@ -215,7 +240,6 @@ bool func_quote(cell_t **cp, UNUSED type_request_t treq) {
   }
 
   f->expr.arg[f_in] = entry;
-  f->expr.rec = entry->entry.rec;
 
   cell_t *res = make_list(f_out);
   cell_t **out_arg = &f->expr.arg[f_in+1];

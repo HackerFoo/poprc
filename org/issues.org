@@ -90,6 +90,7 @@ look for word in parent module, parent imports, context module, context imports,
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
+** DONE f: 1 2 | swap ap11 swap drop
 ** TODO [1 3] 2 pushr popr swap popr swap popr swap popr
 ** TODO imports don't always work
 ** TODO stack.nip leaks

@@ -241,7 +241,6 @@ bool func_assert(cell_t **cp, type_request_t treq) {
 
   if(is_var(p)) {
     if(is_list(q)) {
-      trace_update(c, res);
       res = map_assert(q, p, res);
     } else {
       res->value.type = q->value.type;

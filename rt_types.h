@@ -44,10 +44,13 @@ typedef struct __attribute__((packed)) type {
 #define T_BOTTOM    0x0b
 
 // type flags
-#define T_ROW       0x10
-#define T_TRACED    0x20
-#define T_FAIL      0x40
-#define T_VAR       0x80
+#define T_SUB        0x04
+#define T_INCOMPLETE 0x08
+#define T_ROW        0x10
+#define T_TRACED     0x20
+#define T_FAIL       0x40
+#define T_VAR        0x80
+
 
 typedef struct type_request {
   int t, in, out;

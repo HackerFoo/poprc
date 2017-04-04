@@ -17,9 +17,12 @@
 
 #include "rt_types.h"
 #include <string.h>
-#include <stdio.h>
 #include <assert.h>
 #include <inttypes.h>
+
+#if INTERFACE
+#include <stdio.h>
+#endif
 
 #include "gen/cells.h"
 #include "gen/rt.h"

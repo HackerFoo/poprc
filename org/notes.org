@@ -1,5 +1,17 @@
 #+TITLE: PoprC Notes
 
+* specializing recursive functions
+- need to take [x] -> f -> [x'] to f -> [x] -> f'
+- split at each call to form mutually recursive functions
+- could be compiled to jumps
+- hitting a recursive function starts a new block
+- push tail into the specialized function, then force tail recursion even if not in tail position
+  - i.e. only apply tail in base case
+- pass down in type_t, or maybe T_ANY is enough?
+- encode results so that output falls through
+  - this should be easier after tracing to return
+  - just crush everything between recursive call and return
+  - resolved this by trace_enable = false until return
 * full relations
 - send down allocated memory in addition to type
 - type flag to indicate if variable or value

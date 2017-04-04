@@ -332,7 +332,7 @@ cell_t *func(reduce_t *f, csize_t in, csize_t out) {
   csize_t args = in + out - 1;
   cell_t *c = closure_alloc(args);
   c->expr.out = out - 1;
-  c->expr.rec = 1;
+  c->expr.rec = 0;
   c->func = f;
   if(args) c->expr.arg[0] = (cell_t *)(intptr_t)(args - 1);
   closure_set_ready(c, !args);
@@ -432,6 +432,7 @@ void store_var(cell_t *c, int t) {
     .func = func_value,
     .n = c->n,
     .size = 2,
+    .alt = c->alt,
     .value = {
       .alt_set = 0,
       .type = {

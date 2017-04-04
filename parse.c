@@ -20,7 +20,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+
+#if INTERFACE
 #include <stdarg.h>
+#endif
 
 #include "gen/cells.h"
 #include "gen/rt.h"
@@ -177,7 +180,6 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n) {
         }
       } else {
         c = func(e->func, e->entry.in + 1, e->entry.out);
-        c->expr.rec = e->entry.rec;
         data = e;
       }
       in = e->entry.in;

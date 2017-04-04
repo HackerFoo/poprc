@@ -268,6 +268,7 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
   clear_flags(c);
 
   cell_t *res = var(T_FUNCTION, c);
+  res->alt = c->alt;
   for(csize_t i = in; i < n; ++i) {
     cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {
