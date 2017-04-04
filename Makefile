@@ -245,7 +245,7 @@ profile:
 
 .PHONY: dbg
 dbg:
-	make BUILD=debugger eval
+	make -j BUILD=debugger eval
 	lldb eval || gdb --nx eval
 
 .PHONY: autostash
