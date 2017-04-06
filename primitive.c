@@ -57,6 +57,15 @@ cell_t *_op2(val_t (*op)(val_t, val_t), cell_t *x, cell_t *y) {
   return res;
 }
 
+cell_t *_op1(val_t (*op)(val_t), cell_t *x) {
+  csize_t size = val_size(x);
+  cell_t *res = vector(size);
+  for(csize_t i = 0; i < size; ++i)
+    res->value.integer[i] = op(x->value.integer[i]);
+  res->size = size + 1;
+  return res;
+}
+
 bool func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t, val_t), bool nonzero) {
   cell_t *c = *cp;
   cell_t *res = 0;
@@ -85,10 +94,34 @@ bool func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_
   return false;
 }
 
+bool func_op1(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t)) {
+  cell_t *c = *cp;
+  cell_t *res = 0;
+  assert(!is_marked(c));
+
+  if(treq.t != T_ANY && treq.t != res_type) goto fail;
+
+  alt_set_t alt_set = 0;
+  type_request_t atr = req_simple(arg_type);
+  if(!reduce_arg(c, 0, &alt_set, atr)) goto fail;
+  clear_flags(c);
+
+  cell_t *p = c->expr.arg[0];
+  res = is_var(p) ? var(treq.t, c) : _op1(op, p);
+  res->value.type.exclusive = res_type;
+  res->alt = c->alt;
+  res->value.alt_set = alt_set;
+  store_reduced(cp, res);
+  return true;
+
+ fail:
+  fail(cp, treq);
+  return false;
+}
+
 // WORD("+", add, 2, 1)
 val_t add_op(val_t x, val_t y) { return x + y; }
 bool func_add(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, add_op, false); }
-
 
 // WORD("*", mul, 2, 1)
 val_t mul_op(val_t x, val_t y) { return x * y; }
@@ -105,6 +138,34 @@ bool func_div(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_IN
 // WORD("%", mod, 2, 1)
 val_t mod_op(val_t x, val_t y) { return x % y; }
 bool func_mod(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, mod_op, true); }
+
+// WORD(".&", bitand, 2, 1)
+val_t bitand_op(val_t x, val_t y) { return x & y; }
+bool func_bitand(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, bitand_op, false); }
+
+// WORD(".|", bitor, 2, 1)
+val_t bitor_op(val_t x, val_t y) { return x | y; }
+bool func_bitor(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, bitor_op, false); }
+
+// WORD(".^", bitxor, 2, 1)
+val_t bitxor_op(val_t x, val_t y) { return x ^ y; }
+bool func_bitxor(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, bitxor_op, false); }
+
+// WORD(".<<", shiftl, 2, 1)
+val_t shiftl_op(val_t x, val_t y) { return x << y; }
+bool func_shiftl(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, shiftl_op, false); }
+
+// WORD(".>>", shiftr, 2, 1)
+val_t shiftr_op(val_t x, val_t y) { return x >> y; }
+bool func_shiftr(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, shiftr_op, false); }
+
+// WORD(".~", complement, 1, 1)
+val_t complement_op(val_t x) { return ~x; }
+bool func_complement(cell_t **cp, type_request_t treq) { return func_op1(cp, treq, T_INT, T_INT, complement_op); }
+
+// WORD("not", not, 1, 1)
+val_t not_op(val_t x) { return !x; }
+bool func_not(cell_t **cp, type_request_t treq) { return func_op1(cp, treq, T_SYMBOL, T_SYMBOL, not_op); }
 
 // WORD(">", gt, 2, 1)
 val_t gt_op(val_t x, val_t y) { return x > y; }

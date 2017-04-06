@@ -105,8 +105,6 @@ binrec: [iterate] dip31 $
 
 module logic:
 
-not: False =:=
-
 or: [not!] [True swap!] | ap21 swap drop
 and: [!] [False swap not!] | ap21 swap drop
 
