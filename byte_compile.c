@@ -556,22 +556,28 @@ void trace_final_pass(cell_t *e) {
   }
 }
 
+// count the maximum number of changed variables in recursive calls
 static
-bool trace_is_recursive(cell_t *e) {
-  bool ret = false;
+uint8_t trace_recursive_changes(cell_t *e) {
+  unsigned int changes = 0;
   const cell_t *encoded_entry = trace_encode(e - trace_cells);
   cell_t
     *start = e + 1,
     *end = start + e->entry.len;
 
   FOR_TRACE(p, start, end) {
+    csize_t in;
     if(p->func == func_exec &&
-       p->expr.arg[closure_in(p)-1] == encoded_entry) {
-      ret = true;
-      break;
+       p->expr.arg[in = closure_in(p)-1] == encoded_entry) {
+      unsigned int cnt = 0;
+      COUNTUP(i, in) {
+        if(trace_decode(p->expr.arg[i]) != (trace_index_t)(in - 1 - i)) cnt++;
+      }
+      assert_throw(cnt, "infinite recursion");
+      if(cnt > changes) changes = cnt;
     }
   }
-  return ret;
+  return changes;
 }
 
 trace_index_t trace_tail(trace_index_t t, csize_t out) {
@@ -902,9 +908,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   e->entry.len = trace_ptr - trace_cur;
   trace_final_pass(e);
   e->entry.flags &= ~ENTRY_NOINLINE;
-  if(trace_is_recursive(e)) {
-    e->entry.rec = 1;
-  }
+  e->entry.rec = trace_recursive_changes(e);
 
   // finish
   free_def(l);
@@ -977,9 +981,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   drop(c);
   trace_stop();
   e->entry.flags &= ~ENTRY_NOINLINE;
-  if(trace_is_recursive(e)) {
-    e->entry.rec = 1;
-  }
+  e->entry.rec = trace_recursive_changes(e);
   e->entry.len = trace_ptr - trace_cur;
   if(is_id(e)) {
     trace_clear(e);
@@ -1040,9 +1042,7 @@ cell_t *compile_specialized(cell_t *parent_entry, cell_t *tc) {
   dont_specialize = false;
   trace_stop();
   e->entry.flags &= ~ENTRY_NOINLINE;
-  if(trace_is_recursive(e)) {
-    e->entry.rec = 1;
-  }
+  e->entry.rec = trace_recursive_changes(e);
   e->entry.len = trace_ptr - trace_cur;
   e->module_name = parent_entry->module_name;
   e->word_name = string_printf("%s_%d", parent_entry->word_name, (int)(tc - parent_entry) - 1);

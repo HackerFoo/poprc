@@ -64,10 +64,12 @@ bool func_exec(cell_t **cp, type_request_t treq) {
   if(trace_enabled &&
      (c->expr.rec || // the function has already been expanded once
       entry->entry.len == 0 || // the function is being compiled
-      (initial_word && entry->entry.rec))) { // not the outermost function
+      (entry->entry.rec &&
+       (initial_word ||
+        entry->entry.rec > trace_cur[-1].entry.in)))) { // not the outermost function
     csize_t c_in = closure_in(c), n = closure_args(c);
     alt_set_t alt_set = 0;
-    bool expnd = false;
+    unsigned int nonvar = 0;
     bool specialize = false;
     for(csize_t i = 0; i < c_in - 1; ++i) {
       if(!reduce_arg(c, i, &alt_set, REQ(any)) ||
@@ -75,12 +77,15 @@ bool func_exec(cell_t **cp, type_request_t treq) {
       // if all vars in a recursive function, don't expand
       // TODO make this less dumb
       cell_t *a = clear_ptr(c->expr.arg[i]);
-      if(!is_var(a)) expnd = true;
+      if(!is_var(a)) nonvar++;
       if(is_list(a)) specialize = true;
     }
     clear_flags(c);
 
-    if(expnd && !c->expr.rec) goto expand;
+    if(nonvar > 0 && !c->expr.rec && (!entry->entry.rec || entry->entry.rec <= trace_cur[-1].entry.in))
+    {
+      goto expand;
+    }
 
     cell_t *res;
     bool disable_trace = false;
