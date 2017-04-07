@@ -1133,6 +1133,7 @@ void command_bytecode(cell_t *rest) {
       *m = eval_module(),
       *e = module_lookup_compiled(tok_seg(rest), &m);
     if(e) {
+      printf("\n");
       print_bytecode(e);
     }
   }
