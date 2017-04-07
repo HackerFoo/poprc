@@ -6,7 +6,7 @@ imports:
   module control
   module logic
 
-swash: swap pushr __ this compiles backwards
+swash: swap pushr
 
 keep2: [] ap20 dup ap02 stack.swap2 drop
 
@@ -27,7 +27,7 @@ check: [|] control.dip21 [dup] swap . . popr !
 
 odd: 1 .& 1 ==
 
- __ acc x power -> if odd power, acc*x, otherwise acc
+__ acc x power -> if odd power, acc*x, otherwise acc
 acc_odd_power: [[*] dip21 odd] ap20 ifdo
 
 __ x power -> x*2 power/2
@@ -43,4 +43,4 @@ exp_:
     [popr drop popr drop head]
     binrec
 
-^: 1 rotr exp_ __ this breaks
+^: 1 rotr exp_
