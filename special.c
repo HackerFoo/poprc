@@ -274,7 +274,7 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
     if(d && is_dep(d)) {
       drop(c);
       d->expr.arg[0] = res;
-      store_var(d, 0);
+      store_var(d, T_ANY);
     }
   }
   store_reduced(cp, res);

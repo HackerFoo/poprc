@@ -63,7 +63,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
   // don't execute, just reduce all args and return variables
   if(trace_enabled &&
      (c->expr.rec || // the function has already been expanded once
-      entry->entry.len == 0 || // the function is being compiled
+      len == 0 || // the function is being compiled
       (entry->entry.rec &&
        (initial_word ||
         entry->entry.rec > trace_cur[-1].entry.in)))) { // not the outermost function
@@ -72,7 +72,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     unsigned int nonvar = 0;
     bool specialize = false;
     for(csize_t i = 0; i < c_in; ++i) {
-      uint8_t t = entry->entry.len > 0 ? code[c_in - 1 - i].value.type.exclusive : T_ANY;
+      uint8_t t = len > 0 ? code[c_in - 1 - i].value.type.exclusive : T_ANY;
       if(t == T_FUNCTION) t = T_ANY; // HACK, T_FUNCTION breaks things
       if(!reduce_arg(c, i, &alt_set, req_simple(t)) ||
          as_conflict(alt_set)) goto fail;
@@ -84,7 +84,10 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     }
     clear_flags(c);
 
-    if(nonvar > 0 && !c->expr.rec && (!entry->entry.rec || entry->entry.rec <= trace_cur[-1].entry.in))
+    if(nonvar > 0 &&
+       len > 0 &&
+       !c->expr.rec &&
+       (!entry->entry.rec || entry->entry.rec <= trace_cur[-1].entry.in))
     {
       goto expand;
     }
@@ -101,16 +104,15 @@ bool func_exec(cell_t **cp, type_request_t treq) {
       res = var(t, c);
     }
     res->value.alt_set = alt_set;
+    res->alt = c->alt;
 
     for(csize_t i = c_in + 1; i < n; ++i) {
-      cell_t **d = &c->expr.arg[i];
-      if(*d && is_dep(*d)) {
-        assert((*d)->expr.arg[0] == c);
+      cell_t *d = c->expr.arg[i];
+      if(d && is_dep(d)) {
+        assert(d->expr.arg[0] == c);
         drop(c);
-        (*d)->expr.arg[0] = ref(res);
-        cell_t *v = var(T_BOTTOM, *d);
-        v->value.alt_set = alt_set;
-        store_reduced(d, v);
+        d->expr.arg[0] = res;
+        store_var(d, T_ANY);
       }
     }
 
@@ -124,6 +126,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
   }
 
 expand:
+  assert(len);
 
   c->expr.arg[in] = 0;
   memset(map, 0, sizeof(map[0]) * len);
