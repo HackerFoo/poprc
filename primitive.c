@@ -271,10 +271,16 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
         *p = np;
       }
     }, PTRS);
+  cell_t **left = &nc->value.ptr[list_size(nc) - 1];
   if(~c->value.type.flags & T_ROW) {
-    nc->value.ptr[list_size(nc) - 1] = v;
+    *left = v;
+  } else {
+    // slip in v as an extra arg to assert
+    assert((*left)->func == func_assert);
+    (*left)->size++;
+    (*left)->expr.arg[2] = v;
   }
-  c->value.type.flags |= T_ROW;
+  nc->value.type.flags |= T_ROW;
   return nc;
 }
 
@@ -285,20 +291,27 @@ bool func_assert(cell_t **cp, type_request_t treq) {
 
   cell_t *res = NULL;
   alt_set_t alt_set = 0;
+  csize_t in = closure_in(c);
   if(!reduce_arg(c, 1, &alt_set, REQ(symbol))) goto fail;
   cell_t *p = clear_ptr(c->expr.arg[1]);
 
   if(!(p->value.integer[0] == SYM_True || is_var(p))) goto fail;
 
-  if(is_var(p)) res = var(treq.t != T_LIST ? treq.t : T_FUNCTION, c);
+  if(in == 3) {
+    // use var from earlier
+    res = c->expr.arg[2];
+    c->size--;
+  } else if(is_var(p)) {
+    res = var(treq.t != T_LIST ? treq.t : T_FUNCTION, c);
+  }
 
   if(!reduce_arg(c, 0, &alt_set, treq) ||
      as_conflict(alt_set)) goto fail;
   clear_flags(c);
   cell_t *q = c->expr.arg[0];
 
-  // bare functions should not pass through an assert
-  assert(!is_function(q));
+  // bare functions should not pass through a normal assert
+  if(in == 2) assert(!is_function(q));
 
   if(is_var(p)) {
     if(is_list(q)) {
@@ -418,9 +431,12 @@ bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   if(!reduce_arg(c, in, &alt_set, REQ(list, function_compose_in(p, out ? 0 : treq.in, arg_in), treq.out + out)) ||
      as_conflict(alt_set)) goto fail;
 
-  placeholder_extend(&c->expr.arg[0], treq.in, function_compose_out(c->expr.arg[in], arg_in, treq.out + out));
-  placeholder_extend(&c->expr.arg[in], function_compose_in(p, treq.in, arg_in), treq.out + out);
   clear_flags(c);
+  if(row) {
+    placeholder_extend(&c->expr.arg[0], treq.in, function_compose_out(c->expr.arg[in], arg_in, treq.out + out));
+    p = clear_ptr(c->expr.arg[0]);
+  }
+  placeholder_extend(&c->expr.arg[in], function_compose_in(p, treq.in, arg_in), treq.out + out);
 
   list_iterator_t it;
 

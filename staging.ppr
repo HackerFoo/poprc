@@ -30,7 +30,7 @@ odd: 1 .& 1 ==
 __ acc x power -> if odd power, acc*x, otherwise acc
 acc_odd_power: [[*] dip21 odd] ap20 ifdo
 
-__ x power -> x*2 power/2
+__ x power -> x*x power/2
 reduce_power: [dup *] [1 .>>] para
 
 __ acc x power -> acc' x^2 power/2

@@ -71,7 +71,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     alt_set_t alt_set = 0;
     unsigned int nonvar = 0;
     bool specialize = false;
-    for(csize_t i = 0; i < c_in; ++i) {
+    COUNTUP(i, c_in) {
       uint8_t t = len > 0 ? code[c_in - 1 - i].value.type.exclusive : T_ANY;
       if(t == T_FUNCTION) t = T_ANY; // HACK, T_FUNCTION breaks things
       if(!reduce_arg(c, i, &alt_set, req_simple(t)) ||
@@ -80,7 +80,20 @@ bool func_exec(cell_t **cp, type_request_t treq) {
       // TODO make this less dumb
       cell_t *a = clear_ptr(c->expr.arg[i]);
       if(!is_var(a)) nonvar++;
-      if(is_list(a)) specialize = true;
+      if(is_list(a)) { // TODO this should probably be recursive, or based on unification
+        specialize = true;
+        if(closure_is_ready(*leftmost(&a))) {
+          // adapted from reduce_arg
+          cell_t **ap = &c->expr.arg[i];
+          bool marked = is_marked(*ap);
+          *ap = clear_ptr(*ap);
+          bool r = func_list(ap, req_simple(T_RETURN)); // HACK to reduce lists
+          alt_set |= (*ap)->value.alt_set;
+          if(marked) *ap = mark_ptr(*ap);
+          split_arg(c, i);
+          if(!r) goto fail;
+        }
+      }
     }
     clear_flags(c);
 
@@ -98,7 +111,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     if(specialize && !dont_specialize) {
       res = trace_var_specialized(t, c);
     } else if(trace_match_self(c)) {
-      res = trace_var_self(t, c);
+      res = trace_var_self(t);
       disable_trace = true;
     } else {
       res = var(t, c);

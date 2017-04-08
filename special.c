@@ -85,6 +85,8 @@ bool is_value(cell_t const *c) {
   return c && c->func == func_value;
 }
 
+extern reduce_t func_assert;
+
 void placeholder_extend(cell_t **lp, int in, int out) {
   cell_t *l = *lp;
   if(!is_row_list(l)) return;
@@ -96,6 +98,8 @@ void placeholder_extend(cell_t **lp, int in, int out) {
   if(d_in == 0 && d_out == 0) return;
   cell_t **left = leftmost_row(&l);
   if(!left) return;
+  // HACK need to map_assert after extending
+  if((*left)->func == func_assert) reduce(left, REQ(any));
   cell_t *f = *left;
   if(!(is_function(f) || is_placeholder(f))) return;
   cell_t *ph = func(func_placeholder, d_in + 1, d_out + 1);

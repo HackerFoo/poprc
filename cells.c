@@ -43,7 +43,7 @@
 #endif
 
 #define MAX_ALLOC (CELLS_SIZE - 32)
-cell_t cells[CELLS_SIZE] = {};
+cell_t cells[CELLS_SIZE] __attribute__((aligned(64))) = {};
 cell_t *cells_ptr;
 
 // Predefined failure cell

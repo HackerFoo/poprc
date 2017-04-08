@@ -44,7 +44,7 @@
 bool trace_enabled = false;
 bool dont_specialize = true; //false; ***
 
-cell_t trace_cells[1 << 10];
+cell_t trace_cells[1 << 10] __attribute__((aligned(64)));
 cell_t *trace_cur = &trace_cells[0];
 cell_t *trace_ptr = &trace_cells[0];
 cell_t *initial_word = NULL;
@@ -130,7 +130,7 @@ cell_t *trace_var_specialized(uint8_t t, cell_t *c) {
   return var_create(t, trace_alloc(count_vars(c) + 1 + trace_cur[-1].entry.out), 0, 0);
 }
 
-cell_t *trace_var_self(uint8_t t, cell_t *c) {
+cell_t *trace_var_self(uint8_t t) {
   cell_t *e = &trace_cur[-1];
   csize_t
     in = e->entry.in,
@@ -318,6 +318,7 @@ bool trace_match_self(const cell_t *c) {
   return true;
 }
 
+#if SPECIALIZE
 static
 bool trace_match_specialize(const cell_t *c) {
   if(dont_specialize || c->func != func_exec) return false;
@@ -326,6 +327,7 @@ bool trace_match_specialize(const cell_t *c) {
     }, ARGS_IN);
   return false;
 }
+#endif
 
 static
 cell_t *trace_store(cell_t *c, const cell_t *r) {
@@ -334,10 +336,10 @@ cell_t *trace_store(cell_t *c, const cell_t *r) {
       return return_me;
     } else if(trace_match_self(c)) {
       return trace_store_self(c, r);
-/*
+#if SPECIALIZE
     } else if(trace_match_specialize(c)) {
       return trace_build_specialized(c, r);
-*/
+#endif
     } else {
       return trace_store_expr(c, r);
     }
@@ -368,7 +370,15 @@ void print_bytecode(cell_t *e) {
   size_t count = e->entry.len;
   cell_t *start = e + 1;
   cell_t *end = start + count;
-  printf("___ %s.%s (%d -> %d) ___\n", e->module_name, e->word_name, e->entry.in, e->entry.out);
+  printf("___ %s.%s (%d -> %d)", e->module_name, e->word_name, e->entry.in, e->entry.out);
+  if(e->entry.alts != 1) {
+    if(e->entry.alts == 0) {
+      printf(" FAIL");
+    } else {
+      printf(" x%d", e->entry.alts);
+    }
+  }
+  printf(" ___\n");
   FOR_TRACE(c, start, end) {
     int t = c - start;
     printf("[%d]", t);
@@ -423,7 +433,13 @@ void print_bytecode(cell_t *e) {
       printf(", type = %s", show_type_all_short(c->expr_type));
       if(c->alt) printf(" -> %" PRIdPTR, trace_decode(c->alt));
     }
-    printf(" x%d\n", c->n + 1);
+    printf(" x%d", c->n + 1);
+    if(t >= e->entry.in &&
+       c->n + 1 == 0) {
+      printf(" <-- WARNING: zero refcount\n");
+    } else {
+      printf("\n");
+    }
   }
 
   FOR_TRACE(c, start, end) {
