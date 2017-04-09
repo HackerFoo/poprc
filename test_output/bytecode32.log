@@ -1,4 +1,4 @@
-___ algorithm.gcd (2 -> 1) ___
+___ algorithm.gcd (2 -> 1) x2 ___
 [0] var, type = ?i x4
 [1] var, type = ?i x2
 [2] __primitive.neq 0 3, type = s x1
@@ -126,7 +126,7 @@ ___ control.fork (3 -> 2) ___
 [6] __primitive.dep 5, type = a x1
 [7] return [ 4 6 ], type = r x1
 
-___ control.ifte (3 -> 1) ___
+___ control.ifte (3 -> 1) x2 ___
 [0] var, type = ?a x1
 [1] var, type = ?a x1
 [2] var, type = ?s x2
@@ -154,7 +154,7 @@ ___ control.peek (2 -> 2) ___
 [3] __primitive.dep 2, type = a x1
 [4] return [ 1 3 ], type = r x1
 
-___ control.binrec (4 -> 1) ___
+___ control.binrec (4 -> 1) x2 ___
 [0] var, type = ?f x2
 [1] var, type = ?f x3
 [2] var, type = ?f x2
@@ -185,7 +185,7 @@ ___ control.if (3 -> 1) ___
 [7] __primitive.dep 6, type = a x1
 [8] return [ 5 ], type = r x1
 
-___ control.ifdo (2 -> 1) ___
+___ control.ifdo (2 -> 1) x2 ___
 [0] var, type = ?f x2
 [1] var, type = ?a x3
 [2] __primitive.ap 1 0 -> 4 5, type = f x2
@@ -213,7 +213,7 @@ ___ control.in2_2 (2 -> 2) ___
 [1] var, type = ?a x1
 [2] return [ 0 1 ], type = r x1
 
-___ control.iterate (3 -> 1) ___
+___ control.iterate (3 -> 1) x2 ___
 [0] var, type = ?f x3
 [1] var, type = ?f x2
 [2] var, type = ?a x4
@@ -260,7 +260,7 @@ ___ list.head (1 -> 1) ___
 [2] __primitive.dep 1, type = a x1
 [3] return [ 2 ], type = r x1
 
-___ logic.and (2 -> 1) ___
+___ logic.and (2 -> 1) x2 ___
 [0] var, type = ?s x2
 [1] var, type = ?a x1
 [2] __primitive.assert 1 0, type = a x1
@@ -270,7 +270,7 @@ ___ logic.and (2 -> 1) ___
 [6] val 0, type = s x1
 [7] return [ 5 ], type = r x1
 
-___ logic.or (2 -> 1) ___
+___ logic.or (2 -> 1) x2 ___
 [0] var, type = ?s x2
 [1] var, type = ?a x1
 [2] __primitive.not 0, type = s x1
@@ -280,7 +280,7 @@ ___ logic.or (2 -> 1) ___
 [6] val 1, type = s x1
 [7] return [ 5 ], type = r x1
 
-___ num.max (2 -> 1) ___
+___ num.max (2 -> 1) x2 ___
 [0] var, type = ?i x3
 [1] var, type = ?i x3
 [2] __primitive.lte 1 0, type = s x1
@@ -290,7 +290,7 @@ ___ num.max (2 -> 1) ___
 [6] __primitive.assert 1 5, type = i x1
 [7] return [ 6 ], type = r x1
 
-___ num.min (2 -> 1) ___
+___ num.min (2 -> 1) x2 ___
 [0] var, type = ?i x3
 [1] var, type = ?i x3
 [2] __primitive.gt 1 0, type = s x1
@@ -403,7 +403,7 @@ ___ stack.swap4 (5 -> 5) ___
 [4] var, type = ?a x1
 [5] return [ 3 2 1 0 4 ], type = r x1
 
-___ tests.dec (1 -> 1) ___
+___ tests.dec (1 -> 1) x2 ___
 [0] var, type = ?i x4
 [1] __primitive.lte 0 2, type = s x1
 [2] val 5, type = i x2
@@ -437,7 +437,7 @@ ___ tests.f6 (3 -> 3) ___
 [2] var, type = ?a x1
 [3] return [ 1 0 2 ], type = r x1
 
-___ tests.fib (1 -> 1) ___
+___ tests.fib (1 -> 1) x2 ___
 [0] var, type = ?i x4
 [1] __primitive.lte 0 2, type = s x1
 [2] val 1, type = i x4
@@ -475,7 +475,7 @@ ___ tests.test_ap21 (3 -> 1) ___
 [5] __primitive.dep 3, type = a x1
 [6] return [ 5 ], type = r x1
 
-___ tests.count (1 -> 1) ___
+___ tests.count (1 -> 1) x2 ___
 [0] var, type = ?i x3
 [1] __primitive.eq 0 2, type = s x1
 [2] val 0, type = i x3
@@ -489,7 +489,7 @@ ___ tests.count (1 -> 1) ___
 [10] __primitive.add 9 8, type = i x1
 [11] return [ 6 ], type = r x1
 
-___ tests.fact (1 -> 1) ___
+___ tests.fact (1 -> 1) x2 ___
 [0] var, type = ?i x4
 [1] __primitive.eq 0 2, type = s x1
 [2] val 1, type = i x4
@@ -516,7 +516,7 @@ ___ tests.pushl2 (3 -> 1) ___
 [3] __primitive.ap 2 1 0, type = f x1
 [4] return [ 3 ], type = r x1
 
-___ tests.inl_loop (1 -> 1) ___
+___ tests.inl_loop (1 -> 1) x2 ___
 [0] var, type = ?i x4
 [1] __primitive.lt 0 2, type = s x1
 [2] val 10, type = i x2
@@ -530,7 +530,7 @@ ___ tests.inl_loop (1 -> 1) ___
 [10] __primitive.assert 0 9, type = i x1
 [11] return [ 10 ], type = r x1
 
-___ tests.inl_loop2 (3 -> 1) ___
+___ tests.inl_loop2 (3 -> 1) x2 ___
 [0] var, type = ?i x3
 [1] var, type = ?i x2
 [2] var, type = ?i x4
@@ -544,7 +544,7 @@ ___ tests.inl_loop2 (3 -> 1) ___
 [11] __primitive.assert 2 10, type = i x1
 [12] return [ 11 ], type = r x1
 
-___ tests.inl_loop3 (1 -> 1) ___
+___ tests.inl_loop3 (1 -> 1) x2 ___
 [0] var, type = ?i x4
 [1] __primitive.lt 0 2, type = s x1
 [2] val 10, type = i x2
