@@ -109,7 +109,10 @@ void gen_body(cell_t *e) {
   }
   printf("\nbody:\n");
   FOR_TRACE(c, start, end) {
-    gen_instruction(e, c);
+    if(~c->expr_type.flags & T_TRACED) {
+      gen_instruction(e, c);
+    }
+    c->expr_type.flags &= ~T_TRACED;
   }
 }
 
@@ -147,7 +150,9 @@ end:
 void gen_decl(cell_t *e, cell_t *c) {
   int i = c - e - 1;
   type_t t = trace_type(c);
-  if(t.exclusive != T_RETURN && t.exclusive != T_BOTTOM) {
+  if(t.exclusive != T_RETURN &&
+     t.exclusive != T_BOTTOM &&
+     c->func != func_assert) {
     if(c->func == func_value) {
       printf("  %s%s%d = ", ctype(t), cname(t), i);
       gen_value_rhs(c);
@@ -246,6 +251,25 @@ void gen_value(cell_t *e, cell_t *c) {
   gen_value_rhs(c);
 }
 
+void gen_skipped(cell_t *e, int start_after, int until) {
+  cell_t
+    *code = e + 1,
+    *start_after_c = &code[start_after],
+    *start = start_after_c + calculate_cells(start_after_c->size),
+    *end = code + e->entry.len;
+  if(start_after > until) {
+    FOR_TRACE(c, start, end) {
+      type_t t = trace_type(c);
+      if(t.exclusive == T_RETURN) break;
+      traverse(c, {
+          if(*p && trace_decode(*p) == until) return;
+        }, ARGS_IN);
+      gen_instruction(e, c);
+      c->expr_type.flags |= T_TRACED;
+    }
+  }
+}
+
 void gen_assert(cell_t *e, cell_t *c) {
   cell_t *d = e + 1;
   int
@@ -262,8 +286,9 @@ void gen_assert(cell_t *e, cell_t *c) {
     if(trace_type(p).exclusive == T_RETURN) {
       cell_t *next = p + closure_cells(p);
       if(next < end) {
-        printf("  if(!%s%d) ", cname(trace_type(&d[iq])), iq);
-        printf("goto block%d;\n", (int)(next - d));
+        gen_skipped(e, trace_decode(c->expr.arg[0]), c - d);
+        printf("  if(!%s%d)", cname(trace_type(&d[iq])), iq);
+        printf(" goto block%d;\n", (int)(next - d));
         goto done;
       }
     }
