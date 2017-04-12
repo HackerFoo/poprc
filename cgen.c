@@ -279,13 +279,20 @@ void gen_assert(cell_t *e, cell_t *c) {
   const char *cn = cname(trace_type(c));
   printf("\n  // assert\n");
   cell_t *end = d + e->entry.len;
-  if(trace_type(c).exclusive != T_BOTTOM) {
+  bool bottom = trace_type(c).exclusive == T_BOTTOM;
+  if(!bottom) {
     printf("  #define %s%d %s%d\n", cn, i, cname(trace_type(&d[ip])), ip); // a little HACKy
   }
   FOR_TRACE(p, closure_next(c), end) {
     if(trace_type(p).exclusive == T_RETURN) {
       cell_t *next = p + closure_cells(p);
       if(next < end) {
+        if(bottom &&
+           next->func == func_assert &&
+           next->expr.arg[1] == c->expr.arg[1]) {
+          next->expr_type.flags |= T_TRACED;
+          continue;
+        }
         gen_skipped(e, trace_decode(c->expr.arg[0]), c - d);
         printf("  if(!%s%d)", cname(trace_type(&d[iq])), iq);
         printf(" goto block%d;\n", (int)(next - d));
