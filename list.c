@@ -88,7 +88,6 @@ bool func_list(cell_t **cp, type_request_t treq) {
 }
 
 void reduce_list(cell_t **cp) {
-  if(!*cp) return;
   while(*cp) {
     if(func_list(cp, req_simple(T_RETURN))) {
       cp = &(*cp)->alt;

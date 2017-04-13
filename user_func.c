@@ -30,6 +30,7 @@
 #include "gen/byte_compile.h"
 #include "gen/list.h"
 #include "gen/user_func.h"
+#include "gen/print.h"
 
 bool is_user_func(const cell_t *c) {
   if(is_value(c)) return false;
@@ -57,6 +58,143 @@ cell_t *get_return_arg(cell_t **map, cell_t *returns, intptr_t x) {
     map[i];
 }
 
+cell_t *apply_list(cell_t *l, csize_t in, csize_t out) {
+  cell_t *c = func(func_ap, in + 1, out + 1);
+  if(in) {
+    c->expr.arg[0] = (cell_t *)(intptr_t)(in - 1);
+  } else {
+    FLAG_CLEAR(c->expr.flags, FLAGS_NEEDS_ARG);
+  }
+  c->expr.arg[in] = l;
+  RANGEUP(i, in+1, in+1+out) {
+    c->expr.arg[i] = dep(c);
+  }
+  refn(c, out);
+  return c;
+}
+
+void print_pattern(cell_t *pattern) {
+  if(is_var(pattern)) {
+    printf(" ?%d", (int)(pattern->value.ptr[0]-trace_cur));
+  } else if(is_list(pattern)) {
+    csize_t in = function_in(pattern);
+    cell_t **p;
+    printf(" [");
+    if(in) printf(" %d ->", in);
+    FORLIST(p, pattern) {
+      print_pattern(*p);
+    }
+    printf(" ]");
+  } else {
+    printf(" %c", 'A' + (char)((pattern-cells) % 26));
+  }
+}
+
+void print_bindings(cell_t *vl) {
+  cell_t *entry = &trace_cur[-1];
+  cell_t *base = entry + 1;
+  FOLLOW(p, q, vl, tmp) {
+    csize_t x = p->value.ptr[0] - base;
+    printf("?%d = %d\n", x, (int)(q-cells));
+  }
+}
+
+void print_word_pattern(cell_t *word) {
+  printf("pattern:");
+  COUNTUP(i, closure_in(word)) {
+    print_pattern(word->expr.arg[i]);
+  }
+  printf("\n");
+}
+
+// build a zig-zag binding list
+// TODO add reduction back in
+cell_t **bind_pattern(cell_t *c, cell_t *pattern, cell_t **tail) {
+  assert(c);
+  if(!pattern || !tail) return NULL;
+  if(c == pattern) {
+    // prune trivial matches
+    return tail;
+  } else if(is_var(pattern)) {
+    // found a binding
+    LIST_ADD(tmp, tail, pattern);
+    LIST_ADD(tmp, tail, ref(c));
+    return tail;
+  } else if(is_list(pattern)) {
+    csize_t
+      in = function_in(pattern),
+      out = function_out(pattern, false);
+    if(out) {
+      // this will rip the list apart (later)
+      cell_t *l = apply_list(ref(c), in, out);
+      drop(l); // don't care about the result
+
+      list_iterator_t it = list_begin(pattern);
+      COUNTDOWN(i, out) {
+        cell_t **p = list_next(&it, false);
+        assert(p);
+        cell_t *d = l->expr.arg[in+1+i];
+        tail = bind_pattern(d, *p, tail);
+        drop(d);
+      }
+    }
+    return tail;
+  } else {
+    return NULL;
+  }
+}
+
+cell_t *unify_convert(cell_t *c, cell_t *pat) {
+  if(!pat) return NULL;
+  csize_t e = closure_in(pat);
+  cell_t *entry = &trace_cur[-1];
+  if(c->size != pat->size ||
+     c->expr.out != pat->expr.out ||
+     c->expr.arg[e] != pat->expr.arg[e]) return NULL;
+  csize_t
+    in = entry->entry.in,
+    out = entry->entry.out;
+  cell_t *base = entry + 1;
+  cell_t *ret = NULL;
+  assert(out == 1); // for now
+
+  cell_t *vl = 0;
+  cell_t **tail = &vl;
+  COUNTUP(i, closure_in(c)) {
+    tail = bind_pattern(c->expr.arg[i], pat->expr.arg[i], tail);
+    if(!tail) break;
+  }
+  //print_word_pattern(pat);
+  if(tail) {
+    //printf("pattern matched\n");
+    cell_t *n = closure_alloc(in + out);
+    n->func = func_exec;
+    FLAG_SET(n->expr.flags, FLAGS_USER_FUNC);
+    n->expr.arg[in] = entry;
+    FLAG_SET(n->expr.flags, FLAGS_RECURSIVE);
+    FOLLOW(p, q, vl, tmp) { // get arguments from the binding list
+      csize_t x = p->value.ptr[0] - base;
+      assert(x < in);
+      n->expr.arg[in-1-x] = q;
+      //printf("?%d = %d\n", x, (int)(q-cells));
+    }
+    COUNTUP(i, in) { // fill in missing arguments
+      cell_t **a = &n->expr.arg[i];
+      if(!*a) {
+        cell_t *v = &base[in-1-i];
+        *a = var_create(v->value.type.exclusive, v, 0, 0);
+      }
+    }
+    ret = n;
+  } else {
+    FOLLOW(p, q, vl, tmp) {
+      drop(q);
+    }
+  }
+  clean_tmp(vl);
+  return ret;
+}
+
 bool func_exec(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
@@ -80,6 +218,16 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     alt_set_t alt_set = 0;
     unsigned int nonvar = 0;
     bool specialize = false;
+
+    {
+      cell_t *n = unify_convert(c, initial_word);
+      if(n) {
+        drop(c);
+        *cp = n;
+        return false;
+      }
+    }
+
     COUNTUP(i, c_in) {
       uint8_t t = len > 0 ? code[c_in - 1 - i].value.type.exclusive : T_ANY;
       if(t == T_FUNCTION) t = T_ANY; // HACK, T_FUNCTION breaks things
@@ -89,20 +237,6 @@ bool func_exec(cell_t **cp, type_request_t treq) {
       // TODO make this less dumb
       cell_t *a = clear_ptr(c->expr.arg[i]);
       if(!is_var(a)) nonvar++;
-      if(is_list(a)) { // TODO this should probably be recursive, or based on unification
-        specialize = true;
-        if(closure_is_ready(*leftmost(&a))) {
-          // adapted from reduce_arg
-          cell_t **ap = &c->expr.arg[i];
-          bool marked = is_marked(*ap);
-          *ap = clear_ptr(*ap);
-          bool r = func_list(ap, req_simple(T_RETURN)); // HACK to reduce lists
-          alt_set |= (*ap)->value.alt_set;
-          if(marked) *ap = mark_ptr(*ap);
-          split_arg(c, i);
-          if(!r) goto fail;
-        }
-      }
     }
     clear_flags(c);
 

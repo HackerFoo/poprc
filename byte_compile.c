@@ -246,7 +246,10 @@ bool trace_unify(cell_t *a, cell_t **b, cell_t *c, size_t in) {
     cell_t *tc = trace_get(a);
     if(!tc) return false;
     trace_index_t x = tc - trace_cur;
-    if(c || in) reduce(b, req_simple(a->value.type.exclusive)); // HACK to allow reductions before allocating trace var
+    if(c || in) {
+      *b = clear_ptr(*b);
+      reduce(b, req_simple(a->value.type.exclusive)); // HACK to allow reductions before allocating trace var
+    }
     if(c && x >= 0 && x < (int)in) {
       cell_t *v = trace_get(*b);
       c->expr.arg[in - 1 - x] = trace_encode(v - trace_cur);
@@ -257,6 +260,7 @@ bool trace_unify(cell_t *a, cell_t **b, cell_t *c, size_t in) {
   } else if(a->func == (*b)->func &&
             a->size == (*b)->size &&
             a->expr.out == (*b)->expr.out) {
+    assert(false); // this seems like a dead branch
     csize_t a_in = closure_in(a);
     for(csize_t i = closure_is_ready(a) ? 0 : closure_next_child(a) + 1; i < a_in; i++) {
       if(is_offset(a->expr.arg[i])) continue;

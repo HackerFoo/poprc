@@ -104,17 +104,40 @@ void split_arg(cell_t *c, csize_t n) {
   } while(p);
 }
 
+void split_expr(cell_t *c) {
+  csize_t in = closure_in(c);
+  COUNTUP(i, in) {
+    split_arg(c, i);
+  }
+  TRAVERSE(c, in) {
+    *p = clear_ptr(*p);
+  }
+}
+
+void split_list(cell_t *c) {
+  csize_t n = list_size(c);
+  if(!n) return;
+  RANGEDOWN(i, 1, n) {
+    split_ptr(c, i);
+  }
+  if(is_row_list(c)) {
+    split_list(c->value.ptr[0]);
+  }
+  split_ptr(c, 0);
+  TRAVERSE(c, ptrs) {
+    *p = clear_ptr(*p);
+  }
+}
+
 // Reduce then split c->arg[n]
 bool reduce_arg(cell_t *c,
                 csize_t n,
                 alt_set_t *ctx,
                 type_request_t treq) {
   cell_t **ap = &c->expr.arg[n];
-  bool marked = is_marked(*ap);
-  *ap = clear_ptr(*ap);
   bool r = reduce(ap, treq);
-  *ctx |= (*ap)->value.alt_set;
-  if(marked) *ap = mark_ptr(*ap);
+  cell_t *a = clear_ptr(*ap);
+  *ctx |= a->value.alt_set;
   split_arg(c, n);
   return r;
 }
@@ -161,11 +184,9 @@ bool reduce_ptr(cell_t *c,
                 type_request_t treq) {
   assert(is_list(c));
   cell_t **ap = &c->value.ptr[n];
-  bool marked = is_marked(*ap);
-  *ap = clear_ptr(*ap);
   bool r = reduce(ap, treq);
-  *ctx |= (*ap)->value.alt_set;
-  if(marked) *ap = mark_ptr(*ap);
+  cell_t *a = clear_ptr(*ap);
+  *ctx |= a->value.alt_set;
   split_ptr(c, n);
   return r;
 }
@@ -179,21 +200,25 @@ void clear_flags(cell_t *c) {
 
 // Reduce *cp with type t
 bool reduce(cell_t **cp, type_request_t treq) {
-  cell_t *c;
-  while((c = *cp)) {
+  bool marked = is_marked(*cp);
+  *cp = clear_ptr(*cp);
+  cell_t *c = *cp;
+  while(c) {
     assert(is_closure(c));
     if(!closure_is_ready(c)) {
       fail(cp, treq);
+      c = *cp;
       continue;
     }
     unsigned int m = measure.reduce_cnt++;
     bool success = c->func(cp, treq);
+    c = *cp;
     if(success) {
-      cell_t *n = *cp;
       if(write_graph && measure.reduce_cnt > m) {
-        mark_cell(n);
+        mark_cell(c);
         make_graph_all(0);
       }
+      if(marked) *cp = mark_ptr(c);
       return true;
     }
   }
@@ -442,6 +467,17 @@ void store_var(cell_t *c, int t) {
   *c = v;
 }
 
+bool has_bottom_arg(cell_t *c) {
+  COUNTUP(i, closure_in(c)) {
+    cell_t *a = c->expr.arg[i];
+    if(is_var(a) &&
+       a->value.type.exclusive == T_BOTTOM)
+      return true;
+  }
+  return false;
+}
+
+// TODO make this handle T_BOTTOM as well
 void fail(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   if(!is_cell(c)) {
