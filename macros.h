@@ -18,28 +18,76 @@
 #ifndef __MACROS__
 #define __MACROS__
 
+// MAKE COMPILERS HAPPY ________________________________________
+
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wgnu-statement-expression"
+#endif
+
+
+
+// MACRO UTILITIES ________________________________________
+
+// concatenate tokens
+#define _CONCAT(x, y) x##y
+#define CONCAT(x, y) _CONCAT(x, y)
+
+// make a unique identifier
+#define UNIQUE CONCAT(__unique_, __LINE__)
+
+// convert a token to a string
+#define _STRINGIFY(x) #x
+#define STRINGIFY(x) _STRINGIFY(x)
+
+
+
+// SIZES & OFFSETS ________________________________________
+
+// size of a field
 #define sizeof_field(s, f) sizeof(((s *)0)->f)
+
+// offset of a field
 #if !defined(offsetof)
 #define offsetof(s, f) ((uintptr_t)&(((s *)0)->f))
 #endif
 
-#define zero(a) memset((a), 0, sizeof(a))
-
-#define show(x) printf(#x " = %d\n", (int)(x))
 #define WIDTH(a) (sizeof((a)[0]))
 #define LENGTH(a) (sizeof(a) / WIDTH(a))
-#define COUNTDOWN(i, n) if(n) for(size_t i = (n); i--; )
-#define COUNTUP(i, n) for(size_t i = 0, __n = (n); i < __n; i++)
+
+
+
+// ITERATION MACROS ________________________________________
+
+// up and down ranges
+#define RANGEUP(i, lower, upper) for(size_t i = (lower), __upper = (upper); i < __upper; i++)
+#define RANGEDOWN(i, lower, upper) for(size_t i = (upper), __lower = (lower); i-- > __lower; )
+#define COUNTDOWN(i, n) RANGEDOWN(i, 0, n)
+#define COUNTUP(i, n) RANGEUP(i, 0, n)
+#define LOOP(n) COUNTDOWN(UNIQUE, n)
+
+// iterate over a container
 #define FOREACH(i, a) COUNTUP(i, LENGTH(a))
 #define FORMAP(i, m) for(size_t i = 1; i <= *map_cnt(m); i++)
-#define _CONCAT(x, y) x##y
-#define CONCAT(x, y) _CONCAT(x, y)
-#define UNIQUE CONCAT(__unique_, __LINE__)
-#define LOOP(n) COUNTDOWN(UNIQUE, n)
-#define sizeof_field(s, f) sizeof(((s *)0)->f)
 
-#define min(a, b) ((a) <= (b) ? (a) : (b))
-#define max(a, b) ((a) >= (b) ? (a) : (b))
+// chunky list iterators
+#define FORLIST_0(x, l, r, ...) for(list_iterator_t __it = list_begin(l); (x = list_next(&__it, (r))) ; )
+#define FORLIST_1(x, l, ...) FORLIST_0(x, l, false)
+#define FORLIST(...) DISPATCH(FORLIST, 3, ##__VA_ARGS__)
+
+#define WHILELIST_0(x, it, r, ...) while((x = list_next(&it, (r))))
+#define WHILELIST_1(x, it, ...) WHILELIST_0(x, it, false)
+#define WHILELIST(...) DISPATCH(WHILELIST, 3, ##__VA_ARGS__)
+
+// embedded linked list
+#define FOLLOW_1(p, l, next, ...) for(__typeof__(l) p = (l); p != NULL; p = p->next)
+
+// embedded zig-zag (alternating) linked list
+#define FOLLOW_0(p, q, l, next, ...)                 \
+  for(__typeof__(l) p = (l), q = p ? p->next : NULL; \
+      q != NULL;                                     \
+      p = q->next, q = p ? p->next : NULL)
+
+#define FOLLOW(...) DISPATCH(FOLLOW, 4, ##__VA_ARGS__)
 
 #ifdef EMSCRIPTEN
 #define MARK_BIT (1<<31)
@@ -50,6 +98,10 @@
 #define is_marked(p) (((uintptr_t)(p) & (MARK_BIT)) != 0)
 #define mark_ptr(p) ((void *)((uintptr_t)(p) | (MARK_BIT)))
 #define clear_ptr(p) ((void *)((uintptr_t)(p) & ~(MARK_BIT)))
+
+
+
+// CODE GENERATION ________________________________________
 
 #define WORD_COUNT(n) { .first = (n), .second = (n) }
 #define WORD(__name, __func, __in, __out)                \
@@ -80,6 +132,10 @@
     .second = (uintptr_t)&command_##name                 \
   }
 
+
+
+// DATA STRUCTURES ________________________________________
+
 #define BITSET(name, size) uint8_t name[((size)+7)/8] = {0}
 #define BITSET_INDEX(name, array) BITSET(name, LENGTH(array))
 
@@ -87,13 +143,23 @@
 #define static_assert(expr, msg) _Static_assert(expr, msg)
 #endif
 
+// string segment initializer: seg_t s = SEG("Hello");
 #define SEG(x) {(x), sizeof(x) - 1}
 
+// printf that prepends a string segment
 #define printseg(pre, seg, fmt, ...)                                    \
   do {                                                                  \
     seg_t __seg = seg;                                                  \
     printf(pre "%.*s" fmt, (int)__seg.n, __seg.s , ##__VA_ARGS__);      \
   } while(0)
+
+// building embedded lists
+#define LIST_ADD(f, l, v) (*(l) = (v), (l) = &(v)->f) // insert at l = tail
+#define CONS(f, l, v) ((v)->f = *(l), *(l) = (v)) // insert at l = head
+
+
+
+// DISPATCH ________________________________________________________________________________
 
 // macro to allow handling optional macro arguments
 // DISPATCH(MAC, n, x_0 .. x_m) will reduce to MAC_i(x_0 .. x_m), where i = n-m, so i is the number of missing arguments
@@ -109,6 +175,32 @@
 #define DISPATCH8(m, x0, x1, x2, x3, x4, x5, x6, x7, argc, ...) CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7)
 #define DISPATCH9(m, x0, x1, x2, x3, x4, x5, x6, x7, x8, argc, ...) CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7, x8)
 
+
+
+// MATH ________________________________________
+
+#define min(a, b) ((a) <= (b) ? (a) : (b))
+#define max(a, b) ((a) >= (b) ? (a) : (b))
+
+// non-negative saturating subtraction
+#define csub(a, b)                              \
+  ({                                            \
+    __typeof__(a) _a = (a);                     \
+    __typeof__(b) _b = (b);                     \
+    _b > _a ? 0 : _a - _b;                      \
+  })
+
+
+
+// UM... OTHER STUFF ________________________________________
+
+// zero a thing
+#define zero(a) memset((a), 0, sizeof(a))
+
+// simple debug printf
+#define show(x) printf(#x " = %d\n", (int)(x))
+
+// unions of alt_sets
 #define AS_UNION_0(c, x, y, z, ...)    \
   (c->expr.arg[x]->value.alt_set |     \
    c->expr.arg[y]->value.alt_set |     \
@@ -120,32 +212,7 @@
   (c->expr.arg[x]->value.alt_set)
 #define AS_UNION(c, ...) DISPATCH(AS_UNION, 4, c, ##__VA_ARGS__)
 
-#define _STRINGIFY(x) #x
-#define STRINGIFY(x) _STRINGIFY(x)
-
-#define LIST_ADD(f, l, v) (*(l) = (v), (l) = &(v)->f) // insert at l = tail
-#define CONS(f, l, v) ((v)->f = *(l), *(l) = (v)) // insert at l = head
-
+// encode small integers as pointers
 #define FLIP_PTR(p) ((void *)~(uintptr_t)(p))
-
-#define FORLIST_0(x, l, r, ...) for(list_iterator_t it = list_begin(l); (x = list_next(&it, (r))) ; )
-#define FORLIST_1(x, l, ...) FORLIST_0(x, l, false)
-#define FORLIST(...) DISPATCH(FORLIST, 3, ##__VA_ARGS__)
-
-#define WHILELIST_0(x, it, r, ...) while((x = list_next(&it, (r))))
-#define WHILELIST_1(x, it, ...) WHILELIST_0(x, it, false)
-#define WHILELIST(...) DISPATCH(WHILELIST, 3, ##__VA_ARGS__)
-
-#ifdef __clang__
-#pragma clang diagnostic ignored "-Wgnu-statement-expression"
-#endif
-
-// non-negative saturating subtraction
-#define csub(a, b)                              \
-  ({                                            \
-    __typeof__(a) _a = (a);                     \
-    __typeof__(b) _b = (b);                     \
-    _b > _a ? 0 : _a - _b;                      \
-  })
 
 #endif
