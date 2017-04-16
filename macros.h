@@ -89,17 +89,6 @@
 
 #define FOLLOW(...) DISPATCH(FOLLOW, 4, ##__VA_ARGS__)
 
-#ifdef EMSCRIPTEN
-#define MARK_BIT (1<<31)
-#else
-#define MARK_BIT 2
-#endif
-
-#define is_marked(p) (((uintptr_t)(p) & (MARK_BIT)) != 0)
-#define mark_ptr(p) ((void *)((uintptr_t)(p) | (MARK_BIT)))
-#define clear_ptr(p) ((void *)((uintptr_t)(p) & ~(MARK_BIT)))
-
-
 
 // CODE GENERATION ________________________________________
 
@@ -154,8 +143,23 @@
   } while(0)
 
 // building embedded lists
-#define LIST_ADD(f, l, v) (*(l) = (v), (l) = &(v)->f) // insert at l = tail
-#define CONS(f, l, v) ((v)->f = *(l), *(l) = (v)) // insert at l = head
+
+// insert at l = tail
+#define LIST_ADD(f, l, v)                       \
+  ({                                            \
+    __typeof__(v) __v = (v);                    \
+    *(l) = __v;                                 \
+    (l) = &__v->f;                              \
+  })
+
+// insert at l = head
+#define CONS(f, l, v)                           \
+  ({                                            \
+    __typeof__(l) __l = (l);                    \
+    __typeof__(v) __v = (v);                    \
+    __v->f = *__l;                              \
+    *__l = __v;                                 \
+  })
 
 
 
@@ -179,8 +183,19 @@
 
 // MATH ________________________________________
 
-#define min(a, b) ((a) <= (b) ? (a) : (b))
-#define max(a, b) ((a) >= (b) ? (a) : (b))
+#define min(a, b)                               \
+  ({                                            \
+    __typeof__(a) __a = (a);                    \
+    __typeof__(b) __b = (b);                    \
+    __a <= __b ? __a : __b;                     \
+  })
+
+#define max(a, b)                               \
+  ({                                            \
+    __typeof__(a) __a = (a);                    \
+    __typeof__(b) __b = (b);                    \
+    __a >= __b ? __a : __b;                     \
+  })
 
 // non-negative saturating subtraction
 #define csub(a, b)                              \
@@ -189,7 +204,6 @@
     __typeof__(b) _b = (b);                     \
     _b > _a ? 0 : _a - _b;                      \
   })
-
 
 
 // UM... OTHER STUFF ________________________________________
@@ -214,5 +228,17 @@
 
 // encode small integers as pointers
 #define FLIP_PTR(p) ((void *)~(uintptr_t)(p))
+
+// marking
+#ifdef EMSCRIPTEN
+#define MARK_BIT (1<<31)
+#else
+#define MARK_BIT 2
+#endif
+
+#define is_marked(p) (((uintptr_t)(p) & (MARK_BIT)) != 0)
+#define mark_ptr(p) ((void *)((uintptr_t)(p) | (MARK_BIT)))
+#define clear_ptr(p) ((void *)((uintptr_t)(p) & ~(MARK_BIT)))
+
 
 #endif
