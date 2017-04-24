@@ -178,7 +178,7 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
   tc->n = n;
   if(tc->func == func_dep_entered) tc->func = func_dep;
-  cell_t **e = (tc->func == func_exec || tc->func == func_quote) ? &tc->expr.arg[closure_in(tc) - 1] : NULL;
+  cell_t **e = is_user_func(tc) ? &tc->expr.arg[closure_in(tc) - 1] : NULL;
   traverse(tc, {
       if(p == e) {
         *p = trace_encode(*p - trace_cells);
@@ -252,7 +252,6 @@ bool trace_unify(cell_t *a, cell_t **b, cell_t *c, size_t in) {
             a->size == (*b)->size &&
             a->expr.out == (*b)->expr.out) {
     csize_t a_in = closure_in(a);
-    if(a->func == func_exec || a->func == func_quote) a_in--;
     for(csize_t i = closure_is_ready(a) ? 0 : closure_next_child(a) + 1; i < a_in; i++) {
       if(is_offset(a->expr.arg[i])) continue;
       if(!trace_unify(a->expr.arg[i], &(*b)->expr.arg[i], c, in)) return false;
@@ -268,6 +267,7 @@ cell_t *trace_store_self(const cell_t *c, const cell_t *r) {
   cell_t *tc = trace_get(r);
   type_t t = r->value.type;
   tc->func = func_exec;
+  FLAG_SET(tc->expr.flags, FLAGS_USER_FUNC);
   tc->n += c->n;
   cell_t *e = &trace_cur[-1];
   csize_t
@@ -303,7 +303,7 @@ cell_t *trace_store_self(const cell_t *c, const cell_t *r) {
 
 bool trace_match_self(const cell_t *c) {
   const cell_t *s = initial_word;
-  if(!(s && c->expr.rec)) return false;
+  if(!(s && c->expr.flags & FLAGS_RECURSIVE)) return false;
   if(c->func != func_exec ||
      c->size != s->size) return false;
   csize_t in = closure_in(c) - 1;
@@ -406,7 +406,7 @@ void print_bytecode(cell_t *e) {
       if(!(c->expr_type.flags & T_INCOMPLETE)) trace_get_name(c, &module_name, &word_name);
       if(c->func == func_quote) printf(" quote");
       printf(" %s.%s", module_name, word_name);
-      cell_t **e = (c->func == func_exec || c->func == func_quote) ? &c->expr.arg[closure_in(c) - 1] : NULL;
+      cell_t **e = is_user_func(c) ? &c->expr.arg[closure_in(c) - 1] : NULL;
       traverse(c, {
           if(p != e) {
             trace_index_t x = trace_decode(*p);
@@ -489,7 +489,7 @@ void trace_reduction(cell_t *c, cell_t *r) {
   }
 
   csize_t in = closure_in(c);
-  COUNTUP(i, c->func == func_exec ? in - 1 : in) {
+  COUNTUP(i, in) {
     cell_t *a = c->expr.arg[i];
     if(is_value(a) && !is_var(a)) {
       if(is_list(a)) {
@@ -609,7 +609,7 @@ trace_index_t trace_tail(trace_index_t t, csize_t out) {
 bool any_unreduced(cell_t *c) {
   traverse(c, {
       if(*p) {
-        if((reduce_t *)clear_ptr((*p)->func) == func_placeholder || is_value(*p)) {
+        if((*p)->func == func_placeholder || is_value(*p)) {
           if(any_unreduced(*p)) return true;
         } else return true;
       }
@@ -640,6 +640,7 @@ trace_index_t trace_build_quote(cell_t *l) {
 
   n->expr.out = 0;
   n->func = func_quote;
+  FLAG_SET(n->expr.flags, FLAGS_USER_FUNC);
   n->n = -1;
   n->expr_type.exclusive = T_LIST;
   n->expr_type.flags |= T_INCOMPLETE;
@@ -662,7 +663,7 @@ trace_index_t trace_build_quote(cell_t *l) {
 
 cell_t *trace_build_specialized(cell_t *c, const cell_t *r) {
   assert(c->func == func_exec);
-  //assert(c->expr.rec == 0);
+  //assert(c->expr.flags & FLAGS_RECURSIVE == 0);
 
   cell_t *vl = 0;
   trace_var_list(c, &vl);
@@ -674,6 +675,7 @@ cell_t *trace_build_specialized(cell_t *c, const cell_t *r) {
 
   n->expr.out = out;
   n->func = func_exec;
+  FLAG_SET(n->expr.flags, FLAGS_USER_FUNC);
   n->n = -1;
   n->expr_type = r->value.type;
   n->expr_type.flags |= T_INCOMPLETE;
@@ -689,7 +691,7 @@ cell_t *trace_build_specialized(cell_t *c, const cell_t *r) {
   clean_tmp(vl);
 
   c = copy(c);
-  c->expr.rec = 0;
+  FLAG_CLEAR(c->expr.flags, FLAGS_RECURSIVE);
   c->alt = 0;
   traverse_ref(c, ARGS);
   n->expr.arg[in] = c;
@@ -905,18 +907,6 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   cell_t *c = parse_expr(&p, module);
 
   // compile
-  /*
-  cell_t *left = *leftmost(&c);
-  if(!is_value(left) &&
-     (reduce_t *)clear_ptr(left->func) == func_exec &&
-     !left->expr.rec &&
-     closure_out(left) + 1 == out) {
-    left->expr.rec = 1; // always expand root
-    initial_word = copy(left);
-  } else {
-    initial_word = NULL;
-  }
-  */
   fill_args(c);
   e->entry.alts = trace_reduce(&c);
   drop(c);
@@ -1046,7 +1036,7 @@ cell_t *compile_specialized(cell_t *parent_entry, cell_t *tc) {
   }
   clean_tmp(vl);
 
-  c->expr.rec = 0; // always expand
+  FLAG_CLEAR(c->expr.flags, FLAGS_RECURSIVE); // always expand
   initial_word = copy(c);
 
   // compile
@@ -1131,8 +1121,7 @@ void resolve_types(cell_t *e, cell_t *c, type_t *t) {
 
 // very similar to get_name() but decodes entry
 void trace_get_name(const cell_t *c, const char **module_name, const char **word_name) {
-  if((reduce_t *)clear_ptr(c->func) == func_exec ||
-     (reduce_t *)clear_ptr(c->func) == func_quote) {
+  if(is_user_func(c)) {
     cell_t *e = &trace_cells[trace_decode(c->expr.arg[closure_in(c) - 1])];
     *module_name = e->module_name;
     *word_name = e->word_name;

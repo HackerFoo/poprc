@@ -550,7 +550,7 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
           }
         }
         assert_throw(n < MAX_ARGS);
-        if(clear_ptr(c->func) == (void *)func_placeholder) {
+        if(c->func == func_placeholder) {
           drop(ph); // HACK probably should chain placeholders somehow
           ph = c;
         } else {

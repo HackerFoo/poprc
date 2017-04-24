@@ -73,14 +73,13 @@ char const *show_alt_set(uintptr_t as) {
 
 // only valid on primitives
 char const *entry_function_name(cell_t *e) {
-  if(e->func == func_exec || e->func == func_quote) return NULL;
+  if(is_user_func(e)) return NULL;
   const char *s = e->word_name;
   while(*s++);
   return s;
 }
 
 char const *function_name(reduce_t *f) {
-  f = (reduce_t *)clear_ptr(f);
 #define CASE(x) if(f == func_##x) return #x
   CASE(value);
   CASE(fail);
@@ -101,8 +100,7 @@ char const *function_name(reduce_t *f) {
 }
 
 void get_name(const cell_t *c, const char **module_name, const char **word_name) {
-  if((reduce_t *)clear_ptr(c->func) == func_exec ||
-     (reduce_t *)clear_ptr(c->func) == func_quote) {
+  if(is_user_func(c)) {
     cell_t *e = c->expr.arg[closure_in(c) - 1];
     *module_name = e->module_name;
     *word_name = e->word_name;
@@ -114,7 +112,7 @@ void get_name(const cell_t *c, const char **module_name, const char **word_name)
 
 char const *function_token(const cell_t *c) {
   static char ap_str[] = "ap00";
-  reduce_t *f = (reduce_t *)clear_ptr(c->func);
+  reduce_t *f = c->func;
   if(f == func_ap) {
     csize_t
       in = closure_in(c),

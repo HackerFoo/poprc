@@ -240,5 +240,8 @@
 #define mark_ptr(p) ((void *)((uintptr_t)(p) | (MARK_BIT)))
 #define clear_ptr(p) ((void *)((uintptr_t)(p) & ~(MARK_BIT)))
 
+#define FLAG_SET(var, flag) ((var) |= (flag))
+#define FLAG_CLEAR(var, flag) ((var) &= ~(flag))
+#define FLAG_SET_TO(var, flag, val) ((val) ? FLAG_SET(var, flag) : FLAG_CLEAR(var, flag))
 
 #endif

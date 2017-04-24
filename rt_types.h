@@ -88,9 +88,13 @@ typedef struct seg_t {
 
 typedef bool (reduce_t)(cell_t **cell, type_request_t treq);
 
+#define FLAGS_NEEDS_ARG 0x01
+#define FLAGS_USER_FUNC 0x02
+#define FLAGS_RECURSIVE 0x04
+
 /* unevaluated expression */
 struct __attribute__((packed)) expr {
-  uint8_t out, rec;
+  uint8_t out, flags;
   union {
     cell_t *arg[2];
     val_t idx[2];

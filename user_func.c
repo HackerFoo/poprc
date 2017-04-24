@@ -31,6 +31,10 @@
 #include "gen/list.h"
 #include "gen/user_func.h"
 
+bool is_user_func(const cell_t *c) {
+  return !is_value(c) && !!(c->expr.flags & FLAGS_USER_FUNC);
+}
+
 static
 cell_t *map_cell(cell_t **map, intptr_t x) {
   return
@@ -52,7 +56,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
 
-  size_t in = closure_in(c) - 1;
+  size_t in = closure_in(c);
   cell_t *entry = c->expr.arg[in];
   cell_t *code = entry + 1;
   size_t len = entry->entry.len;
@@ -61,13 +65,13 @@ bool func_exec(cell_t **cp, type_request_t treq) {
   cell_t *returns = NULL;
 
   // don't execute, just reduce all args and return variables
-  if(trace_enabled &&
-     (c->expr.rec || // the function has already been expanded once
-      len == 0 || // the function is being compiled
-      (entry->entry.rec &&
-       (initial_word ||
-        entry->entry.rec > trace_cur[-1].entry.in)))) { // not the outermost function
-    csize_t c_in = closure_in(c) - 1, n = closure_args(c);
+  if(len == 0 || // the function is being compiled
+     (trace_enabled &&
+      (c->expr.flags & FLAGS_RECURSIVE || // the function has already been expanded once
+       (entry->entry.rec &&
+        (initial_word ||
+         entry->entry.rec > trace_cur[-1].entry.in))))) { // not the outermost function
+    csize_t c_in = closure_in(c), n = closure_args(c);
     alt_set_t alt_set = 0;
     unsigned int nonvar = 0;
     bool specialize = false;
@@ -99,14 +103,14 @@ bool func_exec(cell_t **cp, type_request_t treq) {
 
     if(nonvar > 0 &&
        len > 0 &&
-       !c->expr.rec &&
+       !(c->expr.flags & FLAGS_RECURSIVE) &&
        (!entry->entry.rec || entry->entry.rec <= trace_cur[-1].entry.in))
     {
       goto expand;
     }
 
     cell_t *res;
-    bool disable_trace = false;
+    bool disable_trace = len == 0 && !!(c->expr.flags & FLAGS_RECURSIVE); // TODO remove hacky trace disabling and return T_BOTTOM instead
     uint8_t t = treq.t == T_ANY ? T_BOTTOM : treq.t;
     if(specialize && !dont_specialize) {
       res = trace_var_specialized(t, c);
@@ -176,8 +180,8 @@ expand:
 
     // skip rewriting for the entry argument
     cell_t **t_entry = NULL;
-    if(t->func == func_exec || t->func == func_quote) {
-      t_entry = &t->expr.arg[closure_in(t) - 1];
+    if(is_user_func(t)) {
+      t_entry = &t->expr.arg[closure_in(t)];
       *t_entry = &trace_cells[trace_decode(*t_entry)];
     }
 
@@ -192,7 +196,7 @@ expand:
        t_entry &&
        *t_entry == entry &&
        !initial_word) { // mark recursion
-      t->expr.rec = 1;
+      FLAG_SET(t->expr.flags, FLAGS_RECURSIVE);
       initial_word = copy(c);
       initial_word->expr.arg[in] = entry;
       traverse_ref(initial_word, ARGS_IN | ALT);
@@ -242,7 +246,7 @@ bool func_quote(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
   assert(!is_marked(c));
 
-  csize_t in = closure_in(c) - 1;
+  csize_t in = closure_in(c);
   cell_t *entry = c->expr.arg[in];
   c->expr.arg[in] = 0;
   csize_t
@@ -251,11 +255,11 @@ bool func_quote(cell_t **cp, UNUSED type_request_t treq) {
 
   cell_t *f = closure_alloc(f_in + f_out);
   csize_t offset = f_in - in;
+  f->func = func_exec;
+  FLAG_SET(f->expr.flags, FLAGS_USER_FUNC);
   if(offset) {
     f->expr.arg[0] = (cell_t *)(trace_index_t)(offset - 1);
-    f->func = (reduce_t *)mark_ptr(func_exec);
-  } else {
-    f->func = func_exec;
+    f->expr.flags |= FLAGS_NEEDS_ARG;
   }
 
   COUNTUP(i, in) {
@@ -282,7 +286,7 @@ bool func_quote(cell_t **cp, UNUSED type_request_t treq) {
 }
 
 void reduce_quote(cell_t **cp) {
-  if((*cp)->func == func_quote || (*cp)->func == func_exec) { // HACKy
+  if(is_user_func(*cp)) { // HACKy
     reduce(cp, req_any);
   }
 }

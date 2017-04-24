@@ -291,7 +291,7 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
 }
 
 bool is_placeholder(cell_t const *c) {
-  return c && clear_ptr(c->func) == (void *)func_placeholder;
+  return c && c->func == func_placeholder;
 }
 
 bool func_fail(cell_t **cp, type_request_t treq) {

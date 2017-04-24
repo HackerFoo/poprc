@@ -82,13 +82,13 @@ bool is_closure(void const *p) {
 // Is the closure `c` ready to reduce?
 bool closure_is_ready(cell_t const *c) {
   assert(is_closure(c));
-  return !is_marked(c->func);
+  return is_value(c) || !(c->expr.flags & FLAGS_NEEDS_ARG);
 }
 
 // Set the readiness of closure `c` to state `r`
 void closure_set_ready(cell_t *c, bool r) {
   assert(is_closure(c));
-  c->func = (reduce_t *)(r ? clear_ptr(c->func) : mark_ptr(c->func));
+  FLAG_SET_TO(c->expr.flags, FLAGS_NEEDS_ARG, !r);
 }
 
 cell_t *cells_next() {
@@ -261,7 +261,9 @@ csize_t closure_args(cell_t const *c) {
 
 csize_t closure_in(cell_t const *c) {
   assert(is_closure(c) && !is_value(c));
-  return c->size - c->expr.out;
+  csize_t in = c->size - c->expr.out;
+  if(c->expr.flags & FLAGS_USER_FUNC) in--;
+  return in;
 }
 
 csize_t closure_out(cell_t const *c) {

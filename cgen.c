@@ -180,7 +180,7 @@ void gen_instruction(cell_t *e, cell_t *c) {
 }
 
 cell_t *get_entry(cell_t *c) {
-  if(c->func != func_exec) return NULL;
+  if(!is_user_func(c)) return NULL;
   return &trace_cells[trace_decode(c->expr.arg[closure_in(c) - 1])];
 }
 
@@ -202,9 +202,9 @@ void gen_call(cell_t *e, cell_t *c) {
     trace_get_name(c, &module_name, &word_name);
     printf("  %s%d = %s_%s(", cname(trace_type(c)), i, module_name, word_name);
 
-    csize_t in = closure_in(c), start_out = in;
+    csize_t in = closure_in(c);
     csize_t n = closure_args(c);
-    if(c->func == func_exec) in--;
+    csize_t start_out = n - closure_out(c);
 
     for(csize_t i = 0; i < in; i++) {
       int a = trace_decode(c->expr.arg[i]);
