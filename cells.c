@@ -331,7 +331,7 @@ bool is_any(cell_t const *c) {
         }                                                       \
       }                                                         \
     } else if((flags) & ARGS) {                                 \
-      csize_t  __in = closure_in(r);                            \
+      csize_t  __in = r->size - r->expr.out;                    \
       i = (~(flags) & ARGS_IN) ? __in : closure_next_child(r);  \
       n = (~(flags) & ARGS_OUT) ? __in : closure_args(r);       \
       for(; i < n; ++i) {                                       \
@@ -352,9 +352,9 @@ void drop(cell_t *c) {
   assert(is_closure(c));
   if(!c->n) {
     cell_t *p;
-    traverse(c, {
-        drop(*p);
-      }, ALT | ARGS_IN | PTRS);
+    TRAVERSE_ALT_IN_PTRS(c) {
+      drop(*p);
+    }
     if(is_dep(c) && !is_value(p = c->expr.arg[0]) && is_closure(p)) {
       /* mark dep arg as gone */
       csize_t n = closure_args(p);
@@ -383,9 +383,9 @@ void fake_drop(cell_t *c) {
   if(!is_cell(c) || c->n == PERSISTENT) return;
   assert(~c->n && is_closure(c));
   if(!c->n) {
-    traverse(c, {
-        fake_drop(*p);
-      }, ALT | ARGS_IN | PTRS);
+    TRAVERSE_ALT_IN_PTRS(c) {
+      fake_drop(*p);
+    }
   }
   --c->n;
 }
@@ -395,9 +395,9 @@ void fake_undrop(cell_t *c) {
   if(!is_cell(c) || c->n == PERSISTENT) return;
   assert(is_closure(c));
   if(!++c->n) {
-    traverse(c, {
-        fake_undrop(*p);
-      }, ALT | ARGS_IN | PTRS);
+    TRAVERSE_ALT_IN_PTRS(c) {
+      fake_undrop(*p);
+    }
   }
 }
 

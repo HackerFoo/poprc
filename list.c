@@ -77,7 +77,9 @@ bool func_list(cell_t **cp, type_request_t treq) {
       if(!func_list(&c->value.ptr[0], REQ(any))) goto fail;
     }
   }
-  traverse(c, *p = clear_ptr(*p), PTRS);
+  TRAVERSE_PTRS(c) {
+    *p = clear_ptr(*p);
+  }
   return true;
 
  fail:

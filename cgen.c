@@ -261,9 +261,9 @@ void gen_skipped(cell_t *e, int start_after, int until) {
     FOR_TRACE(c, start, end) {
       type_t t = trace_type(c);
       if(t.exclusive == T_RETURN) break;
-      traverse(c, {
-          if(*p && trace_decode(*p) == until) return;
-        }, ARGS_IN);
+      TRAVERSE_IN(c) {
+        if(*p && trace_decode(*p) == until) return;
+      }
       gen_instruction(e, c);
       c->expr_type.flags |= T_TRACED;
     }

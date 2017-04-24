@@ -78,6 +78,55 @@
 #define WHILELIST_1(x, it, ...) WHILELIST_0(x, it, false)
 #define WHILELIST(...) DISPATCH(WHILELIST, 3, ##__VA_ARGS__)
 
+#define TRAVERSE_ALT_ARGS_PTRS(c)                                       \
+  for(cell_t **p = &c->alt,                                             \
+        **n = is_value(c) ? c->value.ptr : c->expr.arg,                 \
+        **end = is_value(c) ? &c->value.ptr[list_size(c)] : &c->expr.arg[closure_args(c)]; \
+      p < end;                                                          \
+      p = n++)
+
+#define TRAVERSE_ALT_IN_PTRS(c)                                         \
+  for(cell_t **p = &c->alt,                                             \
+        **n = is_value(c) ? c->value.ptr : c->expr.arg,                 \
+        **end = is_value(c) ? &c->value.ptr[list_size(c)] : &c->expr.arg[closure_in(c)]; \
+      p < end;                                                          \
+      p = n++)
+
+#define TRAVERSE_ALT_IN(c)                                              \
+  if(!is_value(c))                                                      \
+    for(cell_t **p = &c->alt,                                           \
+          **n = c->expr.arg,                                            \
+          **end = &c->expr.arg[closure_in(c)];                          \
+        p < end;                                                        \
+        p = n++)
+
+#define TRAVERSE_IN_PTRS(c)                                             \
+  for(cell_t **p = is_value(c) ? c->value.ptr : c->expr.arg,            \
+        **end = is_value(c) ? &c->value.ptr[list_size(c)] : &c->expr.arg[closure_in(c)]; \
+      p < end;                                                          \
+      p++)
+
+#define TRAVERSE_IN(c)                                                  \
+  if(!is_value(c))                                                      \
+    for(cell_t **p = c->expr.arg,                                       \
+          **end = &c->expr.arg[closure_in(c)];                          \
+        p < end;                                                        \
+        p++)
+
+#define TRAVERSE_OUT(c)                                                 \
+  if(!is_value(c))                                                      \
+    for(cell_t **p = &c->expr.arg[closure_args(c) - closure_out(c)],    \
+          **end = &c->expr.arg[closure_args(c)];                        \
+        p < end;                                                        \
+        p++)
+
+#define TRAVERSE_PTRS(c)                                                \
+  if(is_value(c))                                                       \
+    for(cell_t **p = c->value.ptr,                                      \
+          **end = &c->value.ptr[list_size(c)];                          \
+        p < end;                                                        \
+        p++)
+
 // embedded linked list
 #define FOLLOW_1(p, l, next, ...) for(__typeof__(l) p = (l); p != NULL; p = p->next)
 

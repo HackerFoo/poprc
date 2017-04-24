@@ -179,22 +179,22 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
   tc->n = n;
   if(tc->func == func_dep_entered) tc->func = func_dep;
   cell_t **e = is_user_func(tc) ? &tc->expr.arg[closure_in(tc) - 1] : NULL;
-  traverse(tc, {
-      if(p == e) {
-        *p = trace_encode(*p - trace_cells);
-      } else if(*p) {
-        assert(!is_marked(*p));
-        trace_index_t x = trace_get_value(*p);
-        *p = trace_encode(x);
-        trace_cur[x].n++;
-      }
-    }, ARGS_IN);
-  traverse(tc, {
-      if(*p) {
-        trace_index_t x = trace_get_value(*p);
-        *p = trace_encode(x);
-      }
-    }, ARGS_OUT);
+  TRAVERSE_IN(tc) {
+    if(p == e) {
+      *p = trace_encode(*p - trace_cells);
+    } else if(*p) {
+      assert(!is_marked(*p));
+      trace_index_t x = trace_get_value(*p);
+      *p = trace_encode(x);
+      trace_cur[x].n++;
+    }
+  }
+  TRAVERSE_OUT(tc) {
+    if(*p) {
+      trace_index_t x = trace_get_value(*p);
+      *p = trace_encode(x);
+    }
+  }
   if(is_value(c)) {
     tc->value.alt_set = 0;
     tc->value.type = t;
@@ -322,9 +322,9 @@ bool trace_match_self(const cell_t *c) {
 static
 bool trace_match_specialize(const cell_t *c) {
   if(dont_specialize || c->func != func_exec) return false;
-  traverse(((cell_t *)c), {
-      if(*p && is_list(*p)) return true;
-    }, ARGS_IN);
+  TRAVERSE_IN((cell_t *)c) {
+    if(*p && is_list(*p)) return true;
+  }
   return false;
 }
 #endif
@@ -407,28 +407,28 @@ void print_bytecode(cell_t *e) {
       if(c->func == func_quote) printf(" quote");
       printf(" %s.%s", module_name, word_name);
       cell_t **e = is_user_func(c) ? &c->expr.arg[closure_in(c) - 1] : NULL;
-      traverse(c, {
-          if(p != e) {
-            trace_index_t x = trace_decode(*p);
-            if(x == -1) {
-              printf(" X");
-            } else if(x == NIL_INDEX) {
-              printf(" []");
-            } else {
-              printf(" %" PRIdPTR, x);
-            }
+      TRAVERSE_IN(c) {
+        if(p != e) {
+          trace_index_t x = trace_decode(*p);
+          if(x == -1) {
+            printf(" X");
+          } else if(x == NIL_INDEX) {
+            printf(" []");
+          } else {
+            printf(" %" PRIdPTR, x);
           }
-        }, ARGS_IN);
+        }
+      }
       if(closure_out(c)) {
         printf(" ->");
-        traverse(c, {
-            trace_index_t x = trace_decode(*p);
-            if(x == -1) {
-              printf(" X");
-            } else {
-              printf(" %" PRIdPTR, x);
-            }
-          }, ARGS_OUT);
+        TRAVERSE_OUT(c) {
+          trace_index_t x = trace_decode(*p);
+          if(x == -1) {
+            printf(" X");
+          } else {
+            printf(" %" PRIdPTR, x);
+          }
+        }
       }
       printf(", type = %s", show_type_all_short(c->expr_type));
       if(c->alt) printf(" -> %" PRIdPTR, trace_decode(c->alt));
@@ -607,13 +607,13 @@ trace_index_t trace_tail(trace_index_t t, csize_t out) {
 }
 
 bool any_unreduced(cell_t *c) {
-  traverse(c, {
-      if(*p) {
-        if((*p)->func == func_placeholder || is_value(*p)) {
-          if(any_unreduced(*p)) return true;
-        } else return true;
-      }
-    }, PTRS | ARGS_IN);
+  TRAVERSE_IN_PTRS(c) {
+    if(*p) {
+      if((*p)->func == func_placeholder || is_value(*p)) {
+        if(any_unreduced(*p)) return true;
+      } else return true;
+    }
+  }
   return false;
 }
 
@@ -735,9 +735,9 @@ cell_t **trace_var_list(cell_t *c, cell_t **tail) {
       tail = trace_var_list(c->alt, tail);
     } else {
       c->tmp = FLIP_PTR(0); // prevent loops
-      traverse(c, {
-          tail = trace_var_list(*p, tail);
-        }, PTRS | ARGS_IN | ALT);
+      TRAVERSE_ALT_IN_PTRS(c) {
+        tail = trace_var_list(*p, tail);
+      }
       c->tmp = 0;
     }
   }

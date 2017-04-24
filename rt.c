@@ -171,9 +171,8 @@ bool reduce_ptr(cell_t *c,
 
 // Clear the flags bits in args
 void clear_flags(cell_t *c) {
-  int i = 0;
-  for(; i < c->size; ++i) {
-    c->expr.arg[i] = clear_ptr(c->expr.arg[i]);
+  TRAVERSE_IN(c) {
+    *p = clear_ptr(*p);
   }
 }
 
@@ -458,16 +457,16 @@ void fail(cell_t **cp, type_request_t treq) {
   assert(!is_marked(c));
   cell_t *alt = ref(c->alt);
   if(c->n && treq.t == T_ANY) { // HACK this should be more sophisticated
-    traverse(c, {
-        drop(*p);
-      }, ARGS_IN);
-    traverse(c, {
-        cell_t *d = *p;
-        if(d && is_dep(d)) {
-          drop(c);
-          store_fail(d, d->alt);
-        }
-      }, ARGS_OUT);
+    TRAVERSE_IN(c) {
+      drop(*p);
+    }
+    TRAVERSE_OUT(c) {
+      cell_t *d = *p;
+      if(d && is_dep(d)) {
+        drop(c);
+        store_fail(d, d->alt);
+      }
+    }
     closure_shrink(c, 1);
     memset(&c->value, 0, sizeof(c->value));
     c->func = func_value;
@@ -542,23 +541,23 @@ void check_tmps() {
 /* m => in-place, update ref counts for replaced references */
 static
 void mutate_update(cell_t *r, bool m) {
-  traverse(r, {
-      cell_t *c = *p;
-      if(is_closure(c) && c->n != PERSISTENT) {
-        if(c->tmp) {
-          *p = ref(c->tmp);
-          if (m) --c->n;
-        } else if (!m) ref(c);
-      }
-    }, ARGS_IN | PTRS | ALT);
+  TRAVERSE_ALT_IN_PTRS(r) {
+    cell_t *c = *p;
+    if(is_closure(c) && c->n != PERSISTENT) {
+      if(c->tmp) {
+        *p = ref(c->tmp);
+        if (m) --c->n;
+      } else if (!m) ref(c);
+    }
+  }
 
-  traverse(r, {
-      cell_t *c = *p;
-      if(c && c->n != PERSISTENT && c->tmp) {
-        // if(m) fix deps?
-        *p = c->tmp;
-      }
-    }, ARGS_OUT);
+  TRAVERSE_OUT(r) {
+    cell_t *c = *p;
+    if(c && c->n != PERSISTENT && c->tmp) {
+      // if(m) fix deps?
+      *p = c->tmp;
+    }
+  }
 }
 
 static
@@ -588,9 +587,9 @@ bool mutate_sweep(cell_t *r, cell_t **l) {
 
   // prevent looping
   r->tmp = r;
-  traverse(r, {
-      dirty |= mutate_sweep(*p, l);
-    }, ARGS_IN | PTRS | ALT);
+  TRAVERSE_ALT_IN_PTRS(r) {
+    dirty |= mutate_sweep(*p, l);
+  }
   r->tmp = 0;
 
   if(!dirty) return false;
@@ -606,9 +605,9 @@ bool mutate_sweep(cell_t *r, cell_t **l) {
 }
 
 bool deps_are_unique(cell_t *c) {
-  traverse(c, {
-      if(*p && ~(*p)->n) return false;
-    }, ARGS_OUT);
+  TRAVERSE_OUT(c) {
+    if(*p && ~(*p)->n) return false;
+  }
   return true;
 }
 
@@ -655,19 +654,19 @@ bool check_deps(cell_t *c) {
   bool ret = true;
   c = clear_ptr(c);
   if(c && is_cell(c)) {
-    traverse(c, {
-        cell_t *x = *p;
-        if(x && x->expr.arg[0] != c) {
-          printf("bad dep %d -> %d, should be %d\n",
-                 (int)(x - cells),
-                 (int)(x->expr.arg[0] - cells),
-                 (int)(c - cells));
-          ret = false;
-        }
-      }, ARGS_OUT);
-    traverse(c, {
-        if(!check_deps(*p)) ret = false;
-      }, ARGS_IN | ALT | PTRS);
+    TRAVERSE_OUT(c) {
+      cell_t *x = *p;
+      if(x && x->expr.arg[0] != c) {
+        printf("bad dep %d -> %d, should be %d\n",
+               (int)(x - cells),
+               (int)(x->expr.arg[0] - cells),
+               (int)(c - cells));
+        ret = false;
+      }
+    }
+    TRAVERSE_ALT_IN_PTRS(c) {
+      if(!check_deps(*p)) ret = false;
+    }
   }
   return ret;
 }

@@ -262,15 +262,15 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
   } else {
     nc = copy(c);
   }
-  traverse(nc, {
-      if(*p) {
-        cell_t *np = closure_alloc(2);
-        np->func = func_assert;
-        np->expr.arg[0] = ref(*p);
-        np->expr.arg[1] = ref(t);
-        *p = np;
-      }
-    }, PTRS);
+  TRAVERSE_PTRS(nc) {
+    if(*p) {
+      cell_t *np = closure_alloc(2);
+      np->func = func_assert;
+      np->expr.arg[0] = ref(*p);
+      np->expr.arg[1] = ref(t);
+      *p = np;
+    }
+  }
   cell_t **left = &nc->value.ptr[list_size(nc) - 1];
   if(~c->value.type.flags & T_ROW) {
     *left = v;

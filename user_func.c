@@ -185,12 +185,12 @@ expand:
       *t_entry = &trace_cells[trace_decode(*t_entry)];
     }
 
-    traverse(t, {
-        if(p != t_entry) {
-          trace_index_t x = trace_decode(*p);
-          *p = map_cell(map, x);
-        }
-      }, ARGS | PTRS | ALT);
+    TRAVERSE_ALT_ARGS_PTRS(t) {
+      if(p != t_entry) {
+        trace_index_t x = trace_decode(*p);
+        *p = map_cell(map, x);
+      }
+    }
 
     if(trace_enabled &&
        t_entry &&
