@@ -185,7 +185,7 @@ expand:
       *t_entry = &trace_cells[trace_decode(*t_entry)];
     }
 
-    TRAVERSE_ALT_ARGS_PTRS(t) {
+    TRAVERSE(t, alt, args, ptrs) {
       if(p != t_entry) {
         trace_index_t x = trace_decode(*p);
         *p = map_cell(map, x);

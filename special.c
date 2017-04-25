@@ -206,7 +206,7 @@ bool is_string(cell_t const *c) {
 
 bool is_dep_of(cell_t *d, cell_t *c) {
   bool ret = false;
-  TRAVERSE_OUT(c) {
+  TRAVERSE(c, out) {
     if(*p == d) ret = true;
   }
   return ret;

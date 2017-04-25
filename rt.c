@@ -171,7 +171,7 @@ bool reduce_ptr(cell_t *c,
 
 // Clear the flags bits in args
 void clear_flags(cell_t *c) {
-  TRAVERSE_IN(c) {
+  TRAVERSE(c, in) {
     *p = clear_ptr(*p);
   }
 }
@@ -457,10 +457,10 @@ void fail(cell_t **cp, type_request_t treq) {
   assert(!is_marked(c));
   cell_t *alt = ref(c->alt);
   if(c->n && treq.t == T_ANY) { // HACK this should be more sophisticated
-    TRAVERSE_IN(c) {
+    TRAVERSE(c, in) {
       drop(*p);
     }
-    TRAVERSE_OUT(c) {
+    TRAVERSE(c, out) {
       cell_t *d = *p;
       if(d && is_dep(d)) {
         drop(c);
@@ -541,7 +541,7 @@ void check_tmps() {
 /* m => in-place, update ref counts for replaced references */
 static
 void mutate_update(cell_t *r, bool m) {
-  TRAVERSE_ALT_IN_PTRS(r) {
+  TRAVERSE(r, alt, in, ptrs) {
     cell_t *c = *p;
     if(is_closure(c) && c->n != PERSISTENT) {
       if(c->tmp) {
@@ -551,7 +551,7 @@ void mutate_update(cell_t *r, bool m) {
     }
   }
 
-  TRAVERSE_OUT(r) {
+  TRAVERSE(r, out) {
     cell_t *c = *p;
     if(c && c->n != PERSISTENT && c->tmp) {
       // if(m) fix deps?
@@ -587,7 +587,7 @@ bool mutate_sweep(cell_t *r, cell_t **l) {
 
   // prevent looping
   r->tmp = r;
-  TRAVERSE_ALT_IN_PTRS(r) {
+  TRAVERSE(r, alt, in, ptrs) {
     dirty |= mutate_sweep(*p, l);
   }
   r->tmp = 0;
@@ -605,7 +605,7 @@ bool mutate_sweep(cell_t *r, cell_t **l) {
 }
 
 bool deps_are_unique(cell_t *c) {
-  TRAVERSE_OUT(c) {
+  TRAVERSE(c, out) {
     if(*p && ~(*p)->n) return false;
   }
   return true;
@@ -654,7 +654,7 @@ bool check_deps(cell_t *c) {
   bool ret = true;
   c = clear_ptr(c);
   if(c && is_cell(c)) {
-    TRAVERSE_OUT(c) {
+    TRAVERSE(c, out) {
       cell_t *x = *p;
       if(x && x->expr.arg[0] != c) {
         printf("bad dep %d -> %d, should be %d\n",
@@ -664,7 +664,7 @@ bool check_deps(cell_t *c) {
         ret = false;
       }
     }
-    TRAVERSE_ALT_IN_PTRS(c) {
+    TRAVERSE(c, alt, in, ptrs) {
       if(!check_deps(*p)) ret = false;
     }
   }

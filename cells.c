@@ -352,7 +352,7 @@ void drop(cell_t *c) {
   assert(is_closure(c));
   if(!c->n) {
     cell_t *p;
-    TRAVERSE_ALT_IN_PTRS(c) {
+    TRAVERSE(c, alt, in, ptrs) {
       drop(*p);
     }
     if(is_dep(c) && !is_value(p = c->expr.arg[0]) && is_closure(p)) {
@@ -383,7 +383,7 @@ void fake_drop(cell_t *c) {
   if(!is_cell(c) || c->n == PERSISTENT) return;
   assert(~c->n && is_closure(c));
   if(!c->n) {
-    TRAVERSE_ALT_IN_PTRS(c) {
+    TRAVERSE(c, alt, in, ptrs) {
       fake_drop(*p);
     }
   }
@@ -395,7 +395,7 @@ void fake_undrop(cell_t *c) {
   if(!is_cell(c) || c->n == PERSISTENT) return;
   assert(is_closure(c));
   if(!++c->n) {
-    TRAVERSE_ALT_IN_PTRS(c) {
+    TRAVERSE(c, alt, in, ptrs) {
       fake_undrop(*p);
     }
   }

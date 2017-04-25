@@ -179,7 +179,7 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
   tc->n = n;
   if(tc->func == func_dep_entered) tc->func = func_dep;
   cell_t **e = is_user_func(tc) ? &tc->expr.arg[closure_in(tc) - 1] : NULL;
-  TRAVERSE_IN(tc) {
+  TRAVERSE(tc, in) {
     if(p == e) {
       *p = trace_encode(*p - trace_cells);
     } else if(*p) {
@@ -189,7 +189,7 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
       trace_cur[x].n++;
     }
   }
-  TRAVERSE_OUT(tc) {
+  TRAVERSE(tc, out) {
     if(*p) {
       trace_index_t x = trace_get_value(*p);
       *p = trace_encode(x);
@@ -322,7 +322,7 @@ bool trace_match_self(const cell_t *c) {
 static
 bool trace_match_specialize(const cell_t *c) {
   if(dont_specialize || c->func != func_exec) return false;
-  TRAVERSE_IN((cell_t *)c) {
+  TRAVERSE((cell_t *)c, in) {
     if(*p && is_list(*p)) return true;
   }
   return false;
@@ -407,7 +407,7 @@ void print_bytecode(cell_t *e) {
       if(c->func == func_quote) printf(" quote");
       printf(" %s.%s", module_name, word_name);
       cell_t **e = is_user_func(c) ? &c->expr.arg[closure_in(c) - 1] : NULL;
-      TRAVERSE_IN(c) {
+      TRAVERSE(c, in) {
         if(p != e) {
           trace_index_t x = trace_decode(*p);
           if(x == -1) {
@@ -421,7 +421,7 @@ void print_bytecode(cell_t *e) {
       }
       if(closure_out(c)) {
         printf(" ->");
-        TRAVERSE_OUT(c) {
+        TRAVERSE(c, out) {
           trace_index_t x = trace_decode(*p);
           if(x == -1) {
             printf(" X");
@@ -607,7 +607,7 @@ trace_index_t trace_tail(trace_index_t t, csize_t out) {
 }
 
 bool any_unreduced(cell_t *c) {
-  TRAVERSE_IN_PTRS(c) {
+  TRAVERSE(c, in, ptrs) {
     if(*p) {
       if((*p)->func == func_placeholder || is_value(*p)) {
         if(any_unreduced(*p)) return true;
@@ -735,7 +735,7 @@ cell_t **trace_var_list(cell_t *c, cell_t **tail) {
       tail = trace_var_list(c->alt, tail);
     } else {
       c->tmp = FLIP_PTR(0); // prevent loops
-      TRAVERSE_ALT_IN_PTRS(c) {
+      TRAVERSE(c, alt, in, ptrs) {
         tail = trace_var_list(*p, tail);
       }
       c->tmp = 0;

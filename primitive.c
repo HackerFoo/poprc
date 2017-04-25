@@ -262,7 +262,7 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
   } else {
     nc = copy(c);
   }
-  TRAVERSE_PTRS(nc) {
+  TRAVERSE(nc, ptrs) {
     if(*p) {
       cell_t *np = closure_alloc(2);
       np->func = func_assert;

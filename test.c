@@ -119,7 +119,7 @@ cell_t **flatten(cell_t *c, cell_t **tail) {
   c = clear_ptr(c);
   if(c && !c->tmp && tail != &c->tmp && c->n != PERSISTENT) {
     LIST_ADD(tmp, tail, c);
-    TRAVERSE_ALT_IN_PTRS(c) {
+    TRAVERSE(c, alt, in, ptrs) {
       tail = flatten(*p, tail);
     }
   }
@@ -141,7 +141,7 @@ void print_list(cell_t *c) {
 static
 void assert_ref_dec(cell_t *c) {
   while(c) {
-    TRAVERSE_ALT_IN_PTRS(c) {
+    TRAVERSE(c, alt, in, ptrs) {
       cell_t *x = clear_ptr(*p);
       if(x && x->n != PERSISTENT) --x->n;
     }
@@ -152,7 +152,7 @@ void assert_ref_dec(cell_t *c) {
 static
 void assert_ref_inc(cell_t *c) {
   while(c) {
-    TRAVERSE_ALT_IN_PTRS(c) {
+    TRAVERSE(c, alt, in, ptrs) {
       cell_t *x = clear_ptr(*p);
       if(x && x->n != PERSISTENT) ++x->n;
     }
