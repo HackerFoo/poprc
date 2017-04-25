@@ -693,7 +693,7 @@ cell_t *trace_build_specialized(cell_t *c, const cell_t *r) {
   c = copy(c);
   FLAG_CLEAR(c->expr.flags, FLAGS_RECURSIVE);
   c->alt = 0;
-  traverse_ref(c, ARGS);
+  TRAVERSE_REF(c, args);
   n->expr.arg[in] = c;
   insert_root(&n->expr.arg[in]);
 

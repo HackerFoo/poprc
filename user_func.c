@@ -199,7 +199,7 @@ expand:
       FLAG_SET(t->expr.flags, FLAGS_RECURSIVE);
       initial_word = copy(c);
       initial_word->expr.arg[in] = entry;
-      traverse_ref(initial_word, ARGS_IN | ALT);
+      TRAVERSE_REF(initial_word, alt, in);
     }
   }
 

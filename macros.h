@@ -114,12 +114,35 @@
         p = n++)
 #define TRAVERSE_in_alt(c) TRAVERSE_alt_in(c)
 
+#define TRAVERSE_alt_ptrs(c)                                            \
+  if(is_value(c))                                                       \
+    for(cell_t **p = &c->alt,                                           \
+          **n = c->value.ptr,                                           \
+          **end = &c->value.ptr[list_size(c)];                          \
+        p < end;                                                        \
+        p = n++)
+#define TRAVERSE_ptrs_alt(c) TRAVERSE_alt_ptrs(c)
+
+#define TRAVERSE_args_ptrs(c)                                             \
+  for(cell_t **p = is_value(c) ? c->value.ptr : c->expr.arg,            \
+        **end = is_value(c) ? &c->value.ptr[list_size(c)] : &c->expr.arg[closure_args(c)]; \
+      p < end;                                                          \
+      p++)
+#define TRAVERSE_ptrs_args(c) TRAVERSE_args_ptrs(c)
+
 #define TRAVERSE_in_ptrs(c)                                             \
   for(cell_t **p = is_value(c) ? c->value.ptr : c->expr.arg,            \
         **end = is_value(c) ? &c->value.ptr[list_size(c)] : &c->expr.arg[closure_in(c)]; \
       p < end;                                                          \
       p++)
 #define TRAVERSE_ptrs_in(c) TRAVERSE_in_ptrs(c)
+
+#define TRAVERSE_args(c)                                                \
+  if(!is_value(c))                                                      \
+    for(cell_t **p = c->expr.arg,                                       \
+          **end = &c->expr.arg[closure_args(c)];                        \
+        p < end;                                                        \
+        p++)
 
 #define TRAVERSE_in(c)                                                  \
   if(!is_value(c))                                                      \
@@ -148,7 +171,13 @@
 #define CONCAT_ARGS_3(w, ...)          w
 #define CONCAT_ARGS(...) DISPATCH(CONCAT_ARGS, 4, ##__VA_ARGS__)
 
-#define TRAVERSE(c, ...) CONCAT_ARGS(TRAVERSE, ##__VA_ARGS__)(c)
+#define TRAVERSE(c, ...) CONCAT_ARGS(TRAVERSE, __VA_ARGS__)(c)
+
+#define TRAVERSE_REF(c, ...)                    \
+  TRAVERSE(c, __VA_ARGS__) {                    \
+    if(is_closure(*p)) *p = ref(*p);            \
+  }
+
 
 // embedded linked list
 #define FOLLOW_1(p, l, next, ...) for(__typeof__(l) p = (l); p != NULL; p = p->next)

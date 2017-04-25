@@ -237,7 +237,7 @@ cell_t *expand(cell_t *c, csize_t s) {
     cell_t *new = closure_alloc(n + s);
     memcpy(new, c, cn_p * sizeof(cell_t));
     new->n = 0;
-    traverse_ref(new, ARGS_IN | PTRS | ALT);
+    TRAVERSE_REF(new, alt, in, ptrs);
     new->size = n + s;
     drop(c);
     return new;
@@ -413,13 +413,6 @@ loop:
   return r;
 }
 
-cell_t *traverse_ref(cell_t *c, uint8_t flags) {
-  traverse(c, {
-      if(is_closure(*p)) *p = ref(*p);
-    }, flags);
-  return c;
-}
-
 void store_fail(cell_t *c, cell_t *alt) {
   closure_shrink(c, 1);
   memset(&c->value, 0, sizeof(c->value));
@@ -490,7 +483,7 @@ void store_reduced(cell_t **cp, cell_t *r) {
     memcpy(c, r, sizeof(cell_t) * size);
     c->n = n;
     if(is_cell(r)) {
-      traverse_ref(r, ALT | PTRS);
+      TRAVERSE_REF(r, alt, ptrs);
       drop(r);
     }
    } else {
@@ -711,7 +704,7 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
   } else {
     if(c->n != PERSISTENT) --c->n;
     n = copy(c);
-    traverse_ref(n, ARGS | PTRS);
+    TRAVERSE_REF(n, args, ptrs);
   }
   n->alt = alt;
   n->value.alt_set = alt_set;

@@ -315,37 +315,6 @@ bool is_any(cell_t const *c) {
   return is_value(c) && c->value.type.exclusive == T_ANY;
 }
 
-#if INTERFACE
-#define traverse(r, action, flags)                              \
-  do {                                                          \
-    csize_t i = 0, n = 0;                                       \
-    cell_t **p;                                                 \
-    if(is_value(r)) {                                           \
-      if(((flags) & PTRS) &&                                    \
-         (r->value.type.exclusive == T_LIST ||                  \
-          r->value.type.exclusive == T_RETURN)) {               \
-        n = list_size(r);                                       \
-        for(i = 0; i < n; ++i) {                                \
-          p = (r)->value.ptr + i;                               \
-          {action; }                                            \
-        }                                                       \
-      }                                                         \
-    } else if((flags) & ARGS) {                                 \
-      csize_t  __in = r->size - r->expr.out;                    \
-      i = (~(flags) & ARGS_IN) ? __in : closure_next_child(r);  \
-      n = (~(flags) & ARGS_OUT) ? __in : closure_args(r);       \
-      for(; i < n; ++i) {                                       \
-        p = (r)->expr.arg + i;                                  \
-        {action; }                                              \
-      }                                                         \
-    }                                                           \
-    if((flags) & ALT) {                                         \
-      p = &(r)->alt;                                            \
-      {action; }                                                \
-    }                                                           \
-  } while(0)
-#endif
-
 void drop(cell_t *c) {
   c = clear_ptr(c);
   if(!is_cell(c) || c->n == PERSISTENT) return;

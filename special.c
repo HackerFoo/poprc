@@ -107,7 +107,7 @@ void placeholder_extend(cell_t **lp, int in, int out) {
   if(l->n) {
     l->n--;
     l = copy(l);
-    traverse_ref(l, ALT | PTRS);
+    TRAVERSE_REF(l, alt, ptrs);
   }
 
   if(d_out) {
