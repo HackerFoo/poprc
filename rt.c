@@ -715,6 +715,7 @@ void store_lazy(cell_t **cp, cell_t *c, cell_t *r, alt_set_t alt_set) {
   if(c->n || alt_set) {
     closure_shrink(c, 1);
     c->func = func_id;
+    FLAG_CLEAR(c->expr.flags, FLAGS_USER_FUNC);
     c->size = 1;
     c->expr.out = 0;
     c->expr.arg[0] = r;

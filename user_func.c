@@ -32,7 +32,12 @@
 #include "gen/user_func.h"
 
 bool is_user_func(const cell_t *c) {
-  return !is_value(c) && !!(c->expr.flags & FLAGS_USER_FUNC);
+  if(is_value(c)) return false;
+  bool actually_is_a_user_func = c->func == func_exec || c->func == func_quote;
+  bool marked_as_a_user_func = !!(c->expr.flags & FLAGS_USER_FUNC);
+  if(actually_is_a_user_func != marked_as_a_user_func) printf("user func flags is wrong @ %d: %d -> %d\n", (int)(c-cells), marked_as_a_user_func, actually_is_a_user_func);
+  return actually_is_a_user_func;
+  // return !is_value(c) && !!(c->expr.flags & FLAGS_USER_FUNC);
 }
 
 static

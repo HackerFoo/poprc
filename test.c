@@ -30,6 +30,7 @@
 #include "gen/special.h"
 #include "gen/test_table.h"
 #include "gen/list.h"
+#include "gen/print.h"
 
 pair_t tests[] = TESTS;
 
@@ -202,6 +203,9 @@ bool assert_ref(cell_t ***roots, size_t n) {
   bool check = assert_ref_check(list, roots, n);
   assert_ref_inc(list);
   clean_tmp(list);
-  if(!check) print_roots(roots, n);
+  if(!check) {
+    print_roots(roots, n);
+    make_graph_all(0);
+  }
   return check;
 }

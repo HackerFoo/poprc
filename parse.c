@@ -556,11 +556,9 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
         } else {
           arg_stack[n++] = c;
           if(f) {
-            csize_t in = closure_in(c);
-            csize_t out = closure_out(c);
-            COUNTUP(i, out) {
+            TRAVERSE(c, out) {
               assert_throw(n < MAX_ARGS);
-              arg_stack[n++] = c->expr.arg[in+i];
+              arg_stack[n++] = *p;
             }
           }
         }

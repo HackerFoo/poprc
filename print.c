@@ -101,9 +101,14 @@ char const *function_name(reduce_t *f) {
 
 void get_name(const cell_t *c, const char **module_name, const char **word_name) {
   if(is_user_func(c)) {
-    cell_t *e = c->expr.arg[closure_in(c) - 1];
-    *module_name = e->module_name;
-    *word_name = e->word_name;
+    cell_t *e = c->expr.arg[closure_in(c)];
+    if(e) {
+      *module_name = e->module_name;
+      *word_name = e->word_name;
+    } else {
+      *module_name = "null";
+      *word_name = "null";
+    }
   } else {
     *module_name = PRIMITIVE_MODULE_NAME;
     *word_name = function_name(c->func);
