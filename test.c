@@ -29,6 +29,7 @@
 #include "gen/primitive.h"
 #include "gen/special.h"
 #include "gen/test_table.h"
+#include "gen/list.h"
 
 pair_t tests[] = TESTS;
 

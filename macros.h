@@ -83,8 +83,8 @@
 
 #define TRAVERSE_alt_args_ptrs(c)                                       \
   for(cell_t **p = &c->alt,                                             \
-        **n = is_value(c) ? c->value.ptr : c->expr.arg,                 \
-        **end = is_value(c) ? &c->value.ptr[list_size(c)] : &c->expr.arg[closure_args(c)]; \
+        **n = is_value(c) ? c->value.ptr : closure_next_arg(c),         \
+        **end = is_value(c) ? (is_list(c) ? &c->value.ptr[list_size(c)] : n) : &c->expr.arg[closure_args(c)]; \
       p < end;                                                          \
       p = n++)
 #define TRAVERSE_alt_ptrs_args(c) TRAVERSE_alt_args_ptrs(c)
@@ -95,8 +95,8 @@
 
 #define TRAVERSE_alt_in_ptrs(c)                                         \
   for(cell_t **p = &c->alt,                                             \
-        **n = is_value(c) ? c->value.ptr : c->expr.arg,                 \
-        **end = is_value(c) ? &c->value.ptr[list_size(c)] : &c->expr.arg[closure_in(c)]; \
+        **n = is_value(c) ? c->value.ptr : closure_next_arg(c),         \
+        **end = is_value(c) ? (is_list(c) ? &c->value.ptr[list_size(c)] : n) : &c->expr.arg[closure_in(c)]; \
       p < end;                                                          \
       p = n++)
 #define TRAVERSE_alt_ptrs_in(c) TRAVERSE_alt_in_ptrs(c)
@@ -105,50 +105,48 @@
 #define TRAVERSE_ptrs_alt_in(c) TRAVERSE_alt_in_ptrs(c)
 #define TRAVERSE_ptrs_in_alt(c) TRAVERSE_alt_in_ptrs(c)
 
-#define TRAVERSE_alt_in(c)                                              \
-  if(!is_value(c))                                                      \
-    for(cell_t **p = &c->alt,                                           \
-          **n = c->expr.arg,                                            \
-          **end = &c->expr.arg[closure_in(c)];                          \
-        p < end;                                                        \
-        p = n++)
+#define TRAVERSE_alt_in(c)                                      \
+  for(cell_t **p = &c->alt,                                     \
+        **n = closure_next_arg(c),                              \
+        **end = is_value(c) ? n : &c->expr.arg[closure_in(c)];  \
+      p < end;                                                  \
+      p = n++)
 #define TRAVERSE_in_alt(c) TRAVERSE_alt_in(c)
 
-#define TRAVERSE_alt_ptrs(c)                                            \
-  if(is_value(c))                                                       \
-    for(cell_t **p = &c->alt,                                           \
-          **n = c->value.ptr,                                           \
-          **end = &c->value.ptr[list_size(c)];                          \
-        p < end;                                                        \
-        p = n++)
+#define TRAVERSE_alt_ptrs(c)                                    \
+  for(cell_t **p = &c->alt,                                     \
+        **n = c->value.ptr,                                     \
+        **end = is_list(c) ? &c->value.ptr[list_size(c)] : n;   \
+      p < end;                                                  \
+      p = n++)
 #define TRAVERSE_ptrs_alt(c) TRAVERSE_alt_ptrs(c)
 
-#define TRAVERSE_args_ptrs(c)                                             \
-  for(cell_t **p = is_value(c) ? c->value.ptr : c->expr.arg,            \
-        **end = is_value(c) ? &c->value.ptr[list_size(c)] : &c->expr.arg[closure_args(c)]; \
+#define TRAVERSE_args_ptrs(c)                                           \
+  for(cell_t **p = is_value(c) ? c->value.ptr : closure_next_arg(c),    \
+        **end = is_value(c) ? (is_list(c) ? &c->value.ptr[list_size(c)] : p) : &c->expr.arg[closure_args(c)]; \
       p < end;                                                          \
       p++)
 #define TRAVERSE_ptrs_args(c) TRAVERSE_args_ptrs(c)
 
 #define TRAVERSE_in_ptrs(c)                                             \
-  for(cell_t **p = is_value(c) ? c->value.ptr : c->expr.arg,            \
-        **end = is_value(c) ? &c->value.ptr[list_size(c)] : &c->expr.arg[closure_in(c)]; \
+  for(cell_t **p = is_value(c) ? c->value.ptr : closure_next_arg(c),    \
+        **end = is_value(c) ? (is_list(c) ? &c->value.ptr[list_size(c)] : p) : &c->expr.arg[closure_in(c)]; \
       p < end;                                                          \
       p++)
 #define TRAVERSE_ptrs_in(c) TRAVERSE_in_ptrs(c)
 
-#define TRAVERSE_args(c)                                                \
-  if(!is_value(c))                                                      \
-    for(cell_t **p = c->expr.arg,                                       \
-          **end = &c->expr.arg[closure_args(c)];                        \
-        p < end;                                                        \
+#define TRAVERSE_args(c)                                \
+  if(!is_value(c))                                      \
+    for(cell_t **p = closure_next_arg(c),               \
+          **end = &c->expr.arg[closure_args(c)];        \
+        p < end;                                        \
         p++)
 
-#define TRAVERSE_in(c)                                                  \
-  if(!is_value(c))                                                      \
-    for(cell_t **p = c->expr.arg,                                       \
-          **end = &c->expr.arg[closure_in(c)];                          \
-        p < end;                                                        \
+#define TRAVERSE_in(c)                          \
+  if(!is_value(c))                              \
+    for(cell_t **p = closure_next_arg(c),       \
+          **end = &c->expr.arg[closure_in(c)];  \
+        p < end;                                \
         p++)
 
 #define TRAVERSE_out(c)                                                 \
@@ -158,11 +156,11 @@
         p < end;                                                        \
         p++)
 
-#define TRAVERSE_ptrs(c)                                                \
-  if(is_value(c))                                                       \
-    for(cell_t **p = c->value.ptr,                                      \
-          **end = &c->value.ptr[list_size(c)];                          \
-        p < end;                                                        \
+#define TRAVERSE_ptrs(c)                        \
+  if(is_list(c))                                \
+    for(cell_t **p = c->value.ptr,              \
+          **end = &c->value.ptr[list_size(c)];  \
+        p < end;                                \
         p++)
 
 #define CONCAT_ARGS_0(w, x, y, z, ...) CONCAT_ARGS_1(CONCAT_UNDERSCORE(w, x), y, z)

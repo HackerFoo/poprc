@@ -276,6 +276,10 @@ csize_t closure_next_child(cell_t const *c) {
   return is_offset(c->expr.arg[0]) ? (intptr_t)c->expr.arg[0] : 0;
 }
 
+cell_t **closure_next_arg(cell_t *c) {
+  return &c->expr.arg[closure_next_child(c)];
+}
+
 cell_t *copy(cell_t const *c) {
   csize_t size = closure_cells(c);
   cell_t *new_c = closure_alloc_cells(size);
