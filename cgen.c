@@ -179,11 +179,6 @@ void gen_instruction(cell_t *e, cell_t *c) {
   }
 }
 
-cell_t *get_entry(cell_t *c) {
-  if(!is_user_func(c)) return NULL;
-  return &trace_cells[trace_decode(c->expr.arg[closure_in(c)])];
-}
-
 void gen_call(cell_t *e, cell_t *c) {
   cell_t *d = e + 1;
   int i = c - d;
@@ -309,14 +304,13 @@ void gen_quote(cell_t *e, cell_t *c) {
   const char *module_name, *word_name;
   cell_t *d = e + 1;
   const int ic = c - d;
-  csize_t n = closure_in(c);
-  cell_t *qe = &trace_cells[trace_decode(c->expr.arg[n - 1])];
+  cell_t *qe = get_entry(c);
   trace_get_name(c, &module_name, &word_name);
   printf("  %s%d = __primitive_quote(%s_%s, %d, %d);\n",
          cname(trace_type(c)), ic,
          module_name, word_name,
          qe->entry.in, qe->entry.out);
-  COUNTUP(i, n - 1) {
+  COUNTUP(i, closure_in(c)) {
     uintptr_t ai = trace_decode(c->expr.arg[i]);
     printf("  %1$s%2$d = __primitive_pushl(%3$s%4$d, %1$s%2$d);\n",
            cname(trace_type(c)), ic,
@@ -330,8 +324,7 @@ void gen_function(cell_t *e) {
 
   FOR_TRACE(c, start, end) {
     if(c->func != func_quote) continue;
-    cell_t *e = &trace_cells[trace_decode(c->expr.arg[closure_in(c)])];
-    gen_function_signature(e);
+    gen_function_signature(get_entry(c));
     printf(";\n");
   }
 
@@ -342,9 +335,8 @@ void gen_function(cell_t *e) {
 
   FOR_TRACE(c, start, end) {
     if(c->func != func_quote) continue;
-    cell_t *e = &trace_cells[trace_decode(c->expr.arg[closure_in(c)])];
     printf("\n");
-    gen_function(e);
+    gen_function(get_entry(c));
   }
 }
 

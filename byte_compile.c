@@ -44,7 +44,7 @@
 bool trace_enabled = false;
 bool dont_specialize = true; //false; ***
 
-cell_t trace_cells[1 << 10] __attribute__((aligned(64)));
+static cell_t trace_cells[1 << 10] __attribute__((aligned(64)));
 cell_t *trace_cur = &trace_cells[0];
 cell_t *trace_ptr = &trace_cells[0];
 cell_t *initial_word = NULL;
@@ -63,6 +63,11 @@ typedef intptr_t trace_index_t;
 
 #define FOR_TRACE(c, start, end) for(cell_t *(c) = (start); c < (end); c += calculate_cells(c->size))
 #endif
+
+cell_t *get_entry(cell_t *c) {
+  if(!is_user_func(c)) return NULL;
+  return &trace_cells[trace_decode(c->expr.arg[closure_in(c)])];
+}
 
 cell_t *trace_encode(trace_index_t index) {
   return FLIP_PTR((cell_t *)index);
@@ -178,11 +183,12 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
   tc->n = n;
   if(tc->func == func_dep_entered) tc->func = func_dep;
-  cell_t **e = is_user_func(tc) ? &tc->expr.arg[closure_in(tc)] : NULL;
+  if(is_user_func(tc)) {
+    cell_t **e = &tc->expr.arg[closure_in(tc)];
+    *e = trace_encode(*e - trace_cells);
+  }
   TRAVERSE(tc, in) {
-    if(p == e) {
-      *p = trace_encode(*p - trace_cells);
-    } else if(*p) {
+    if(*p) {
       assert(!is_marked(*p));
       trace_index_t x = trace_get_value(*p);
       *p = trace_encode(x);

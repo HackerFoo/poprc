@@ -187,7 +187,7 @@ expand:
     cell_t **t_entry = NULL;
     if(is_user_func(t)) {
       t_entry = &t->expr.arg[closure_in(t)];
-      *t_entry = &trace_cells[trace_decode(*t_entry)];
+      *t_entry = get_entry(t);
     }
 
     TRAVERSE(t, alt, args, ptrs) {
