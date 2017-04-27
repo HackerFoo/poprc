@@ -61,26 +61,27 @@ void rt_init() {
 
 // Duplicate c to c->alt and return it
 cell_t *dup_alt(cell_t *c, csize_t n, cell_t *b) {
-  csize_t i = 0, in = closure_in(c), out = 0;
+  csize_t
+    in = closure_in(c),
+    out = closure_out(c),
+    args = closure_args(c);
   assert(n < in);
   cell_t *a = copy(c);
 
   // ref args
-  for(; i < in; ++i) {
+  COUNTUP(i, in) {
     if(i != n) ref(a->expr.arg[i]);
   }
 
   // update deps
-  for(; i < c->size; ++i) {
+  RANGEUP(i, args - out, args) {
     if(c->expr.arg[i]) {
-      a->expr.arg[i] = dep(a);
+      a->expr.arg[i] = dep(ref(a));
       c->expr.arg[i]->alt = conc_alt(a->expr.arg[i], c->expr.arg[i]->alt);
-      ++out;
     }
   }
 
   a->expr.arg[n] = b;
-  a->n = out;
   c->alt = a;
   return a;
 }
