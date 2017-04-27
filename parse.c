@@ -170,10 +170,14 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n) {
     cell_t *e = lookup_word(w);
     if(!e) e = module_lookup_compiled(w, &module);
     if(e) {
+      in = e->entry.in;
+      out = e->entry.out;
       if(e->entry.flags & ENTRY_PRIMITIVE) {
         if(e->func == func_placeholder) {
           c = func(func_placeholder, n + 1, 1);
           cell_t *tc = trace_alloc(n + 2);
+          in = n;
+          out = 1;
           data = var_create(T_FUNCTION, tc, 0, 0);
         } else {
           c = func(e->func, e->entry.in, e->entry.out);
@@ -182,18 +186,17 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n) {
         c = func(e->func, e->entry.in + 1, e->entry.out);
         data = e;
       }
-      in = e->entry.in;
-      out = e->entry.out;
     } else {
       return NULL;
     }
   }
-  COUNTUP(i, out-1) {
-    cell_t *d = dep(ref(c));
-    arg(c, d);
+  if(in) c->expr.arg[0] = (cell_t *)(intptr_t)(in - 1);
+  TRAVERSE(c, out) {
+    *p = dep(c);
   }
+  refn(c, out-1);
   if(data) {
-    arg(c, data);
+    c->expr.arg[in] = data;
   }
   return c;
 }
