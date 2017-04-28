@@ -98,12 +98,12 @@ bool is_ordered(pair_t *x, size_t r, size_t n, cmp_t cmp) {
   if(n <= 1) return true;
   r = r % n;
   uintptr_t prev = x[r].first;
-  for(size_t i = r + 1; i < n; i++) {
+  RANGEUP(i, r + 1, n) {
     uintptr_t next = x[i].first;
     if(cmp(next, prev)) return false;
     prev = next;
   }
-  for(size_t i = 0; i < r; i++) {
+  COUNTUP(i, r) {
     uintptr_t next = x[i].first;
     if(cmp(next, prev)) return false;
     prev = next;
@@ -470,7 +470,7 @@ pair_t *map_find_value(map_t map, uintptr_t value) {
   uintptr_t x = *map_cnt(map);
   pair_t *elems = map_elems(map);
   pair_t *result = NULL;
-  for(uintptr_t i = 0; i < x; i++) {
+  COUNTUP(i, x) {
     if(elems[i].second == value) {
       result = &elems[i];
       break;
@@ -555,12 +555,12 @@ int test_map_stack_behavior() {
   #define M 2
   #define N 8
   MAP(map, (M * N));
-  for(int i = 0; i < M; i++) {
-    for(int j = 0; j < N; j++) {
+  COUNTUP(i, M) {
+    COUNTUP(j, N) {
       pair_t x = {j, i};
       map_insert(map, x);
     }
-    for(int j = 0; j < N; j++) {
+    COUNTUP(j, N) {
       if(!expect(map, j, i)) {
         print_map(map);
         return -1;
@@ -626,7 +626,7 @@ int test_string_map() {
 bool check_order(pair_t *elems, size_t size, cmp_t cmp) {
   if(size <= 1) return true;
   uintptr_t prev = elems[0].first;
-  for(size_t i = 1; i < size; i++) {
+  RANGEUP(i, 1, size) {
     uintptr_t x = elems[i].first;
     if(cmp(x, prev)) {
       printf("elems[%ld] < prev\n", i);

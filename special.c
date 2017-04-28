@@ -273,7 +273,7 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
 
   cell_t *res = var(T_FUNCTION, c);
   res->alt = c->alt;
-  for(csize_t i = in; i < n; ++i) {
+  RANGEUP(i, in, n) {
     cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {
       drop(c);

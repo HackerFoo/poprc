@@ -72,7 +72,7 @@ void gen_function_signature(cell_t *e) {
 
   // find first return
   cell_t *l = NULL;
-  for(size_t i = e->entry.in; i < count; i++) {
+  RANGEUP(i, e->entry.in, count) {
     if(trace_type(&p[i]).exclusive == T_RETURN) {
       l = &p[i];
       break;
@@ -188,9 +188,9 @@ void gen_call(cell_t *e, cell_t *c) {
   if(get_entry(c) == e && trace_type(closure_next(c)).exclusive == T_RETURN) {
     csize_t in = closure_in(c);
     printf("\n  // tail call\n");
-    for(csize_t i = 0; i < in; i++) {
+    COUNTUP(i, in) {
       int a = trace_decode(c->expr.arg[i]);
-      printf("  %s%d = %s%d;\n", cname(trace_type(&d[in - 1 - i])), in - 1 - i, cname(trace_type(&d[a])), a);
+      printf("  %s%d = %s%d;\n", cname(trace_type(&d[in - 1 - i])), (int)(in - 1 - i), cname(trace_type(&d[a])), a);
     };
     printf("  goto body;\n");
   } else if(trace_type(c).exclusive != T_BOTTOM) {
@@ -201,7 +201,7 @@ void gen_call(cell_t *e, cell_t *c) {
     csize_t n = closure_args(c);
     csize_t start_out = n - closure_out(c);
 
-    for(csize_t i = 0; i < in; i++) {
+    COUNTUP(i, in) {
       int a = trace_decode(c->expr.arg[i]);
       if(a == NIL_INDEX) {
         printf("%sNULL", sep);
@@ -211,7 +211,7 @@ void gen_call(cell_t *e, cell_t *c) {
       sep = ", ";
     };
 
-    for(csize_t i = start_out; i < n; i++) {
+    RANGEUP(i, start_out, n) {
       int a = trace_decode(c->expr.arg[i]);
       printf("%s&%s%d", sep, cname(trace_type(&d[a])), a);
       sep = ", ";

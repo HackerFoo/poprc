@@ -50,9 +50,10 @@ cell_t *_op2(val_t (*op)(val_t, val_t), cell_t *x, cell_t *y) {
   csize_t size = min(val_size(x),
                      val_size(y));
   cell_t *res = vector(size);
-  for(csize_t i = 0; i < size; ++i)
+  COUNTUP(i, size) {
     res->value.integer[i] = op(x->value.integer[i],
                                y->value.integer[i]);
+  }
   res->size = size + 1;
   return res;
 }
@@ -60,8 +61,9 @@ cell_t *_op2(val_t (*op)(val_t, val_t), cell_t *x, cell_t *y) {
 cell_t *_op1(val_t (*op)(val_t), cell_t *x) {
   csize_t size = val_size(x);
   cell_t *res = vector(size);
-  for(csize_t i = 0; i < size; ++i)
+  COUNTUP(i, size) {
     res->value.integer[i] = op(x->value.integer[i]);
+  }
   res->size = size + 1;
   return res;
 }

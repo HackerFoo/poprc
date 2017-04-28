@@ -73,7 +73,7 @@ void print_pairs(pair_t *array, size_t len) {
     printf("{}\n");
   } else {
     printf("{{%" PRIuPTR ", %" PRIuPTR "}", array[0].first, array[0].second);
-    for(unsigned int i = 1; i < len; i++) {
+    RANGEUP(i, 1, len) {
       printf(", {%" PRIuPTR ", %" PRIuPTR "}", array[i].first, array[i].second);
     }
     printf("}\n");
@@ -85,7 +85,7 @@ void print_string_pairs(pair_t *array, size_t len) {
     printf("{}\n");
   } else {
     printf("{{%s, %" PRIuPTR "}", (char *)array[0].first, array[0].second);
-    for(unsigned int i = 1; i < len; i++) {
+    RANGEUP(i, 1, len) {
       printf(", {%s, %" PRIuPTR "}", (char *)array[i].first, array[i].second);
     }
     printf("}\n");
@@ -97,7 +97,7 @@ int test_sort() {
   quicksort(array, LENGTH(array));
   uintptr_t last = array[0].first;
   printf("{{%d, %d}", (int)array[0].first, (int)array[0].second);
-  for(unsigned int i = 1; i < LENGTH(array); i++) {
+  RANGEUP(i, 1, LENGTH(array)) {
     printf(", {%d, %d}", (int)array[i].first, (int)array[i].second);
     if(array[i].first < last) {
       printf(" <- ERROR\n");
@@ -134,12 +134,13 @@ void quicksort(pair_t *array, unsigned int size) {
     *pivot = *right;
     unsigned int fill_index = lo;
 
-    for(unsigned int i = lo; i < hi; i++, x++) {
+    RANGEUP(i, lo, hi) {
       if(x->first < pivot_value.first) {
         swap(x, left);
         left++;
         fill_index++;
       }
+      x++;
     }
     *right = *left;
 
@@ -400,7 +401,7 @@ bool set_insert(uintptr_t x, uintptr_t *set, size_t size) {
   assert(x);
   size_t j = x % size;
   size_t d = 0;
-  for(size_t i = 0; i < size; i++, d++, j = (j + 1) % size) {
+  COUNTUP(i, size) {
     uintptr_t *p = &set[j];
     if(*p == x) return true;
     if(*p) {
@@ -416,6 +417,8 @@ bool set_insert(uintptr_t x, uintptr_t *set, size_t size) {
       *p = x;
       return false;
     }
+    d++;
+    j = (j + 1) % size;
   }
 
   assert_throw(false, "set is full");
@@ -425,7 +428,7 @@ bool set_insert(uintptr_t x, uintptr_t *set, size_t size) {
 bool set_member(uintptr_t x, uintptr_t *set, size_t size) {
   if(!x) return false;
   size_t offset = x % size;
-  for(size_t i = 0; i < size; i++) {
+  COUNTUP(i, size) {
     uintptr_t *p = &set[(i + offset) % size];
     if(*p == x) return true;
   }
@@ -435,7 +438,7 @@ bool set_member(uintptr_t x, uintptr_t *set, size_t size) {
 bool set_remove(uintptr_t x, uintptr_t *set, size_t size) {
   if(!x) return false;
   size_t offset = x % size;
-  for(size_t i = 0; i < size; i++) {
+  COUNTUP(i, size) {
     uintptr_t *p = &set[(i + offset) % size];
     if(*p == x) {
       *p = 0;
@@ -517,9 +520,9 @@ int test_error() {
   if(catch_error(&test_error)) {
     print_error(&test_error);
   } else {
-    for(int i = 0; i < 5; i++) {
+    COUNTUP(i, 5) {
       assert_throw(i < 3, "Don't worry, it's okay.");
-      printf("i = %d\n", i);
+      printf("i = %d\n", (int)i);
     }
   }
   current_error = prev_error;

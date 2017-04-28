@@ -125,7 +125,7 @@ void cells_init() {
   // set up doubly-linked pointer ring
   cells[0].mem.prev = &cells[n-1];
   cells[0].mem.next = &cells[1];
-  for(size_t i = 1; i < n-1; i++) {
+  RANGEUP(i, 1, n-1) {
     cells[i].mem.prev = &cells[i-1];
     cells[i].mem.next = &cells[i+1];
   }
@@ -177,7 +177,7 @@ cell_t *closure_alloc_cells(csize_t size) {
   }
 
   // remove the found chunk
-  for(csize_t i = 0; i < size; i++) {
+  COUNTUP(i, size) {
     cell_alloc(&c[i]);
   }
 
@@ -221,10 +221,10 @@ void cell_free(cell_t *c) {
 void closure_shrink(cell_t *c, csize_t s) {
   if(!c) return;
   assert(is_cell(c));
-  csize_t i, size = closure_cells(c);
+  csize_t size = closure_cells(c);
   if(size > s) {
     assert(is_closure(c));
-    for(i = s; i < size; i++) {
+    RANGEUP(i, s, size) {
       c[i].func = 0;
       c[i].mem.prev = &c[i-1];
       c[i].mem.next = &c[i+1];
@@ -348,7 +348,9 @@ void drop(cell_t *c) {
 }
 
 void drop_multi(cell_t **a, csize_t n) {
-  for(csize_t i = 0; i < n; i++) drop(*a++);
+  COUNTUP(i, n) {
+    drop(*a++);
+  }
 }
 
 void fake_drop(cell_t *c) {

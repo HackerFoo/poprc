@@ -144,12 +144,12 @@ bool reduce_arg(cell_t *c,
 
 // Duplicate c to c->alt and return it
 cell_t *dup_list_alt(cell_t *c, csize_t n, cell_t *b) {
-  csize_t i = 0, in = list_size(c);
+  csize_t in = list_size(c);
   assert(n < in);
   cell_t *a = copy(c);
 
   // ref args
-  for(; i < in; ++i) {
+  COUNTUP(i, in) {
     if(i != n) ref(a->value.ptr[i]);
   }
 
@@ -271,8 +271,8 @@ cell_t *expand(cell_t *c, csize_t s) {
 }
 
 void update_deps(cell_t *c) {
-  for(csize_t i = c->size - c->expr.out; i < c->size; ++i) {
-    cell_t *d = c->expr.arg[i];
+  TRAVERSE(c, out) {
+    cell_t *d = *p;
     if(d) {
       assert(is_dep(d));
       d->expr.arg[0] = c;
@@ -281,19 +281,18 @@ void update_deps(cell_t *c) {
 }
 
 void new_deps(cell_t *c) {
-  for(csize_t i = c->size - c->expr.out; i < c->size; ++i) {
-    cell_t **d = &c->expr.arg[i];
-    if(*d) {
-      assert(is_dep(*d));
-      *d = 0; //dep(ref(c)); // these would be dangling
+  TRAVERSE(c, out) {
+    if(*p) {
+      assert(is_dep(*p));
+      *p = 0; //dep(ref(c)); // these would be dangling
     }
   }
 }
 
 csize_t count_deps(cell_t *c) {
   csize_t deps = 0;
-  for(csize_t i = c->size - c->expr.out; i < c->size; ++i) {
-    if(c->expr.arg[i]) deps++;
+  TRAVERSE(c, out) {
+    if(*p) deps++;
   }
   return deps;
 }

@@ -262,7 +262,7 @@ bool trace_unify(cell_t *a, cell_t **b, cell_t *c, size_t in) {
             a->expr.out == (*b)->expr.out) {
     assert(false); // this seems like a dead branch
     csize_t a_in = closure_in(a);
-    for(csize_t i = closure_is_ready(a) ? 0 : closure_next_child(a) + 1; i < a_in; i++) {
+    RANGEUP(i, closure_is_ready(a) ? 0 : closure_next_child(a) + 1, a_in) {
       if(is_offset(a->expr.arg[i])) continue;
       if(!trace_unify(a->expr.arg[i], &(*b)->expr.arg[i], c, in)) return false;
     }
@@ -982,7 +982,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   // free variables
   cell_t *vl = 0;
   trace_var_list(c, &vl);
-  for(cell_t *p = vl; p; p = p->tmp) {
+  FOLLOW(p, vl, tmp) {
     replace_var(p, q->expr.arg, n, parent_entry);
   }
   clean_tmp(vl);
@@ -1039,7 +1039,7 @@ cell_t *compile_specialized(cell_t *parent_entry, cell_t *tc) {
   // free variables
   cell_t *vl = 0;
   trace_var_list(c, &vl);
-  for(cell_t *p = vl; p; p = p->tmp) {
+  FOLLOW(p, vl, tmp) {
     replace_var(p, tc->expr.arg, in, parent_entry);
   }
   clean_tmp(vl);
@@ -1088,7 +1088,7 @@ cell_t *trace_break() {
   // free variables
   cell_t *vl = 0;
   trace_var_list(c, &vl);
-  for(cell_t *p = vl; p; p = p->tmp) {
+  FOLLOW(p, vl, tmp) {
     replace_var(p, tc->expr.arg, in, parent_entry);
   }
   clean_tmp(vl);

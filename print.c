@@ -206,7 +206,9 @@ void graph_cell(FILE *f, cell_t const *c) {
   csize_t n = closure_args(c);
   csize_t s = calculate_cells(n);
 
-  for(csize_t i = 0; i < s; ++i) set_bit(visited, node+i);
+  COUNTUP(i, s) {
+    set_bit(visited, node+i);
+  }
 
   if(c->n == PERSISTENT || is_map(c)) return; // HACK
 
@@ -264,7 +266,7 @@ void graph_cell(FILE *f, cell_t const *c) {
         fprintf(f, "<tr><td bgcolor=\"yellow\">val: %" PRIdPTR "</td></tr>", c->value.integer[n]);
     }
   } else {
-    for(csize_t i = 0; i < n; i++) {
+    COUNTUP(i, n) {
       fprintf(f, "<tr><td port=\"arg%u\">", (unsigned int)i);
       print_cell_pointer(f, c->expr.arg[i]);
       fprintf(f, "</td></tr>");
@@ -295,7 +297,7 @@ void graph_cell(FILE *f, cell_t const *c) {
       }
     }
   } else {
-    for(csize_t i = 0; i < n; i++) {
+    COUNTUP(i, n) {
       cell_t *arg = clear_ptr(c->expr.arg[i]);
       if(is_cell(arg)) {
         fprintf(f, "node%" PRIuPTR ":arg%d -> node%" PRIuPTR ":top%s;\n",
@@ -399,11 +401,11 @@ int test_count() {
 }
 
 void show_func(cell_t const *c) {
-  int n = closure_args(c), i;
+  int n = closure_args(c);
   char const *s = function_token(c);
   if(!s) return;
   if(is_placeholder(c)) printf(" ?%" PRIuPTR " =", c - cells);
-  for(i = 0; i < n; ++i) {
+  COUNTUP(i, n) {
     cell_t *arg = c->expr.arg[i];
     if(is_closure(arg)) {
       show_one(arg);
@@ -540,9 +542,9 @@ char *show_type_all_short(type_t t) {
 }
 
 bool count(cell_t const **cnt, cell_t const *const *reset, csize_t conflict, csize_t size) {
-  csize_t i= conflict;
-  while(i && !cnt[i]->alt) i--; // find the nost significant with an alt
-  for(; i < size; i++) {
+  csize_t start = conflict;
+  while(start && !cnt[start]->alt) start--; // find the nost significant with an alt
+  RANGEUP(i, start, size) {
     if(!cnt[i]->alt) {
       cnt[i] = reset[i];
     } else {

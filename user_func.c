@@ -262,7 +262,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     res->value.alt_set = alt_set;
     res->alt = c->alt;
 
-    for(csize_t i = c_in + 1; i < n; ++i) {
+    RANGEUP(i, c_in + 1, n) {
       cell_t *d = c->expr.arg[i];
       if(d && is_dep(d)) {
         assert(d->expr.arg[0] == c);
@@ -295,7 +295,7 @@ expand:
 
   // allocate, copy, and index
   size_t s = 0;
-  for(size_t i = in; i < len; i += s) {
+  for(size_t i = in; i < len; i += s) { // TODO: rewrite with FORTRACE
     cell_t *p = &code[i];
     s = calculate_cells(p->size);
     if(!p->func) {
@@ -313,7 +313,7 @@ expand:
   }
 
   // rewrite pointers
-  for(size_t i = in; i < len; i++) {
+  RANGEUP(i, in, len) {
     cell_t *t = map_cell(map, i);
     if(!t) continue;
 
