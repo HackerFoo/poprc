@@ -13,27 +13,6 @@ alt_sets => 0
 M:three
 ################
 comments => 0
-@ count
-___ conflict = 0 ___
-0 2 3
-1 2 3
-0 2 4
-1 2 4
-0 2 5
-1 2 5
-___ conflict = 1 ___
-0 2 3
-1 2 3
-0 2 4
-1 2 4
-0 2 5
-1 2 5
-___ conflict = 2 ___
-0 2 3
-0 2 4
-0 2 5
-1 2 5
-count => 0
 @ error
 i = 0
 i = 1

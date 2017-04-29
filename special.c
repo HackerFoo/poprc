@@ -301,6 +301,7 @@ bool func_fail(cell_t **cp, type_request_t treq) {
   fail(cp, treq);
   return false;
 }
+
 // WORD("fcompose", fcompose, 2, 1)
 bool func_fcompose(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;

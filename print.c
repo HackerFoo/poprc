@@ -230,7 +230,7 @@ void graph_cell(FILE *f, cell_t const *c) {
   } else {
     fprintf(f, "%s ", show_type_all_short(c->value.type));
   }
-  fprintf(f, "(%u%s)</b></font></td></tr>", (unsigned int)c->n, is_root(c) ? "*" : "");
+  fprintf(f, "(%u%s)</b></font></td></tr>", (unsigned int)c->n + 1, is_root(c) ? "*" : "");
   if(c->alt) {
     fprintf(f, "<tr><td port=\"alt\">alt: ");
     print_cell_pointer(f, c->alt);
@@ -297,11 +297,20 @@ void graph_cell(FILE *f, cell_t const *c) {
       }
     }
   } else {
-    COUNTUP(i, n) {
+    csize_t start_out = closure_args(c) - closure_out(c);
+    COUNTUP(i, start_out) {
       cell_t *arg = clear_ptr(c->expr.arg[i]);
       if(is_cell(arg)) {
-        fprintf(f, "node%" PRIuPTR ":arg%d -> node%" PRIuPTR ":top%s;\n",
-                c - cells, (unsigned int)i, arg - cells, is_weak(c, arg) ? " [color=lightgray]" : "");
+        fprintf(f, "node%" PRIuPTR ":arg%d -> node%" PRIuPTR ":top;\n",
+                c - cells, (unsigned int)i, arg - cells);
+        graph_cell(f, arg);
+      }
+    }
+    RANGEUP(i, start_out, n) {
+      cell_t *arg = clear_ptr(c->expr.arg[i]);
+      if(is_cell(arg)) {
+        fprintf(f, "node%" PRIuPTR ":arg%d -> node%" PRIuPTR ":top [color=lightgray];\n",
+                c - cells, (unsigned int)i, arg - cells);
         graph_cell(f, arg);
       }
     }
@@ -375,29 +384,6 @@ void show_list(cell_t const *c) {
     show_list_elements(c);
     printf(" ]");
   }
-}
-
-int test_count() {
-  cell_t test[] = {
-    [0] = { .alt = &test[1] },
-    [1] = { .alt = 0 },
-    [2] = { .alt = 0 },
-    [3] = { .alt = &test[4] },
-    [4] = { .alt = &test[5] },
-    [5] = { .alt = 0 }
-  };
-  cell_t *cnt[3];
-  cell_t const *reset[3] = {&test[0], &test[2], &test[3]};
-  memcpy(cnt, reset, sizeof(reset));
-  int n = 0;
-  FOREACH(i, reset) {
-    printf("___ conflict = %d ___\n", (int)i);
-    do {
-      n++;
-      printf("%d %d %d\n", (int)(cnt[0]-test), (int)(cnt[1]-test), (int)(cnt[2]-test));
-    } while(count((const cell_t **)cnt, reset, i, 3));
-  }
-  return n == 16 ? 0 : -1;
 }
 
 void show_func(cell_t const *c) {
@@ -539,18 +525,4 @@ char *show_type_all_short(type_t t) {
   *p++ = type_char(t);
   *p = 0;
   return buf;
-}
-
-bool count(cell_t const **cnt, cell_t const *const *reset, csize_t conflict, csize_t size) {
-  csize_t start = conflict;
-  while(start && !cnt[start]->alt) start--; // find the nost significant with an alt
-  RANGEUP(i, start, size) {
-    if(!cnt[i]->alt) {
-      cnt[i] = reset[i];
-    } else {
-      cnt[i] = cnt[i]->alt;
-      return true;
-    }
-  }
-  return false;
 }

@@ -33,12 +33,7 @@
 #include "gen/print.h"
 
 bool is_user_func(const cell_t *c) {
-  if(is_value(c)) return false;
-  bool actually_is_a_user_func = c->func == func_exec || c->func == func_quote;
-  bool marked_as_a_user_func = !!(c->expr.flags & FLAGS_USER_FUNC);
-  if(actually_is_a_user_func != marked_as_a_user_func) printf("user func flags is wrong @ %d: %d -> %d\n", (int)(c-cells), marked_as_a_user_func, actually_is_a_user_func);
-  return actually_is_a_user_func;
-  // return !is_value(c) && !!(c->expr.flags & FLAGS_USER_FUNC);
+  return !is_value(c) && !!(c->expr.flags & FLAGS_USER_FUNC);
 }
 
 static
@@ -253,9 +248,6 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     uint8_t t = treq.t == T_ANY ? T_BOTTOM : treq.t;
     if(specialize && !dont_specialize) {
       res = trace_var_specialized(t, c);
-    } else if(trace_match_self(c)) {
-      res = trace_var_self(t);
-      disable_trace = true;
     } else {
       res = var(t, c);
     }

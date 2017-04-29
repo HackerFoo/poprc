@@ -114,21 +114,6 @@ void split_expr(cell_t *c) {
   }
 }
 
-void split_list(cell_t *c) {
-  csize_t n = list_size(c);
-  if(!n) return;
-  RANGEDOWN(i, 1, n) {
-    split_ptr(c, i);
-  }
-  if(is_row_list(c)) {
-    split_list(c->value.ptr[0]);
-  }
-  split_ptr(c, 0);
-  TRAVERSE(c, ptrs) {
-    *p = clear_ptr(*p);
-  }
-}
-
 // Reduce then split c->arg[n]
 bool reduce_arg(cell_t *c,
                 csize_t n,
@@ -280,15 +265,6 @@ void update_deps(cell_t *c) {
   }
 }
 
-void new_deps(cell_t *c) {
-  TRAVERSE(c, out) {
-    if(*p) {
-      assert(is_dep(*p));
-      *p = 0; //dep(ref(c)); // these would be dangling
-    }
-  }
-}
-
 csize_t count_deps(cell_t *c) {
   csize_t deps = 0;
   TRAVERSE(c, out) {
@@ -302,6 +278,7 @@ cell_t *expand_deps(cell_t *c, csize_t s) {
   csize_t deps = count_deps(c);
   c->n -= deps;
   refcount_t n = c->n;
+  assert(!n);
   csize_t in = closure_in(c);
   c = expand(c, s);
 
@@ -309,11 +286,7 @@ cell_t *expand_deps(cell_t *c, csize_t s) {
   memmove(&c->expr.arg[in+s], &c->expr.arg[in], c->expr.out * sizeof(cell_t *));
   memset(&c->expr.arg[in], 0, s * sizeof(cell_t *));
   c->expr.out += s;
-  if(n) {
-    new_deps(c);
-  } else {
-    update_deps(c);
-  }
+  update_deps(c);
 
   c->n += deps;
 
@@ -466,17 +439,6 @@ void store_var(cell_t *c, int t) {
   *c = v;
 }
 
-bool has_bottom_arg(cell_t *c) {
-  COUNTUP(i, closure_in(c)) {
-    cell_t *a = c->expr.arg[i];
-    if(is_var(a) &&
-       a->value.type.exclusive == T_BOTTOM)
-      return true;
-  }
-  return false;
-}
-
-// TODO make this handle T_BOTTOM as well
 void fail(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   if(!is_cell(c)) {
@@ -525,10 +487,6 @@ void store_reduced(cell_t **cp, cell_t *r) {
    } else {
     store_lazy(cp, c, r, 0);
   }
-}
-
-bool is_weak(cell_t const *p, cell_t const *c) {
-  return c && is_dep(c) && (!c->expr.arg[0] || c->expr.arg[0] == p);
 }
 
 cell_t *conc_alt(cell_t *a, cell_t *b) {

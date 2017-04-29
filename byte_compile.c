@@ -225,109 +225,6 @@ cell_t *trace_store_value(const cell_t *c) {
   return tc;
 }
 
-static
-bool trace_unify(cell_t *a, cell_t **b, cell_t *c, size_t in) {
-  while(a->func == func_id) a = a->expr.arg[0];
-  if(!c && a == *b) {
-    return true;
-  } else if(is_list(a)) {
-    if(is_list(*b)) {
-      list_iterator_t
-        ia = list_begin(a),
-        ib = list_begin(*b);
-      cell_t **xa, **xb;
-      WHILELIST(xa, ia) {
-        if(!(xb = list_next(&ib, false)) ||
-           !trace_unify(*xa, xb, c, in)) return false;
-      }
-      return !list_next(&ib, false);
-    } else return false;
-  } else if(is_var(a)) {
-    cell_t *tc = trace_get(a);
-    if(!tc) return false;
-    trace_index_t x = tc - trace_cur;
-    if(c || in) {
-      *b = clear_ptr(*b);
-      reduce(b, req_simple(a->value.type.exclusive)); // HACK to allow reductions before allocating trace var
-    }
-    if(c && x >= 0 && x < (int)in) {
-      cell_t *v = trace_get(*b);
-      c->expr.arg[in - 1 - x] = trace_encode(v - trace_cur);
-    }
-    return true;
-  } else if(a == *b) {
-    return true;
-  } else if(a->func == (*b)->func &&
-            a->size == (*b)->size &&
-            a->expr.out == (*b)->expr.out) {
-    assert(false); // this seems like a dead branch
-    csize_t a_in = closure_in(a);
-    RANGEUP(i, closure_is_ready(a) ? 0 : closure_next_child(a) + 1, a_in) {
-      if(is_offset(a->expr.arg[i])) continue;
-      if(!trace_unify(a->expr.arg[i], &(*b)->expr.arg[i], c, in)) return false;
-    }
-    return true;
-  } else {
-    return false;
-  }
-}
-
-static
-cell_t *trace_store_self(const cell_t *c, const cell_t *r) {
-  cell_t *tc = trace_get(r);
-  type_t t = r->value.type;
-  tc->func = func_exec;
-  FLAG_SET(tc->expr.flags, FLAGS_USER_FUNC);
-  tc->n += c->n;
-  cell_t *e = &trace_cur[-1];
-  csize_t
-    in = e->entry.in,
-    out = e->entry.out;
-  tc->expr.arg[in] = trace_encode(e - trace_cells);
-  trace_shrink(tc, in + out);
-
-  COUNTUP(i, in) {
-    trace_index_t x = in - 1 - i;
-    tc->expr.arg[i] = trace_encode(x);
-  }
-
-  csize_t c_in = closure_in(c);
-  COUNTUP(i, c_in) {
-    trace_unify(initial_word->expr.arg[i],
-                (cell_t **)&c->expr.arg[i],
-                tc, in);
-  }
-
-  COUNTUP(i, in) {
-    trace_index_t x = trace_decode(tc->expr.arg[i]);
-    trace_cur[x].n++;
-  }
-
-  // TODO handle out args
-  assert(out == 1);
-
-  tc->expr_type.exclusive = t.exclusive;
-  tc->alt = NULL;
-  return tc;
-}
-
-bool trace_match_self(const cell_t *c) {
-  const cell_t *s = initial_word;
-  if(!(s && c->expr.flags & FLAGS_RECURSIVE)) return false;
-  if(c->func != func_exec ||
-     c->size != s->size) return false;
-  csize_t in = closure_in(c);
-  if(c->expr.arg[in] != s->expr.arg[in]) return false;
-  COUNTUP(i, in) {
-    if(!trace_unify(s->expr.arg[i], (cell_t **)&c->expr.arg[i], NULL, 0)) return false;
-  }
-  // HACK to force reductions before returning true
-  COUNTUP(i, in) {
-    trace_unify(s->expr.arg[i], (cell_t **)&c->expr.arg[i], NULL, 1);
-  }
-  return true;
-}
-
 #if SPECIALIZE
 static
 bool trace_match_specialize(const cell_t *c) {
@@ -344,8 +241,6 @@ cell_t *trace_store(cell_t *c, const cell_t *r) {
   if(is_var(r)) {
     if(!r->value.ptr[0]) {
       return return_me;
-    } else if(trace_match_self(c)) {
-      return trace_store_self(c, r);
 #if SPECIALIZE
     } else if(trace_match_specialize(c)) {
       return trace_build_specialized(c, r);
@@ -754,8 +649,7 @@ cell_t **trace_var_list(cell_t *c, cell_t **tail) {
 
 size_t tmp_list_length(cell_t *c) {
   size_t n = 0;
-  while(c) {
-    c = c->tmp;
+  FOLLOW(p, c, tmp) {
     n++;
   }
   return n;
@@ -1064,38 +958,6 @@ cell_t *compile_specialized(cell_t *parent_entry, cell_t *tc) {
 
   return e;
 }
-
-/*
-cell_t *trace_break() {
-  // calculate live variables
-
-  // store call to the next block
-
-  // store return
-
-  cell_t *e = trace_start();
-
-  // allocate variables
-  COUNTUP(i, in) {
-    cell_t *p = &trace_cur[i];
-    p->size = 2;
-    p->func = func_value;
-    p->value.type.flags = T_VAR;
-    p->n = -1;
-  }
-  trace_ptr += in;
-
-  // free variables
-  cell_t *vl = 0;
-  trace_var_list(c, &vl);
-  FOLLOW(p, vl, tmp) {
-    replace_var(p, tc->expr.arg, in, parent_entry);
-  }
-  clean_tmp(vl);
-
-  return e;
-}
-*/
 
 static
 cell_t *tref(cell_t *e, cell_t *c) {
