@@ -122,6 +122,7 @@ cell_t *trace_alloc(csize_t args) {
   return tc;
 }
 
+#if SPECIALIZE
 static
 csize_t count_vars(cell_t *c) {
   cell_t *vl = 0;
@@ -130,17 +131,16 @@ csize_t count_vars(cell_t *c) {
   clean_tmp(vl);
   return vars;
 }
+#endif
 
 cell_t *trace_var_specialized(uint8_t t, cell_t *c) {
+#if SPECIALIZE
   return var_create(t, trace_alloc(count_vars(c) + 1 + trace_cur[-1].entry.out), 0, 0);
-}
-
-cell_t *trace_var_self(uint8_t t) {
-  cell_t *e = &trace_cur[-1];
-  csize_t
-    in = e->entry.in,
-    out = e->entry.out;
-  return var_create(t, trace_alloc(in + out), 0, 0);
+#else
+  (void)t, (void)c;
+  assert(false);
+  return NULL;
+#endif
 }
 
 void trace_shrink(cell_t *t, csize_t args) {
@@ -405,17 +405,6 @@ void trace_reduction(cell_t *c, cell_t *r) {
   trace_store(c, r);
 }
 
-void trace_composition(cell_t *c, UNUSED cell_t *a, UNUSED cell_t *b) {
-  if(!trace_enabled) return;
-
-  if(write_graph) {
-    mark_cell(c);
-    make_graph_all(0);
-  }
-
-  assert_throw(false, "TODO: compose placeholders");
-}
-
 void trace_update_type(cell_t *c) {
   if(!trace_enabled) return;
 
@@ -457,10 +446,12 @@ void trace_final_pass(cell_t *e) {
           p->expr.arg[0] = p->expr.arg[1];
           p->expr.arg[1] = x;
         }
+#if SPECIALIZE
       } else if(p->func == func_exec) {
         cell_t *se = compile_specialized(e, p);
         p->expr.arg[closure_in(p)] = trace_encode(se - trace_cells);
         p->expr_type.flags |= T_SUB;
+#endif
       } else if(p->func == func_placeholder) {
         trace_index_t left = trace_decode(p->expr.arg[0]);
         assert(left >= 0);
@@ -497,27 +488,6 @@ uint8_t trace_recursive_changes(cell_t *e) {
     }
   }
   return changes;
-}
-
-trace_index_t trace_tail(trace_index_t t, csize_t out) {
-  if(out == 0) return t;
-  cell_t *tc = trace_alloc(out + 1);
-  tc->func = func_ap;
-  tc->expr.out = out;
-  tc->expr.arg[0] = trace_encode(t);
-  trace_cur[t].n++;
-  return tc - trace_cur;
-}
-
-bool any_unreduced(cell_t *c) {
-  TRAVERSE(c, in, ptrs) {
-    if(*p) {
-      if((*p)->func == func_placeholder || is_value(*p)) {
-        if(any_unreduced(*p)) return true;
-      } else return true;
-    }
-  }
-  return false;
 }
 
 void trace_set_type(cell_t *tc, int t) {
@@ -564,6 +534,7 @@ trace_index_t trace_build_quote(cell_t *l) {
   return n - trace_cur;
 }
 
+#if SPECIALIZE
 cell_t *trace_build_specialized(cell_t *c, const cell_t *r) {
   assert(c->func == func_exec);
   //assert(c->expr.flags & FLAGS_RECURSIVE == 0);
@@ -607,6 +578,7 @@ cell_t *trace_build_specialized(cell_t *c, const cell_t *r) {
 
   return n;
 }
+#endif
 
 static
 cell_t *trace_return(cell_t *c) {
@@ -653,16 +625,6 @@ size_t tmp_list_length(cell_t *c) {
     n++;
   }
   return n;
-}
-
-void tmp_list_filter(cell_t **p, int t) {
-  while(*p) {
-    if((*p)->value.type.exclusive == t) {
-      *p = (*p)->tmp;
-    } else {
-      p = &(*p)->tmp;
-    }
-  }
 }
 
 int test_var_count() {
@@ -903,6 +865,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   return e;
 }
 
+#if SPECIALIZE
 cell_t *compile_specialized(cell_t *parent_entry, cell_t *tc) {
   // set up
   cell_t *e = trace_start();
@@ -958,6 +921,7 @@ cell_t *compile_specialized(cell_t *parent_entry, cell_t *tc) {
 
   return e;
 }
+#endif
 
 static
 cell_t *tref(cell_t *e, cell_t *c) {
