@@ -870,6 +870,28 @@ void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *entry) {
   //assert(false);
 }
 
+static
+void trace_allocate_vars(csize_t n) {
+  COUNTUP(i, n) {
+    cell_t *tc = &trace_cur[i];
+    tc->size = 2;
+    tc->func = func_value;
+    tc->value.type.flags = T_VAR;
+    tc->n = -1;
+  }
+  trace_ptr += n;
+}
+
+static
+void substitute_free_variables(cell_t *c, cell_t **a, csize_t a_in, cell_t *parent_entry) {
+  cell_t *vl = 0;
+  trace_var_list(c, &vl);
+  FOLLOW(p, vl, tmp) {
+    replace_var(p, a, a_in, parent_entry);
+  }
+  clean_tmp(vl);
+}
+
 // takes a parent entry and offset to a quote, and creates an entry from compiling the quote
 cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   // set up
@@ -884,24 +906,8 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   e->entry.flags = ENTRY_NOINLINE | ENTRY_QUOTE | (is_row_list(c) ? ENTRY_ROW : 0);
   e->func = func_exec;
 
-  // allocate variables
-  csize_t n = in;
-  COUNTUP(i, n) {
-    cell_t *tc = &trace_cur[i];
-    tc->size = 2;
-    tc->func = func_value;
-    tc->value.type.flags = T_VAR;
-    tc->n = -1;
-  }
-  trace_ptr += n;
-
-  // free variables
-  cell_t *vl = 0;
-  trace_var_list(c, &vl);
-  FOLLOW(p, vl, tmp) {
-    replace_var(p, q->expr.arg, n, parent_entry);
-  }
-  clean_tmp(vl);
+  trace_allocate_vars(in);
+  substitute_free_variables(c, q->expr.arg, in, parent_entry);
 
   // compile
   e->entry.in = in + fill_args(c);
@@ -943,23 +949,8 @@ cell_t *compile_specialized(cell_t *parent_entry, cell_t *tc) {
   e->entry.flags = ENTRY_NOINLINE;
   e->func = func_exec;
 
-  // allocate variables
-  COUNTUP(i, in) {
-    cell_t *p = &trace_cur[i];
-    p->size = 2;
-    p->func = func_value;
-    p->value.type.flags = T_VAR;
-    p->n = -1;
-  }
-  trace_ptr += in;
-
-  // free variables
-  cell_t *vl = 0;
-  trace_var_list(c, &vl);
-  FOLLOW(p, vl, tmp) {
-    replace_var(p, tc->expr.arg, in, parent_entry);
-  }
-  clean_tmp(vl);
+  trace_allocate_vars(in);
+  substitute_free_variables(c, q->expr.arg, in, parent_entry);
 
   FLAG_CLEAR(c->expr.flags, FLAGS_RECURSIVE); // always expand
   initial_word = copy(c);
