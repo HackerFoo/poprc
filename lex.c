@@ -161,7 +161,10 @@ seg_t tok(const char *s, const char* e, char_class_t *class) {
 
   while(++s < e && *s) {
     char_class_t ncc = char_class(*s);
-    if(cc == ncc) continue;
+    if(cc == ncc || cc == CC_NONE) {
+      cc = ncc;
+      continue;
+    }
 
     // exceptions
     switch(ncc) {
@@ -181,7 +184,10 @@ seg_t tok(const char *s, const char* e, char_class_t *class) {
       break;
     case CC_SYMBOL:
       if(s[0] == '.') {
-        if(cc == CC_ALPHA) continue; // allow dots in alpha identifiers
+        if(cc == CC_ALPHA) {
+          cc = CC_NONE;
+          continue; // allow dots in alpha identifiers
+        }
         if(cc == CC_NUMERIC) {
           char *end;
           strtod(seg.s, &end);

@@ -207,6 +207,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
   cell_t *map[len];
   cell_t *res;
   cell_t *returns = NULL;
+  type_t rtypes[entry->entry.out];
 
   // don't execute, just reduce all args and return variables
   if(len == 0 || // the function is being compiled
@@ -215,7 +216,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
        (entry->entry.rec &&
         (initial_word ||
          entry->entry.rec > trace_cur[-1].entry.in))))) { // not the outermost function
-    csize_t c_in = closure_in(c), n = closure_args(c);
+    csize_t c_in = closure_in(c);
     alt_set_t alt_set = 0;
     unsigned int nonvar = 0;
     bool specialize = false;
@@ -253,7 +254,9 @@ bool func_exec(cell_t **cp, type_request_t treq) {
 
     cell_t *res;
     bool disable_trace = len == 0 && !!(c->expr.flags & FLAGS_RECURSIVE); // TODO remove hacky trace disabling and return T_BOTTOM instead
-    uint8_t t = treq.t == T_ANY ? T_BOTTOM : treq.t;
+    rtypes[0].exclusive = treq.t;
+    resolve_types(entry, rtypes);
+    uint8_t t = rtypes[0].exclusive == T_ANY ? T_BOTTOM : rtypes[0].exclusive;
     if(specialize && !dont_specialize) {
       res = trace_var_specialized(t, c);
     } else {
@@ -263,13 +266,13 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     res->alt = c->alt;
 
     // replace outputs with variables
-    RANGEUP(i, c_in + 1, n) {
-      cell_t *d = c->expr.arg[i];
+    RANGEUP(i, 1, entry->entry.out) {
+      cell_t *d = c->expr.arg[c_in + i];
       if(d && is_dep(d)) {
         assert(d->expr.arg[0] == c);
         drop(c);
         d->expr.arg[0] = res;
-        store_var(d, T_ANY);
+        store_var(d, rtypes[i].exclusive);
       }
     }
 

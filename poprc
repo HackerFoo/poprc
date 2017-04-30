@@ -3,7 +3,7 @@
 LIBS="*.ppr"
 LOAD=""
 
-OUT=${1//./_}
+OUT=`./eval -q -exp $1`
 DIR=poprc_out
 
 mkdir -p $DIR

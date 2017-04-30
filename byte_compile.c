@@ -802,8 +802,55 @@ bool pre_compile_word(cell_t *l, cell_t *module, csize_t *in, csize_t *out) {
   return res;
 }
 
+const char *sym_to_ident(unsigned char c) {
+  static const char *table[] = {
+    ['^'] = "ZctZ"
+  };
+  if(c < LENGTH(table)) {
+    return table[c];
+  } else {
+    return NULL;
+  }
+}
+
+size_t expand_sym(char *buf, size_t n, seg_t src) {
+  char *out = buf, *stop = out + n - 1;
+  const char *in = src.s;
+  size_t left = src.n;
+  while(left-- &&
+        *in &&
+        out < stop) {
+    char c = *in++;
+    const char *s = sym_to_ident(c);
+    if(s) {
+      out = stpncpy(out, s, stop - out);
+    } else {
+      *out++ = c;
+    }
+  }
+  *out = '\0';
+  return out - buf;
+}
+
+void command_expsym(cell_t *rest) {
+  cell_t *p = rest;
+  while(p) {
+    char ident[64]; // ***
+    seg_t ident_seg = {
+      .s = ident,
+      .n = expand_sym(ident, LENGTH(ident), tok_seg(p))
+    };
+    COUNTUP(i, ident_seg.n) {
+      if(ident[i] == '.') ident[i] = '_';
+    }
+    printseg("", ident_seg, "\n");
+    p = p->tok_list.next;
+  }
+}
+
 bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_t out) {
   cell_t *l;
+  char ident[64]; // ***
   if(!entry || !(l = *entry)) return false;
   if(!is_list(l)) return true;
   if(is_empty_list(l)) return false;
@@ -817,7 +864,11 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   cell_t *e = *entry = trace_start();
   e->n = PERSISTENT;
   e->module_name = module_name(module);
-  e->word_name = seg_string(name); // TODO fix unnecessary alloc
+  seg_t ident_seg = {
+    .s = ident,
+    .n = expand_sym(ident, LENGTH(ident), name)
+  };
+  e->word_name = seg_string(ident_seg); // TODO fix unnecessary alloc
   e->entry.in = in;
   e->entry.out = out;
   e->entry.len = 0;
@@ -987,18 +1038,30 @@ type_t trace_type(cell_t *c) {
 }
 
 // resolve types in each return in e starting at c, storing the resulting types in t
-void resolve_types(cell_t *e, cell_t *c, type_t *t) {
-  csize_t n = list_size(c);
+void resolve_types(cell_t *e, type_t *t) {
+  cell_t *code = e + 1;
+  size_t count = e->entry.len;
+  csize_t out = e->entry.out;
+
+  // find first return
+  cell_t *l = NULL;
+  RANGEUP(i, e->entry.in, count) {
+    if(trace_type(&code[i]).exclusive == T_RETURN) {
+      l = &code[i];
+      break;
+    }
+  }
+  if(!l) return;
 
   // first store types from c
-  COUNTUP(i, n) {
-    t[i].exclusive = trace_type(tref(e, c->value.ptr[i])).exclusive;
+  COUNTUP(i, out) {
+    t[i].exclusive = trace_type(tref(e, l->value.ptr[i])).exclusive;
   }
 
   // then resolve the rest
-  cell_t *p = tref(e, c->alt);
+  cell_t *p = tref(e, l->alt);
   while(p) {
-    COUNTUP(i, n) {
+    COUNTUP(i, out) {
       int pt = trace_type(tref(e, p->value.ptr[i])).exclusive;
       if(t[i].exclusive == T_BOTTOM) {
         t[i].exclusive = pt;

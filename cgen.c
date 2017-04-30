@@ -70,19 +70,9 @@ const char *cname(type_t t) {
 
 void gen_function_signature(cell_t *e) {
   cell_t *p = e + 1;
-  size_t count = e->entry.len;
-
-  // find first return
-  cell_t *l = NULL;
-  RANGEUP(i, e->entry.in, count) {
-    if(trace_type(&p[i]).exclusive == T_RETURN) {
-      l = &p[i];
-      break;
-    }
-  }
-  csize_t out_n = list_size(l);
+  csize_t out_n = e->entry.out;
   type_t rtypes[out_n];
-  resolve_types(e, l, rtypes);
+  resolve_types(e, rtypes);
 
   printf("%s%s_%s(", ctype(rtypes[out_n - 1]), e->module_name, e->word_name);
   char *sep = "";
@@ -98,6 +88,23 @@ void gen_function_signature(cell_t *e) {
   }
 
   printf(")");
+}
+
+void gen_function_signatures(cell_t *e) {
+  cell_t
+    *start = e + 1,
+    *end = start + e->entry.len;
+  while(is_var(start)) start++;
+
+  gen_function_signature(e);
+  printf(";\n");
+
+  FOR_TRACE(c, start, end) {
+    if(c->func == func_exec) {
+      cell_t *x = get_entry(c);
+      if(x != e) gen_function_signatures(x);
+    }
+  }
 }
 
 void gen_body(cell_t *e) {
@@ -350,6 +357,23 @@ void gen_function(cell_t *e) {
   }
 }
 
+void gen_functions(cell_t *e) {
+  cell_t
+    *start = e + 1,
+    *end = start + e->entry.len;
+  while(is_var(start)) start++;
+
+  gen_function(e);
+  printf("\n");
+
+  FOR_TRACE(c, start, end) {
+    if(c->func == func_exec) {
+      cell_t *x = get_entry(c);
+      if(x != e) gen_functions(x);
+    }
+  }
+}
+
 // generate the driver to allow testing the function from the command line
 // for now assumes int
 void gen_main(cell_t *e) {
@@ -359,8 +383,8 @@ void gen_main(cell_t *e) {
          "#include \"macros.h\"\n"
          "#include \"cgen/primitives.h\"\n\n");
 
-  gen_function_signature(e);
-  printf(";\n\n");
+  gen_function_signatures(e);
+  printf("\n");
 
   printf("int main(int argc, char **argv)\n{\n");
   printf("  int in[%d];\n", e->entry.in);
@@ -394,7 +418,7 @@ void gen_main(cell_t *e) {
          "  }\n");
   printf("  printf(\"\\n\");\n\n"
          "  return 0;\n"
-         "}\n");
+         "}\n\n");
 }
 
 void command_cgen(cell_t *rest) {
@@ -404,7 +428,7 @@ void command_cgen(cell_t *rest) {
       *m = eval_module(),
       *e = module_lookup_compiled(tok_seg(rest), &m);
 
-    if(e) gen_function(e);
+    if(e) gen_functions(e);
   }
 }
 
