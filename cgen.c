@@ -36,6 +36,7 @@
 #include "gen/lex.h"
 #include "gen/user_func.h"
 
+// table of corresponding C types
 const char *ctype(type_t t) {
   static const char *table[] = {
     [T_ANY]    = "any_t ",
@@ -51,6 +52,7 @@ const char *ctype(type_t t) {
   return table[t.exclusive];
 }
 
+// table of identifier prefixes for each type
 const char *cname(type_t t) {
   static const char *table[] = {
     [T_ANY]    = "any",
@@ -186,12 +188,17 @@ void gen_call(cell_t *e, cell_t *c) {
   const char *module_name, *word_name;
 
   if(get_entry(c) == e && trace_type(closure_next(c)).exclusive == T_RETURN) {
+    // this is a tail call
     csize_t in = closure_in(c);
     printf("\n  // tail call\n");
+
+    // overwrite function arguments with new values
     COUNTUP(i, in) {
       int a = trace_decode(c->expr.arg[i]);
       printf("  %s%d = %s%d;\n", cname(trace_type(&d[in - 1 - i])), (int)(in - 1 - i), cname(trace_type(&d[a])), a);
     };
+
+    // jump to the beginning
     printf("  goto body;\n");
   } else if(trace_type(c).exclusive != T_BOTTOM) {
     trace_get_name(c, &module_name, &word_name);
@@ -221,6 +228,7 @@ void gen_call(cell_t *e, cell_t *c) {
   }
 }
 
+// print the RHS to initialize a value
 void gen_value_rhs(cell_t *c) {
   type_t t = trace_type(c);
   switch(t.exclusive) {
@@ -246,6 +254,7 @@ void gen_value(cell_t *e, cell_t *c) {
   gen_value_rhs(c);
 }
 
+// print instructions that have been delayed (skipped)
 void gen_skipped(cell_t *e, int start_after, int until) {
   cell_t
     *code = e + 1,
@@ -276,6 +285,7 @@ void gen_assert(cell_t *e, cell_t *c) {
   cell_t *end = d + e->entry.len;
   bool bottom = trace_type(c).exclusive == T_BOTTOM;
   if(!bottom) {
+    // use #define to replace references to the assertion output to the output of arg[0]
     printf("  #define %s%d %s%d\n", cn, i, cname(trace_type(&d[ip])), ip); // a little HACKy
   }
   FOR_TRACE(p, closure_next(c), end) {
@@ -340,6 +350,7 @@ void gen_function(cell_t *e) {
   }
 }
 
+// generate the driver to allow testing the function from the command line
 // for now assumes int
 void gen_main(cell_t *e) {
   printf("#include <stdio.h>\n"

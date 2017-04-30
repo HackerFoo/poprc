@@ -47,12 +47,14 @@ cell_t *map_cell(cell_t **map, intptr_t x) {
 static
 cell_t *get_return_arg(cell_t **map, cell_t *returns, intptr_t x) {
   trace_index_t i = trace_decode(returns->value.ptr[x]);
-  return
+  return // can't use map_cell, returns empty_list() instead of &nil_cell
     i == NIL_INDEX ? empty_list() :
     i < 0 ? NULL :
     map[i];
 }
 
+// given a list l with arity in -> out, produce an application of the list
+// [X -> Y] => [X -> Y] apXY
 cell_t *apply_list(cell_t *l, csize_t in, csize_t out) {
   cell_t *c = func(func_ap, in + 1, out + 1);
   if(in) {
@@ -68,6 +70,7 @@ cell_t *apply_list(cell_t *l, csize_t in, csize_t out) {
   return c;
 }
 
+// print a representation of a pattern for debugging
 void print_pattern(cell_t *pattern) {
   if(is_var(pattern)) {
     printf(" ?%d", (int)(pattern->value.ptr[0]-trace_cur));
@@ -85,6 +88,7 @@ void print_pattern(cell_t *pattern) {
   }
 }
 
+// print the list of bindings for debugging
 void print_bindings(cell_t *vl) {
   cell_t *entry = &trace_cur[-1];
   cell_t *base = entry + 1;
@@ -94,6 +98,7 @@ void print_bindings(cell_t *vl) {
   }
 }
 
+// print the word to match and its patterns
 void print_word_pattern(cell_t *word) {
   printf("pattern:");
   COUNTUP(i, closure_in(word)) {
@@ -102,7 +107,7 @@ void print_word_pattern(cell_t *word) {
   printf("\n");
 }
 
-// build a zig-zag binding list
+// build a zig-zag binding list by applying the pattern to c
 // TODO add reduction back in
 cell_t **bind_pattern(cell_t *c, cell_t *pattern, cell_t **tail) {
   assert(c);
@@ -139,6 +144,7 @@ cell_t **bind_pattern(cell_t *c, cell_t *pattern, cell_t **tail) {
   }
 }
 
+// unify c with pattern pat if possible, returning the unified result
 cell_t *unify_convert(cell_t *c, cell_t *pat) {
   if(!pat) return NULL;
   csize_t e = closure_in(pat);
@@ -214,7 +220,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     unsigned int nonvar = 0;
     bool specialize = false;
 
-    {
+    { // try to unify with initial_word, returning if successful
       cell_t *n = unify_convert(c, initial_word);
       if(n) {
         drop(c);
@@ -223,6 +229,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
       }
     }
 
+    // reduce all inputs
     COUNTUP(i, c_in) {
       uint8_t t = len > 0 ? code[c_in - 1 - i].value.type.exclusive : T_ANY;
       if(t == T_FUNCTION) t = T_ANY; // HACK, T_FUNCTION breaks things
@@ -240,6 +247,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
        !(c->expr.flags & FLAGS_RECURSIVE) &&
        (!entry->entry.rec || entry->entry.rec <= trace_cur[-1].entry.in))
     {
+      // okay to expand
       goto expand;
     }
 
@@ -254,6 +262,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     res->value.alt_set = alt_set;
     res->alt = c->alt;
 
+    // replace outputs with variables
     RANGEUP(i, c_in + 1, n) {
       cell_t *d = c->expr.arg[i];
       if(d && is_dep(d)) {
