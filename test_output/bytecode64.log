@@ -1,3 +1,19 @@
+___ algorithm.acc_odd_power (3 -> 1) x2 ___
+[0] var, type = ?i x2
+[1] var, type = ?i x1
+[2] var, type = ?i x2
+[3] __primitive.bitand 0 4, type = i x1
+[4] val 1, type = i x4
+[5] __primitive.eq 3 4, type = s x1
+[6] __primitive.assert 7 5, type = i x1
+[7] __primitive.mul 2 1, type = i x1
+[8] return [ 6 ], type = r -> 13 x1
+[9] __primitive.bitand 0 4, type = i x1
+[10] __primitive.eq 9 4, type = s x1
+[11] __primitive.not 10, type = s x1
+[12] __primitive.assert 2 11, type = i x1
+[13] return [ 12 ], type = r x1
+
 ___ algorithm.gcd (2 -> 1) x2 ___
 [0] var, type = ?i x4
 [1] var, type = ?i x2
@@ -11,6 +27,67 @@ ___ algorithm.gcd (2 -> 1) x2 ___
 [9] __primitive.not 8, type = s x1
 [10] __primitive.assert 1 9, type = i x1
 [11] return [ 10 ], type = r x1
+
+___ algorithm.reduce_power (2 -> 2) ___
+[0] var, type = ?i x1
+[1] var, type = ?i x2
+[2] __primitive.mul 1 1, type = i x1
+[3] __primitive.shiftr 0 4, type = i x1
+[4] val 1, type = i x1
+[5] return [ 2 3 ], type = r x1
+
+___ algorithm.exponent (3 -> 1) x3 ___
+[0] var, type = ?i x5
+[1] var, type = ?i x3
+[2] var, type = ?i x3
+[3] __primitive.neq 0 4, type = s x2
+[4] val 0, type = i x2
+[5] __primitive.assert 13 3, type = 0 x1
+[6] __primitive.bitand 0 7, type = i x1
+[7] val 1, type = i x5
+[8] __primitive.eq 6 7, type = s x1
+[9] __primitive.assert 10 8, type = i x1
+[10] __primitive.mul 2 1, type = i x1
+[11] __primitive.mul 1 1, type = i x2
+[12] __primitive.shiftr 0 7, type = i x2
+[13] algorithm.exponent 9 11 12, type = 0 x1
+[14] return [ 5 ], type = r -> 21 x1
+[15] __primitive.assert 20 3, type = 0 x1
+[16] __primitive.bitand 0 7, type = i x1
+[17] __primitive.eq 16 7, type = s x1
+[18] __primitive.not 17, type = s x1
+[19] __primitive.assert 2 18, type = i x1
+[20] algorithm.exponent 19 11 12, type = 0 x1
+[21] return [ 15 ], type = r -> 25 x1
+[22] __primitive.neq 0 4, type = s x1
+[23] __primitive.not 22, type = s x1
+[24] __primitive.assert 2 23, type = i x1
+[25] return [ 24 ], type = r x1
+
+___ algorithm.power_step (3 -> 3) x2 ___
+[0] var, type = ?i x3
+[1] var, type = ?i x3
+[2] var, type = ?i x2
+[3] __primitive.bitand 0 4, type = i x1
+[4] val 1, type = i x5
+[5] __primitive.eq 3 4, type = s x1
+[6] __primitive.assert 7 5, type = i x1
+[7] __primitive.mul 2 1, type = i x1
+[8] __primitive.mul 1 1, type = i x2
+[9] __primitive.shiftr 0 4, type = i x2
+[10] return [ 6 8 9 ], type = r -> 15 x1
+[11] __primitive.bitand 0 4, type = i x1
+[12] __primitive.eq 11 4, type = s x1
+[13] __primitive.not 12, type = s x1
+[14] __primitive.assert 2 13, type = i x1
+[15] return [ 14 8 9 ], type = r x1
+
+___ algorithm.__caret__ (2 -> 1) ___
+[0] var, type = ?i x1
+[1] var, type = ?i x1
+[2] algorithm.exponent 3 1 0, type = i x1
+[3] val 1, type = i x1
+[4] return [ 2 ], type = r x1
 
 ___ control.$ (2 -> 1) ___
 [0] var, type = ?f x1
@@ -299,6 +376,13 @@ ___ num.min (2 -> 1) x2 ___
 [5] __primitive.gt 0 1, type = s x1
 [6] __primitive.assert 1 5, type = i x1
 [7] return [ 6 ], type = r x1
+
+___ num.odd (1 -> 1) ___
+[0] var, type = ?i x1
+[1] __primitive.bitand 0 2, type = i x1
+[2] val 1, type = i x2
+[3] __primitive.eq 1 2, type = s x1
+[4] return [ 3 ], type = r x1
 
 ___ stack.nip (2 -> 1) ___
 [0] var, type = ?a x1

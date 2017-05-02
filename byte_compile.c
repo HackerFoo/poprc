@@ -806,7 +806,8 @@ bool pre_compile_word(cell_t *l, cell_t *module, csize_t *in, csize_t *out) {
 
 const char *sym_to_ident(unsigned char c) {
   static const char *table[] = {
-    ['^'] = "ZctZ"
+    ['^'] = "__caret__"
+    // TODO add all the other valid symbols
   };
   if(c < LENGTH(table)) {
     return table[c];
@@ -863,6 +864,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   cell_t *toks = l->value.ptr[0]; // TODO handle list_size(l) > 1
 
   // set up
+  rt_init();
   cell_t *e = *entry = trace_start();
   bool context_write_graph = write_graph;
   if(e - trace_cells == graph_entry) write_graph = true;

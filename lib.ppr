@@ -15,6 +15,7 @@ max: [] pushl pushl dup . dup popr drop | [<= !] . popr swap drop
 __ min of two values
 min: [] pushl pushl dup . dup popr drop | [> !] . popr swap drop
 
+odd: 1 .& 1 ==
 
 module list:
 
@@ -114,6 +115,7 @@ imports:
   module stack
   module list
   module control
+  module num
 
 gcd:
   [] ap20 __ quote arguments [a b]
@@ -121,3 +123,21 @@ gcd:
     [head 0 !=] __ while: b != 0
     [popr drop head] __ return: a
     binrec
+
+__ acc x power -> if odd power, acc*x, otherwise acc
+acc_odd_power: [[*] dip21 odd] ap20 ifdo
+
+__ x power -> x*x power/2
+reduce_power: [dup *] [1 .>>] para
+
+__ acc x power -> acc' x^2 power/2
+power_step: in2 [acc_odd_power] dip31 ap02 swap2 drop reduce_power
+
+exponent:
+  [] ap30
+    [[power_step] .]
+    [head 0 !=]
+    [popr drop popr drop head]
+    binrec
+
+^: 1 rotr exponent
