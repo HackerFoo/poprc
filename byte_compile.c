@@ -46,6 +46,8 @@ bool trace_enabled = false;
 
 bool dont_specialize = true; //false; ***
 
+static int graph_entry = -1;
+
 // storage for tracing
 static cell_t trace_cells[1 << 10] __attribute__((aligned(64)));
 cell_t *trace_cur = &trace_cells[0];
@@ -862,6 +864,8 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
 
   // set up
   cell_t *e = *entry = trace_start();
+  bool context_write_graph = write_graph;
+  if(e - trace_cells == graph_entry) write_graph = true;
   e->n = PERSISTENT;
   e->module_name = module_name(module);
   seg_t ident_seg = {
@@ -891,6 +895,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
 
   // finish
   free_def(l);
+  write_graph = context_write_graph;
   return true;
 }
 
@@ -1109,6 +1114,19 @@ void command_entry_number(cell_t *rest) {
       *e = module_lookup_compiled(tok_seg(rest), &m);
     if(e) {
       printf("entry number: %ld\n", e - trace_cells);
+    }
+  }
+}
+
+void command_graph_entry(cell_t *rest) {
+  if(!rest) {
+    graph_entry = -1;
+  } else {
+    const char *s = rest->tok_list.location;
+    if(is_num(s)) {
+      graph_entry = atoi(s);
+    } else {
+      printf("graph_entry: requires an integer argument\n");
     }
   }
 }
