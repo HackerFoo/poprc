@@ -466,7 +466,6 @@ bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
 
   cell_t *res = list_rest(it);
   drop(l);
-  res->value.alt_set = alt_set;
   store_reduced(cp, mod_alt(res, c->alt, alt_set));
   ASSERT_REF();
   return true;
