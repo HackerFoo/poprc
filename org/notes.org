@@ -1,5 +1,30 @@
 #+TITLE: PoprC Notes
 
+* pointers
+- handles (regions)
+- modification returns a new handle
+- like immutable malloc
+- if mutable:
+  - can't dup
+  - like tokens
+- objects are allocated to a handle
+- can't return a handle, only references
+- references can't leave scope of handle (destroyed with handle)
+- how to determine size of region?
+  - static when possible (stack, unless large)
+  - otherwise heap (recursive)
+  - extend quote sizing method
+- unify handles with quotes?
+- autohandle?
+  - every function that returns an object takes an implicit handle
+  - could cause excessive copying to compact regions when returning
+    - sort regions by lifetime
+- associations
+  - handle : array[N], struct
+  - reference / name : ix, .member
+  - dereference : array[ix], struct.member
+  - reference function : ix++
+* next: int max(int *elems, int size)
 * specializing recursive functions
 - need to take [x] -> f -> [x'] to f -> [x] -> f'
 - split at each call to form mutually recursive functions
