@@ -969,6 +969,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   // compile
   e->entry.in = in + fill_args(c);
   e->entry.alts = trace_reduce(&c);
+  assert_throw(c && !(c->value.type.flags & T_FAIL), "reduction failed");
   e->entry.out = function_out(c, true);
   assert(e->entry.out);
   drop(c);
