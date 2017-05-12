@@ -439,6 +439,26 @@ void store_var(cell_t *c, int t) {
   *c = v;
 }
 
+void store_var_bottom(cell_t *c, cell_t *tc) {
+  cell_t v = {
+    .func = func_value,
+    .n = c->n,
+    .size = 2,
+    .alt = c->alt,
+    .value = {
+      .alt_set = 0,
+      .type = {
+        .flags = T_VAR,
+        .exclusive = T_BOTTOM
+      },
+      .ptr = { tc }
+    }
+  };
+  trace_update(c, &v);
+  closure_shrink(c, 1);
+  *c = v;
+}
+
 void fail(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   if(!is_cell(c)) {

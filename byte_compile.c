@@ -245,7 +245,7 @@ cell_t *trace_store_value(const cell_t *c) {
 
   // look to see if the value already is in the trace
   cell_t *tc = trace_lookup_value_linear(c->value.type.exclusive, c->value.integer[0]);
-  if(!tc) {
+  if(!tc && trace_enabled) {
     tc = trace_copy(c);
     tc->value.alt_set = 0;
     tc->alt = NULL;
@@ -706,7 +706,6 @@ unsigned int trace_reduce(cell_t **cp) {
   cell_t **p = cp;
   while(*p) {
     if(!func_list(p, req_simple(T_RETURN))) continue;
-    trace_enabled = true;
     cell_t **a;
     FORLIST(a, *p, true) {
       collapse_row(a);

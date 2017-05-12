@@ -162,6 +162,14 @@ cell_t *var_create_list(cell_t *f, int in, int out, int shift) {
 }
 
 cell_t *var(int t, cell_t *c) {
+  if(c) {
+    TRAVERSE(c, in) {
+      cell_t *b = *p;
+      if(b && is_var(b) && b->value.type.exclusive == T_BOTTOM) {
+        return var_create(T_BOTTOM, b->value.ptr[0], 0, 0);
+      }
+    }
+  }
   return var_create(t, trace_alloc(c ? c->size : 2), 0, 0);
 }
 
@@ -272,13 +280,18 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
   clear_flags(c);
 
   cell_t *res = var(T_FUNCTION, c);
+  bool bottom = res->value.type.exclusive == T_BOTTOM; // kinda HACKy
   res->alt = c->alt;
   RANGEUP(i, in, n) {
     cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {
       drop(c);
       d->expr.arg[0] = res;
-      store_var(d, T_ANY);
+      if(bottom) {
+        store_var_bottom(d, res->value.ptr[0]);
+      } else {
+        store_var(d, T_ANY);
+      }
     }
   }
   store_reduced(cp, res);

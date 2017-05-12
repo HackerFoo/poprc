@@ -253,7 +253,6 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     }
 
     cell_t *res;
-    bool disable_trace = len == 0 && !!(c->expr.flags & FLAGS_RECURSIVE); // TODO remove hacky trace disabling and return T_BOTTOM instead
     rtypes[0].exclusive = treq.t;
     resolve_types(entry, rtypes);
     uint8_t t = rtypes[0].exclusive == T_ANY ? T_BOTTOM : rtypes[0].exclusive;
@@ -277,7 +276,6 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     }
 
     store_reduced(cp, res);
-    trace_enabled = !disable_trace;
     return true;
 
   fail:
