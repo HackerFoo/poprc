@@ -647,7 +647,7 @@ cell_t *trace_return(cell_t *c) {
       x = trace_store(*p, *p) - trace_cur;
     }
     *p = trace_encode(x);
-    trace_cur[x].n++;
+    if(x >= 0) trace_cur[x].n++;
   }
   cell_t *t = trace_copy(c);
   closure_free(c);
