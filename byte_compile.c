@@ -956,7 +956,6 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   csize_t in = closure_in(q);
   cell_t **fp = &q->expr.arg[in];
   assert(*fp);
-  assert(remove_root(fp));
   cell_t *c = *fp;
   e->n = PERSISTENT;
   e->entry.len = 0;
@@ -986,6 +985,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   e->module_name = parent_entry->module_name;
   e->word_name = string_printf("%s_%d", parent_entry->word_name, (int)(q - parent_entry) - 1);
   trace_final_pass(e);
+  assert(remove_root(fp));
   return e;
 }
 
