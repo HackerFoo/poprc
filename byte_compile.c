@@ -319,6 +319,9 @@ void print_bytecode(cell_t *e) {
       printf(" x%d", e->entry.alts);
     }
   }
+  if(e->entry.rec) {
+    printf(" rec");
+  }
   printf(" ___\n");
 
   // body
