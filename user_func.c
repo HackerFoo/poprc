@@ -209,18 +209,24 @@ bool func_exec(cell_t **cp, type_request_t treq) {
   cell_t *returns = NULL;
   type_t rtypes[entry->entry.out];
 
+  // TODO remove this HACK
+  int name_len = entry->word_name ? strlen(entry->word_name) : 0;
+  bool underscore = name_len && entry->word_name[name_len - 1] == '_';
+
   // don't execute, just reduce all args and return variables
   if(len == 0 || // the function is being compiled
      (trace_enabled &&
       (c->expr.flags & FLAGS_RECURSIVE || // the function has already been expanded once
        (entry->entry.rec &&
         (initial_word ||
-         entry->entry.rec > trace_cur[-1].entry.in))))) { // not the outermost function
+         underscore ||
+         entry->entry.in > trace_cur[-1].entry.in))))) { // not the outermost function
     csize_t c_in = closure_in(c);
     alt_set_t alt_set = 0;
     unsigned int nonvar = 0;
     bool specialize = false;
 
+    if(!underscore)
     { // try to unify with initial_word, returning if successful
       cell_t *n = unify_convert(c, initial_word);
       if(n) {
@@ -243,7 +249,8 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     }
     clear_flags(c);
 
-    if(nonvar > 0 &&
+    if(!underscore &&
+       nonvar > 0 &&
        len > 0 &&
        !(c->expr.flags & FLAGS_RECURSIVE) &&
        (!entry->entry.rec || entry->entry.rec <= trace_cur[-1].entry.in))
