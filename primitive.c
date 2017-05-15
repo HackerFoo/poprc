@@ -520,6 +520,10 @@ bool func_print(cell_t **cp, type_request_t treq) {
   return false;
 }
 
+bool is_list_var(cell_t *c) {
+  return is_row_list(c) && is_placeholder(c->value.ptr[0]);
+}
+
 // WORD("is_nil", is_nil, 1, 1)
 bool func_is_nil(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
@@ -533,7 +537,7 @@ bool func_is_nil(cell_t **cp, type_request_t treq) {
 
   cell_t *p = c->expr.arg[0];
   cell_t *res;
-  if(is_var(p)) {
+  if(is_list_var(p)) {
     res = var(T_SYMBOL, c);
   } else {
     res = symbol(is_empty_list(p) ? SYM_True : SYM_False);
