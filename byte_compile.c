@@ -544,11 +544,15 @@ trace_index_t trace_build_quote(cell_t *l) {
   if(is_empty_list(l)) return NIL_INDEX;
 
   if(is_row_list(l) && // ***
-     list_size(l) == 1 &&
-     is_var(l->value.ptr[0]) &&
-     is_function(l->value.ptr[0])) {
-    // identity list, so just return the trace cell for the item in the list
-    return trace_get(l->value.ptr[0]) - trace_cur;
+     list_size(l) == 1) {
+    cell_t *p = l->value.ptr[0];
+    if(is_placeholder(p) &&
+       closure_in(p) == 1 &&
+       closure_out(p) == 0) p = p->expr.arg[0]; //***
+    if(is_var(p) && is_function(p)) {
+      // identity list, so just return the trace cell for the item in the list
+      return trace_get(p) - trace_cur;
+    }
   }
 
   cell_t *vl = 0;

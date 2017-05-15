@@ -416,6 +416,17 @@ bool func_quote(cell_t **cp, UNUSED type_request_t treq) {
 
   f->expr.arg[f_in] = entry;
 
+  bool row = !!(entry->entry.flags & ENTRY_ROW);
+
+  // if a function is wrapped in a row list, just reduce it
+  if(row && f_out == 1) {
+    COUNTUP(i, in) { // HACKy, because store_lazy doesn't drop arguments
+      drop(c->expr.arg[i]);
+    }
+    store_lazy(cp, c, f, 0);
+    return false;
+  }
+
   cell_t *res = make_list(f_out);
   cell_t **out_arg = &f->expr.arg[f_in+1];
   COUNTUP(i, f_out-1) {
@@ -427,7 +438,7 @@ bool func_quote(cell_t **cp, UNUSED type_request_t treq) {
   res->value.ptr[f_out-1] = f;
   refn(f, f_out-1);
   res->alt = c->alt;
-  if(entry->entry.flags & ENTRY_ROW) res->value.type.flags |= T_ROW;
+  if(row) res->value.type.flags |= T_ROW;
 
   store_reduced(cp, res);
   return true;
