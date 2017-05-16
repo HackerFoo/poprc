@@ -482,18 +482,7 @@ void trace_final_pass(cell_t *e) {
   FOR_TRACE(p, start, end) {
     if(p->expr_type.flags & T_INCOMPLETE) {
       if(p->func == func_quote) { // compile a quote
-        cell_t *qe = compile_quote(e, p);
-        if(qe) {
-          p->expr.arg[closure_in(p)] = trace_encode(qe - trace_cells);
-          p->expr_type.flags |= T_SUB;
-        } else { // replace with pushl
-          p->size = 2;
-          p->func = func_ap;
-          FLAG_CLEAR(p->expr.flags, FLAGS_USER_FUNC);
-          cell_t *x = p->expr.arg[0];
-          p->expr.arg[0] = p->expr.arg[1];
-          p->expr.arg[1] = x;
-        }
+        compile_quote(e, p);
 #if SPECIALIZE
       } else if(p->func == func_exec) { // compile a specialized function
         cell_t *se = compile_specialized(e, p);
@@ -952,6 +941,24 @@ void substitute_free_variables(cell_t *c, cell_t **a, csize_t a_in, cell_t *pare
   clean_tmp(vl);
 }
 
+static
+bool simplify_quote(cell_t *e, cell_t *parent_entry, cell_t *q) {
+  if(is_id(e)) {
+    trace_clear(e);
+    trace_ptr = trace_cur; // reset
+
+    // replace with pushl
+    q->size = 2;
+    q->func = func_ap;
+    FLAG_CLEAR(q->expr.flags, FLAGS_USER_FUNC);
+    cell_t *x = q->expr.arg[0];
+    q->expr.arg[0] = q->expr.arg[1];
+    q->expr.arg[1] = x;
+    return true;
+  }
+  return false;
+}
+
 // takes a parent entry and offset to a quote, and creates an entry from compiling the quote
 cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   // set up
@@ -979,16 +986,16 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   e->entry.flags &= ~ENTRY_NOINLINE;
   e->entry.rec = trace_recursive_changes(e);
   e->entry.len = trace_ptr - trace_cur;
-  if(is_id(e)) {
-    trace_clear(e);
-    trace_ptr = trace_cur; // reset
-    return NULL;
-  }
+
+  if(simplify_quote(e, parent_entry, q)) return NULL;
 
   e->module_name = parent_entry->module_name;
   e->word_name = string_printf("%s_%d", parent_entry->word_name, (int)(q - parent_entry) - 1);
   trace_final_pass(e);
   assert(remove_root(fp));
+
+  q->expr.arg[closure_in(q)] = trace_encode(e - trace_cells);
+  q->expr_type.flags |= T_SUB;
   return e;
 }
 
