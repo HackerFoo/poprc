@@ -896,18 +896,6 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   return true;
 }
 
-// is this an identity quote?
-static
-bool is_id(cell_t *e) {
-  cell_t *ret = &e[4];
-  return
-    e->entry.in == 2 &&
-    e->entry.out == 0 &&
-    e->entry.len == 4 &&
-    list_size(ret) == 1 &&
-    trace_decode(ret->value.ptr[0]) == 2;
-}
-
 // replace variable c if there is a matching entry in a
 void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *entry) {
   trace_index_t x = (c->value.ptr[0] - entry) - 1;
@@ -945,19 +933,60 @@ void substitute_free_variables(cell_t *c, cell_t **a, csize_t a_in, cell_t *pare
   clean_tmp(vl);
 }
 
+// matches:
+// ___ f (1 -> 1) ___
+// [0] var, type = ?f x1
+// [1] __primitive.ap 0 -> X, type = f x1
+// [2] return [ 1 ], type = @r x1
 static
-bool simplify_quote(cell_t *e, cell_t *parent_entry, cell_t *q) {
-  if(is_id(e)) {
-    trace_clear(e);
-    trace_ptr = trace_cur; // reset
+bool is_tail(cell_t *e) {
+  static const cell_t pattern[] = {
+    [0] = {
+      .func = func_value,
+      .size = 2,
+      .value = {
+        .type = {
+          .exclusive = T_FUNCTION,
+          .flags = T_VAR }}},
+    [1] = {
+      .func = func_placeholder,
+      .expr_type = {
+        .exclusive = T_FUNCTION,
+        .flags = T_INCOMPLETE },
+      .size = 2,
+      .expr = {
+        .out = 1,
+        .idx = { -1, 0 }}},
+    [2] = {
+      .func = func_value,
+      .size = 2,
+      .value = {
+        .type = {
+          .exclusive = T_RETURN,
+          .flags = T_ROW },
+        .integer = { -2 }}}
+  };
+  return
+    e->entry.in == 1 &&
+    e->entry.out == 1 &&
+    e->entry.len == LENGTH(pattern) &&
+    memcmp(pattern, e+1, sizeof(pattern)) == 0;
+}
 
-    // replace with pushl
+static
+bool simplify_quote(cell_t *e, cell_t *q) {
+  if(is_tail(e)) {
+    trace_clear(e);
+    trace_ptr = trace_cur;
+
     q->size = 2;
     q->func = func_ap;
+    q->expr_type.exclusive = T_FUNCTION;
+    q->expr_type.flags = 0;
     FLAG_CLEAR(q->expr.flags, FLAGS_USER_FUNC);
-    cell_t *x = q->expr.arg[0];
-    q->expr.arg[0] = q->expr.arg[1];
-    q->expr.arg[1] = x;
+    q->expr.out = 1;
+    // q->expr.arg[0] stays the same
+    q->expr.arg[1] = NULL;
     return true;
   }
   return false;
@@ -991,7 +1020,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   e->entry.rec = trace_recursive_changes(e);
   e->entry.len = trace_ptr - trace_cur;
 
-  if(simplify_quote(e, parent_entry, q)) return NULL;
+  if(simplify_quote(e, q)) return NULL;
 
   e->module_name = parent_entry->module_name;
   e->word_name = string_printf("%s_%d", parent_entry->word_name, (int)(q - parent_entry) - 1);

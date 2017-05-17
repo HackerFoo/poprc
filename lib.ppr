@@ -141,3 +141,6 @@ exponent:
     binrec
 
 ^: 1 rotr exponent
+
+__ sums numbers in a list
+sum: [[+] .] [popr drop is_nil not] [head] binrec

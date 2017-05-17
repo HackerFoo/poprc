@@ -13,6 +13,7 @@ Compile to direct C when possible
 **** closure_set_ready
 **** split_args
 * major
+** TODO remove underscore hack
 ** DONE avoid expanding placeholders
 ** DONE overhaul byte_compile to use variable ids
 ** DONE don't trace pushl/pushr/popr again, let assertion mapping enforce assertions
@@ -53,6 +54,7 @@ assert also works this way
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
+** TODO improve pattern matching in byte_compile
 ** DONE write integer exponentiation in Popr
 ** DONE f: [popr drop] [popr 3 <] iterate
 ** DONE compile partially applied recursive functions
