@@ -118,6 +118,7 @@ trace_index_t trace_get_value(cell_t *r) {
   if(is_list(r)) {
     return trace_build_quote(r); // *** TODO prevent building duplicate quotes
   } else if(is_var(r)) {
+    if(r->value.type.flags & T_DEP) return -1;
     return trace_get(r) - trace_cur;
   } else {
     cell_t *t = trace_lookup_value_linear(r->value.type.exclusive, r->value.integer[0]);
@@ -191,6 +192,7 @@ cell_t *trace_copy(const cell_t *c) {
 static
 cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
   cell_t *tc = trace_get(r);
+  if(!tc) return NULL;
   type_t t = r->value.type;
   if(tc->func) {
     // this cell has already been written
@@ -201,10 +203,11 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
     return tc;
   }
   assert(tc->size == c->size);
+  assert(c->func != func_dep_entered &&
+         c->func != func_dep);
   refcount_t n = tc->n;
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
   tc->n = n;
-  if(tc->func == func_dep_entered) tc->func = func_dep; // dep_entered -> dep
   if(is_user_func(tc)) {
     // encode the entry
     cell_t **e = &tc->expr.arg[closure_in(tc)];
@@ -272,6 +275,8 @@ cell_t *trace_store(cell_t *c, const cell_t *r) {
   if(is_var(r)) {
     if(!r->value.ptr[0]) {
       return return_me;
+    } else if (r->value.type.flags & T_DEP) {
+      return trace_dep(c);
 #if SPECIALIZE
     } else if(trace_match_specialize(c)) {
       return trace_build_specialized(c, r);
@@ -400,6 +405,21 @@ void trace_update(cell_t *c, cell_t *r) {
   if(is_list(r)) return;
 
   trace_store(c, r);
+}
+
+cell_t *trace_dep(cell_t *c) {
+  if(!trace_enabled || !is_var(c)) return NULL;
+  if(!(c->value.type.flags & T_DEP)) return c->value.ptr[0];
+  cell_t *tc = trace_alloc(1);
+  cell_t *ph = trace_get(c);
+  assert(ph != tc);
+  ph->expr.arg[c->value.integer[1]] = trace_encode(tc - trace_cur);
+  tc->func = func_dep;
+  tc->expr.arg[0] = trace_encode(ph - trace_cur);
+  ph->n++;
+  c->value.ptr[0] = tc;
+  FLAG_CLEAR(c->value.type.flags, T_DEP);
+  return tc;
 }
 
 // reclaim failed allocation if possible

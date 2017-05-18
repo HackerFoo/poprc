@@ -319,6 +319,7 @@ bool func_assert(cell_t **cp, type_request_t treq) {
     if(is_list(q)) {
       res = map_assert(q, p, res);
     } else {
+      trace_dep(q); // *** store any T_DEP vars before copying
       res->value.type = q->value.type;
       res->value.type.flags |= T_VAR;
     }

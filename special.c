@@ -232,6 +232,7 @@ bool func_dep(cell_t **cp, UNUSED type_request_t treq) {
   insert_root(&p);
   c->func = func_dep_entered;
   reduce_dep(&p);
+  trace_dep(c);
   assert(c->func != func_dep_entered);
   remove_root(&p);
   drop(p);
@@ -288,9 +289,9 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
       drop(c);
       d->expr.arg[0] = res;
       if(bottom) {
-        store_var_bottom(d, res->value.ptr[0]);
+        store_dep_bottom(d, res->value.ptr[0]);
       } else {
-        store_var(d, T_ANY);
+        store_dep(d, res->value.ptr[0], i, T_ANY);
       }
     }
   }

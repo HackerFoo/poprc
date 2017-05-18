@@ -44,6 +44,7 @@ typedef struct __attribute__((packed)) type {
 #define T_BOTTOM    0x0b
 
 // type flags
+#define T_DEP        0x02
 #define T_SUB        0x04
 #define T_INCOMPLETE 0x08
 #define T_ROW        0x10
@@ -110,9 +111,9 @@ struct __attribute__((packed)) value {
   type_t type;
   alt_set_t alt_set;
   union {
-    val_t integer[1]; /* integer */
+    val_t integer[2]; /* integer */
     double flt[1];    /* float */
-    cell_t *ptr[1];   /* list */
+    cell_t *ptr[2];   /* list */
     pair_t map[1];    /* map */
     seg_t str;        /* string */
   };

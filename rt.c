@@ -419,7 +419,7 @@ void store_fail(cell_t *c, cell_t *alt) {
   c->alt = alt;
 }
 
-void store_var(cell_t *c, int t) {
+void store_dep(cell_t *c, cell_t *tc, val_t idx, int t) {
   cell_t v = {
     .func = func_value,
     .n = c->n,
@@ -428,18 +428,17 @@ void store_var(cell_t *c, int t) {
     .value = {
       .alt_set = 0,
       .type = {
-        .flags = T_VAR,
+        .flags = T_VAR | T_DEP,
         .exclusive = t
       },
-      .ptr = { trace_alloc(c->size) }
+      .ptr = { tc, (cell_t *)idx }
     }
   };
-  trace_update(c, &v);
   closure_shrink(c, 1);
   *c = v;
 }
 
-void store_var_bottom(cell_t *c, cell_t *tc) {
+void store_dep_bottom(cell_t *c, cell_t *tc) {
   cell_t v = {
     .func = func_value,
     .n = c->n,

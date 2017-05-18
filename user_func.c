@@ -272,13 +272,12 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     res->alt = c->alt;
 
     // replace outputs with variables
-    RANGEUP(i, 1, entry->entry.out) {
-      cell_t *d = c->expr.arg[c_in + i];
+    RANGEUP(i, c_in + 1, c_in + entry->entry.out) {
+      cell_t *d = c->expr.arg[i];
       if(d && is_dep(d)) {
         assert(d->expr.arg[0] == c);
         drop(c);
-        d->expr.arg[0] = res;
-        store_var(d, rtypes[i].exclusive);
+        store_dep(d, res->value.ptr[0], i, rtypes[i].exclusive);
       }
     }
 
