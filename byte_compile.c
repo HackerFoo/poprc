@@ -938,6 +938,7 @@ void substitute_free_variables(cell_t *c, cell_t **a, csize_t a_in, cell_t *pare
 // [0] var, type = ?f x1
 // [1] __primitive.ap 0 -> X, type = f x1
 // [2] return [ 1 ], type = @r x1
+#define OPERAND(x) FLIP_PTR((cell_t *)(x))
 static
 bool is_tail(cell_t *e) {
   static const cell_t pattern[] = {
@@ -956,7 +957,7 @@ bool is_tail(cell_t *e) {
       .size = 2,
       .expr = {
         .out = 1,
-        .idx = { -1, 0 }}},
+        .arg = { OPERAND(0), 0 }}},
     [2] = {
       .func = func_value,
       .size = 2,
@@ -964,7 +965,7 @@ bool is_tail(cell_t *e) {
         .type = {
           .exclusive = T_RETURN,
           .flags = T_ROW },
-        .integer = { -2 }}}
+        .ptr = { OPERAND(1) }}}
   };
   return
     e->entry.in == 1 &&
