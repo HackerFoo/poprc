@@ -352,7 +352,7 @@ void arg(cell_t *c, cell_t *a) {
     arg(c->expr.arg[i], a);
     if(closure_is_ready(c->expr.arg[i])) {
       if(i == 0) closure_set_ready(c, true);
-      else --*(intptr_t *)&c->expr.arg[0]; // decrement offset
+      else --c->expr.idx[0]; // decrement offset
     }
   }
 }
@@ -385,7 +385,7 @@ void update_ready(cell_t *c, cell_t *a) {
     p = n;
   }
 
-  if(q) --*(intptr_t *)&q->expr.arg[0]; // decrement offset
+  if(q) --q->expr.idx[0]; // decrement offset
 }
 
 // non-destructive (_nd) version of arg
