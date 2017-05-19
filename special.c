@@ -164,7 +164,7 @@ cell_t *var_create_list(cell_t *f, int in, int out, int shift) {
 cell_t *var(int t, cell_t *c) {
   if(c) {
     TRAVERSE(c, in) {
-      cell_t *b = *p;
+      cell_t *b = clear_ptr(*p);
       if(b && is_var(b) && b->value.type.exclusive == T_BOTTOM) {
         return var_create(T_BOTTOM, b->value.ptr[0], 0, 0);
       }
@@ -309,8 +309,7 @@ bool is_placeholder(cell_t const *c) {
 }
 
 bool func_fail(cell_t **cp, type_request_t treq) {
-  cell_t *c = *cp;
-  assert(!is_marked(c));
+  assert(!is_marked(*cp));
   measure.reduce_cnt--;
   fail(cp, treq);
   return false;

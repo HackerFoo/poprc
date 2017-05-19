@@ -37,20 +37,20 @@ bool is_user_func(const cell_t *c) {
 }
 
 static
-cell_t *map_cell(cell_t **map, intptr_t x) {
+cell_t *map_cell(cell_t *code, intptr_t x) {
   return
     x == NIL_INDEX ? &nil_cell :
     x < 0 ? NULL :
-    map[x];
+    code[x].alt;
 }
 
 static
-cell_t *get_return_arg(cell_t **map, cell_t *returns, intptr_t x) {
+cell_t *get_return_arg(cell_t *code, cell_t *returns, intptr_t x) {
   trace_index_t i = trace_decode(returns->value.ptr[x]);
   return // can't use map_cell, returns empty_list() instead of &nil_cell
     i == NIL_INDEX ? empty_list() :
     i < 0 ? NULL :
-    map[i];
+    code[i].alt;
 }
 
 // given a list l with arity in -> out, produce an application of the list
@@ -204,7 +204,6 @@ bool func_exec(cell_t **cp, type_request_t treq) {
   cell_t *entry = c->expr.arg[in];
   cell_t *code = entry + 1;
   size_t len = entry->entry.len;
-  cell_t *map[len];
   cell_t *res;
   cell_t *returns = NULL;
   type_t rtypes[entry->entry.out];
@@ -293,12 +292,12 @@ expand:
   assert(len);
 
   c->expr.arg[in] = 0;
-  memset(map, 0, sizeof(map[0]) * len);
+  trace_clear_alt(entry); // *** probably shouldn't need this
 
   COUNTUP(i, in) {
     cell_t *p = &code[i];
     assert(is_var(p));
-    map[i] = refn(c->expr.arg[in - 1 - i], p->n);
+    p->alt = refn(c->expr.arg[in - 1 - i], p->n);
   }
 
   // allocate, copy, and index
@@ -307,7 +306,7 @@ expand:
     cell_t *p = &code[i];
     s = calculate_cells(p->size);
     if(!p->func) {
-      map[i] = 0;
+      p->alt = 0;
       continue; // skip empty cells TODO remove these
     }
     if(trace_type(p).exclusive == T_RETURN) {
@@ -317,13 +316,15 @@ expand:
     cell_t *nc = closure_alloc_cells(s);
     memcpy(nc, p, s * sizeof(cell_t));
     nc->tmp = 0;
-    map[i] = nc;
+    p->alt = nc;
   }
 
   // rewrite pointers
-  RANGEUP(i, in, len) {
-    cell_t *t = map_cell(map, i);
-    if(!t) continue;
+  for(size_t i = in; i < len; i += s) { // TODO: rewrite with FORTRACE
+    cell_t *p = &code[i];
+    cell_t *t = map_cell(code, i);
+    s = calculate_cells(p->size);
+    if((is_value(p) && p->value.type.exclusive == T_RETURN) || !t) continue;
 
     // skip rewriting for the entry argument
     cell_t **t_entry = NULL;
@@ -335,7 +336,7 @@ expand:
     TRAVERSE(t, alt, args, ptrs) {
       if(p != t_entry) {
         trace_index_t x = trace_decode(*p);
-        *p = map_cell(map, x);
+        *p = map_cell(code, x);
       }
     }
 
@@ -365,10 +366,10 @@ expand:
 
   // first one
   alt_set_t alt_set = as_multi(alt_id, alt_n, branch++);
-  res = id(get_return_arg(map, returns, out), alt_set);
+  res = id(get_return_arg(code, returns, out), alt_set);
   COUNTUP(i, out) {
     cell_t *d = c->expr.arg[n - 1 - i];
-    store_lazy_dep(d, get_return_arg(map, returns, i), alt_set);
+    store_lazy_dep(d, get_return_arg(code, returns, i), alt_set);
   }
 
   // rest
@@ -377,7 +378,7 @@ expand:
     alt_set_t as = as_multi(alt_id, alt_n, branch++);
     returns = &code[next];
     FOREACH(i, results) {
-      cell_t *a = get_return_arg(map, returns, i);
+      cell_t *a = get_return_arg(code, returns, i);
       results[i] = &(*results[i])->alt;
       *results[i] = a ? id(a, as) : NULL;
     }

@@ -277,8 +277,7 @@ csize_t count_deps(cell_t *c) {
 cell_t *expand_deps(cell_t *c, csize_t s) {
   csize_t deps = count_deps(c);
   c->n -= deps;
-  refcount_t n = c->n;
-  assert(!n);
+  assert(!c->n);
   csize_t in = closure_in(c);
   c = expand(c, s);
 

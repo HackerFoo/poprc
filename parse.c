@@ -386,7 +386,7 @@ cell_t *parse_defs(cell_t **c, const char *module_name, cell_t **err) {
     seg_t name = tok_seg(n);
     cell_free(n);
     l->module_name = module_name;
-    cell_t *old = module_set(m, name, l);
+    UNUSED cell_t *old = module_set(m, name, l);
     assert(old == NULL); // TODO append defs?
     if((*err = check_def(l))) break;
   }
@@ -428,7 +428,7 @@ bool parse_module(cell_t **c, seg_t *name, cell_t **err) {
   cell_free(n);
   const char *strname = seg_string(*name); // TODO remove redundant string allocation
   cell_t *m = parse_defs(&p, strname, err);
-  cell_t *old = module_set(modules, *name, m);
+  UNUSED cell_t *old = module_set(modules, *name, m);
   assert(old == NULL); // TODO append modules?
   if(modules) modules->n = PERSISTENT;
   *c = p;

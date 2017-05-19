@@ -343,4 +343,8 @@
 #define FLAG_CLEAR(var, flag) ((var) &= ~(flag))
 #define FLAG_SET_TO(var, flag, val) ((val) ? FLAG_SET(var, flag) : FLAG_CLEAR(var, flag))
 
+#define CELL_INDEX(x) (int)((x) - cells)
+#define TRACE_INDEX(x) (int)((x) - trace_cells)
+#define TRACE_VAR_INDEX(x) (int)((x) - trace_cur)
+
 #endif

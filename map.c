@@ -629,7 +629,7 @@ bool check_order(pair_t *elems, size_t size, cmp_t cmp) {
   RANGEUP(i, 1, size) {
     uintptr_t x = elems[i].first;
     if(cmp(x, prev)) {
-      printf("elems[%ld] < prev\n", i);
+      printf("elems[%d] < prev\n", (int)i);
       return false;
     }
     prev = x;

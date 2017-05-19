@@ -163,8 +163,7 @@ cell_t *trace_var_specialized(uint8_t t, cell_t *c) {
 
 // reduce allocated space in the trace
 void trace_shrink(cell_t *t, csize_t args) {
-  csize_t prev_size = t->size;
-  assert(args <= prev_size);
+  assert(args <= t->size);
   csize_t
     prev_cells = calculate_cells(t->size),
     new_cells = calculate_cells(args),
@@ -309,6 +308,16 @@ void trace_stop() {
   trace_enabled = false;
 }
 
+void trace_clear_alt(cell_t *e) {
+  size_t count = e->entry.len;
+  cell_t *start = e + 1;
+  cell_t *end = start + count;
+  FOR_TRACE(c, start, end) {
+    if(is_value(c) && c->value.type.exclusive == T_RETURN) continue;
+    c->alt = 0;
+  }
+}
+
 // print bytecode for entry e
 void print_bytecode(cell_t *e) {
   size_t count = e->entry.len;
@@ -338,7 +347,9 @@ void print_bytecode(cell_t *e) {
       continue;
     }
     if(is_value(c)) {
+      bool can_have_alt = false;
       if(is_list(c) || c->value.type.exclusive == T_RETURN) { // return
+        can_have_alt = true;
         if(c->value.type.exclusive == T_RETURN) printf(" return");
         printf(" [");
         COUNTDOWN(i, list_size(c)) {
@@ -351,7 +362,7 @@ void print_bytecode(cell_t *e) {
         printf(" val %" PRIdPTR, c->value.integer[0]);
       }
       printf(", type = %s", show_type_all_short(c->value.type));
-      if(c->alt) printf(" -> %" PRIdPTR, trace_decode(c->alt));
+      if(can_have_alt && c->alt) printf(" -> %" PRIdPTR, trace_decode(c->alt));
     } else { // print a call
       const char *module_name = NULL, *word_name = NULL;
       if(!(c->expr_type.flags & T_INCOMPLETE)) trace_get_name(c, &module_name, &word_name);
@@ -379,7 +390,6 @@ void print_bytecode(cell_t *e) {
         }
       }
       printf(", type = %s", show_type_all_short(c->expr_type));
-      if(c->alt) printf(" -> %" PRIdPTR, trace_decode(c->alt));
     }
     printf(" x%d", c->n + 1);
     if(t >= e->entry.in &&
@@ -1222,7 +1232,7 @@ void command_entry_number(cell_t *rest) {
       *m = eval_module(),
       *e = module_lookup_compiled(tok_seg(rest), &m);
     if(e) {
-      printf("entry number: %ld\n", e - trace_cells);
+      printf("entry number: %d\n", TRACE_INDEX(e));
     }
   }
 }

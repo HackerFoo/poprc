@@ -182,9 +182,9 @@ int main(int argc, char **argv) {
     cells_init();
     parse_init();
     module_init();
-    bool quit = false;
 
 #ifndef EMSCRIPTEN
+    bool quit = false;
     tty = isatty(fileno(stdin));
 
     if(argc > 1) {
@@ -211,8 +211,9 @@ int main(int argc, char **argv) {
     free_modules();
     unload_files();
     if(run_check_free) check_free();
+#endif
   }
-#else
+#ifdef EMSCRIPTEN
   emscripten_exit_with_live_runtime();
 #endif
   return 0;

@@ -17,7 +17,10 @@ ifeq ($(USE_LINENOISE),y)
 	USE_READLINE = n
 endif
 
-OS := $(shell uname)
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+	UNAME_O := $(shell uname -o)
+endif
 
 ifeq ($(CC),cc)
 	CC=clang
@@ -30,6 +33,9 @@ ifeq ($(findstring gcc, $(CC)),gcc)
 	OPT_FLAG=-O3
 endif
 ifeq ($(findstring clang, $(CC)),clang)
+ifneq ($(UNAME_O),Android) # ubsan doesn't work on Termux
+	SANITIZE := -fsanitize=undefined -fno-sanitize=bounds
+endif
 	CFLAGS = -Wall -Wextra -pedantic -std=gnu11 -Wno-gnu-zero-variadic-macro-arguments -Wno-address-of-packed-member -Wno-unknown-warning-option -Werror=implicit-function-declaration -Werror=int-conversion
 	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -std=c++98 -m32
 	OPT_FLAG=-O3
@@ -115,8 +121,6 @@ ifeq ($(USE_LINENOISE),y)
 	OBJS += $(BUILD_DIR)/linenoise.o
 	CFLAGS += -DUSE_LINENOISE
 endif
-
-UNAME_S := $(shell uname -s)
 
 ifeq ($(UNAME_S),Darwin)
 	OPEN_DIAGRAMS := open

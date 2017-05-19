@@ -43,7 +43,7 @@ static BITSET_INDEX(marked, cells);
 
 void mark_cell(cell_t *c) {
   if(is_cell(c)) {
-    set_bit(marked, c - cells);
+    set_bit(marked, CELL_INDEX(c));
   }
 }
 
@@ -198,7 +198,7 @@ void print_cell_pointer(FILE *f, cell_t *p) {
 void graph_cell(FILE *f, cell_t const *c) {
   c = clear_ptr(c);
   if(!is_closure(c) || !is_cell(c)) return;
-  size_t node = c - cells;
+  int node = CELL_INDEX(c);
   int border = check_bit(marked, node) ? 4 : 0;
   clear_bit(marked, node);
   if(check_bit(visited, node)) return;
@@ -213,12 +213,12 @@ void graph_cell(FILE *f, cell_t const *c) {
   if(c->n == PERSISTENT || is_map(c)) return; // HACK
 
   /* print node attributes */
-  fprintf(f, "node%" PRIuPTR " [\nlabel =<", node);
+  fprintf(f, "node%d [\nlabel =<", node);
 
   const char *module_name, *word_name;
   get_name(c, &module_name, &word_name);
 
-  fprintf(f, "<table border=\"%d\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%" PRIuPTR ") %s.%s%s %x ",
+  fprintf(f, "<table border=\"%d\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%d) %s.%s%s %x ",
           border,
           node,
           module_name,
@@ -258,7 +258,7 @@ void graph_cell(FILE *f, cell_t const *c) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
     } else if(is_var(c)) {
       if(c->value.ptr[0]) {
-        fprintf(f, "<tr><td bgcolor=\"orange\">trace: %" PRIdPTR "</td></tr>", c->value.ptr[0] - trace_cur);
+        fprintf(f, "<tr><td bgcolor=\"orange\">trace: %d</td></tr>", TRACE_VAR_INDEX(c->value.ptr[0]));
       }
     } else {
       int n = val_size(c);
@@ -281,8 +281,8 @@ void graph_cell(FILE *f, cell_t const *c) {
   /* print edges */
   if(is_cell(c->alt)) {
     cell_t *alt = clear_ptr(c->alt);
-    fprintf(f, "node%" PRIuPTR ":alt -> node%" PRIuPTR ":top;\n",
-            node, alt - cells);
+    fprintf(f, "node%d:alt -> node%d:top;\n",
+            node, CELL_INDEX(alt));
     graph_cell(f, c->alt);
   }
   if(is_value(c)) {
@@ -290,8 +290,8 @@ void graph_cell(FILE *f, cell_t const *c) {
       csize_t n = list_size(c);
       while(n--) {
         if(is_cell(c->value.ptr[n])) {
-          fprintf(f, "node%" PRIuPTR ":ptr%u -> node%" PRIuPTR ":top;\n",
-                  node, (unsigned int)n, c->value.ptr[n] - cells);
+          fprintf(f, "node%d:ptr%u -> node%d:top;\n",
+                  node, (unsigned int)n, CELL_INDEX(c->value.ptr[n]));
           graph_cell(f, c->value.ptr[n]);
         }
       }
@@ -301,16 +301,16 @@ void graph_cell(FILE *f, cell_t const *c) {
     COUNTUP(i, start_out) {
       cell_t *arg = clear_ptr(c->expr.arg[i]);
       if(is_cell(arg)) {
-        fprintf(f, "node%" PRIuPTR ":arg%d -> node%" PRIuPTR ":top;\n",
-                c - cells, (unsigned int)i, arg - cells);
+        fprintf(f, "node%d:arg%d -> node%d:top;\n",
+                node, (unsigned int)i, CELL_INDEX(arg));
         graph_cell(f, arg);
       }
     }
     RANGEUP(i, start_out, n) {
       cell_t *arg = clear_ptr(c->expr.arg[i]);
       if(is_cell(arg)) {
-        fprintf(f, "node%" PRIuPTR ":arg%d -> node%" PRIuPTR ":top [color=lightgray];\n",
-                c - cells, (unsigned int)i, arg - cells);
+        fprintf(f, "node%d:arg%d -> node%d:top [color=lightgray];\n",
+                node, (unsigned int)i, CELL_INDEX(arg));
         graph_cell(f, arg);
       }
     }
@@ -390,7 +390,7 @@ void show_func(cell_t const *c) {
   int n = closure_args(c);
   char const *s = function_token(c);
   if(!s) return;
-  if(is_placeholder(c)) printf(" ?%" PRIuPTR " =", c - cells);
+  if(is_placeholder(c)) printf(" ?%d =", CELL_INDEX(c));
   COUNTUP(i, n) {
     cell_t *arg = c->expr.arg[i];
     if(is_closure(arg)) {
@@ -407,7 +407,7 @@ void show_var(cell_t const *c) {
   if(is_list(c)) {
     show_list(c);
   } else {
-    printf(" ?%c%" PRIuPTR, type_char(c->value.type), c - cells);
+    printf(" ?%c%d", type_char(c->value.type), CELL_INDEX(c));
   }
 }
 
