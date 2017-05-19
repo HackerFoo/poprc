@@ -288,13 +288,8 @@ ___ control.ifdo (2 -> 1) x2 ___
 ___ control.in2 (2 -> 3) ___
 [0] var, type = ?a x2
 [1] var, type = ?a x2
-[2] quote control.in2_2 0 1, type = l x1
+[2] __primitive.ap 1 0 [], type = f x1
 [3] return [ 1 0 2 ], type = r x1
-
-___ control.in2_2 (2 -> 2) ___
-[0] var, type = ?a x1
-[1] var, type = ?a x1
-[2] return [ 0 1 ], type = r x1
 
 ___ control.twice (3 -> 2) ___
 [0] var, type = ?f x2

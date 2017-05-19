@@ -215,6 +215,13 @@ test_output/bytecode64.log: eval lib.ppr tests.ppr
 .PHONY: test_output
 test_output: test_output/test.log test_output/tests.txt.log test_output/bytecode32.log test_output/bytecode64.log
 
+.PHONY: all_test_output
+all_test_output:
+	make clean
+	make test_output
+	make clean
+	make FORCE_32_BIT=y test_output
+
 .PHONY: rtags
 rtags: make-eval.log
 	-rc -c - < make-eval.log; true

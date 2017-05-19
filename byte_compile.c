@@ -994,23 +994,66 @@ bool is_tail(cell_t *e) {
     memcmp(pattern, e+1, sizeof(pattern)) == 0;
 }
 
+// all variable quote can be replaced with ap
+static
+bool is_ap(cell_t *e) {
+  cell_t *code = e + 1;
+  size_t in = e->entry.in;
+  if(in >= e->entry.len ||
+     e->entry.alts != 1) return false;
+  COUNTUP(i, in) {
+    if(!is_var(&code[i])) return false;
+  }
+  if(!is_value(&code[in]) ||
+     code[in].value.type.exclusive != T_RETURN) return false;
+  return true;
+}
+
 static
 bool simplify_quote(cell_t *e, cell_t *q) {
   if(is_tail(e)) {
-    trace_clear(e);
-    trace_ptr = trace_cur;
-
-    q->size = 2;
+    trace_shrink(q, 2);
     q->func = func_ap;
     q->expr_type.exclusive = T_FUNCTION;
     q->expr_type.flags = 0;
-    FLAG_CLEAR(q->expr.flags, FLAGS_USER_FUNC);
     q->expr.out = 1;
     // q->expr.arg[0] stays the same
     q->expr.arg[1] = NULL;
-    return true;
+    goto finish;
+  } else if (is_ap(e)) {
+    csize_t in = e->entry.in;
+    assert(in + 1 == q->size && q->expr.out == 0);
+    csize_t out = e->entry.out;
+    cell_t *code = e + 1;
+    cell_t *ret = &code[in];
+    bool nil_arg = !(ret->value.type.flags & T_ROW);
+    csize_t args = out + nil_arg;
+    if(args <= q->size) {
+      // store arguments in alts
+      COUNTUP(i, in) {
+        code[in - 1 - i].alt = q->expr.arg[i];
+      }
+
+      trace_shrink(q, args);
+
+      // look up arguments stored earlier
+      COUNTUP(i, in) {
+        q->expr.arg[i] = code[trace_decode(ret->value.ptr[out - 1 - i])].alt;
+      }
+      if(nil_arg) q->expr.arg[in] = trace_encode(NIL_INDEX);
+
+      q->func = func_ap;
+      q->expr_type.exclusive = T_FUNCTION;
+      q->expr_type.flags = 0;
+      goto finish;
+    }
   }
   return false;
+finish:
+  FLAG_CLEAR(q->expr.flags, FLAGS_USER_FUNC);
+  trace_clear(e);
+  trace_ptr = trace_cur;
+  return true;
 }
 
 // takes a parent entry and offset to a quote, and creates an entry from compiling the quote
