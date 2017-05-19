@@ -1,4 +1,4 @@
-Popr Compiler
+Popr Compiler [![Build Status](https://travis-ci.org/HackerFoo/poprc.svg?branch=master)](https://travis-ci.org/HackerFoo/poprc)
 ============
 
 This project is to implement a compiler for the Popr (previously Peg) language.  The language has changed somewhat to support efficient compilation and type checking.
