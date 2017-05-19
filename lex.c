@@ -1,4 +1,4 @@
-/* Copyright 2012-2016 Dustin DeWeese
+/* Copyright 2012-2017 Dustin DeWeese
    This file is part of PoprC.
 
     PoprC is free software: you can redistribute it and/or modify
