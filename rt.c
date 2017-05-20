@@ -30,6 +30,7 @@
 #include "gen/byte_compile.h"
 #include "gen/list.h"
 #include "gen/user_func.h"
+#include "gen/log.h"
 
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
@@ -57,6 +58,7 @@ bool remove_root(cell_t **r) {
 void rt_init() {
   alt_cnt = 0;
   memset(rt_roots, 0, sizeof(rt_roots));
+  log_init();
 }
 
 // Duplicate c to c->alt and return it

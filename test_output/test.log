@@ -45,6 +45,10 @@ _check_list_remaining_size: 2 + 2 = 4
 _check_list_remaining_size: 0 + 1 = 1
 _check_list_remaining_size: 1 + 0 = 1
 list_remaining_size => 0
+@ log
+test 1 + 2 = 3
+WAZZUP d00d
+log => 0
 @ loops
 up: 0
 up: 1
