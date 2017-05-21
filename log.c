@@ -86,13 +86,10 @@ unsigned int log_printf(unsigned int idx) {
   return idx % LOG_SIZE;
 }
 
-bool log_print_next() {
-  if(log_tail != log_head) {
-    log_tail = log_printf(log_tail);
-    return true;
-  } else {
-    return false;
-  }
+void log_print_all() {
+  for(unsigned int i = log_tail;
+      i != log_head;
+      i = log_printf(i));
 }
 
 #if INTERFACE
@@ -168,17 +165,17 @@ bool log_print_next() {
   do {                                          \
     log_add((intptr_t)("\0" fmt));              \
   } while(0)
-#define LOG(...) DISPATCH(LOG, 9, __VA_ARGS__)
+#define LOG(fmt, ...) DISPATCH(LOG, 9, __FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
 #endif
 
 int test_log() {
   log_init();
   LOG("test %d + %d = %d\n", 1, 2, 3);
   LOG("WAZZUP %s\n", "d00d");
-  while(log_print_next());
+  log_print_all();
   return 0;
 }
 
 void command_logs(UNUSED cell_t *rest) {
-  while(log_print_next());
+  log_print_all();
 }

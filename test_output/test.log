@@ -46,8 +46,8 @@ _check_list_remaining_size: 0 + 1 = 1
 _check_list_remaining_size: 1 + 0 = 1
 list_remaining_size => 0
 @ log
-test 1 + 2 = 3
-WAZZUP d00d
+log.c:173: test 1 + 2 = 3
+log.c:174: WAZZUP d00d
 log => 0
 @ loops
 up: 0
