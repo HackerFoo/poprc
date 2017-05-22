@@ -70,8 +70,22 @@ unsigned int log_printf(unsigned int idx) {
       CASE('d', int, "%d");
       CASE('u', unsigned int, "%u");
       CASE('x', int, "%x");
-      CASE('s', char *, "%s");
+      CASE('s', const char *, "%s");
  #undef CASE
+    case '.':
+      if(n[2] == '*' && n[3] == 's') {
+        if(len > 1) {
+          idx = idx % LOG_SIZE;
+          int size = log[idx++];
+          idx = idx % LOG_SIZE;
+          printf("%.*s", size, (const char *)log[idx++]);
+          len -= 2;
+        } else {
+          printf("X");
+        }
+        n += 2;
+        break;
+      }
     case '%':
       printf("%%");
       break;
@@ -172,6 +186,7 @@ int test_log() {
   log_init();
   LOG("test %d + %d = %d\n", 1, 2, 3);
   LOG("WAZZUP %s\n", "d00d");
+  LOG("[%.*s]\n", 3, "12345");
   log_print_all();
   return 0;
 }

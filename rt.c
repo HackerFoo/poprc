@@ -58,7 +58,6 @@ bool remove_root(cell_t **r) {
 void rt_init() {
   alt_cnt = 0;
   memset(rt_roots, 0, sizeof(rt_roots));
-  log_init();
 }
 
 // Duplicate c to c->alt and return it

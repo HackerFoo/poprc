@@ -47,6 +47,7 @@
 #include "gen/lex.h"
 #include "gen/module.h"
 #include "gen/list.h"
+#include "gen/log.h"
 
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
@@ -178,7 +179,10 @@ int main(int argc, char **argv) {
   error_t error;
   if(catch_error(&error)) {
     print_error(&error);
+    printf("___ LOG ___\n");
+    log_print_all();
   } else {
+    log_init();
     cells_init();
     parse_init();
     module_init();

@@ -31,6 +31,7 @@
 #include "gen/list.h"
 #include "gen/user_func.h"
 #include "gen/print.h"
+#include "gen/log.h"
 
 bool is_user_func(const cell_t *c) {
   return !is_value(c) && !!(c->expr.flags & FLAGS_USER_FUNC);
@@ -157,7 +158,10 @@ cell_t *unify_convert(cell_t *c, cell_t *pat) {
     out = entry->entry.out;
   cell_t *base = entry + 1;
   cell_t *ret = NULL;
-  assert(out == 1); // for now
+  if(out != 1) { // for now
+    LOG("unify_convert %d: out(%d) != 1\n", c-cells, out);
+    return NULL;
+  }
 
   cell_t *vl = 0;
   cell_t **tail = &vl;
@@ -229,6 +233,13 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     { // try to unify with initial_word, returning if successful
       cell_t *n = unify_convert(c, initial_word);
       if(n) {
+        LOG("unified %s.%s %d with initial_word in %s.%s %d\n",
+            entry->module_name,
+            entry->word_name,
+            CELL_INDEX(c),
+            trace_cur[-1].module_name,
+            trace_cur[-1].word_name,
+            CELL_INDEX(initial_word));
         drop(c);
         *cp = n;
         return false;

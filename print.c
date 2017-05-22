@@ -52,7 +52,7 @@ char const *show_alt_set(uintptr_t as) {
   char *p = out;
   unsigned int n = sizeof(as)*4;
   const unsigned int shift = sizeof(as) * 8 - 2;
-  uintptr_t mask = 3l << shift;
+  uintptr_t mask = ((uintptr_t)3) << shift;
 
   while(!(as & mask) && n) {
     as <<= 2;

@@ -40,6 +40,7 @@
 #include "gen/module.h"
 #include "gen/user_func.h"
 #include "gen/list.h"
+#include "gen/log.h"
 
 // trace cells are allocated only when this is true
 bool trace_enabled = false;
@@ -903,6 +904,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   e->entry.in = in;
   e->entry.out = out;
   e->entry.len = 0;
+  LOG("compiling %s.%.*s at entry %d\n", e->module_name, name.n, name.s, TRACE_INDEX(e));
 
   // parse
   const cell_t *p = toks;
@@ -1220,19 +1222,6 @@ void command_bytecode(cell_t *rest) {
     if(e) {
       printf("\n");
       print_bytecode(e);
-    }
-  }
-}
-
-// get the absolute trace index of an entry (for debugging)
-void command_entry_number(cell_t *rest) {
-  if(rest) {
-    command_def(rest);
-    cell_t
-      *m = eval_module(),
-      *e = module_lookup_compiled(tok_seg(rest), &m);
-    if(e) {
-      printf("entry number: %d\n", TRACE_INDEX(e));
     }
   }
 }
