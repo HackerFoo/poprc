@@ -1023,6 +1023,7 @@ bool is_ap(cell_t *e) {
 
 static
 bool simplify_quote(cell_t *e, cell_t *parent_entry, cell_t *q) {
+  cell_t **root = &q->expr.arg[closure_in(q)];
   if(is_tail(e)) {
     LOG("%d -> tail\n", q-parent_entry-1);
     trace_shrink(q, 2);
@@ -1040,8 +1041,7 @@ bool simplify_quote(cell_t *e, cell_t *parent_entry, cell_t *q) {
     csize_t out = e->entry.out;
     cell_t *code = e + 1;
     cell_t *ret = &code[in];
-    bool nil_arg = !(ret->value.type.flags & T_ROW);
-    csize_t args = out + nil_arg;
+    csize_t args = out + 1;
     if(args <= q->size) {
       // store arguments in alts
       COUNTUP(i, in) {
@@ -1051,12 +1051,12 @@ bool simplify_quote(cell_t *e, cell_t *parent_entry, cell_t *q) {
       trace_shrink(q, args);
 
       // look up arguments stored earlier
-      COUNTUP(i, in) {
+      COUNTUP(i, out) {
         q->expr.arg[i] = code[trace_decode(ret->value.ptr[out - 1 - i])].alt;
       }
-      if(nil_arg) q->expr.arg[in] = trace_encode(NIL_INDEX);
+      q->expr.arg[out] = trace_encode(NIL_INDEX);
 
-      q->func = func_ap;
+      q->func = ret->value.type.flags & T_ROW ? func_compose : func_ap;
       q->expr_type.exclusive = T_FUNCTION;
       q->expr_type.flags = 0;
       goto finish;
@@ -1067,6 +1067,7 @@ finish:
   FLAG_CLEAR(q->expr.flags, FLAGS_USER_FUNC);
   trace_clear(e);
   trace_ptr = trace_cur;
+  remove_root(root);
   return true;
 }
 

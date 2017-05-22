@@ -259,6 +259,15 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     }
     clear_flags(c);
 
+    // HACK force lists on tail calls
+    if(entry == &trace_cur[-1]) {
+      COUNTUP(i, c_in) {
+        if(is_list(c->expr.arg[i]) && entry == &trace_cur[-1]) {
+          func_list(&c->expr.arg[i], req_simple(T_RETURN));
+        }
+      }
+    }
+
     if(!underscore &&
        nonvar > 0 &&
        len > 0 &&

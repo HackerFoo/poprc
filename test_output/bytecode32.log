@@ -94,26 +94,22 @@ ___ algorithm.sum (1 -> 1) x2 rec ___
 [1] __primitive.is_nil 2, type = s x1
 [2] __primitive.ap 0 -> X, type = f x1
 [3] __primitive.not 1, type = s x1
-[4] __primitive.assert 5 3, type = 0 x1
-[5] algorithm.sum 6, type = 0 x1
-[6] quote algorithm.sum_6 0, type = l x1
-[7] return [ 4 ], type = r -> 15 x1
-[8] __primitive.is_nil 9, type = s x1
-[9] __primitive.ap 0 -> X, type = f x1
-[10] __primitive.not 8, type = s x1
-[11] __primitive.not 10, type = s x1
-[12] __primitive.assert 14 11, type = a x1
-[13] __primitive.ap 0 -> 14, type = f x1
-[14] __primitive.dep 13, type = a x1
-[15] return [ 12 ], type = r x1
-
-___ algorithm.sum_6 (1 -> 2) ___
-[0] var, type = ?f x1
-[1] __primitive.ap 0 -> 2 3, type = f x3
-[2] __primitive.dep 1, type = a x1
-[3] __primitive.dep 1, type = a x1
-[4] __primitive.add 2 3, type = i x1
-[5] return [ 1 4 ], type = @r x1
+[4] __primitive.assert 9 3, type = 0 x1
+[5] __primitive.ap 0 -> 6 7, type = f x3
+[6] __primitive.dep 5, type = a x1
+[7] __primitive.dep 5, type = a x1
+[8] __primitive.add 6 7, type = i x1
+[9] algorithm.sum 10, type = 0 x1
+[10] __primitive.compose 5 8 [], type = f x1
+[11] return [ 4 ], type = r -> 19 x1
+[12] __primitive.is_nil 13, type = s x1
+[13] __primitive.ap 0 -> X, type = f x1
+[14] __primitive.not 12, type = s x1
+[15] __primitive.not 14, type = s x1
+[16] __primitive.assert 18 15, type = a x1
+[17] __primitive.ap 0 -> 18, type = f x1
+[18] __primitive.dep 17, type = a x1
+[19] return [ 16 ], type = r x1
 
 ___ control.$ (2 -> 1) ___
 [0] var, type = ?f x1
