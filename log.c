@@ -95,7 +95,7 @@ void log_print_all() {
 #if INTERFACE
 #define LOG_0(fmt, x0, x1, x2, x3, x4, x5, x6, x7, ...) \
   do {                                                  \
-    log_add((intptr_t)("\8" fmt));                      \
+    log_add((intptr_t)("\x08" fmt));                    \
     log_add((intptr_t)(x0));                            \
     log_add((intptr_t)(x1));                            \
     log_add((intptr_t)(x2));                            \
@@ -107,7 +107,7 @@ void log_print_all() {
   } while(0)
 #define LOG_1(fmt, x0, x1, x2, x3, x4, x5, x6, ...)     \
   do {                                                  \
-    log_add((intptr_t)("\7" fmt));                      \
+    log_add((intptr_t)("\x07" fmt));                    \
     log_add((intptr_t)(x0));                            \
     log_add((intptr_t)(x1));                            \
     log_add((intptr_t)(x2));                            \
@@ -118,7 +118,7 @@ void log_print_all() {
   } while(0)
 #define LOG_2(fmt, x0, x1, x2, x3, x4, x5, ...) \
   do {                                          \
-    log_add((intptr_t)("\6" fmt));              \
+    log_add((intptr_t)("\x06" fmt));            \
     log_add((intptr_t)(x0));                    \
     log_add((intptr_t)(x1));                    \
     log_add((intptr_t)(x2));                    \
@@ -128,7 +128,7 @@ void log_print_all() {
   } while(0)
 #define LOG_3(fmt, x0, x1, x2, x3, x4, ...)     \
   do {                                          \
-    log_add((intptr_t)("\5" fmt));              \
+    log_add((intptr_t)("\x05" fmt));            \
     log_add((intptr_t)(x0));                    \
     log_add((intptr_t)(x1));                    \
     log_add((intptr_t)(x2));                    \
@@ -137,7 +137,7 @@ void log_print_all() {
   } while(0)
 #define LOG_4(fmt, x0, x1, x2, x3, ...)         \
   do {                                          \
-    log_add((intptr_t)("\4" fmt));              \
+    log_add((intptr_t)("\x04" fmt));            \
     log_add((intptr_t)(x0));                    \
     log_add((intptr_t)(x1));                    \
     log_add((intptr_t)(x2));                    \
@@ -145,25 +145,25 @@ void log_print_all() {
   } while(0)
 #define LOG_5(fmt, x0, x1, x2, ...)             \
   do {                                          \
-    log_add((intptr_t)("\3" fmt));              \
+    log_add((intptr_t)("\x03" fmt));            \
     log_add((intptr_t)(x0));                    \
     log_add((intptr_t)(x1));                    \
     log_add((intptr_t)(x2));                    \
   } while(0)
 #define LOG_6(fmt, x0, x1, ...)                 \
   do {                                          \
-    log_add((intptr_t)("\2" fmt));              \
+    log_add((intptr_t)("\x02" fmt));            \
     log_add((intptr_t)(x0));                    \
     log_add((intptr_t)(x1));                    \
   } while(0)
 #define LOG_7(fmt, x0, ...)                     \
   do {                                          \
-    log_add((intptr_t)("\1" fmt));              \
+    log_add((intptr_t)("\x01" fmt));            \
     log_add((intptr_t)(x0));                    \
   } while(0)
 #define LOG_8(fmt, ...)                         \
   do {                                          \
-    log_add((intptr_t)("\0" fmt));              \
+    log_add((intptr_t)("\x00" fmt));            \
   } while(0)
 #define LOG(fmt, ...) DISPATCH(LOG, 9, __FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
 #endif
