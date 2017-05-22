@@ -70,12 +70,12 @@ bool func_list(cell_t **cp, type_request_t treq) {
   csize_t n = list_size(c);
 
   alt_set_t alt_set = c->value.alt_set;
-  COUNTDOWN(i, n) {
+  COUNTUP(i, n) {
     if(!reduce_ptr(c, i, &alt_set, REQ(any)) ||
       as_conflict(alt_set)) goto fail;
-    if(i == 0 && is_row_list(c) && is_list(c->value.ptr[0])) {
-      if(!func_list(&c->value.ptr[0], REQ(any))) goto fail;
-    }
+  }
+  if(n && is_row_list(c) && is_list(c->value.ptr[n-1])) {
+    if(!func_list(&c->value.ptr[n-1], REQ(any))) goto fail;
   }
   TRAVERSE(c, ptrs) {
     *p = clear_ptr(*p);
