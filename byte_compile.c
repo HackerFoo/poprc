@@ -1022,8 +1022,9 @@ bool is_ap(cell_t *e) {
 }
 
 static
-bool simplify_quote(cell_t *e, cell_t *q) {
+bool simplify_quote(cell_t *e, cell_t *parent_entry, cell_t *q) {
   if(is_tail(e)) {
+    LOG("%d -> tail\n", q-parent_entry-1);
     trace_shrink(q, 2);
     q->func = func_ap;
     q->expr_type.exclusive = T_FUNCTION;
@@ -1033,6 +1034,7 @@ bool simplify_quote(cell_t *e, cell_t *q) {
     q->expr.arg[1] = NULL;
     goto finish;
   } else if (is_ap(e)) {
+    LOG("%d -> ap\n", q-parent_entry-1);
     csize_t in = e->entry.in;
     assert(in + 1 == q->size && q->expr.out == 0);
     csize_t out = e->entry.out;
@@ -1096,7 +1098,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   e->entry.rec = trace_recursive_changes(e);
   e->entry.len = trace_ptr - trace_cur;
 
-  if(simplify_quote(e, q)) return NULL;
+  if(simplify_quote(e, parent_entry, q)) return NULL;
 
   e->module_name = parent_entry->module_name;
   e->word_name = string_printf("%s_%d", parent_entry->word_name, (int)(q - parent_entry) - 1);
