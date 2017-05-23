@@ -218,6 +218,8 @@ int main(int argc, char **argv) {
 #endif
   }
 #ifdef EMSCRIPTEN
+  eval_command(":load lib.ppr", 0);
+  eval_command(":import", 0);
   emscripten_exit_with_live_runtime();
 #endif
   return 0;
@@ -611,6 +613,7 @@ void command_parse(UNUSED cell_t *rest) {
   quit = true;
 }
 
+// compile each line and dump bytecode
 void command_bcpl(UNUSED cell_t *rest) {
   char *line_raw, *line;
   char buf[1024];
