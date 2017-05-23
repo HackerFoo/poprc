@@ -229,8 +229,13 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     unsigned int nonvar = 0;
     bool specialize = false;
 
-    if(!underscore)
-    { // try to unify with initial_word, returning if successful
+    if(underscore) {
+      LOG("underscore hack in %s.%s %d\n",
+          entry->module_name,
+          entry->word_name,
+          CELL_INDEX(c));
+    } else {
+      // try to unify with initial_word, returning if successful
       cell_t *n = unify_convert(c, initial_word);
       if(n) {
         LOG("unified %s.%s %d with initial_word in %s.%s %d\n",
@@ -263,6 +268,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     if(entry == &trace_cur[-1]) {
       COUNTUP(i, c_in) {
         if(is_list(c->expr.arg[i]) && entry == &trace_cur[-1]) {
+          LOG("HACK forced cells[%d].expr.arg[%d]\n", CELL_INDEX(c), i);
           func_list(&c->expr.arg[i], req_simple(T_RETURN));
         }
       }
@@ -466,6 +472,7 @@ bool func_quote(cell_t **cp, UNUSED type_request_t treq) {
 
 void reduce_quote(cell_t **cp) {
   if(is_user_func(*cp)) { // HACKy
+    LOG("HACK reduce_quote %d\n", CELL_INDEX(*cp));
     reduce(cp, req_any);
   }
 }

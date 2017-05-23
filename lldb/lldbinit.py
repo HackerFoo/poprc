@@ -6,6 +6,7 @@ def __lldb_init_module(debugger, internal_dict):
     dbgcall("command script add -f lldbinit.graph graph")
     dbgcall("command script add -f lldbinit.cleandot cleandot")
     dbgcall("command script add -f lldbinit.diagrams diagrams")
+    dbgcall("command script add -f lldbinit.plog plog")
     return
 
 def dbgcall(command):
@@ -27,3 +28,6 @@ def cleandot(debugger, command, result, dict):
 
 def diagrams(debugger, command, result, dict):
     os.system("make diagrams")
+
+def plog(debugger, command, result, dict):
+    dbgcall("p log_print_all()")
