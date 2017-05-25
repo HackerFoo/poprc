@@ -502,25 +502,113 @@ void trace_clear(cell_t *e) {
   memset(e, 0, (count + 1) * sizeof(cell_t));
 }
 
+static
+void condense(cell_t *e) {
+  cell_t
+    *start = e + 1,
+    *end = start + e->entry.len,
+    *ret = NULL;
+  trace_index_t idx = 0;
+
+  // calculate mapping
+  FOR_TRACE(p, start, end) {
+    if(p->func) {
+      if(is_value(p) && p->value.type.exclusive == T_RETURN) {
+        if(ret) ret->alt = trace_encode(idx);
+        ret = p;
+      } else {
+        p->alt = trace_encode(idx);
+      }
+      idx += calculate_cells(p->size);
+    }
+  }
+
+  // update references
+  FOR_TRACE(tc, start, end) {
+    if(tc->func) {
+      cell_t **e = is_user_func(tc) ? &tc->expr.arg[closure_in(tc)] : NULL;
+      if(is_value(tc) &&
+         tc->value.type.exclusive == T_RETURN) {
+        COUNTUP(i, list_size(tc)) {
+          cell_t **p = &tc->value.ptr[i];
+          trace_index_t x = trace_decode(*p);
+          if(x >= 0) *p = start[x].alt;
+        }
+      } else {
+        TRAVERSE(tc, args, ptrs) {
+          if(p != e) {
+            trace_index_t x = trace_decode(*p);
+            if(x >= 0) *p = start[x].alt;
+          }
+        }
+      }
+    }
+  }
+  // condense
+  idx = 0;
+  FOR_TRACE(p, start, end) {
+    if(p->func) {
+      csize_t s = calculate_cells(p->size);
+      if(!(is_value(p) && p->value.type.exclusive == T_RETURN)) {
+        p->alt = NULL;
+      }
+      if(idx < p - start) {
+        cell_t *n = start + idx;
+        memmove(n, p, s * sizeof(cell_t));
+        memset(n + s, 0, (p - n) * sizeof(cell_t));
+        p = n;
+      }
+      idx += s;
+    }
+  }
+  e->entry.len = idx;
+}
+
+static
+void trace_replace_arg(cell_t *e, cell_t *old, cell_t *new) {
+  cell_t
+    *start = e + 1,
+    *end = start + e->entry.len;
+  FOR_TRACE(tc, start, end) {
+    if(tc->func) {
+      cell_t **e = is_user_func(tc) ? &tc->expr.arg[closure_in(tc)] : NULL;
+      if(is_value(tc) &&
+         tc->value.type.exclusive == T_RETURN) {
+        COUNTUP(i, list_size(tc)) {
+          cell_t **p = &tc->value.ptr[i];
+          if(*p == old) *p = new;
+        }
+      } else {
+        TRAVERSE(tc, args, ptrs) {
+          if(p != e) {
+            if(*p == old) *p = new;
+          }
+        }
+      }
+    }
+  }
+}
+
 // runs after reduction to finish functions marked incomplete
 static
 void trace_final_pass(cell_t *e) {
   // replace alts with trace cells
   cell_t
     *start = e + 1,
-    *end = start + e->entry.len;
+    *end = start + e->entry.len,
+    *prev = NULL;
 
   FOR_TRACE(p, start, end) {
     if(p->expr_type.flags & T_INCOMPLETE) {
-      if(p->func == func_quote) { // compile a quote
-        compile_quote(e, p);
+      if(p->func == func_exec) { // compile a specialized function
+        p->expr_type.flags &= ~T_INCOMPLETE;
 #if SPECIALIZE
-      } else if(p->func == func_exec) { // compile a specialized function
         cell_t *se = compile_specialized(e, p);
         p->expr.arg[closure_in(p)] = trace_encode(se - trace_cells);
         p->expr_type.flags |= T_SUB;
 #endif
       } else if(p->func == func_placeholder) { // convert a placeholder to ap or compose
+        p->expr_type.flags &= ~T_INCOMPLETE;
         trace_index_t left = trace_decode(p->expr.arg[0]);
         assert(left >= 0);
         if(closure_in(p) > 1 && trace_type(&trace_cur[left]).exclusive == T_FUNCTION) {
@@ -528,8 +616,43 @@ void trace_final_pass(cell_t *e) {
         } else {
           p->func = func_ap;
         }
+        if(prev && prev->func == func_ap &&
+           trace_decode(p->expr.arg[closure_in(p) - 1]) == prev - start &&
+           prev->n == 0) {
+          LOG("merging ap %d to %d\n", p - start, prev - start);
+          csize_t
+            p_in = closure_in(p),
+            p_out = closure_out(p),
+            p_size = closure_args(p);
+          refcount_t p_n = p->n;
+          cell_t *tmp = copy(p);
+          cell_t
+            *p_enc = trace_encode(p - start),
+            *prev_enc = trace_encode(prev - start);
+          trace_replace_arg(e, p_enc, prev_enc);
+          prev->func = p->func;
+          memset(p, 0, calculate_cells(p_size) * sizeof(cell_t));
+          ARRAY_SHIFTR(prev->expr.arg[0], p_in-1, prev->size);
+          ARRAY_COPY(prev->expr.arg[0], tmp->expr.arg[0], p_in-1);
+          ARRAY_COPY(prev->expr.arg[prev->size + p_in-1], tmp->expr.arg[p_in], p_out);
+          prev->size += p_size - 1;
+          prev->expr.out += p_out;
+          prev->n = p_n;
+          closure_free(tmp);
+        }
       }
-      p->expr_type.flags &= ~T_INCOMPLETE;
+    }
+    prev = p;
+  }
+  condense(e);
+
+  // compile quotes
+  FOR_TRACE(p, start, end) {
+    if(p->expr_type.flags & T_INCOMPLETE) {
+      if(p->func == func_quote) { // compile a quote
+        p->expr_type.flags &= ~T_INCOMPLETE;
+        compile_quote(e, p);
+      }
     }
   }
 }
@@ -887,7 +1010,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   // make recursive return this entry
   (*entry)->alt = trace_ptr;
 
-  cell_t *toks = l->value.ptr[0]; // TODO handle list_size(l) > 1
+  const cell_t *toks = l->value.ptr[0]; // TODO handle list_size(l) > 1
 
   // set up
   rt_init();
@@ -907,10 +1030,9 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   LOG("compiling %s.%.*s at entry %d\n", e->module_name, name.n, name.s, TRACE_INDEX(e));
 
   // parse
-  const cell_t *p = toks;
   e->entry.flags = ENTRY_NOINLINE;
   e->func = func_exec;
-  cell_t *c = parse_expr(&p, module);
+  cell_t *c = parse_expr(&toks, module);
 
   // compile
   fill_args(c);

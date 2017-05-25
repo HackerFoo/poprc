@@ -347,4 +347,8 @@
 #define TRACE_INDEX(x) (int)((x) - trace_cells)
 #define TRACE_VAR_INDEX(x) (int)((x) - trace_cur)
 
+#define ARRAY_SHIFTR(elem, x, n) memmove(&(elem) + (x), &(elem), (n) * sizeof(elem))
+#define ARRAY_SHIFTL(elem, x, n) memmove(&(elem), &(elem) + (x), (n) * sizeof(elem))
+#define ARRAY_COPY(dst, src, n) memcpy(&(dst), &(src), (n) * sizeof(dst))
+
 #endif

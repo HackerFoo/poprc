@@ -271,15 +271,13 @@ ___ control.ifdo (2 -> 1) x2 ___
 [3] __primitive.dep 2, type = a x1
 [4] __primitive.assert 5 3, type = a x1
 [5] __primitive.dep 2, type = a x1
-[6] return [ 4 ], type = r -> 14 x1
-[7]
-[8] __primitive.ap 1 1 0, type = f x1
-[9] __primitive.ap 8 -> 10 X 11, type = f x2
-[10] __primitive.dep 9, type = a x1
-[11] __primitive.dep 9, type = a x1
-[12] __primitive.not 11, type = s x1
-[13] __primitive.assert 10 12, type = a x1
-[14] return [ 13 ], type = r x1
+[6] return [ 4 ], type = r -> 13 x1
+[7] __primitive.ap 1 1 0 -> 9 X 10, type = f x2
+[9] __primitive.dep 7, type = a x1
+[10] __primitive.dep 7, type = a x1
+[11] __primitive.not 10, type = s x1
+[12] __primitive.assert 9 11, type = a x1
+[13] return [ 12 ], type = r x1
 
 ___ control.in2 (2 -> 3) ___
 [0] var, type = ?a x2
@@ -323,17 +321,16 @@ ___ control.iterate (3 -> 1) x2 rec ___
 [2] var, type = ?a x4
 [3] __primitive.ap 2 0 -> 4, type = f x1
 [4] __primitive.dep 3, type = a x1
-[5] __primitive.assert 9 4, type = 0 x1
-[6] __primitive.ap 2 1, type = f x1
-[7] __primitive.ap 6 -> 8, type = f x1
-[8] __primitive.dep 7, type = a x1
-[9] control.iterate 8 1 0, type = 0 x1
-[10] return [ 5 ], type = r -> 15 x1
-[11] __primitive.ap 2 0 -> 12, type = f x1
-[12] __primitive.dep 11, type = a x1
-[13] __primitive.not 12, type = s x1
-[14] __primitive.assert 2 13, type = a x1
-[15] return [ 14 ], type = r x1
+[5] __primitive.assert 8 4, type = 0 x1
+[6] __primitive.ap 2 1 -> 7, type = f x1
+[7] __primitive.dep 6, type = a x1
+[8] control.iterate 7 1 0, type = 0 x1
+[9] return [ 5 ], type = r -> 14 x1
+[10] __primitive.ap 2 0 -> 11, type = f x1
+[11] __primitive.dep 10, type = a x1
+[12] __primitive.not 11, type = s x1
+[13] __primitive.assert 2 12, type = a x1
+[14] return [ 13 ], type = r x1
 
 ___ stack.swap3 (4 -> 4) ___
 [0] var, type = ?a x1
@@ -510,11 +507,10 @@ ___ tests.f2 (3 -> 1) ___
 [6] __primitive.dep 3, type = a x1
 [7] __primitive.add 6 8, type = i x1
 [8] val 1, type = i x1
-[9] __primitive.ap 7 3, type = f x1
-[10] __primitive.ap 9 -> 11, type = f x1
-[11] __primitive.dep 10, type = a x1
-[12] __primitive.add 5 11, type = i x1
-[13] return [ 12 ], type = r x1
+[9] __primitive.ap 7 3 -> 10, type = f x1
+[10] __primitive.dep 9, type = a x1
+[11] __primitive.add 5 10, type = i x1
+[12] return [ 11 ], type = r x1
 
 ___ tests.f6 (3 -> 3) ___
 [0] var, type = ?a x1
