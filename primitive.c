@@ -198,34 +198,14 @@ bool func_neq(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_IN
 bool func_neq_s(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_SYMBOL, T_SYMBOL, neq_op, false); }
 
 // WORD("pushr", pushr, 2, 1)
-bool func_pushr(cell_t **cp, type_request_t treq) {
+bool func_pushr(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
-  assert(!is_marked(c));
 
-  alt_set_t alt_set = 0;
-  type_request_t atr = REQ(list, treq.in, csub(treq.out, 1));
-  if(!reduce_arg(c, 0, &alt_set, atr)) goto fail;
-  clear_flags(c);
-
-  cell_t *res;
-  if(is_empty_list(c->expr.arg[0])) {
-    res = quote(ref(c->expr.arg[1]));
-  } else {
-    res = make_list(2);
-    res->value.ptr[1] = ref(c->expr.arg[0]);
-    res->value.ptr[0] = ref(c->expr.arg[1]);
-    res->value.type.flags = T_ROW;
-  }
-  res->value.alt_set = alt_set;
-  drop(res->alt);
-  res->alt = c->alt;
-
-  store_reduced(cp, res);
-  ASSERT_REF();
-  return true;
-
- fail:
-  fail(cp, treq);
+  // lower to compose
+  c = expand(c, 1);
+  c->expr.arg[2] = &nil_cell;
+  c->func = func_compose;
+  *cp = c;
   return false;
 }
 
@@ -240,19 +220,6 @@ bool func_alt(cell_t **cp, UNUSED type_request_t treq) {
   store_lazy(cp, c, r0, 0);
   return false;
 }
-
-// WORD_DISABLED("||", alt2, 2, 1)
-bool func_alt2(cell_t **cp, UNUSED type_request_t treq) {
-  cell_t *c = *cp;
-  assert(!is_marked(c));
-  cell_t *r0 = id(ref(c->expr.arg[0]), 0);
-  cell_t *r1 = ref(c->expr.arg[1]);
-  r0->alt = r1;
-  *cp = r0;
-  drop(c);
-  return false;
-}
-
 
 cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
   cell_t *nc;
