@@ -23,6 +23,7 @@
 #include "gen/byte_compile.h"
 #include "gen/test.h"
 #include "gen/list.h"
+#include "gen/log.h"
 
 bool func_value(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
@@ -109,6 +110,7 @@ void placeholder_extend(cell_t **lp, int in, int out) {
     l = copy(l);
     TRAVERSE_REF(l, alt, ptrs);
   }
+  LOG("placeholder_extend: (%d, %d) %d -> %d\n", in, out, (*lp)-cells, l-cells);
 
   if(d_out) {
     cell_t *l_exp = make_list(d_out + 1);
@@ -122,6 +124,7 @@ void placeholder_extend(cell_t **lp, int in, int out) {
     left = &l_exp->value.ptr[d_out];
   }
 
+  LOG("arg(ph[%d], f[%d])\n", CELL_INDEX(ph), CELL_INDEX(f));
   arg(ph, f);
   refn(ph, d_out);
   *left = ph;

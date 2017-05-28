@@ -375,9 +375,9 @@ csize_t function_compose_out(cell_t *c, csize_t arg_in, csize_t out) {
 }
 
 // inputs required from the right operand given the left operand
-csize_t function_compose_in(cell_t *c, csize_t req_in, csize_t arg_in) {
+csize_t function_compose_in(cell_t *c, csize_t req_in, csize_t arg_in, bool row) {
   c = clear_ptr(c);
-  return csub(req_in, function_in(c)) + function_out(c, true) + arg_in;
+  return csub(req_in, function_in(c)) + function_out(c, row) + arg_in;
 }
 
 static
@@ -398,7 +398,7 @@ bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
     if(!reduce_arg(c, 0, &alt_set, REQ(list, treq.in, 0))) goto fail;
     p = clear_ptr(c->expr.arg[0]);
   }
-  if(!reduce_arg(c, in, &alt_set, REQ(list, function_compose_in(p, out ? 0 : treq.in, arg_in), treq.out + out)) ||
+  if(!reduce_arg(c, in, &alt_set, REQ(list, function_compose_in(p, out ? 0 : treq.in, arg_in, false /*_1_*/), treq.out + out)) ||
      as_conflict(alt_set)) goto fail;
 
   clear_flags(c);
@@ -406,7 +406,8 @@ bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
     placeholder_extend(&c->expr.arg[0], treq.in, function_compose_out(c->expr.arg[in], arg_in, treq.out + out));
     p = clear_ptr(c->expr.arg[0]);
   }
-  placeholder_extend(&c->expr.arg[in], function_compose_in(p, treq.in, arg_in), treq.out + out);
+  placeholder_extend(&c->expr.arg[in], function_compose_in(p, treq.in, arg_in, true /*_1_*/), treq.out + out);
+  // *** _1_ don't know if/why this works
 
   list_iterator_t it;
 
