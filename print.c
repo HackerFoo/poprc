@@ -30,7 +30,7 @@
 #include "gen/special.h"
 #include "gen/test.h"
 #include "gen/support.h"
-#include "gen/byte_compile.h"
+#include "gen/trace.h"
 #include "gen/map.h"
 #include "gen/parse.h"
 #include "gen/print.h"

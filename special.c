@@ -20,7 +20,7 @@
 #include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/special.h"
-#include "gen/byte_compile.h"
+#include "gen/trace.h"
 #include "gen/test.h"
 #include "gen/list.h"
 #include "gen/log.h"

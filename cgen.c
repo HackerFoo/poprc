@@ -35,6 +35,7 @@
 #include "gen/eval.h"
 #include "gen/lex.h"
 #include "gen/user_func.h"
+#include "gen/trace.h"
 
 // table of corresponding C types
 const char *ctype(type_t t) {

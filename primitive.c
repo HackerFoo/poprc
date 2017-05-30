@@ -25,7 +25,7 @@
 #include "gen/special.h"
 #include "gen/print.h"
 #include "gen/test.h"
-#include "gen/byte_compile.h"
+#include "gen/trace.h"
 #include "gen/support.h"
 #include "gen/list.h"
 
