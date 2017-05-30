@@ -185,9 +185,13 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
   type_t t = r->value.type;
   if(tc->func) {
     // this cell has already been written
-    if(is_value(tc)) {
-      // update the type
-      tc->value.type = t;
+    // update the types
+    if(t.exclusive != T_ANY) {
+      if(is_value(tc)) {
+        tc->value.type = t;
+      } else if(is_dep(tc)) {
+        tc->expr_type.exclusive = t.exclusive;
+      }
     }
     return tc;
   }
@@ -323,6 +327,7 @@ cell_t *trace_dep(cell_t *c) {
   ph->expr.arg[c->value.integer[1]] = trace_encode(tc - trace_cur);
   tc->func = func_dep;
   tc->expr.arg[0] = trace_encode(ph - trace_cur);
+  tc->expr_type.exclusive = c->value.type.exclusive;
   ph->n++;
   c->value.ptr[0] = tc;
   FLAG_CLEAR(c->value.type.flags, T_DEP);
