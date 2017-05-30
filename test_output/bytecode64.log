@@ -91,20 +91,20 @@ ___ algorithm.reduce_power (2 -> 2) ___
 
 ___ algorithm.sum (1 -> 1) x2 rec ___
 [0] var, type = ?f x4
-[1] __primitive.is_nil 2, type = s x1
-[2] __primitive.ap 0 -> X, type = f x1
-[3] __primitive.not 1, type = s x1
-[4] __primitive.assert 9 3, type = 0 x1
+[1] __primitive.ap 0 -> X, type = f x1
+[2] __primitive.is_nil 1, type = s x1
+[3] __primitive.not 2, type = s x1
+[4] __primitive.assert 10 3, type = 0 x1
 [5] __primitive.ap 0 -> 6 7, type = f x3
 [6] __primitive.dep 5, type = a x1
 [7] __primitive.dep 5, type = a x1
 [8] __primitive.add 6 7, type = i x1
-[9] algorithm.sum 10, type = 0 x1
-[10] __primitive.compose 5 8 [], type = f x1
+[9] __primitive.compose 5 8 [], type = f x1
+[10] algorithm.sum 9, type = 0 x1
 [11] return [ 4 ], type = r -> 19 x1
-[12] __primitive.is_nil 13, type = s x1
-[13] __primitive.ap 0 -> X, type = f x1
-[14] __primitive.not 12, type = s x1
+[12] __primitive.ap 0 -> X, type = f x1
+[13] __primitive.is_nil 12, type = s x1
+[14] __primitive.not 13, type = s x1
 [15] __primitive.not 14, type = s x1
 [16] __primitive.assert 18 15, type = a x1
 [17] __primitive.ap 0 -> 18, type = f x1

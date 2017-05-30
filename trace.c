@@ -450,6 +450,11 @@ trace_index_t trace_build_quote(cell_t *l) {
   return n - trace_cur;
 }
 
+cell_t *trace_quote_var(cell_t *l) {
+  trace_index_t x = trace_build_quote(l);
+  return x == NIL_INDEX ? &nil_cell : var_create_nonlist(T_FUNCTION, &trace_cur[x]);
+}
+
 // store captured variables to be compiled into a specialized function, similar to trace_build_quote
 #if SPECIALIZE
 cell_t *trace_build_specialized(cell_t *c, const cell_t *r) {

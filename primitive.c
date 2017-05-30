@@ -507,6 +507,10 @@ bool func_is_nil(cell_t **cp, type_request_t treq) {
   cell_t *p = c->expr.arg[0];
   cell_t *res;
   if(is_list_var(p)) {
+    // ensure quote is stored first
+    cell_t *l = c->expr.arg[0];
+    c->expr.arg[0] = trace_quote_var(l);
+    drop(l);
     res = var(T_SYMBOL, c);
   } else {
     res = symbol(is_empty_list(p) ? SYM_True : SYM_False);

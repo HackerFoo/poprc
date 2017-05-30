@@ -124,7 +124,6 @@ void placeholder_extend(cell_t **lp, int in, int out) {
     left = &l_exp->value.ptr[d_out];
   }
 
-  LOG("arg(ph[%d], f[%d])\n", CELL_INDEX(ph), CELL_INDEX(f));
   arg(ph, f);
   refn(ph, d_out);
   *left = ph;
