@@ -40,14 +40,15 @@
 // table of corresponding C types
 const char *ctype(type_t t) {
   static const char *table[] = {
-    [T_ANY]    = "any_t ",
-    [T_INT]    = "int ",
-    [T_IO]     = "void *",
-    [T_LIST]   = "slot_t *",
-    [T_SYMBOL] = "int ",
-    [T_MAP]    = "map_t ",
-    [T_STRING] = "seg_t ",
-    [T_BOTTOM] = "void ",
+    [T_ANY]      = "any_t ",
+    [T_INT]      = "int ",
+    [T_IO]       = "void *",
+    [T_LIST]     = "slot_t *",
+    [T_SYMBOL]   = "int ",
+    [T_MAP]      = "map_t ",
+    [T_STRING]   = "seg_t ",
+    [T_FUNCTION] = "slot_t *",
+    [T_BOTTOM]   = "void ",
   };
   assert(t.exclusive < LENGTH(table));
   return table[t.exclusive];
@@ -56,14 +57,15 @@ const char *ctype(type_t t) {
 // table of identifier prefixes for each type
 const char *cname(type_t t) {
   static const char *table[] = {
-    [T_ANY]    = "any",
-    [T_INT]    = "int",
-    [T_IO]     = "io",
-    [T_LIST]   = "lst",
-    [T_SYMBOL] = "sym",
-    [T_MAP]    = "map",
-    [T_STRING] = "str",
-    [T_BOTTOM] = "bot"
+    [T_ANY]      = "any",
+    [T_INT]      = "int",
+    [T_IO]       = "io",
+    [T_LIST]     = "lst",
+    [T_SYMBOL]   = "sym",
+    [T_MAP]      = "map",
+    [T_STRING]   = "str",
+    [T_FUNCTION] = "func",
+    [T_BOTTOM]   = "bot"
   };
   assert(t.exclusive < LENGTH(table));
   return table[t.exclusive];
@@ -209,12 +211,19 @@ void gen_call(cell_t *e, cell_t *c) {
     // jump to the beginning
     printf("  goto body;\n");
   } else if(trace_type(c).exclusive != T_BOTTOM) {
-    trace_get_name(c, &module_name, &word_name);
-    printf("  %s%d = %s_%s(", cname(trace_type(c)), i, module_name, word_name);
+    csize_t
+      in = closure_in(c),
+      out = closure_out(c),
+      n = closure_args(c),
+      start_out = n - closure_out(c);
 
-    csize_t in = closure_in(c);
-    csize_t n = closure_args(c);
-    csize_t start_out = n - closure_out(c);
+    trace_get_name(c, &module_name, &word_name);
+
+    printf("  %s%d = %s_%s", cname(trace_type(c)), i, module_name, word_name);
+    if(c->func == func_ap || c->func == func_compose) {
+      printf("%d%d", in, out);
+    }
+    printf("(");
 
     COUNTUP(i, in) {
       int a = trace_decode(c->expr.arg[i]);
@@ -228,7 +237,11 @@ void gen_call(cell_t *e, cell_t *c) {
 
     RANGEUP(i, start_out, n) {
       int a = trace_decode(c->expr.arg[i]);
-      printf("%s&%s%d", sep, cname(trace_type(&d[a])), a);
+      if(a == -1) {
+        printf("%sNULL", sep);
+      } else {
+        printf("%s&%s%d", sep, cname(trace_type(&d[a])), a);
+      }
       sep = ", ";
     }
 
