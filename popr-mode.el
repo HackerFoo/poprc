@@ -18,9 +18,14 @@
         ("\\([^[:space:]]+\\)\\s-*:\\s-" . font-lock-function-name-face)
         ("\\<\\([A-Z][A-Za-z0-9]+\\b\\|\\b[0-9]+\\)\\>" . font-lock-constant-face)))
 
+(defvar popr-imenu-generic-expression
+  '(("Module" "^ *module +\\([^ \t\r\n]+\\):" 1)
+    ("Word" "^ *\\([^ \t\r\n]+\\):" 1)))
+
 (define-derived-mode popr-mode fundamental-mode "popr"
   "Major mode for editing Popr code."
-  (setq font-lock-defaults '(popr-highlights)))
+  (setq font-lock-defaults '(popr-highlights))
+  (setq imenu-generic-expression popr-imenu-generic-expression))
 
 (provide 'popr-mode)
 
