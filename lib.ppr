@@ -143,4 +143,5 @@ exponent:
 ^: 1 rotr exponent
 
 __ sums numbers in a list
-sum: [[+] .] [popr drop is_nil not] [head] binrec
+sum_: [[+] .] [popr drop is_nil not] [head 0+] binrec
+sum: [0] swap . sum_

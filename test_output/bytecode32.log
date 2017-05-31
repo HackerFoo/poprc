@@ -89,7 +89,7 @@ ___ algorithm.reduce_power (2 -> 2) ___
 [4] __primitive.mul 1 1, type = i x1
 [5] return [ 4 2 ], type = r x1
 
-___ algorithm.sum (1 -> 1) x2 rec ___
+___ algorithm.sum_ (1 -> 1) x2 rec ___
 [0] var, type = ?f x4
 [1] __primitive.ap 0 -> X, type = f x1
 [2] __primitive.is_nil 1, type = s x1
@@ -100,16 +100,30 @@ ___ algorithm.sum (1 -> 1) x2 rec ___
 [7] __primitive.dep 5, type = i x1
 [8] __primitive.add 6 7, type = i x1
 [9] __primitive.compose 5 8 [], type = f x1
-[10] algorithm.sum 9, type = 0 x1
-[11] return [ 4 ], type = r -> 19 x1
+[10] algorithm.sum_ 9, type = 0 x1
+[11] return [ 4 ], type = r -> 21 x1
 [12] __primitive.ap 0 -> X, type = f x1
 [13] __primitive.is_nil 12, type = s x1
 [14] __primitive.not 13, type = s x1
 [15] __primitive.not 14, type = s x1
-[16] __primitive.assert 18 15, type = a x1
+[16] __primitive.assert 18 15, type = i x1
 [17] __primitive.ap 0 -> 18, type = f x1
-[18] __primitive.dep 17, type = a x1
-[19] return [ 16 ], type = r x1
+[18] __primitive.dep 17, type = i x1
+[19] __primitive.add 16 20, type = i x1
+[20] val 0, type = i x1
+[21] return [ 19 ], type = r x1
+
+___ algorithm.sum (1 -> 1) ___
+[0] var, type = ?f x1
+[1] algorithm.sum_ 2, type = i x1
+[2] quote algorithm.sum_2 0, type = l x1
+[3] return [ 1 ], type = r x1
+
+___ algorithm.sum_2 (1 -> 1) ___
+[0] var, type = ?f x1
+[1] __primitive.ap 2 0, type = f x1
+[2] val 0, type = i x1
+[3] return [ 1 ], type = @r x1
 
 ___ control.$ (2 -> 1) ___
 [0] var, type = ?f x1

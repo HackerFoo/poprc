@@ -221,7 +221,8 @@ void gen_call(cell_t *e, cell_t *c) {
 
     printf("  %s%d = %s_%s", cname(trace_type(c)), i, module_name, word_name);
     if(c->func == func_ap || c->func == func_compose) {
-      printf("%d%d", in, out);
+      assert(in >= 1);
+      printf("%d%d", in-1, out);
     }
     printf("(");
 
