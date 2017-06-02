@@ -43,11 +43,11 @@ const char *ctype(type_t t) {
     [T_ANY]      = "any_t ",
     [T_INT]      = "int ",
     [T_IO]       = "void *",
-    [T_LIST]     = "slot_t *",
+    [T_LIST]     = "array ",
     [T_SYMBOL]   = "int ",
     [T_MAP]      = "map_t ",
     [T_STRING]   = "seg_t ",
-    [T_FUNCTION] = "slot_t *",
+    [T_FUNCTION] = "array ",
     [T_BOTTOM]   = "void ",
   };
   assert(t.exclusive < LENGTH(table));
@@ -103,9 +103,11 @@ void gen_function_signatures(cell_t *e) {
   printf(";\n");
 
   FOR_TRACE(c, start, end) {
-    if(c->func == func_exec) {
+    if(c->func == func_exec && c->expr_type.exclusive != T_BOTTOM) {
       cell_t *x = get_entry(c);
-      if(x != e) gen_function_signatures(x);
+      if(x != e) {
+        gen_function_signatures(x);
+      }
     }
   }
 }
@@ -227,7 +229,7 @@ void gen_call(cell_t *e, cell_t *c) {
     COUNTUP(i, in) {
       int a = trace_decode(c->expr.arg[i]);
       if(a == NIL_INDEX) {
-        printf("%sNULL", sep);
+        printf("%snil", sep);
       } else {
         printf("%s%s%d", sep, cname(trace_type(&d[a])), a);
       }
@@ -346,9 +348,13 @@ void gen_function(cell_t *e) {
   printf("}\n");
 
   FOR_TRACE(c, start, end) {
-    if(c->func != func_exec) continue;
-    printf("\n");
-    gen_function(get_entry(c));
+    if(c->func == func_exec && c->expr_type.exclusive != T_BOTTOM) {
+      cell_t *x = get_entry(c);
+      if(x != e) {
+        printf("\n");
+        gen_function(x);
+      }
+    }
   }
 }
 
@@ -382,21 +388,34 @@ void gen_main(cell_t *e) {
   printf("\n");
 
   printf("int main(int argc, char **argv)\n{\n");
-  printf("  int in[%d];\n", e->entry.in);
-  printf("  int out[%d];\n", e->entry.out);
-  printf("  if(argc < LENGTH(in) + 1) {\n"
+  printf("  const int arity_in = %d;\n", e->entry.in);
+  printf("  const int arity_out = %d;\n", e->entry.out);
+  printf("  int in[32];\n"
+         "  int out[arity_out];\n"
+         "  int args = argc - 1;\n"
+         "  if(args < arity_in) {\n"
          "    printf(\"not enough arguments\\n\");\n"
          "    return -1;\n"
          "  }\n\n");
 
-  printf("  FOREACH(i, in) {\n"
+  printf("  COUNTUP(i, args) {\n"
          "    in[i] = atoi(argv[i + 1]);\n"
-         "  }\n");
+         "  }\n\n"
+         "  array arr = {\n"
+         "    args,\n"
+         "    in + args\n"
+         "  };\n");
 
   char *sep = "";
   printf("  out[0] = %s_%s(", e->module_name, e->word_name);
-  COUNTUP(i, e->entry.in) {
-    printf("%sin[%d]", sep, (int)i);
+  cell_t *code = e + 1;
+  csize_t in = e->entry.in;
+  COUNTUP(i, in) {
+    if(code[in - 1 - i].value.type.exclusive == T_FUNCTION) {
+      printf("%sarr", sep);
+    } else {
+      printf("%sin[%d]", sep, (int)i);
+    }
     sep = ", ";
   }
   COUNTUP(i, e->entry.out - 1) {
@@ -404,11 +423,11 @@ void gen_main(cell_t *e) {
     sep = ", ";
   }
   printf(");\n");
-  printf("  FOREACH(i, in) {\n"
+  printf("  COUNTUP(i, arity_in) {\n"
          "    printf(\"%%d \", in[i]);\n"
          " }\n");
   printf("  printf(\"%s_%s =>\");\n", e->module_name, e->word_name);
-  printf("  FOREACH(i, out) {\n"
+  printf("  COUNTUP(i, arity_out) {\n"
          "    printf(\" %%d\", out[i]);\n"
          "  }\n");
   printf("  printf(\"\\n\");\n\n"
@@ -423,7 +442,7 @@ void command_cgen(cell_t *rest) {
       *m = eval_module(),
       *e = module_lookup_compiled(tok_seg(rest), &m);
 
-    if(e) gen_functions(e);
+    if(e) gen_function(e);
   }
 }
 

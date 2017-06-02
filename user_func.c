@@ -266,7 +266,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     clear_flags(c);
 
     // HACK force lists on tail calls
-    if(entry == &trace_cur[-1]) {
+    if(entry == &trace_cur[-1] || underscore) {
       COUNTUP(i, c_in) {
         if(is_list(c->expr.arg[i])) {
           LOG("HACK forced cells[%d].expr.arg[%d]\n", CELL_INDEX(c), i);
