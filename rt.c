@@ -332,7 +332,7 @@ cell_t *func(reduce_t *f, csize_t in, csize_t out) {
   c->expr.out = out - 1;
   c->expr.flags = 0;
   c->func = f;
-  FLAG_SET_TO(c->expr.flags, FLAGS_USER_FUNC, f == func_exec || f == func_quote);
+  FLAG_SET_TO(c->expr.flags, FLAGS_USER_FUNC, f == func_exec);
   if(args) c->expr.arg[0] = (cell_t *)(intptr_t)(args - 1);
   closure_set_ready(c, !args);
   return c;

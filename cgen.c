@@ -182,8 +182,6 @@ void gen_instruction(cell_t *e, cell_t *c) {
     // gen_value(e, c);
   } else if(c->func == func_assert) {
     gen_assert(e, c);
-  } else if(c->func == func_quote) {
-    gen_quote(e, c);
   } else if(c->func == func_dep) {
     // don't generate anything
   } else {
@@ -332,30 +330,12 @@ done:
   return;
 }
 
-void gen_quote(cell_t *e, cell_t *c) {
-  const char *module_name, *word_name;
-  cell_t *d = e + 1;
-  const int ic = c - d;
-  cell_t *qe = get_entry(c);
-  trace_get_name(c, &module_name, &word_name);
-  printf("  %s%d = __primitive_quote(%s_%s, %d, %d);\n",
-         cname(trace_type(c)), ic,
-         module_name, word_name,
-         qe->entry.in, qe->entry.out);
-  COUNTUP(i, closure_in(c)) {
-    uintptr_t ai = trace_decode(c->expr.arg[i]);
-    printf("  %1$s%2$d = __primitive_pushl(%3$s%4$d, %1$s%2$d);\n",
-           cname(trace_type(c)), ic,
-           cname(trace_type(&d[ai])), (int)ai);
-  }
-}
-
 void gen_function(cell_t *e) {
   cell_t *start = e + 1;
   cell_t *end = start + e->entry.len;
 
   FOR_TRACE(c, start, end) {
-    if(c->func != func_quote) continue;
+    if(c->func != func_exec) continue;
     gen_function_signature(get_entry(c));
     printf(";\n");
   }
@@ -366,7 +346,7 @@ void gen_function(cell_t *e) {
   printf("}\n");
 
   FOR_TRACE(c, start, end) {
-    if(c->func != func_quote) continue;
+    if(c->func != func_exec) continue;
     printf("\n");
     gen_function(get_entry(c));
   }

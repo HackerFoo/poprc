@@ -32,7 +32,10 @@ bool func_value(cell_t **cp, type_request_t treq) {
   measure.reduce_cnt--;
 
   if((c->value.type.flags & T_FAIL) ||
-     !type_match(treq.t, c)) goto fail;
+     !type_match(treq.t, c)) {
+    if(treq.t == T_FUNCTION && c == &nil_cell) return true; // HACK
+    goto fail;
+  }
 
   // NOTE: may create multiple placeholder
   // TODO use rows to work around this
@@ -282,6 +285,15 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
   }
   clear_flags(c);
 
+  // compose X [] --> X
+  if(in == 2 &&
+     is_list(c->expr.arg[1]) &&
+     list_size(c->expr.arg[1]) == 0 &&
+     is_function(c->expr.arg[0])) {
+    store_reduced(cp, mod_alt(ref(c->expr.arg[0]), c->alt, alt_set));
+    return true;
+  }
+
   cell_t *res = var(T_FUNCTION, c);
   bool bottom = res->value.type.exclusive == T_BOTTOM; // kinda HACKy
   res->alt = c->alt;
@@ -313,28 +325,6 @@ bool is_placeholder(cell_t const *c) {
 bool func_fail(cell_t **cp, type_request_t treq) {
   assert(!is_marked(*cp));
   measure.reduce_cnt--;
-  fail(cp, treq);
-  return false;
-}
-
-// WORD("fcompose", fcompose, 2, 1)
-bool func_fcompose(cell_t **cp, type_request_t treq) {
-  cell_t *c = *cp;
-  assert(!is_marked(c));
-
-  alt_set_t alt_set = 0;
-  type_request_t atr = REQ(function);
-  if(!reduce_arg(c, 0, &alt_set, atr) ||
-     !reduce_arg(c, 1, &alt_set, atr) ||
-     as_conflict(alt_set)) goto fail;
-  clear_flags(c);
-
-  cell_t *res = var(T_FUNCTION, c);
-  store_reduced(cp, mod_alt(res, c->alt, alt_set));
-  ASSERT_REF();
-  return true;
-
- fail:
   fail(cp, treq);
   return false;
 }

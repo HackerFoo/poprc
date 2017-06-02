@@ -351,6 +351,9 @@ expand:
     p->alt = nc;
   }
 
+  // check that a return was found
+  assert(returns);
+
   // rewrite pointers
   for(size_t i = in; i < len; i += s) { // TODO: rewrite with FORTRACE
     cell_t *p = &code[i];
@@ -419,61 +422,6 @@ expand:
 
   store_lazy(cp, c, res, 0);
   return false;
-}
-
-// takes free variables and returns a quoted function
-bool func_quote(cell_t **cp, UNUSED type_request_t treq) {
-  cell_t *c = *cp;
-  assert(!is_marked(c));
-
-  csize_t in = closure_in(c);
-  cell_t *entry = c->expr.arg[in];
-  c->expr.arg[in] = 0;
-  csize_t
-    f_in = entry->entry.in,
-    f_out = entry->entry.out;
-
-  cell_t *f = closure_alloc(f_in + f_out);
-  csize_t offset = f_in - in;
-  f->func = func_exec;
-  FLAG_SET(f->expr.flags, FLAGS_USER_FUNC);
-  if(offset) {
-    f->expr.arg[0] = (cell_t *)(trace_index_t)(offset - 1);
-    f->expr.flags |= FLAGS_NEEDS_ARG;
-  }
-
-  COUNTUP(i, in) {
-    f->expr.arg[i + offset] = ref(c->expr.arg[i]);
-  }
-
-  f->expr.arg[f_in] = entry;
-
-  bool row = !!(entry->entry.flags & ENTRY_ROW);
-
-  // if a function is wrapped in a row list, just reduce it
-  if(row && f_out == 1) {
-    COUNTUP(i, in) { // HACKy, because store_lazy doesn't drop arguments
-      drop(c->expr.arg[i]);
-    }
-    store_lazy(cp, c, f, 0);
-    return false;
-  }
-
-  cell_t *res = make_list(f_out);
-  cell_t **out_arg = &f->expr.arg[f_in+1];
-  COUNTUP(i, f_out-1) {
-    cell_t *d = dep(f);
-    out_arg[f_out - 2 - i] = d;
-    res->value.ptr[i] = d;
-  }
-  f->expr.out = f_out - 1;
-  res->value.ptr[f_out-1] = f;
-  refn(f, f_out-1);
-  res->alt = c->alt;
-  if(row) res->value.type.flags |= T_ROW;
-
-  store_reduced(cp, res);
-  return true;
 }
 
 void reduce_quote(cell_t **cp) {

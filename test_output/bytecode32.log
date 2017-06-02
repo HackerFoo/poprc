@@ -116,14 +116,14 @@ ___ algorithm.sum_ (1 -> 1) x2 rec ___
 ___ algorithm.sum (1 -> 1) ___
 [0] var, type = ?f x1
 [1] algorithm.sum_ 2, type = i x1
-[2] quote algorithm.sum_2 0, type = l x1
+[2] algorithm.sum_2 0, type = l x1
 [3] return [ 1 ], type = r x1
 
 ___ algorithm.sum_2 (1 -> 1) ___
 [0] var, type = ?f x1
 [1] __primitive.ap 2 0, type = f x1
 [2] val 0, type = i x1
-[3] return [ 1 ], type = @r x1
+[3] return [ 1 ], type = r x1
 
 ___ control.$ (2 -> 1) ___
 [0] var, type = ?f x1

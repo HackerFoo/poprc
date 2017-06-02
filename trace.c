@@ -41,7 +41,7 @@ bool trace_enabled = false;
 bool dont_specialize = true; //false; ***
 
 // storage for tracing
-cell_t trace_cells[1 << 10] __attribute__((aligned(64)));
+static cell_t trace_cells[1 << 10] __attribute__((aligned(64)));
 cell_t *trace_cur = &trace_cells[0];
 cell_t *trace_ptr = &trace_cells[0];
 
@@ -64,9 +64,13 @@ typedef intptr_t trace_index_t;
 #define FOR_TRACE(c, start, end) for(cell_t *(c) = (start); c < (end); c += calculate_cells(c->size))
 #endif
 
-cell_t *get_entry(cell_t *c) {
+cell_t *get_entry(cell_t const *c) {
   if(!is_user_func(c)) return NULL;
   return &trace_cells[trace_decode(c->expr.arg[closure_in(c)])];
+}
+
+trace_index_t entry_number(cell_t const *e) {
+  return e - trace_cells;
 }
 
 // trace_encode/decode allow small integers to be encoded as pointers
@@ -227,7 +231,6 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
     tc->value.type = t;
   }
   tc->expr_type.exclusive = t.exclusive;
-  if(tc->func == func_fcompose) tc->func = func_compose; // fcompose -> compose
   if(tc->func == func_placeholder) tc->expr_type.flags |= T_INCOMPLETE;
   tc->alt = NULL;
   if(t.exclusive == T_BOTTOM) return_me = tc;
@@ -433,7 +436,7 @@ trace_index_t trace_build_quote(cell_t *l) {
   cell_t *n = trace_alloc(in + 1);
 
   n->expr.out = 0;
-  n->func = func_quote;
+  n->func = func_exec;
   FLAG_SET(n->expr.flags, FLAGS_USER_FUNC);
   n->n = -1;
   n->expr_type.exclusive = T_LIST;

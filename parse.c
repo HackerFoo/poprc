@@ -198,6 +198,7 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n) {
   refn(c, out-1);
   if(data) {
     c->expr.arg[in] = data;
+    if(!in) closure_set_ready(c, true);
   }
   return c;
 }
