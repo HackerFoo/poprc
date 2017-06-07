@@ -540,3 +540,27 @@ void reverse_ptrs(void **a, size_t n) {
   void **b = a + n;
   while(m--) swap_ptrs(a++, --b);
 }
+
+char *arguments(int argc, char **argv) {
+  if(argc == 0) return NULL;
+  size_t len = argc + 1;
+  COUNTUP(i, argc) {
+    len += strlen(argv[i]);
+  }
+  char *result = malloc(len), *p = result;
+  COUNTUP(i, argc) {
+    char *a = argv[i];
+    char *np = stpcpy(p, a);
+    if(*a == '-') {
+      *p = ':';
+      if(i) {
+        *(p-1) = '\n';
+      }
+    }
+    *np = ' ';
+    p = np + 1;
+  }
+  *(p-1) = '\n';
+  *p = '\0';
+  return result;
+}

@@ -382,6 +382,8 @@ void gen_main(cell_t *e) {
          "#include <stdlib.h>\n"
          "#include <assert.h>\n"
          "#include \"macros.h\"\n"
+         "#include \"rt_types.h\"\n"
+         "#include \"gen/support.h\"\n"
          "#include \"cgen/primitives.h\"\n\n");
 
   gen_function_signatures(e);
@@ -390,21 +392,27 @@ void gen_main(cell_t *e) {
   printf("int main(int argc, char **argv)\n{\n");
   printf("  const int arity_in = %d;\n", e->entry.in);
   printf("  const int arity_out = %d;\n", e->entry.out);
-  printf("  int in[32];\n"
+  printf("  array in[arity_in];\n"
          "  int out[arity_out];\n"
-         "  int args = argc - 1;\n"
-         "  if(args < arity_in) {\n"
+         "  error_t error;\n"
+         "  if(catch_error(&error)) {\n"
+         "    print_error(&error);\n"
+         "    return -1;\n"
+         "  }\n"
+         "  if(argc < 2) {\n"
          "    printf(\"not enough arguments\\n\");\n"
          "    return -1;\n"
          "  }\n\n");
 
-  printf("  COUNTUP(i, args) {\n"
-         "    in[i] = atoi(argv[i + 1]);\n"
-         "  }\n\n"
-         "  array arr = {\n"
-         "    args,\n"
-         "    in + args\n"
-         "  };\n");
+  printf("  const char *p = arguments(argc - 1, argv + 1);\n"
+         "  const char *e = p + strlen(p);\n"
+         "  COUNTUP(i, arity_in) {\n"
+         "    if(!p) {\n"
+         "      printf(\"parse error at argument %%d\\n\", (int)i);\n"
+         "      return -1;\n"
+         "    }\n"
+         "    in[i] = parse(&p, e);\n"
+         "  }\n\n");
 
   char *sep = "";
   printf("  out[0] = %s_%s(", e->module_name, e->word_name);
@@ -412,9 +420,9 @@ void gen_main(cell_t *e) {
   csize_t in = e->entry.in;
   COUNTUP(i, in) {
     if(code[in - 1 - i].value.type.exclusive == T_FUNCTION) {
-      printf("%sarr", sep);
-    } else {
       printf("%sin[%d]", sep, (int)i);
+    } else {
+      printf("%sin[%d].elem[0]", sep, (int)i);
     }
     sep = ", ";
   }
@@ -423,9 +431,6 @@ void gen_main(cell_t *e) {
     sep = ", ";
   }
   printf(");\n");
-  printf("  COUNTUP(i, arity_in) {\n"
-         "    printf(\"%%d \", in[i]);\n"
-         " }\n");
   printf("  printf(\"%s_%s =>\");\n", e->module_name, e->word_name);
   printf("  COUNTUP(i, arity_out) {\n"
          "    printf(\" %%d\", out[i]);\n"

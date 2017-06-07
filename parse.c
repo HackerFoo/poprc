@@ -36,6 +36,7 @@
 #include "gen/word_table.h"
 #include "gen/byte_compile.h"
 #include "gen/trace.h"
+#include "gen/tok.h"
 #include "gen/lex.h"
 #include "gen/module.h"
 #include "gen/user_func.h"

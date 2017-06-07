@@ -101,30 +101,6 @@ void usage() {
   printf("usage: eval [-t <test name>]\n");
 }
 
-char *arguments(int argc, char **argv) {
-  if(argc == 0) return NULL;
-  size_t len = argc + 1;
-  COUNTUP(i, argc) {
-    len += strlen(argv[i]);
-  }
-  char *result = malloc(len), *p = result;
-  COUNTUP(i, argc) {
-    char *a = argv[i];
-    char *np = stpcpy(p, a);
-    if(*a == '-') {
-      *p = ':';
-      if(i) {
-        *(p-1) = '\n';
-      }
-    }
-    *np = ' ';
-    p = np + 1;
-  }
-  *(p-1) = '\n';
-  *p = '\0';
-  return result;
-}
-
 void command_echo(cell_t *rest) {
   if(rest) {
     echo = segcmp("yes", tok_seg(rest)) == 0;
