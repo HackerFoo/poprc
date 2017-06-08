@@ -169,8 +169,13 @@ int main(int argc, char **argv) {
   bool skip_args = false;
   if(catch_error(&error)) {
     print_error(&error);
-    printf("___ LOG ___\n");
+    printf("\n___ LOG ___\n");
     log_print_all();
+    if(have_backtrace()) {
+      printf("\n___ BACKTRACE ___\n");
+      print_backtrace();
+      clear_backtrace();
+    }
     skip_args = true;
   }
 

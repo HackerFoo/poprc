@@ -26,6 +26,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#ifndef EMSCRIPTEN
+#include <execinfo.h>
+#endif
+
 #include "gen/support.h"
 
 #if INTERFACE
@@ -497,17 +501,42 @@ typedef struct {
 
 error_t *current_error = NULL;
 
+#ifndef EMSCRIPTEN
+static void *backtrace_buf[128];
+#endif
+
+static int backtrace_size = 0;
+
 void throw_error(const char *file, int line, const char *function, const char *msg) {
   if(!current_error) {
     printf("%s:%d: %s: %s\n", file, line, function, msg);
     assert(false);
   } else {
+#ifndef EMSCRIPTEN
+    backtrace_size = backtrace(backtrace_buf, LENGTH(backtrace_buf));
+#endif
     current_error->msg = msg;
     current_error->file = file;
     current_error->line = line;
     strncpy(current_error->function, function, sizeof(current_error->function));
     longjmp(current_error->env, 1);
   }
+}
+
+bool have_backtrace() {
+  return backtrace_size != 0;
+}
+
+void clear_backtrace() {
+  backtrace_size = 0;
+}
+
+void print_backtrace() {
+#ifndef EMSCRIPTEN
+  if(backtrace_size) {
+    backtrace_symbols_fd(backtrace_buf, backtrace_size, STDOUT_FILENO);
+  }
+#endif
 }
 
 void print_error(error_t *error) {
