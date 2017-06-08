@@ -23,7 +23,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
-#include <math.h>
 
 #if defined(USE_READLINE)
 #include <readline/readline.h>
@@ -86,17 +85,20 @@ void measure_display() {
          "allocated   : %d cells\n"
          "working set : %d cells\n"
          "reductions  : %d\n"
-         "failures    : %d\n"
-         "rate        : %.3e reductions/sec\n"
-         "alts used   : %d\n",
+         "failures    : %d\n",
          time,
          saved_measure.alloc_cnt,
          saved_measure.max_alloc_cnt,
          saved_measure.reduce_cnt,
-         saved_measure.fail_cnt,
-         time == 0 ? nan("") : saved_measure.reduce_cnt / time,
+         saved_measure.fail_cnt);
+  printf("rate        :");
+  if(time != 0) {
+    printf(" %.3e reductions/sec",
+           saved_measure.reduce_cnt / time);
+  }
+  printf("\n"
+         "alts used   : %d\n",
          saved_measure.alt_cnt);
-
 }
 
 void usage() {
@@ -176,6 +178,7 @@ int main(int argc, char **argv) {
       print_backtrace();
       clear_backtrace();
     }
+    printf("\nReseting. Note that flags will also be reset.\n\n");
     skip_args = true;
   }
 
