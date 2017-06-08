@@ -17,7 +17,7 @@
   var is_ready = false;
 
   function eval_popr(str) {
-    Module.ccall('emscripten_eval', 'undefined', ['string', 'number'], [str, str.length]);
+    return Module.ccall('emscripten_eval', 'number', ['string', 'number'], [str, str.length]);
   }
 
   Module['onRuntimeInitialized'] = function() {
@@ -29,7 +29,10 @@
       term.echo("not ready");
     } else {
       if(command != '') {
-        eval_popr(command);
+        if(eval_popr(command) != 0) {
+          term.echo("\n ___ BACKTRACE ___\n");
+          term.echo(Module.stackTrace());
+        }
       }
     }
   }

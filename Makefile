@@ -40,11 +40,17 @@ endif
 	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -std=c++98 -m32
 	OPT_FLAG=-O3
 endif
+
+ifneq ($(UNAME_O),Android)
+	BACKTRACE = -DBACKTRACE
+endif
+
 ifeq ($(findstring emcc, $(CC)),emcc)
-	CFLAGS = -Wall -DNDEBUG -DEMSCRIPTEN -s ALIASING_FUNCTION_POINTERS=0
+	CFLAGS = -Wall -DEMSCRIPTEN -s ALIASING_FUNCTION_POINTERS=0
 	USE_LINENOISE=n
 	USE_READLINE=n
-	OPT_FLAG=-Os
+	OPT_FLAG = -Os
+	BACKTRACE =
 endif
 
 ifeq ($(FORCE_32_BIT),y)
@@ -53,9 +59,9 @@ ifeq ($(FORCE_32_BIT),y)
 endif
 
 ifeq ($(BUILD),debug)
-	OPT_FLAG = -O0
+	OPT_FLAG ?= -O0
 	CFLAGS += -g  $(OPT_FLAG) $(SANITIZE)
-	CXXFLAGS += -g  $(OPT_FLAG) $(SANITIZE)
+	CXXFLAGS += -g  $(OPT_FLAG) $(SANITIZE) $(BACKTRACE)
 	LIBS += $(SANITIZE)
 endif
 

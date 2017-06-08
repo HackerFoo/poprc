@@ -470,14 +470,16 @@ void command_quit(UNUSED cell_t *rest) {
 }
 
 #ifdef EMSCRIPTEN
-void emscripten_eval(char *str, int len) {
+int emscripten_eval(char *str, int len) {
   error_t error;
   if(catch_error(&error)) {
     print_error(&error);
     printf(" \n___ LOG ___\n");
     log_print_all();
+    return -1;
   } else {
     eval_command(str, str + len);
+    return 0;
   }
 }
 #endif

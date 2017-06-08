@@ -26,7 +26,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#ifndef EMSCRIPTEN
+#ifdef BACKTRACE
 #include <execinfo.h>
 #endif
 
@@ -482,6 +482,11 @@ typedef struct {
 
 #define assert_throw(...) DISPATCH(assert_throw, 2, ##__VA_ARGS__)
 
+#ifdef EMSCRIPTEN
+#undef assert
+#define assert(...) assert_throw(__VA_ARGS__)
+#endif
+
 #define assert_throw_0(cond, msg, ...)                                  \
   do {                                                                  \
     if(!(cond)) {                                                       \
@@ -501,7 +506,7 @@ typedef struct {
 
 error_t *current_error = NULL;
 
-#ifndef EMSCRIPTEN
+#ifdef BACKTRACE
 static void *backtrace_buf[128];
 #endif
 
@@ -512,7 +517,7 @@ void throw_error(const char *file, int line, const char *function, const char *m
     printf("%s:%d: %s: %s\n", file, line, function, msg);
     assert(false);
   } else {
-#ifndef EMSCRIPTEN
+#ifdef BACKTRACE_SIZE
     backtrace_size = backtrace(backtrace_buf, LENGTH(backtrace_buf));
 #endif
     current_error->msg = msg;
@@ -532,7 +537,7 @@ void clear_backtrace() {
 }
 
 void print_backtrace() {
-#ifndef EMSCRIPTEN
+#ifdef BACKTRACE
   if(backtrace_size) {
     backtrace_symbols_fd(backtrace_buf, backtrace_size, STDOUT_FILENO);
   }
