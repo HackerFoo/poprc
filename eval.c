@@ -22,6 +22,8 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <signal.h>
+#include <math.h>
 
 #if defined(USE_READLINE)
 #include <readline/readline.h>
@@ -92,7 +94,7 @@ void measure_display() {
          saved_measure.max_alloc_cnt,
          saved_measure.reduce_cnt,
          saved_measure.fail_cnt,
-         saved_measure.reduce_cnt / time,
+         time == 0 ? nan("") : saved_measure.reduce_cnt / time,
          saved_measure.alt_cnt);
 
 }
@@ -151,19 +153,34 @@ void command_eval(cell_t *rest) {
   }
 }
 
+static
+void crash_handler(int sig, UNUSED siginfo_t *info, UNUSED void *ctx) {
+  throw_error(__FILE__, __LINE__, __func__, strsignal(sig));
+}
+
 int main(int argc, char **argv) {
+  struct sigaction sa;
+  sa.sa_flags = SA_SIGINFO;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_sigaction = crash_handler;
+  sigaction(SIGSEGV, &sa, NULL);
+
   error_t error;
+  bool skip_args = false;
   if(catch_error(&error)) {
     print_error(&error);
     printf("___ LOG ___\n");
     log_print_all();
-  } else {
-    log_init();
-    cells_init();
-    parse_init();
-    module_init();
+    skip_args = true;
+  }
+
+  log_init();
+  cells_init();
+  parse_init();
+  module_init();
 
 #ifndef EMSCRIPTEN
+  if(!skip_args) {
     bool quit = false;
     tty = isatty(fileno(stdin));
 
@@ -182,17 +199,18 @@ int main(int argc, char **argv) {
     }
 
     eval_commands = will_eval_commands;
-
-    if(!quit) run_eval(echo);
-    if(stats) {
-      measure_display();
-      print_symbols();
-    }
-    free_modules();
-    unload_files();
-    if(run_check_free) check_free();
-#endif
   }
+
+  if(!quit) run_eval(echo);
+  if(stats) {
+    measure_display();
+    print_symbols();
+  }
+  free_modules();
+  unload_files();
+  if(run_check_free) check_free();
+#endif
+
 #ifdef EMSCRIPTEN
   eval_command(":load lib.ppr", 0);
   eval_command(":import", 0);
