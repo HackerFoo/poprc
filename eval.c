@@ -167,8 +167,10 @@ int main(int argc, char **argv) {
   sa.sa_sigaction = crash_handler;
   sigaction(SIGSEGV, &sa, NULL);
 
+#ifndef EMSCRIPTEN
   error_t error;
-  bool skip_args = false;
+  bool exit_on_error = false;
+
   if(catch_error(&error)) {
     print_error(&error);
     printf("\n___ LOG ___\n");
@@ -178,9 +180,14 @@ int main(int argc, char **argv) {
       print_backtrace();
       clear_backtrace();
     }
+    if(exit_on_error) {
+      printf("\nExiting on error.\n");
+      return -1;
+    }
     printf("\nReseting. Note that flags will also be reset.\n\n");
-    skip_args = true;
+    exit_on_error = true;
   }
+#endif
 
   log_init();
   cells_init();
@@ -188,26 +195,25 @@ int main(int argc, char **argv) {
   module_init();
 
 #ifndef EMSCRIPTEN
-  if(!skip_args) {
-    bool quit = false;
-    tty = isatty(fileno(stdin));
+  bool quit = false;
+  tty = isatty(fileno(stdin));
 
-    if(argc > 1) {
-      char *args = arguments(argc - 1, argv + 1), *a = args;
-      // printf("__ arguments __\n%s", a);
+  if(argc > 1) {
+    char *args = arguments(argc - 1, argv + 1), *a = args;
+    // printf("__ arguments __\n%s", a);
 
-      while(*a) {
-        char *e = strchr(a, '\n');
-        *e = '\0'; // HACKy (fix load_file instead)
-        quit = !eval_command(a, e) || quit;
-        a = e + 1;
-      }
-
-      free(args);
+    while(*a) {
+      char *e = strchr(a, '\n');
+      *e = '\0'; // HACKy (fix load_file instead)
+      quit = !eval_command(a, e) || quit;
+      a = e + 1;
     }
 
-    eval_commands = will_eval_commands;
+    free(args);
   }
+
+  eval_commands = will_eval_commands;
+  exit_on_error = false;
 
   if(!quit) run_eval(echo);
   if(stats) {
@@ -465,7 +471,14 @@ void command_quit(UNUSED cell_t *rest) {
 
 #ifdef EMSCRIPTEN
 void emscripten_eval(char *str, int len) {
-  eval_command(str, str + len);
+  error_t error;
+  if(catch_error(&error)) {
+    print_error(&error);
+    printf(" \n___ LOG ___\n");
+    log_print_all();
+  } else {
+    eval_command(str, str + len);
+  }
 }
 #endif
 
