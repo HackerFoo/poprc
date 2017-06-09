@@ -160,7 +160,7 @@ cell_t *unify_convert(cell_t *c, cell_t *pat) {
   cell_t *base = entry + 1;
   cell_t *ret = NULL;
   if(out != 1) { // for now
-    LOG("unify_convert %d: out(%d) != 1\n", c-cells, out);
+    LOG("unify_convert %d: out(%d) != 1", c-cells, out);
     return NULL;
   }
 
@@ -231,7 +231,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     bool specialize = false;
 
     if(underscore) {
-      LOG("underscore hack in %s.%s %d\n",
+      LOG("underscore hack in %s.%s %d",
           entry->module_name,
           entry->word_name,
           CELL_INDEX(c));
@@ -239,7 +239,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
       // try to unify with initial_word, returning if successful
       cell_t *n = unify_convert(c, initial_word);
       if(n) {
-        LOG("unified %s.%s %d with initial_word in %s.%s %d\n",
+        LOG("unified %s.%s %d with initial_word in %s.%s %d",
             entry->module_name,
             entry->word_name,
             CELL_INDEX(c),
@@ -269,7 +269,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     if(entry == &trace_cur[-1] || underscore) {
       COUNTUP(i, c_in) {
         if(is_list(c->expr.arg[i])) {
-          LOG("HACK forced cells[%d].expr.arg[%d]\n", CELL_INDEX(c), i);
+          LOG("HACK forced cells[%d].expr.arg[%d]", CELL_INDEX(c), i);
           func_list(&c->expr.arg[i], req_simple(T_RETURN));
 
           // ensure quotes are stored first
@@ -426,7 +426,7 @@ expand:
 
 void reduce_quote(cell_t **cp) {
   if(is_user_func(*cp)) { // HACKy
-    LOG("HACK reduce_quote %d\n", CELL_INDEX(*cp));
+    LOG("HACK reduce_quote %d", CELL_INDEX(*cp));
     reduce(cp, req_any);
   }
 }

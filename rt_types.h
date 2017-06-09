@@ -70,6 +70,7 @@ typedef intptr_t val_t;
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Warray-bounds"
+#pragma clang diagnostic ignored "-Wzero-length-array"
 #pragma clang diagnostic ignored "-Wgnu-anonymous-struct"
 #pragma clang diagnostic ignored "-Wnested-anon-types"
 #pragma clang diagnostic ignored "-Wgnu-folding-constant"

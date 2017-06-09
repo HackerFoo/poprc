@@ -248,7 +248,7 @@ void trace_final_pass(cell_t *e) {
         if(prev && prev->func == func_ap &&
            trace_decode(p->expr.arg[closure_in(p) - 1]) == prev - start &&
            prev->n == 0) {
-          LOG("merging ap %d to %d\n", p - start, prev - start);
+          LOG("merging ap %d to %d", p - start, prev - start);
           csize_t
             p_in = closure_in(p),
             p_out = closure_out(p),
@@ -464,7 +464,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   e->entry.in = in;
   e->entry.out = out;
   e->entry.len = 0;
-  LOG("compiling %s.%.*s at entry %d\n", e->module_name, name.n, name.s, entry_number(e));
+  CONTEXT_LOG("compiling %s.%.*s at entry %d", e->module_name, name.n, name.s, entry_number(e));
 
   // parse
   e->entry.flags = ENTRY_NOINLINE;
@@ -484,6 +484,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   // finish
   free_def(l);
   write_graph = context_write_graph;
+  END_CONTEXT();
   return true;
 }
 
@@ -576,7 +577,7 @@ static
 bool simplify_quote(cell_t *e, cell_t *parent_entry, cell_t *q) {
   cell_t **root = &q->expr.arg[closure_in(q)];
   if(is_tail(e)) {
-    LOG("%d -> tail\n", q-parent_entry-1);
+    LOG("%d -> tail", q-parent_entry-1);
     trace_shrink(q, 2);
     q->func = func_ap;
     q->expr_type.exclusive = T_FUNCTION;
@@ -586,7 +587,7 @@ bool simplify_quote(cell_t *e, cell_t *parent_entry, cell_t *q) {
     q->expr.arg[1] = NULL;
     goto finish;
   } else if (is_ap(e)) {
-    LOG("%d -> ap\n", q-parent_entry-1);
+    LOG("%d -> ap", q-parent_entry-1);
     csize_t in = e->entry.in;
     assert(in + 1 == q->size && q->expr.out == 0);
     cell_t *code = e + 1;
@@ -633,11 +634,11 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   e->entry.len = 0;
   e->entry.flags = ENTRY_NOINLINE;
   e->func = func_exec;
-  LOG("compiling quote %s.%s_%d at entry %d\n",
-      e->module_name,
-      parent_entry->word_name,
-      (int)(q - parent_entry) - 1,
-      entry_number(e));
+  CONTEXT_LOG("compiling quote %s.%s_%d at entry %d",
+              e->module_name,
+              parent_entry->word_name,
+              (int)(q - parent_entry) - 1,
+              entry_number(e));
 
   trace_allocate_vars(in);
   substitute_free_variables(c, q->expr.arg, in, parent_entry);
@@ -675,6 +676,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
 
   q->expr.arg[closure_in(q)] = trace_encode(entry_number(e));
   q->expr_type.flags |= T_SUB;
+  END_CONTEXT();
   return e;
 }
 
@@ -785,14 +787,17 @@ void trace_get_name(const cell_t *c, const char **module_name, const char **word
 // print bytecode for a word
 void command_bytecode(cell_t *rest) {
   if(rest) {
+    seg_t name = tok_seg(rest);
+    CONTEXT("bytecode command");
     command_def(rest);
     cell_t
       *m = eval_module(),
-      *e = module_lookup_compiled(tok_seg(rest), &m);
+      *e = module_lookup_compiled(name, &m);
     if(e) {
       printf("\n");
       print_bytecode(e);
     }
+    END_CONTEXT();
   }
 }
 
