@@ -19,9 +19,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <assert.h>
 #include <inttypes.h>
 
+#include "gen/error.h"
 #include "gen/log.h"
 
 #define LOG_SIZE 4096

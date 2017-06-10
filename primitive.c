@@ -16,9 +16,9 @@
 */
 
 #include <string.h>
-#include <assert.h>
 #include <stdio.h>
 #include "rt_types.h"
+#include "gen/error.h"
 #include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/primitive.h"
@@ -71,7 +71,7 @@ cell_t *_op1(val_t (*op)(val_t), cell_t *x) {
 bool func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t, val_t), bool nonzero) {
   cell_t *c = *cp;
   cell_t *res = 0;
-  assert(!is_marked(c));
+  assert_error(!is_marked(c));
 
   if(treq.t != T_ANY && treq.t != res_type) goto fail;
 
@@ -99,7 +99,7 @@ bool func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_
 bool func_op1(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t)) {
   cell_t *c = *cp;
   cell_t *res = 0;
-  assert(!is_marked(c));
+  assert_error(!is_marked(c));
 
   if(treq.t != T_ANY && treq.t != res_type) goto fail;
 
@@ -212,7 +212,7 @@ bool func_pushr(cell_t **cp, UNUSED type_request_t treq) {
 // WORD("|", alt, 2, 1)
 bool func_alt(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
-  assert(!is_marked(c));
+  assert_error(!is_marked(c));
   uint8_t a = new_alt_id(1);
   cell_t *r0 = id(c->expr.arg[0], as_single(a, 0));
   cell_t *r1 = id(c->expr.arg[1], as_single(a, 1));
@@ -223,7 +223,7 @@ bool func_alt(cell_t **cp, UNUSED type_request_t treq) {
 
 cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
   cell_t *nc;
-  assert(is_list(c));
+  assert_error(is_list(c));
   if(~c->value.type.flags & T_ROW) {
     nc = copy_expand(c, 1);
     v->value.type.exclusive = T_FUNCTION;
@@ -245,7 +245,7 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
     *left = v;
   } else {
     // slip in v as an extra arg to assert
-    assert((*left)->func == func_assert);
+    assert_error((*left)->func == func_assert);
     (*left)->size++;
     (*left)->expr.arg[2] = v;
   }
@@ -256,7 +256,7 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
 // WORD("!", assert, 2, 1)
 bool func_assert(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
-  assert(!is_marked(c));
+  assert_error(!is_marked(c));
 
   cell_t *res = NULL;
   alt_set_t alt_set = 0;
@@ -280,7 +280,7 @@ bool func_assert(cell_t **cp, type_request_t treq) {
   cell_t *q = c->expr.arg[0];
 
   // bare functions should not pass through a normal assert
-  if(in == 2) assert(!is_function(q));
+  if(in == 2) assert_error(!is_function(q));
 
   if(is_var(p)) {
     if(is_list(q)) {
@@ -310,7 +310,7 @@ fail:
 // WORD("id", id, 1, 1)
 bool func_id(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
-  assert(!is_marked(c));
+  assert_error(!is_marked(c));
   alt_set_t alt_set = c->expr.alt_set;
 
   if(alt_set || c->alt) {
@@ -333,7 +333,7 @@ bool func_id(cell_t **cp, type_request_t treq) {
 // WORD("drop", drop, 2, 1)
 bool func_drop(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
-  assert(!is_marked(c));
+  assert_error(!is_marked(c));
   cell_t *p = ref(c->expr.arg[0]);
   drop(c);
   *cp = p;
@@ -343,7 +343,7 @@ bool func_drop(cell_t **cp, UNUSED type_request_t treq) {
 // WORD("swap", swap, 2, 2)
 bool func_swap(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
-  assert(!is_marked(c));
+  assert_error(!is_marked(c));
   cell_t *d = c->expr.arg[2];
   store_lazy_dep(d, c->expr.arg[0], 0);
   store_lazy(cp, c, c->expr.arg[1], 0);
@@ -361,7 +361,7 @@ cell_t *id(cell_t *c, alt_set_t as) {
 // WORD("dup", dup, 1, 2)
 bool func_dup(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
-  assert(!is_marked(c));
+  assert_error(!is_marked(c));
   cell_t *d = c->expr.arg[1];
   store_lazy_dep(d, ref(c->expr.arg[0]), 0);
   store_lazy(cp, c, c->expr.arg[0], 0);
@@ -383,7 +383,7 @@ csize_t function_compose_in(cell_t *c, csize_t req_in, csize_t arg_in, bool row)
 static
 bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   cell_t *c = *cp;
-  assert(!is_marked(c));
+  assert_error(!is_marked(c));
 
   const csize_t
     in = closure_in(c) - 1,
@@ -458,7 +458,7 @@ bool func_compose(cell_t **cp, type_request_t treq) {
 bool func_print(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   cell_t *res = 0;
-  assert(!is_marked(c));
+  assert_error(!is_marked(c));
 
   if(treq.t != T_ANY && treq.t != T_SYMBOL) goto fail;
 
@@ -496,7 +496,7 @@ bool is_list_var(cell_t *c) {
 // WORD("is_nil", is_nil, 1, 1)
 bool func_is_nil(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
-  assert(!is_marked(*cp));
+  assert_error(!is_marked(*cp));
 
   if(treq.t != T_ANY && treq.t != T_SYMBOL) goto fail;
 

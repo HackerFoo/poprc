@@ -18,9 +18,9 @@
 #include "rt_types.h"
 #include <string.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <inttypes.h>
 
+#include "gen/error.h"
 #include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/eval.h"
@@ -239,7 +239,7 @@ void trace_final_pass(cell_t *e) {
       } else if(p->func == func_placeholder) { // convert a placeholder to ap or compose
         p->expr_type.flags &= ~T_INCOMPLETE;
         trace_index_t left = trace_decode(p->expr.arg[0]);
-        assert(left >= 0);
+        assert_error(left >= 0);
         if(closure_in(p) > 1 && trace_type(&trace_cur[left]).exclusive == T_FUNCTION) {
           p->func = func_compose;
         } else {
@@ -501,7 +501,7 @@ void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *entry) {
     }
   }
   c->value.ptr[0] = trace_alloc(2);
-  //assert(false);
+  //assert_error(false);
 }
 
 static
@@ -589,7 +589,7 @@ bool simplify_quote(cell_t *e, cell_t *parent_entry, cell_t *q) {
   } else if (is_ap(e)) {
     LOG("%d -> ap", q-parent_entry-1);
     csize_t in = e->entry.in;
-    assert(in + 1 == q->size && q->expr.out == 0);
+    assert_error(in + 1 == q->size && q->expr.out == 0);
     cell_t *code = e + 1;
     cell_t *ap = &code[in];
     csize_t args = closure_in(ap);
@@ -628,7 +628,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   cell_t *e = trace_start();
   csize_t in = closure_in(q);
   cell_t **fp = &q->expr.arg[in];
-  assert(*fp);
+  assert_error(*fp);
   cell_t *c = *fp;
   e->n = PERSISTENT;
   e->entry.len = 0;
@@ -659,7 +659,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   e->entry.alts = trace_reduce(&c);
   assert_throw(c && !(c->value.type.flags & T_FAIL), "reduction failed");
   e->entry.out = 1;
-  assert(e->entry.out);
+  assert_error(e->entry.out);
   drop(c);
   trace_stop();
   e->entry.flags &= ~ENTRY_NOINLINE;
@@ -672,7 +672,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
 
   if(simplify_quote(e, parent_entry, q)) return NULL;
 
-  assert(remove_root(fp));
+  assert_error(remove_root(fp));
 
   q->expr.arg[closure_in(q)] = trace_encode(entry_number(e));
   q->expr_type.flags |= T_SUB;
@@ -691,8 +691,8 @@ cell_t *compile_specialized(cell_t *parent_entry, cell_t *tc) {
     out = closure_out(tc) + 1;
   cell_t **fp = &tc->expr.arg[in];
   cell_t *c = *fp;
-  assert(c);
-  assert(remove_root(fp));
+  assert_error(c);
+  assert_error(remove_root(fp));
   e->n = PERSISTENT;
   e->entry.len = 0;
   e->entry.flags = ENTRY_NOINLINE;

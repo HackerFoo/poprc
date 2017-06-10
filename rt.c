@@ -16,9 +16,9 @@
 */
 
 #include <string.h>
-#include <assert.h>
 #include <stdio.h>
 #include "rt_types.h"
+#include "gen/error.h"
 #include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/primitive.h"
@@ -39,7 +39,7 @@ cell_t **rt_roots[31];
 const size_t rt_roots_n = LENGTH(rt_roots);
 
 #if INTERFACE
-#define ASSERT_REF() assert(assert_ref(rt_roots, rt_roots_n))
+#define ASSERT_REF() assert_error(assert_ref(rt_roots, rt_roots_n))
 #endif
 
 bool insert_root(cell_t **r) {
@@ -66,7 +66,7 @@ cell_t *dup_alt(cell_t *c, csize_t n, cell_t *b) {
     in = closure_in(c),
     out = closure_out(c),
     args = closure_args(c);
-  assert(n < in);
+  assert_error(n < in);
   cell_t *a = copy(c);
 
   // ref args
@@ -131,7 +131,7 @@ bool reduce_arg(cell_t *c,
 // Duplicate c to c->alt and return it
 cell_t *dup_list_alt(cell_t *c, csize_t n, cell_t *b) {
   csize_t in = list_size(c);
-  assert(n < in);
+  assert_error(n < in);
   cell_t *a = copy(c);
 
   // ref args
@@ -168,7 +168,7 @@ bool reduce_ptr(cell_t *c,
                 csize_t n,
                 alt_set_t *ctx,
                 type_request_t treq) {
-  assert(is_list(c));
+  assert_error(is_list(c));
   cell_t **ap = &c->value.ptr[n];
   bool r = reduce(ap, treq);
   cell_t *a = clear_ptr(*ap);
@@ -190,7 +190,7 @@ bool reduce(cell_t **cp, type_request_t treq) {
   *cp = clear_ptr(*cp);
   cell_t *c = *cp;
   while(c) {
-    assert(is_closure(c));
+    assert_error(is_closure(c));
     if(!closure_is_ready(c)) {
       fail(cp, treq);
       c = *cp;
@@ -222,7 +222,7 @@ void reduce_dep(cell_t **cp) {
   if(!c || !closure_is_ready(c)) {
     fail(cp, req_any);
   } else {
-    assert(is_closure(c) &&
+    assert_error(is_closure(c) &&
            closure_is_ready(c));
     measure.reduce_cnt++;
     c->func(cp, req_any);
@@ -260,7 +260,7 @@ void update_deps(cell_t *c) {
   TRAVERSE(c, out) {
     cell_t *d = *p;
     if(d) {
-      assert(is_dep(d));
+      assert_error(is_dep(d));
       d->expr.arg[0] = c;
     }
   }
@@ -278,7 +278,7 @@ csize_t count_deps(cell_t *c) {
 cell_t *expand_deps(cell_t *c, csize_t s) {
   csize_t deps = count_deps(c);
   c->n -= deps;
-  assert(!c->n);
+  assert_error(!c->n);
   csize_t in = closure_in(c);
   c = expand(c, s);
 
@@ -326,7 +326,7 @@ cell_t *compose(list_iterator_t it, cell_t *b) {
 }
 
 cell_t *func(reduce_t *f, csize_t in, csize_t out) {
-  assert(out > 0);
+  assert_error(out > 0);
   csize_t args = in + out - 1;
   cell_t *c = closure_alloc(args);
   c->expr.out = out - 1;
@@ -340,8 +340,8 @@ cell_t *func(reduce_t *f, csize_t in, csize_t out) {
 
 /* arg is destructive to c */
 void arg(cell_t *c, cell_t *a) {
-  assert(is_closure(c) && is_closure(a));
-  assert(!closure_is_ready(c));
+  assert_error(is_closure(c) && is_closure(a));
+  assert_error(!closure_is_ready(c));
   csize_t i = closure_next_child(c);
   if(!is_data(c->expr.arg[i])) {
     c->expr.arg[0] = (cell_t *)(intptr_t)
@@ -391,10 +391,10 @@ void update_ready(cell_t *c, cell_t *a) {
 
 // non-destructive (_nd) version of arg
 cell_t *arg_nd(cell_t *c, cell_t *a, cell_t *r) {
-  assert(is_closure(a));
+  assert_error(is_closure(a));
   cell_t *p = c;
 loop:
-  assert(!closure_is_ready(p));
+  assert_error(!closure_is_ready(p));
   csize_t i = closure_next_child(p);
   if(!is_data(p->expr.arg[i])) {
     cell_t *l = mutate(&p, &r);
@@ -464,7 +464,7 @@ void fail(cell_t **cp, type_request_t treq) {
     *cp = NULL;
     return;
   }
-  assert(!is_marked(c));
+  assert_error(!is_marked(c));
   cell_t *alt = ref(c->alt);
   if(c->n && treq.t == T_ANY) { // HACK this should be more sophisticated
     TRAVERSE(c, in) {
@@ -489,7 +489,7 @@ void fail(cell_t **cp, type_request_t treq) {
 
 void store_reduced(cell_t **cp, cell_t *r) {
   cell_t *c = *cp;
-  assert(!is_marked(c));
+  assert_error(!is_marked(c));
   r->func = func_value;
   trace_reduction(c, r);
   drop_multi(c->expr.arg, closure_in(c));
@@ -537,7 +537,7 @@ void check_tmps() {
         p->tmp = 0;
       }
       */
-      assert(!p->tmp);
+      assert_error(!p->tmp);
       i += closure_cells(p);
     } else ++i;
   }
@@ -571,7 +571,7 @@ cell_t *add_to_list(cell_t *c, cell_t *nc, cell_t **l) {
   nc->n = -1;
   CONS(tmp, l, nc);
   CONS(tmp, l, c);
-  assert(check_tmp_loop(*l));
+  assert_error(check_tmp_loop(*l));
   return nc;
 }
 
@@ -644,13 +644,13 @@ cell_t *mutate(cell_t **cp, cell_t **rp) {
 
   // traverse list and rewrite pointers
   cell_t *li = l;
-  assert(check_tmp_loop(li));
+  assert_error(check_tmp_loop(li));
   while(li) {
     cell_t *t = li->tmp;
     mutate_update(t, false);
     li = t->tmp;
   }
-  assert(check_deps(r));
+  assert_error(check_deps(r));
   if(c->tmp) *cp = c->tmp;
   if(r->tmp) *rp = r->tmp;
   return l;
@@ -701,13 +701,13 @@ void clean_tmp(cell_t *l) {
   while(l) {
     cell_t *next = l->tmp;
     l->tmp = 0;
-    assert(~l->n);
+    assert_error(~l->n);
     l = next;
   }
 }
 
 cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
-  assert(is_value(c));
+  assert_error(is_value(c));
   cell_t *n;
   if(c->alt == alt &&
      c->value.alt_set == alt_set) return c;

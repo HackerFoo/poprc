@@ -15,9 +15,9 @@
     along with PoprC.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <assert.h>
 #include <stdio.h>
 #include "rt_types.h"
+#include "gen/error.h"
 #include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/special.h"
@@ -64,7 +64,7 @@ bool is_function(cell_t const *c) {
 // not really a func
 bool func_list(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
-  assert(!is_marked(c));
+  assert_error(!is_marked(c));
   if(treq.t == T_ANY && treq.t == T_LIST) return true;
   if(treq.t != T_RETURN) goto fail;
   csize_t n = list_size(c);
@@ -96,7 +96,7 @@ void reduce_list(cell_t **cp) {
 }
 
 list_iterator_t list_begin(cell_t *l) {
-  assert(is_list(l));
+  assert_error(is_list(l));
   bool row = is_row_list(l);
   list_iterator_t it = {
     .array = l->value.ptr,
@@ -239,7 +239,7 @@ void collapse_row(cell_t **cp) {
 }
 
 cell_t *flat_copy(cell_t *l) {
-  assert(is_list(l));
+  assert_error(is_list(l));
   csize_t n = function_out(l, true);
   if(!n) return &nil_cell;
   cell_t *res = make_list(n);

@@ -18,8 +18,8 @@
 #include "rt_types.h"
 #include <string.h>
 #include <stdio.h>
-#include <assert.h>
 
+#include "gen/error.h"
 #include "gen/cells.h"
 #include "gen/special.h"
 #include "gen/test.h"
@@ -54,7 +54,7 @@ cell_t **module_ref(cell_t *m) {
 
 static
 map_t module_map(cell_t *m) {
-  assert(is_module(m));
+  assert_error(is_module(m));
   cell_t *c = *module_ref(m);
   return c ? c->value.map : NULL;
 }
@@ -64,7 +64,7 @@ void module_init() {
 }
 
 cell_t *module_set(cell_t *m, seg_t key, cell_t *val) {
-  assert(is_module(m));
+  assert_error(is_module(m));
   cell_t *c = *module_ref(m);
   map_t map;
 
@@ -90,7 +90,7 @@ cell_t *module_set(cell_t *m, seg_t key, cell_t *val) {
 }
 
 cell_t *module_get(cell_t *m, seg_t key) {
-  assert(is_module(m));
+  assert_error(is_module(m));
   cell_t *c = *module_ref(m);
   if(c == NULL) {
     return NULL;
@@ -101,7 +101,7 @@ cell_t *module_get(cell_t *m, seg_t key) {
 }
 
 cell_t *module_get_or_create(cell_t *m, seg_t key) {
-  assert(is_module(m));
+  assert_error(is_module(m));
   cell_t *r = module_get(m, key);
   if(r) return r;
 
@@ -153,7 +153,7 @@ void free_def(cell_t *l) {
 }
 
 void print_defs(const cell_t *m) {
-  assert(is_module(m));
+  assert_error(is_module(m));
   map_t map = module_map((cell_t *)m);
   if(!map) return;
   csize_t n = *map_cnt(map);
@@ -164,7 +164,7 @@ void print_defs(const cell_t *m) {
 }
 
 void free_defs(cell_t *m) {
-  assert(is_module(m));
+  assert_error(is_module(m));
   if(!m || !is_closure(m)) return;
   map_t map = module_map(m);
   if(map) {
@@ -179,7 +179,7 @@ void free_defs(cell_t *m) {
 
 void print_modules() {
   if(!modules) return;
-  assert(is_module(modules));
+  assert_error(is_module(modules));
   map_t map = module_map(modules);
   if(!map) return;
   csize_t n = *map_cnt(map);
@@ -192,7 +192,7 @@ void print_modules() {
 
 void free_modules() {
   if(!modules) return;
-  assert(is_module(modules));
+  assert_error(is_module(modules));
   map_t map = module_map(modules);
   if(map) {
     csize_t n = *map_cnt(map);
@@ -304,7 +304,7 @@ void merge_into_module(cell_t *ma, cell_t *mb) {
   if(!a) {
     *module_ref(ma) = persistent(copy(b));
   } else {
-    assert(is_map(a));
+    assert_error(is_map(a));
     a = expand_map(a, *map_cnt(b->value.map));
     string_map_union(a->value.map, b->value.map);
     *module_ref(ma) = persistent(a);
@@ -330,7 +330,7 @@ cell_t *get_submodule(cell_t *m, seg_t s) {
 cell_t *implicit_lookup(seg_t w, cell_t *m) {
   static const seg_t seg_import = SEG("imports");
   if(!m) return NULL;
-  assert(is_module(m));
+  assert_error(is_module(m));
   cell_t *r = module_get(m, w);
   if(r) return r;
   cell_t *imports = get_submodule(m, seg_import);
@@ -476,7 +476,7 @@ void command_import(cell_t *rest) {
 }
 
 void print_module_bytecode(cell_t *m) {
-  assert(is_module(m));
+  assert_error(is_module(m));
   if(!*module_ref(m)) return;
   cell_t *map_copy = copy(*module_ref(m));
   map_t map = map_copy->value.map;
@@ -494,7 +494,7 @@ void print_module_bytecode(cell_t *m) {
 
 void print_all_bytecode() {
   if(!modules) return;
-  assert(is_module(modules));
+  assert_error(is_module(modules));
   map_t map = module_map(modules);
   if(!map) return;
   FORMAP(i, map) {

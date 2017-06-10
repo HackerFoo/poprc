@@ -19,7 +19,6 @@
 #include <time.h>
 #include <string.h>
 #include <stdio.h>
-#include <assert.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
@@ -33,6 +32,7 @@
 #define RAW_LINE
 #endif
 
+#include "gen/error.h"
 #include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/special.h"

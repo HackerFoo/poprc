@@ -16,8 +16,8 @@
 */
 
 #include <string.h>
-#include <assert.h>
 #include "rt_types.h"
+#include "gen/error.h"
 #include "gen/cells.h"
 #include "gen/special.h"
 #include "gen/rt.h"
@@ -81,19 +81,19 @@ bool is_closure(void const *p) {
 
 // Is the closure `c` ready to reduce?
 bool closure_is_ready(cell_t const *c) {
-  assert(is_closure(c));
+  assert_error(is_closure(c));
   return is_value(c) || !(c->expr.flags & FLAGS_NEEDS_ARG);
 }
 
 // Set the readiness of closure `c` to state `r`
 void closure_set_ready(cell_t *c, bool r) {
-  assert(is_closure(c));
+  assert_error(is_closure(c));
   FLAG_SET_TO(c->expr.flags, FLAGS_NEEDS_ARG, !r);
 }
 
 cell_t *cells_next() {
   cell_t *p = cells_ptr;
-  assert(is_cell(p) && !is_closure(p) && is_cell(cells_ptr->mem.next));
+  assert_error(is_cell(p) && !is_closure(p) && is_cell(cells_ptr->mem.next));
   cells_ptr = cells_ptr->mem.next;
   return p;
 }
@@ -105,7 +105,7 @@ bool check_cycle() {
   while(ptr->next != start) {
     if(i > LENGTH(cells)) return false;
     i++;
-    assert(is_cell(ptr->next->next));
+    assert_error(is_cell(ptr->next->next));
     ptr = ptr->next;
   }
   return true;
@@ -136,12 +136,12 @@ void cells_init() {
 }
 
 void cell_alloc(cell_t *c) {
-  assert(is_cell(c) && !is_closure(c));
+  assert_error(is_cell(c) && !is_closure(c));
   assert_throw(measure.current_alloc_cnt < MAX_ALLOC);
   cell_t *prev = c->mem.prev;
-  assert(is_cell(prev) && !is_closure(prev));
+  assert_error(is_cell(prev) && !is_closure(prev));
   cell_t *next = c->mem.next;
-  assert(is_cell(next) && !is_closure(next));
+  assert_error(is_cell(next) && !is_closure(next));
   if(cells_ptr == c) cells_next();
   assert_throw(c != prev && c != next, "can't alloc the last cell");
   prev->mem.next = next;
@@ -220,10 +220,10 @@ void cell_free(cell_t *c) {
 
 void closure_shrink(cell_t *c, csize_t s) {
   if(!c) return;
-  assert(is_cell(c));
+  assert_error(is_cell(c));
   csize_t size = closure_cells(c);
   if(size > s) {
-    assert(is_closure(c));
+    assert_error(is_closure(c));
     RANGEUP(i, s, size) {
       c[i].func = 0;
       c[i].mem.prev = &c[i-1];
@@ -255,24 +255,24 @@ csize_t val_size(cell_t const *c) {
 }
 
 csize_t closure_args(cell_t const *c) {
-  assert(is_closure(c));
+  assert_error(is_closure(c));
   return c->size;
 }
 
 csize_t closure_in(cell_t const *c) {
-  assert(is_closure(c) && !is_value(c));
+  assert_error(is_closure(c) && !is_value(c));
   csize_t in = c->size - c->expr.out;
   if(c->expr.flags & FLAGS_USER_FUNC) in--;
   return in;
 }
 
 csize_t closure_out(cell_t const *c) {
-  assert(is_closure(c) && !is_value(c));
+  assert_error(is_closure(c) && !is_value(c));
   return c->expr.out;
 }
 
 csize_t closure_next_child(cell_t const *c) {
-  assert(is_closure(c));
+  assert_error(is_closure(c));
   return is_offset(c->expr.arg[0]) ? (intptr_t)c->expr.arg[0] : 0;
 }
 
@@ -305,7 +305,7 @@ cell_t *ref(cell_t *c) {
 cell_t *refn(cell_t *c, refcount_t n) {
   c = clear_ptr(c);
   if(c && c->n != PERSISTENT) {
-    assert(is_closure(c));
+    assert_error(is_closure(c));
     c->n += n;
   }
   return c;
@@ -322,7 +322,7 @@ bool is_any(cell_t const *c) {
 void drop(cell_t *c) {
   c = clear_ptr(c);
   if(!is_cell(c) || c->n == PERSISTENT) return;
-  assert(is_closure(c));
+  assert_error(is_closure(c));
   if(!c->n) {
     cell_t *p;
     TRAVERSE(c, alt, in, ptrs) {
@@ -356,7 +356,7 @@ void drop_multi(cell_t **a, csize_t n) {
 void fake_drop(cell_t *c) {
   c = clear_ptr(c);
   if(!is_cell(c) || c->n == PERSISTENT) return;
-  assert(~c->n && is_closure(c));
+  assert_error(~c->n && is_closure(c));
   if(!c->n) {
     TRAVERSE(c, alt, in, ptrs) {
       fake_drop(*p);
@@ -368,7 +368,7 @@ void fake_drop(cell_t *c) {
 void fake_undrop(cell_t *c) {
   c = clear_ptr(c);
   if(!is_cell(c) || c->n == PERSISTENT) return;
-  assert(is_closure(c));
+  assert_error(is_closure(c));
   if(!++c->n) {
     TRAVERSE(c, alt, in, ptrs) {
       fake_undrop(*p);

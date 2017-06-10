@@ -13,11 +13,20 @@ alt_sets => 0
 M:three
 ################
 comments => 0
+@ context
+log.c:379: A 2
+  log.c:381: (a) nonzero x
+log.c:379: A 1
+  log.c:372: B 0
+    log.c:373: (b) zero x
+  log.c:381: (a) nonzero x
+log.c:366: C 3
+context => 0
 @ error
 i = 0
 i = 1
 i = 2
-support.c:558: test_error: Assertion `i < 3' failed: Don't worry, it's okay.
+error.c:125: test_error: Assertion `i < 3' failed: Don't worry, it's okay.
 error => 0
 @ expand_map
 map[10] = {{eight, 7}, {five, 4}, {four, 3}, {one, 0}, {seven, 6}, {six, 5}, {three, 2}, {two, 1}, {nine, 8}, {ten, 9}}
@@ -46,9 +55,9 @@ _check_list_remaining_size: 0 + 1 = 1
 _check_list_remaining_size: 1 + 0 = 1
 list_remaining_size => 0
 @ log
-log.c:187: test 1 + 2 = 3
-log.c:188: WAZZUP d00d
-log.c:189: [123]
+log.c:233: test 1 + 2 = 3
+log.c:234: WAZZUP d00d
+log.c:235: [123]
 log => 0
 @ loops
 up: 0

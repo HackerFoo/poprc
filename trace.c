@@ -17,9 +17,9 @@
 
 #include "rt_types.h"
 #include <string.h>
-#include <assert.h>
 #include <inttypes.h>
 
+#include "gen/error.h"
 #include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/eval.h"
@@ -86,9 +86,9 @@ trace_index_t trace_decode(cell_t *c) {
 // get the trace cell given a variable
 static
 cell_t *trace_get(const cell_t *r) {
-  assert(r && is_var(r));
+  assert_error(r && is_var(r));
   cell_t *tc = r->value.ptr[0];
-  assert(tc >= trace_cur && tc < trace_ptr);
+  assert_error(tc >= trace_cur && tc < trace_ptr);
   return tc;
 }
 
@@ -108,7 +108,7 @@ cell_t *trace_lookup_value_linear(int type, val_t value) {
 // find a matching trace cell given a variable or value
 static
 trace_index_t trace_get_value(cell_t *r) {
-  assert(r && is_value(r));
+  assert_error(r && is_value(r));
   if(is_list(r)) {
     return trace_build_quote(r); // *** TODO prevent building duplicate quotes
   } else if(is_var(r)) {
@@ -118,7 +118,7 @@ trace_index_t trace_get_value(cell_t *r) {
     cell_t *t = trace_lookup_value_linear(r->value.type.exclusive, r->value.integer[0]);
     if(t) return t - trace_cur;
   }
-  assert(false);
+  assert_error(false);
   return -1;
 }
 
@@ -150,14 +150,14 @@ cell_t *trace_var_specialized(uint8_t t, cell_t *c) {
   return var_create(t, trace_alloc(count_vars(c) + 1 + trace_cur[-1].entry.out), 0, 0);
 #else
   (void)t, (void)c;
-  assert(false);
+  assert_error(false);
   return NULL;
 #endif
 }
 
 // reduce allocated space in the trace
 void trace_shrink(cell_t *t, csize_t args) {
-  assert(args <= t->size);
+  assert_error(args <= t->size);
   csize_t
     prev_cells = calculate_cells(t->size),
     new_cells = calculate_cells(args),
@@ -199,8 +199,8 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
     }
     return tc;
   }
-  assert(tc->size == c->size);
-  assert(c->func != func_dep_entered &&
+  assert_error(tc->size == c->size);
+  assert_error(c->func != func_dep_entered &&
          c->func != func_dep);
   refcount_t n = tc->n;
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
@@ -213,7 +213,7 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
   // encode inputs
   TRAVERSE(tc, in) {
     if(*p) {
-      assert(!is_marked(*p));
+      assert_error(!is_marked(*p));
       trace_index_t x = trace_get_value(*p);
       *p = trace_encode(x);
       trace_cur[x].n++;
@@ -240,7 +240,7 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
 // store value c in the trace
 static
 cell_t *trace_store_value(const cell_t *c) {
-  assert(!is_list(c));
+  assert_error(!is_list(c));
 
   // look to see if the value already is in the trace
   cell_t *tc = trace_lookup_value_linear(c->value.type.exclusive, c->value.integer[0]);
@@ -326,7 +326,7 @@ cell_t *trace_dep(cell_t *c) {
   if(!(c->value.type.flags & T_DEP)) return c->value.ptr[0];
   cell_t *tc = trace_alloc(1);
   cell_t *ph = trace_get(c);
-  assert(ph != tc);
+  assert_error(ph != tc);
   ph->expr.arg[c->value.integer[1]] = trace_encode(tc - trace_cur);
   tc->func = func_dep;
   tc->expr.arg[0] = trace_encode(ph - trace_cur);
@@ -415,7 +415,7 @@ void trace_set_type(cell_t *tc, int t) {
 
 // store captured variables to be compiled into a quote
 trace_index_t trace_build_quote(cell_t *l) {
-  assert(is_list(l));
+  assert_error(is_list(l));
   if(is_empty_list(l)) return NIL_INDEX;
 
   if(is_row_list(l) && // ***
@@ -466,8 +466,8 @@ cell_t *trace_quote_var(cell_t *l) {
 // store captured variables to be compiled into a specialized function, similar to trace_build_quote
 #if SPECIALIZE
 cell_t *trace_build_specialized(cell_t *c, const cell_t *r) {
-  assert(c->func == func_exec);
-  //assert(c->expr.flags & FLAGS_RECURSIVE == 0);
+  assert_error(c->func == func_exec);
+  //assert_error(c->expr.flags & FLAGS_RECURSIVE == 0);
 
   cell_t *vl = 0;
   trace_var_list(c, &vl);

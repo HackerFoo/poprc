@@ -19,9 +19,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
-#include <assert.h>
 #include <stddef.h>
 #include "rt_types.h"
+#include "gen/error.h"
 #include "gen/support.h"
 #include "gen/map.h"
 #include <stdlib.h>
@@ -77,8 +77,8 @@ void rotate(pair_t *a, pair_t *b, size_t n) {
     pair_t
       *p = b,
       *q = a + n;
-    assert(a <= b);
-    assert(b <= q);
+    assert_error(a <= b);
+    assert_error(b <= q);
     while(q > b) {
       swap(--p, --q);
       if(p <= a) p = b;
@@ -138,9 +138,9 @@ void merge(pair_t *arr, pair_t *b, size_t n, cmp_t cmp) {
     print_pairs(q, b-q);
     printf("b[%" PRIuPTR "]: ", b-arr);
     print_pairs(b, n-(b-arr));
-    assert(is_ordered(a, 0, q-a, cmp));
-    assert(is_ordered(q, h-q, b-q, cmp));
-    assert(is_ordered(b, 0, n-(b-arr), cmp));
+    assert_error(is_ordered(a, 0, q-a, cmp));
+    assert_error(is_ordered(q, h-q, b-q, cmp));
+    assert_error(is_ordered(b, 0, n-(b-arr), cmp));
 #endif
     // non-empty queue
     if(q < b) {
@@ -294,8 +294,8 @@ bool _map_merge(map_t map, pair_t *x, size_t n, cmp_t cmp) {
   uintptr_t *size = &map[0].first;
   uintptr_t *cnt = &map[0].second;
   pair_t *elems = map_elems(map);
-  assert(check_map(map, cmp));
-  assert(check_order(x, n, cmp));
+  assert_error(check_map(map, cmp));
+  assert_error(check_order(x, n, cmp));
   if(*cnt + n > *size) return false;
   if(*cnt == 0) {
       memcpy(elems, x, n * sizeof(pair_t));
@@ -317,7 +317,7 @@ bool _map_merge(map_t map, pair_t *x, size_t n, cmp_t cmp) {
     map_sort(map, bit, cmp);
     bit = m; // avoid redundant sorting
   }
-  assert(check_map(map, cmp));
+  assert_error(check_map(map, cmp));
   return true;
 }
 
@@ -346,7 +346,7 @@ bool _map_union(map_t a, map_t b, cmp_t cmp) {
     }
     bit >>= 1;
   }
-  assert(check_map(a, cmp));
+  assert_error(check_map(a, cmp));
   return true;
 }
 
@@ -432,7 +432,7 @@ pair_t *map_find(map_t map, uintptr_t key) {
 
 uintptr_t map_get(map_t map, uintptr_t key) {
   pair_t *x = map_find(map, key);
-  assert(x);
+  assert_error(x);
   return x->second;
 }
 

@@ -15,8 +15,8 @@
     along with PoprC.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <assert.h>
 #include "rt_types.h"
+#include "gen/error.h"
 #include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/special.h"
@@ -28,7 +28,7 @@
 bool func_value(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   cell_t *res = NULL;
-  assert(!is_marked(c));
+  assert_error(!is_marked(c));
   measure.reduce_cnt--;
 
   if((c->value.type.flags & T_FAIL) ||
@@ -228,17 +228,17 @@ bool is_dep_of(cell_t *d, cell_t *c) {
 /* todo: propagate types here */
 bool func_dep(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
-  assert(!is_marked(c));
+  assert_error(!is_marked(c));
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
   /* must temporarily reference to avoid replacement of p which is referenced elsewhere */
   cell_t *p = ref(c->expr.arg[0]);
-  assert(is_dep_of(c, p));
+  assert_error(is_dep_of(c, p));
   insert_root(&p);
   c->func = func_dep_entered;
   reduce_dep(&p);
   trace_dep(c);
-  assert(c->func != func_dep_entered);
+  assert_error(c->func != func_dep_entered);
   remove_root(&p);
   drop(p);
   return false;
@@ -246,7 +246,7 @@ bool func_dep(cell_t **cp, UNUSED type_request_t treq) {
 
 bool func_dep_entered(cell_t **cp, type_request_t treq) {
   // shouldn't happen; circular dependency
-  assert(false);
+  assert_error(false);
   fail(cp, treq);
   return false;
 }
@@ -266,7 +266,7 @@ bool is_dep(cell_t const *c) {
 // WORD("??", placeholder, 0, 1)
 bool func_placeholder(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
-  assert(!is_marked(c));
+  assert_error(!is_marked(c));
   if(treq.t != T_ANY && treq.t != T_FUNCTION) goto fail;
   csize_t in = closure_in(c), n = closure_args(c);
 
@@ -277,7 +277,7 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
   }
 
   alt_set_t alt_set = 0;
-  assert(in >= 1);
+  assert_error(in >= 1);
   if(!reduce_arg(c, in - 1, &alt_set, REQ(function))) goto fail;
   COUNTUP(i, in - 1) {
     if(!reduce_arg(c, i, &alt_set, REQ(any)) ||
@@ -323,7 +323,7 @@ bool is_placeholder(cell_t const *c) {
 }
 
 bool func_fail(cell_t **cp, type_request_t treq) {
-  assert(!is_marked(*cp));
+  assert_error(!is_marked(*cp));
   measure.reduce_cnt--;
   fail(cp, treq);
   return false;

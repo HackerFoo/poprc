@@ -19,8 +19,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <assert.h>
 
+#include "gen/error.h"
 #include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/primitive.h"
@@ -112,7 +112,7 @@ void print_word_pattern(cell_t *word) {
 // build a zig-zag binding list by applying the pattern to c
 // TODO add reduction back in
 cell_t **bind_pattern(cell_t *c, cell_t *pattern, cell_t **tail) {
-  assert(c);
+  assert_error(c);
   if(!pattern || !tail) return NULL;
   if(c == pattern) {
     // prune trivial matches
@@ -134,7 +134,7 @@ cell_t **bind_pattern(cell_t *c, cell_t *pattern, cell_t **tail) {
       list_iterator_t it = list_begin(pattern);
       COUNTDOWN(i, out) {
         cell_t **p = list_next(&it, false);
-        assert(p);
+        assert_error(p);
         cell_t *d = l->expr.arg[in+1+i];
         tail = bind_pattern(d, *p, tail);
         drop(d);
@@ -180,7 +180,7 @@ cell_t *unify_convert(cell_t *c, cell_t *pat) {
     FLAG_SET(n->expr.flags, FLAGS_RECURSIVE);
     FOLLOW(p, q, vl, tmp) { // get arguments from the binding list
       csize_t x = p->value.ptr[0] - base;
-      assert(x < in);
+      assert_error(x < in);
       n->expr.arg[in-1-x] = q;
       //printf("?%d = %d\n", x, (int)(q-cells));
     }
@@ -203,7 +203,7 @@ cell_t *unify_convert(cell_t *c, cell_t *pat) {
 
 bool func_exec(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
-  assert(!is_marked(c));
+  assert_error(!is_marked(c));
 
   size_t in = closure_in(c);
   cell_t *entry = c->expr.arg[in];
@@ -306,7 +306,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     RANGEUP(i, c_in + 1, c_in + entry->entry.out) {
       cell_t *d = c->expr.arg[i];
       if(d && is_dep(d)) {
-        assert(d->expr.arg[0] == c);
+        assert_error(d->expr.arg[0] == c);
         drop(c);
         store_dep(d, res->value.ptr[0], i, rtypes[i].exclusive);
       }
@@ -321,14 +321,14 @@ bool func_exec(cell_t **cp, type_request_t treq) {
   }
 
 expand:
-  assert(len);
+  assert_error(len);
 
   c->expr.arg[in] = 0;
   trace_clear_alt(entry); // *** probably shouldn't need this
 
   COUNTUP(i, in) {
     cell_t *p = &code[i];
-    assert(is_var(p));
+    assert_error(is_var(p));
     p->alt = refn(c->expr.arg[in - 1 - i], p->n);
   }
 
@@ -352,7 +352,7 @@ expand:
   }
 
   // check that a return was found
-  assert(returns);
+  assert_error(returns);
 
   // rewrite pointers
   for(size_t i = in; i < len; i += s) { // TODO: rewrite with FORTRACE

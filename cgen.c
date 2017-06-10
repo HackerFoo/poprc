@@ -18,9 +18,9 @@
 #include "rt_types.h"
 #include <string.h>
 #include <stdio.h>
-#include <assert.h>
 #include <inttypes.h>
 
+#include "gen/error.h"
 #include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/primitive.h"
@@ -50,7 +50,7 @@ const char *ctype(type_t t) {
     [T_FUNCTION] = "array ",
     [T_BOTTOM]   = "void ",
   };
-  assert(t.exclusive < LENGTH(table));
+  assert_error(t.exclusive < LENGTH(table));
   return table[t.exclusive];
 }
 
@@ -67,7 +67,7 @@ const char *cname(type_t t) {
     [T_FUNCTION] = "func",
     [T_BOTTOM]   = "bot"
   };
-  assert(t.exclusive < LENGTH(table));
+  assert_error(t.exclusive < LENGTH(table));
   return table[t.exclusive];
 }
 
@@ -221,7 +221,7 @@ void gen_call(cell_t *e, cell_t *c) {
 
     printf("  %s%d = %s_%s", cname(trace_type(c)), i, module_name, word_name);
     if(c->func == func_ap || c->func == func_compose) {
-      assert(in >= 1);
+      assert_error(in >= 1);
       printf("%d%d", in-1, out);
     }
     printf("(");
@@ -264,7 +264,7 @@ void gen_value_rhs(cell_t *c) {
     break;
   }
   default:
-    assert(false); // TODO add more types
+    assert_error(false); // TODO add more types
   }
 }
 

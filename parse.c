@@ -19,12 +19,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <assert.h>
 
 #if INTERFACE
 #include <stdarg.h>
 #endif
 
+#include "gen/error.h"
 #include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/primitive.h"
@@ -99,7 +99,7 @@ const char *string_printf(const char *format, ...) {
 }
 
 void strings_drop() {
-  assert(strings_top > strings);
+  assert_error(strings_top > strings);
   do {
     strings_top--;
   } while(strings_top > strings && strings_top[-1]);
@@ -390,7 +390,7 @@ cell_t *parse_defs(cell_t **c, const char *module_name, cell_t **err) {
     cell_free(n);
     l->module_name = module_name;
     UNUSED cell_t *old = module_set(m, name, l);
-    assert(old == NULL); // TODO append defs?
+    assert_error(old == NULL); // TODO append defs?
     if((*err = check_def(l))) break;
   }
   *c = p;
@@ -432,7 +432,7 @@ bool parse_module(cell_t **c, seg_t *name, cell_t **err) {
   const char *strname = seg_string(*name); // TODO remove redundant string allocation
   cell_t *m = parse_defs(&p, strname, err);
   UNUSED cell_t *old = module_set(modules, *name, m);
-  assert(old == NULL); // TODO append modules?
+  assert_error(old == NULL); // TODO append modules?
   if(modules) modules->n = PERSISTENT;
   *c = p;
   return !*err;
@@ -626,7 +626,7 @@ fail:
 
 uintptr_t intern(seg_t sym) {
   const char *s = seg_string(sym);
-  assert(s);
+  assert_error(s);
   pair_t *x = string_map_find(symbols, s);
   uintptr_t v;
   if(x) {

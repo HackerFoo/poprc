@@ -17,13 +17,13 @@
 
 #include "rt_types.h"
 #include <string.h>
-#include <assert.h>
 #include <inttypes.h>
 
 #if INTERFACE
 #include <stdio.h>
 #endif
 
+#include "gen/error.h"
 #include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/primitive.h"
@@ -95,7 +95,7 @@ char const *function_name(reduce_t *f) {
       break;
     }
   }
-  assert(s);
+  assert_error(s);
   return s;
 }
 
@@ -318,7 +318,7 @@ void graph_cell(FILE *f, cell_t const *c) {
 }
 
 void show_int(cell_t const *c) {
-  assert(c && type_match(T_INT, c));
+  assert_error(c && type_match(T_INT, c));
   int n = val_size(c);
   switch(n) {
   case 0: printf(" ()"); break;
@@ -332,7 +332,7 @@ void show_int(cell_t const *c) {
 }
 
 void show_float(cell_t const *c) {
-  assert(c && type_match(T_FLOAT, c));
+  assert_error(c && type_match(T_FLOAT, c));
   printf(" %g", c->value.flt[0]);
 }
 
@@ -375,7 +375,7 @@ void show_list_elements(cell_t const *c) {
 }
 
 void show_list(cell_t const *c) {
-  assert(c && is_list(c));
+  assert_error(c && is_list(c));
   csize_t n = list_size(c);
   if(!n) {
     printf(" []");
@@ -403,7 +403,7 @@ void show_func(cell_t const *c) {
 }
 
 void show_var(cell_t const *c) {
-  assert(is_var(c));
+  assert_error(is_var(c));
   if(is_list(c)) {
     show_list(c);
   } else {

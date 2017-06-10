@@ -18,8 +18,8 @@
 #include "rt_types.h"
 #include <string.h>
 #include <stdio.h>
-#include <assert.h>
 
+#include "gen/error.h"
 #include "gen/cells.h"
 #include "gen/special.h"
 #include "gen/test.h"
@@ -92,6 +92,6 @@ int test_lex() {
 }
 
 uintptr_t tok_indent(const cell_t *c) {
-  assert(c->tok_list.location >= c->tok_list.line);
+  assert_error(c->tok_list.location >= c->tok_list.line);
   return c->tok_list.location - c->tok_list.line;
 }
