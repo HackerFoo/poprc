@@ -635,7 +635,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   e->entry.flags = ENTRY_NOINLINE;
   e->func = func_exec;
   CONTEXT_LOG("compiling quote %s.%s_%d at entry %d",
-              e->module_name,
+              parent_entry->module_name,
               parent_entry->word_name,
               (int)(q - parent_entry) - 1,
               entry_number(e));
