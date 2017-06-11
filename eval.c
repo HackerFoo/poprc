@@ -157,7 +157,7 @@ void command_eval(cell_t *rest) {
 
 static
 void crash_handler(int sig, UNUSED siginfo_t *info, UNUSED void *ctx) {
-  throw_error(__FILE__, __LINE__, __func__, strsignal(sig));
+  throw_error(__FILE__, __LINE__, __func__, strsignal(sig), ERROR_TYPE_UNEXPECTED);
 }
 
 int main(int argc, char **argv) {
@@ -166,6 +166,7 @@ int main(int argc, char **argv) {
   sigemptyset(&sa.sa_mask);
   sa.sa_sigaction = crash_handler;
   sigaction(SIGSEGV, &sa, NULL);
+  log_init();
 
 #ifndef EMSCRIPTEN
   error_t error;
@@ -173,23 +174,14 @@ int main(int argc, char **argv) {
 
   if(catch_error(&error)) {
     print_error(&error);
-    printf("\n___ LOG ___\n");
-    log_print_all();
-    if(have_backtrace()) {
-      printf("\n___ BACKTRACE ___\n");
-      print_backtrace();
-      clear_backtrace();
-    }
     if(exit_on_error) {
       printf("\nExiting on error.\n");
-      return -1;
+      return -error.type;
     }
-    printf("\nReseting. Note that flags will also be reset.\n\n");
     exit_on_error = true;
   }
 #endif
 
-  log_init();
   cells_init();
   parse_init();
   module_init();
@@ -474,9 +466,7 @@ int emscripten_eval(char *str, int len) {
   error_t error;
   if(catch_error(&error)) {
     print_error(&error);
-    printf(" \n___ LOG ___\n");
-    log_print_all();
-    return -1;
+    return -error.type;
   } else {
     eval_command(str, str + len);
     return 0;

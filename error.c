@@ -19,7 +19,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <assert.h>
 #include <inttypes.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -27,44 +26,60 @@
 #include <unistd.h>
 
 #ifdef BACKTRACE
+#ifdef EMSCRIPTEN
+#include <emscripten.h>
+#else
 #include <execinfo.h>
+#endif
 #endif
 
 #include "gen/error.h"
 
 #if INTERFACE
-#include <assert.h>
 #include <setjmp.h>
-#endif
 
-#if INTERFACE
+typedef enum error_type_e {
+  ERROR_TYPE_NONE = 0,
+  ERROR_TYPE_UNEXPECTED = 1,
+  ERROR_TYPE_LIMITATION = 2
+} error_type_t;
+
 typedef struct {
   jmp_buf env;
   const char *msg;
   const char *file;
   int line;
+  error_type_t type;
   char function[64];
 } error_t;
 
 #define assert_throw(...) DISPATCH(assert_throw, 2, ##__VA_ARGS__)
-
-#ifdef EMSCRIPTEN
-#define assert_error(x) assert_throw(x)
-#else
-#define assert_error(x) assert(x)
-#endif
-
 #define assert_throw_0(cond, msg, ...)                                  \
   do {                                                                  \
     if(!(cond)) {                                                       \
-      throw_error(__FILE__, __LINE__, __func__, "Assertion `" #cond "' failed: " msg); \
+      throw_error(__FILE__, __LINE__, __func__, "Assertion `" #cond "' failed: " msg, ERROR_TYPE_LIMITATION); \
     }                                                                   \
   } while(0)
 
 #define assert_throw_1(cond, ...)                                       \
   do {                                                                  \
     if(!(cond)) {                                                       \
-      throw_error(__FILE__, __LINE__, __func__, "Assertion `" #cond "' failed."); \
+      throw_error(__FILE__, __LINE__, __func__, "Assertion `" #cond "' failed.", ERROR_TYPE_LIMITATION); \
+    }                                                                   \
+  } while(0)
+
+#define assert_error(...) DISPATCH(assert_error, 2, ##__VA_ARGS__)
+#define assert_error_0(cond, msg, ...)                                  \
+  do {                                                                  \
+    if(!(cond)) {                                                       \
+      throw_error(__FILE__, __LINE__, __func__, "Assertion `" #cond "' failed: " msg, ERROR_TYPE_UNEXPECTED); \
+    }                                                                   \
+  } while(0)
+
+#define assert_error_1(cond, ...)                                       \
+  do {                                                                  \
+    if(!(cond)) {                                                       \
+      throw_error(__FILE__, __LINE__, __func__, "Assertion `" #cond "' failed.", ERROR_TYPE_UNEXPECTED); \
     }                                                                   \
   } while(0)
 
@@ -74,40 +89,48 @@ typedef struct {
 error_t *current_error = NULL;
 
 #ifdef BACKTRACE
+#ifdef EMSCRIPTEN
+static char backtrace_buf[4096];
+#else
 static void *backtrace_buf[128];
+#endif
 #endif
 
 static int backtrace_size = 0;
 
-void throw_error(const char *file, int line, const char *function, const char *msg) {
+void throw_error(const char *file, int line, const char *function, const char *msg, error_type_t type) {
   if(!current_error) {
     printf("%s:%d: %s: %s\n", file, line, function, msg);
-    assert_error(false);
+    exit(-1);
   } else {
-#ifdef BACKTRACE_SIZE
+#ifdef BACKTRACE
+#ifdef EMSCRIPTEN
+    backtrace_size = emscripten_get_callstack(EM_LOG_NO_PATHS | EM_LOG_FUNC_PARAMS,
+                                              backtrace_buf, sizeof(backtrace_buf));
+#else
     backtrace_size = backtrace(backtrace_buf, LENGTH(backtrace_buf));
+#endif
 #endif
     current_error->msg = msg;
     current_error->file = file;
     current_error->line = line;
+    current_error->type = type;
     strncpy(current_error->function, function, sizeof(current_error->function));
-    longjmp(current_error->env, 1);
+    longjmp(current_error->env, type);
   }
-}
-
-bool have_backtrace() {
-  return backtrace_size != 0;
-}
-
-void clear_backtrace() {
-  backtrace_size = 0;
 }
 
 void print_backtrace() {
 #ifdef BACKTRACE
   if(backtrace_size) {
+#ifdef EMSCRIPTEN
+    puts(backtrace_buf);
+#else
     backtrace_symbols_fd(backtrace_buf, backtrace_size, STDOUT_FILENO);
+#endif
   }
+#else
+  printf("backtrace not supported\n");
 #endif
 }
 
@@ -128,4 +151,8 @@ int test_error() {
   }
   current_error = prev_error;
   return 0;
+}
+
+void command_backtrace(UNUSED cell_t *rest) {
+  print_backtrace();
 }

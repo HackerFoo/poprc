@@ -29,10 +29,7 @@
       term.echo("not ready");
     } else {
       if(command != '') {
-        if(eval_popr(command) != 0) {
-          term.echo("\n ___ BACKTRACE ___\n");
-          term.echo(Module.stackTrace());
-        }
+        eval_popr(command)
       }
     }
   }

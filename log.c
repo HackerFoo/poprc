@@ -116,6 +116,7 @@ bool is_end_context(unsigned int idx) {
 
 static
 unsigned int print_contexts(unsigned int idx, unsigned int *depth) {
+  if(idx == log_head) return idx;
   const char *fmt = (const char *)log[idx];
   if(fmt[0] == '\xff' ||
      (fmt[0] & 0x80) == 0) return idx;
@@ -237,7 +238,7 @@ int test_log() {
   return 0;
 }
 
-void command_logs(UNUSED cell_t *rest) {
+void command_log(UNUSED cell_t *rest) {
   log_print_all();
 }
 

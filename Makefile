@@ -50,7 +50,6 @@ ifeq ($(findstring emcc, $(CC)),emcc)
 	USE_LINENOISE=n
 	USE_READLINE=n
 	OPT_FLAG = -Os
-	BACKTRACE =
 endif
 
 ifeq ($(FORCE_32_BIT),y)
@@ -60,7 +59,7 @@ endif
 
 ifeq ($(BUILD),debug)
 	OPT_FLAG ?= -O0
-	CFLAGS += -g  $(OPT_FLAG) $(SANITIZE)
+	CFLAGS += -g  $(OPT_FLAG) $(SANITIZE) $(BACKTRACE)
 	CXXFLAGS += -g  $(OPT_FLAG) $(SANITIZE) $(BACKTRACE)
 	LIBS += $(SANITIZE)
 endif
