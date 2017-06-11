@@ -30,3 +30,4 @@ _darcs
 /afl/crashes.txt
 /afl/hangs.txt
 .tramp_history
+/node_modules

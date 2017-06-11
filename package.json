@@ -1,0 +1,14 @@
+{
+  "name": "PoprC",
+  "version": "0.0.0",
+  "description": "Popr Compiler",
+  "main": "js/eval.js",
+  "repository": "https://github.com/HackerFoo/poprc",
+  "author": "Dustin DeWeese <dustin.deweese@gmail.com>",
+  "license": "GPL-3.0",
+  "private": true,
+  "dependencies": {
+    "jquery.terminal": "^1.4.2",
+    "keyboardevent-key-polyfill": "^1.1.0"
+  }
+}

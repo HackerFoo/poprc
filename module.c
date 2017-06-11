@@ -486,7 +486,7 @@ void print_module_bytecode(cell_t *m) {
     cell_t *e = module_lookup_compiled(string_seg(name), &m);
     if(e && !(e->entry.flags & ENTRY_QUOTE)) {
       print_bytecode(e);
-      printf("\n");
+      printf(" \n"); // space so blank line shows up in Emscripten version
     }
   }
   closure_free(map_copy);
