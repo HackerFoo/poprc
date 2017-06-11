@@ -155,6 +155,7 @@ void command_eval(cell_t *rest) {
   }
 }
 
+#ifndef EMSCRIPTEN
 static
 void crash_handler(int sig, UNUSED siginfo_t *info, UNUSED void *ctx) {
   throw_error(__FILE__, __LINE__, __func__, strsignal(sig), ERROR_TYPE_UNEXPECTED);
@@ -166,9 +167,9 @@ int main(int argc, char **argv) {
   sigemptyset(&sa.sa_mask);
   sa.sa_sigaction = crash_handler;
   sigaction(SIGSEGV, &sa, NULL);
+
   log_init();
 
-#ifndef EMSCRIPTEN
   error_t error;
   bool exit_on_error = false;
 
@@ -180,13 +181,11 @@ int main(int argc, char **argv) {
     }
     exit_on_error = true;
   }
-#endif
 
   cells_init();
   parse_init();
   module_init();
 
-#ifndef EMSCRIPTEN
   bool quit = false;
   tty = isatty(fileno(stdin));
 
@@ -215,15 +214,21 @@ int main(int argc, char **argv) {
   free_modules();
   unload_files();
   if(run_check_free) check_free();
-#endif
+  return 0;
+}
+#else // EMSCRIPTEN
+int main(int argc, char **argv) {
+  log_init();
+  cells_init();
+  parse_init();
+  module_init();
 
-#ifdef EMSCRIPTEN
   eval_command(":load lib.ppr", 0);
   eval_command(":import", 0);
   emscripten_exit_with_live_runtime();
-#endif
   return 0;
 }
+#endif
 
 #if defined(USE_LINENOISE) || defined(USE_READLINE)
 /*
