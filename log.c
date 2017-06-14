@@ -38,6 +38,15 @@ context_t *__log_context = NULL;
 void log_init() {
   log[0] = 0;
   log_head = 0;
+  log_tail = 0;
+  __log_context = NULL;
+}
+
+void log_soft_init() {
+  if(log_head != log_tail) {
+    log_add((intptr_t)"\xff\xff"); // reset indentation
+  }
+  __log_context = NULL;
 }
 
 static
@@ -115,9 +124,16 @@ unsigned int log_printf(unsigned int idx, unsigned int *depth) {
 }
 
 static
-bool is_end_context(unsigned int idx) {
+bool end_context(unsigned int idx, unsigned int *depth) {
   const char *fmt = (const char *)log[idx];
-  return fmt[0] == '\xff';
+  // TODO match the ends so that dropping entries doesn't break indentation
+  if(fmt[0] != '\xff') return false;
+  if(fmt[1] == '\xff') {
+    *depth = 0;
+  } else if(*depth > 0) {
+    (*depth)--;
+  }
+  return true;
 }
 
 static
@@ -139,9 +155,7 @@ void log_print_all() {
   while(i != log_head) {
     i = print_contexts(i, &depth);
     if(i == log_head) break;
-    if(is_end_context(i)) {
-      // TODO match the ends so that dropping entries doesn't break indentation
-      if(depth > 0) depth--;
+    if(end_context(i, &depth)) {
       i = (i + 1) % LOG_SIZE;
     } else {
       i = log_printf(i, &depth);

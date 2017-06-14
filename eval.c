@@ -182,6 +182,7 @@ int main(int argc, char **argv) {
     exit_on_error = true;
   }
 
+  log_soft_init();
   cells_init();
   parse_init();
   module_init();
