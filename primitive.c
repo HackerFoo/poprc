@@ -28,6 +28,7 @@
 #include "gen/trace.h"
 #include "gen/support.h"
 #include "gen/list.h"
+#include "gen/log.h"
 
    /*-----------------------------------------------,
     |          VARIABLE NAME CONVENTIONS            |
@@ -257,6 +258,7 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
 bool func_assert(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   assert_error(!is_marked(c));
+  CONTEXT("assert[%d]", CELL_INDEX(c));
 
   cell_t *res = NULL;
   alt_set_t alt_set = 0;
@@ -384,6 +386,7 @@ static
 bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   cell_t *c = *cp;
   assert_error(!is_marked(c));
+  CONTEXT("compose_ap[%d]", CELL_INDEX(c));
 
   const csize_t
     in = closure_in(c) - 1,
@@ -426,6 +429,7 @@ bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
     cell_t **x = list_next(&it, false);
     if(!x) {
       drop(l);
+      LOG("null quote output");
       goto fail;
     }
     cell_t *d = c->expr.arg[n-1-i];

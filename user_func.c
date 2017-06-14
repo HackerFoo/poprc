@@ -212,6 +212,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
   cell_t *res;
   cell_t *returns = NULL;
   type_t rtypes[entry->entry.out];
+  CONTEXT("exec %s[%d]", entry->word_name, CELL_INDEX(c));
 
   // TODO remove this HACK
   int name_len = entry->word_name ? strlen(entry->word_name) : 0;

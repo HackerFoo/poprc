@@ -484,7 +484,6 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   // finish
   free_def(l);
   write_graph = context_write_graph;
-  END_CONTEXT();
   return true;
 }
 
@@ -676,7 +675,6 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
 
   q->expr.arg[closure_in(q)] = trace_encode(entry_number(e));
   q->expr_type.flags |= T_SUB;
-  END_CONTEXT();
   return e;
 }
 
@@ -797,7 +795,6 @@ void command_bytecode(cell_t *rest) {
       printf("\n");
       print_bytecode(e);
     }
-    END_CONTEXT();
   }
 }
 

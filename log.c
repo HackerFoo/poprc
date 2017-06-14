@@ -24,6 +24,10 @@
 #include "gen/error.h"
 #include "gen/log.h"
 
+#define REVERSE 0x80
+#define INDENT  0x40
+#define MASK (REVERSE | INDENT)
+
 #define LOG_SIZE 4096
 static intptr_t log[LOG_SIZE];
 static unsigned int log_head = 0;
@@ -42,7 +46,7 @@ int log_entry_len(unsigned int idx) {
   if(!fmt) return 1;
   char len = fmt[0];
   if(len == '\xff') return 1;
-  return len & ~0x80;
+  return len & ~MASK;
 }
 
 void log_add(intptr_t x) {
@@ -54,13 +58,15 @@ void log_add(intptr_t x) {
 }
 
 static
-unsigned int log_printf(unsigned int idx, unsigned int depth) {
+unsigned int log_printf(unsigned int idx, unsigned int *depth) {
   const char *fmt = (const char *)log[idx++];
-  uint8_t len = fmt[0] & ~0x80;
+  //printf("%d %d %x %s\n", idx, *depth, fmt[0], fmt + 1);
+  uint8_t len = fmt[0] & ~MASK;
   const char
     *p = fmt + 1,
     *n = strchr(p, '%');
-  LOOP(depth * 2) putchar(' ');
+  LOOP(*depth * 2) putchar(' ');
+  if(fmt[0] & INDENT) (*depth)++;
   while(n) {
     printf("%.*s", (int)(n-p), p); // print the text
     if(!n[1]) break;
@@ -119,11 +125,10 @@ unsigned int print_contexts(unsigned int idx, unsigned int *depth) {
   if(idx == log_head) return idx;
   const char *fmt = (const char *)log[idx];
   if(fmt[0] == '\xff' ||
-     (fmt[0] & 0x80) == 0) return idx;
-  uint8_t len = (fmt[0] & ~0x80) + 1;
+     (fmt[0] & REVERSE) == 0) return idx;
+  uint8_t len = (fmt[0] & ~MASK) + 1;
   unsigned int ret = print_contexts((idx + len) % LOG_SIZE, depth);
-  log_printf(idx, *depth);
-  (*depth)++;
+  log_printf(idx, depth);
   return ret;
 }
 
@@ -139,7 +144,7 @@ void log_print_all() {
       if(depth > 0) depth--;
       i = (i + 1) % LOG_SIZE;
     } else {
-      i = log_printf(i, depth);
+      i = log_printf(i, &depth);
     }
   }
 }
@@ -255,7 +260,7 @@ struct context_s {
 #define CONTEXT_0(fmt, x0, x1, x2, x3, x4, x5, x6, x7, ...)     \
   intptr_t __context[] = {                                      \
     (intptr_t)__log_context,                                    \
-    (intptr_t)("\xff\x88" fmt) + 1,                             \
+    (intptr_t)("\xff\xC8" fmt) + 1,                             \
     (intptr_t)x0,                                               \
     (intptr_t)x1,                                               \
     (intptr_t)x2,                                               \
@@ -268,7 +273,7 @@ struct context_s {
 #define CONTEXT_1(fmt, x0, x1, x2, x3, x4, x5, x6, ...) \
   intptr_t __context[] = {                              \
     (intptr_t)__log_context,                            \
-    (intptr_t)("\xff\x87" fmt) + 1,                     \
+    (intptr_t)("\xff\xC7" fmt) + 1,                     \
     (intptr_t)x0,                                       \
     (intptr_t)x1,                                       \
     (intptr_t)x2,                                       \
@@ -280,7 +285,7 @@ struct context_s {
 #define CONTEXT_2(fmt, x0, x1, x2, x3, x4, x5, ...)     \
   intptr_t __context[] = {                              \
     (intptr_t)__log_context,                            \
-      (intptr_t)("\xff\x86" fmt) + 1,                   \
+      (intptr_t)("\xff\xC6" fmt) + 1,                   \
       (intptr_t)x0,                                     \
       (intptr_t)x1,                                     \
       (intptr_t)x2,                                     \
@@ -291,7 +296,7 @@ struct context_s {
 #define CONTEXT_3(fmt, x0, x1, x2, x3, x4, ...) \
   intptr_t __context[] = {                      \
     (intptr_t)__log_context,                    \
-    (intptr_t)("\xff\x85" fmt) + 1,             \
+    (intptr_t)("\xff\xC5" fmt) + 1,             \
     (intptr_t)x0,                               \
     (intptr_t)x1,                               \
     (intptr_t)x2,                               \
@@ -301,7 +306,7 @@ struct context_s {
 #define CONTEXT_4(fmt, x0, x1, x2, x3, ...)     \
   intptr_t __context[] = {                      \
     (intptr_t)__log_context,                    \
-    (intptr_t)("\xff\x84" fmt) + 1,             \
+    (intptr_t)("\xff\xC4" fmt) + 1,             \
     (intptr_t)x0,                               \
     (intptr_t)x1,                               \
     (intptr_t)x2,                               \
@@ -310,7 +315,7 @@ struct context_s {
 #define CONTEXT_5(fmt, x0, x1, x2, ...)         \
   intptr_t __context[] = {                      \
     (intptr_t)__log_context,                    \
-    (intptr_t)("\xff\x83" fmt) + 1,             \
+    (intptr_t)("\xff\xC3" fmt) + 1,             \
     (intptr_t)x0,                               \
     (intptr_t)x1,                               \
     (intptr_t)x2};                              \
@@ -318,29 +323,122 @@ struct context_s {
 #define CONTEXT_6(fmt, x0, x1, ...)             \
   intptr_t __context[] = {                      \
     (intptr_t)__log_context,                    \
-    (intptr_t)("\xff\x82" fmt) + 1,             \
+    (intptr_t)("\xff\xC2" fmt) + 1,             \
     (intptr_t)x0,                               \
     (intptr_t)x1};                              \
   END_OF_CONTEXT_MACRO
 #define CONTEXT_7(fmt, x0, ...)                 \
   intptr_t __context[] = {                      \
     (intptr_t)__log_context,                    \
-    (intptr_t)("\xff\x81" fmt) + 1,             \
+    (intptr_t)("\xff\xC1" fmt) + 1,             \
     (intptr_t)x0};                              \
   END_OF_CONTEXT_MACRO
 #define CONTEXT_8(fmt, ...)                     \
   intptr_t __context[] = {                      \
     (intptr_t)__log_context,                    \
-    (intptr_t)("\xff\x80" fmt) + 1};            \
+    (intptr_t)("\xff\xC0" fmt) + 1};            \
   END_OF_CONTEXT_MACRO
-#define CONTEXT(fmt, ...) DISPATCH(CONTEXT, 9, __FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
-#define END_CONTEXT() log_pop_context((context_t *)__context)
-#define CONTEXT_LOG(fmt, ...)  \
-  CONTEXT(fmt, ##__VA_ARGS__); \
-  log_add_context();
+#define CONTEXT(fmt, ...) __attribute__((cleanup(log_cleanup_context))) DISPATCH(CONTEXT, 9, __FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
 #endif
 
-void log_pop_context(context_t *ctx) {
+#if INTERFACE
+#define CONTEXT_LOG_0(fmt, x0, x1, x2, x3, x4, x5, x6, x7, ...) \
+  do {                                                          \
+    log_add_context();                                          \
+    __context = "\xff\x48" fmt;                                 \
+    log_add((intptr_t)(__context + 1));                         \
+    log_add((intptr_t)(x0));                                    \
+    log_add((intptr_t)(x1));                                    \
+    log_add((intptr_t)(x2));                                    \
+    log_add((intptr_t)(x3));                                    \
+    log_add((intptr_t)(x4));                                    \
+    log_add((intptr_t)(x5));                                    \
+    log_add((intptr_t)(x6));                                    \
+    log_add((intptr_t)(x7));                                    \
+  } while(0)
+#define CONTEXT_LOG_1(fmt, x0, x1, x2, x3, x4, x5, x6, ...)     \
+  do {                                                          \
+    log_add_context();                                          \
+    __context = "\xff\x47" fmt;                                 \
+    log_add((intptr_t)(__context + 1));                         \
+    log_add((intptr_t)(x0));                                    \
+    log_add((intptr_t)(x1));                                    \
+    log_add((intptr_t)(x2));                                    \
+    log_add((intptr_t)(x3));                                    \
+    log_add((intptr_t)(x4));                                    \
+    log_add((intptr_t)(x5));                                    \
+    log_add((intptr_t)(x6));                                    \
+  } while(0)
+#define CONTEXT_LOG_2(fmt, x0, x1, x2, x3, x4, x5, ...) \
+  do {                                                  \
+    log_add_context();                                  \
+    __context = "\xff\x46" fmt;                         \
+    log_add((intptr_t)(__context + 1));                 \
+    log_add((intptr_t)(x0));                            \
+    log_add((intptr_t)(x1));                            \
+    log_add((intptr_t)(x2));                            \
+    log_add((intptr_t)(x3));                            \
+    log_add((intptr_t)(x4));                            \
+    log_add((intptr_t)(x5));                            \
+  } while(0)
+#define CONTEXT_LOG_3(fmt, x0, x1, x2, x3, x4, ...)     \
+  do {                                                  \
+    log_add_context();                                  \
+    __context = "\xff\x45" fmt;                         \
+    log_add((intptr_t)(__context + 1));                 \
+    log_add((intptr_t)(x0));                            \
+    log_add((intptr_t)(x1));                            \
+    log_add((intptr_t)(x2));                            \
+    log_add((intptr_t)(x3));                            \
+    log_add((intptr_t)(x4));                            \
+  } while(0)
+#define CONTEXT_LOG_4(fmt, x0, x1, x2, x3, ...) \
+  do {                                          \
+    log_add_context();                          \
+    __context = "\xff\x44" fmt;                 \
+    log_add((intptr_t)(__context + 1));         \
+    log_add((intptr_t)(x0));                    \
+    log_add((intptr_t)(x1));                    \
+    log_add((intptr_t)(x2));                    \
+    log_add((intptr_t)(x3));                    \
+  } while(0)
+#define CONTEXT_LOG_5(fmt, x0, x1, x2, ...)     \
+  do {                                          \
+    log_add_context();                          \
+    __context = "\xff\x43" fmt;                 \
+    log_add((intptr_t)(__context + 1));         \
+    log_add((intptr_t)(x0));                    \
+    log_add((intptr_t)(x1));                    \
+    log_add((intptr_t)(x2));                    \
+  } while(0)
+#define CONTEXT_LOG_6(fmt, x0, x1, ...)         \
+  do {                                          \
+    log_add_context();                          \
+    __context = "\xff\x42" fmt;                 \
+    log_add((intptr_t)(__context + 1));         \
+    log_add((intptr_t)(x0));                    \
+    log_add((intptr_t)(x1));                    \
+  } while(0)
+#define CONTEXT_LOG_7(fmt, x0, ...)             \
+  do {                                          \
+    log_add_context();                          \
+    __context = "\xff\x41" fmt;                 \
+    log_add((intptr_t)(__context + 1));         \
+    log_add((intptr_t)(x0));                    \
+  } while(0)
+#define CONTEXT_LOG_8(fmt, ...)                 \
+  do {                                          \
+    log_add_context();                          \
+    __context = "\xff\x40" fmt;                 \
+    log_add((intptr_t)(__context + 1));         \
+  } while(0)
+#define CONTEXT_LOG(fmt, ...)                                           \
+  const char *__context __attribute__((cleanup(log_cleanup_context_log))); \
+  DISPATCH(CONTEXT_LOG, 9, __FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
+#endif
+
+void log_cleanup_context(void *p) {
+  context_t *ctx = p;
   if(ctx->fmt[0] == '\xff') {
     // add end marker
     log_add((intptr_t)ctx->fmt);
@@ -348,12 +446,16 @@ void log_pop_context(context_t *ctx) {
   __log_context = ctx->next;
 }
 
+void log_cleanup_context_log(const char **fmt) {
+  log_add((intptr_t)*fmt);
+}
+
 void log_add_context() {
   context_t *p = __log_context;
   while(p &&
         p->fmt[0] != '\xff') {
     log_add((intptr_t)p->fmt);
-    uint8_t len = p->fmt[0] & ~0x80;
+    uint8_t len = p->fmt[0] & ~MASK;
     COUNTUP(i, len) {
       log_add(p->arg[i]);
     }
@@ -365,14 +467,12 @@ void log_add_context() {
 static
 void __test_context_c(int x) {
   CONTEXT_LOG("C %d", x);
-  END_CONTEXT();
 }
 
 static
 void __test_context_b(int x) {
   CONTEXT("B %d", x);
   if(x == 0) LOG("(b) zero x");
-  END_CONTEXT();
 }
 
 static
@@ -380,7 +480,18 @@ void __test_context_a(int x) {
   CONTEXT("A %d", x);
   __test_context_b(x - 1);
   if(x > 0) LOG("(a) nonzero x");
-  END_CONTEXT();
+}
+
+static
+void __test_context_e(int x) {
+  CONTEXT_LOG("E %d", x);
+}
+
+static
+void __test_context_d(int x) {
+  CONTEXT_LOG("D %d", x);
+  __test_context_e(x);
+  LOG("exiting d");
 }
 
 int test_context() {
@@ -389,6 +500,8 @@ int test_context() {
   __test_context_a(1);
   __test_context_a(0);
   __test_context_c(3);
+  __test_context_d(42);
   log_print_all();
   return 0;
 }
+

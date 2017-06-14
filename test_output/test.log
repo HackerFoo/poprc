@@ -14,13 +14,16 @@ M:three
 ################
 comments => 0
 @ context
-log.c:380: A 2
-  log.c:382: (a) nonzero x
-log.c:380: A 1
-  log.c:373: B 0
-    log.c:374: (b) zero x
-  log.c:382: (a) nonzero x
-log.c:367: C 3
+log.c:480: A 2
+  log.c:482: (a) nonzero x
+log.c:480: A 1
+  log.c:474: B 0
+    log.c:475: (b) zero x
+  log.c:482: (a) nonzero x
+log.c:469: C 3
+log.c:492: D 42
+  log.c:487: E 42
+  log.c:494: exiting d
 context => 0
 @ error
 i = 0
@@ -55,9 +58,9 @@ _check_list_remaining_size: 0 + 1 = 1
 _check_list_remaining_size: 1 + 0 = 1
 list_remaining_size => 0
 @ log
-log.c:234: test 1 + 2 = 3
-log.c:235: WAZZUP d00d
-log.c:236: [123]
+log.c:239: test 1 + 2 = 3
+log.c:240: WAZZUP d00d
+log.c:241: [123]
 log => 0
 @ loops
 up: 0
