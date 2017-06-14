@@ -346,8 +346,24 @@ expand:
       if(!returns) returns = p;
       continue;
     }
-    cell_t *nc = closure_alloc_cells(s);
-    memcpy(nc, p, s * sizeof(cell_t));
+    cell_t *e = is_user_func(p) ? get_entry(p) : NULL;
+    cell_t *nc;
+    csize_t in;
+    if(e && e->entry.out == 1 &&
+       (in = closure_in(p)) < e->entry.in) {
+      nc = closure_alloc(e->entry.in + 1);
+      memcpy(nc, p, offsetof(cell_t, expr.arg));
+      nc->size = e->entry.in + 1;
+      csize_t remaining = e->entry.in - in;
+      memcpy(&nc->expr.arg[remaining], p->expr.arg, in * sizeof(cell_t *));
+      nc->expr.idx[0] = remaining - 1;
+      nc->expr.arg[e->entry.in] = p->expr.arg[in];
+      closure_set_ready(nc, false);
+      nc = row_quote(nc);
+    } else {
+      nc = closure_alloc_cells(s);
+      memcpy(nc, p, s * sizeof(cell_t));
+    }
     nc->tmp = 0;
     p->alt = nc;
   }
@@ -362,6 +378,8 @@ expand:
     s = calculate_cells(p->size);
     if((is_value(p) && p->value.type.exclusive == T_RETURN) || !t) continue;
 
+    if(is_row_list(t)) t = t->value.ptr[0]; // for row quotes created above
+
     // skip rewriting for the entry argument
     cell_t **t_entry = NULL;
     if(is_user_func(t)) {
@@ -370,7 +388,7 @@ expand:
     }
 
     TRAVERSE(t, alt, args, ptrs) {
-      if(p != t_entry) {
+      if(p != t_entry && *p) {
         trace_index_t x = trace_decode(*p);
         *p = map_cell(code, x);
       }
@@ -426,8 +444,10 @@ expand:
 }
 
 void reduce_quote(cell_t **cp) {
-  if(is_user_func(*cp)) { // HACKy
-    LOG("HACK reduce_quote %d", CELL_INDEX(*cp));
+  if(is_user_func(*cp) && closure_is_ready(*cp)) { // HACKy
+    LOG("HACK reduce_quote[%d]", CELL_INDEX(*cp));
+    insert_root(cp);
     reduce(cp, req_any);
+    remove_root(cp);
   }
 }

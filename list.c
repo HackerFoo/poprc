@@ -48,6 +48,12 @@ cell_t *quote(cell_t *x) {
   return c;
 }
 
+cell_t *row_quote(cell_t *x) {
+  cell_t *q = quote(x);
+  q->value.type.flags |= T_ROW;
+  return q;
+}
+
 bool is_list(cell_t const *c) {
   return c && is_value(c) && c->value.type.exclusive == T_LIST;
 }
@@ -114,7 +120,7 @@ start:
     return &it->array[it->index++];
   } else if(it->row && it->index == it->size) {
     cell_t **rp = &it->array[it->size];
-    reduce_quote(rp); // ***
+    if(closure_is_ready(*rp)) reduce_quote(rp); // ***
     if(is_list(*rp)) { // ***
       *it = list_begin(*rp);
       goto start;
