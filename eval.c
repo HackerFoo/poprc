@@ -489,8 +489,8 @@ void command_help(cell_t *rest) {
          "%s | command line | -command args |\n"
          "%s | interpreter  | :command args |\n"
          "    O--------------'---------------'\n"
-         "    \\\n"
-         "     '---> COMMAND | DESCRIPTION\n",
+         "     \\\n"
+         "      '--> COMMAND | DESCRIPTION\n",
          command_line ? "-->" : "   ",
          command_line ? "   " : "-->");
   seg_t name = { .s = "", .n = 0 };
