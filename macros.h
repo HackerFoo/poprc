@@ -214,12 +214,6 @@
     .second = (uintptr_t)&test_##name                    \
   }
 
-#define COMMAND(name)                                    \
-  {                                                      \
-    .first = (uintptr_t)#name,                           \
-    .second = (uintptr_t)&command_##name                 \
-  }
-
 
 
 // DATA STRUCTURES ________________________________________

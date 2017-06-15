@@ -155,6 +155,7 @@ int test_error() {
   return 0;
 }
 
+// print a backtrace
 void command_backtrace(UNUSED cell_t *rest) {
   print_backtrace();
 }

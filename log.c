@@ -260,6 +260,7 @@ int test_log() {
   return 0;
 }
 
+// print out the log
 void command_log(UNUSED cell_t *rest) {
   log_print_all();
 }

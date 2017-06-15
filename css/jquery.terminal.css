@@ -27,7 +27,7 @@
 }
 .terminal .terminal-output div div, .terminal .prompt {
     display: block;
-    line-height: 22px;
+    line-height: 18px;
     height: auto;
 }
 .terminal .prompt {
@@ -38,8 +38,8 @@
     font-family: Inconsolata, Consolas, monospace;
     color: #fff;
     background-color: #000;
-    font-size: 20px;
-    line-height: 22px;
+    font-size: 16px;
+    line-height: 18px;
     text-shadow: 0 0 5px #ccc;
 }
 .terminal-output > div {

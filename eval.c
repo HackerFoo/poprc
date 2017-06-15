@@ -43,7 +43,6 @@
 #include "gen/parse.h"
 #include "gen/print.h"
 #include "gen/cgen.h"
-#include "gen/command_table.h"
 #include "gen/git_log.h"
 #include "gen/lex.h"
 #include "gen/module.h"
@@ -62,7 +61,9 @@ static bool quit = false;
 static bool quiet = false;
 static bool will_eval_commands = true;
 static bool eval_commands = true;
+static bool command_line = false;
 
+// git commit for this build
 void command_git_commit(UNUSED cell_t *rest) {
   puts(GIT_LOG);
 }
@@ -105,36 +106,42 @@ void usage() {
   printf("usage: eval [-t <test name>]\n");
 }
 
+// whether the input line is echoed
 void command_echo(cell_t *rest) {
   if(rest) {
     echo = segcmp("yes", tok_seg(rest)) == 0;
   }
 }
 
+// whether stats are printed on exit
 void command_stats(cell_t *rest) {
   if(rest) {
     stats = segcmp("yes", tok_seg(rest)) == 0;
   }
 }
 
+// whether leak test is performed
 void command_check_free(UNUSED cell_t *rest) {
   if(rest) {
     run_check_free = segcmp("yes", tok_seg(rest)) == 0;
   }
 }
 
+// whether to minimize output
 void command_quiet(UNUSED cell_t *rest) {
   if(rest) {
     quiet = segcmp("yes", tok_seg(rest)) == 0;
   }
 }
 
+// whether commands are enabled
 void command_commands(cell_t *rest) {
   if(rest) {
     will_eval_commands = segcmp("yes", tok_seg(rest)) == 0;
   }
 }
 
+// evaluate the argument text
 void command_eval(cell_t *rest) {
   cell_t *p = rest;
   if(p) {
@@ -191,6 +198,7 @@ int main(int argc, char **argv) {
   parse_init();
   module_init();
 
+  command_line = true;
   bool quit = false;
   tty = isatty(fileno(stdin));
 
@@ -210,6 +218,7 @@ int main(int argc, char **argv) {
 
   eval_commands = will_eval_commands;
   exit_on_error = false;
+  command_line = false;
 
   if(!quit) run_eval(echo);
   if(stats) {
@@ -384,7 +393,25 @@ void run_eval(bool echo) {
   }
 }
 
-static pair_t commands[] = COMMANDS;
+#define COMMAND(name, desc)                              \
+  {                                                      \
+    .first = (uintptr_t)#name,                           \
+    .second = (uintptr_t)&command_##name                 \
+  },
+static pair_t commands[] = {
+#include "gen/commands.h"
+};
+#undef COMMAND
+
+#define COMMAND(name, desc)                              \
+  {                                                      \
+    .first = (uintptr_t)#name,                           \
+    .second = (uintptr_t)desc                            \
+  },
+static pair_t command_descriptions[] = {
+#include "gen/commands.h"
+};
+#undef COMMAND
 
 bool run_command(seg_t name, cell_t *rest) {
   FOREACH(i, commands) {
@@ -401,19 +428,23 @@ bool run_command(seg_t name, cell_t *rest) {
   return false;
 }
 
+// print stats
 void command_measure(UNUSED cell_t *rest) {
   measure_display();
 }
 
+// print all modules
 void command_module_display(UNUSED cell_t *rest) {
   print_modules();
 }
 
+// toggle graphing
 void command_graph_toggle(UNUSED cell_t *rest) {
   write_graph = !write_graph;
   printf("graph %s\n", write_graph ? "ON" : "OFF");
 }
 
+// load given file(s)
 void command_load_file(cell_t *rest) {
   char buf[64];
   while(rest) {
@@ -423,11 +454,13 @@ void command_load_file(cell_t *rest) {
   }
 }
 
+// run tests matching the argument
 void command_test(cell_t *rest) {
   const char *name = rest ? rest->tok_list.location : "";
   run_test(name);
 }
 
+// print arity of the given function
 void command_arity(cell_t *rest) {
   csize_t in, out;
   if(rest) {
@@ -437,6 +470,7 @@ void command_arity(cell_t *rest) {
   }
 }
 
+// define a function
 void command_def(cell_t *rest) {
   cell_t *p = rest;
   cell_t *name = p;
@@ -449,24 +483,37 @@ void command_def(cell_t *rest) {
   parse_eval_def(tok_seg(name), expr);
 }
 
-void command_list(cell_t *rest) {
+// list available commands matching optional argument
+void command_help(cell_t *rest) {
+  printf("    ,--------------,---------------,\n"
+         "%s | command line | -command args |\n"
+         "%s | interpreter  | :command args |\n"
+         "    O--------------'---------------'\n"
+         "    \\\n"
+         "     '---> COMMAND | DESCRIPTION\n",
+         command_line ? "-->" : "   ",
+         command_line ? "   " : "-->");
   seg_t name = { .s = "", .n = 0 };
   if(rest) name = tok_seg(rest);
-  FOREACH(i, commands) {
-    pair_t *entry = &commands[i];
+  FOREACH(i, command_descriptions) {
+    pair_t *entry = &command_descriptions[i];
     char *entry_name = (char *)entry->first;
+    char *entry_desc = (char *)entry->second;
     int entry_name_size = strlen(entry_name);
     if((int)name.n <= entry_name_size &&
        strncmp(name.s, entry_name, name.n) == 0) {
-      printf("  %s\n", entry_name);
+      printf("  %16s | %s\n", entry_name, entry_desc);
     }
   }
+  printf("                   V\n");
 }
 
+// quit interpreter
 void command_q(cell_t *rest) {
   command_quit(rest);
 }
 
+// quit interpreter
 void command_quit(UNUSED cell_t *rest) {
   quit = true;
 }
@@ -581,10 +628,12 @@ bool unload_files() {
   return success;
 }
 
+// number of bits in a pointer
 void command_pointer_bits(UNUSED cell_t *rest) {
   printf("%d\n", (int)sizeof(void *) * 8);
 }
 
+// lex the arguments and print them out
 void command_lex(UNUSED cell_t *rest) {
   char *line_raw, *line;
   char buf[1024];
@@ -605,6 +654,7 @@ void command_lex(UNUSED cell_t *rest) {
   quit = true;
 }
 
+// parse and print out input lines
 void command_parse(UNUSED cell_t *rest) {
   char *line_raw, *line;
   char buf[1024];

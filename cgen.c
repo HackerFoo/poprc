@@ -440,6 +440,7 @@ void gen_main(cell_t *e) {
          "}\n\n");
 }
 
+// print C code given function
 void command_cgen(cell_t *rest) {
   if(rest) {
     command_def(rest);
@@ -451,6 +452,7 @@ void command_cgen(cell_t *rest) {
   }
 }
 
+// print main() driver for given function
 void command_main(cell_t *rest) {
   if(rest) {
     cell_t

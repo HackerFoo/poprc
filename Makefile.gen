@@ -19,12 +19,9 @@ gen/test_table.h.new: $(SRC)
 	@sed -n -e 's/^ *int test_\([a-zA-Z0-9_]*\).*/TEST(\1),\\/p' $(SRC) | LC_ALL=C sort >> $@
 	@echo '}' >> $@
 
-gen/command_table.h.new: $(SRC)
+gen/commands.h.new: $(SRC)
 	@mkdir -p gen
-	@sed -n -e 's/^ *void command_\([a-zA-Z0-9_]*\).*/extern void command_\1(cell_t *);/p' $(SRC) | sort > $@
-	@echo '#define COMMANDS {\' >> $@
-	@sed -n -e 's/^ *void command_\([a-zA-Z0-9_]*\).*/COMMAND(\1),\\/p' $(SRC) | LC_ALL=C sort >> $@
-	@echo '}' >> $@
+	@sed -n -e 'N;s/^\/\/ *\(.*\)\n *void command_\([a-zA-Z0-9_]*\).*/COMMAND(\2, "\1")/p;D' $(SRC) | LC_ALL=C sort > $@
 
 gen/git_log.h.new: LOG = $(shell git log -1 --oneline)
 gen/git_log.h.new: $(SRC)

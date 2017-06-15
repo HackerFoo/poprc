@@ -14,16 +14,16 @@ M:three
 ################
 comments => 0
 @ context
-log.c:497: A 2
-  log.c:499: (a) nonzero x
-log.c:497: A 1
-  log.c:491: B 0
-    log.c:492: (b) zero x
-  log.c:499: (a) nonzero x
-log.c:486: C 3
-log.c:509: D 42
-  log.c:504: E 42
-  log.c:511: exiting d
+log.c:498: A 2
+  log.c:500: (a) nonzero x
+log.c:498: A 1
+  log.c:492: B 0
+    log.c:493: (b) zero x
+  log.c:500: (a) nonzero x
+log.c:487: C 3
+log.c:510: D 42
+  log.c:505: E 42
+  log.c:512: exiting d
 context => 0
 @ error
 i = 0
