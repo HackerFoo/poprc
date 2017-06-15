@@ -177,6 +177,10 @@ int main(int argc, char **argv) {
     print_error(&error);
     if(exit_on_error) {
       printf("\nExiting on error.\n");
+      printf("\n___ LOG ___\n");
+      log_print_all();
+      printf("\n___ BACKTRACE ___\n");
+      print_backtrace();
       return -error.type;
     }
     exit_on_error = true;

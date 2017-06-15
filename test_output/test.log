@@ -14,22 +14,22 @@ M:three
 ################
 comments => 0
 @ context
-log.c:494: A 2
-  log.c:496: (a) nonzero x
-log.c:494: A 1
-  log.c:488: B 0
-    log.c:489: (b) zero x
-  log.c:496: (a) nonzero x
-log.c:483: C 3
-log.c:506: D 42
-  log.c:501: E 42
-  log.c:508: exiting d
+log.c:497: A 2
+  log.c:499: (a) nonzero x
+log.c:497: A 1
+  log.c:491: B 0
+    log.c:492: (b) zero x
+  log.c:499: (a) nonzero x
+log.c:486: C 3
+log.c:509: D 42
+  log.c:504: E 42
+  log.c:511: exiting d
 context => 0
 @ error
 i = 0
 i = 1
 i = 2
-error.c:148: test_error: Assertion `i < 3' failed: Don't worry, it's okay.
+error.c:150: test_error: Assertion `i < 3' failed: Don't worry, it's okay.
 error => 0
 @ expand_map
 map[10] = {{eight, 7}, {five, 4}, {four, 3}, {one, 0}, {seven, 6}, {six, 5}, {three, 2}, {two, 1}, {nine, 8}, {ten, 9}}
@@ -58,9 +58,9 @@ _check_list_remaining_size: 0 + 1 = 1
 _check_list_remaining_size: 1 + 0 = 1
 list_remaining_size => 0
 @ log
-log.c:253: test 1 + 2 = 3
-log.c:254: WAZZUP d00d
-log.c:255: [123]
+log.c:256: test 1 + 2 = 3
+log.c:257: WAZZUP d00d
+log.c:258: [123]
 log => 0
 @ loops
 up: 0

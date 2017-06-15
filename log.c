@@ -94,6 +94,7 @@ unsigned int log_printf(unsigned int idx, unsigned int *depth) {
       CASE('u', unsigned int, "%u");
       CASE('x', int, "%x");
       CASE('s', const char *, "%s");
+      CASE('p', void *, "%p");
  #undef CASE
     case '.':
       if(n[2] == '*' && n[3] == 's') {
@@ -130,6 +131,7 @@ bool end_context(unsigned int idx, unsigned int *depth) {
   if(fmt[0] != '\xff') return false;
   if(fmt[1] == '\xff') {
     *depth = 0;
+    putchar('\n');
   } else if(*depth > 0) {
     (*depth)--;
   }
@@ -246,6 +248,7 @@ void log_print_all() {
     log_add((intptr_t)("\x00" fmt));            \
   } while(0)
 #define LOG(fmt, ...) DISPATCH(LOG, 9, __FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
+#define LOG_NO_POS(fmt, ...) DISPATCH(LOG, 9, fmt, ##__VA_ARGS__)
 #endif
 
 int test_log() {

@@ -31,6 +31,7 @@
 #include "gen/test_table.h"
 #include "gen/list.h"
 #include "gen/print.h"
+#include "gen/log.h"
 
 pair_t tests[] = TESTS;
 
@@ -173,7 +174,7 @@ size_t count_root(const cell_t *c, cell_t ***roots, size_t n) {
 static
 void print_roots(cell_t ***roots, size_t n) {
   COUNTUP(i, n) {
-    if(roots[i] && *roots[i]) printf("root: %d @ 0x%p\n", (int)((*roots[i])-cells), (void *)roots[i]);
+    if(roots[i] && *roots[i]) LOG("root: %d @ 0x%p", (int)((*roots[i])-cells), (void *)roots[i]);
   }
 }
 
@@ -184,7 +185,7 @@ bool assert_ref_check(cell_t *c, cell_t ***roots, size_t roots_n) {
     refcount_t n = c->n + 1;
     if(count_root(c, roots, roots_n)) n = 0;
     if(n) {
-      printf("assert_ref: cell[%d].n == %d\n", (int)(c - cells), (int)n);
+      LOG("assert_ref: cell[%d].n == %d", (int)(c - cells), (int)n);
       res = false;
     }
     c = c->tmp;
