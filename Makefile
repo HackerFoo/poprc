@@ -31,6 +31,7 @@ ifeq ($(findstring gcc, $(CC)),gcc)
 	CFLAGS = -falign-functions=4 -Wall -std=gnu99
 	CXXFLAGS = -xc++ -falign-functions=4 -Wall -std=c++98
 	OPT_FLAG=-O3
+	LDFLAGS += -rdynamic
 endif
 ifeq ($(findstring clang, $(CC)),clang)
 ifneq ($(UNAME_O),Android) # ubsan doesn't work on Termux
@@ -39,6 +40,7 @@ endif
 	CFLAGS = -Wall -Wextra -pedantic -std=gnu11 -Wno-gnu-zero-variadic-macro-arguments -Wno-address-of-packed-member -Wno-unknown-warning-option -Werror=implicit-function-declaration -Werror=int-conversion
 	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -std=c++98 -m32
 	OPT_FLAG=-O3
+	LDFLAGS += -rdynamic
 endif
 
 ifneq ($(UNAME_O),Android)
@@ -58,7 +60,7 @@ ifeq ($(FORCE_32_BIT),y)
 endif
 
 ifeq ($(BUILD),debug)
-	OPT_FLAG ?= -O0
+	OPT_FLAG = -O0
 	CFLAGS += -g $(OPT_FLAG) $(SANITIZE) $(BACKTRACE)
 	CXXFLAGS += -g $(OPT_FLAG) $(SANITIZE) $(BACKTRACE)
 	LIBS += $(SANITIZE)
@@ -74,8 +76,8 @@ ifeq ($(BUILD),debugger)
 endif
 
 ifeq ($(BUILD),release)
-	CFLAGS += -DNDEBUG $(OPT_FLAG)
-	CXXFLAGS += -DNDEBUG $(OPT_FLAG)
+	CFLAGS += -DNDEBUG $(OPT_FLAG) $(BACKTRACE)
+	CXXFLAGS += -DNDEBUG $(OPT_FLAG) $(BACKTRACE)
 endif
 
 ifeq ($(BUILD),profile)
