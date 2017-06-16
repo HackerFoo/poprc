@@ -34,7 +34,9 @@
 #endif
 
 #include "gen/error.h"
+#ifndef NOLOG
 #include "gen/log.h"
+#endif
 
 #if INTERFACE
 #include <setjmp.h>
@@ -116,7 +118,9 @@ void throw_error(const char *file, int line, const char *function, const char *m
     current_error->file = file;
     current_error->line = line;
     current_error->type = type;
+#ifndef NOLOG
     LOG_NO_POS("!!! %s:%d: %s: %s", file, line, function, msg);
+#endif
     strncpy(current_error->function, function, sizeof(current_error->function));
     longjmp(current_error->env, type);
   }

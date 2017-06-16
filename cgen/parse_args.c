@@ -10,7 +10,7 @@ static int *mem_ptr = mem;
 
 static
 int *mem_alloc(unsigned int n) {
-  assert_throw(mem_ptr - mem + n <= LENGTH(mem));
+  assert_throw(mem_ptr - mem + n <= LENGTH(mem), "out of mem");
   int *m = mem_ptr;
   mem_ptr += n;
   return m;

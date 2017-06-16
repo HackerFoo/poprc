@@ -2,7 +2,7 @@
 #define __cgen_primitives__
 
 #include <string.h>
-#include <assert.h>
+#include "gen/error.h"
 
 #define __primitive_add(x, y) x + y
 #define __primitive_sub(x, y) x - y
@@ -33,7 +33,7 @@ const static array nil = {0, NULL};
 
 static inline
 array __primitive_ap01(array arr, int *out0) {
-  assert(arr.size >= 1);
+  assert_error(arr.size >= 1, "array underflow");
   if(out0) *out0 = arr.elem[0];
   return (array) { .elem = arr.elem - 1,
                    .size = arr.size - 1 };
@@ -41,7 +41,7 @@ array __primitive_ap01(array arr, int *out0) {
 
 static inline
 array __primitive_ap02(array arr, int *out1, int *out0) {
-  assert(arr.size >= 2);
+  assert_error(arr.size >= 2, "array underflow");
   if(out0) *out0 = arr.elem[0];
   if(out1) *out1 = arr.elem[-1];
   return (array) { .elem = arr.elem - 2,

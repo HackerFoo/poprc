@@ -421,6 +421,7 @@ size_t expand_sym(char *buf, size_t n, seg_t src) {
   return out - buf;
 }
 
+// convert symbols to a valid C identifier
 void command_expsym(cell_t *rest) {
   cell_t *p = rest;
   while(p) {
