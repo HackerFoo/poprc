@@ -25,9 +25,6 @@ __ carry: [self] dip11 [] ap20
 
 check: [|] control.dip21 [dup] swap . . popr !
 
-iota_: [[dup 1-] .] [head 0 >] iterate
-iota: [1-] pushl iota_
-
 length_: [[[1+] [popr drop] para] .] [head is_nil not] iterate
 length: [0 swap] pushl length_ popr drop head
 

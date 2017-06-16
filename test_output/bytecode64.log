@@ -113,6 +113,27 @@ ___ algorithm.sum_ (1 -> 1) x2 rec ___
 [20] val 0, type = i x1
 [21] return [ 19 ], type = r x1
 
+___ algorithm.iota_ (1 -> 1) x2 rec ___
+[0] var, type = ?f x4
+[1] __primitive.ap 0 -> 2, type = f x1
+[2] __primitive.dep 1, type = i x1
+[3] __primitive.gt 2 4, type = s x1
+[4] val 0, type = i x2
+[5] __primitive.assert 11 3, type = 0 x1
+[6] __primitive.ap 0 -> 7, type = f x2
+[7] __primitive.dep 6, type = i x2
+[8] __primitive.sub 7 9, type = i x1
+[9] val 1, type = i x1
+[10] __primitive.compose 6 7 8 [], type = f x1
+[11] algorithm.iota_ 10, type = 0 x1
+[12] return [ 5 ], type = r -> 18 x1
+[13] __primitive.ap 0 -> 14, type = f x1
+[14] __primitive.dep 13, type = i x1
+[15] __primitive.gt 14 4, type = s x1
+[16] __primitive.not 15, type = s x1
+[17] __primitive.assert 0 16, type = f x1
+[18] return [ 17 ], type = r x1
+
 ___ algorithm.sum (1 -> 1) ___
 [0] var, type = ?f x1
 [1] algorithm.sum_1 0, type = f x1
@@ -124,6 +145,14 @@ ___ algorithm.sum_1 (1 -> 1) ___
 [1] __primitive.compose 0 2 [], type = f x1
 [2] val 0, type = i x1
 [3] return [ 1 ], type = r x1
+
+___ algorithm.iota (1 -> 1) ___
+[0] var, type = ?i x1
+[1] __primitive.sub 0 2, type = i x1
+[2] val 1, type = i x1
+[3] __primitive.ap 1 [], type = f x1
+[4] algorithm.iota_ 3, type = f x1
+[5] return [ 4 ], type = r x1
 
 ___ control.$ (2 -> 1) ___
 [0] var, type = ?f x1

@@ -1,5 +1,6 @@
 #include "rt_types.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "primitives.h"
 #include "gen/tok.h"
@@ -8,12 +9,32 @@
 static int mem[256];
 static int *mem_ptr = mem;
 
-static
 int *mem_alloc(unsigned int n) {
   assert_throw(mem_ptr - mem + n <= LENGTH(mem), "out of mem");
   int *m = mem_ptr;
   mem_ptr += n;
   return m;
+}
+
+int *alloc_arr(array *arr, unsigned int n) {
+  arr->size = n;
+  arr->elem = mem_alloc(n);
+  return arr->elem;
+}
+
+void print_array(array arr) {
+  int *x = arr.elem - arr.size + 1;
+  if(arr.size == 0) {
+    printf(" []");
+  } else if(arr.size == 1) {
+    printf(" %d", x[0]);
+  } else {
+    printf(" [%d", x[0]);
+    RANGEUP(i, 1, arr.size) {
+      printf(" %d", x[i]);
+    }
+    printf("]");
+  }
 }
 
 array parse(const char **sp, const char *e) {

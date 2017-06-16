@@ -227,6 +227,14 @@ void trace_final_pass(cell_t *e) {
     *end = start + e->entry.len,
     *prev = NULL;
 
+  // propagate types to asserts
+  FOR_TRACE(p, start, end) {
+    if(p->func == func_assert &&
+       p->expr_type.exclusive == T_ANY) {
+      p->expr_type.exclusive = trace_type(&start[trace_decode(p->expr.arg[0])]).exclusive;
+    }
+  }
+
   FOR_TRACE(p, start, end) {
     if(p->expr_type.flags & T_INCOMPLETE) {
       if(p->func == func_exec) { // compile a specialized function

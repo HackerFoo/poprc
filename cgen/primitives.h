@@ -31,6 +31,9 @@ typedef struct array {
 
 const static array nil = {0, NULL};
 
+int *mem_alloc(unsigned int n);
+int *alloc_arr(array *arr, unsigned int n);
+
 static inline
 array __primitive_ap01(array arr, int *out0) {
   assert_error(arr.size >= 1, "array underflow");
@@ -49,6 +52,14 @@ array __primitive_ap02(array arr, int *out1, int *out0) {
 }
 
 static inline
+array __primitive_ap10(int in0, array arr) {
+  int *elem = arr.elem ? arr.elem : mem_alloc(1);
+  elem[-arr.size] = in0;
+  return (array) { .elem = elem,
+                   .size = arr.size + 1 };
+}
+
+static inline
 array __primitive_compose20(array arrL, int in0, const array arrR) {
   array arr = {
     .elem = arrL.elem + arrR.size + 1,
@@ -60,10 +71,23 @@ array __primitive_compose20(array arrL, int in0, const array arrR) {
 }
 
 static inline
+array __primitive_compose30(array arrL, int in0, int in1, const array arrR) {
+  array arr = {
+    .elem = arrL.elem + arrR.size + 2,
+    .size = arrL.size + arrR.size + 2
+  };
+  arr.elem[-arrR.size-1] = in0;
+  arr.elem[-arrR.size] = in1;
+  memcpy(&arr.elem[-arrR.size + 1], &arrR.elem[-arrR.size + 1], arrR.size * sizeof(*arr.elem));
+  return arr;
+}
+
+static inline
 int __primitive_is_nil(array arr) {
   return arr.size == 0;
 }
 
 array parse(const char **sp, const char *e);
+void print_array(array arr);
 
 #endif

@@ -378,6 +378,9 @@ void gen_functions(cell_t *e) {
 // generate the driver to allow testing the function from the command line
 // for now assumes int
 void gen_main(cell_t *e) {
+  type_t rtypes[e->entry.out];
+  resolve_types(e, rtypes);
+
   printf("#include <stdio.h>\n"
          "#include <stdlib.h>\n"
          "#include <assert.h>\n"
@@ -393,7 +396,7 @@ void gen_main(cell_t *e) {
   printf("  const int arity_in = %d;\n", e->entry.in);
   printf("  const int arity_out = %d;\n", e->entry.out);
   printf("  array in[arity_in];\n"
-         "  int out[arity_out];\n"
+         "  array out[arity_out];\n"
          "  error_t error;\n"
          "  if(catch_error(&error)) {\n"
          "    print_error(&error);\n"
@@ -415,7 +418,12 @@ void gen_main(cell_t *e) {
          "  }\n\n");
 
   char *sep = "";
-  printf("  out[0] = %s_%s(", e->module_name, e->word_name);
+  if(rtypes[0].exclusive == T_FUNCTION) {
+    printf("  out[0]");
+  } else {
+    printf("  *alloc_arr(&out[0], 1)");
+  }
+  printf(" = %s_%s(", e->module_name, e->word_name);
   cell_t *code = e + 1;
   csize_t in = e->entry.in;
   COUNTUP(i, in) {
@@ -426,14 +434,18 @@ void gen_main(cell_t *e) {
     }
     sep = ", ";
   }
-  COUNTUP(i, e->entry.out - 1) {
-    printf("%s&out[%d]", sep, (int)i + 1);
+  RANGEUP(i, 1, e->entry.out) {
+    if(rtypes[i].exclusive == T_FUNCTION) {
+      printf("%s&out[%d]", sep, (int)i);
+    } else {
+      printf("%salloc_arr(&out[%d], 1)", sep, (int)i);
+    }
     sep = ", ";
   }
   printf(");\n");
   printf("  printf(\"%s_%s =>\");\n", e->module_name, e->word_name);
   printf("  COUNTUP(i, arity_out) {\n"
-         "    printf(\" %%d\", out[i]);\n"
+         "    print_array(out[i]);\n"
          "  }\n");
   printf("  printf(\"\\n\");\n\n"
          "  return 0;\n"
