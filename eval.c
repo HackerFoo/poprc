@@ -53,34 +53,35 @@
 #include <emscripten.h>
 #endif
 
+bool quit = false;
+bool command_line = false;
+
 static bool tty = false;
 static bool echo = false;
-static bool stats = false;
-static bool run_check_free = true;
-static bool quit = false;
+static bool run_leak_test = true;
 static bool quiet = false;
 static bool will_eval_commands = true;
 static bool eval_commands = true;
-static bool command_line = false;
 
 // git commit for this build
-void command_git_commit(UNUSED cell_t *rest) {
+void command_git(UNUSED cell_t *rest) {
   puts(GIT_LOG);
+  if(command_line) quit = true;
 }
 
-void measure_start() {
-  memset(&measure, 0, sizeof(measure));
-  measure.start = clock();
+void stats_start() {
+  memset(&stats, 0, sizeof(stats));
+  stats.start = clock();
 }
 
-void measure_stop() {
-  memcpy(&saved_measure, &measure, sizeof(measure));
-  saved_measure.stop = clock();
-  saved_measure.alt_cnt = alt_cnt;
+void stats_stop() {
+  memcpy(&saved_stats, &stats, sizeof(stats));
+  saved_stats.stop = clock();
+  saved_stats.alt_cnt = alt_cnt;
 }
 
-void measure_display() {
-  double time = (saved_measure.stop - saved_measure.start) /
+void stats_display() {
+  double time = (saved_stats.stop - saved_stats.start) /
     (double)CLOCKS_PER_SEC;
   printf("time        : %.3e sec\n"
          "allocated   : %d cells\n"
@@ -88,18 +89,18 @@ void measure_display() {
          "reductions  : %d\n"
          "failures    : %d\n",
          time,
-         saved_measure.alloc_cnt,
-         saved_measure.max_alloc_cnt,
-         saved_measure.reduce_cnt,
-         saved_measure.fail_cnt);
+         saved_stats.alloc_cnt,
+         saved_stats.max_alloc_cnt,
+         saved_stats.reduce_cnt,
+         saved_stats.fail_cnt);
   printf("rate        :");
   if(time != 0) {
     printf(" %.3e reductions/sec",
-           saved_measure.reduce_cnt / time);
+           saved_stats.reduce_cnt / time);
   }
   printf("\n"
          "alts used   : %d\n",
-         saved_measure.alt_cnt);
+         saved_stats.alt_cnt);
 }
 
 void usage() {
@@ -108,40 +109,30 @@ void usage() {
 
 // whether the input line is echoed
 void command_echo(cell_t *rest) {
-  if(rest) {
-    echo = segcmp("yes", tok_seg(rest)) == 0;
-  }
+  echo = !rest || segcmp("yes", tok_seg(rest)) == 0;
 }
 
-// whether stats are printed on exit
-void command_stats(cell_t *rest) {
-  if(rest) {
-    stats = segcmp("yes", tok_seg(rest)) == 0;
-  }
+// print statistics
+void command_stats(UNUSED cell_t *rest) {
+  stats_display();
+}
+
+// print symbol table
+void command_symbols(UNUSED cell_t *rest) {
+  print_symbols();
 }
 
 // whether leak test is performed
-void command_check_free(UNUSED cell_t *rest) {
-  if(rest) {
-    run_check_free = segcmp("yes", tok_seg(rest)) == 0;
-  }
+void command_leak(UNUSED cell_t *rest) {
+  run_leak_test = !rest || segcmp("yes", tok_seg(rest)) == 0;
 }
 
-// whether to minimize output
-void command_quiet(UNUSED cell_t *rest) {
-  if(rest) {
-    quiet = segcmp("yes", tok_seg(rest)) == 0;
-  }
+// eval one line and exit
+void command_single(cell_t *rest) {
+  will_eval_commands = rest && segcmp("yes", tok_seg(rest)) != 0;
 }
 
-// whether commands are enabled
-void command_commands(cell_t *rest) {
-  if(rest) {
-    will_eval_commands = segcmp("yes", tok_seg(rest)) == 0;
-  }
-}
-
-// evaluate the argument text
+// evaluate the argument
 void command_eval(cell_t *rest) {
   cell_t *p = rest;
   if(p) {
@@ -155,9 +146,9 @@ void command_eval(cell_t *rest) {
       COUNTUP(i, pos + 2) putchar(' ');
       printf("^--- Parse error\n");
     } else {
-      measure_start();
+      stats_start();
       eval(p);
-      measure_stop();
+      stats_stop();
     }
   }
 }
@@ -200,7 +191,8 @@ int main(int argc, char **argv) {
 
   command_line = true;
   bool quit = false;
-  tty = isatty(fileno(stdin));
+  tty = isatty(fileno(stdin)) && isatty(fileno(stdout));
+  quiet = !tty;
 
   if(argc > 1) {
     char *args = arguments(argc - 1, argv + 1), *a = args;
@@ -221,13 +213,9 @@ int main(int argc, char **argv) {
   command_line = false;
 
   if(!quit) run_eval(echo);
-  if(stats) {
-    measure_display();
-    print_symbols();
-  }
   free_modules();
   unload_files();
-  if(run_check_free) check_free();
+  if(run_leak_test) leak_test();
   return 0;
 }
 #else // EMSCRIPTEN
@@ -428,24 +416,19 @@ bool run_command(seg_t name, cell_t *rest) {
   return false;
 }
 
-// print stats
-void command_measure(UNUSED cell_t *rest) {
-  measure_display();
-}
-
 // print all modules
-void command_module_display(UNUSED cell_t *rest) {
+void command_modules(UNUSED cell_t *rest) {
   print_modules();
 }
 
 // toggle graphing
-void command_graph_toggle(UNUSED cell_t *rest) {
+void command_gra(UNUSED cell_t *rest) {
   write_graph = !write_graph;
   printf("graph %s\n", write_graph ? "ON" : "OFF");
 }
 
 // load given file(s)
-void command_load_file(cell_t *rest) {
+void command_load(cell_t *rest) {
   char buf[64];
   while(rest) {
     seg_read(tok_seg(rest), buf, sizeof(buf));
@@ -458,6 +441,7 @@ void command_load_file(cell_t *rest) {
 void command_test(cell_t *rest) {
   const char *name = rest ? rest->tok_list.location : "";
   run_test(name);
+  if(command_line) quit = true;
 }
 
 // print arity of the given function
@@ -471,7 +455,7 @@ void command_arity(cell_t *rest) {
 }
 
 // define a function
-void command_def(cell_t *rest) {
+void command_define(cell_t *rest) {
   cell_t *p = rest;
   cell_t *name = p;
   if(!name) return;
@@ -483,16 +467,10 @@ void command_def(cell_t *rest) {
   parse_eval_def(tok_seg(name), expr);
 }
 
-// list available commands matching optional argument
+// list available commands
 void command_help(cell_t *rest) {
-  printf("    ,--------------,---------------,\n"
-         "%s | command line | -command args |\n"
-         "%s | interpreter  | :command args |\n"
-         "    O--------------'---------------'\n"
-         "     \\\n"
-         "      '--> COMMAND | DESCRIPTION\n",
-         command_line ? "-->" : "   ",
-         command_line ? "   " : "-->");
+  char pre = command_line ? '-' : ':';
+  printf("%s | DESCRIPTION\n", command_line ? "'----> FLAG" : "'-> COMMAND");
   seg_t name = { .s = "", .n = 0 };
   if(rest) name = tok_seg(rest);
   FOREACH(i, command_descriptions) {
@@ -502,20 +480,20 @@ void command_help(cell_t *rest) {
     int entry_name_size = strlen(entry_name);
     if((int)name.n <= entry_name_size &&
        strncmp(name.s, entry_name, name.n) == 0) {
-      printf("  %16s | %s\n", entry_name, entry_desc);
+      printf("  %*c%s | %s\n", max(0, 9 - entry_name_size), pre, entry_name, entry_desc);
     }
   }
-  printf("                   V\n");
-}
-
-// quit interpreter
-void command_q(cell_t *rest) {
-  command_quit(rest);
+  printf("            V\n");
+  if(command_line) quit = true;
 }
 
 // quit interpreter
 void command_quit(UNUSED cell_t *rest) {
-  quit = true;
+  if(rest) {
+    quit = segcmp("yes", tok_seg(rest)) == 0;
+  } else {
+    quit = true;
+  }
 }
 
 #ifdef EMSCRIPTEN
@@ -629,11 +607,12 @@ bool unload_files() {
 }
 
 // number of bits in a pointer
-void command_pointer_bits(UNUSED cell_t *rest) {
+void command_bits(UNUSED cell_t *rest) {
   printf("%d\n", (int)sizeof(void *) * 8);
+  if(command_line) quit = true;
 }
 
-// lex the arguments and print them out
+// lex and print the arguments
 void command_lex(UNUSED cell_t *rest) {
   char *line_raw, *line;
   char buf[1024];
@@ -654,7 +633,7 @@ void command_lex(UNUSED cell_t *rest) {
   quit = true;
 }
 
-// parse and print out input lines
+// parse and print input lines
 void command_parse(UNUSED cell_t *rest) {
   char *line_raw, *line;
   char buf[1024];
@@ -680,8 +659,8 @@ void command_parse(UNUSED cell_t *rest) {
   quit = true;
 }
 
-// compile each line and dump bytecode
-void command_bcpl(UNUSED cell_t *rest) {
+// print bytecode for each line
+void command_bc_in(UNUSED cell_t *rest) {
   char *line_raw, *line;
   char buf[1024];
   char name_buf[128];

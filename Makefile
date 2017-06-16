@@ -204,25 +204,25 @@ scan: clean
 
 .PHONY: test
 test: eval
-	./eval -test '' -check_free no -stats no -quit | $(DIFF_TEST) test_output/test.log -
-	./eval -echo yes -stats no < tests.txt | $(DIFF_TEST) test_output/tests.txt.log -
-	./eval -quiet yes -stats no -lo lib.ppr tests.ppr -all -q | $(DIFF_TEST) test_output/bytecode`./eval -pointer-bits -q`.log -
+	./eval -test | $(DIFF_TEST) test_output/test.log -
+	./eval -echo < tests.txt | $(DIFF_TEST) test_output/tests.txt.log -
+	./eval -lo lib.ppr tests.ppr -bc | $(DIFF_TEST) test_output/bytecode`./eval -bits -q`.log -
 
 test_output/test.log: eval
 	@mkdir -p test_output
-	./eval -test '' -check_free no -stats no -quit > $@
+	./eval -test > $@
 
 test_output/tests.txt.log: eval tests.txt
 	@mkdir -p test_output
-	./eval -echo yes -stats no < tests.txt > $@
+	./eval -echo < tests.txt > $@
 
 test_output/bytecode32.log: eval lib.ppr tests.ppr
 	@mkdir -p test_output
-	if [[ `./eval -pointer-bits -q` = 32 ]]; then ./eval -quiet yes -stats no -lo lib.ppr tests.ppr -all -q > $@; fi
+	if [[ `./eval -bits` = 32 ]]; then ./eval -lo lib.ppr tests.ppr -bc > $@; fi
 
 test_output/bytecode64.log: eval lib.ppr tests.ppr
 	@mkdir -p test_output
-	if [[ `./eval -pointer-bits -q` = 64 ]]; then ./eval -quiet yes -stats no -lo lib.ppr tests.ppr -all -q > $@; fi
+	if [[ `./eval -bits` = 64 ]]; then ./eval -lo lib.ppr tests.ppr -bc > $@; fi
 
 .PHONY: test_output
 test_output: test_output/test.log test_output/tests.txt.log test_output/bytecode32.log test_output/bytecode64.log
@@ -278,7 +278,7 @@ git-pull:
 
 .PHONY: update
 update: git-pull all
-	./eval -git -q
+	./eval -git
 
 # remove compilation products
 .PHONY: clean

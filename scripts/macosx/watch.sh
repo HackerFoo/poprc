@@ -6,7 +6,7 @@ pushd ${POPRC_ROOT} > /dev/null
 
 update() {
     while read ev; do
-        ./eval -load ${SRC} -q -all > build/bytecode.out 
+        ./eval -load ${SRC} -bc > build/bytecode.out
     done
 }
 

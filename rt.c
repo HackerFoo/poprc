@@ -196,11 +196,11 @@ bool reduce(cell_t **cp, type_request_t treq) {
       c = *cp;
       continue;
     }
-    unsigned int m = measure.reduce_cnt++;
+    unsigned int m = stats.reduce_cnt++;
     bool success = c->func(cp, treq);
     c = *cp;
     if(success) {
-      if(write_graph && measure.reduce_cnt > m) {
+      if(write_graph && stats.reduce_cnt > m) {
         mark_cell(c);
         make_graph_all(0);
       }
@@ -224,7 +224,7 @@ void reduce_dep(cell_t **cp) {
   } else {
     assert_error(is_closure(c) &&
            closure_is_ready(c));
-    measure.reduce_cnt++;
+    stats.reduce_cnt++;
     c->func(cp, req_any);
   }
 }
@@ -484,7 +484,7 @@ void fail(cell_t **cp, type_request_t treq) {
   }
   drop(c);
   *cp = alt;
-  measure.fail_cnt++;
+  stats.fail_cnt++;
 }
 
 void store_reduced(cell_t **cp, cell_t *r) {

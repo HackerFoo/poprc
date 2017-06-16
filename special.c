@@ -29,7 +29,7 @@ bool func_value(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   cell_t *res = NULL;
   assert_error(!is_marked(c));
-  measure.reduce_cnt--;
+  stats.reduce_cnt--;
 
   if((c->value.type.flags & T_FAIL) ||
      !type_match(treq.t, c)) {
@@ -324,7 +324,7 @@ bool is_placeholder(cell_t const *c) {
 
 bool func_fail(cell_t **cp, type_request_t treq) {
   assert_error(!is_marked(*cp));
-  measure.reduce_cnt--;
+  stats.reduce_cnt--;
   fail(cp, treq);
   return false;
 }

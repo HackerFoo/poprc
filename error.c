@@ -160,6 +160,6 @@ int test_error() {
 }
 
 // print a backtrace
-void command_backtrace(UNUSED cell_t *rest) {
+void command_bt(UNUSED cell_t *rest) {
   print_backtrace();
 }

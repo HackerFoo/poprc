@@ -193,12 +193,12 @@ struct __attribute__((packed, aligned(4))) cell {
 static_assert(sizeof(cell_t) == sizeof_field(cell_t, raw), "cell_t wrong size");
 static_assert(offsetof(cell_t, expr.arg[1]) == offsetof(cell_t, value.ptr[0]), "second arg not aliased with first ptr");
 
-typedef struct measure_t {
+typedef struct stats_t {
   unsigned int reduce_cnt, fail_cnt, alloc_cnt, max_alloc_cnt;
   unsigned int current_alloc_cnt;
   clock_t start, stop;
   uint8_t alt_cnt;
-} measure_t;
+} stats_t;
 
 #ifdef EMSCRIPTEN
 #define strnlen(s, n) strlen(s)

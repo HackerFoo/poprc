@@ -62,7 +62,7 @@ cell_t nil_cell = {
 };
 
 // Structs for storing statistics
-measure_t measure, saved_measure;
+stats_t stats, saved_stats;
 
 // Is `p` a pointer?
 bool is_data(void const *p) {
@@ -137,7 +137,7 @@ void cells_init() {
 
 void cell_alloc(cell_t *c) {
   assert_error(is_cell(c) && !is_closure(c));
-  assert_throw(measure.current_alloc_cnt < MAX_ALLOC);
+  assert_throw(stats.current_alloc_cnt < MAX_ALLOC);
   cell_t *prev = c->mem.prev;
   assert_error(is_cell(prev) && !is_closure(prev));
   cell_t *next = c->mem.next;
@@ -146,9 +146,9 @@ void cell_alloc(cell_t *c) {
   assert_throw(c != prev && c != next, "can't alloc the last cell");
   prev->mem.next = next;
   next->mem.prev = prev;
-  measure.alloc_cnt++;
-  if(++measure.current_alloc_cnt > measure.max_alloc_cnt)
-    measure.max_alloc_cnt = measure.current_alloc_cnt;
+  stats.alloc_cnt++;
+  if(++stats.current_alloc_cnt > stats.max_alloc_cnt)
+    stats.max_alloc_cnt = stats.current_alloc_cnt;
 }
 
 cell_t *closure_alloc(csize_t args) {
@@ -233,7 +233,7 @@ void closure_shrink(cell_t *c, csize_t s) {
     cells_ptr->mem.prev->mem.next = &c[s];
     c[size-1].mem.next = cells_ptr;
     cells_ptr->mem.prev = &c[size-1];
-    measure.current_alloc_cnt -= size - s;
+    stats.current_alloc_cnt -= size - s;
   }
 }
 

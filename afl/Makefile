@@ -33,13 +33,13 @@ input: eval ../tests.txt
 
 .PHONY: fuzz
 fuzz: eval input popr.dict
-	afl-fuzz $(FUZZ_FLAGS)  -- ./eval -commands no $(POPRC_FLAGS)
+	afl-fuzz $(FUZZ_FLAGS)  -- ./eval -single $(POPRC_FLAGS)
 
 crashes.txt: $(wildcard output/*/crashes)
 	(shopt -s nullglob; \
          for i in `ls -brS1 output/*/crashes/id*`; \
          do \
-	   if ! (./eval -commands no $(POPRC_FLAGS) < $$i &> tmp.txt || false) &> /dev/null; \
+	   if ! (./eval -single $(POPRC_FLAGS) < $$i &> tmp.txt || false) &> /dev/null; \
            then \
              echo "___ $$i"; \
              ./eval -lex < "$$i"; \
@@ -56,7 +56,7 @@ queue.txt: $(wildcard output/*/queue)
 	(shopt -s nullglob; \
          for i in `ls -brS1 output/*/queue/id*`; \
          do \
-	   if ! (./eval -commands no $(POPRC_FLAGS) < $$i &> tmp.txt || false) &> /dev/null; \
+	   if ! (./eval -single $(POPRC_FLAGS) < $$i &> tmp.txt || false) &> /dev/null; \
            then \
              echo "___ $$i"; \
              ./eval -lex < "$$i"; \

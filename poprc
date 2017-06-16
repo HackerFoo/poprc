@@ -3,10 +3,10 @@
 LIBS="*.ppr"
 LOAD=""
 
-OUT=`./eval -q -exp $1`
+OUT=`./eval -ident $1`
 DIR=poprc_out
 
 mkdir -p $DIR
-./eval -quiet yes -check_free no -lo ${LIBS} -main $1 -c $1 -q > ${DIR}/${OUT}.c
+./eval -lo ${LIBS} -main $1 -cc $1 > ${DIR}/${OUT}.c
 clang -S -DNDEBUG -emit-llvm -O2 -I. -o ${DIR}/${OUT}.ll ${DIR}/${OUT}.c
 clang -g -O0 -DNOLOG -I. -o ${DIR}/${OUT} ${DIR}/${OUT}.c cgen/parse_args.c support.c error.c tok.c

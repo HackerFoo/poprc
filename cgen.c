@@ -440,19 +440,20 @@ void gen_main(cell_t *e) {
          "}\n\n");
 }
 
-// print C code given function
-void command_cgen(cell_t *rest) {
+// print C code for given function
+void command_cc(cell_t *rest) {
   if(rest) {
-    command_def(rest);
+    command_define(rest);
     cell_t
       *m = eval_module(),
       *e = module_lookup_compiled(tok_seg(rest), &m);
 
     if(e) gen_function(e);
   }
+  if(command_line) quit = true;
 }
 
-// print main() driver for given function
+// print main() for given function
 void command_main(cell_t *rest) {
   if(rest) {
     cell_t
@@ -461,4 +462,5 @@ void command_main(cell_t *rest) {
 
     if(e) gen_main(e);
   }
+  if(command_line) quit = true;
 }

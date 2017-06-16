@@ -451,7 +451,7 @@ int test_module_lookup() {
   return e ? -1 : 0;
 }
 
-// import given module(s), or all if omitted
+// import given module(s), or all
 void command_import(cell_t *rest) {
   cell_t *eval_module = module_get_or_create(modules, string_seg("eval"));
   cell_t *eval_imports = module_get_or_create(eval_module, string_seg("imports"));
@@ -505,9 +505,4 @@ void print_all_bytecode() {
   FORMAP(i, map) {
     print_module_bytecode((cell_t *)map[i].second);
   }
-}
-
-// print all bytecode
-void command_all_bytecode(UNUSED cell_t *rest) {
-  print_all_bytecode();
 }

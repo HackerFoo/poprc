@@ -421,8 +421,8 @@ size_t expand_sym(char *buf, size_t n, seg_t src) {
   return out - buf;
 }
 
-// convert symbols to a valid C identifier
-void command_expsym(cell_t *rest) {
+// convert symbol to C identifier
+void command_ident(cell_t *rest) {
   cell_t *p = rest;
   while(p) {
     char ident[64]; // ***
@@ -436,6 +436,7 @@ void command_expsym(cell_t *rest) {
     printseg("", ident_seg, "\n");
     p = p->tok_list.next;
   }
+  if(command_line) quit = true;
 }
 
 bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_t out) {
@@ -783,12 +784,12 @@ void trace_get_name(const cell_t *c, const char **module_name, const char **word
   }
 }
 
-// print bytecode for a word
-void command_bytecode(cell_t *rest) {
+// print bytecode for a word, or all
+void command_bc(cell_t *rest) {
   if(rest) {
     seg_t name = tok_seg(rest);
     CONTEXT("bytecode command");
-    command_def(rest);
+    command_define(rest);
     cell_t
       *m = eval_module(),
       *e = module_lookup_compiled(name, &m);
@@ -796,10 +797,14 @@ void command_bytecode(cell_t *rest) {
       printf("\n");
       print_bytecode(e);
     }
+  } else {
+    print_all_bytecode();
+    if(command_line) quit = true;
   }
 }
 
-void command_graph_entry(cell_t *rest) {
+// graph the given entry number
+void command_gre(cell_t *rest) {
   if(!rest) {
     graph_entry = -1;
   } else {

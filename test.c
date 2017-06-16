@@ -45,7 +45,7 @@ int test_alloc() {
       closure_free(a[i]);
     }
   }
-  return check_free() ? 0 : -1;
+  return leak_test() ? 0 : -1;
 }
 
 int test_loops() {
@@ -75,7 +75,7 @@ int test_loops() {
   return 0;
 }
 
-bool check_free() {
+bool leak_test() {
   bool leak = false;
   FOREACH(i, cells) {
     cell_t *c = &cells[i];
