@@ -5,7 +5,7 @@ LOAD=""
 
 CFLAGS="-g -O0"
 if [[ "$1" == "-O" ]]; then
-    CFLAGS="-DNDEBUG -O2"
+    CFLAGS="-g -DNDEBUG -O2"
     shift
 fi
 

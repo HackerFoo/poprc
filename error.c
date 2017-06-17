@@ -57,11 +57,12 @@ typedef struct {
 } error_t;
 
 #ifdef NDEBUG
-#define assert_throw(...)
+#define assert_throw(...) ((void)0)
 #else
-#define assert_throw(...) DISPATCH(assert_throw, 2, ##__VA_ARGS__)
+#define assert_throw(...) _assert_throw(__VA_ARGS__)
 #endif
 
+#define _assert_throw(...) DISPATCH(assert_throw, 2, ##__VA_ARGS__)
 #define assert_throw_0(cond, msg, ...)                                  \
   do {                                                                  \
     if(!(cond)) {                                                       \
@@ -77,11 +78,12 @@ typedef struct {
   } while(0)
 
 #ifdef NDEBUG
-#define assert_error(...)
+#define assert_error(...) ((void)0)
 #else
-#define assert_error(...) DISPATCH(assert_error, 2, ##__VA_ARGS__)
+#define assert_error(...) _assert_error(__VA_ARGS__)
 #endif
 
+#define _assert_error(...) DISPATCH(assert_error, 2, ##__VA_ARGS__)
 #define assert_error_0(cond, msg, ...)                                  \
   do {                                                                  \
     if(!(cond)) {                                                       \
@@ -161,7 +163,7 @@ int test_error() {
     print_error(&test_error);
   } else {
     COUNTUP(i, 5) {
-      assert_throw(i < 3, "Don't worry, it's okay.");
+      _assert_throw(i < 3, "Don't worry, it's okay.");
       printf("i = %d\n", (int)i);
     }
   }
