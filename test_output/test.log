@@ -29,7 +29,7 @@ context => 0
 i = 0
 i = 1
 i = 2
-error.c:154: test_error: Assertion `i < 3' failed: Don't worry, it's okay.
+error.c:164: test_error: Assertion `i < 3' failed: Don't worry, it's okay.
 error => 0
 @ expand_map
 map[10] = {{eight, 7}, {five, 4}, {four, 3}, {one, 0}, {seven, 6}, {six, 5}, {three, 2}, {two, 1}, {nine, 8}, {ten, 9}}

@@ -56,7 +56,12 @@ typedef struct {
   char function[64];
 } error_t;
 
+#ifdef NDEBUG
+#define assert_throw(...)
+#else
 #define assert_throw(...) DISPATCH(assert_throw, 2, ##__VA_ARGS__)
+#endif
+
 #define assert_throw_0(cond, msg, ...)                                  \
   do {                                                                  \
     if(!(cond)) {                                                       \
@@ -71,7 +76,12 @@ typedef struct {
     }                                                                   \
   } while(0)
 
+#ifdef NDEBUG
+#define assert_error(...)
+#else
 #define assert_error(...) DISPATCH(assert_error, 2, ##__VA_ARGS__)
+#endif
+
 #define assert_error_0(cond, msg, ...)                                  \
   do {                                                                  \
     if(!(cond)) {                                                       \

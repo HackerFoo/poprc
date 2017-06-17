@@ -80,6 +80,11 @@ ifeq ($(BUILD),release)
 	CXXFLAGS += -DNDEBUG $(OPT_FLAG) $(BACKTRACE)
 endif
 
+ifeq ($(BUILD),release-with-asserts)
+	CFLAGS += $(OPT_FLAG) $(BACKTRACE)
+	CXXFLAGS += $(OPT_FLAG) $(BACKTRACE)
+endif
+
 ifeq ($(BUILD),profile)
 	CFLAGS += -DNDEBUG $(OPT_FLAG)
 	CXXFLAGS += -DNDEBUG $(OPT_FLAG)

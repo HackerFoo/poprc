@@ -3,10 +3,17 @@
 LIBS="*.ppr"
 LOAD=""
 
+CFLAGS="-g -O0"
+if [[ "$1" == "-O" ]]; then
+    CFLAGS="-DNDEBUG -O2"
+    shift
+fi
+
 OUT=`./eval -ident $1`
 DIR=poprc_out
 
+set -x
 mkdir -p $DIR
 ./eval -lo ${LIBS} -main $1 -cc $1 > ${DIR}/${OUT}.c
-clang -S -DNDEBUG -emit-llvm -O2 -I. -o ${DIR}/${OUT}.ll ${DIR}/${OUT}.c
-clang -g -O0 -DNOLOG -I. -o ${DIR}/${OUT} ${DIR}/${OUT}.c cgen/parse_args.c support.c error.c tok.c
+clang -S -emit-llvm ${CFLAGS} -DNOLOG -I. -o ${DIR}/${OUT}.ll ${DIR}/${OUT}.c
+clang ${CFLAGS} -DNOLOG -I. -o ${DIR}/${OUT} ${DIR}/${OUT}.c cgen/parse_args.c support.c error.c tok.c
