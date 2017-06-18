@@ -202,6 +202,7 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
   assert_error(tc->size == c->size);
   assert_error(c->func != func_dep_entered &&
          c->func != func_dep);
+  LOG("trace_store_expr: %d <- %d %d", (int)(tc-trace_cur), CELL_INDEX(c), CELL_INDEX(r));
   refcount_t n = tc->n;
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
   tc->n = n;
@@ -328,6 +329,7 @@ cell_t *trace_dep(cell_t *c) {
   cell_t *ph = trace_get(c);
   assert_error(ph != tc);
   ph->expr.arg[c->value.integer[1]] = trace_encode(tc - trace_cur);
+  LOG("trace_dep: %d <- %d %d[%d]", (int)(tc-trace_cur), CELL_INDEX(c), ph-trace_cur, c->value.integer[1]);
   tc->func = func_dep;
   tc->expr.arg[0] = trace_encode(ph - trace_cur);
   tc->expr_type.exclusive = c->value.type.exclusive;

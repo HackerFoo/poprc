@@ -40,6 +40,7 @@ bool func_value(cell_t **cp, type_request_t treq) {
   // NOTE: may create multiple placeholder
   // TODO use rows to work around this
   if(is_var(c)) {
+    trace_dep(c);
     if(is_any(c)) {
       if(treq.t == T_LIST) {
         res = var_create(T_LIST, c->value.ptr[0], treq.in, treq.out);
@@ -307,6 +308,8 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
       } else {
         store_dep(d, res->value.ptr[0], i, T_ANY);
       }
+    } else {
+      LOG("dropped placeholder[%d] output", CELL_INDEX(c));
     }
   }
   store_reduced(cp, res);

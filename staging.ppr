@@ -25,8 +25,12 @@ __ carry: [self] dip11 [] ap20
 
 check: [|] control.dip21 [dup] swap . . popr !
 
-length_: [[[1+] [popr drop] para] .] [head is_nil not] iterate
+length_step: [[1+] [popr drop] para] .
+length_: [length_step] [head is_nil not] iterate
 length: [0 swap] pushl length_ popr drop head
 
 __ simplified test function
 nullify: [popr drop] [is_nil not] iterate
+
+popr_quote_compose: [popr] .
+id_quote_compose: [id] .

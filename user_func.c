@@ -294,11 +294,15 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     cell_t *res;
     rtypes[0].exclusive = treq.t;
     resolve_types(entry, rtypes);
-    uint8_t t = rtypes[0].exclusive == T_ANY ? T_BOTTOM : rtypes[0].exclusive;
-    if(specialize && !dont_specialize) {
-      res = trace_var_specialized(t, c);
-    } else {
-      res = var(t, c);
+    {
+      uint8_t t = rtypes[0].exclusive;
+      if(t == T_ANY) t = T_BOTTOM;
+      if(t == T_FUNCTION) t = T_LIST;
+      if(specialize && !dont_specialize) {
+        res = trace_var_specialized(t, c);
+      } else {
+        res = var(t, c);
+      }
     }
     res->value.alt_set = alt_set;
     res->alt = c->alt;
@@ -309,7 +313,9 @@ bool func_exec(cell_t **cp, type_request_t treq) {
       if(d && is_dep(d)) {
         assert_error(d->expr.arg[0] == c);
         drop(c);
-        store_dep(d, res->value.ptr[0], i, rtypes[i].exclusive);
+        uint8_t t = rtypes[i].exclusive;
+        if(t == T_FUNCTION) t = T_LIST;
+        store_dep(d, res->value.ptr[0], i, t);
       }
     }
 

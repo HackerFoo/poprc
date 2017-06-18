@@ -148,8 +148,8 @@ void free_def(cell_t *l) {
     COUNTUP(i, n) {
       free_toks(l->value.ptr[i]);
     }
+    closure_free(l);
   }
-  closure_free(l);
 }
 
 void print_defs(const cell_t *m) {
