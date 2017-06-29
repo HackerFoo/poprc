@@ -292,9 +292,8 @@ void string_map_sort_full(map_t map) {
 }
 
 int test_map_sort_full() {
-  const int N = 21;
-  MAP(a, N);
-  *map_cnt(a) = N;
+  MAP(a, 21);
+  *map_cnt(a) = 21;
   COUNTUP(i, 16) {
     pair_t *p = &a[i + 1];
     p->first = i;

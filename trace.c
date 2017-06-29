@@ -217,7 +217,7 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
       assert_error(!is_marked(*p));
       trace_index_t x = trace_get_value(*p);
       *p = trace_encode(x);
-      trace_cur[x].n++;
+      if(x >= 0) trace_cur[x].n++;
     }
   }
   // encode outputs
