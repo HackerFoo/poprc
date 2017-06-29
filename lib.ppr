@@ -19,9 +19,16 @@ odd: 1 .& 1 ==
 
 module list:
 
+imports:
+  module control
+
 __ take rightmost value from quote
 head: popr swap drop
 
+__ return the length of a list
+length: [0 swap] pushl length_ popr drop head
+length_: [length_step] [head is_nil not] iterate
+length_step: [[1+] [popr drop] para] .
 
 module stack:
 

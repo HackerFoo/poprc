@@ -70,3 +70,6 @@ nested: [[0 swap False =:= !]
 inl_loop: [3+] [10<] iterate
 inl_loop2: swap [+] pushl swap [<] pushl iterate
 inl_loop3: [3+] [10<] [8*] binrec
+
+popr_quote_compose: [popr] .
+id_quote_compose: [id] .
