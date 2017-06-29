@@ -271,6 +271,49 @@ void map_sort(map_t map, uintptr_t bit, cmp_t cmp) {
 }
 
 static
+void _map_sort_full(map_t map, cmp_t cmp) {
+  uintptr_t
+    cnt = *map_cnt(map),
+    x = cnt & ~(1 << __builtin_ctz(cnt));
+  pair_t *elems = map_elems(map);
+  while(x) {
+    uintptr_t y = x & ~(1 << __builtin_ctz(x));
+    merge(&elems[y], &elems[x], cnt - y, cmp);
+    x = y;
+  }
+}
+
+void map_sort_full(map_t map) {
+  _map_sort_full(map, key_cmp);
+}
+
+void string_map_sort_full(map_t map) {
+  _map_sort_full(map, string_cmp);
+}
+
+int test_map_sort_full() {
+  const int N = 21;
+  MAP(a, N);
+  *map_cnt(a) = N;
+  COUNTUP(i, 16) {
+    pair_t *p = &a[i + 1];
+    p->first = i;
+    p->second = 0;
+  }
+  COUNTUP(i, 4) {
+    pair_t *p = &a[i + 17];
+    p->first = 2 * i;
+    p->second = 1;
+  }
+  pair_t *p = &a[21];
+  p->first = 0;
+  p->second = 2;
+  map_sort_full(a);
+  print_map(a);
+  return 0;
+}
+
+static
 bool _map_insert(map_t map, pair_t x, cmp_t cmp) {
   uintptr_t *size = &map[0].first;
   uintptr_t *cnt = &map[0].second;

@@ -481,6 +481,7 @@ void print_module_bytecode(cell_t *m) {
   if(!*module_ref(m)) return;
   cell_t *map_copy = copy(*module_ref(m));
   map_t map = map_copy->value.map;
+  string_map_sort_full(map);
   FORMAP(i, map) {
     char *name = (char *)map[i].first;
     if(strcmp("imports", name) == 0) continue;
@@ -502,6 +503,7 @@ void print_all_bytecode() {
   assert_error(is_module(modules));
   map_t map = module_map(modules);
   if(!map) return;
+  string_map_sort_full(map);
   FORMAP(i, map) {
     print_module_bytecode((cell_t *)map[i].second);
   }
