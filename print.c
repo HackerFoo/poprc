@@ -258,7 +258,11 @@ void graph_cell(FILE *f, cell_t const *c) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
     } else if(is_var(c)) {
       if(c->value.ptr[0]) {
-        fprintf(f, "<tr><td bgcolor=\"orange\">trace: %d</td></tr>", TRACE_VAR_INDEX(c->value.ptr[0]));
+        fprintf(f, "<tr><td bgcolor=\"orange\">trace: %d", TRACE_VAR_INDEX(c->value.ptr[0]));
+        if(c->value.type.flags & T_DEP) {
+          fprintf(f, "[%d]", (int)c->value.integer[1]);
+        }
+        fprintf(f, "</td></tr>");
       }
     } else {
       int n = val_size(c);
