@@ -528,3 +528,34 @@ bool func_is_nil(cell_t **cp, type_request_t treq) {
   fail(cp, treq);
   return false;
 }
+
+bool func_type(cell_t **cp, type_request_t treq, uint8_t type) {
+  cell_t *c = *cp;
+  assert_error(!is_marked(c));
+
+  if(treq.t != T_ANY && treq.t != type) goto fail;
+
+  alt_set_t alt_set = 0;
+  type_request_t atr = req_simple(type);
+  if(!reduce_arg(c, 0, &alt_set, atr)) goto fail;
+  clear_flags(c);
+
+  *cp = mod_alt(ref(c->expr.arg[0]), ref(c->alt), 0);
+  drop(c);
+  return true;
+
+ fail:
+  fail(cp, treq);
+  return false;
+}
+
+// annotations to work around inference failures
+
+// WORD("int_t", int_t, 1, 1)
+bool func_int_t(cell_t **cp, type_request_t treq) { return func_type(cp, treq, T_INT); }
+
+// WORD("function_t", int_t, 1, 1)
+bool func_function_t(cell_t **cp, type_request_t treq) { return func_type(cp, treq, T_FUNCTION); }
+
+// WORD("symbol_t", int_t, 1, 1)
+bool func_symbol_t(cell_t **cp, type_request_t treq) { return func_type(cp, treq, T_SYMBOL); }

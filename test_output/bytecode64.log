@@ -389,15 +389,15 @@ ___ list.head (1 -> 1) ___
 [3] return [ 2 ], type = r x1
 
 ___ list.length (1 -> 1) ___
-[0] var, type = ?a x1
+[0] var, type = ?i x1
 [1] list.length_1 0, type = f x1
 [2] list.length_ 1, type = f x1
 [3] __primitive.ap 2 -> 4 X, type = f x1
-[4] __primitive.dep 3, type = a x1
+[4] __primitive.dep 3, type = i x1
 [5] return [ 4 ], type = r x1
 
 ___ list.length_1 (1 -> 1) ___
-[0] var, type = ?a x1
+[0] var, type = ?i x1
 [1] __primitive.ap 2 0 [], type = f x1
 [2] val 0, type = i x1
 [3] return [ 1 ], type = r x1

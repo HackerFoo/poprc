@@ -26,7 +26,7 @@ __ take rightmost value from quote
 head: popr swap drop
 
 __ return the length of a list
-length: [0 swap] pushl length_ popr drop head
+length: function_t [0 swap] pushl length_ popr drop head int_t
 length_: [length_step] [head is_nil not] iterate
 length_step: [[1+] [popr drop] para] .
 
