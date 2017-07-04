@@ -389,49 +389,27 @@ ___ list.head (1 -> 1) ___
 [3] return [ 2 ], type = r x1
 
 ___ list.length (1 -> 1) ___
-[0] var, type = ?i x1
-[1] list.length_1 0, type = f x1
-[2] list.length_ 1, type = f x1
-[3] __primitive.ap 2 -> 4 X, type = f x1
-[4] __primitive.dep 3, type = i x1
-[5] return [ 4 ], type = r x1
-
-___ list.length_1 (1 -> 1) ___
-[0] var, type = ?i x1
-[1] __primitive.ap 2 0 [], type = f x1
+[0] var, type = ?f x1
+[1] list.length_ 2 0, type = i x1
 [2] val 0, type = i x1
 [3] return [ 1 ], type = r x1
 
-___ list.length_ (1 -> 1) x2 rec ___
-[0] var, type = ?f x4
-[1] __primitive.ap 0 -> 2, type = f x1
-[2] __primitive.dep 1, type = f x1
-[3] __primitive.is_nil 2, type = s x1
-[4] __primitive.not 3, type = s x1
-[5] __primitive.assert 13 4, type = 0 x1
-[6] __primitive.ap 0 -> 8 7, type = f x3
-[7] __primitive.dep 6, type = f x1
-[8] __primitive.dep 6, type = i x1
-[9] __primitive.add 8 10, type = i x1
-[10] val 1, type = i x1
-[11] list.length__11 7 9 6, type = f x1
-[13] list.length_ 11, type = 0 x1
-[14] return [ 5 ], type = r -> 21 x1
-[15] __primitive.ap 0 -> 16, type = f x1
-[16] __primitive.dep 15, type = f x1
-[17] __primitive.is_nil 16, type = s x1
-[18] __primitive.not 17, type = s x1
-[19] __primitive.not 18, type = s x1
-[20] __primitive.assert 0 19, type = f x1
-[21] return [ 20 ], type = r x1
-
-___ list.length__11 (3 -> 1) ___
-[0] var, type = ?f x1
-[1] var, type = ?i x1
-[2] var, type = ?f x1
-[3] __primitive.compose 0 1 5 [], type = f x1
-[5] __primitive.ap 2 -> X, type = f x1
-[6] return [ 3 ], type = r x1
+___ list.length_ (2 -> 1) x2 rec ___
+[0] var, type = ?f x3
+[1] var, type = ?i x2
+[2] __primitive.is_nil 0, type = s x1
+[3] __primitive.not 2, type = s x1
+[4] __primitive.assert 8 3, type = 0 x1
+[5] __primitive.add 1 6, type = i x1
+[6] val 1, type = i x1
+[7] __primitive.ap 0 -> X, type = f x1
+[8] list.length_ 5 7, type = 0 x1
+[9] return [ 4 ], type = r -> 14 x1
+[10] __primitive.is_nil 0, type = s x1
+[11] __primitive.not 10, type = s x1
+[12] __primitive.not 11, type = s x1
+[13] __primitive.assert 1 12, type = i x1
+[14] return [ 13 ], type = r x1
 
 ___ list.length_step (1 -> 1) ___
 [0] var, type = ?f x1

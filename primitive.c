@@ -554,8 +554,8 @@ bool func_type(cell_t **cp, type_request_t treq, uint8_t type) {
 // WORD("int_t", int_t, 1, 1)
 bool func_int_t(cell_t **cp, type_request_t treq) { return func_type(cp, treq, T_INT); }
 
-// WORD("function_t", int_t, 1, 1)
+// WORD("function_t", function_t, 1, 1)
 bool func_function_t(cell_t **cp, type_request_t treq) { return func_type(cp, treq, T_FUNCTION); }
 
-// WORD("symbol_t", int_t, 1, 1)
+// WORD("symbol_t", symbol_t, 1, 1)
 bool func_symbol_t(cell_t **cp, type_request_t treq) { return func_type(cp, treq, T_SYMBOL); }
