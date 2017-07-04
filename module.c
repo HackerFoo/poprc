@@ -158,8 +158,11 @@ void print_defs(const cell_t *m) {
   if(!map) return;
   csize_t n = *map_cnt(map);
   COUNTUP(i, n) {
-    printf("%s:\n", (char *)map[i+1].first);
-    print_def((cell_t *)map[i+1].second);
+    pair_t p = map[i+1];
+    cell_t *l = (cell_t *)p.second;
+    if(!is_list(l)) continue;
+    printf("%s:\n", (char *)p.first);
+    print_def(l);
   }
 }
 

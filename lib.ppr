@@ -15,12 +15,14 @@ max: [] pushl pushl dup . dup popr drop | [<= !] . popr swap drop
 __ min of two values
 min: [] pushl pushl dup . dup popr drop | [> !] . popr swap drop
 
+__ is argument odd?
 odd: 1 .& 1 ==
 
 module list:
 
 imports:
   module control
+  module stack
 
 __ take rightmost value from quote
 head: popr swap drop
@@ -35,25 +37,58 @@ length_:
     binrec
 length_step: [[1+] [popr drop] para] .
 
+foldr:
+  [] ap30 __ fn xs y
+    [[foldr_step] .]
+    [popr drop head is_nil not]
+    [head]
+    binrec
+foldr_step: [popr] dip12 over3 ap21 swap drop
+
 module stack:
 
+imports:
+  module control
+
+__ [x_1 ... x_n] -> [] x_n ... x_1
 pull: popr swap
 pull2: pull pull
 pull3: pull2 pull
 pull4: pull3 pull
 pull5: pull4 pull
+pull6: pull5 pull
+pull7: pull6 pull
 
+__ a b -> b
 nip: swap drop
-tuck: [] ap20 dup . pull3 drop
-over: swap tuck
 
-rotl: swap2
-rotr: swap2 swap2
+__ a b  -> b a b
+tuck: [] ap20 dup . pull3 drop
+
+__ a b -> a b a
+over: swap tuck
+over2: swap2 dup [unswap2] dip33
+over3: swap3 dup [unswap3] dip44
+over4: swap4 dup [unswap4] dip55
+
 dup2: [] ap20 dup . ap04 swap4 drop
 
+__ x_1 x_2 ... x_n -> x_2 ... x_n x_1
 swap2: [] swap pushr swap pushr pushl pull3 drop
 swap3: [] swap pushr swap pushr swap pushr pushl pull4 drop
 swap4: [] swap pushr swap pushr swap pushr swap pushr pushl pull5 drop
+swap5: [] swap pushr swap pushr swap pushr swap pushr swap pushr pushl pull6 drop
+swap6: [] swap pushr swap pushr swap pushr swap pushr swap pushr swap pushr pushl pull7 drop
+
+__ x_2 ... x_n x_1 -> x_1 x_2 ... x_n
+unswap2: swap2 swap2
+unswap3: swap3 swap3 swap3
+unswap4: swap4 swap4 swap4 swap4
+unswap5: swap5 swap5 swap5 swap5 swap5
+unswap6: swap6 swap6 swap6 swap6 swap6 swap6
+
+rotl: swap2
+rotr: unswap2
 
 module control:
 
@@ -70,14 +105,32 @@ __ apply a quote underneath the top
 dip11: swap pushr ap12 swap2 drop
 dip12: swap pushr ap13 swap3 drop
 dip13: swap pushr ap14 swap4 drop
+dip14: swap pushr ap15 swap5 drop
+dip15: swap pushr ap16 swap6 drop
 
 dip21: swap pushr ap22 swap2 drop
 dip22: swap pushr ap23 swap3 drop
 dip23: swap pushr ap24 swap4 drop
+dip24: swap pushr ap25 swap5 drop
+dip25: swap pushr ap26 swap6 drop
 
 dip31: swap pushr ap32 swap2 drop
 dip32: swap pushr ap33 swap3 drop
 dip33: swap pushr ap34 swap4 drop
+dip34: swap pushr ap35 swap5 drop
+dip35: swap pushr ap36 swap6 drop
+
+dip41: swap pushr ap42 swap2 drop
+dip42: swap pushr ap43 swap3 drop
+dip43: swap pushr ap44 swap4 drop
+dip44: swap pushr ap45 swap5 drop
+dip45: swap pushr ap46 swap6 drop
+
+dip51: swap pushr ap52 swap2 drop
+dip52: swap pushr ap53 swap3 drop
+dip53: swap pushr ap54 swap4 drop
+dip54: swap pushr ap55 swap5 drop
+dip55: swap pushr ap56 swap6 drop
 
 __ a [f] -> fa
 $: ap11 swap drop
@@ -129,6 +182,7 @@ imports:
   module control
   module num
 
+__ greatest common divisor (using Euclid's algorithm)
 gcd:
   [] ap20 __ quote arguments [a b]
     [[tuck %] .] __ step: [a b] -> [b (a % b)]
@@ -152,6 +206,7 @@ exponent:
     [popr drop popr drop head]
     binrec
 
+__ raise to integer power using binary exponentiation
 ^: 1 rotr exponent
 
 __ sums numbers in a list
