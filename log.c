@@ -28,7 +28,7 @@
 #define INDENT  0x40
 #define MASK (REVERSE | INDENT)
 
-#define LOG_SIZE 4096
+#define LOG_SIZE (1 << 12)
 static intptr_t log[LOG_SIZE];
 static unsigned int log_head = 0;
 static unsigned int log_tail = 0;
@@ -52,17 +52,18 @@ void log_soft_init() {
 static
 int log_entry_len(unsigned int idx) {
   const char *fmt = (const char *)log[idx];
-  if(!fmt) return 1;
+  if(!fmt) return 0;
   char len = fmt[0];
-  if(len == '\xff') return 1;
-  return len & ~MASK;
+  if(len == '\xff') return 0;
+  return (uint8_t)(len & ~MASK);
 }
 
 void log_add(intptr_t x) {
   log[log_head] = x;
   log_head = (log_head + 1) % LOG_SIZE;
   if(log_head == log_tail) {
-    log_tail = (log_tail + log_entry_len(log_tail)) % LOG_SIZE;
+    unsigned int len = log_entry_len(log_tail);
+    log_tail = (log_tail + 1 + len) % LOG_SIZE;
   }
 }
 

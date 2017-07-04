@@ -41,7 +41,7 @@ bool trace_enabled = false;
 bool dont_specialize = true; //false; ***
 
 // storage for tracing
-static cell_t trace_cells[1 << 10] __attribute__((aligned(64)));
+static cell_t trace_cells[1 << 13] __attribute__((aligned(64)));
 cell_t *trace_cur = &trace_cells[0];
 cell_t *trace_ptr = &trace_cells[0];
 
