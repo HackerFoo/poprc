@@ -197,6 +197,12 @@ seg_t tok(const char *s, const char* e, char_class_t *class) {
         }
       }
       break;
+    case CC_ALPHA:
+      if(cc == CC_SYMBOL && s[-1] != ':') {
+        cc = CC_ALPHA;
+        continue; // allow symbols to be followed with letters
+      }
+      break;
     default:
       break;
     }

@@ -39,7 +39,7 @@ length_step: [[1+] [popr drop] para] .
 
 __ right fold
 __ [... x] y [fn] foldr -> y'
-foldr: unswap2 foldr_
+foldr: -swap2 foldr_
 foldr_:
   [] ap30 __ fn xs y
     [[foldr_step] .]
@@ -59,6 +59,39 @@ foldl_:
     binrec
 foldl_step: [popr over2 pushl] dip23 .
 
+dropl:
+  [] ap20
+    [[[popr drop] [1-] para] .]
+    [head 0 >]
+    [popr drop head]
+    binrec
+
+__ [a.. x] [b..] -> [a..] [x b..]
+movr: [popr] dip12 pushl
+
+__ crash
+__ split_at: [[[]] pushl] dip11 [[movr] .] times ap02 swap2 drop
+
+__ index operator
+__ [f] index -> x
+!!: !!_ head
+!!_: dropl
+
+__ a [a -> a] -> [a]
+__ iteratel: [dup [peek] dip22 iteratel swap] ap20
+
+__ causes crash
+__ concat: [] [.] foldr
+
+mov_ap: dup -swap2 [. movr] dip32
+map: [] swap map_
+map_:
+  [] ap30
+    [[mov_ap] .]
+    [popr drop popr drop head is_nil not]
+    [popr drop head]
+    binrec
+
 module stack:
 
 imports:
@@ -73,6 +106,8 @@ pull5: pull4 pull
 pull6: pull5 pull
 pull7: pull6 pull
 
+rev3: [] ap30 pull3 drop
+
 __ a b -> b
 nip: swap drop
 
@@ -80,10 +115,10 @@ __ a b  -> b a b
 tuck: [] ap20 dup . pull3 drop
 
 __ a b -> a b a
-over: swap tuck
-over2: swap2 dup [unswap2] dip33
-over3: swap3 dup [unswap3] dip44
-over4: swap4 dup [unswap4] dip55
+over: swap dup [swap] dip22
+over2: swap2 dup [-swap2] dip33
+over3: swap3 dup [-swap3] dip44
+over4: swap4 dup [-swap4] dip55
 
 dup2: [] ap20 dup . ap04 swap4 drop
 
@@ -95,14 +130,11 @@ swap5: [] swap pushr swap pushr swap pushr swap pushr swap pushr pushl pull6 dro
 swap6: [] swap pushr swap pushr swap pushr swap pushr swap pushr swap pushr pushl pull7 drop
 
 __ x_2 ... x_n x_1 -> x_1 x_2 ... x_n
-unswap2: swap2 swap2
-unswap3: swap3 swap3 swap3
-unswap4: swap4 swap4 swap4 swap4
-unswap5: swap5 swap5 swap5 swap5 swap5
-unswap6: swap6 swap6 swap6 swap6 swap6 swap6
-
-rotl: swap2
-rotr: unswap2
+-swap2: swap2 swap2
+-swap3: swap3 swap3 swap3
+-swap4: swap4 swap4 swap4 swap4
+-swap5: swap5 swap5 swap5 swap5 swap5
+-swap6: swap6 swap6 swap6 swap6 swap6 swap6
 
 module control:
 
@@ -148,6 +180,10 @@ dip55: swap pushr ap56 swap6 drop
 
 __ a [f] -> fa
 $: ap11 swap drop
+$$: ap21 swap drop
+
+__ a [f] -> fa [f]
+$keep: dup [$] dip21
 
 __ a [f] -> a fa
 peek: [dup] dip12 $
@@ -182,6 +218,32 @@ iterate:
 
 __ initial step test base -> result
 binrec: [iterate] dip31 $
+
+__ apply [f] n times
+times: swap times_
+times_: __ a [f] n
+  [] ap30
+    [[times_step] .]
+    [head 0 >]
+    [popr drop popr drop head]
+    binrec
+times_step: [$keep] dip22 1-
+
+__ m [f] a -> a
+__ doesn't work yet
+_[
+maybe:
+  rev3 __ a [f] m
+    [[drop] dip21 Nothing =:= !]
+    [Just =:= ! swap $] | . $$
+]_
+__ e [f1] [f2] -> a
+__ fails
+_[
+either:
+  [Right =:= !] swap . swap
+    [Left =:= !] swap . | . head
+]_
 
 module logic:
 
@@ -221,7 +283,7 @@ exponent:
     binrec
 
 __ raise to integer power using binary exponentiation
-^: 1 rotr exponent
+^: 1 -swap2 exponent
 
 __ sums numbers in a list
 sum_: [[+] .] [popr drop is_nil not] [head 0+] binrec
