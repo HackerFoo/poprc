@@ -37,13 +37,27 @@ length_:
     binrec
 length_step: [[1+] [popr drop] para] .
 
-foldr:
+__ right fold
+__ [... x] y [fn] foldr -> y'
+foldr: unswap2 foldr_
+foldr_:
   [] ap30 __ fn xs y
     [[foldr_step] .]
     [popr drop head is_nil not]
     [head]
     binrec
 foldr_step: [popr] dip12 over3 ap21 swap drop
+
+__ left fold
+__ [... x] y [fn] foldl -> y'
+foldl: swap2 [] foldl_ ap11 swap drop
+foldl_:
+  [] ap30 __ fn xs y
+    [[foldl_step] .]
+    [popr drop head is_nil not]
+    [head]
+    binrec
+foldl_step: [popr over2 pushl] dip23 .
 
 module stack:
 

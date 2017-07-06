@@ -592,7 +592,52 @@ ___ control.twice (3 -> 2) ___
 [6] __primitive.dep 5, type = a x1
 [7] return [ 6 4 ], type = r x1
 
-___ list.foldr (3 -> 1) x2 rec ___
+___ list.foldl (3 -> 1) ___
+[0] var, type = ?a x1
+[1] var, type = ?a x1
+[2] var, type = ?a x1
+[3] list.foldl_ 0 2 [], type = f x1
+[5] __primitive.ap 1 3 -> 6, type = f x1
+[6] __primitive.dep 5, type = a x1
+[7] return [ 6 ], type = r x1
+
+___ list.foldl_ (3 -> 1) x2 rec ___
+[0] var, type = ?f x2
+[1] var, type = ?f x3
+[2] var, type = ?f x2
+[3] __primitive.is_nil 1, type = s x1
+[4] __primitive.not 3, type = s x1
+[5] __primitive.assert 10 4, type = 0 x1
+[6] __primitive.ap 1 -> 7, type = f x2
+[7] __primitive.dep 6, type = a x1
+[8] __primitive.ap 7 2, type = f x1
+[9] __primitive.compose 8 0, type = f x1
+[10] list.foldl_ 2 6 9, type = 0 x1
+[12] return [ 5 ], type = r -> 17 x1
+[13] __primitive.is_nil 1, type = s x1
+[14] __primitive.not 13, type = s x1
+[15] __primitive.not 14, type = s x1
+[16] __primitive.assert 0 15, type = f x1
+[17] return [ 16 ], type = r x1
+
+___ list.foldl_step (3 -> 3) ___
+[0] var, type = ?f x1
+[1] var, type = ?f x1
+[2] var, type = ?f x2
+[3] __primitive.ap 1 -> 4, type = f x2
+[4] __primitive.dep 3, type = a x1
+[5] __primitive.ap 4 2, type = f x1
+[6] __primitive.compose 5 0, type = f x1
+[7] return [ 2 3 6 ], type = r x1
+
+___ list.foldr (3 -> 1) ___
+[0] var, type = ?a x1
+[1] var, type = ?a x1
+[2] var, type = ?a x1
+[3] list.foldr_ 0 2 1, type = 0 x1
+[5] return [ 3 ], type = r x1
+
+___ list.foldr_ (3 -> 1) x2 rec ___
 [0] var, type = ?a x2
 [1] var, type = ?f x3
 [2] var, type = ?f x2
@@ -603,7 +648,7 @@ ___ list.foldr (3 -> 1) x2 rec ___
 [7] __primitive.dep 6, type = a x1
 [8] __primitive.ap 7 0 2 -> 10, type = f x1
 [10] __primitive.dep 8, type = a x1
-[11] list.foldr 2 6 10, type = 0 x1
+[11] list.foldr_ 2 6 10, type = 0 x1
 [13] return [ 5 ], type = r -> 18 x1
 [14] __primitive.is_nil 1, type = s x1
 [15] __primitive.not 14, type = s x1
