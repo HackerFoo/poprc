@@ -821,6 +821,24 @@ ___ list.movr (2 -> 2) ___
 [4] __primitive.ap 3 0, type = f x1
 [5] return [ 2 4 ], type = r x1
 
+___ list.split_pred (3 -> 2) ___
+[0] var, type = ?f x2
+[1] var, type = ?f x1
+[2] var, type = ?f x1
+[3] __primitive.compose 2 0, type = f x1
+[4] list.split_pred_4 1 0, type = l x1
+[5] return [ 3 4 ], type = r x1
+
+___ list.split_pred_4 (2 -> 1) ___
+[0] var, type = ?f x1
+[1] var, type = ?f x1
+[2] __primitive.compose 1 0, type = f x1
+[3] __primitive.ap 2 -> 4, type = f x2
+[4] __primitive.dep 3, type = s x1
+[5] __primitive.not 4, type = s x1
+[6] __primitive.compose 3 5 [], type = f x1
+[7] return [ 6 ], type = r x1
+
 ___ logic.and (2 -> 1) x2 ___
 [0] var, type = ?s x2
 [1] var, type = ?a x1
