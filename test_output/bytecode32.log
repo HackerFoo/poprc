@@ -597,7 +597,30 @@ ___ stack.swap3 (4 -> 4) ___
 [3] var, type = ?a x1
 [4] return [ 2 1 0 3 ], type = r x1
 
-___ __primitive.?? (0 -> 1) FAIL ___
+___ control.times (3 -> 1) ___
+[0] var, type = ?a x1
+[1] var, type = ?i x1
+[2] var, type = ?a x1
+[3] control.times_ 2 0 1, type = 0 x1
+[5] return [ 3 ], type = r x1
+
+___ control.times_ (3 -> 1) x2 rec ___
+[0] var, type = ?i x3
+[1] var, type = ?f x2
+[2] var, type = ?a x2
+[3] __primitive.gt 0 4, type = s x1
+[4] val 0, type = i x2
+[5] __primitive.assert 10 3, type = 0 x1
+[6] __primitive.ap 2 1 -> 7, type = f x1
+[7] __primitive.dep 6, type = a x1
+[8] __primitive.sub 0 9, type = i x1
+[9] val 1, type = i x1
+[10] control.times_ 7 1 8, type = 0 x1
+[12] return [ 5 ], type = r -> 16 x1
+[13] __primitive.gt 0 4, type = s x1
+[14] __primitive.not 13, type = s x1
+[15] __primitive.assert 2 14, type = a x1
+[16] return [ 15 ], type = r x1
 
 ___ control.times_step (3 -> 3) ___
 [0] var, type = ?i x1

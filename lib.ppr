@@ -156,6 +156,7 @@ module control:
 imports:
   module stack
   module logic
+  module list
 
 __ if then else
 ifte: [] ap20 swap pushr [not!] [swap drop!] | . pull drop
