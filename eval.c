@@ -554,7 +554,10 @@ void eval(const cell_t *p) {
 
 bool get_arity(const cell_t *p, csize_t *in, csize_t *out, cell_t *module) {
   cell_t *c = parse_expr(&p, module);
-  if(!c) return false;
+  if(!c) {
+    LOG("parse failed");
+    return false;
+  }
   *in = function_in(c);
   *out = function_out(c, false);
   drop(c);

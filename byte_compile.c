@@ -595,10 +595,10 @@ bool simplify_quote(cell_t *e, cell_t *parent_entry, cell_t *q) {
     // q->expr.arg[0] stays the same
     q->expr.arg[1] = NULL;
     goto finish;
-  } else if (is_ap(e)) {
+  } else if (e->entry.in + 1 == q->size && is_ap(e)) {
     LOG("%d -> ap", q-parent_entry-1);
     csize_t in = e->entry.in;
-    assert_error(in + 1 == q->size && q->expr.out == 0);
+    assert_error(q->expr.out == 0);
     cell_t *code = e + 1;
     cell_t *ap = &code[in];
     csize_t args = closure_in(ap);

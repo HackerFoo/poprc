@@ -357,6 +357,8 @@ expand:
     csize_t in;
     if(e && e->entry.out == 1 &&
        (in = closure_in(p)) < e->entry.in) {
+      // wrap incomplete function in a quote
+      LOG("quote wrap %d", (int)i);
       nc = closure_alloc(e->entry.in + 1);
       memcpy(nc, p, offsetof(cell_t, expr.arg));
       nc->size = e->entry.in + 1;

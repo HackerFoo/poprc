@@ -26,7 +26,7 @@
 #include "gen/list.h"
 
 // to catch errors that result in large allocations
-#define MAX_ALLOC_SIZE 32
+#define MAX_ALLOC_SIZE 128
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wgnu-empty-initializer"

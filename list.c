@@ -237,7 +237,9 @@ cell_t *list_rest(list_iterator_t it) {
 }
 
 void collapse_row(cell_t **cp) {
-  if(is_row_list(*cp) && list_size(*cp) == 1) {
+  if(is_row_list(*cp) &&
+     list_size(*cp) == 1 &&
+     closure_is_ready((*cp)->value.ptr[0])) {
     cell_t *x = *cp;
     *cp = ref((*cp)->value.ptr[0]);
     drop(x);
