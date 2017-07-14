@@ -1,0 +1,7 @@
+#!/bin/sh
+
+if [ ! -f eval ]; then
+    make
+fi
+
+./eval -lo lib.ppr -im
