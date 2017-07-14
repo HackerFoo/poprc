@@ -92,20 +92,23 @@ map_:
     [popr drop head]
     binrec
 
-__ [a] [b] [p] -> [a p] [b p not]
-split_pred: [.] pushl twice [not] .
-
 __ a [b..] [p]
-__ 0 [2 3] [0 >] pushif -> 3 <-- wrong
-_[
 pushif:
-  [[dup] dip12 pushl swap] __ true case, pushl
-    [swap] __ false case, don't pushl
-    swap2 split_pred __ compose split predicate
-    | ap22 swap2 drop ! __ apply and assert
+  [over] dip23 $
+    -swap2 dup [pushl] dip21
+    ifte
 
-filter_step: [[popr] dip12] dip23 pushif
-]_
+__ [l] [p] filter -> [..x..] such that for all x, x p == True
+filter: [] swap filter_
+filter_:
+  [] ap30
+    [[filter_step] .]
+    [popr drop popr drop head is_nil not]
+    [popr drop head]
+    binrec
+
+__ [.. a] [b ..] [p] --> [..] [a b ..] if a p, otherwise [..] [b ..]
+filter_step: dup [[[popr] dip12] dip23 pushif] dip32
 
 module stack:
 

@@ -682,6 +682,53 @@ ___ list.dropl (2 -> 1) x2 rec ___
 [12] __primitive.assert 1 11, type = f x1
 [13] return [ 12 ], type = r x1
 
+___ list.filter (2 -> 1) ___
+[0] var, type = ?a x1
+[1] var, type = ?a x1
+[2] list.filter_ 1 [] 0, type = f x1
+[3] return [ 2 ], type = r x1
+
+___ list.filter_ (3 -> 1) x3 rec ___
+[0] var, type = ?f x3
+[1] var, type = ?f x3
+[2] var, type = ?f x3
+[3] __primitive.is_nil 2, type = s x1
+[4] __primitive.not 3, type = s x2
+[5] __primitive.assert 12 4, type = 0 x1
+[6] __primitive.ap 2 -> 7, type = f x3
+[7] __primitive.dep 6, type = a x2
+[8] __primitive.ap 7 0 -> 9, type = f x1
+[9] __primitive.dep 8, type = s x2
+[10] __primitive.not 9, type = s x1
+[11] __primitive.assert 1 10, type = f x1
+[12] list.filter_ 6 11 0, type = 0 x1
+[13] return [ 5 ], type = r -> 18 x1
+[14] __primitive.assert 17 4, type = 0 x1
+[15] __primitive.assert 16 9, type = f x1
+[16] __primitive.ap 7 1, type = f x1
+[17] list.filter_ 6 15 0, type = 0 x1
+[18] return [ 14 ], type = r -> 23 x1
+[19] __primitive.is_nil 2, type = s x1
+[20] __primitive.not 19, type = s x1
+[21] __primitive.not 20, type = s x1
+[22] __primitive.assert 1 21, type = f x1
+[23] return [ 22 ], type = r x1
+
+___ list.filter_step (3 -> 3) x2 ___
+[0] var, type = ?f x3
+[1] var, type = ?f x2
+[2] var, type = ?f x1
+[3] __primitive.ap 2 -> 4, type = f x3
+[4] __primitive.dep 3, type = a x2
+[5] __primitive.ap 4 0 -> 6, type = f x1
+[6] __primitive.dep 5, type = s x2
+[7] __primitive.not 6, type = s x1
+[8] __primitive.assert 1 7, type = f x1
+[9] return [ 3 8 0 ], type = r -> 12 x1
+[10] __primitive.assert 11 6, type = f x1
+[11] __primitive.ap 4 1, type = f x1
+[12] return [ 3 10 0 ], type = r x1
+
 ___ list.foldl (3 -> 1) ___
 [0] var, type = ?a x1
 [1] var, type = ?a x1
@@ -844,23 +891,18 @@ ___ list.movr (2 -> 2) ___
 [4] __primitive.ap 3 0, type = f x1
 [5] return [ 2 4 ], type = r x1
 
-___ list.split_pred (3 -> 2) ___
-[0] var, type = ?f x2
-[1] var, type = ?f x1
-[2] var, type = ?f x1
-[3] __primitive.compose 2 0, type = f x1
-[4] list.split_pred_4 1 0, type = l x1
-[5] return [ 3 4 ], type = r x1
-
-___ list.split_pred_4 (2 -> 1) ___
+___ list.pushif (3 -> 1) x2 ___
 [0] var, type = ?f x1
-[1] var, type = ?f x1
-[2] __primitive.compose 1 0, type = f x1
-[3] __primitive.ap 2 -> 4, type = f x2
-[4] __primitive.dep 3, type = s x1
+[1] var, type = ?f x2
+[2] var, type = ?a x2
+[3] __primitive.ap 2 0 -> 4, type = f x1
+[4] __primitive.dep 3, type = s x2
 [5] __primitive.not 4, type = s x1
-[6] __primitive.compose 3 5 [], type = f x1
-[7] return [ 6 ], type = r x1
+[6] __primitive.assert 1 5, type = f x1
+[7] return [ 6 ], type = r -> 10 x1
+[8] __primitive.assert 9 4, type = f x1
+[9] __primitive.ap 2 1, type = f x1
+[10] return [ 8 ], type = r x1
 
 ___ logic.and (2 -> 1) x2 ___
 [0] var, type = ?s x2
