@@ -503,6 +503,29 @@ ___ control.dip55 (7 -> 6) ___
 [13] __primitive.dep 7, type = a x1
 [14] return [ 13 12 11 10 9 1 ], type = r x1
 
+___ control.either (3 -> 1) x2 ___
+[0] var, type = ?f x1
+[1] var, type = ?f x1
+[2] var, type = ?f x2
+[3] __primitive.ap 2 -> 8 4, type = f x2
+[4] __primitive.dep 3, type = s x1
+[5] __primitive.eq_s 4 6, type = s x1
+[6] val 4, type = s x1
+[7] __primitive.assert 8 5, type = a x1
+[8] __primitive.dep 3, type = a x1
+[9] __primitive.ap 7 0 -> 10, type = f x1
+[10] __primitive.dep 9, type = a x1
+[11] return [ 10 ], type = r -> 20 x1
+[12] __primitive.ap 2 -> 17 13, type = f x2
+[13] __primitive.dep 12, type = s x1
+[14] __primitive.eq_s 13 15, type = s x1
+[15] val 5, type = s x1
+[16] __primitive.assert 17 14, type = a x1
+[17] __primitive.dep 12, type = a x1
+[18] __primitive.ap 16 1 -> 19, type = f x1
+[19] __primitive.dep 18, type = a x1
+[20] return [ 19 ], type = r x1
+
 ___ control.fork (3 -> 2) ___
 [0] var, type = ?f x1
 [1] var, type = ?f x1
@@ -571,6 +594,28 @@ ___ control.iterate (3 -> 1) x2 rec ___
 [13] __primitive.not 12, type = s x1
 [14] __primitive.assert 2 13, type = a x1
 [15] return [ 14 ], type = r x1
+
+___ control.maybe (3 -> 1) x2 ___
+[0] var, type = ?a x2
+[1] var, type = ?a x2
+[2] var, type = ?f x2
+[3] __primitive.ap 0 1 2 -> 9 X 5, type = f x2
+[5] __primitive.dep 3, type = s x1
+[6] __primitive.eq_s 5 7, type = s x1
+[7] val 6, type = s x1
+[8] __primitive.assert 9 6, type = a x1
+[9] __primitive.dep 3, type = a x1
+[10] return [ 8 ], type = r -> 21 x1
+[11] __primitive.ap 0 1 2 -> 13 18 14, type = f x3
+[13] __primitive.dep 11, type = f x1
+[14] __primitive.dep 11, type = s x1
+[15] __primitive.eq_s 14 16, type = s x1
+[16] val 7, type = s x1
+[17] __primitive.assert 18 15, type = a x1
+[18] __primitive.dep 11, type = a x1
+[19] __primitive.ap 17 13 -> 20, type = f x1
+[20] __primitive.dep 19, type = a x1
+[21] return [ 20 ], type = r x1
 
 ___ control.para (4 -> 2) ___
 [0] var, type = ?f x1
@@ -1140,6 +1185,17 @@ ___ stack.tuck (2 -> 3) ___
 [0] var, type = ?a x2
 [1] var, type = ?a x1
 [2] return [ 0 1 0 ], type = r x1
+
+___ tests.compose_alt (1 -> 1) x2 ___
+[0] var, type = ?f x2
+[1] __primitive.ap 0 -> 2, type = f x1
+[2] __primitive.dep 1, type = i x1
+[3] __primitive.add 2 4, type = i x1
+[4] val 1, type = i x1
+[5] return [ 3 ], type = r -> 8 x1
+[6] __primitive.ap 0 -> 7, type = f x1
+[7] __primitive.dep 6, type = a x1
+[8] return [ 7 ], type = r x1
 
 ___ tests.count (1 -> 1) x2 rec ___
 [0] var, type = ?i x3

@@ -114,6 +114,8 @@ void placeholder_extend(cell_t **lp, int in, int out) {
     l->n--;
     l = copy(l);
     TRAVERSE_REF(l, alt, ptrs);
+    left = leftmost_row(&l);
+    f = *left;
   }
   LOG("placeholder_extend: (%d, %d) %d -> %d", in, out, (*lp)-cells, l-cells);
 

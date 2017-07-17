@@ -249,20 +249,16 @@ times_: __ a [f] n
 times_step: [$keep] dip22 1-
 
 __ m [f] a -> a
-__ doesn't work yet
-_[
 maybe:
   rev3 __ a [f] m
     [[drop] dip21 Nothing =:= !]
     [Just =:= ! swap $] | . $$
-]_
+
 __ e [f1] [f2] -> a
-__ fails
-_[
 either:
   [Right =:= !] swap . swap
     [Left =:= !] swap . | . head
-]_
+
 
 module logic:
 

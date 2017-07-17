@@ -73,3 +73,6 @@ inl_loop3: [3+] [10<] [8*] binrec
 
 popr_quote_compose: [popr] .
 id_quote_compose: [id] .
+
+__ test, should return x2
+compose_alt: [1+] [] | . popr swap drop
