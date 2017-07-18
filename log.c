@@ -280,77 +280,77 @@ struct context_s {
   intptr_t __context[] = {                                      \
     (intptr_t)__log_context,                                    \
     (intptr_t)("\xff\xC8" fmt) + 1,                             \
-    (intptr_t)x0,                                               \
-    (intptr_t)x1,                                               \
-    (intptr_t)x2,                                               \
-    (intptr_t)x3,                                               \
-    (intptr_t)x4,                                               \
-    (intptr_t)x5,                                               \
-    (intptr_t)x6,                                               \
-    (intptr_t)x7};                                              \
+    (intptr_t)(x0),                                               \
+    (intptr_t)(x1),                                               \
+    (intptr_t)(x2),                                               \
+    (intptr_t)(x3),                                               \
+    (intptr_t)(x4),                                               \
+    (intptr_t)(x5),                                               \
+    (intptr_t)(x6),                                               \
+    (intptr_t)(x7)};                                              \
   END_OF_CONTEXT_MACRO
 #define CONTEXT_1(fmt, x0, x1, x2, x3, x4, x5, x6, ...) \
   intptr_t __context[] = {                              \
     (intptr_t)__log_context,                            \
     (intptr_t)("\xff\xC7" fmt) + 1,                     \
-    (intptr_t)x0,                                       \
-    (intptr_t)x1,                                       \
-    (intptr_t)x2,                                       \
-    (intptr_t)x3,                                       \
-    (intptr_t)x4,                                       \
-    (intptr_t)x5,                                       \
-    (intptr_t)x6};                                      \
+    (intptr_t)(x0),                                       \
+    (intptr_t)(x1),                                       \
+    (intptr_t)(x2),                                       \
+    (intptr_t)(x3),                                       \
+    (intptr_t)(x4),                                       \
+    (intptr_t)(x5),                                       \
+    (intptr_t)(x6)};                                      \
   END_OF_CONTEXT_MACRO
 #define CONTEXT_2(fmt, x0, x1, x2, x3, x4, x5, ...)     \
   intptr_t __context[] = {                              \
     (intptr_t)__log_context,                            \
       (intptr_t)("\xff\xC6" fmt) + 1,                   \
-      (intptr_t)x0,                                     \
-      (intptr_t)x1,                                     \
-      (intptr_t)x2,                                     \
-      (intptr_t)x3,                                     \
-      (intptr_t)x4,                                     \
-      (intptr_t)x5};                                    \
+      (intptr_t)(x0),                                     \
+      (intptr_t)(x1),                                     \
+      (intptr_t)(x2),                                     \
+      (intptr_t)(x3),                                     \
+      (intptr_t)(x4),                                     \
+      (intptr_t)(x5)};                                    \
   END_OF_CONTEXT_MACRO
 #define CONTEXT_3(fmt, x0, x1, x2, x3, x4, ...) \
   intptr_t __context[] = {                      \
     (intptr_t)__log_context,                    \
     (intptr_t)("\xff\xC5" fmt) + 1,             \
-    (intptr_t)x0,                               \
-    (intptr_t)x1,                               \
-    (intptr_t)x2,                               \
-    (intptr_t)x3,                               \
-    (intptr_t)x4};                              \
+    (intptr_t)(x0),                               \
+    (intptr_t)(x1),                               \
+    (intptr_t)(x2),                               \
+    (intptr_t)(x3),                               \
+    (intptr_t)(x4)};                              \
   END_OF_CONTEXT_MACRO
 #define CONTEXT_4(fmt, x0, x1, x2, x3, ...)     \
   intptr_t __context[] = {                      \
     (intptr_t)__log_context,                    \
     (intptr_t)("\xff\xC4" fmt) + 1,             \
-    (intptr_t)x0,                               \
-    (intptr_t)x1,                               \
-    (intptr_t)x2,                               \
-    (intptr_t)x3};                              \
+    (intptr_t)(x0),                               \
+    (intptr_t)(x1),                               \
+    (intptr_t)(x2),                               \
+    (intptr_t)(x3)};                              \
   END_OF_CONTEXT_MACRO
 #define CONTEXT_5(fmt, x0, x1, x2, ...)         \
   intptr_t __context[] = {                      \
     (intptr_t)__log_context,                    \
     (intptr_t)("\xff\xC3" fmt) + 1,             \
-    (intptr_t)x0,                               \
-    (intptr_t)x1,                               \
-    (intptr_t)x2};                              \
+    (intptr_t)(x0),                               \
+    (intptr_t)(x1),                               \
+    (intptr_t)(x2)};                              \
   END_OF_CONTEXT_MACRO
 #define CONTEXT_6(fmt, x0, x1, ...)             \
   intptr_t __context[] = {                      \
     (intptr_t)__log_context,                    \
     (intptr_t)("\xff\xC2" fmt) + 1,             \
-    (intptr_t)x0,                               \
-    (intptr_t)x1};                              \
+    (intptr_t)(x0),                               \
+    (intptr_t)(x1)};                              \
   END_OF_CONTEXT_MACRO
 #define CONTEXT_7(fmt, x0, ...)                 \
   intptr_t __context[] = {                      \
     (intptr_t)__log_context,                    \
     (intptr_t)("\xff\xC1" fmt) + 1,             \
-    (intptr_t)x0};                              \
+    (intptr_t)(x0)};                            \
   END_OF_CONTEXT_MACRO
 #define CONTEXT_8(fmt, ...)                     \
   intptr_t __context[] = {                      \

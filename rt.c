@@ -792,3 +792,12 @@ type_request_t req_simple(int t) {
   };
   return req;
 }
+
+bool check_type(uint8_t requested, uint8_t expected) {
+  if(requested != T_ANY &&
+     requested != expected) {
+    LOG("check_type: requested %d, but expected %d", requested, expected);
+    return false;
+  }
+  return true;
+}

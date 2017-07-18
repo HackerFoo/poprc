@@ -27,6 +27,7 @@
 
 bool func_value(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
+  CONTEXT("value: %d", CELL_INDEX(c));
   cell_t *res = NULL;
   assert_error(!is_marked(c));
   stats.reduce_cnt--;
@@ -229,6 +230,7 @@ bool is_dep_of(cell_t *d, cell_t *c) {
 /* todo: propagate types here */
 bool func_dep(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
+  CONTEXT("dep: %d", CELL_INDEX(c));
   assert_error(!is_marked(c));
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
@@ -267,8 +269,9 @@ bool is_dep(cell_t const *c) {
 // WORD("??", placeholder, 0, 1)
 bool func_placeholder(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
+  CONTEXT("placeholder: %d", CELL_INDEX(c));
   assert_error(!is_marked(c));
-  if(treq.t != T_ANY && treq.t != T_FUNCTION) goto fail;
+  if(!check_type(treq.t, T_FUNCTION)) goto fail;
   csize_t in = closure_in(c), n = closure_args(c);
 
   if(n == 1) {

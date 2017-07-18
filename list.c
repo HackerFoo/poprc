@@ -23,6 +23,7 @@
 #include "gen/special.h"
 #include "gen/test.h"
 #include "gen/user_func.h"
+#include "gen/log.h"
 #include "gen/list.h"
 
 cell_t *empty_list() {
@@ -70,9 +71,10 @@ bool is_function(cell_t const *c) {
 // not really a func
 bool func_list(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
+  CONTEXT("list: %d", CELL_INDEX(c));
   assert_error(!is_marked(c));
   if(treq.t == T_ANY && treq.t == T_LIST) return true;
-  if(treq.t != T_RETURN) goto fail;
+  if(!check_type(treq.t, T_RETURN)) goto fail;
   csize_t n = list_size(c);
 
   alt_set_t alt_set = c->value.alt_set;

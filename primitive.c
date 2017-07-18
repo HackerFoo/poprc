@@ -71,10 +71,11 @@ cell_t *_op1(val_t (*op)(val_t), cell_t *x) {
 
 bool func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t, val_t), bool nonzero) {
   cell_t *c = *cp;
+  CONTEXT("op2: %d", CELL_INDEX(c));
   cell_t *res = 0;
   assert_error(!is_marked(c));
 
-  if(treq.t != T_ANY && treq.t != res_type) goto fail;
+  if(!check_type(treq.t, res_type)) goto fail;
 
   alt_set_t alt_set = 0;
   type_request_t atr = req_simple(arg_type);
@@ -99,10 +100,11 @@ bool func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_
 
 bool func_op1(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t)) {
   cell_t *c = *cp;
+  CONTEXT("op1: %d", CELL_INDEX(c));
   cell_t *res = 0;
   assert_error(!is_marked(c));
 
-  if(treq.t != T_ANY && treq.t != res_type) goto fail;
+  if(!check_type(treq.t, res_type)) goto fail;
 
   alt_set_t alt_set = 0;
   type_request_t atr = req_simple(arg_type);
@@ -213,6 +215,7 @@ bool func_pushr(cell_t **cp, UNUSED type_request_t treq) {
 // WORD("|", alt, 2, 1)
 bool func_alt(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
+  CONTEXT("alt: %d", CELL_INDEX(c));
   assert_error(!is_marked(c));
   uint8_t a = new_alt_id(1);
   cell_t *r0 = id(c->expr.arg[0], as_single(a, 0));
@@ -257,8 +260,8 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
 // WORD("!", assert, 2, 1)
 bool func_assert(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
+  CONTEXT("assert: %d", CELL_INDEX(c));
   assert_error(!is_marked(c));
-  CONTEXT("assert[%d]", CELL_INDEX(c));
 
   cell_t *res = NULL;
   alt_set_t alt_set = 0;
@@ -311,6 +314,7 @@ fail:
 // WORD("id", id, 1, 1)
 bool func_id(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
+  CONTEXT("id: %d", CELL_INDEX(c));
   assert_error(!is_marked(c));
   alt_set_t alt_set = c->expr.alt_set;
 
@@ -384,8 +388,8 @@ csize_t function_compose_in(cell_t *c, csize_t req_in, csize_t arg_in, bool row)
 static
 bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   cell_t *c = *cp;
+  CONTEXT("%s: %d", row ? "compose" : "ap", CELL_INDEX(c));
   assert_error(!is_marked(c));
-  CONTEXT("compose_ap[%d]", CELL_INDEX(c));
 
   const csize_t
     in = closure_in(c) - 1,
@@ -460,10 +464,11 @@ bool func_compose(cell_t **cp, type_request_t treq) {
 // WORD("print", print, 2, 1)
 bool func_print(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
+  CONTEXT("print: %d", CELL_INDEX(c));
   cell_t *res = 0;
   assert_error(!is_marked(c));
 
-  if(treq.t != T_ANY && treq.t != T_SYMBOL) goto fail;
+  if(!check_type(treq.t, T_SYMBOL)) goto fail;
 
   alt_set_t alt_set = 0;
   if(!reduce_arg(c, 0, &alt_set, REQ(symbol)) ||
@@ -499,9 +504,10 @@ bool is_list_var(cell_t *c) {
 // WORD("is_nil", is_nil, 1, 1)
 bool func_is_nil(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
+  CONTEXT("is_nil: %d", CELL_INDEX(c));
   assert_error(!is_marked(*cp));
 
-  if(treq.t != T_ANY && treq.t != T_SYMBOL) goto fail;
+  if(!check_type(treq.t, T_SYMBOL)) goto fail;
 
   alt_set_t alt_set = 0;
   if(!reduce_arg(c, 0, &alt_set, REQ(list, 0, 0))) goto fail;
@@ -531,9 +537,10 @@ bool func_is_nil(cell_t **cp, type_request_t treq) {
 
 bool func_type(cell_t **cp, type_request_t treq, uint8_t type) {
   cell_t *c = *cp;
+  CONTEXT("type: %d", CELL_INDEX(c));
   assert_error(!is_marked(c));
 
-  if(treq.t != T_ANY && treq.t != type) goto fail;
+  if(!check_type(treq.t, type)) goto fail;
 
   alt_set_t alt_set = 0;
   type_request_t atr = req_simple(type);
