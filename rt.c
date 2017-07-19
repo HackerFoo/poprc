@@ -192,6 +192,7 @@ bool reduce(cell_t **cp, type_request_t treq) {
   while(c) {
     assert_error(is_closure(c));
     if(!closure_is_ready(c)) {
+      LOG("reduce: closure not ready %d", CELL_INDEX(c));
       fail(cp, treq);
       c = *cp;
       continue;
@@ -220,6 +221,7 @@ bool reduce(cell_t **cp, type_request_t treq) {
 void reduce_dep(cell_t **cp) {
   cell_t *c = *cp;
   if(!c || !closure_is_ready(c)) {
+    LOG("reduce_dep: closure not ready or null %d", c ? CELL_INDEX(c) : -1);
     fail(cp, req_any);
   } else {
     assert_error(is_closure(c) &&

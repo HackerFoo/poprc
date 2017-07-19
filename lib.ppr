@@ -80,8 +80,7 @@ __ [f] index -> x
 __ a [a -> a] -> [a]
 __ iteratel: [dup [peek] dip22 iteratel swap] ap20
 
-__ causes crash
-__ concat: [] [.] foldr
+concat: [] [.] foldr
 
 mov_ap: dup -swap2 [. movr] dip32
 map: [] swap map_

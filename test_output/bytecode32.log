@@ -711,6 +711,19 @@ ___ list.!!_ (2 -> 1) x2 rec ___
 [12] __primitive.assert 1 11, type = f x1
 [13] return [ 12 ], type = r x1
 
+___ list.concat (1 -> 1) ___
+[0] var, type = ?a x1
+[1] list.foldr_ 3 0 [], type = 0 x1
+[3] list.concat_3, type = l x1
+[4] return [ 1 ], type = r x1
+
+___ list.concat_3 (2 -> 1) ___
+[0] var, type = ?f x1
+[1] var, type = ?f x1
+[2] __primitive.ap 3 [], type = f x1
+[3] __primitive.compose 1 0, type = f x1
+[4] return [ 2 ], type = r x1
+
 ___ list.dropl (2 -> 1) x2 rec ___
 [0] var, type = ?i x3
 [1] var, type = ?f x2
