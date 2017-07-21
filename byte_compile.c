@@ -639,6 +639,11 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   cell_t **fp = &q->expr.arg[in];
   assert_error(*fp);
   cell_t *c = *fp;
+  assert_error(remove_root(fp));
+
+  *fp = trace_encode(entry_number(e));
+  q->expr_type.flags |= T_SUB;
+
   e->n = PERSISTENT;
   e->entry.len = 0;
   e->entry.flags = ENTRY_NOINLINE;
@@ -661,7 +666,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
     arg(ph, ref(c->value.ptr[i]));
   }
   drop(c);
-  *fp = c = quote(ph);
+  c = quote(ph);
 
   // compile
   e->entry.in = in + fill_args(c);
@@ -681,10 +686,6 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
 
   if(simplify_quote(e, parent_entry, q)) return NULL;
 
-  assert_error(remove_root(fp));
-
-  q->expr.arg[closure_in(q)] = trace_encode(entry_number(e));
-  q->expr_type.flags |= T_SUB;
   return e;
 }
 

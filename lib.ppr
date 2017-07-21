@@ -78,7 +78,7 @@ __ [f] index -> x
 !!_: dropl
 
 __ a [a -> a] -> [a]
-__ iteratel: [dup [peek] dip22 iteratel swap] ap20
+iteratel: [dup [peek] dip22 iteratel swap] ap20
 
 concat: [] [.] foldr
 

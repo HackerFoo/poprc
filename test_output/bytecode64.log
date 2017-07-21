@@ -867,6 +867,20 @@ ___ list.head (1 -> 1) ___
 [2] __primitive.dep 1, type = a x1
 [3] return [ 2 ], type = r x1
 
+___ list.iteratel (2 -> 1) ___
+[0] var, type = ?a x1
+[1] var, type = ?a x1
+[2] list.iteratel_2 1 0, type = l x1
+[3] return [ 2 ], type = r x1
+
+___ list.iteratel_2 (2 -> 1) ___
+[0] var, type = ?f x2
+[1] var, type = ?a x1
+[2] __primitive.ap 1 0 -> 3, type = f x1
+[3] __primitive.dep 2, type = a x1
+[4] list.iteratel_2 3 0, type = 0 x1
+[5] return [ 4 ], type = r x1
+
 ___ list.length (1 -> 1) ___
 [0] var, type = ?f x1
 [1] list.length_ 2 0, type = i x1
