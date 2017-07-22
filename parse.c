@@ -136,8 +136,9 @@ cell_t *lookup_word(seg_t w) {
 bool match_param_word(const char *pre, seg_t seg, csize_t *in, csize_t *out) {
   const char *end = seg_end(seg);
   const char *s = seg.s;
-  while(s < end && *pre) {
-    if(*pre != *s) return false;
+  while(*pre) {
+    if(s >= end ||
+       *pre != *s) return false;
     s++;
     pre++;
   }

@@ -56,11 +56,7 @@ typedef struct {
   char function[64];
 } error_t;
 
-#ifdef NDEBUG
-#define assert_throw(...) ((void)0)
-#else
 #define assert_throw(...) _assert_throw(__VA_ARGS__)
-#endif
 
 #define _assert_throw(...) DISPATCH(assert_throw, 2, ##__VA_ARGS__)
 #define assert_throw_0(cond, msg, ...)                                  \
