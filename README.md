@@ -5,6 +5,8 @@ This project is to implement a compiler for the Popr (previously Peg) language. 
 
 Please see [this presentation](http://hackerfoo.com/presentations/ttpl_slides.html) for more information.
 
+The following expressions can be evaluated online using the [PoprC web version](http://hackerfoo.com/eval.html).
+
 Here is a quick description of the language as it is currently. Lines beginning with ":" are user input, the following lines are output from the interpreter.
 
     : 1 2 +
