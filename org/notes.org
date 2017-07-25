@@ -1,5 +1,11 @@
 #+TITLE: PoprC Notes
 
+* compiling recursion
+- unify tail call, replace arguments with unification variables
+- force them in initialization
+- update non-tail calls
+- LICM: force expressions only using constant args and add to loop parameters
+  - can violate laziness unless used in all paths
 * pointers
 - handles (regions)
 - modification returns a new handle
