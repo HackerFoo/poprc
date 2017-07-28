@@ -69,10 +69,18 @@ nested: [[0 swap False =:= !]
 
 inl_loop: [3+] [10<] iterate
 inl_loop2: swap [+] pushl swap [<] pushl iterate
-inl_loop3: [3+] [10<] [8*] binrec
+inl_loop3: [3+] [10<] iterate 8*
 
 popr_quote_compose: [popr] .
 id_quote_compose: [id] .
 
 __ test, should return x2
 compose_alt: [1+] [] | . popr swap drop
+
+__ initial step test base -> result
+binrec: [iterate] dip31 $
+
+__ it10 should optimize to the same code as br10
+it10: [] pushl [[1+] .] [head 10 <] iterate head
+br10: [] pushl [[1+] .] [head 10 <] [head] binrec
+

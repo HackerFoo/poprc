@@ -117,6 +117,8 @@ void print_bytecode(cell_t *e) {
     if(t >= e->entry.in &&
        c->n + 1 == 0) {
       printf(" <-- WARNING: zero refcount\n");
+    } else if(is_dep(c) && !c->expr.arg[0]) {
+      printf(" <-- WARNING: broken dep\n");
     } else {
       printf("\n");
     }
@@ -149,6 +151,8 @@ void condense(cell_t *e) {
         p->alt = trace_encode(idx);
       }
       idx += calculate_cells(p->size);
+    } else {
+      LOG("collapse %d", p-start);
     }
   }
 
@@ -670,9 +674,9 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
 
   // compile
   e->entry.in = in + fill_args(c);
+  e->entry.out = 1;
   e->entry.alts = trace_reduce(&c);
   assert_throw(c && !(c->value.type.flags & T_FAIL), "reduction failed");
-  e->entry.out = 1;
   assert_error(e->entry.out);
   drop(c);
   trace_stop();
@@ -750,23 +754,20 @@ void resolve_types(cell_t *e, type_t *t) {
   size_t count = e->entry.len;
   csize_t out = e->entry.out;
 
+  COUNTUP(i, out) {
+    t[i].exclusive = T_BOTTOM;
+  }
+
   // find first return
-  cell_t *l = NULL;
+  cell_t *p = NULL;
   RANGEUP(i, e->entry.in, count) {
     if(trace_type(&code[i]).exclusive == T_RETURN) {
-      l = &code[i];
+      p = &code[i];
       break;
     }
   }
-  if(!l) return;
+  if(!p) return;
 
-  // first store types from c
-  COUNTUP(i, out) {
-    t[i].exclusive = trace_type(tref(e, l->value.ptr[i])).exclusive;
-  }
-
-  // then resolve the rest
-  cell_t *p = tref(e, l->alt);
   while(p) {
     COUNTUP(i, out) {
       int pt = trace_type(tref(e, p->value.ptr[i])).exclusive;

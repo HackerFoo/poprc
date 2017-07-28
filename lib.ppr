@@ -33,8 +33,7 @@ length_:
   [] ap20
     [length_step]
     [head is_nil not]
-    [popr drop head]
-    binrec
+    iterate popr drop head
 length_step: [[1+] [popr drop] para] .
 
 __ right fold
@@ -44,8 +43,7 @@ foldr_:
   [] ap30 __ fn xs y
     [[foldr_step] .]
     [popr drop head is_nil not]
-    [head]
-    binrec
+    iterate head
 foldr_step: [popr] dip12 over3 ap21 swap drop
 
 __ left fold
@@ -55,21 +53,19 @@ foldl_:
   [] ap30 __ fn xs y
     [[foldl_step] .]
     [popr drop head is_nil not]
-    [head]
-    binrec
+    iterate head
 foldl_step: [popr over2 pushl] dip23 .
 
 dropl:
   [] ap20
     [[[popr drop] [1-] para] .]
     [head 0 >]
-    [popr drop head]
-    binrec
+    iterate popr drop head
 
 __ [a.. x] [b..] -> [a..] [x b..]
 movr: [popr] dip12 pushl
 
-__ crash
+__ not working
 __ split_at: [[[]] pushl] dip11 [[movr] .] times ap02 swap2 drop
 
 __ index operator
@@ -88,8 +84,7 @@ map_:
   [] ap30
     [[mov_ap] .]
     [popr drop popr drop head is_nil not]
-    [popr drop head]
-    binrec
+    iterate popr drop head
 
 __ a [b..] [p]
 pushif:
@@ -103,8 +98,7 @@ filter_:
   [] ap30
     [[filter_step] .]
     [popr drop popr drop head is_nil not]
-    [popr drop head]
-    binrec
+    iterate popr drop head
 
 __ [.. a] [b ..] [p] --> [..] [a b ..] if a p, otherwise [..] [b ..]
 filter_step: dup [[[popr] dip12] dip23 pushif] dip32
@@ -234,17 +228,13 @@ iterate:
     [swap] dip22 . swap __ a [fn [fn] [test] iterate] [test]
     [fork] ap20 ifdo
 
-__ initial step test base -> result
-binrec: [iterate] dip31 $
-
 __ apply [f] n times
 times: swap times_
 times_: __ a [f] n
   [] ap30
     [[times_step] .]
     [head 0 >]
-    [popr drop popr drop head]
-    binrec
+    iterate popr drop popr drop head
 times_step: [$keep] dip22 1-
 
 __ m [f] a -> a
@@ -277,8 +267,7 @@ gcd:
   [] ap20 __ quote arguments [a b]
     [[tuck %] .] __ step: [a b] -> [b (a % b)]
     [head 0 !=] __ while: b != 0
-    [popr drop head] __ return: a
-    binrec
+    iterate popr drop head __ return: a
 
 __ acc x power -> if odd power, acc*x, otherwise acc
 acc_odd_power: [[*] dip21 odd] ap20 ifdo
@@ -293,14 +282,13 @@ exponent:
   [] ap30
     [[power_step] .]
     [head 0 !=]
-    [popr drop popr drop head]
-    binrec
+    iterate popr drop popr drop head
 
 __ raise to integer power using binary exponentiation
 ^: 1 -swap2 exponent
 
 __ sums numbers in a list
-sum_: [[+] .] [popr drop is_nil not] [head 0+] binrec
+sum_: [[+] .] [popr drop is_nil not] iterate head int_t
 sum: 0 pushr sum_
 
 __ decreasing list from initial element

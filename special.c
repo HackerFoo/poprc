@@ -35,6 +35,7 @@ bool func_value(cell_t **cp, type_request_t treq) {
   if((c->value.type.flags & T_FAIL) ||
      !type_match(treq.t, c)) {
     if(treq.t == T_FUNCTION && c == &nil_cell) return true; // HACK
+    if(c->value.type.exclusive == T_BOTTOM) return true; // allow T_BOTTOM through
     goto fail;
   }
 
@@ -172,6 +173,7 @@ cell_t *var_create_list(cell_t *f, int in, int out, int shift) {
 
 cell_t *var(int t, cell_t *c) {
   if(c) {
+    // if there is a variable argument of type T_BOTTOM, use that instead
     TRAVERSE(c, in) {
       cell_t *b = clear_ptr(*p);
       if(b && is_var(b) && b->value.type.exclusive == T_BOTTOM) {

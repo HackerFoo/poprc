@@ -212,7 +212,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
   cell_t *res;
   cell_t *returns = NULL;
   type_t rtypes[entry->entry.out];
-  CONTEXT("exec %s: %d", entry->word_name, CELL_INDEX(c));
+  CONTEXT("exec %s: %d 0x%x", entry->word_name, CELL_INDEX(c), c->expr.flags);
 
   // TODO remove this HACK
   int name_len = entry->word_name ? strlen(entry->word_name) : 0;
@@ -249,7 +249,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
             CELL_INDEX(initial_word));
         drop(c);
         *cp = n;
-        return false;
+        return LOG_UNLESS(func_exec(cp, req_simple(T_BOTTOM)), "that didn't work");
       }
     }
 
@@ -293,11 +293,22 @@ bool func_exec(cell_t **cp, type_request_t treq) {
     }
 
     cell_t *res;
-    rtypes[0].exclusive = treq.t;
-    resolve_types(entry, rtypes);
+    if(treq.t == T_BOTTOM) {
+      COUNTUP(i, entry->entry.out) {
+        rtypes[i].exclusive = T_BOTTOM;
+      }
+    } else if(entry->entry.len == 0) {
+      COUNTUP(i, entry->entry.out) {
+        rtypes[i].exclusive = T_ANY;
+      }
+    } else {
+      resolve_types(entry, rtypes);
+    }
     {
       uint8_t t = rtypes[0].exclusive;
-      if(t == T_ANY) t = T_BOTTOM;
+      if(t == T_ANY) {
+        t = c->expr.flags & FLAGS_RECURSIVE ? T_BOTTOM : treq.t;
+      }
       if(t == T_FUNCTION) t = T_LIST;
       if(specialize && !dont_specialize) {
         res = trace_var_specialized(t, c);
