@@ -1,5 +1,9 @@
 #+TITLE: PoprC Notes
 
+* exists
+- assert (forall i : Nat, i > n -> i > k)
+  for some n : Nat , k : Nat
+- f: [nat_t ? >] both implies QED swap !
 * compiling recursion
 - unify tail call, replace arguments with unification variables
 - force them in initialization

@@ -210,7 +210,7 @@ __ a b [f] [g] -> fa gb
 para: [dip11] dip32 $
 
 __ a b [f] -> fa fb
-twice: dup para
+both: dup para
 
 __ a [cond] [f] -> fa
 __ f fails if cond does not return True
@@ -253,6 +253,7 @@ module logic:
 
 or: [not!] [True swap!] | ap21 swap drop
 and: [!] [False swap not!] | ap21 swap drop
+implies: swap not or
 
 module algorithm:
 
