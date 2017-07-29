@@ -770,6 +770,8 @@ uint8_t new_alt_id(unsigned int n) {
 #define REQ_int() req_int
 #define REQ_symbol() req_symbol
 #define REQ_function() req_function
+#define REQ_return() req_return
+#define REQ_bottom() req_bottom
 #endif
 
 type_request_t req_list(int in, int out) {
@@ -785,6 +787,8 @@ const type_request_t req_any = { .t = T_ANY };
 const type_request_t req_int = { .t = T_INT };
 const type_request_t req_symbol = { .t = T_SYMBOL };
 const type_request_t req_function = { .t = T_FUNCTION };
+const type_request_t req_return = { .t = T_RETURN };
+const type_request_t req_bottom = { .t = T_BOTTOM };
 
 type_request_t req_simple(int t) {
   type_request_t req = {

@@ -249,7 +249,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
             CELL_INDEX(initial_word));
         drop(c);
         *cp = n;
-        return LOG_UNLESS(func_exec(cp, req_simple(T_BOTTOM)), "that didn't work");
+        return LOG_UNLESS(func_exec(cp, REQ(bottom)), "that didn't work");
       }
     }
 
@@ -272,7 +272,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
         if(is_list(c->expr.arg[i]) &&
            closure_is_ready(*leftmost(&c->expr.arg[i]))) {
           LOG("HACK forced cells[%d].expr.arg[%d]", CELL_INDEX(c), i);
-          func_list(&c->expr.arg[i], req_simple(T_RETURN));
+          func_list(&c->expr.arg[i], REQ(return));
 
           // ensure quotes are stored first
           cell_t *l = c->expr.arg[i];

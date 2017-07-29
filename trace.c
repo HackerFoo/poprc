@@ -582,11 +582,11 @@ unsigned int trace_reduce(cell_t **cp) {
 
   cell_t **p = cp;
   while(*p) {
-    if(!func_list(p, req_simple(T_RETURN))) continue;
+    if(!func_list(p, REQ(return))) continue;
     cell_t **a;
     FORLIST(a, *p, true) {
       collapse_row(a);
-      reduce(a, req_simple(T_ANY)); // ***
+      reduce(a, REQ(any)); // ***
       if(!is_list(*a)) {
         trace_store(*a, *a);
       }
