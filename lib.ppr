@@ -67,6 +67,12 @@ movr: [popr] dip12 pushl
 
 __ not working
 __ split_at: [[[]] pushl] dip11 [[movr] .] times ap02 swap2 drop
+__ split_at:
+__   [] ap30
+__     [[[movr] dip22 1-] .]
+__     [head 0 >]
+__     [popr drop]
+__     binrec pull2 drop swap
 
 __ index operator
 __ [f] index -> x
