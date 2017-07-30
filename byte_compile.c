@@ -513,8 +513,13 @@ void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *entry) {
       return;
     }
   }
-  c->value.ptr[0] = trace_alloc(2);
-  //assert_error(false);
+
+  { // diagnostics for fall through, which shouldn't happen
+    CONTEXT_LOG("replace_var fall through: %d (%d)", CELL_INDEX(c), x);
+    COUNTUP(j, a_n) {
+      LOG("%d -> %d", trace_decode(a[j]), j);
+    }
+  }
 }
 
 static

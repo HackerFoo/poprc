@@ -420,6 +420,7 @@ trace_index_t trace_build_quote(cell_t *l) {
   assert_error(is_list(l));
   if(is_empty_list(l)) return NIL_INDEX;
 
+  LOG("build quote: %d", CELL_INDEX(l));
   if(is_row_list(l) && // ***
      list_size(l) == 1) {
     cell_t *p = l->value.ptr[0];
