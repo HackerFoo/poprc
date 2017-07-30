@@ -528,9 +528,9 @@ bool eval_command(char *line, char *end) {
 void reduce_root(cell_t **cp) {
   rt_init();
   insert_root(cp);
-  if(write_graph) make_graph_all(GRAPH_FILE);
+  if(write_graph) make_graph_all(GRAPH_FILE, NULL);
   reduce_list(cp);
-  if(write_graph) make_graph_all(REDUCED_GRAPH_FILE);
+  if(write_graph) make_graph_all(REDUCED_GRAPH_FILE, NULL);
   remove_root(cp);
 }
 

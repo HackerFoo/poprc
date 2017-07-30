@@ -23,7 +23,7 @@ def make(debugger, command, result, dict):
     dbgcall("b throw_error");
 
 def graph(debugger, command, result, dict):
-    dbgcall("p make_graph_all(0)")
+    dbgcall("p make_graph_all(0, 0)")
 
 def cleandot(debugger, command, result, dict):
     os.system("make clean-dot")

@@ -162,7 +162,7 @@ void make_graph(char const *path, cell_t const *c) {
   fclose(f);
 }
 
-void make_graph_all(char const *path) {
+void make_graph_all(char const *path, char const *label) {
   static char autopath[16];
   static unsigned int autopath_count = 0;
   if(!path && autopath_count < 1000) {
@@ -176,7 +176,7 @@ void make_graph_all(char const *path) {
              "labeljust=right\n"
              "graph [\n"
              "rankdir = \"RL\"\n"
-             "];\n", path);
+             "];\n", label ? label : path);
   zero(visited);
   FOREACH(i, cells) {
     graph_cell(f, &cells[i]);
@@ -190,6 +190,8 @@ void print_cell_pointer(FILE *f, cell_t *p) {
     fprintf(f, "<font color=\"red\">&amp;fail_cell</font>");
   } else if(p == &nil_cell) {
     fprintf(f, "<font color=\"gray70\">&amp;nil_cell</font>");
+  } else if(is_cell(p)) {
+    fprintf(f, "<font color=\"gray70\">&amp;cells[%d]</font>", CELL_INDEX(p));
   } else {
     fprintf(f, "<font color=\"gray70\">%p</font>", (void *)p);
   }
@@ -218,19 +220,26 @@ void graph_cell(FILE *f, cell_t const *c) {
   const char *module_name, *word_name;
   get_name(c, &module_name, &word_name);
 
-  fprintf(f, "<table border=\"%d\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%d) %s.%s%s %x ",
+  fprintf(f, "<table border=\"%d\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%d) ",
           border,
-          node,
-          module_name,
+          node);
+  if(is_user_func(c)) {
+    fprintf(f, "%s.", module_name);
+  }
+  fprintf(f, "%s%s ",
           word_name,
-          closure_is_ready(c) ? "" : "*",
-          (int)c->size);
-  if(!is_value(c)) {
-    fprintf(f, "%x ", (unsigned int)c->expr.out);
-  } else {
+          closure_is_ready(c) ? "" : "*");
+  if(is_value(c)) {
     fprintf(f, "%s ", show_type_all_short(c->value.type));
   }
-  fprintf(f, "(%u%s)</b></font></td></tr>", (unsigned int)c->n + 1, is_root(c) ? "*" : "");
+
+  if(is_root(c)) {
+    fprintf(f, "(x%u)", (unsigned int)c->n + 1);
+  } else {
+    fprintf(f, "x%u", (unsigned int)c->n + 1);
+  }
+
+  fprintf(f, "</b></font></td></tr>");
   if(c->alt) {
     fprintf(f, "<tr><td port=\"alt\">alt: ");
     print_cell_pointer(f, c->alt);
@@ -270,8 +279,14 @@ void graph_cell(FILE *f, cell_t const *c) {
         fprintf(f, "<tr><td bgcolor=\"yellow\">val: %" PRIdPTR "</td></tr>", c->value.integer[n]);
     }
   } else {
-    COUNTUP(i, n) {
+    COUNTUP(i, closure_in(c)) {
       fprintf(f, "<tr><td port=\"arg%u\">", (unsigned int)i);
+      print_cell_pointer(f, c->expr.arg[i]);
+      fprintf(f, "</td></tr>");
+    }
+    RANGEUP(i, closure_args(c) - closure_out(c), closure_args(c)) {
+      fprintf(f, "<tr><td port=\"arg%u\">", (unsigned int)i);
+      fprintf(f, "out: ");
       print_cell_pointer(f, c->expr.arg[i]);
       fprintf(f, "</td></tr>");
     }

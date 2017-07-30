@@ -21,7 +21,7 @@ def trace_callback(frame, bp_loc, dict):
     print c
 #    frame.EvaluateExpression('print_trace_index()')
     frame.EvaluateExpression('mark_cell(c)')
-    frame.EvaluateExpression('make_graph_all(0)')
+    frame.EvaluateExpression('make_graph_all(0, 0)')
     process.Continue()
 
 def map_callback(frame, bp_loc, dict):

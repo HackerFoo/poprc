@@ -197,21 +197,12 @@ bool reduce(cell_t **cp, type_request_t treq) {
       c = *cp;
       continue;
     }
-    unsigned int m = stats.reduce_cnt++;
     bool success = c->func(cp, treq);
     c = *cp;
     if(success) {
-      if(write_graph && stats.reduce_cnt > m) {
-        mark_cell(c);
-        make_graph_all(0);
-      }
       if(marked) *cp = mark_ptr(c);
       return true;
     }
-  }
-  if(write_graph) {
-    mark_cell(c);
-    make_graph_all(0);
   }
   *cp = &fail_cell;
   return false;

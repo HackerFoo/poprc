@@ -181,9 +181,25 @@ cell_t *trace_copy(const cell_t *c) {
   return tc;
 }
 
+void trace_write_graph(cell_t *c, const cell_t *tc) {
+  if(write_graph) {
+    char label[64];
+    const char
+      *module_name = trace_cur[-1].module_name,
+      *word_name = trace_cur[-1].word_name;
+
+    snprintf(label, sizeof(label), "%s.%s [%d]",
+             module_name,
+             word_name,
+             (int)(tc-trace_cur));
+    mark_cell(c);
+    make_graph_all(NULL, label);
+  }
+}
+
 // store expression c in the trace
 static
-cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
+cell_t *trace_store_expr(cell_t *c, const cell_t *r) {
   cell_t *tc = trace_get(r);
   if(!tc) return NULL;
   type_t t = r->value.type;
@@ -203,6 +219,8 @@ cell_t *trace_store_expr(const cell_t *c, const cell_t *r) {
   assert_error(c->func != func_dep_entered &&
          c->func != func_dep);
   LOG("trace_store_expr: %d <- %d %d", (int)(tc-trace_cur), CELL_INDEX(c), CELL_INDEX(r));
+  if(!is_value(c)) trace_write_graph(c, tc);
+
   refcount_t n = tc->n;
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
   tc->n = n;
@@ -367,11 +385,6 @@ void trace_reduction(cell_t *c, cell_t *r) {
     if(!r) return;
   }
 
-  if(write_graph) {
-    mark_cell(c);
-    make_graph_all(0);
-  }
-
   // make sure all input arguments are stored
   TRAVERSE(c, in) {
     cell_t *a = *p;
@@ -516,6 +529,7 @@ cell_t *trace_build_specialized(cell_t *c, const cell_t *r) {
 // store a return
 static
 cell_t *trace_return(cell_t *c) {
+  cell_t *c0 = c;
   c = flat_copy(c);
   cell_t **p;
   FORLIST(p, c, true) {
@@ -529,6 +543,7 @@ cell_t *trace_return(cell_t *c) {
     if(x >= 0) trace_cur[x].n++;
   }
   cell_t *t = trace_copy(c);
+  trace_write_graph(c0, t);
   closure_free(c);
   t->value.type.exclusive = T_RETURN;
   t->n = -1;
