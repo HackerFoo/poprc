@@ -589,6 +589,28 @@ int test_var_count() {
   return n == 5 ? 0 : -1;
 }
 
+// HACK to make convert tail calls with type T_ANY to T_BOTTOM
+bool tail_call_to_bottom(cell_t *t) {
+  trace_index_t x = trace_decode(t);
+  if(x < 0) return false;
+  cell_t *tc = &trace_cur[x];
+  bool is_assert = tc->func == func_assert;
+  if((is_assert || (tc->func == func_exec &&
+                    tc->expr.arg[closure_in(tc)] == trace_encode(trace_cur-trace_cells-1))) &&
+     tc->expr_type.exclusive == T_ANY) {
+    if(is_assert) {
+      if(tail_call_to_bottom(tc->expr.arg[0])) {
+        tc->expr_type.exclusive = T_BOTTOM;
+        return true;
+      }
+    } else {
+      tc->expr_type.exclusive = T_BOTTOM;
+      return true;
+    }
+  }
+  return false;
+}
+
 // reduce for tracing & compilation
 unsigned int trace_reduce(cell_t **cp) {
   cell_t *tc = NULL, **prev = &tc;
@@ -608,6 +630,9 @@ unsigned int trace_reduce(cell_t **cp) {
       }
     }
     cell_t *r = trace_return(*p);
+    COUNTUP(i, list_size(r)) {
+      tail_call_to_bottom(r->value.ptr[i]);
+    }
     r->n++;
     *prev = trace_encode(r - trace_cur);
     alts++;

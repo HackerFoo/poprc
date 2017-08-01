@@ -286,7 +286,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
        nonvar > 0 &&
        len > 0 &&
        !(c->expr.flags & FLAGS_RECURSIVE) &&
-       (!entry->entry.rec || entry->entry.rec <= trace_cur[-1].entry.in))
+       entry->entry.rec <= trace_cur[-1].entry.in)
     {
       // okay to expand
       goto expand;
@@ -298,6 +298,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
         rtypes[i].exclusive = T_BOTTOM;
       }
     } else if(entry->entry.len == 0) {
+      // this will be fixed up for tail calls in tail_call_to_bottom()
       COUNTUP(i, entry->entry.out) {
         rtypes[i].exclusive = T_ANY;
       }

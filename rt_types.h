@@ -41,7 +41,7 @@ typedef struct __attribute__((packed)) type {
 #define T_FLOAT     0x08
 #define T_FUNCTION  0x09
 #define T_MODULE    0x0a
-#define T_BOTTOM    0x0b
+#define T_BOTTOM    0x7f
 
 // type flags
 #define T_DEP        0x02
