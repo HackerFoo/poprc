@@ -201,7 +201,8 @@ cell_t *unify_convert(cell_t *c, cell_t *pat) {
   return ret;
 }
 
-bool func_exec(cell_t **cp, type_request_t treq) {
+static
+bool func_exec_expand(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
   assert_error(!is_marked(c));
 
@@ -211,136 +212,8 @@ bool func_exec(cell_t **cp, type_request_t treq) {
   size_t len = entry->entry.len;
   cell_t *res;
   cell_t *returns = NULL;
-  type_t rtypes[entry->entry.out];
-  CONTEXT("exec %s: %d 0x%x", entry->word_name, CELL_INDEX(c), c->expr.flags);
+  CONTEXT("exec_expand %s: %d 0x%x", entry->word_name, CELL_INDEX(c), c->expr.flags);
 
-  // TODO remove this HACK
-  int name_len = entry->word_name ? strlen(entry->word_name) : 0;
-  bool underscore = name_len && entry->word_name[name_len - 1] == '_';
-
-  // don't execute, just reduce all args and return variables
-  if(len == 0 || // the function is being compiled
-     (trace_enabled &&
-      (c->expr.flags & FLAGS_RECURSIVE || // the function has already been expanded once
-       (entry->entry.rec &&
-        (initial_word ||
-         underscore ||
-         entry->entry.in > trace_cur[-1].entry.in))))) { // not the outermost function
-    csize_t c_in = closure_in(c);
-    alt_set_t alt_set = 0;
-    unsigned int nonvar = 0;
-    bool specialize = false;
-
-    if(underscore) {
-      LOG("underscore hack in %s.%s %d",
-          entry->module_name,
-          entry->word_name,
-          CELL_INDEX(c));
-    } else {
-      // try to unify with initial_word, returning if successful
-      cell_t *n = unify_convert(c, initial_word);
-      if(n) {
-        LOG("unified %s.%s %d with initial_word in %s.%s %d",
-            entry->module_name,
-            entry->word_name,
-            CELL_INDEX(c),
-            trace_cur[-1].module_name,
-            trace_cur[-1].word_name,
-            CELL_INDEX(initial_word));
-        drop(c);
-        *cp = n;
-        return LOG_UNLESS(func_exec(cp, REQ(bottom)), "that didn't work");
-      }
-    }
-
-    // reduce all inputs
-    COUNTUP(i, c_in) {
-      uint8_t t = len > 0 ? code[c_in - 1 - i].value.type.exclusive : T_ANY;
-      if(t == T_FUNCTION) t = T_ANY; // HACK, T_FUNCTION breaks things
-      if(!reduce_arg(c, i, &alt_set, req_simple(t)) ||
-         as_conflict(alt_set)) goto fail;
-      // if all vars in a recursive function, don't expand
-      // TODO make this less dumb
-      cell_t *a = clear_ptr(c->expr.arg[i]);
-      if(!is_var(a)) nonvar++;
-    }
-    clear_flags(c);
-
-    // HACK force lists on tail calls
-    if(entry == &trace_cur[-1] || underscore) {
-      COUNTUP(i, c_in) {
-        if(is_list(c->expr.arg[i]) &&
-           closure_is_ready(*leftmost(&c->expr.arg[i]))) {
-          LOG("HACK forced cells[%d].expr.arg[%d]", CELL_INDEX(c), i);
-          func_list(&c->expr.arg[i], REQ(return));
-
-          // ensure quotes are stored first
-          cell_t *l = c->expr.arg[i];
-          c->expr.arg[i] = trace_quote_var(l);
-          drop(l);
-        }
-      }
-    }
-
-    if(!underscore &&
-       nonvar > 0 &&
-       len > 0 &&
-       !(c->expr.flags & FLAGS_RECURSIVE) &&
-       entry->entry.rec <= trace_cur[-1].entry.in)
-    {
-      // okay to expand
-      goto expand;
-    }
-
-    cell_t *res;
-    if(treq.t == T_BOTTOM) {
-      COUNTUP(i, entry->entry.out) {
-        rtypes[i].exclusive = T_BOTTOM;
-      }
-    } else if(entry->entry.len == 0) {
-      // this will be fixed up for tail calls in tail_call_to_bottom()
-      COUNTUP(i, entry->entry.out) {
-        rtypes[i].exclusive = T_ANY;
-      }
-    } else {
-      resolve_types(entry, rtypes);
-    }
-    {
-      uint8_t t = rtypes[0].exclusive;
-      if(t == T_ANY) {
-        t = c->expr.flags & FLAGS_RECURSIVE ? T_BOTTOM : treq.t;
-      }
-      if(t == T_FUNCTION) t = T_LIST;
-      if(specialize && !dont_specialize) {
-        res = trace_var_specialized(t, c);
-      } else {
-        res = var(t, c);
-      }
-    }
-    res->value.alt_set = alt_set;
-    res->alt = c->alt;
-
-    // replace outputs with variables
-    RANGEUP(i, c_in + 1, c_in + entry->entry.out) {
-      cell_t *d = c->expr.arg[i];
-      if(d && is_dep(d)) {
-        assert_error(d->expr.arg[0] == c);
-        drop(c);
-        uint8_t t = rtypes[i].exclusive;
-        if(t == T_FUNCTION) t = T_LIST;
-        store_dep(d, res->value.ptr[0], i, t);
-      }
-    }
-
-    store_reduced(cp, res);
-    return true;
-
-  fail:
-    fail(cp, treq);
-    return false;
-  }
-
-expand:
   assert_error(len);
 
   c->expr.arg[in] = 0;
@@ -462,6 +335,161 @@ expand:
 
   store_lazy(cp, c, res, 0);
   return false;
+}
+
+static
+bool func_exec_trace(cell_t **cp, type_request_t treq) {
+  cell_t *c = *cp;
+  assert_error(!is_marked(c));
+
+  size_t in = closure_in(c);
+  cell_t *entry = c->expr.arg[in];
+  cell_t *code = entry + 1;
+  size_t len = entry->entry.len;
+  cell_t *res;
+  type_t rtypes[entry->entry.out];
+  CONTEXT("exec %s: %d 0x%x", entry->word_name, CELL_INDEX(c), c->expr.flags);
+
+  // TODO remove this HACK
+  int name_len = entry->word_name ? strlen(entry->word_name) : 0;
+  bool underscore = name_len && entry->word_name[name_len - 1] == '_';
+
+  csize_t c_in = closure_in(c);
+  alt_set_t alt_set = 0;
+  unsigned int nonvar = 0;
+  bool specialize = false;
+
+  if(underscore) {
+    LOG("underscore hack in %s.%s %d",
+        entry->module_name,
+        entry->word_name,
+        CELL_INDEX(c));
+  } else {
+    // try to unify with initial_word, returning if successful
+    cell_t *n = unify_convert(c, initial_word);
+    if(n) {
+      LOG("unified %s.%s %d with initial_word in %s.%s %d",
+          entry->module_name,
+          entry->word_name,
+          CELL_INDEX(c),
+          trace_cur[-1].module_name,
+          trace_cur[-1].word_name,
+          CELL_INDEX(initial_word));
+      drop(c);
+      *cp = n;
+      return LOG_UNLESS(func_exec(cp, REQ(bottom)), "that didn't work");
+    }
+  }
+
+  // reduce all inputs
+  COUNTUP(i, c_in) {
+    uint8_t t = len > 0 ? code[c_in - 1 - i].value.type.exclusive : T_ANY;
+    if(t == T_FUNCTION) t = T_ANY; // HACK, T_FUNCTION breaks things
+    if(!reduce_arg(c, i, &alt_set, req_simple(t)) ||
+       as_conflict(alt_set)) goto fail;
+    // if all vars in a recursive function, don't expand
+    // TODO make this less dumb
+    cell_t *a = clear_ptr(c->expr.arg[i]);
+    if(!is_var(a)) nonvar++;
+  }
+  clear_flags(c);
+
+  // HACK force lists on tail calls
+  if(entry == &trace_cur[-1] || underscore) {
+    COUNTUP(i, c_in) {
+      if(is_list(c->expr.arg[i]) &&
+         closure_is_ready(*leftmost(&c->expr.arg[i]))) {
+        LOG("HACK forced cells[%d].expr.arg[%d]", CELL_INDEX(c), i);
+        func_list(&c->expr.arg[i], REQ(return));
+
+        // ensure quotes are stored first
+        cell_t *l = c->expr.arg[i];
+        c->expr.arg[i] = trace_quote_var(l);
+        drop(l);
+      }
+    }
+  }
+
+  if(!underscore &&
+     nonvar > 0 &&
+     len > 0 &&
+     !(c->expr.flags & FLAGS_RECURSIVE) &&
+     entry->entry.rec <= trace_cur[-1].entry.in)
+  {
+    // okay to expand
+    return func_exec_expand(cp, treq);
+  }
+
+  if(treq.t == T_BOTTOM) {
+    COUNTUP(i, entry->entry.out) {
+      rtypes[i].exclusive = T_BOTTOM;
+    }
+  } else if(entry->entry.len == 0) {
+    // this will be fixed up for tail calls in tail_call_to_bottom()
+    COUNTUP(i, entry->entry.out) {
+      rtypes[i].exclusive = T_ANY;
+    }
+  } else {
+    resolve_types(entry, rtypes);
+  }
+  {
+    uint8_t t = rtypes[0].exclusive;
+    if(t == T_ANY) {
+      t = c->expr.flags & FLAGS_RECURSIVE ? T_BOTTOM : treq.t;
+    }
+    if(t == T_FUNCTION) t = T_LIST;
+    if(specialize && !dont_specialize) {
+      res = trace_var_specialized(t, c);
+    } else {
+      res = var(t, c);
+    }
+  }
+  res->value.alt_set = alt_set;
+  res->alt = c->alt;
+
+  // replace outputs with variables
+  RANGEUP(i, c_in + 1, c_in + entry->entry.out) {
+    cell_t *d = c->expr.arg[i];
+    if(d && is_dep(d)) {
+      assert_error(d->expr.arg[0] == c);
+      drop(c);
+      uint8_t t = rtypes[i].exclusive;
+      if(t == T_FUNCTION) t = T_LIST;
+      store_dep(d, res->value.ptr[0], i, t);
+    }
+  }
+
+  store_reduced(cp, res);
+  return true;
+
+fail:
+  fail(cp, treq);
+  return false;
+}
+
+bool func_exec(cell_t **cp, type_request_t treq) {
+  cell_t *c = *cp;
+  assert_error(!is_marked(c));
+
+  size_t in = closure_in(c);
+  cell_t *entry = c->expr.arg[in];
+  size_t len = entry->entry.len;
+
+  // TODO remove this HACK
+  int name_len = entry->word_name ? strlen(entry->word_name) : 0;
+  bool underscore = name_len && entry->word_name[name_len - 1] == '_';
+
+  if(len == 0 || // the function is being compiled
+     (trace_enabled &&
+      (c->expr.flags & FLAGS_RECURSIVE || // the function has already been expanded once
+       (entry->entry.rec &&
+        (initial_word ||
+         underscore ||
+         entry->entry.in > trace_cur[-1].entry.in))))) { // not the outermost function
+    return func_exec_trace(cp, treq);
+  } else {
+    return func_exec_expand(cp, treq);
+  }
 }
 
 void reduce_quote(cell_t **cp) {
