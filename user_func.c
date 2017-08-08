@@ -35,7 +35,7 @@
 #include "gen/log.h"
 
 bool is_user_func(const cell_t *c) {
-  return !is_value(c) && !!(c->expr.flags & FLAGS_USER_FUNC);
+  return c->func == func_exec;
 }
 
 static
@@ -168,14 +168,18 @@ cell_t *unify_convert(cell_t *c, cell_t *pat) {
   cell_t **tail = &vl;
   COUNTUP(i, closure_in(c)) {
     tail = bind_pattern(c->expr.arg[i], pat->expr.arg[i], tail);
-    if(!tail) break;
+    if(!tail) {
+      LOG("bind_pattern failed %d %d",
+          CELL_INDEX(c->expr.arg[i]),
+          CELL_INDEX(pat->expr.arg[i]));
+      break;
+    }
   }
   //print_word_pattern(pat);
   if(tail) {
     //printf("pattern matched\n");
     cell_t *n = closure_alloc(in + out);
     n->func = func_exec;
-    FLAG_SET(n->expr.flags, FLAGS_USER_FUNC);
     n->expr.arg[in] = entry;
     FLAG_SET(n->expr.flags, FLAGS_RECURSIVE);
     FOLLOW(p, q, vl, tmp) { // get arguments from the binding list
@@ -296,6 +300,7 @@ bool func_exec_expand(cell_t **cp, UNUSED type_request_t treq) {
       initial_word = copy(c);
       initial_word->expr.arg[in] = entry;
       TRAVERSE_REF(initial_word, alt, in);
+      LOG("recursive exec %d -> %d", CELL_INDEX(c), trace_ptr-trace_cur);
     }
   }
 

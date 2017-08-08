@@ -325,7 +325,6 @@ cell_t *func(reduce_t *f, csize_t in, csize_t out) {
   c->expr.out = out - 1;
   c->expr.flags = 0;
   c->func = f;
-  FLAG_SET_TO(c->expr.flags, FLAGS_USER_FUNC, f == func_exec);
   if(args) c->expr.arg[0] = (cell_t *)(intptr_t)(args - 1);
   closure_set_ready(c, !args);
   return c;
@@ -721,7 +720,6 @@ void store_lazy(cell_t **cp, cell_t *c, cell_t *r, alt_set_t alt_set) {
   if(c->n || alt_set) {
     closure_shrink(c, 1); // *** does not drop arguments first
     c->func = func_id;
-    FLAG_CLEAR(c->expr.flags, FLAGS_USER_FUNC);
     c->size = 1;
     c->expr.out = 0;
     c->expr.arg[0] = r;

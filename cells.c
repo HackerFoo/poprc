@@ -24,6 +24,7 @@
 #include "gen/support.h"
 #include "gen/trace.h"
 #include "gen/list.h"
+#include "gen/user_func.h"
 
 // to catch errors that result in large allocations
 #define MAX_ALLOC_SIZE 128
@@ -262,7 +263,7 @@ csize_t closure_args(cell_t const *c) {
 csize_t closure_in(cell_t const *c) {
   assert_error(is_closure(c) && !is_value(c));
   csize_t in = c->size - c->expr.out;
-  if(c->expr.flags & FLAGS_USER_FUNC) in--;
+  if(is_user_func(c)) in--;
   return in;
 }
 

@@ -453,7 +453,6 @@ trace_index_t trace_build_quote(cell_t *l) {
 
   n->expr.out = 0;
   n->func = func_exec;
-  FLAG_SET(n->expr.flags, FLAGS_USER_FUNC);
   n->n = -1;
   n->expr_type.exclusive = T_LIST;
   n->expr_type.flags |= T_INCOMPLETE;
@@ -495,7 +494,6 @@ cell_t *trace_build_specialized(cell_t *c, const cell_t *r) {
 
   n->expr.out = out;
   n->func = func_exec;
-  FLAG_SET(n->expr.flags, FLAGS_USER_FUNC);
   n->n = -1;
   n->expr_type = r->value.type;
   n->expr_type.flags |= T_INCOMPLETE;

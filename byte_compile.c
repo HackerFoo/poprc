@@ -633,7 +633,6 @@ bool simplify_quote(cell_t *e, cell_t *parent_entry, cell_t *q) {
   }
   return false;
 finish:
-  FLAG_CLEAR(q->expr.flags, FLAGS_USER_FUNC);
   trace_clear(e);
   trace_ptr = trace_cur;
   remove_root(root);
