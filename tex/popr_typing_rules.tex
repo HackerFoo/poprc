@@ -1,0 +1,132 @@
+\documentclass{article}
+
+\usepackage{bussproofs}
+\usepackage{amsmath}
+
+\title{\vspace{-2cm}Popr Typing Rules}
+\author{Dustin DeWeese}
+\date{August 17, 2017}
+
+\begin{document}
+
+\maketitle
+
+\section{Preliminaries}
+
+Every term in Popr is a function from an input tuple to an output tuple, expressed as:
+
+$$ a_0 \ldots a_{n-1} \to b_0 \ldots b_{m-1} $$
+
+\noindent where lower case letters represent type variables. \\
+
+Uppercase letters represent a group of types variables, so this can also be written as:
+
+$$ A \to B $$
+
+When unifying group type variables, they should match only the minimum number of elements required (non-greedy).
+
+\section{Rules}
+
+The following rules describe function composition (represented by adjacent terms). There are two cases, for when the left function produces a larger tuple than the right function consumes, and when the right function consumes more than the left function produces. Either case can be used if the tuple sizes are matched.
+
+\def\proofSkipAmount{\vskip 1.5ex}
+
+\begin{prooftree}
+  \AxiomC{$ f : A \to B\ D $}
+  \AxiomC{$ g : D \to C $}
+  \RightLabel{\scriptsize $ com_L $}
+  \BinaryInfC{$ f g : A \to B\ C $}
+\end{prooftree}
+
+\begin{prooftree}
+  \AxiomC{$ f : A \to D $}
+  \AxiomC{$ g : D\ B \to C $}
+  \RightLabel{\scriptsize $ com_R $}
+  \BinaryInfC{$ f g : A\ B \to C $}
+\end{prooftree}
+
+\vspace{5mm}
+
+A quote contains a function:
+
+\begin{prooftree}
+  \AxiomC{$ f : A \to B $}
+  \RightLabel{\scriptsize $ quote $}
+  \UnaryInfC{$ [f] : [A \to B] $}
+\end{prooftree}
+
+Alternates are the compositional equivalent of logical disjunction:
+
+\begin{prooftree}
+  \AxiomC{$ f : A \to (B \big| C) $}
+  \AxiomC{$ \Gamma, f : A \to B \vdash g : A \to D $}
+  \AxiomC{$ \Gamma, f : A \to C \vdash g : A \to D $}
+  \RightLabel{\scriptsize $ altE $}
+  \TrinaryInfC{$ g : A \to D $}
+\end{prooftree}
+
+\begin{prooftree}
+  \AxiomC{$ f : A \to B $}
+  \RightLabel{\scriptsize $ altI_L $}
+  \UnaryInfC{$ f : A \to (B \big| C) $}
+\end{prooftree}
+
+\begin{prooftree}
+  \AxiomC{$ f : A \to C $}
+  \RightLabel{\scriptsize $ altI_R $}
+  \UnaryInfC{$ f : A \to (B \big| C) $}
+\end{prooftree}
+
+\section{Axioms}
+
+\subsection{Quotes}
+
+These functions allow manipulating quotes by composing them, supplying inputs, and extracting outputs.
+
+\begin{align*}
+\circ_L &: [A \to B\ D]\ [D \to C] \to [A \to B\ C] \\
+\circ_R &: [A \to D]\ [D\ B \to C] \to [A\ B \to C] \\
+pushl &: a\ [B \to C] \to [a\ B \to C] \\
+popr &: [A \to B\ c] \to [A \to B]\ c \\
+\end{align*}
+
+\subsection{Branching}
+
+Branching in Popr is nondeterministic. There is an operator to split a branch $(\big|)$, and an operator to conditionally prune a branch $(!)$.
+
+\begin{align*}
+\big| &: a\ b \to (a \big| b) & (alt) \\
+! &: a\ True \to a & (assert) \\
+\end{align*}
+
+\subsection{Shuffling}
+
+Basic ``stack'' shuffling operators.
+
+\begin{align*}
+swap &: a\ b \to b\ a \\
+dup &: a \to a\ a \\
+drop &: a\ b \to a \\
+\end{align*}
+
+\subsection{Types}
+
+Supported concrete types are integers, quotes, and \textit{symbols}, which are a set of unique values. Notably, functions are \textbf{not} first class values. Because functions are not first class values, they also can not be curried.
+
+Because symbols can only be compared for equality, every symbol type is actually a subset of all symbols. For example, $True$ and $False$ are two symbols used to represent a boolean value.
+
+\subsection{Literals}
+
+Literals are functions that append a value to the input tuple.
+
+\begin{align*}
+  \mathbf{Integer} &: A \to A\ Int \\
+  \mathbf{Symbol} &: A \to A\ \mathbf{Symbol} \\
+  [] &: A \to A\ [B \to B] \\
+\end{align*}
+
+\subsection{Other Primitives}
+
+Several integer and comparison operators are implemented with the expected semantics. Comparisons output $True$ or $False$.
+
+\end{document}
