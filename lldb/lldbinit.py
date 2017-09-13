@@ -1,5 +1,6 @@
 import lldb
 import os
+import shlex
 
 def __lldb_init_module(debugger, internal_dict):
     dbgcall("command script add -f lldbinit.make make")
@@ -7,6 +8,8 @@ def __lldb_init_module(debugger, internal_dict):
     dbgcall("command script add -f lldbinit.cleandot cleandot")
     dbgcall("command script add -f lldbinit.diagrams diagrams")
     dbgcall("command script add -f lldbinit.plog plog")
+    dbgcall("command script add -f lldbinit.bc bc")
+    dbgcall("command script add -f lldbinit.ac ac")
     dbgcall("b throw_error");
     return
 
@@ -33,3 +36,14 @@ def diagrams(debugger, command, result, dict):
 
 def plog(debugger, command, result, dict):
     dbgcall("p log_print_all()")
+
+def bc(debugger, command, result, dict):
+    args = shlex.split(command)
+    if len(args) > 0:
+        dbgcall("p print_bytecode(&trace_cells[{}])".format(args[0]))
+
+def ac(debugger, command, result, dict):
+    args = shlex.split(command)
+    if len(args) > 0:
+        dbgcall('breakpoint set --file cells.c --line 183 --condition "c-cells==({})"'.format(args[0]))
+
