@@ -47,7 +47,6 @@ typedef struct __attribute__((packed)) type {
 
 // type flags
 #define T_DEP        0x02
-#define T_SUB        0x04
 #define T_INCOMPLETE 0x08
 #define T_ROW        0x10
 #define T_TRACED     0x20
@@ -141,7 +140,7 @@ struct __attribute__((packed)) mem {
 };
 
 #define ENTRY_PRIMITIVE 0x01
-#define ENTRY_NOINLINE  0x02
+#define ENTRY_INITIAL   0x02
 #define ENTRY_RECURSIVE 0x04
 #define ENTRY_QUOTE     0x08
 #define ENTRY_ROW       0x10
@@ -151,7 +150,10 @@ struct __attribute__((packed)) mem {
 struct __attribute__((packed)) entry {
   uint8_t rec, flags;
   csize_t in, out, len, alts;
-  cell_t *initial;
+  union {
+    cell_t *initial;
+    cell_t *parent;
+  };
 };
 
 typedef enum char_class_t {

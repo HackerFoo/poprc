@@ -36,7 +36,7 @@
 #include "gen/trace.h"
 
 // storage for tracing
-static cell_t trace_cells[1 << 13] __attribute__((aligned(64)));
+static cell_t trace_cells[1 << 16] __attribute__((aligned(64)));
 cell_t *trace_ptr = &trace_cells[0];
 
 const trace_cell_t nulltc = {NULL, 0};
@@ -258,25 +258,65 @@ void trace_store(cell_t *c, const cell_t *r) {
   }
 }
 
+// count the maximum number of changed variables in recursive calls
+static
+uint8_t trace_recursive_changes(cell_t *entry) {
+  unsigned int changes = 0;
+  const cell_t *encoded_entry = trace_encode(entry_number(entry));
+
+  FOR_TRACE(p, entry) {
+    csize_t in;
+    if(p->func == func_exec &&
+       p->expr.arg[in = closure_in(p)] == encoded_entry) {
+      unsigned int cnt = 0;
+      COUNTUP(i, in) {
+        if(trace_decode(p->expr.arg[i]) != (trace_index_t)(in - 1 - i)) cnt++;
+      }
+
+      // if cnt == 0, a recusive call has been made without modifying any arguments
+      // so it will loop forever
+      assert_throw(cnt, "infinite recursion");
+      if(cnt > changes) changes = cnt;
+    }
+  }
+  return changes;
+}
+
 // setup for tracing
 cell_t *trace_start_entry(csize_t in, csize_t out) {
   cell_t *e = trace_ptr;
   trace_ptr += 64; // TODO
   e->n = PERSISTENT;
-  e->entry.initial = NULL;
-  e->entry.in = in;
-  e->entry.out = out;
-  e->entry.len = 0;
+  e->entry = (struct entry) {
+    .in = in,
+    .out = out
+  };
   e->func = func_exec;
   insert_root(&e->entry.initial);
   return e;
 }
 
 // finish tracing
-void trace_end_entry(cell_t *e) {
+void trace_end_entry(cell_t *e, cell_t *parent) {
   drop(e->entry.initial);
   remove_root(&e->entry.initial);
+  clear_initial(e);
+  FLAG_SET(e->entry, ENTRY_COMPLETE);
+  e->entry.rec = trace_recursive_changes(e);
+  e->entry.parent = parent;
+}
+
+void set_initial(cell_t *e, cell_t *initial) {
+  assert_error(NOT_FLAG(e->entry, ENTRY_COMPLETE));
+  // assert_error(e->entry.initial == NULL);
+  e->entry.initial = initial;
+  FLAG_SET(e->entry, ENTRY_INITIAL);
+}
+
+void clear_initial(cell_t *e) {
+  assert_error(NOT_FLAG(e->entry, ENTRY_COMPLETE));
   e->entry.initial = NULL;
+  FLAG_CLEAR(e->entry, ENTRY_INITIAL);
 }
 
 void trace_clear_alt(cell_t *entry) {

@@ -124,10 +124,13 @@ void print_bytecode(cell_t *entry) {
 
   // print sub-functions
   FOR_TRACE(c, entry) {
-    if(NOT_FLAG(c->expr_type, T_SUB)) continue;
-    cell_t *e = get_entry(c);
-    printf("\n");
-    print_bytecode(e);
+    if(is_user_func(c)) {
+      cell_t *e = get_entry(c);
+      if(e->entry.parent == entry) {
+        printf("\n");
+        print_bytecode(e);
+      }
+    }
   }
 }
 
@@ -229,10 +232,6 @@ void trace_final_pass(cell_t *entry) {
   }
 
   FOR_TRACE(p, entry) {
-    if(p->func == func_exec &&
-       get_entry(p) > entry) { // ***
-      FLAG_SET(p->expr_type, T_SUB);
-    }
     if(FLAG(p->expr_type, T_INCOMPLETE)) {
       if(p->func == func_placeholder) { // convert a placeholder to ap or compose
         FLAG_CLEAR(p->expr_type, T_INCOMPLETE);
@@ -284,30 +283,6 @@ void trace_final_pass(cell_t *entry) {
   }
 }
 
-// count the maximum number of changed variables in recursive calls
-static
-uint8_t trace_recursive_changes(cell_t *entry) {
-  unsigned int changes = 0;
-  const cell_t *encoded_entry = trace_encode(entry_number(entry));
-
-  FOR_TRACE(p, entry) {
-    csize_t in;
-    if(p->func == func_exec &&
-       p->expr.arg[in = closure_in(p)] == encoded_entry) {
-      unsigned int cnt = 0;
-      COUNTUP(i, in) {
-        if(trace_decode(p->expr.arg[i]) != (trace_index_t)(in - 1 - i)) cnt++;
-      }
-
-      // if cnt == 0, a recusive call has been made without modifying any arguments
-      // so it will loop forever
-      assert_throw(cnt, "infinite recursion");
-      if(cnt > changes) changes = cnt;
-    }
-  }
-  return changes;
-}
-
 // add an entry and all sub-entries to a module
 static
 void store_entries(cell_t *entry, cell_t *module) {
@@ -315,7 +290,7 @@ void store_entries(cell_t *entry, cell_t *module) {
   FOR_TRACE(c, entry) {
     if(c->func != func_exec) continue;
     cell_t *sub_e = get_entry(c);
-    if(sub_e > entry) store_entries(sub_e, module); // TODO use T_SUB
+    if(sub_e->entry.parent == entry) store_entries(sub_e, module);
   }
 }
 
@@ -458,18 +433,14 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   CONTEXT_LOG("compiling %s.%.*s at entry %d", e->module_name, name.n, name.s, entry_number(e));
 
   // parse
-  e->entry.flags = ENTRY_NOINLINE;
   cell_t *c = parse_expr(&toks, module, e);
 
   // compile
   fill_args(e, c);
   e->entry.alts = trace_reduce(e, &c);
   drop(c);
-  trace_end_entry(e);
   trace_final_pass(e);
-  e->entry.flags &= ~ENTRY_NOINLINE;
-  e->entry.flags |= ENTRY_COMPLETE;
-  e->entry.rec = trace_recursive_changes(e);
+  trace_end_entry(e, NULL);
 
   // finish
   free_def(l);
@@ -627,12 +598,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   assert_error(remove_root(fp));
 
   *fp = trace_encode(entry_number(e));
-  FLAG_SET(q->expr_type, T_SUB);
 
-  e->n = PERSISTENT;
-  e->entry.len = 0;
-  e->entry.flags = ENTRY_NOINLINE;
-  e->func = func_exec;
   CONTEXT_LOG("compiling quote %s.%s_%d at entry %d",
               parent_entry->module_name,
               parent_entry->word_name,
@@ -659,14 +625,11 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   assert_throw(c && NOT_FLAG(c->value.type, T_FAIL), "reduction failed");
   assert_error(e->entry.out);
   drop(c);
-  trace_end_entry(e);
-  e->entry.flags &= ~ENTRY_NOINLINE;
-  e->entry.flags |= ENTRY_COMPLETE;
-  e->entry.rec = trace_recursive_changes(e);
 
   e->module_name = parent_entry->module_name;
   e->word_name = string_printf("%s_%d", parent_entry->word_name, (int)(q - parent_entry) - 1);
   trace_final_pass(e);
+  trace_end_entry(e, parent_entry);
 
   if(simplify_quote(e, parent_entry, q)) return NULL;
 
