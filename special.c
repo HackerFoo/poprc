@@ -32,7 +32,7 @@ bool func_value(cell_t **cp, type_request_t treq) {
   assert_error(!is_marked(c));
   stats.reduce_cnt--;
 
-  if((c->value.type.flags & T_FAIL) ||
+  if(FLAG(c->value.type, T_FAIL) ||
      !type_match(treq.t, c)) {
     if(treq.t == T_FUNCTION && c == &nil_cell) return true; // HACK
     if(c->value.type.exclusive == T_BOTTOM) return true; // allow T_BOTTOM through
@@ -197,7 +197,7 @@ cell_t *var(int t, cell_t *c) {
 }
 
 bool is_var(cell_t const *c) {
-  return c && is_value(c) && (c->value.type.flags & T_VAR) != 0;
+  return c && is_value(c) && FLAG(c->value.type, T_VAR);
 }
 
 cell_t *vector(csize_t n) {

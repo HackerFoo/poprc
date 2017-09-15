@@ -339,9 +339,11 @@
 #define mark_ptr(p) ((void *)((uintptr_t)(p) | (MARK_BIT)))
 #define clear_ptr(p) ((void *)((uintptr_t)(p) & ~(MARK_BIT)))
 
-#define FLAG_SET(var, flag) ((var) |= (flag))
-#define FLAG_CLEAR(var, flag) ((var) &= ~(flag))
-#define FLAG_SET_TO(var, flag, val) ((val) ? FLAG_SET(var, flag) : FLAG_CLEAR(var, flag))
+#define FLAG(s, flag) (((s).flags & (flag)) != 0)
+#define NOT_FLAG(s, flag) (((s).flags & (flag)) == 0)
+#define FLAG_SET(s, flag) ((s).flags |= (flag))
+#define FLAG_CLEAR(s, flag) ((s).flags &= ~(flag))
+#define FLAG_SET_TO(s, flag, val) ((val) ? FLAG_SET(s, flag) : FLAG_CLEAR(s, flag))
 
 #define CELL_INDEX(x) (int)((x) - cells)
 #define TRACE_INDEX(x) (int)((x) - trace_cells)

@@ -86,7 +86,7 @@ void print_bytecode(cell_t *entry) {
       if(can_have_alt && c->alt) printf(" -> %d", trace_decode(c->alt));
     } else { // print a call
       const char *module_name = NULL, *word_name = NULL;
-      if(!(c->expr_type.flags & T_INCOMPLETE)) trace_get_name(c, &module_name, &word_name);
+      if(NOT_FLAG(c->expr_type, T_INCOMPLETE)) trace_get_name(c, &module_name, &word_name);
       printf(" %s.%s", module_name, word_name);
       TRAVERSE(c, in) {
         int x = trace_decode(*p);
@@ -124,7 +124,7 @@ void print_bytecode(cell_t *entry) {
 
   // print sub-functions
   FOR_TRACE(c, entry) {
-    if(!(c->expr_type.flags & T_SUB)) continue;
+    if(NOT_FLAG(c->expr_type, T_SUB)) continue;
     cell_t *e = get_entry(c);
     printf("\n");
     print_bytecode(e);
@@ -231,11 +231,11 @@ void trace_final_pass(cell_t *entry) {
   FOR_TRACE(p, entry) {
     if(p->func == func_exec &&
        get_entry(p) > entry) { // ***
-      p->expr_type.flags |= T_SUB;
+      FLAG_SET(p->expr_type, T_SUB);
     }
-    if(p->expr_type.flags & T_INCOMPLETE) {
+    if(FLAG(p->expr_type, T_INCOMPLETE)) {
       if(p->func == func_placeholder) { // convert a placeholder to ap or compose
-        p->expr_type.flags &= ~T_INCOMPLETE;
+        FLAG_CLEAR(p->expr_type, T_INCOMPLETE);
         trace_index_t left = trace_decode(p->expr.arg[0]);
         assert_error(left >= 0);
         if(closure_in(p) > 1 && trace_type(&entry[left]).exclusive == T_FUNCTION) {
@@ -275,9 +275,9 @@ void trace_final_pass(cell_t *entry) {
 
   // compile quotes
   FOR_TRACE(p, entry) {
-    if(p->expr_type.flags & T_INCOMPLETE) {
+    if(FLAG(p->expr_type, T_INCOMPLETE)) {
       if(p->func == func_exec) { // compile a quote
-        p->expr_type.flags &= ~T_INCOMPLETE;
+        FLAG_CLEAR(p->expr_type, T_INCOMPLETE);
         compile_quote(entry, p);
       }
     }
@@ -350,14 +350,14 @@ cell_t *module_lookup_compiled(seg_t path, cell_t **context) {
   cell_t *p = module_lookup(path, context);
   if(!p) return NULL;
   if(!is_list(p)) return p;
-  if(p->value.type.flags & T_TRACED) {
+  if(FLAG(p->value.type, T_TRACED)) {
     if(p->alt) { // HACKy
       return p->alt;
     } else {
       return lookup_word(string_seg("??"));
     }
   }
-  p->value.type.flags |= T_TRACED;
+  FLAG_SET(p->value.type, T_TRACED);
   seg_t name = path_name(path);
   return compile_entry(name, *context);
 }
@@ -568,7 +568,7 @@ bool is_ap(cell_t *e) {
   if(!is_value(ret) ||
      list_size(ret) != 1 ||
      trace_decode(ret->value.ptr[0]) != ap - code ||
-     ret->value.type.flags & T_ROW ||
+     FLAG(ret->value.type, T_ROW) ||
      ret->value.type.exclusive != T_RETURN) return false;
   return true;
 }
@@ -631,7 +631,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   assert_error(remove_root(fp));
 
   *fp = trace_encode(entry_number(e));
-  q->expr_type.flags |= T_SUB;
+  FLAG_SET(q->expr_type, T_SUB);
 
   e->n = PERSISTENT;
   e->entry.len = 0;
@@ -661,7 +661,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   e->entry.in = in + fill_args(e, c);
   e->entry.out = 1;
   e->entry.alts = trace_reduce(e, &c);
-  assert_throw(c && !(c->value.type.flags & T_FAIL), "reduction failed");
+  assert_throw(c && NOT_FLAG(c->value.type, T_FAIL), "reduction failed");
   assert_error(e->entry.out);
   drop(c);
   trace_end_entry(e);

@@ -175,7 +175,7 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n, cell_t *entry) {
     if(e) {
       in = e->entry.in;
       out = e->entry.out;
-      if(e->entry.flags & ENTRY_PRIMITIVE) {
+      if(FLAG(e->entry, ENTRY_PRIMITIVE)) {
         if(e->func == func_placeholder) {
           c = func(func_placeholder, n + 1, 1);
           int x = trace_alloc(entry, n + 2);

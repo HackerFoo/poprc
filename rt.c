@@ -312,7 +312,7 @@ cell_t *compose(list_iterator_t it, cell_t *b) {
     WHILELIST(x, it, true) {
       *bp++ = ref(*x);
     }
-    if(it.row) (*ll)->value.type.flags |= T_ROW;
+    if(it.row) FLAG_SET((*ll)->value.type, T_ROW);
   }
 
   return b;
@@ -407,7 +407,7 @@ void store_fail(cell_t *c, cell_t *alt) {
   closure_shrink(c, 1);
   memset(&c->value, 0, sizeof(c->value));
   c->func = func_value;
-  c->value.type.flags |= T_FAIL;
+  FLAG_SET(c->value.type, T_FAIL);
   c->alt = alt;
 }
 

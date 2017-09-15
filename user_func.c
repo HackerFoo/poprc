@@ -62,7 +62,7 @@ cell_t *apply_list(cell_t *l, csize_t in, csize_t out) {
   if(in) {
     c->expr.arg[0] = (cell_t *)(intptr_t)(in - 1);
   } else {
-    FLAG_CLEAR(c->expr.flags, FLAGS_NEEDS_ARG);
+    FLAG_CLEAR(c->expr, FLAGS_NEEDS_ARG);
   }
   c->expr.arg[in] = l;
   RANGEUP(i, in+1, in+1+out) {
@@ -183,7 +183,7 @@ cell_t *unify_convert(cell_t *entry, cell_t *c, cell_t *pat) {
     cell_t *n = closure_alloc(in + out);
     n->func = func_exec;
     n->expr.arg[in] = entry;
-    FLAG_SET(n->expr.flags, FLAGS_RECURSIVE);
+    FLAG_SET(n->expr, FLAGS_RECURSIVE);
     FOLLOW(p, q, vl, tmp) { // get arguments from the binding list
       csize_t x = p->value.ptr[0] - base;
       assert_error(x < in);
@@ -298,7 +298,7 @@ bool func_exec_expand(cell_t **cp, UNUSED type_request_t treq) {
        t_entry &&
        *t_entry == entry &&
        !initial_word) { // mark recursion
-      FLAG_SET(t->expr.flags, FLAGS_RECURSIVE);
+      FLAG_SET(t->expr, FLAGS_RECURSIVE);
       initial_word = copy(c);
       initial_word->expr.arg[in] = entry;
       TRAVERSE_REF(initial_word, alt, in);
@@ -420,7 +420,7 @@ bool func_exec_trace(cell_t **cp, type_request_t treq) {
   if(!underscore &&
      nonvar > 0 &&
      len > 0 &&
-     !(c->expr.flags & FLAGS_RECURSIVE) &&
+     NOT_FLAG(c->expr, FLAGS_RECURSIVE) &&
      entry->entry.rec <= trace_cur[-1].entry.in)
   {
     // okay to expand
@@ -431,7 +431,7 @@ bool func_exec_trace(cell_t **cp, type_request_t treq) {
     COUNTUP(i, entry->entry.out) {
       rtypes[i].exclusive = T_BOTTOM;
     }
-  } else if(entry->entry.len == 0) {
+  } else if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
     // this will be fixed up for tail calls in tail_call_to_bottom()
     COUNTUP(i, entry->entry.out) {
       rtypes[i].exclusive = T_ANY;
@@ -442,7 +442,7 @@ bool func_exec_trace(cell_t **cp, type_request_t treq) {
   {
     uint8_t t = rtypes[0].exclusive;
     if(t == T_ANY) {
-      t = c->expr.flags & FLAGS_RECURSIVE ? T_BOTTOM : treq.t;
+      t = FLAG(c->expr, FLAGS_RECURSIVE) ? T_BOTTOM : treq.t;
     }
     if(t == T_FUNCTION) t = T_LIST;
     if(specialize && !dont_specialize) {
@@ -488,7 +488,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
 
   if(len == 0 || // the function is being compiled
      (trace_enabled &&
-      (c->expr.flags & FLAGS_RECURSIVE || // the function has already been expanded once
+      (FLAG(c->expr, FLAGS_RECURSIVE) || // the function has already been expanded once
        (entry->entry.rec &&
         (initial_word ||
          underscore ||

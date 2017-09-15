@@ -51,7 +51,7 @@ cell_t *quote(cell_t *x) {
 
 cell_t *row_quote(cell_t *x) {
   cell_t *q = quote(x);
-  q->value.type.flags |= T_ROW;
+  FLAG_SET(q->value.type, T_ROW);
   return q;
 }
 
@@ -60,7 +60,7 @@ bool is_list(cell_t const *c) {
 }
 
 bool is_row_list(cell_t const *c) {
-  return is_list(c) && (c->value.type.flags & T_ROW);
+  return is_list(c) && FLAG(c->value.type, T_ROW);
 }
 
 bool is_function(cell_t const *c) {
@@ -148,7 +148,7 @@ cell_t *_make_test_list(csize_t n, cell_t *row) {
   }
   if(row) {
     l->value.ptr[n] = row;
-    l->value.type.flags |= T_ROW;
+    FLAG_SET(l->value.type, T_ROW);
   }
   return l;
 }
@@ -233,7 +233,7 @@ cell_t *list_rest(list_iterator_t it) {
     COUNTUP(i, elems) {
       rest->value.ptr[i] = ref(it.array[i + it.index]);
     }
-    if(it.row) rest->value.type.flags |= T_ROW;
+    if(it.row) FLAG_SET(rest->value.type, T_ROW);
   }
   return rest;
 }
@@ -254,7 +254,7 @@ cell_t *flat_copy(cell_t *l) {
   if(!n) return &nil_cell;
   cell_t *res = make_list(n);
   res->value.type = l->value.type;
-  res->value.type.flags &= ~T_ROW;
+  FLAG_CLEAR(res->value.type, T_ROW);
   cell_t **p, **rp = res->value.ptr;
   list_iterator_t it = list_begin(l);
   WHILELIST(p, it, true) {
@@ -262,7 +262,7 @@ cell_t *flat_copy(cell_t *l) {
   }
 
   if(it.row) {
-    res->value.type.flags |= T_ROW;
+    FLAG_SET(res->value.type, T_ROW);
   }
   return res;
 }

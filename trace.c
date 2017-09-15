@@ -86,7 +86,7 @@ static
 int trace_lookup_value_linear(cell_t *entry, int type, val_t value) {
   FOR_TRACE(p, entry) {
     if(p->func == func_value &&
-       !(p->value.type.flags & T_VAR) &&
+       NOT_FLAG(p->value.type, T_VAR) &&
        p->value.type.exclusive == type &&
        p->value.integer[0] == value)
       return p - entry;
@@ -101,7 +101,7 @@ int trace_get_value(cell_t *entry, cell_t *r) {
   if(is_list(r)) {
     return trace_build_quote(entry, r); // *** TODO prevent building duplicate quotes
   } else if(is_var(r)) {
-    if(r->value.type.flags & T_DEP) return -1;
+    if(FLAG(r->value.type, T_DEP)) return -1;
     return r->value.tc.index;
   } else {
     int t = trace_lookup_value_linear(entry, r->value.type.exclusive, r->value.integer[0]);
@@ -225,7 +225,7 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
     tc->value.type = t;
   }
   tc->expr_type.exclusive = t.exclusive;
-  if(tc->func == func_placeholder) tc->expr_type.flags |= T_INCOMPLETE;
+  if(tc->func == func_placeholder) FLAG_SET(tc->expr_type, T_INCOMPLETE);
   tc->alt = NULL;
 }
 
@@ -251,7 +251,7 @@ int trace_store_value(cell_t *entry, const cell_t *c) {
 static
 void trace_store(cell_t *c, const cell_t *r) {
   assert_error(is_var(r));
-  if (r->value.type.flags & T_DEP) {
+  if(FLAG(r->value.type, T_DEP)) {
     trace_dep(c);
   } else {
     trace_store_expr(c, r);
@@ -289,7 +289,7 @@ void trace_update(cell_t *c, cell_t *r) {
 
 void trace_dep(cell_t *c) {
   if(!is_var(c)) return;
-  if(!(c->value.type.flags & T_DEP)) return;
+  if(NOT_FLAG(c->value.type, T_DEP)) return;
   cell_t *entry = c->value.tc.entry;
   if(!entry) return;
   int x = trace_alloc(entry, 1);
@@ -303,7 +303,7 @@ void trace_dep(cell_t *c) {
   tc->expr_type.exclusive = c->value.type.exclusive;
   ph->n++;
   c->value.tc.index = x;
-  FLAG_CLEAR(c->value.type.flags, T_DEP);
+  FLAG_CLEAR(c->value.type, T_DEP);
 }
 
 // reclaim failed allocation if possible
@@ -405,7 +405,7 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
   n->func = func_exec;
   n->n = -1;
   n->expr_type.exclusive = T_LIST;
-  n->expr_type.flags |= T_INCOMPLETE;
+  FLAG_SET(n->expr_type, T_INCOMPLETE);
 
   cell_t *p = vl;
   COUNTUP(i, in) {

@@ -228,7 +228,7 @@ bool func_alt(cell_t **cp, UNUSED type_request_t treq) {
 cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
   cell_t *nc;
   assert_error(is_list(c));
-  if(~c->value.type.flags & T_ROW) {
+  if(NOT_FLAG(c->value.type, T_ROW)) {
     nc = copy_expand(c, 1);
     v->value.type.exclusive = T_FUNCTION;
     nc->value.ptr[list_size(nc) - 1] = 0;
@@ -245,7 +245,7 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
     }
   }
   cell_t **left = &nc->value.ptr[list_size(nc) - 1];
-  if(~c->value.type.flags & T_ROW) {
+  if(NOT_FLAG(c->value.type, T_ROW)) {
     *left = v;
   } else {
     // slip in v as an extra arg to assert
@@ -253,7 +253,7 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
     (*left)->size++;
     (*left)->expr.arg[2] = v;
   }
-  nc->value.type.flags |= T_ROW;
+  FLAG_SET(nc->value.type, T_ROW);
   return nc;
 }
 
@@ -292,7 +292,7 @@ bool func_assert(cell_t **cp, type_request_t treq) {
       res = map_assert(q, p, res);
     } else {
       res->value.type = q->value.type;
-      res->value.type.flags |= T_VAR;
+      FLAG_SET(res->value.type, T_VAR);
     }
     res->value.alt_set = alt_set;
     res->alt = c->alt;

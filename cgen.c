@@ -115,10 +115,10 @@ void gen_body(cell_t *e) {
   printf("\nbody:\n");
   FOR_TRACE(c, e) {
     if(is_var(c)) continue;
-    if(~c->expr_type.flags & T_TRACED) {
+    if(NOT_FLAG(c->expr_type, T_TRACED)) {
       gen_instruction(e, c);
     }
-    c->expr_type.flags &= ~T_TRACED;
+    FLAG_CLEAR(c->expr_type, T_TRACED);
   }
 }
 
@@ -277,7 +277,7 @@ void gen_skipped(cell_t *e, int start_after, int until) {
         if(*p && trace_decode(*p) == until) return;
       }
       gen_instruction(e, c);
-      c->expr_type.flags |= T_TRACED;
+      FLAG_SET(c->expr_type, T_TRACED);
     }
   }
 }
@@ -302,7 +302,7 @@ void gen_assert(cell_t *e, cell_t *c) {
         if(bottom &&
            next->func == func_assert &&
            next->expr.arg[1] == c->expr.arg[1]) {
-          next->expr_type.flags |= T_TRACED;
+          FLAG_SET(next->expr_type, T_TRACED);
           continue;
         }
         gen_skipped(e, trace_decode(c->expr.arg[0]), c - e);
