@@ -296,6 +296,10 @@ void graph_cell(FILE *f, cell_t const *c) {
       fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
               show_alt_set((alt_set_t)c->expr.arg[1]));
     }
+    if(c->pos) {
+      fprintf(f, "<tr><td bgcolor=\"orange\">trace: %d</td></tr>",
+              entry_number(trace_expr_entry(c->pos)));
+    }
   }
   fprintf(f, "</table>>\nshape = \"none\"\n];\n");
 

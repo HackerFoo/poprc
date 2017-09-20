@@ -718,7 +718,7 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
 }
 
 void store_lazy(cell_t **cp, cell_t *c, cell_t *r, alt_set_t alt_set) {
-  if(c->n || alt_set) {
+  if(c->n || alt_set || c->pos) {
     closure_shrink(c, 1); // *** does not drop arguments first
     c->func = func_id;
     c->size = 1;

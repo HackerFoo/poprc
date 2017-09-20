@@ -37,7 +37,9 @@
 
 // storage for tracing
 static cell_t trace_cells[1 << 16] __attribute__((aligned(64)));
-cell_t *trace_ptr = &trace_cells[0];
+static cell_t *trace_ptr = &trace_cells[0];
+static cell_t *active_entries[1 << 6];
+static int prev_entry_pos = 0;
 
 const trace_cell_t nulltc = {NULL, 0};
 
@@ -61,6 +63,10 @@ typedef intptr_t trace_index_t;
 #define FOR_TRACE_1(c, e, ...) FOR_TRACE_0(c, e, 0)
 #define FOR_TRACE(...) DISPATCH(FOR_TRACE, 3, __VA_ARGS__)
 #endif
+
+void trace_init() {
+  prev_entry_pos = 0;
+}
 
 cell_t *get_entry(cell_t const *c) {
   if(!is_user_func(c)) return NULL;
@@ -102,6 +108,15 @@ int trace_get_value(cell_t *entry, cell_t *r) {
     return trace_build_quote(entry, r); // *** TODO prevent building duplicate quotes
   } else if(is_var(r)) {
     if(FLAG(r->value.type, T_DEP)) return -1;
+    if(r->value.tc.entry != entry) {
+      cell_t *tc = trace_cell_ptr(r->value.tc);
+      tc->alt = r;
+      r->value.tc = (trace_cell_t) {
+        entry,
+        trace_allocate_var(entry)
+      };
+      entry->entry.in++;
+    }
     return r->value.tc.index;
   } else {
     int t = trace_lookup_value_linear(entry, r->value.type.exclusive, r->value.integer[0]);
@@ -298,6 +313,11 @@ cell_t *trace_start_entry(csize_t in, csize_t out) {
   };
   e->func = func_exec;
   insert_root(&e->entry.initial);
+
+  // active_entries[e->entry.pos-1] = e
+  active_entries[prev_entry_pos++] = e;
+  e->entry.pos = prev_entry_pos;
+
   return e;
 }
 
@@ -378,6 +398,7 @@ cell_t *get_list_function_var(cell_t *c) {
 
 // called when c is reduced to r to copy to pre-allocated space in the trace
 void trace_reduction(cell_t *c, cell_t *r) {
+  cell_t *new_entry = trace_expr_entry(c->pos);
   if(!(is_var(r) || c->func == func_exec)) return;
   if(is_list(r)) {
     r = get_list_function_var(r);
@@ -399,6 +420,14 @@ void trace_reduction(cell_t *c, cell_t *r) {
   }
 
   trace_store(c, r);
+  if(new_entry) {
+    cell_t *tc = trace_cell_ptr(r->value.tc);
+    tc->alt = r;
+    r->value.tc = (trace_cell_t) {
+      new_entry,
+      trace_allocate_var(new_entry)
+    };
+  }
 }
 
 // update the type of c in the trace
@@ -617,4 +646,10 @@ void trace_allocate_vars(cell_t *entry, csize_t n) {
   LOOP(n) {
     trace_allocate_var(entry);
   }
+}
+
+cell_t *trace_expr_entry(uint8_t pos) {
+  if(pos == 0) return NULL;
+  assert_error(pos <= prev_entry_pos);
+  return active_entries[pos - 1];
 }

@@ -318,7 +318,7 @@ bool func_id(cell_t **cp, type_request_t treq) {
   assert_error(!is_marked(c));
   alt_set_t alt_set = c->expr.alt_set;
 
-  if(alt_set || c->alt) {
+  if(alt_set || c->alt || c->pos) {
     if(!reduce_arg(c, 0, &alt_set, treq) ||
        as_conflict(alt_set)) goto fail;
     clear_flags(c);
