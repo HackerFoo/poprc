@@ -136,6 +136,7 @@ void print_bytecode(cell_t *entry) {
 
 static
 void condense(cell_t *entry) {
+  if(entry->entry.len == 0) return;
   cell_t *ret = NULL;
   int idx = 1;
 
@@ -194,6 +195,79 @@ void condense(cell_t *entry) {
     }
   }
   entry->entry.len = idx - 1;
+}
+
+// TODO optimize
+static
+void move_vars(cell_t *entry) {
+  if(entry->entry.len == 0) return;
+  cell_t *ret = NULL;
+  csize_t in = entry->entry.in;
+  csize_t len = entry->entry.len;
+  cell_t *vars = get_trace_ptr(in);
+  int idx = 1 + in;
+  int var_idx = 0;
+
+  // calculate mapping
+  FOR_TRACE(p, entry) {
+    if(!is_var(p)) {
+      if(is_value(p) && p->value.type.exclusive == T_RETURN) {
+        if(ret) ret->alt = trace_encode(idx);
+        ret = p;
+      } else {
+        p->alt = trace_encode(idx);
+      }
+      idx += calculate_cells(p->size);
+    } else {
+      memcpy(&vars[var_idx], p, sizeof(cell_t));
+      p->func = NULL;
+      p->alt = trace_encode(++var_idx);
+    }
+  }
+
+  // update references
+  FOR_TRACE(tc, entry) {
+    if(tc->func) {
+      cell_t **e = is_user_func(tc) ? &tc->expr.arg[closure_in(tc)] : NULL;
+      if(is_value(tc) &&
+         tc->value.type.exclusive == T_RETURN) {
+        COUNTUP(i, list_size(tc)) {
+          cell_t **p = &tc->value.ptr[i];
+          int x = trace_decode(*p);
+          if(x > 0) *p = entry[x].alt;
+        }
+      } else {
+        TRAVERSE(tc, args, ptrs) {
+          if(p != e) {
+            int x = trace_decode(*p);
+            if(x > 0) *p = entry[x].alt;
+          }
+        }
+      }
+    }
+  }
+  // condense
+  idx = 1;
+  FOR_TRACE(p, entry) {
+    if(p->func) {
+      csize_t s = calculate_cells(p->size);
+      if(!(is_value(p) && p->value.type.exclusive == T_RETURN)) {
+        p->alt = NULL;
+      }
+      if(idx < p - entry) {
+        cell_t *n = &entry[idx];
+        memmove(n, p, s * sizeof(cell_t));
+        memset(n + s, 0, (p - n) * sizeof(cell_t));
+        p = n;
+      }
+      idx += s;
+    }
+  }
+
+  // prepend vars
+  memmove(&entry[in + 1], &entry[1], (len - in) * sizeof(cell_t));
+  memcpy(&entry[1], vars, in * sizeof(cell_t));
+  memset(vars, 0, in * sizeof(cell_t));
 }
 
 static
@@ -271,6 +345,7 @@ void trace_final_pass(cell_t *entry) {
     prev = p;
   }
   condense(entry);
+  move_vars(entry);
 
   // compile quotes
   FOR_TRACE(p, entry) {

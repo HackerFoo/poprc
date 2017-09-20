@@ -282,9 +282,14 @@ uint8_t trace_recursive_changes(cell_t *entry) {
   return changes;
 }
 
+cell_t *get_trace_ptr(size_t size) {
+  assert_error((void *)(trace_ptr + size) < (void *)(&trace_cells+1));
+  return trace_ptr;
+}
+
 // setup for tracing
 cell_t *trace_start_entry(csize_t in, csize_t out) {
-  cell_t *e = trace_ptr;
+  cell_t *e = get_trace_ptr(64);
   trace_ptr += 64; // TODO
   e->n = PERSISTENT;
   e->entry = (struct entry) {
