@@ -94,15 +94,10 @@ void gen_function_signature(cell_t *e) {
 }
 
 void gen_function_signatures(cell_t *e) {
-  cell_t
-    *start = e + 1,
-    *end = start + e->entry.len;
-  while(is_var(start)) start++;
-
   gen_function_signature(e);
   printf(";\n");
 
-  FOR_TRACE(c, start, end) {
+  FOR_TRACE(c, e) {
     if(c->func == func_exec && c->expr_type.exclusive != T_BOTTOM) {
       cell_t *x = get_entry(c);
       if(x != e) {
@@ -113,16 +108,13 @@ void gen_function_signatures(cell_t *e) {
 }
 
 void gen_body(cell_t *e) {
-  cell_t
-    *start = e + 1,
-    *end = start + e->entry.len;
-  while(is_var(start)) start++;
-
-  FOR_TRACE(c, start, end) {
+  FOR_TRACE(c, e) {
+    if(is_var(c)) continue;
     gen_decl(e, c);
   }
   printf("\nbody:\n");
-  FOR_TRACE(c, start, end) {
+  FOR_TRACE(c, e) {
+    if(is_var(c)) continue;
     if(~c->expr_type.flags & T_TRACED) {
       gen_instruction(e, c);
     }
@@ -131,38 +123,37 @@ void gen_body(cell_t *e) {
 }
 
 void gen_return(cell_t *e, cell_t *l) {
-  cell_t *p = e + 1;
-  cell_t *end = p + e->entry.len;
+  cell_t *end = e + e->entry.len;
   csize_t out_n = list_size(l);
   int ires = trace_decode(l->value.ptr[out_n - 1]);
 
   // skip if T_BOTTOM
   COUNTDOWN(i, out_n) {
     int ai = trace_decode(l->value.ptr[i]);
-    type_t t = trace_type(&p[ai]);
+    type_t t = trace_type(&e[ai]);
     if(t.exclusive == T_BOTTOM) goto end;
   }
 
   COUNTDOWN(i, out_n-1) {
     int ai = trace_decode(l->value.ptr[i]);
-    cell_t *a = &p[ai];
+    cell_t *a = &e[ai];
     type_t t = trace_type(a);
     const char *n = cname(t);
     printf("  *out_%s%d = %s%d;\n", n, (int)i, n, ai);
   }
-  printf("  return %s%d;\n", cname(trace_type(&p[ires])), ires);
+  printf("  return %s%d;\n", cname(trace_type(&e[ires])), ires);
 
 end:
   {
     cell_t *next = closure_next(l);
     if(closure_next(l) < end) {
-      printf("\nblock%d:\n", (int)(next - (e + 1)));
+      printf("\nblock%d:\n", (int)(next - e));
     }
   }
 }
 
 void gen_decl(cell_t *e, cell_t *c) {
-  int i = c - e - 1;
+  int i = c - e;
   type_t t = trace_type(c);
   if(t.exclusive != T_RETURN &&
      t.exclusive != T_BOTTOM &&
@@ -192,8 +183,7 @@ void gen_instruction(cell_t *e, cell_t *c) {
 }
 
 void gen_call(cell_t *e, cell_t *c) {
-  cell_t *d = e + 1;
-  int i = c - d;
+  int i = c - e;
   char *sep = "";
   const char *module_name, *word_name;
 
@@ -205,7 +195,10 @@ void gen_call(cell_t *e, cell_t *c) {
     // overwrite function arguments with new values
     COUNTUP(i, in) {
       int a = trace_decode(c->expr.arg[i]);
-      printf("  %s%d = %s%d;\n", cname(trace_type(&d[in - 1 - i])), (int)(in - 1 - i), cname(trace_type(&d[a])), a);
+      printf("  %s%d = %s%d;\n",
+             cname(trace_type(&e[in - 1 - i])),
+             (int)(in - 1 - i),
+             cname(trace_type(&e[a])), a);
     };
 
     // jump to the beginning
@@ -231,7 +224,7 @@ void gen_call(cell_t *e, cell_t *c) {
       if(a == NIL_INDEX) {
         printf("%snil", sep);
       } else {
-        printf("%s%s%d", sep, cname(trace_type(&d[a])), a);
+        printf("%s%s%d", sep, cname(trace_type(&e[a])), a);
       }
       sep = ", ";
     };
@@ -241,7 +234,7 @@ void gen_call(cell_t *e, cell_t *c) {
       if(a == -1) {
         printf("%sNULL", sep);
       } else {
-        printf("%s&%s%d", sep, cname(trace_type(&d[a])), a);
+        printf("%s&%s%d", sep, cname(trace_type(&e[a])), a);
       }
       sep = ", ";
     }
@@ -269,22 +262,15 @@ void gen_value_rhs(cell_t *c) {
 }
 
 void gen_value(cell_t *e, cell_t *c) {
-  cell_t *d = e + 1;
-  int i = c - d;
   type_t t = trace_type(c);
-  printf("  %s%d = ", cname(t), i);
+  printf("  %s%d = ", cname(t), (int)(c - e));
   gen_value_rhs(c);
 }
 
 // print instructions that have been delayed (skipped)
 void gen_skipped(cell_t *e, int start_after, int until) {
-  cell_t
-    *code = e + 1,
-    *start_after_c = &code[start_after],
-    *start = start_after_c + calculate_cells(start_after_c->size),
-    *end = code + e->entry.len;
   if(start_after > until) {
-    FOR_TRACE(c, start, end) {
+    FOR_TRACE(c, e, start_after) {
       type_t t = trace_type(c);
       if(t.exclusive == T_RETURN) break;
       TRAVERSE(c, in) {
@@ -297,20 +283,19 @@ void gen_skipped(cell_t *e, int start_after, int until) {
 }
 
 void gen_assert(cell_t *e, cell_t *c) {
-  cell_t *d = e + 1;
   int
-    i = c - d,
+    i = c - e,
     ip = trace_decode(c->expr.arg[0]),
     iq = trace_decode(c->expr.arg[1]);
   const char *cn = cname(trace_type(c));
   printf("\n  // assert\n");
-  cell_t *end = d + e->entry.len;
+  cell_t *end = e + e->entry.len + 1;
   bool bottom = trace_type(c).exclusive == T_BOTTOM;
   if(!bottom) {
     // use #define to replace references to the assertion output to the output of arg[0]
-    printf("  #define %s%d %s%d\n", cn, i, cname(trace_type(&d[ip])), ip); // a little HACKy
+    printf("  #define %s%d %s%d\n", cn, i, cname(trace_type(&e[ip])), ip); // a little HACKy
   }
-  FOR_TRACE(p, closure_next(c), end) {
+  FOR_TRACE(p, e, closure_next(c) - e) {
     if(trace_type(p).exclusive == T_RETURN) {
       cell_t *next = p + closure_cells(p);
       if(next < end) {
@@ -320,23 +305,20 @@ void gen_assert(cell_t *e, cell_t *c) {
           next->expr_type.flags |= T_TRACED;
           continue;
         }
-        gen_skipped(e, trace_decode(c->expr.arg[0]), c - d);
-        printf("  if(!%s%d)", cname(trace_type(&d[iq])), iq);
-        printf(" goto block%d;\n", (int)(next - d));
+        gen_skipped(e, trace_decode(c->expr.arg[0]), c - e);
+        printf("  if(!%s%d)", cname(trace_type(&e[iq])), iq);
+        printf(" goto block%d;\n", (int)(next - e));
         goto done;
       }
     }
   }
-  printf("  assert(%s%d);\n", cname(trace_type(&d[iq])), iq);
+  printf("  assert(%s%d);\n", cname(trace_type(&e[iq])), iq);
 done:
   return;
 }
 
 void gen_function(cell_t *e) {
-  cell_t *start = e + 1;
-  cell_t *end = start + e->entry.len;
-
-  FOR_TRACE(c, start, end) {
+  FOR_TRACE(c, e) {
     if(c->func != func_exec) continue;
     gen_function_signature(get_entry(c));
     printf(";\n");
@@ -347,7 +329,7 @@ void gen_function(cell_t *e) {
   gen_body(e);
   printf("}\n");
 
-  FOR_TRACE(c, start, end) {
+  FOR_TRACE(c, e) {
     if(c->func == func_exec && c->expr_type.exclusive != T_BOTTOM) {
       cell_t *x = get_entry(c);
       if(x != e) {
@@ -359,15 +341,10 @@ void gen_function(cell_t *e) {
 }
 
 void gen_functions(cell_t *e) {
-  cell_t
-    *start = e + 1,
-    *end = start + e->entry.len;
-  while(is_var(start)) start++;
-
   gen_function(e);
   printf("\n");
 
-  FOR_TRACE(c, start, end) {
+  FOR_TRACE(c, e) {
     if(c->func == func_exec) {
       cell_t *x = get_entry(c);
       if(x != e) gen_functions(x);

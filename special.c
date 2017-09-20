@@ -45,7 +45,7 @@ bool func_value(cell_t **cp, type_request_t treq) {
     trace_dep(c);
     if(is_any(c)) {
       if(treq.t == T_LIST) {
-        res = var_create(T_LIST, c->value.ptr[0], treq.in, treq.out);
+        res = var_create(T_LIST, c->value.tc, treq.in, treq.out);
         res->value.alt_set = c->value.alt_set;
         res->alt = c->alt;
         drop(c);
@@ -138,17 +138,17 @@ void placeholder_extend(cell_t **lp, int in, int out) {
   *lp = l;
 }
 
-cell_t *var_create(int t, cell_t *tc, int in, int out) {
+cell_t *var_create(int t, trace_cell_t tc, int in, int out) {
   return t == T_LIST ?
     var_create_list(var_create_nonlist(T_FUNCTION, tc), in, out, 0) :
     var_create_nonlist(t, tc);
 }
 
-cell_t *var_create_nonlist(int t, cell_t *tc) {
+cell_t *var_create_nonlist(int t, trace_cell_t tc) {
   cell_t *c = closure_alloc(1);
   c->func = func_value;
   c->size = 2;
-  c->value.ptr[0] = tc;
+  c->value.tc = tc;
   c->value.type.flags = T_VAR;
   c->value.type.exclusive = t;
   trace_update_type(c);
@@ -171,17 +171,29 @@ cell_t *var_create_list(cell_t *f, int in, int out, int shift) {
   return c;
 }
 
+cell_t *var_entry(int t, cell_t *entry, csize_t size) {
+  int ix = trace_alloc(entry, size);
+  return var_create(t, (trace_cell_t) {entry, ix}, 0, 0);
+}
+
 cell_t *var(int t, cell_t *c) {
-  if(c) {
-    // if there is a variable argument of type T_BOTTOM, use that instead
-    TRAVERSE(c, in) {
-      cell_t *b = clear_ptr(*p);
-      if(b && is_var(b) && b->value.type.exclusive == T_BOTTOM) {
-        return var_create(T_BOTTOM, b->value.ptr[0], 0, 0);
+  cell_t *entry = NULL;
+  assert_error(c);
+  TRAVERSE(c, in) {
+    cell_t *a = clear_ptr(*p);
+    if(a && is_var(a)) {
+      if(a->value.type.exclusive == T_BOTTOM) {
+        // if there is a variable argument of type T_BOTTOM, use that instead
+        return var_create(T_BOTTOM, a->value.tc, 0, 0);
+      } else if(entry) {
+        assert_error(a->value.tc.entry == entry);
+      } else {
+        // inherit entry from first variable argument
+        entry = a->value.tc.entry;
       }
     }
   }
-  return var_create(t, trace_alloc(c ? c->size : 2), 0, 0);
+  return var_entry(t, entry, c->size);
 }
 
 bool is_var(cell_t const *c) {
@@ -311,9 +323,9 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
       drop(c);
       d->expr.arg[0] = res;
       if(bottom) {
-        store_dep_bottom(d, res->value.ptr[0]);
+        store_dep_bottom(d, res->value.tc);
       } else {
-        store_dep(d, res->value.ptr[0], i, T_ANY);
+        store_dep(d, res->value.tc, i, T_ANY);
       }
     } else {
       LOG("dropped placeholder[%d] output", CELL_INDEX(c));

@@ -415,10 +415,10 @@ bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   placeholder_extend(&c->expr.arg[in], function_compose_in(p, treq.in, arg_in, true /*_1_*/), treq.out + out);
   // *** _1_ don't know if/why this works
 
-  cell_t *tc;
+  trace_cell_t tc;
   cell_t *q = c->expr.arg[in];
   if(is_var(q) && q->value.type.exclusive == T_BOTTOM) {
-    tc = q->value.ptr[0];
+    tc = q->value.tc;
     goto bottom;
   }
 
@@ -536,9 +536,8 @@ bool func_is_nil(cell_t **cp, type_request_t treq) {
 
   if(is_list_var(p)) {
     // ensure quote is stored first
-    cell_t *l = c->expr.arg[0];
-    c->expr.arg[0] = trace_quote_var(l);
-    drop(l);
+    c->expr.arg[0] = trace_quote_var(p);
+    drop(p);
     res = var(T_SYMBOL, c);
   } else {
     res = symbol(is_empty_list(p) ? SYM_True : SYM_False);

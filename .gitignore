@@ -31,3 +31,4 @@ _darcs
 /afl/hangs.txt
 .tramp_history
 /node_modules
+/attic

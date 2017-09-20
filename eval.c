@@ -539,7 +539,7 @@ cell_t *eval_module() {
 }
 
 void eval(const cell_t *p) {
-  cell_t *c = parse_expr(&p, eval_module());
+  cell_t *c = parse_expr(&p, eval_module(), NULL);
   if(!c) return;
   cell_t *left = *leftmost(&c);
   if(left && !closure_is_ready(left)) {
@@ -553,7 +553,7 @@ void eval(const cell_t *p) {
 }
 
 bool get_arity(const cell_t *p, csize_t *in, csize_t *out, cell_t *module) {
-  cell_t *c = parse_expr(&p, module);
+  cell_t *c = parse_expr(&p, module, NULL);
   if(!c) {
     LOG("parse failed");
     return false;
@@ -651,7 +651,7 @@ void command_parse(UNUSED cell_t *rest) {
     line = line_raw;
 
     cell_t *l = lex(line, 0), *l0 = l;
-    cell_t *c = parse_expr((const cell_t **)&l, eval_module());
+    cell_t *c = parse_expr((const cell_t **)&l, eval_module(), NULL);
     free_toks(l0);
     if(c) {
       show_list(c);

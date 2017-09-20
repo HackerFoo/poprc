@@ -24,6 +24,8 @@
 #include <time.h>
 #include "macros.h"
 
+typedef unsigned int uint;
+
 typedef uint16_t csize_t;
 typedef struct __attribute__((packed)) type {
   uint8_t exclusive, flags;
@@ -65,7 +67,7 @@ typedef struct entry entry_t;
 typedef struct mem mem_t;
 
 typedef uintptr_t alt_set_t;
-typedef uint32_t refcount_t;
+typedef int16_t refcount_t;
 typedef intptr_t val_t;
 
 #ifdef __clang__
@@ -87,6 +89,11 @@ typedef struct seg_t {
   const char *s;
   size_t n;
 } seg_t;
+
+typedef struct trace_cell {
+  cell_t *entry;
+  val_t index;
+} trace_cell_t;
 
 typedef bool (reduce_t)(cell_t **cell, type_request_t treq);
 
@@ -116,6 +123,7 @@ struct __attribute__((packed)) value {
     cell_t *ptr[2];   /* list */
     pair_t map[1];    /* map */
     seg_t str;        /* string */
+    trace_cell_t tc;  /* variable */
   };
 };
 
@@ -137,12 +145,13 @@ struct __attribute__((packed)) mem {
 #define ENTRY_RECURSIVE 0x04
 #define ENTRY_QUOTE     0x08
 #define ENTRY_ROW       0x10
+#define ENTRY_COMPLETE  0x80
 
 /* word entry */
 struct __attribute__((packed)) entry {
-  uint8_t out, rec;
-  uintptr_t len, flags;
-  csize_t in, alts;
+  uint8_t rec, flags;
+  csize_t in, out, len, alts;
+  cell_t *initial;
 };
 
 typedef enum char_class_t {
@@ -177,7 +186,7 @@ struct __attribute__((packed, aligned(4))) cell {
         char_class_t char_class;
       };
       refcount_t n;
-      csize_t size;
+      csize_t size, pos;
       union {
         expr_t expr;
         value_t value;

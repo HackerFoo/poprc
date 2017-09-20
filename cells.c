@@ -289,6 +289,12 @@ cell_t *copy(cell_t const *c) {
   return new_c;
 }
 
+cell_t *copy_ref(cell_t const *c) {
+  cell_t *nc = copy(c);
+  TRAVERSE_REF(nc, alt, in, ptrs);
+  return nc;
+}
+
 cell_t *copy_expand(cell_t const *c, csize_t s) {
   csize_t n = closure_args(c);
   csize_t new_size = calculate_cells(n + s);

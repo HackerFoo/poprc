@@ -266,10 +266,12 @@ void graph_cell(FILE *f, cell_t const *c) {
     } else if(is_fail(c)) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
     } else if(is_var(c)) {
-      if(c->value.ptr[0]) {
-        fprintf(f, "<tr><td bgcolor=\"orange\">trace: %d", TRACE_VAR_INDEX(c->value.ptr[0]));
+      if(c->value.tc.entry) {
+        fprintf(f, "<tr><td bgcolor=\"orange\">trace: %d.%d",
+                entry_number(c->value.tc.entry),
+                (int)c->value.tc.index);
         if(c->value.type.flags & T_DEP) {
-          fprintf(f, "[%d]", (int)c->value.integer[1]);
+          fprintf(f, "[%d]", (int)c->pos);
         }
         fprintf(f, "</td></tr>");
       }

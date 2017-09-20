@@ -156,12 +156,12 @@ bool match_param_word(const char *pre, seg_t seg, csize_t *in, csize_t *out) {
   }
 }
 
-cell_t *parse_word(seg_t w, cell_t *module, unsigned int n) {
+cell_t *parse_word(seg_t w, cell_t *module, unsigned int n, cell_t *entry) {
   cell_t *c;
   cell_t *data = NULL;
   csize_t in = 0, out = 1;
   if(w.s[0] == '?' && w.n == 1) {
-    c = var(T_ANY, NULL);
+    c = var_entry(T_ANY, entry, 2);
 #if FUNC_AP
   } else if(in = 1, out = 1, match_param_word("ap", w, &in, &out)) {
     c = func(func_ap, ++in, ++out);
@@ -178,10 +178,10 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n) {
       if(e->entry.flags & ENTRY_PRIMITIVE) {
         if(e->func == func_placeholder) {
           c = func(func_placeholder, n + 1, 1);
-          cell_t *tc = trace_alloc(n + 2);
+          int x = trace_alloc(entry, n + 2);
           in = n;
           out = 1;
-          data = var_create(T_FUNCTION, tc, 0, 0);
+          data = var_create(T_FUNCTION, (trace_cell_t) {entry, x}, 0, 0);
         } else {
           c = func(e->func, e->entry.in, e->entry.out);
         }
@@ -240,12 +240,12 @@ cell_t *parse_vector(const cell_t **l) {
   return c;
 }
 
-val_t fill_args(cell_t *r) {
+val_t fill_args(cell_t *entry, cell_t *r) {
   cell_t *l = *leftmost(&r);
   if(!l) return 0;
   val_t i = 0;
   while(!closure_is_ready(l)) {
-    cell_t *v = var(T_ANY, NULL);
+    cell_t *v = var_entry(T_ANY, entry, 2);
     trace_update(v, v);
     arg(l, v);
     ++i;
@@ -483,7 +483,7 @@ cell_t *array_to_list(cell_t **a, csize_t n) {
 }
 
 #define MAX_ARGS 64
-cell_t *parse_expr(const cell_t **l, cell_t *module) {
+cell_t *parse_expr(const cell_t **l, cell_t *module, cell_t *entry) {
   cell_t *arg_stack[MAX_ARGS]; // TODO use allocated storage
   cell_t *ph = NULL;
   unsigned int n = 0;
@@ -541,7 +541,7 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
         assert_throw(n < MAX_ARGS);
         arg_stack[n++] = string_symbol(seg);
       } else {
-        cell_t *c = parse_word(seg, module, n);
+        cell_t *c = parse_word(seg, module, n, entry);
         if(!c) goto fail;
         bool f = !is_value(c);
         if(f) {
@@ -579,7 +579,7 @@ cell_t *parse_expr(const cell_t **l, cell_t *module) {
         goto done;
       case '[':
       {
-        cell_t *c = parse_expr(l, module);
+        cell_t *c = parse_expr(l, module, entry);
         if(c) {
           assert_throw(n < MAX_ARGS);
           arg_stack[n++] = c;
@@ -662,7 +662,7 @@ seg_t string_seg(const char *str) {
 
 cell_t *parse_expr_string(const char *expr) {
   cell_t *p = lex(expr, 0);
-  cell_t *m = parse_expr((const cell_t **)&p, NULL);
+  cell_t *m = parse_expr((const cell_t **)&p, NULL, NULL);
   free_toks(p);
   return m;
 }

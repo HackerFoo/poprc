@@ -176,6 +176,12 @@
     if(is_closure(*p)) *p = ref(*p);            \
   }
 
+#define COPY_REF(c, ...)                        \
+  ({                                            \
+    cell_t *nc = copy(c);                       \
+    TRAVERSE_REF(nc, __VA_ARGS__);              \
+    nc;                                         \
+  })
 
 // embedded linked list
 #define FOLLOW_1(p, l, next, ...) for(__typeof__(l) p = (l); p != NULL; p = p->next)

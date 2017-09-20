@@ -411,11 +411,12 @@ void store_fail(cell_t *c, cell_t *alt) {
   c->alt = alt;
 }
 
-void store_dep(cell_t *c, cell_t *tc, val_t idx, int t) {
+void store_dep(cell_t *c, trace_cell_t tc, csize_t pos, int t) {
   cell_t v = {
     .func = func_value,
     .n = c->n,
     .size = 2,
+    .pos = pos,
     .alt = c->alt,
     .value = {
       .alt_set = 0,
@@ -423,14 +424,14 @@ void store_dep(cell_t *c, cell_t *tc, val_t idx, int t) {
         .flags = T_VAR | T_DEP,
         .exclusive = t
       },
-      .ptr = { tc, (cell_t *)idx }
+      .tc = tc
     }
   };
   closure_shrink(c, 1);
   *c = v;
 }
 
-void store_dep_bottom(cell_t *c, cell_t *tc) {
+void store_dep_bottom(cell_t *c, trace_cell_t tc) {
   cell_t v = {
     .func = func_value,
     .n = c->n,
@@ -442,7 +443,7 @@ void store_dep_bottom(cell_t *c, cell_t *tc) {
         .flags = T_VAR,
         .exclusive = T_BOTTOM
       },
-      .ptr = { tc }
+      .tc = tc
     }
   };
   trace_update(c, &v);

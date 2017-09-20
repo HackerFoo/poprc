@@ -39,20 +39,20 @@ bool is_user_func(const cell_t *c) {
 }
 
 static
-cell_t *map_cell(cell_t *code, intptr_t x) {
+cell_t *map_cell(cell_t *entry, intptr_t x) {
   return
     x == NIL_INDEX ? &nil_cell :
-    x < 0 ? NULL :
-    code[x].alt;
+    x <= 0 ? NULL :
+    entry[x].alt;
 }
 
 static
-cell_t *get_return_arg(cell_t *code, cell_t *returns, intptr_t x) {
+cell_t *get_return_arg(cell_t *entry, cell_t *returns, intptr_t x) {
   trace_index_t i = trace_decode(returns->value.ptr[x]);
   return // can't use map_cell, returns empty_list() instead of &nil_cell
     i == NIL_INDEX ? empty_list() :
-    i < 0 ? NULL :
-    code[i].alt;
+    i <= 0 ? NULL :
+    entry[i].alt;
 }
 
 // given a list l with arity in -> out, produce an application of the list
@@ -75,7 +75,7 @@ cell_t *apply_list(cell_t *l, csize_t in, csize_t out) {
 // print a representation of a pattern for debugging
 void print_pattern(cell_t *pattern) {
   if(is_var(pattern)) {
-    printf(" ?%d", (int)(pattern->value.ptr[0]-trace_cur));
+    printf(" ?%d", (int)(pattern->value.tc.index));
   } else if(is_list(pattern)) {
     csize_t in = function_in(pattern);
     cell_t **p;
@@ -92,10 +92,8 @@ void print_pattern(cell_t *pattern) {
 
 // print the list of bindings for debugging
 void print_bindings(cell_t *vl) {
-  cell_t *entry = &trace_cur[-1];
-  cell_t *base = entry + 1;
   FOLLOW(p, q, vl, tmp) {
-    csize_t x = p->value.ptr[0] - base;
+    csize_t x = p->value.tc.index;
     printf("?%d = %d\n", x, (int)(q-cells));
   }
 }
@@ -109,55 +107,59 @@ void print_word_pattern(cell_t *word) {
   printf("\n");
 }
 
-// build a zig-zag binding list by applying the pattern to c
+// build a binding list by applying the pattern to c
 // TODO add reduction back in
 cell_t **bind_pattern(cell_t *c, cell_t *pattern, cell_t **tail) {
   assert_error(c);
+  CONTEXT("bind_pattern %d %d", CELL_INDEX(c), CELL_INDEX(pattern));
   if(!pattern || !tail) return NULL;
   if(c == pattern) {
     // prune trivial matches
-    return tail;
   } else if(is_var(pattern)) {
     // found a binding
+    assert_error(!pattern->alt);
+    pattern->alt = c; // *** could use tc.entry if needed
     LIST_ADD(tmp, tail, pattern);
-    LIST_ADD(tmp, tail, ref(c));
-    return tail;
   } else if(is_list(pattern)) {
-    csize_t
-      in = function_in(pattern),
-      out = function_out(pattern, false);
-    if(out) {
-      // this will rip the list apart (later)
-      cell_t *l = apply_list(ref(c), in, out);
-      drop(l); // don't care about the result
+    if(is_list(c)) {
+      assert_error(list_size(c) == list_size(pattern));
+      COUNTDOWN(i, list_size(pattern)) {
+        tail = bind_pattern(c->value.ptr[i],
+                            pattern->value.ptr[i],
+                            tail);
+      }
+    } else {
+      csize_t
+        in = function_in(pattern),
+        out = function_out(pattern, false);
+      if(out) {
+        // this will rip the list apart (later)
+        cell_t *l = apply_list(ref(c), in, out);
+        drop(l); // don't care about the result
 
-      list_iterator_t it = list_begin(pattern);
-      COUNTDOWN(i, out) {
-        cell_t **p = list_next(&it, false);
-        assert_error(p);
-        cell_t *d = l->expr.arg[in+1+i];
-        tail = bind_pattern(d, *p, tail);
-        drop(d);
+        list_iterator_t it = list_begin(pattern);
+        COUNTDOWN(i, out) {
+          cell_t **p = list_next(&it, false);
+          assert_error(p);
+          cell_t *d = l->expr.arg[in+1+i];
+          tail = bind_pattern(d, *p, tail);
+          drop(d);
+        }
       }
     }
-    return tail;
   } else {
+    assert_error(false, "binding error");
     return NULL;
   }
+  return tail;
 }
 
 // unify c with pattern pat if possible, returning the unified result
-cell_t *unify_convert(cell_t *c, cell_t *pat) {
+cell_t *unify_convert(cell_t *entry, cell_t *c, cell_t *pat) {
   if(!pat) return NULL;
-  csize_t e = closure_in(pat);
-  cell_t *entry = &trace_cur[-1];
-  if(c->size != pat->size ||
-     c->expr.out != pat->expr.out ||
-     c->expr.arg[e] != pat->expr.arg[e]) return NULL;
-  csize_t
-    in = entry->entry.in,
-    out = entry->entry.out;
-  cell_t *base = entry + 1;
+  assert_error(c->size == pat->size);
+  assert_error(c->expr.out == pat->expr.out);
+  csize_t out = entry->entry.out;
   cell_t *ret = NULL;
   if(out != 1) { // for now
     LOG("unify_convert %d: out(%d) != 1", c-cells, out);
