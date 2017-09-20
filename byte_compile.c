@@ -438,31 +438,27 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   if(!is_list(l)) return true;
   if(is_empty_list(l)) return false;
 
-  // make recursive return this entry
-  (*entry)->alt = trace_ptr;
-
   const cell_t *toks = l->value.ptr[0]; // TODO handle list_size(l) > 1
 
   // set up
   rt_init();
-  cell_t *e = *entry = trace_start_entry();
+  cell_t *e = trace_start_entry(in, out);
+  // make recursive return this entry
+  (*entry)->alt = e; // ***
+  *entry = e;
+
   bool context_write_graph = write_graph;
   if(entry_number(e) == graph_entry) write_graph = true;
-  e->n = PERSISTENT;
   e->module_name = module_name(module);
   seg_t ident_seg = {
     .s = ident,
     .n = expand_sym(ident, LENGTH(ident), name)
   };
   e->word_name = seg_string(ident_seg); // TODO fix unnecessary alloc
-  e->entry.in = in;
-  e->entry.out = out;
-  e->entry.len = 0;
   CONTEXT_LOG("compiling %s.%.*s at entry %d", e->module_name, name.n, name.s, entry_number(e));
 
   // parse
   e->entry.flags = ENTRY_NOINLINE;
-  e->func = func_exec;
   cell_t *c = parse_expr(&toks, module, e);
 
   // compile
@@ -623,8 +619,8 @@ finish:
 // takes a parent entry and offset to a quote, and creates an entry from compiling the quote
 cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   // set up
-  cell_t *e = trace_start_entry();
   csize_t in = closure_in(q);
+  cell_t *e = trace_start_entry(in, 1);
   cell_t **fp = &q->expr.arg[in];
   assert_error(*fp);
   cell_t *c = *fp;
@@ -658,8 +654,7 @@ cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
   c = quote(ph);
 
   // compile
-  e->entry.in = in + fill_args(e, c);
-  e->entry.out = 1;
+  e->entry.in += fill_args(e, c);
   e->entry.alts = trace_reduce(e, &c);
   assert_throw(c && NOT_FLAG(c->value.type, T_FAIL), "reduction failed");
   assert_error(e->entry.out);

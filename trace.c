@@ -259,10 +259,15 @@ void trace_store(cell_t *c, const cell_t *r) {
 }
 
 // setup for tracing
-cell_t *trace_start_entry() {
+cell_t *trace_start_entry(csize_t in, csize_t out) {
   cell_t *e = trace_ptr;
   trace_ptr += 64; // TODO
+  e->n = PERSISTENT;
   e->entry.initial = NULL;
+  e->entry.in = in;
+  e->entry.out = out;
+  e->entry.len = 0;
+  e->func = func_exec;
   insert_root(&e->entry.initial);
   return e;
 }
