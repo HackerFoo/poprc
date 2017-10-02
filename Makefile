@@ -285,6 +285,9 @@ git-pull:
 update: git-pull all
 	./eval -git
 
+.PHONY: gen
+gen: $(GEN)
+
 # remove compilation products
 .PHONY: clean
 clean:
