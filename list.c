@@ -286,6 +286,62 @@ int test_flat_copy_list() {
   return ret ? 0 : -1;
 }
 
+csize_t flattened_list_size(cell_t *l) {
+  csize_t n = 0;
+  cell_t **p;
+  FORLIST(p, l) {
+    n += is_list(*p) ? flattened_list_size(*p) : 1;
+  }
+  return n;
+}
+
+cell_t **flattened_list_copy_(cell_t *l, cell_t **dst) {
+  cell_t **p;
+  FORLIST(p, l) {
+    if(is_list(*p)) {
+      dst = flattened_list_copy_(*p, dst);
+    } else {
+      *dst++ = *p;
+    }
+  }
+  return dst;
+}
+
+cell_t *flattened_list_copy(cell_t *l) {
+  csize_t n = flattened_list_size(l);
+  cell_t *fl = make_list(n);
+  flattened_list_copy_(l, fl->value.ptr);
+  return fl;
+}
+
+int test_flattened_list_copy() {
+  cell_t *l1 = make_list(1);
+  l1->value.ptr[0] = int_val(1);
+  cell_t *l2 = make_list(2);
+  l2->value.ptr[0] = int_val(3);
+  l2->value.ptr[1] = int_val(4);
+  cell_t *l0 = make_list(3);
+  l0->value.ptr[0] = l1;
+  l0->value.ptr[1] = int_val(2);
+  l0->value.ptr[2] = l2;
+  cell_t *fl = flattened_list_copy(l0);
+
+  cell_t **p;
+  int x = 1;
+  int status = 0;
+  FORLIST(p, fl) {
+    if(!is_value(*p) ||
+       (*p)->value.type.exclusive != T_INT ||
+       (*p)->value.integer[0] != x++) {
+      status = -1;
+      break;
+    }
+  }
+  closure_free(fl);
+  drop(l0);
+  return status;
+}
+
 bool is_empty_list(const cell_t *l) {
   return is_list(l) && list_size(l) == 0;
 }
