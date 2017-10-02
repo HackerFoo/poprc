@@ -99,7 +99,7 @@ typedef struct {
   do {                                                                  \
     if(!(cond)) {                                                       \
       log_error(__FILE__, __LINE__, __func__, "Assertion `" #cond "' failed.", ERROR_TYPE_UNEXPECTED); \
-      LOG_NO_POS("!!! " fmt, ##__VA_ARGS__);                            \
+      LOG_NO_POS(MARK("!!!") " " fmt, ##__VA_ARGS__);                   \
       return_error(ERROR_TYPE_UNEXPECTED);                              \
     }                                                                   \
   } while(0)
@@ -145,7 +145,7 @@ void log_error(const char *file, int line, const char *function, const char *msg
     current_error->line = line;
     current_error->type = type;
 #ifndef NOLOG
-    LOG_NO_POS("!!! %s:%d: %s: %s", file, line, function, msg);
+    LOG_NO_POS(MARK("!!!") " %s:%d: %s: %s", file, line, function, msg);
 #endif
     strncpy(current_error->function, function, sizeof(current_error->function));
   }

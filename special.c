@@ -171,30 +171,40 @@ cell_t *var_create_list(cell_t *f, int in, int out, int shift) {
   return c;
 }
 
-cell_t *var_entry(int t, cell_t *entry, csize_t size) {
+cell_t *var_create_with_entry(int t, cell_t *entry, csize_t size) {
+  assert_error(entry);
   int ix = trace_alloc(entry, size);
   return var_create(t, (trace_cell_t) {entry, ix}, 0, 0);
 }
 
-cell_t *var(int t, cell_t *c) {
-  cell_t *entry = NULL;
+cell_t *var_(uint8_t t, cell_t *c, uint8_t pos) {
   assert_error(c);
+  cell_t *entry = trace_expr_entry(pos);
   TRAVERSE(c, in) {
     cell_t *a = clear_ptr(*p);
     if(a && is_var(a)) {
       if(a->value.type.exclusive == T_BOTTOM) {
         // if there is a variable argument of type T_BOTTOM, use that instead
         return var_create(T_BOTTOM, a->value.tc, 0, 0);
-      } else if(entry) {
-        assert_error(a->value.tc.entry == entry);
       } else {
-        // inherit entry from first variable argument
-        entry = a->value.tc.entry;
+        // inherit entry with highest pos
+        cell_t *e = a->value.tc.entry;
+        if(e && e->pos > pos) {
+          pos = e->pos;
+          entry = e;
+        }
       }
     }
   }
-  return var_entry(t, entry, c->size);
+
+  return var_create_with_entry(t, entry, c->size);
 }
+
+#if INTERFACE
+#define var(...) DISPATCH(var, 3, __VA_ARGS__)
+#define var_0(t, c, pos, ...) var_(t, c, pos)
+#define var_1(t, c, ...) var_(t, c, 0)
+#endif
 
 bool is_var(cell_t const *c) {
   return c && is_value(c) && FLAG(c->value.type, T_VAR);
@@ -314,7 +324,7 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
     return true;
   }
 
-  cell_t *res = var(T_FUNCTION, c);
+  cell_t *res = var(T_FUNCTION, c, treq.pos);
   bool bottom = res->value.type.exclusive == T_BOTTOM; // kinda HACKy
   res->alt = c->alt;
   RANGEUP(i, in, n) {

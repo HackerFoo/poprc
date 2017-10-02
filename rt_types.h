@@ -55,7 +55,8 @@ typedef struct __attribute__((packed)) type {
 
 
 typedef struct type_request {
-  int t, in, out;
+  csize_t in, out;
+  uint8_t t, pos;
 } type_request_t;
 
 typedef struct cell cell_t;
@@ -140,20 +141,17 @@ struct __attribute__((packed)) mem {
 };
 
 #define ENTRY_PRIMITIVE 0x01
-#define ENTRY_INITIAL   0x02
 #define ENTRY_RECURSIVE 0x04
 #define ENTRY_QUOTE     0x08
 #define ENTRY_ROW       0x10
+#define ENTRY_MOV_VARS  0x20
 #define ENTRY_COMPLETE  0x80
 
 /* word entry */
 struct __attribute__((packed)) entry {
-  uint8_t rec, flags;
-  csize_t in, out, len, alts;
-  union {
-    cell_t *initial;
-    cell_t *parent;
-  };
+  uint8_t rec, flags, alts, sub_id;
+  csize_t in, out, len;
+  cell_t *parent;
 };
 
 typedef enum char_class_t {
@@ -176,16 +174,19 @@ struct __attribute__((packed, aligned(4))) cell {
   union {
     uintptr_t raw[8];
     struct {
-      reduce_t *func;
+      union {
+        reduce_t *func;
+        cell_t *initial; // entry
+      };
       union {
         cell_t *alt;
-        const char *word_name;
+        const char *word_name; // entry
       };
       union {
         cell_t *tmp;
-        const char *module_name;
-        type_t expr_type;
-        char_class_t char_class;
+        const char *module_name; // entry
+        type_t expr_type; // trace
+        char_class_t char_class; // tok_list
       };
       refcount_t n;
       csize_t size, pos;

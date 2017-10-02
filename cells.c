@@ -227,7 +227,7 @@ void closure_shrink(cell_t *c, csize_t s) {
     assert_error(is_closure(c));
     RANGEUP(i, s, size) {
       c[i].func = 0;
-      c[i].mem.prev = &c[i-1];
+      c[i].mem.prev = &c[i-1]; // TODO fix overflow
       c[i].mem.next = &c[i+1];
     }
     c[s].mem.prev = cells_ptr->mem.prev;

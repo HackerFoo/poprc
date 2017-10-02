@@ -35,6 +35,11 @@ fact: [1 == 1 swap !] [dup dup 1- fact * swap 1 > !] | pushl popr swap drop
 
 count: [0 == 0 swap !] [dup 1- count 1+ swap 0 > !] | pushl popr swap drop
 
+qdec: [dup head 5 <= !] [dup [1-] . qdec swap head 5 > !] | pushl popr swap drop
+
+qtest: [1+] . qtest
+qtest2: [1+] swap . qtest2
+
 ___ these need fixed
 ___ from here
 
@@ -70,6 +75,7 @@ nested: [[0 swap False =:= !]
 inl_loop: [3+] [10<] iterate
 inl_loop2: swap [+] pushl swap [<] pushl iterate
 inl_loop3: [3+] [10<] iterate 8*
+inl_loop4: 4+ [3+] [10<] iterate 2*
 
 popr_quote_compose: [popr] .
 id_quote_compose: [id] .
@@ -83,4 +89,12 @@ binrec: [iterate] dip31 $
 __ it10 should optimize to the same code as br10
 it10: [] pushl [[1+] .] [head 10 <] iterate head
 br10: [] pushl [[1+] .] [head 10 <] [head] binrec
+it10b: [[1+] .] [head 10 <] iterate head
+
+ap_loop: dup [$] dip21 ap_loop
+ap_loop1: [1+] ap_loop
+ap_loop2: [[1+] .] ap_loop
+ap_loop3: [] pushl [] ap_loop head
+
+__ dup_ap_alt: [2 |] dup 1 swap $
 

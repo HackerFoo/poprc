@@ -34,6 +34,7 @@
 #include "gen/list.h"
 #include "gen/log.h"
 #include "gen/trace.h"
+#include "gen/byte_compile.h"
 
 // storage for tracing
 static cell_t trace_cells[1 << 16] __attribute__((aligned(64)));
@@ -100,6 +101,44 @@ int trace_lookup_value_linear(cell_t *entry, int type, val_t value) {
   return -1;
 }
 
+bool is_ancestor_of(cell_t *ancestor, cell_t *entry) {
+  while(entry) {
+    if(entry == ancestor) {
+      return true;
+    } else {
+      entry = entry->entry.parent;
+    }
+  }
+  return false;
+}
+
+static
+void switch_entry_(cell_t *entry, trace_cell_t *tc) {
+  if(tc->entry != entry->entry.parent) {
+    switch_entry_(entry->entry.parent, tc);
+  }
+  trace_cell_t old = *tc;
+  *tc = (trace_cell_t) {
+    entry,
+    trace_alloc_var(entry)
+  };
+  trace_cell_ptr(*tc)->value.tc = old;
+  LOG("%d[%d] -> %d[%d]",
+      entry_number(old.entry),
+      old.index,
+      entry_number(entry),
+      tc->index);
+}
+
+//static
+void switch_entry(cell_t *entry, cell_t *r) {
+  assert_error(is_var(r));
+  if(r->value.tc.entry != entry) {
+    assert_error(is_ancestor_of(r->value.tc.entry, entry));
+    switch_entry_(entry, &r->value.tc);
+  }
+}
+
 // find a matching trace cell given a variable or value
 static
 int trace_get_value(cell_t *entry, cell_t *r) {
@@ -107,16 +146,8 @@ int trace_get_value(cell_t *entry, cell_t *r) {
   if(is_list(r)) {
     return trace_build_quote(entry, r); // *** TODO prevent building duplicate quotes
   } else if(is_var(r)) {
-    if(FLAG(r->value.type, T_DEP)) return -1;
-    if(r->value.tc.entry != entry) {
-      cell_t *tc = trace_cell_ptr(r->value.tc);
-      tc->alt = r;
-      r->value.tc = (trace_cell_t) {
-        entry,
-        trace_allocate_var(entry)
-      };
-      entry->entry.in++;
-    }
+    if(FLAG(r->value.type, T_DEP)) return 0;
+    switch_entry(entry, r);
     return r->value.tc.index;
   } else {
     int t = trace_lookup_value_linear(entry, r->value.type.exclusive, r->value.integer[0]);
@@ -213,6 +244,7 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
 
   refcount_t n = tc->n;
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
+  tc->pos = 0;
   tc->n = n;
   if(is_user_func(tc)) {
     // encode the entry
@@ -303,45 +335,32 @@ cell_t *get_trace_ptr(size_t size) {
 }
 
 // setup for tracing
-cell_t *trace_start_entry(csize_t in, csize_t out) {
+cell_t *trace_start_entry(cell_t *parent, csize_t out) {
   cell_t *e = get_trace_ptr(64);
   trace_ptr += 64; // TODO
   e->n = PERSISTENT;
   e->entry = (struct entry) {
-    .in = in,
+    .in = 0,
     .out = out
   };
-  e->func = func_exec;
-  insert_root(&e->entry.initial);
+  e->entry.parent = parent;
+  e->initial = NULL;
+  insert_root(&e->initial);
 
-  // active_entries[e->entry.pos-1] = e
+  // active_entries[e->pos-1] = e
   active_entries[prev_entry_pos++] = e;
-  e->entry.pos = prev_entry_pos;
+  e->pos = prev_entry_pos;
 
   return e;
 }
 
 // finish tracing
-void trace_end_entry(cell_t *e, cell_t *parent) {
-  drop(e->entry.initial);
-  remove_root(&e->entry.initial);
-  clear_initial(e);
+void trace_end_entry(cell_t *e) {
+  drop(e->initial);
+  remove_root(&e->initial);
+  e->initial = NULL;
   FLAG_SET(e->entry, ENTRY_COMPLETE);
   e->entry.rec = trace_recursive_changes(e);
-  e->entry.parent = parent;
-}
-
-void set_initial(cell_t *e, cell_t *initial) {
-  assert_error(NOT_FLAG(e->entry, ENTRY_COMPLETE));
-  // assert_error(e->entry.initial == NULL);
-  e->entry.initial = initial;
-  FLAG_SET(e->entry, ENTRY_INITIAL);
-}
-
-void clear_initial(cell_t *e) {
-  assert_error(NOT_FLAG(e->entry, ENTRY_COMPLETE));
-  e->entry.initial = NULL;
-  FLAG_CLEAR(e->entry, ENTRY_INITIAL);
 }
 
 void trace_clear_alt(cell_t *entry) {
@@ -373,6 +392,7 @@ void trace_dep(cell_t *c) {
   tc->expr_type.exclusive = c->value.type.exclusive;
   ph->n++;
   c->value.tc.index = x;
+  c->pos = 0;
   FLAG_CLEAR(c->value.type, T_DEP);
 }
 
@@ -406,6 +426,7 @@ void trace_reduction(cell_t *c, cell_t *r) {
   }
 
   cell_t *entry = r->value.tc.entry;
+  if(!entry) entry = new_entry;
 
   // make sure all input arguments are stored
   TRAVERSE(c, in) {
@@ -420,13 +441,8 @@ void trace_reduction(cell_t *c, cell_t *r) {
   }
 
   trace_store(c, r);
-  if(new_entry) {
-    cell_t *tc = trace_cell_ptr(r->value.tc);
-    tc->alt = r;
-    r->value.tc = (trace_cell_t) {
-      new_entry,
-      trace_allocate_var(new_entry)
-    };
+  if(is_var(r) && new_entry && new_entry != entry) {
+    switch_entry(new_entry, r);
   }
 }
 
@@ -472,37 +488,11 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
     }
   }
 
-  cell_t *vl = 0;
-  trace_var_list(l, &vl);
-  size_t in = tmp_list_length(vl);
-  int x = trace_alloc(entry, in + 1);
-  cell_t *n = &entry[x];
-
-  LOG("build quote: %d[%d] <- %d", entry_number(entry), x, CELL_INDEX(l));
-
-  n->expr.out = 0;
-  n->func = func_exec;
-  n->n = -1;
-  n->expr_type.exclusive = T_LIST;
-  FLAG_SET(n->expr_type, T_INCOMPLETE);
-
-  cell_t *p = vl;
-  COUNTUP(i, in) {
-    trace_index_t x = trace_get_value(entry, p);
-    entry[x].n++;
-    n->expr.arg[i] = trace_encode(x);
-    p = p->tmp;
-  }
-
-  clean_tmp(vl);
-
-  n->expr.arg[in] = ref(l); // entry points to the quote for now
-  insert_root(&n->expr.arg[in]);
-
-  return x;
+  return compile_quote(entry, l);
 }
 
 cell_t *trace_quote_var(cell_t *l) {
+  if(l == &nil_cell) return l;
   cell_t *f = *leftmost_row(&l);
   assert_error(is_var(f));
   cell_t *entry = f->value.tc.entry;
@@ -607,7 +597,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
 
   cell_t **p = cp;
   while(*p) {
-    if(!func_list(p, REQ(return))) continue;
+    if(!func_list(p, req_pos(REQ(return), entry->pos))) continue;
     cell_t **a;
     FORLIST(a, *p, true) {
       collapse_row(a);
@@ -631,25 +621,37 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
   }
 
   remove_root(cp);
+  if(!alts) {
+    LOG("reduction failed for entry %d", entry_number(entry));
+  }
   return alts;
 }
 
-int trace_allocate_var(cell_t *entry) {
+unsigned int trace_reduce_one(cell_t *entry, cell_t *c) {
+  cell_t *l = quote(c);
+  int alts = trace_reduce(entry, &l);
+  drop(l);
+  return alts;
+}
+
+int trace_alloc_var(cell_t *entry) {
   int x = trace_alloc(entry, 2);
   cell_t *tc = &entry[x];
   tc->func = func_value;
   tc->value.type.flags = T_VAR;
-  return x;
-}
-
-void trace_allocate_vars(cell_t *entry, csize_t n) {
-  LOOP(n) {
-    trace_allocate_var(entry);
+  tc->pos = ++entry->entry.in;
+  if(tc->pos != x) {
+    FLAG_SET(entry->entry, ENTRY_MOV_VARS);
   }
+  return x;
 }
 
 cell_t *trace_expr_entry(uint8_t pos) {
   if(pos == 0) return NULL;
   assert_error(pos <= prev_entry_pos);
   return active_entries[pos - 1];
+}
+
+cell_t *param(int t, cell_t *entry) {
+  return var_create_nonlist(t, (trace_cell_t) {entry, trace_alloc_var(entry)});
 }

@@ -200,13 +200,16 @@ void condense(cell_t *entry) {
 // TODO optimize
 static
 void move_vars(cell_t *entry) {
-  if(entry->entry.len == 0) return;
+  if(NOT_FLAG(entry->entry, ENTRY_MOV_VARS) ||
+     entry->entry.len == 0) return;
   cell_t *ret = NULL;
   csize_t in = entry->entry.in;
   csize_t len = entry->entry.len;
   cell_t *vars = get_trace_ptr(in);
   int idx = 1 + in;
-  int var_idx = 0;
+  int nvars = 0;
+
+  CONTEXT("move_vars for entry %d", entry_number(entry));
 
   // calculate mapping
   FOR_TRACE(p, entry) {
@@ -220,11 +223,17 @@ void move_vars(cell_t *entry) {
       }
       idx += calculate_cells(p->size);
     } else {
-      memcpy(&vars[var_idx], p, sizeof(cell_t));
+      assert_error(p->pos);
+      nvars++;
+      int i = p->pos - 1;
+      memcpy(&vars[i], p, sizeof(cell_t));
       p->func = NULL;
-      p->alt = trace_encode(++var_idx);
+      p->alt = trace_encode(p->pos);
+      LOG_WHEN(i + 1 != p-entry, "move var %d -> %d", p-entry, p->pos);
     }
   }
+
+  assert_error(nvars == entry->entry.in);
 
   // update references
   FOR_TRACE(tc, entry) {
@@ -269,6 +278,7 @@ void move_vars(cell_t *entry) {
   memmove(&entry[in + 1], &entry[1], (len - in) * sizeof(cell_t));
   memcpy(&entry[1], vars, in * sizeof(cell_t));
   memset(vars, 0, in * sizeof(cell_t));
+  FLAG_CLEAR(entry->entry, ENTRY_MOV_VARS);
 }
 
 static
@@ -347,16 +357,6 @@ void trace_final_pass(cell_t *entry) {
   }
   condense(entry);
   move_vars(entry);
-
-  // compile quotes
-  FOR_TRACE(p, entry) {
-    if(FLAG(p->expr_type, T_INCOMPLETE)) {
-      if(p->func == func_exec) { // compile a quote
-        FLAG_CLEAR(p->expr_type, T_INCOMPLETE);
-        compile_quote(entry, p);
-      }
-    }
-  }
 }
 
 // add an entry and all sub-entries to a module
@@ -493,7 +493,9 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
 
   // set up
   rt_init();
-  cell_t *e = trace_start_entry(in, out);
+  trace_init();
+  cell_t *e = trace_start_entry(NULL, out);
+  e->entry.in = in;
   // make recursive return this entry
   (*entry)->alt = e; // ***
   *entry = e;
@@ -510,13 +512,15 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
 
   // parse
   cell_t *c = parse_expr(&toks, module, e);
+  e->entry.in = 0;
 
   // compile
-  fill_args(e, c);
+  cell_t *left = *leftmost(&c);
+  fill_args(e, left);
   e->entry.alts = trace_reduce(e, &c);
   drop(c);
   trace_final_pass(e);
-  trace_end_entry(e, NULL);
+  trace_end_entry(e);
 
   // finish
   free_def(l);
@@ -545,16 +549,6 @@ void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *entry) {
       LOG("%d -> %d", trace_decode(a[j]), j);
     }
   }
-}
-
-static
-void substitute_free_variables(cell_t *c, cell_t **a, csize_t a_in, cell_t *entry) {
-  cell_t *vl = 0;
-  trace_var_list(c, &vl);
-  FOLLOW(p, vl, tmp) {
-    replace_var(p, a, a_in, entry);
-  }
-  clean_tmp(vl);
 }
 
 // matches:
@@ -663,53 +657,117 @@ finish:
   return true;
 }
 
+// need a quote version that only marks vars
+void mark_barriers(cell_t *entry, cell_t *c) {
+  TRAVERSE(c, in) {
+    cell_t *x = *p;
+    if(x) {
+      if(is_var(x)) {
+        trace_cell_t tc = x->value.tc;
+        drop(x);
+        *p = var_create_nonlist(x->value.type.exclusive,
+                                (trace_cell_t) {entry, trace_alloc_var(entry)});
+        trace_cell_ptr((*p)->value.tc)->value.tc = tc;
+      } else if(x->func == func_ap) { // ***
+        mark_barriers(entry, x);
+      }
+    }
+  }
+}
+
+void mark_quote_barriers(cell_t *entry, cell_t *c) {
+  TRAVERSE(c, in, ptrs) {
+    cell_t *x = *p;
+    if(!x) continue;
+    if(is_var(x)) {
+      trace_cell_t tc = x->value.tc;
+      if(tc.entry == entry) continue;
+      drop(x);
+      *p = var_create_nonlist(x->value.type.exclusive,
+                              (trace_cell_t) {entry, trace_alloc_var(entry)});
+      trace_cell_ptr((*p)->value.tc)->value.tc = tc;
+    }
+  }
+}
+
+cell_t *flat_quote(cell_t *new_entry, cell_t *parent_entry) {
+  CONTEXT("flat quote (%d -> %d)",
+          entry_number(parent_entry),
+          entry_number(new_entry));
+  unsigned int in = new_entry->entry.in;
+
+  FOR_TRACE(p, new_entry) {
+    if(is_var(p) && !p->value.tc.entry) {
+      in--;
+    }
+  }
+
+  cell_t *nc = closure_alloc(in + 1);
+  nc->func = func_exec;
+
+  FOR_TRACE(p, new_entry) {
+    if(is_var(p) && p->value.tc.entry) {
+      switch_entry(parent_entry, p); // ***
+      assert_error(p->value.tc.entry == parent_entry);
+      cell_t *tp = trace_cell_ptr(p->value.tc);
+      cell_t *v = var_create_nonlist(T_ANY, (trace_cell_t) {parent_entry, tp-parent_entry});
+      assert_error(p->pos);
+      nc->expr.arg[in - p->pos] = v;
+      LOG("arg[%d] -> %d", in - p->pos, tp - parent_entry);
+    }
+  }
+  nc->expr.arg[in] = new_entry;
+  return nc;
+}
+
 // takes a parent entry and offset to a quote, and creates an entry from compiling the quote
-cell_t *compile_quote(cell_t *parent_entry, cell_t *q) {
+int compile_quote(cell_t *parent_entry, cell_t *l) {
   // set up
-  csize_t in = closure_in(q);
-  cell_t *e = trace_start_entry(in, 1);
-  cell_t **fp = &q->expr.arg[in];
-  assert_error(*fp);
-  cell_t *c = *fp;
-  assert_error(remove_root(fp));
-
-  *fp = trace_encode(entry_number(e));
-
-  CONTEXT_LOG("compiling quote %s.%s_%d at entry %d",
-              parent_entry->module_name,
-              parent_entry->word_name,
-              (int)(q - parent_entry) - 1,
+  cell_t *e = trace_start_entry(parent_entry, 1);
+  e->module_name = parent_entry->module_name;
+  e->word_name = string_printf("%s_q%d", parent_entry->word_name, parent_entry->entry.sub_id++);
+  CONTEXT_LOG("compiling quote %s.%s at entry %d",
+              e->module_name,
+              e->word_name,
               entry_number(e));
 
-  trace_allocate_vars(e, in);
-  substitute_free_variables(c, q->expr.arg, in, e);
-
   // conversion
-  csize_t len = function_out(c, true);
-  //bool row = is_row_list(c);
+  csize_t len = function_out(l, true);
   cell_t *ph = func(func_placeholder, len + 1, 1);
   arg(ph, &nil_cell);
   COUNTUP(i, len) {
-    arg(ph, ref(c->value.ptr[i]));
+    arg(ph, ref(l->value.ptr[i]));
   }
-  drop(c);
-  c = quote(ph);
+
+  mark_quote_barriers(e, ph);
 
   // compile
-  e->entry.in += fill_args(e, c);
-  e->entry.alts = trace_reduce(e, &c);
-  assert_throw(c && NOT_FLAG(c->value.type, T_FAIL), "reduction failed");
-  assert_error(e->entry.out);
-  drop(c);
+  fill_args(e, ph);
+  cell_t *init = COPY_REF(ph, in);
+  insert_root(&init);
+  e->entry.alts = trace_reduce_one(e, ph);
 
-  e->module_name = parent_entry->module_name;
-  e->word_name = string_printf("%s_%d", parent_entry->word_name, (int)(q - parent_entry) - 1);
+  cell_t *q = flat_quote(e, parent_entry);
+  //reverse_ptrs((void **)q->expr.arg, closure_in(q));
+  drop(init);
+  remove_root(&init);
+
   trace_final_pass(e);
-  trace_end_entry(e, parent_entry);
+  trace_end_entry(e);
 
-  if(simplify_quote(e, parent_entry, q)) return NULL;
+  trace_clear_alt(parent_entry);
+  cell_t *res = var(T_ANY, q, parent_entry->pos);
+  assert_log(res->value.tc.entry == parent_entry,
+             "parent: %d, tc.entry: %d",
+             entry_number(parent_entry), entry_number(res->value.tc.entry));
+  int x = res->value.tc.index;
+  trace_reduction(q, res);
+  drop(q);
+  drop(res);
 
-  return e;
+  //if(simplify_quote(e, parent_entry, q)) return NULL;
+
+  return x;
 }
 
 // decode a pointer to an index and return a trace pointer

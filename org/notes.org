@@ -1,5 +1,6 @@
 #+TITLE: PoprC Notes
 
+* promote to operand with highest pos
 * specialize recursive functions on continuations
 * exists
 - assert (forall i : Nat, i > n -> i > k)

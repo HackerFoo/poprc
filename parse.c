@@ -161,7 +161,7 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n, cell_t *entry) {
   cell_t *data = NULL;
   csize_t in = 0, out = 1;
   if(w.s[0] == '?' && w.n == 1) {
-    c = var_entry(T_ANY, entry, 2);
+    c = param(T_ANY, entry);
 #if FUNC_AP
   } else if(in = 1, out = 1, match_param_word("ap", w, &in, &out)) {
     c = func(func_ap, ++in, ++out);
@@ -186,7 +186,7 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n, cell_t *entry) {
           c = func(e->func, e->entry.in, e->entry.out);
         }
       } else {
-        c = func(e->func, e->entry.in + 1, e->entry.out);
+        c = func(func_exec, e->entry.in + 1, e->entry.out);
         data = e;
       }
     } else {
@@ -240,12 +240,11 @@ cell_t *parse_vector(const cell_t **l) {
   return c;
 }
 
-val_t fill_args(cell_t *entry, cell_t *r) {
-  cell_t *l = *leftmost(&r);
+val_t fill_args(cell_t *entry, cell_t *l) {
   if(!l) return 0;
   val_t i = 0;
   while(!closure_is_ready(l)) {
-    cell_t *v = var_entry(T_ANY, entry, 2);
+    cell_t *v = param(T_ANY, entry);
     trace_update(v, v);
     arg(l, v);
     ++i;

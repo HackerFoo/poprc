@@ -432,7 +432,7 @@ void store_dep(cell_t *c, trace_cell_t tc, csize_t pos, int t) {
       .tc = tc
     }
   };
-  closure_shrink(c, 1);
+  if(c->func) closure_shrink(c, 1);
   *c = v;
 }
 
@@ -792,6 +792,11 @@ type_request_t req_simple(int t) {
     .out = 0,
   };
   return req;
+}
+
+type_request_t req_pos(type_request_t treq, uint8_t pos) {
+  treq.pos = pos;
+  return treq;
 }
 
 bool check_type(uint8_t requested, uint8_t expected) {
