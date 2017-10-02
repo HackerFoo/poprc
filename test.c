@@ -174,7 +174,7 @@ size_t count_root(const cell_t *c, cell_t ***roots, size_t n) {
 static
 void print_roots(cell_t ***roots, size_t n) {
   COUNTUP(i, n) {
-    if(roots[i] && *roots[i]) LOG("root: %d @ 0x%p", (int)((*roots[i])-cells), (void *)roots[i]);
+    LOG_WHEN(roots[i] && *roots[i], "root: %d @ 0x%p", (int)((*roots[i])-cells), (void *)roots[i]);
   }
 }
 

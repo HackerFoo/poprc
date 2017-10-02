@@ -94,6 +94,25 @@ typedef struct {
     }                                                                   \
   } while(0)
 
+
+#define assert_log(cond, fmt, ...) \
+  do {                                                                  \
+    if(!(cond)) {                                                       \
+      log_error(__FILE__, __LINE__, __func__, "Assertion `" #cond "' failed.", ERROR_TYPE_UNEXPECTED); \
+      LOG_NO_POS("!!! " fmt, ##__VA_ARGS__);                            \
+      return_error(ERROR_TYPE_UNEXPECTED);                              \
+    }                                                                   \
+  } while(0)
+
+#define assert_counter(n)                                               \
+  do {                                                                  \
+    static int counter = n;                                             \
+    if(!counter--) {                                                    \
+      counter = n;                                                      \
+      throw_error(__FILE__, __LINE__, __func__, "Assertion counter exhausted.", ERROR_TYPE_UNEXPECTED); \
+    }                                                                   \
+  } while(0)
+
 #define catch_error(e) (current_error = (e), !!setjmp((e)->env))
 #endif
 
@@ -109,10 +128,9 @@ static void *backtrace_buf[128];
 
 static int backtrace_size = 0;
 
-void throw_error(const char *file, int line, const char *function, const char *msg, error_type_t type) {
+void log_error(const char *file, int line, const char *function, const char *msg, error_type_t type) {
   if(!current_error) {
     printf("%s:%d: %s: %s\n", file, line, function, msg);
-    exit(-1);
   } else {
 #ifdef BACKTRACE
 #ifdef EMSCRIPTEN
@@ -130,8 +148,20 @@ void throw_error(const char *file, int line, const char *function, const char *m
     LOG_NO_POS("!!! %s:%d: %s: %s", file, line, function, msg);
 #endif
     strncpy(current_error->function, function, sizeof(current_error->function));
-    longjmp(current_error->env, type);
   }
+}
+
+void return_error(error_type_t type) {
+  if(current_error) {
+    longjmp(current_error->env, type);
+  } else {
+    exit(-1);
+  }
+}
+
+void throw_error(const char *file, int line, const char *function, const char *msg, error_type_t type) {
+  log_error(file, line, function, msg, type);
+  return_error(type);
 }
 
 void print_backtrace() {

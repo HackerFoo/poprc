@@ -493,14 +493,14 @@ void __test_context_c(int x) {
 static
 void __test_context_b(int x) {
   CONTEXT("B %d", x);
-  if(x == 0) LOG("(b) zero x");
+  LOG_WHEN(x == 0, "(b) zero x");
 }
 
 static
 void __test_context_a(int x) {
   CONTEXT("A %d", x);
   __test_context_b(x - 1);
-  if(x > 0) LOG("(a) nonzero x");
+  LOG_WHEN(x > 0, "(a) nonzero x");
 }
 
 static

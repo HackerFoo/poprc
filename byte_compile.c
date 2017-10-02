@@ -215,6 +215,7 @@ void move_vars(cell_t *entry) {
         if(ret) ret->alt = trace_encode(idx);
         ret = p;
       } else {
+        LOG_WHEN(idx != p-entry, "move %d -> %d", p-entry, idx);
         p->alt = trace_encode(idx);
       }
       idx += calculate_cells(p->size);

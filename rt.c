@@ -197,7 +197,12 @@ bool reduce(cell_t **cp, type_request_t treq) {
       c = *cp;
       continue;
     }
+    stats.reduce_cnt++;
     bool success = c->func(cp, treq);
+
+    // prevent infinite loops when debugging
+    assert_counter(LENGTH(cells));
+
     c = *cp;
     if(success) {
       if(marked) *cp = mark_ptr(c);
