@@ -86,6 +86,7 @@ char const *function_name(reduce_t *f) {
   CASE(dep);
   CASE(dep_entered);
   CASE(ap);
+  CASE(exec);
 #undef CASE
   const char *s = NULL;
   FORMAP(i, primitive_module) {
