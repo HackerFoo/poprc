@@ -167,7 +167,7 @@ cell_t *unify_convert(cell_t *entry, cell_t *c, cell_t *pat) {
   csize_t out = entry->entry.out;
   cell_t *ret = NULL;
   if(out != 1) { // for now
-    LOG("unify_convert %d: out(%d) != 1", c-cells, out);
+    LOG(TODO " unify_convert %d: out(%d) != 1", c-cells, out);
     return NULL;
   }
 

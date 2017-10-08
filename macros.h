@@ -354,4 +354,12 @@
 #define ARRAY_COPY(dst, src, n) memcpy(&(dst), &(src), (n) * sizeof(dst))
 
 #define MARK(x) "\x1b[37;41m" x "\x1b[0m"
+#define TODO MARK("TODO")
+
+#define DISABLE(...)                            \
+  do {                                          \
+    LOG(MARK("DISABLED") " %s", __func__);      \
+    return __VA_ARGS__;                         \
+  } while(0)                                    \
+
 #endif
