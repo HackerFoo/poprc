@@ -82,11 +82,11 @@ bool func_list(cell_t **cp, type_request_t treq) {
     if(!reduce_ptr(c, i, &alt_set, req_pos(REQ(any), treq.pos)) ||
       as_conflict(alt_set)) goto fail;
   }
-  if(n && is_row_list(c) && is_list(c->value.ptr[n-1])) {
-    if(!func_list(&c->value.ptr[n-1], req_pos(REQ(any), treq.pos))) goto fail;
-  }
   TRAVERSE(c, ptrs) {
     *p = clear_ptr(*p);
+  }
+  if(n && is_row_list(c) && is_list(c->value.ptr[n-1])) {
+    if(!func_list(&c->value.ptr[n-1], req_pos(REQ(any), treq.pos))) goto fail;
   }
   return true;
 
