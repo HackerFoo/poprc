@@ -183,7 +183,7 @@ cell_t *var_(uint8_t t, cell_t *c, uint8_t pos) {
   TRAVERSE(c, in) {
     cell_t *a = clear_ptr(*p);
     if(a && is_var(a)) {
-      if(a->value.type.exclusive == T_BOTTOM) {
+      if(0&& a->value.type.exclusive == T_BOTTOM) {
         // if there is a variable argument of type T_BOTTOM, use that instead
         return var_create(T_BOTTOM, a->value.tc, 0, 0);
       } else {
