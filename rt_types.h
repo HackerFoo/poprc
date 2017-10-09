@@ -99,6 +99,7 @@ typedef bool (reduce_t)(cell_t **cell, type_request_t treq);
 
 #define FLAGS_NEEDS_ARG 0x01
 #define FLAGS_RECURSIVE 0x02
+#define FLAGS_TRACE     0x04
 
 /* unevaluated expression */
 struct __attribute__((packed)) expr {
@@ -141,6 +142,7 @@ struct __attribute__((packed)) mem {
 };
 
 #define ENTRY_PRIMITIVE 0x01
+#define ENTRY_TRACE     0x02
 #define ENTRY_RECURSIVE 0x04
 #define ENTRY_QUOTE     0x08
 #define ENTRY_ROW       0x10

@@ -112,6 +112,9 @@ void print_bytecode(cell_t *entry) {
       printf(", type = %s", show_type_all_short(c->expr_type));
     }
     printf(" x%d", c->n + 1);
+    if(!is_value(c) && FLAG(c->expr, FLAGS_TRACE)) {
+      printf(" [TRACING]");
+    }
     if(t >= entry->entry.in &&
        c->n + 1 == 0) {
       printf(" <-- WARNING: zero refcount\n");
@@ -826,19 +829,22 @@ void trace_get_name(const cell_t *c, const char **module_name, const char **word
   }
 }
 
+cell_t *entry_from_token(cell_t *tok) {
+  seg_t id = tok_seg(tok);
+  if(tok->char_class == CC_NUMERIC) {
+    return entry_from_number(atoi(id.s));
+  } else {
+    cell_t *m = eval_module();
+    return module_lookup_compiled(id, &m);
+  }
+}
+
 // print bytecode for a word, or all
 void command_bc(cell_t *rest) {
   if(rest) {
-    cell_t *e;
-    seg_t id = tok_seg(rest);
-    if(rest->char_class == CC_NUMERIC) {
-      e = entry_from_number(atoi(id.s));
-    } else {
-      CONTEXT("bytecode command");
-      command_define(rest);
-      cell_t *m = eval_module();
-      e = module_lookup_compiled(id, &m);
-    }
+    CONTEXT("bytecode command");
+    command_define(rest);
+    cell_t *e = entry_from_token(rest);
     if(e) {
       printf("\n");
       print_bytecode(e);
@@ -846,6 +852,40 @@ void command_bc(cell_t *rest) {
   } else {
     print_all_bytecode();
     if(command_line) quit = true;
+  }
+}
+
+// trace an instruction
+void command_trace(cell_t *rest) {
+  if(rest) {
+    CONTEXT("trace command");
+    cell_t *e = entry_from_token(rest);
+    if(e) {
+      bool set = false;
+      cell_t *arg = rest->tok_list.next;
+      if(!arg) {
+        FLAG_SET(e->entry, ENTRY_TRACE);
+        set = true;
+        printf("tracing %s.%s\n",
+               e->module_name,
+               e->word_name);
+      } else if(arg->char_class == CC_NUMERIC) {
+        int x = atoi(arg->tok_list.location);
+        if(x > 0 &&
+           x <= e->entry.len &&
+           !is_value(&e[x])) {
+          FLAG_SET(e[x].expr, FLAGS_TRACE);
+          set = true;
+          printf("tracing %s.%s [%d]\n",
+                 e->module_name,
+                 e->word_name,
+                 x);
+        }
+      }
+      if(!set) printf("Invalid argument\n");
+    } else {
+      printf("Entry not found\n");
+    }
   }
 }
 

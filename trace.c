@@ -427,7 +427,26 @@ cell_t *get_list_function_var(cell_t *c) {
 // called when c is reduced to r to copy to pre-allocated space in the trace
 void trace_reduction(cell_t *c, cell_t *r) {
   cell_t *new_entry = trace_expr_entry(c->pos);
-  if(!(is_var(r) || c->func == func_exec)) return;
+  if(!is_var(r)) {
+    // print tracing information for a reduction
+    if(FLAG(c->expr, FLAGS_TRACE)) {
+      printf("TRACE: %s", function_name(c->func));
+      TRAVERSE(c, in) {
+        show_one(*p);
+      }
+      printf(" ->");
+      show_one(r);
+      if(write_graph) {
+        mark_cell(c);
+        make_graph_all(NULL, "trace");
+        printf(" [%d -> %d]", CELL_INDEX(c), CELL_INDEX(r));
+      }
+      printf("\n");
+    }
+    if(c->func != func_exec) { // is this still necessary?
+      return;
+    }
+  }
   if(is_list(r)) {
     r = get_list_function_var(r);
     if(!r) return;
