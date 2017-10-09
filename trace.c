@@ -78,6 +78,14 @@ int entry_number(cell_t const *e) {
   return e - trace_cells;
 }
 
+cell_t *entry_from_number(int n) {
+  assert_throw(n >= 0 &&
+               n % 64 == 0 &&
+               n < trace_ptr - trace_cells,
+               "invalid entry number");
+  return &trace_cells[n];
+}
+
 // trace_encode/decode allow small integers to be encoded as pointers
 // This avoids a reference to index 0 being treated as a missing argument
 cell_t *trace_encode(int index) {

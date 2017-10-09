@@ -829,12 +829,16 @@ void trace_get_name(const cell_t *c, const char **module_name, const char **word
 // print bytecode for a word, or all
 void command_bc(cell_t *rest) {
   if(rest) {
-    seg_t name = tok_seg(rest);
-    CONTEXT("bytecode command");
-    command_define(rest);
-    cell_t
-      *m = eval_module(),
-      *e = module_lookup_compiled(name, &m);
+    cell_t *e;
+    seg_t id = tok_seg(rest);
+    if(rest->char_class == CC_NUMERIC) {
+      e = entry_from_number(atoi(id.s));
+    } else {
+      CONTEXT("bytecode command");
+      command_define(rest);
+      cell_t *m = eval_module();
+      e = module_lookup_compiled(id, &m);
+    }
     if(e) {
       printf("\n");
       print_bytecode(e);
