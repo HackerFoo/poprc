@@ -46,6 +46,8 @@
 #define MAX_ALLOC (CELLS_SIZE - 32)
 cell_t cells[CELLS_SIZE] __attribute__((aligned(64))) = {};
 cell_t *cells_ptr;
+static cell_t *uninitialized_cells;
+static cell_t *uninitialized_cells_end;
 
 // Predefined failure cell
 cell_t fail_cell = {
@@ -118,22 +120,18 @@ bool check_cycle() {
 #endif
 
 void cells_init() {
-  size_t const n = LENGTH(cells);
-
   // zero the cells
-  memset(&cells, 0, sizeof(cells));
+  memset(&cells, 0, sizeof(cell_t) * 2);
 
   // set up doubly-linked pointer ring
-  cells[0].mem.prev = &cells[n-1];
+  cells[0].mem.prev = &cells[1];
   cells[0].mem.next = &cells[1];
-  RANGEUP(i, 1, n-1) {
-    cells[i].mem.prev = &cells[i-1];
-    cells[i].mem.next = &cells[i+1];
-  }
-  cells[n-1].mem.prev = &cells[n-2];
-  cells[n-1].mem.next = &cells[0];
+  cells[1].mem.prev = &cells[0];
+  cells[1].mem.next = &cells[0];
 
   cells_ptr = &cells[0];
+  uninitialized_cells = &cells[2];
+  uninitialized_cells_end = &cells[LENGTH(cells)];
 }
 
 void cell_alloc(cell_t *c) {
@@ -160,26 +158,40 @@ cell_t *closure_alloc(csize_t args) {
 
 cell_t *closure_alloc_cells(csize_t size) {
   assert_throw(size < MAX_ALLOC_SIZE);
-  cell_t *ptr = cells_next(), *c = ptr;
-  cell_t *mark = ptr;
-  csize_t cnt = 0;
-  (void)mark;
+  cell_t *c;
 
-  // search for contiguous chunk
-  while(cnt < size) {
-    if(is_cell(ptr) && !is_closure(ptr)) {
-      cnt++;
-      ptr++;
-    } else {
-      cnt = 0;
-      c = ptr = cells_next();
-      assert_throw(c != mark, "could not find cells to allocate");
+  if(uninitialized_cells &&
+     uninitialized_cells + size <= uninitialized_cells_end) {
+    // allocate from uninitialized cells first
+    c = uninitialized_cells;
+    uninitialized_cells += size;
+  } else {
+    if(size == 1) uninitialized_cells = NULL;
+
+    // otherwise allocate from the chain
+    cell_t *ptr = cells_next();
+    cell_t *mark = ptr;
+    csize_t cnt = 0;
+    (void)mark;
+
+    c = ptr;
+
+    // search for contiguous chunk
+    while(cnt < size) {
+      if(is_cell(ptr) && !is_closure(ptr)) {
+        cnt++;
+        ptr++;
+      } else {
+        cnt = 0;
+        c = ptr = cells_next();
+        assert_throw(c != mark, "could not find cells to allocate");
+      }
     }
-  }
 
-  // remove the found chunk
-  COUNTUP(i, size) {
-    cell_alloc(&c[i]);
+    // remove the found chunk
+    COUNTUP(i, size) {
+      cell_alloc(&c[i]);
+    }
   }
 
   memset(c, 0, sizeof(cell_t)*size);

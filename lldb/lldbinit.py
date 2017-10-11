@@ -45,5 +45,5 @@ def bc(debugger, command, result, dict):
 def ac(debugger, command, result, dict):
     args = shlex.split(command)
     if len(args) > 0:
-        dbgcall('breakpoint set --file cells.c --line 183 --condition "c-cells==({})"'.format(args[0]))
+        dbgcall('breakpoint set --file cells.c --line 179 --condition "c-cells==({})"'.format(args[0]))
 
