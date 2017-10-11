@@ -438,26 +438,6 @@ void store_dep(cell_t *c, trace_cell_t tc, csize_t pos, int t) {
   *c = v;
 }
 
-void store_dep_bottom(cell_t *c, trace_cell_t tc) {
-  cell_t v = {
-    .func = func_value,
-    .n = c->n,
-    .size = 2,
-    .alt = c->alt,
-    .value = {
-      .alt_set = 0,
-      .type = {
-        .flags = T_VAR,
-        .exclusive = T_BOTTOM
-      },
-      .tc = tc
-    }
-  };
-  trace_update(c, &v);
-  closure_shrink(c, 1);
-  *c = v;
-}
-
 void fail(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   if(!is_cell(c)) {
@@ -768,7 +748,6 @@ uint8_t new_alt_id(unsigned int n) {
 #define REQ_symbol() req_symbol
 #define REQ_function() req_function
 #define REQ_return() req_return
-#define REQ_bottom() req_bottom
 #endif
 
 type_request_t req_list(int in, int out) {
@@ -785,7 +764,6 @@ const type_request_t req_int = { .t = T_INT };
 const type_request_t req_symbol = { .t = T_SYMBOL };
 const type_request_t req_function = { .t = T_FUNCTION };
 const type_request_t req_return = { .t = T_RETURN };
-const type_request_t req_bottom = { .t = T_BOTTOM };
 
 type_request_t req_simple(int t) {
   type_request_t req = {

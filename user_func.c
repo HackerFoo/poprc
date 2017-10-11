@@ -600,11 +600,7 @@ bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
     }
   }
 
-  if(treq.t == T_BOTTOM) {
-    COUNTUP(i, entry->entry.out) {
-      rtypes[i].exclusive = T_BOTTOM;
-    }
-  } else if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
+  if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
     // this will be fixed up for tail calls in tail_call_to_bottom()
     COUNTUP(i, entry->entry.out) {
       rtypes[i].exclusive = T_ANY;
@@ -615,7 +611,7 @@ bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   {
     uint8_t t = rtypes[0].exclusive;
     if(t == T_ANY) {
-      t = FLAG(c->expr, FLAGS_RECURSIVE) ? T_BOTTOM : treq.t;
+      t = treq.t;
     }
     if(t == T_FUNCTION) t = T_LIST;
     res = var(t, c, parent_entry->pos);

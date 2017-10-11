@@ -35,7 +35,6 @@ bool func_value(cell_t **cp, type_request_t treq) {
   if(FLAG(c->value.type, T_FAIL) ||
      !type_match(treq.t, c)) {
     if(treq.t == T_FUNCTION && c == &nil_cell) return true; // HACK
-    if(c->value.type.exclusive == T_BOTTOM) return true; // allow T_BOTTOM through
     goto fail;
   }
 
@@ -183,16 +182,11 @@ cell_t *var_(uint8_t t, cell_t *c, uint8_t pos) {
   TRAVERSE(c, in) {
     cell_t *a = clear_ptr(*p);
     if(a && is_var(a)) {
-      if(0&& a->value.type.exclusive == T_BOTTOM) {
-        // if there is a variable argument of type T_BOTTOM, use that instead
-        return var_create(T_BOTTOM, a->value.tc, 0, 0);
-      } else {
-        // inherit entry with highest pos
-        cell_t *e = a->value.tc.entry;
-        if(e && e->pos > pos) {
-          pos = e->pos;
-          entry = e;
-        }
+      // inherit entry with highest pos
+      cell_t *e = a->value.tc.entry;
+      if(e && e->pos > pos) {
+        pos = e->pos;
+        entry = e;
       }
     }
   }
@@ -325,18 +319,13 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
   }
 
   cell_t *res = var(T_FUNCTION, c, treq.pos);
-  bool bottom = res->value.type.exclusive == T_BOTTOM; // kinda HACKy
   res->alt = c->alt;
   RANGEUP(i, in, n) {
     cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {
       drop(c);
       d->expr.arg[0] = res;
-      if(bottom) {
-        store_dep_bottom(d, res->value.tc);
-      } else {
-        store_dep(d, res->value.tc, i, T_ANY);
-      }
+      store_dep(d, res->value.tc, i, T_ANY);
     } else {
       LOG("dropped placeholder[%d] output", CELL_INDEX(c));
     }

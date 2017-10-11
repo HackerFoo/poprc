@@ -415,13 +415,6 @@ bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   placeholder_extend(&c->expr.arg[in], function_compose_in(p, treq.in, arg_in, true /*_1_*/), treq.out + out);
   // *** _1_ don't know if/why this works
 
-  trace_cell_t tc;
-  cell_t *q = c->expr.arg[in];
-  if(is_var(q) && q->value.type.exclusive == T_BOTTOM) {
-    tc = q->value.tc;
-    goto bottom;
-  }
-
   list_iterator_t it;
 
   reverse_ptrs((void **)c->expr.arg, in);
@@ -451,15 +444,6 @@ bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   drop(l);
   store_reduced(cp, mod_alt(res, c->alt, alt_set));
   ASSERT_REF();
-  return true;
-bottom: {
-    cell_t *bot = var_create(T_BOTTOM, tc, 0, 0);
-    bot->n = out;
-    TRAVERSE(c, out) {
-      store_lazy_dep(*p, bot, alt_set);
-    }
-    store_reduced(cp, mod_alt(bot, c->alt, alt_set));
-  }
   return true;
 fail:
   fail(cp, treq);
@@ -531,8 +515,6 @@ bool func_is_nil(cell_t **cp, type_request_t treq) {
 
   cell_t *p = c->expr.arg[0];
   cell_t *res;
-
-  // TODO handle T_BOTTOM
 
   if(is_list_var(p)) {
     // ensure quote is stored first
