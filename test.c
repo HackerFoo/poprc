@@ -35,6 +35,18 @@
 
 pair_t tests[] = TESTS;
 
+bool check_cycle() {
+  size_t i = 0;
+  cell_t *start = cells_ptr, *ptr = start;
+  while(ptr->mem.next != start) {
+    if(i > LENGTH(cells)) return false;
+    i++;
+    assert_error(is_cell(ptr->mem.next->mem.next));
+    ptr = ptr->mem.next;
+  }
+  return true;
+}
+
 int test_alloc() {
   cell_t *a[30];
   LOOP(50) {
@@ -45,7 +57,7 @@ int test_alloc() {
       closure_free(a[i]);
     }
   }
-  return leak_test() ? 0 : -1;
+  return leak_test() && check_cycle() ? 0 : -1;
 }
 
 int test_loops() {

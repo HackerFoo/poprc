@@ -101,24 +101,6 @@ cell_t *cells_next() {
   return p;
 }
 
-#ifdef CHECK_CYCLE
-bool check_cycle() {
-  size_t i = 0;
-  cell_t *start = cells_ptr, *ptr = start;
-  while(ptr->next != start) {
-    if(i > LENGTH(cells)) return false;
-    i++;
-    assert_error(is_cell(ptr->next->next));
-    ptr = ptr->next;
-  }
-  return true;
-}
-#else
-bool check_cycle() {
-  return true;
-}
-#endif
-
 void cells_init() {
   // zero the cells
   memset(&cells, 0, sizeof(cell_t) * 2);
@@ -237,15 +219,15 @@ void closure_shrink(cell_t *c, csize_t s) {
   csize_t size = closure_cells(c);
   if(size > s) {
     assert_error(is_closure(c));
+    cell_t *prev = cells_ptr->mem.prev;
     RANGEUP(i, s, size) {
       c[i].func = 0;
-      c[i].mem.prev = &c[i-1]; // TODO fix overflow
-      c[i].mem.next = &c[i+1];
+      c[i].mem.prev = prev;
+      prev->mem.next = &c[i];
+      prev = &c[i];
     }
-    c[s].mem.prev = cells_ptr->mem.prev;
-    cells_ptr->mem.prev->mem.next = &c[s];
-    c[size-1].mem.next = cells_ptr;
-    cells_ptr->mem.prev = &c[size-1];
+    cells_ptr->mem.prev = prev;
+    prev->mem.next = cells_ptr;
     stats.current_alloc_cnt -= size - s;
   }
 }
