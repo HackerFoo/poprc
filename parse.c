@@ -665,3 +665,15 @@ cell_t *parse_expr_string(const char *expr) {
   free_toks(p);
   return m;
 }
+
+bool parse_numeric_args(cell_t *l, int *arg, int n) {
+  while(n--) {
+    if(l && l->char_class == CC_NUMERIC) {
+      *arg++ = atoi(l->tok_list.location);
+      l = l->tok_list.next;
+    } else {
+      return false;
+    }
+  }
+  return true;
+}

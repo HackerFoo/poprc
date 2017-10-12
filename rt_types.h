@@ -240,4 +240,6 @@ typedef struct list_iterator {
   bool row;
 } list_iterator_t;
 
+void breakpoint();
+
 #endif

@@ -38,6 +38,9 @@ uint8_t alt_cnt = 0;
 cell_t **rt_roots[31];
 const size_t rt_roots_n = LENGTH(rt_roots);
 
+static cell_t *watched_cells[4] = {0};
+static bool watch_enabled = false;
+
 #if INTERFACE
 #define ASSERT_REF() assert_error(assert_ref(rt_roots, rt_roots_n))
 #endif
@@ -52,6 +55,23 @@ bool is_root(const cell_t *c) {
 
 bool remove_root(cell_t **r) {
   return set_remove((uintptr_t)r, (uintptr_t *)rt_roots, rt_roots_n);
+}
+
+void set_watch(int i, cell_t *c) {
+  watch_enabled = true;
+  assert_throw(i > 0 &&
+               i <= (int)LENGTH(watched_cells));
+  watched_cells[i - 1] = c;
+}
+
+int get_watch(cell_t *c) {
+  if(!watch_enabled) return 0;
+  FOREACH(i, watched_cells) {
+    if(watched_cells[i] == c) {
+      return i + 1;
+    }
+  }
+  return 0;
 }
 
 // Initialize run time
@@ -786,4 +806,9 @@ bool check_type(uint8_t requested, uint8_t expected) {
     return false;
   }
   return true;
+}
+
+void breakpoint() {
+  static volatile unsigned int x = 0;
+  x++;
 }

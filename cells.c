@@ -450,3 +450,14 @@ bool check_bit(uint8_t *m, unsigned int x) {
 cell_t *closure_next(cell_t *c) {
   return c + closure_cells(c);
 }
+
+// used to get consistent allocations
+void alloc_to(size_t n) {
+  if(n < LENGTH(cells) &&
+     uninitialized_cells < &cells[n]) {
+    size_t s = &cells[n] - uninitialized_cells;
+    cell_t *c = closure_alloc_cells(s);
+    c->func = func_value;
+    closure_free(c);
+  }
+}

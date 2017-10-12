@@ -100,6 +100,7 @@ typedef struct {
     if(!(cond)) {                                                       \
       log_error(__FILE__, __LINE__, __func__, "Assertion `" #cond "' failed.", ERROR_TYPE_UNEXPECTED); \
       LOG_NO_POS(MARK("!!!") " " fmt, ##__VA_ARGS__);                   \
+      breakpoint();                                                     \
       return_error(ERROR_TYPE_UNEXPECTED);                              \
     }                                                                   \
   } while(0)
@@ -161,6 +162,7 @@ void return_error(error_type_t type) {
 
 void throw_error(const char *file, int line, const char *function, const char *msg, error_type_t type) {
   log_error(file, line, function, msg, type);
+  breakpoint();
   return_error(type);
 }
 

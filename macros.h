@@ -354,6 +354,7 @@
 #define ARRAY_COPY(dst, src, n) memcpy(&(dst), &(src), (n) * sizeof(dst))
 
 #define MARK(x) "\x1b[37;41m" x "\x1b[0m"
+#define NOTE(x) "\x1b[37;44m" x "\x1b[0m"
 #define TODO MARK("TODO")
 
 #define DISABLE(...)                            \
@@ -366,5 +367,10 @@
 #define PRE(c)                                  \
   do {                                          \
     assert_error(!is_marked(c));                \
+    int i = get_watch(c);                       \
+    if(i) {                                     \
+      LOG(NOTE("WATCH") " %d", i);              \
+      breakpoint();                             \
+    }                                           \
   } while(0)
 #endif

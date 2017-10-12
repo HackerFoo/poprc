@@ -193,16 +193,29 @@ int main(int argc, char **argv) {
   bool quit = false;
   tty = isatty(fileno(stdin)) && isatty(fileno(stdout));
   quiet = !tty;
+  cell_t *parsed_args = NULL;
 
   if(argc > 1) {
     char *args = arguments(argc - 1, argv + 1), *a = args;
     // printf("__ arguments __\n%s", a);
 
+    // lex the arguments
+    cell_t **next = &parsed_args;
     while(*a) {
       char *e = strchr(a, '\n');
       *e = '\0'; // HACKy (fix load_file instead)
-      quit = !eval_command(a, e) || quit;
+      *next = lex(a, e);
+      next = &(*next)->alt;
       a = e + 1;
+    }
+
+    // run the commands
+    alloc_to(64); // keep allocations consistent regardless of args
+    cell_t *p = parsed_args;
+    while(p) {
+      quit = !eval_command(p) || quit;
+      free_toks(p);
+      p = p->alt;
     }
 
     free(args);
@@ -225,8 +238,8 @@ int main(int argc, char **argv) {
   parse_init();
   module_init();
 
-  eval_command(":load lib.ppr", 0);
-  eval_command(":import", 0);
+  eval_command_string(":load lib.ppr", 0);
+  eval_command_string(":import", 0);
   emscripten_exit_with_live_runtime();
   return 0;
 }
@@ -372,7 +385,7 @@ void run_eval(bool echo) {
     }
 
     if(echo) puts(line);
-    bool run = eval_command(line, 0);
+    bool run = eval_command_string(line, 0);
 
 #ifndef RAW_LINE
     free(line_raw);
@@ -503,14 +516,13 @@ int emscripten_eval(char *str, int len) {
     print_error(&error);
     return -error.type;
   } else {
-    eval_command(str, str + len);
+    eval_command_string(str, str + len);
     return 0;
   }
 }
 #endif
 
-bool eval_command(char *line, char *end) {
-  cell_t *p = lex(line, end), *p0 = p;
+bool eval_command(cell_t *p) {
   if(match(p, ":")) {
     if(eval_commands) {
       p = p->tok_list.next;
@@ -521,8 +533,14 @@ bool eval_command(char *line, char *end) {
   } else {
     command_eval(p);
   }
-  free_toks(p0);
   return !quit;
+}
+
+bool eval_command_string(char *start, char *end) {
+  cell_t *p = lex(start, end);
+  bool ret = eval_command(p);
+  free_toks(p);
+  return ret;
 }
 
 void reduce_root(cell_t **cp) {
@@ -687,4 +705,12 @@ void command_bc_in(UNUSED cell_t *rest) {
     }
   }
   quit = true;
+}
+
+// set a watched cell
+void command_watch(cell_t *rest) {
+  int arg[2];
+  if(parse_numeric_args(rest, arg, 2)) {
+    set_watch(arg[0], &cells[arg[1]]);
+  }
 }
