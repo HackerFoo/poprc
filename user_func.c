@@ -450,7 +450,7 @@ cell_t *wrap_vars(cell_t *res, csize_t out) {
 static
 bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   cell_t *c = *cp;
-  assert_error(!is_marked(c));
+  PRE(c);
 
   size_t in = closure_in(c);
   cell_t *entry = c->expr.arg[in];
@@ -505,7 +505,7 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
 static
 bool unify_exec(cell_t **cp, cell_t *parent_entry) {
   cell_t *c = *cp;
-  assert_error(!is_marked(c));
+  PRE(c);
 
   size_t in = closure_in(c);
   cell_t *entry = c->expr.arg[in];
@@ -528,7 +528,7 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry) {
 static
 bool exec_list(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
-  assert_error(!is_marked(c));
+  PRE(c);
   if(treq.t != T_LIST || closure_out(c) != 0) {
     return true;
   }
@@ -558,7 +558,7 @@ bool exec_list(cell_t **cp, type_request_t treq) {
 static
 bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   cell_t *c = *cp;
-  assert_error(!is_marked(c));
+  PRE(c);
 
   size_t in = closure_in(c);
   assert_error(in, "recursive functions must have at least one input");
@@ -642,7 +642,7 @@ fail:
 
 bool func_exec(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
-  assert_error(!is_marked(c));
+  PRE(c);
 
   cell_t *entry = c->expr.arg[closure_in(c)];
   cell_t *parent_entry = find_input_entry(c);

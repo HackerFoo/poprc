@@ -362,4 +362,9 @@
     return __VA_ARGS__;                         \
   } while(0)                                    \
 
+
+#define PRE(c)                                  \
+  do {                                          \
+    assert_error(!is_marked(c));                \
+  } while(0)
 #endif

@@ -72,7 +72,7 @@ bool is_function(cell_t const *c) {
 bool func_list(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   CONTEXT("list: %d", CELL_INDEX(c));
-  assert_error(!is_marked(c));
+  PRE(c);
   if(treq.t == T_ANY && treq.t == T_LIST) return true;
   if(!check_type(treq.t, T_RETURN)) goto fail;
   csize_t n = list_size(c);
