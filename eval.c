@@ -712,5 +712,7 @@ void command_watch(cell_t *rest) {
   int arg[2];
   if(parse_numeric_args(rest, arg, 2)) {
     set_watch(arg[0], &cells[arg[1]]);
+  } else if(rest && rest->tok_list.length == sizeof(tag_t)) {
+    set_log_watch(rest->tok_list.location);
   }
 }

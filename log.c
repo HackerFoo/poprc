@@ -32,6 +32,7 @@
 static intptr_t log[LOG_SIZE];
 static unsigned int log_head = 0;
 static unsigned int log_tail = 0;
+static unsigned int log_watch = ~0;
 
 context_t *__log_context = NULL;
 
@@ -40,6 +41,10 @@ void log_init() {
   log_head = 0;
   log_tail = 0;
   __log_context = NULL;
+}
+
+void set_log_watch(const tag_t tag) {
+  log_watch = read_tag(tag);
 }
 
 void log_soft_init() {
@@ -65,11 +70,13 @@ void log_add(intptr_t x) {
     unsigned int len = log_entry_len(log_tail);
     log_tail = (log_tail + 1 + len) % LOG_SIZE;
   }
+  if(log_head == log_watch) breakpoint();
 }
 
 static
-unsigned int log_printf(unsigned int idx, unsigned int *depth) {
+unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
   const char *fmt = (const char *)log[idx++];
+  tag_t tag;
   //printf("%d %d %x %s\n", idx, *depth, fmt[0], fmt + 1);
   uint8_t len = fmt[0] & ~MASK;
   const char
@@ -121,8 +128,14 @@ unsigned int log_printf(unsigned int idx, unsigned int *depth) {
     p = n + 2;
     n = strchr(p, '%');
   }
-  printf("%s\n", p);
-  return idx % LOG_SIZE;
+  idx = idx % LOG_SIZE;
+  if(event) {
+    write_tag(tag, idx);
+    printf("%s " FADE(FORMAT_TAG) "\n", p, tag);
+  } else {
+    printf("%s\n", p);
+  }
+  return idx;
 }
 
 static
@@ -147,7 +160,7 @@ unsigned int print_contexts(unsigned int idx, unsigned int *depth) {
      (fmt[0] & REVERSE) == 0) return idx;
   uint8_t len = (fmt[0] & ~MASK) + 1;
   unsigned int ret = print_contexts((idx + len) % LOG_SIZE, depth);
-  log_printf(idx, depth);
+  log_printf(idx, depth, false);
   return ret;
 }
 
@@ -161,7 +174,7 @@ void log_print_all() {
     if(end_context(i, &depth)) {
       i = (i + 1) % LOG_SIZE;
     } else {
-      i = log_printf(i, &depth);
+      i = log_printf(i, &depth, true);
     }
   }
 }
@@ -526,3 +539,99 @@ int test_context() {
   return 0;
 }
 
+#if INTERFACE
+typedef char tag_t[4];
+#define FORMAT_TAG "%.4s"
+#endif
+
+char to_tag_char(int x) {
+  x &= 31;
+  if(x < 24) {
+    return 'a' + x;
+  } else {
+    return '2' + x - 24;
+  }
+}
+
+int from_tag_char(char c) {
+  if(c >= 'a') {
+    if(c <= 'x') {
+      return c - 'a';
+    } else {
+      return -1;
+    }
+  } else if(c >= '0') {
+    return c - '2' + 24;
+  } else {
+    return -1;
+  }
+}
+
+int spread_bits(int x) {
+  int y = 0;
+  COUNTUP(i, 4) {
+    int t = 0;
+    COUNTUP(j, 5) {
+      t <<= 4;
+      t |= x & 1;
+      x >>= 1;
+    }
+    t <<= i;
+    y |= t;
+  }
+  return y;
+}
+
+int gather_bits(int y) {
+  int x = 0;
+  COUNTDOWN(i, 4) {
+    int t = y >> i;
+    COUNTUP(j, 5) {
+      x <<= 1;
+      x |= t & 1;
+      t >>= 4;
+    }
+  }
+  return x;
+}
+
+int test_spread_gather_bits() {
+  int x = 0x9AC35;
+  int spread = spread_bits(x);
+  int gather = gather_bits(spread);
+  return x == gather ? 0 : -1;
+}
+
+// modular multiplicative inverses
+const unsigned int tag_factor = 510199;
+const unsigned int tag_factor_inverse = 96455;
+const unsigned int tag_mask = 0x7ffff;
+
+void write_tag(tag_t tag, unsigned int val) {
+  val *= tag_factor;
+  val &= tag_mask;
+  COUNTDOWN(i, sizeof(tag_t)) {
+    tag[i] = to_tag_char(val);
+    val >>= 5;
+  }
+}
+
+int read_tag(const tag_t tag) {
+  unsigned int val = 0;
+  COUNTUP(i, sizeof(tag_t)) {
+    int x = from_tag_char(tag[i]);
+    if(x < 0) return x;
+    val = (val << 5) | x;
+  }
+  val *= tag_factor_inverse;
+  val &= tag_mask;
+  return val;
+}
+
+int test_tag() {
+  tag_t tag = "good";
+  int x = read_tag(tag);
+  write_tag(tag, x);
+  printf("tag: %d = " FORMAT_TAG "\n", x, tag);
+  return strcmp("good", tag) == 0 ? 0 : -1;
+}

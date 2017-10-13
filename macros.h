@@ -355,6 +355,7 @@
 
 #define MARK(x) "\x1b[37;41m" x "\x1b[0m"
 #define NOTE(x) "\x1b[37;44m" x "\x1b[0m"
+#define FADE(x) "\x1b[38;5;8m" x "\x1b[0m"
 #define TODO MARK("TODO")
 
 #define DISABLE(...)                            \
