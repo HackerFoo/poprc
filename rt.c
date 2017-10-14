@@ -811,4 +811,7 @@ bool check_type(uint8_t requested, uint8_t expected) {
 void breakpoint() {
   static volatile unsigned int x = 0;
   x++;
+  if(write_graph) {
+    make_graph_all(NULL, "breakpoint");
+  }
 }

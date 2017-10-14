@@ -70,6 +70,10 @@ void log_add(intptr_t x) {
     unsigned int len = log_entry_len(log_tail);
     log_tail = (log_tail + 1 + len) % LOG_SIZE;
   }
+}
+
+void log_add_last(intptr_t x) {
+  log_add(x);
   if(log_head == log_watch) breakpoint();
 }
 
@@ -191,7 +195,7 @@ void log_print_all() {
     log_add((intptr_t)(x4));                            \
     log_add((intptr_t)(x5));                            \
     log_add((intptr_t)(x6));                            \
-    log_add((intptr_t)(x7));                            \
+    log_add_last((intptr_t)(x7));                       \
   } while(0)
 #define LOG_1(fmt, x0, x1, x2, x3, x4, x5, x6, ...)     \
   do {                                                  \
@@ -203,7 +207,7 @@ void log_print_all() {
     log_add((intptr_t)(x3));                            \
     log_add((intptr_t)(x4));                            \
     log_add((intptr_t)(x5));                            \
-    log_add((intptr_t)(x6));                            \
+    log_add_last((intptr_t)(x6));                       \
   } while(0)
 #define LOG_2(fmt, x0, x1, x2, x3, x4, x5, ...) \
   do {                                          \
@@ -214,7 +218,7 @@ void log_print_all() {
     log_add((intptr_t)(x2));                    \
     log_add((intptr_t)(x3));                    \
     log_add((intptr_t)(x4));                    \
-    log_add((intptr_t)(x5));                    \
+    log_add_last((intptr_t)(x5));               \
   } while(0)
 #define LOG_3(fmt, x0, x1, x2, x3, x4, ...)     \
   do {                                          \
@@ -224,7 +228,7 @@ void log_print_all() {
     log_add((intptr_t)(x1));                    \
     log_add((intptr_t)(x2));                    \
     log_add((intptr_t)(x3));                    \
-    log_add((intptr_t)(x4));                    \
+    log_add_last((intptr_t)(x4));               \
   } while(0)
 #define LOG_4(fmt, x0, x1, x2, x3, ...)         \
   do {                                          \
@@ -233,7 +237,7 @@ void log_print_all() {
     log_add((intptr_t)(x0));                    \
     log_add((intptr_t)(x1));                    \
     log_add((intptr_t)(x2));                    \
-    log_add((intptr_t)(x3));                    \
+    log_add_last((intptr_t)(x3));               \
   } while(0)
 #define LOG_5(fmt, x0, x1, x2, ...)             \
   do {                                          \
@@ -241,25 +245,25 @@ void log_print_all() {
     log_add((intptr_t)("\x03" fmt));            \
     log_add((intptr_t)(x0));                    \
     log_add((intptr_t)(x1));                    \
-    log_add((intptr_t)(x2));                    \
+    log_add_last((intptr_t)(x2));               \
   } while(0)
 #define LOG_6(fmt, x0, x1, ...)                 \
   do {                                          \
     log_add_context();                          \
     log_add((intptr_t)("\x02" fmt));            \
     log_add((intptr_t)(x0));                    \
-    log_add((intptr_t)(x1));                    \
+    log_add_last((intptr_t)(x1));               \
   } while(0)
 #define LOG_7(fmt, x0, ...)                     \
   do {                                          \
     log_add_context();                          \
     log_add((intptr_t)("\x01" fmt));            \
-    log_add((intptr_t)(x0));                    \
+    log_add_last((intptr_t)(x0));               \
   } while(0)
 #define LOG_8(fmt, ...)                         \
   do {                                          \
     log_add_context();                          \
-    log_add((intptr_t)("\x00" fmt));            \
+    log_add_last((intptr_t)("\x00" fmt));       \
   } while(0)
 #define LOG(fmt, ...) DISPATCH(LOG, 9, __FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
 #define LOG_NO_POS(fmt, ...) DISPATCH(LOG, 9, fmt, ##__VA_ARGS__)
@@ -388,7 +392,7 @@ struct context_s {
     log_add((intptr_t)(x4));                                    \
     log_add((intptr_t)(x5));                                    \
     log_add((intptr_t)(x6));                                    \
-    log_add((intptr_t)(x7));                                    \
+    log_add_last((intptr_t)(x7));                               \
   } while(0)
 #define CONTEXT_LOG_1(fmt, x0, x1, x2, x3, x4, x5, x6, ...)     \
   do {                                                          \
@@ -401,7 +405,7 @@ struct context_s {
     log_add((intptr_t)(x3));                                    \
     log_add((intptr_t)(x4));                                    \
     log_add((intptr_t)(x5));                                    \
-    log_add((intptr_t)(x6));                                    \
+    log_add_last((intptr_t)(x6));                               \
   } while(0)
 #define CONTEXT_LOG_2(fmt, x0, x1, x2, x3, x4, x5, ...) \
   do {                                                  \
@@ -413,7 +417,7 @@ struct context_s {
     log_add((intptr_t)(x2));                            \
     log_add((intptr_t)(x3));                            \
     log_add((intptr_t)(x4));                            \
-    log_add((intptr_t)(x5));                            \
+    log_add_last((intptr_t)(x5));                       \
   } while(0)
 #define CONTEXT_LOG_3(fmt, x0, x1, x2, x3, x4, ...)     \
   do {                                                  \
@@ -424,7 +428,7 @@ struct context_s {
     log_add((intptr_t)(x1));                            \
     log_add((intptr_t)(x2));                            \
     log_add((intptr_t)(x3));                            \
-    log_add((intptr_t)(x4));                            \
+    log_add_last((intptr_t)(x4));                       \
   } while(0)
 #define CONTEXT_LOG_4(fmt, x0, x1, x2, x3, ...) \
   do {                                          \
@@ -434,7 +438,7 @@ struct context_s {
     log_add((intptr_t)(x0));                    \
     log_add((intptr_t)(x1));                    \
     log_add((intptr_t)(x2));                    \
-    log_add((intptr_t)(x3));                    \
+    log_add_last((intptr_t)(x3));               \
   } while(0)
 #define CONTEXT_LOG_5(fmt, x0, x1, x2, ...)     \
   do {                                          \
@@ -443,7 +447,7 @@ struct context_s {
     log_add((intptr_t)(__context + 1));         \
     log_add((intptr_t)(x0));                    \
     log_add((intptr_t)(x1));                    \
-    log_add((intptr_t)(x2));                    \
+    log_add_last((intptr_t)(x2));               \
   } while(0)
 #define CONTEXT_LOG_6(fmt, x0, x1, ...)         \
   do {                                          \
@@ -451,20 +455,20 @@ struct context_s {
     __context = "\xff\x42" fmt;                 \
     log_add((intptr_t)(__context + 1));         \
     log_add((intptr_t)(x0));                    \
-    log_add((intptr_t)(x1));                    \
+    log_add_last((intptr_t)(x1));               \
   } while(0)
 #define CONTEXT_LOG_7(fmt, x0, ...)             \
   do {                                          \
     log_add_context();                          \
     __context = "\xff\x41" fmt;                 \
     log_add((intptr_t)(__context + 1));         \
-    log_add((intptr_t)(x0));                    \
+    log_add_last((intptr_t)(x0));               \
   } while(0)
 #define CONTEXT_LOG_8(fmt, ...)                 \
   do {                                          \
     log_add_context();                          \
     __context = "\xff\x40" fmt;                 \
-    log_add((intptr_t)(__context + 1));         \
+    log_add_last((intptr_t)(__context + 1));    \
   } while(0)
 #define CONTEXT_LOG(fmt, ...)                                           \
   const char *__context __attribute__((cleanup(log_cleanup_context_log))); \

@@ -54,6 +54,8 @@ assert also works this way
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
+** TODO log tag support in lldbinint.py
+** DONE optimize breakpoint() with log_add_last
 ** TODO levels can be added to logging by embedding in fmt string
 *** compile time flag for max log level
 *** filter log output by argument to :log
