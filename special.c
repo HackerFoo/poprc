@@ -29,7 +29,7 @@ bool func_value(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   CONTEXT("value: %d", CELL_INDEX(c));
   cell_t *res = NULL;
-  PRE(c);
+  PRE(c, value);
   stats.reduce_cnt--;
 
   if(FLAG(c->value.type, T_FAIL) ||
@@ -251,7 +251,7 @@ bool is_dep_of(cell_t *d, cell_t *c) {
 bool func_dep(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
   CONTEXT("dep: %d", CELL_INDEX(c));
-  PRE(c);
+  PRE(c, dep);
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
   /* must temporarily reference to avoid replacement of p which is referenced elsewhere */
@@ -290,7 +290,7 @@ bool is_dep(cell_t const *c) {
 bool func_placeholder(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   CONTEXT("placeholder: %d", CELL_INDEX(c));
-  PRE(c);
+  PRE(c, placeholder);
   if(!check_type(treq.t, T_FUNCTION)) goto fail;
   csize_t in = closure_in(c), n = closure_args(c);
 
@@ -345,7 +345,7 @@ bool is_placeholder(cell_t const *c) {
 
 bool func_fail(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
-  PRE(c);
+  PRE(c, fail);
   stats.reduce_cnt--;
   fail(cp, treq);
   return false;

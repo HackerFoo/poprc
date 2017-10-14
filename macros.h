@@ -364,14 +364,19 @@
     return __VA_ARGS__;                         \
   } while(0)                                    \
 
-
-#define PRE(c)                                  \
+#define WATCH(c, msg)                           \
   do {                                          \
-    assert_error(!is_marked(c));                \
     int i = get_watch(c);                       \
     if(i) {                                     \
-      LOG(NOTE("WATCH") " %d", i);              \
+      LOG(NOTE("WATCH") " %d " msg " %d",       \
+          i, CELL_INDEX(c));                    \
       breakpoint();                             \
     }                                           \
+  } while(0)
+
+#define PRE(c, func)                            \
+  do {                                          \
+    assert_error(!is_marked(c));                \
+    WATCH(c, #func);                            \
   } while(0)
 #endif

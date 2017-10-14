@@ -25,6 +25,7 @@
 #include "gen/trace.h"
 #include "gen/list.h"
 #include "gen/user_func.h"
+#include "gen/log.h"
 
 // to catch errors that result in large allocations
 #define MAX_ALLOC_SIZE 128
@@ -177,6 +178,7 @@ cell_t *closure_alloc_cells(csize_t size) {
   }
 
   memset(c, 0, sizeof(cell_t)*size);
+  WATCH(c, "cell_alloc");
   return c;
 }
 
@@ -216,6 +218,7 @@ void cell_free(cell_t *c) {
 void closure_shrink(cell_t *c, csize_t s) {
   if(!c) return;
   assert_error(is_cell(c));
+  WATCH(c, "closure_shrink");
   csize_t size = closure_cells(c);
   if(size > s) {
     assert_error(is_closure(c));

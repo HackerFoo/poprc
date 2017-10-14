@@ -624,6 +624,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
 
   cell_t **p = cp;
   while(*p) {
+    LOG("branch %d: %d", alts, CELL_INDEX(*p));
     if(!func_list(p, req_pos(REQ(return), entry->pos))) continue;
     cell_t **a;
     FORLIST(a, *p, true) {
