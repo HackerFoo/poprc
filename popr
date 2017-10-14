@@ -1,7 +1,13 @@
 #!/bin/sh
 
+POPRC_ROOT=$HOME/src/poprc
+
+pushd $POPRC_ROOT > /dev/null
+
 if [ ! -f eval ]; then
     make
 fi
 
 ./eval -lo lib.ppr -im
+
+popd > /dev/null
