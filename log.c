@@ -33,6 +33,9 @@ static intptr_t log[LOG_SIZE];
 static unsigned int log_head = 0;
 static unsigned int log_tail = 0;
 static unsigned int log_watch = ~0;
+static intptr_t log_watch_fmt = 0;
+static bool set_log_watch_fmt = false;
+static unsigned int msg_head = 0;
 
 context_t *__log_context = NULL;
 
@@ -43,8 +46,9 @@ void log_init() {
   __log_context = NULL;
 }
 
-void set_log_watch(const tag_t tag) {
+void set_log_watch(const tag_t tag, bool after) {
   log_watch = read_tag(tag);
+  set_log_watch_fmt = after;
 }
 
 void log_soft_init() {
@@ -61,20 +65,6 @@ int log_entry_len(unsigned int idx) {
   char len = fmt[0];
   if(len == '\xff') return 0;
   return (uint8_t)(len & ~MASK);
-}
-
-void log_add(intptr_t x) {
-  log[log_head] = x;
-  log_head = (log_head + 1) % LOG_SIZE;
-  if(log_head == log_tail) {
-    unsigned int len = log_entry_len(log_tail);
-    log_tail = (log_tail + 1 + len) % LOG_SIZE;
-  }
-}
-
-void log_add_last(intptr_t x) {
-  log_add(x);
-  if(log_head == log_watch) breakpoint();
 }
 
 static
@@ -142,6 +132,39 @@ unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
   return idx;
 }
 
+void log_add(intptr_t x) {
+  log[log_head] = x;
+  log_head = (log_head + 1) % LOG_SIZE;
+  if(log_head == log_tail) {
+    unsigned int len = log_entry_len(log_tail);
+    log_tail = (log_tail + 1 + len) % LOG_SIZE;
+  }
+}
+
+void log_add_first(intptr_t x) {
+  msg_head = log_head;
+  log_add(x);
+}
+
+void log_add_last(intptr_t x) {
+  log_add(x);
+  if(log_head == log_watch ||
+     (log_watch_fmt && log[msg_head] == log_watch_fmt)) {
+    if(set_log_watch_fmt) {
+      log_watch_fmt = log[msg_head];
+    }
+    unsigned int depth = 0;
+    printf(NOTE("LOG") " ");
+    log_printf(msg_head, &depth, true);
+    breakpoint();
+  }
+}
+
+void log_add_only(intptr_t x) {
+  msg_head = log_head;
+  log_add_last(x);
+}
+
 static
 bool end_context(unsigned int idx, unsigned int *depth) {
   const char *fmt = (const char *)log[idx];
@@ -187,7 +210,7 @@ void log_print_all() {
 #define LOG_0(fmt, x0, x1, x2, x3, x4, x5, x6, x7, ...) \
   do {                                                  \
     log_add_context();                                  \
-    log_add((intptr_t)("\x08" fmt));                    \
+    log_add_first((intptr_t)("\x08" fmt));              \
     log_add((intptr_t)(x0));                            \
     log_add((intptr_t)(x1));                            \
     log_add((intptr_t)(x2));                            \
@@ -200,7 +223,7 @@ void log_print_all() {
 #define LOG_1(fmt, x0, x1, x2, x3, x4, x5, x6, ...)     \
   do {                                                  \
     log_add_context();                                  \
-    log_add((intptr_t)("\x07" fmt));                    \
+    log_add_first((intptr_t)("\x07" fmt));              \
     log_add((intptr_t)(x0));                            \
     log_add((intptr_t)(x1));                            \
     log_add((intptr_t)(x2));                            \
@@ -212,7 +235,7 @@ void log_print_all() {
 #define LOG_2(fmt, x0, x1, x2, x3, x4, x5, ...) \
   do {                                          \
     log_add_context();                          \
-    log_add((intptr_t)("\x06" fmt));            \
+    log_add_first((intptr_t)("\x06" fmt));      \
     log_add((intptr_t)(x0));                    \
     log_add((intptr_t)(x1));                    \
     log_add((intptr_t)(x2));                    \
@@ -223,7 +246,7 @@ void log_print_all() {
 #define LOG_3(fmt, x0, x1, x2, x3, x4, ...)     \
   do {                                          \
     log_add_context();                          \
-    log_add((intptr_t)("\x05" fmt));            \
+    log_add_first((intptr_t)("\x05" fmt));      \
     log_add((intptr_t)(x0));                    \
     log_add((intptr_t)(x1));                    \
     log_add((intptr_t)(x2));                    \
@@ -233,7 +256,7 @@ void log_print_all() {
 #define LOG_4(fmt, x0, x1, x2, x3, ...)         \
   do {                                          \
     log_add_context();                          \
-    log_add((intptr_t)("\x04" fmt));            \
+    log_add_first((intptr_t)("\x04" fmt));      \
     log_add((intptr_t)(x0));                    \
     log_add((intptr_t)(x1));                    \
     log_add((intptr_t)(x2));                    \
@@ -242,7 +265,7 @@ void log_print_all() {
 #define LOG_5(fmt, x0, x1, x2, ...)             \
   do {                                          \
     log_add_context();                          \
-    log_add((intptr_t)("\x03" fmt));            \
+    log_add_first((intptr_t)("\x03" fmt));      \
     log_add((intptr_t)(x0));                    \
     log_add((intptr_t)(x1));                    \
     log_add_last((intptr_t)(x2));               \
@@ -250,20 +273,20 @@ void log_print_all() {
 #define LOG_6(fmt, x0, x1, ...)                 \
   do {                                          \
     log_add_context();                          \
-    log_add((intptr_t)("\x02" fmt));            \
+    log_add_first((intptr_t)("\x02" fmt));      \
     log_add((intptr_t)(x0));                    \
     log_add_last((intptr_t)(x1));               \
   } while(0)
 #define LOG_7(fmt, x0, ...)                     \
   do {                                          \
     log_add_context();                          \
-    log_add((intptr_t)("\x01" fmt));            \
+    log_add_first((intptr_t)("\x01" fmt));      \
     log_add_last((intptr_t)(x0));               \
   } while(0)
 #define LOG_8(fmt, ...)                         \
   do {                                          \
     log_add_context();                          \
-    log_add_last((intptr_t)("\x00" fmt));       \
+    log_add_only((intptr_t)("\x00" fmt));       \
   } while(0)
 #define LOG(fmt, ...) DISPATCH(LOG, 9, __FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
 #define LOG_NO_POS(fmt, ...) DISPATCH(LOG, 9, fmt, ##__VA_ARGS__)
@@ -299,71 +322,71 @@ struct context_s {
   intptr_t __context[] = {                                      \
     (intptr_t)__log_context,                                    \
     (intptr_t)("\xff\xC8" fmt) + 1,                             \
-    (intptr_t)(x0),                                               \
-    (intptr_t)(x1),                                               \
-    (intptr_t)(x2),                                               \
-    (intptr_t)(x3),                                               \
-    (intptr_t)(x4),                                               \
-    (intptr_t)(x5),                                               \
-    (intptr_t)(x6),                                               \
-    (intptr_t)(x7)};                                              \
+    (intptr_t)(x0),                                             \
+    (intptr_t)(x1),                                             \
+    (intptr_t)(x2),                                             \
+    (intptr_t)(x3),                                             \
+    (intptr_t)(x4),                                             \
+    (intptr_t)(x5),                                             \
+    (intptr_t)(x6),                                             \
+    (intptr_t)(x7)};                                            \
   END_OF_CONTEXT_MACRO
 #define CONTEXT_1(fmt, x0, x1, x2, x3, x4, x5, x6, ...) \
   intptr_t __context[] = {                              \
     (intptr_t)__log_context,                            \
     (intptr_t)("\xff\xC7" fmt) + 1,                     \
-    (intptr_t)(x0),                                       \
-    (intptr_t)(x1),                                       \
-    (intptr_t)(x2),                                       \
-    (intptr_t)(x3),                                       \
-    (intptr_t)(x4),                                       \
-    (intptr_t)(x5),                                       \
-    (intptr_t)(x6)};                                      \
+    (intptr_t)(x0),                                     \
+    (intptr_t)(x1),                                     \
+    (intptr_t)(x2),                                     \
+    (intptr_t)(x3),                                     \
+    (intptr_t)(x4),                                     \
+    (intptr_t)(x5),                                     \
+    (intptr_t)(x6)};                                    \
   END_OF_CONTEXT_MACRO
 #define CONTEXT_2(fmt, x0, x1, x2, x3, x4, x5, ...)     \
   intptr_t __context[] = {                              \
     (intptr_t)__log_context,                            \
-      (intptr_t)("\xff\xC6" fmt) + 1,                   \
-      (intptr_t)(x0),                                     \
-      (intptr_t)(x1),                                     \
-      (intptr_t)(x2),                                     \
-      (intptr_t)(x3),                                     \
-      (intptr_t)(x4),                                     \
-      (intptr_t)(x5)};                                    \
+    (intptr_t)("\xff\xC6" fmt) + 1,                     \
+    (intptr_t)(x0),                                     \
+    (intptr_t)(x1),                                     \
+    (intptr_t)(x2),                                     \
+    (intptr_t)(x3),                                     \
+    (intptr_t)(x4),                                     \
+    (intptr_t)(x5)};                                    \
   END_OF_CONTEXT_MACRO
 #define CONTEXT_3(fmt, x0, x1, x2, x3, x4, ...) \
   intptr_t __context[] = {                      \
     (intptr_t)__log_context,                    \
     (intptr_t)("\xff\xC5" fmt) + 1,             \
-    (intptr_t)(x0),                               \
-    (intptr_t)(x1),                               \
-    (intptr_t)(x2),                               \
-    (intptr_t)(x3),                               \
-    (intptr_t)(x4)};                              \
+    (intptr_t)(x0),                             \
+    (intptr_t)(x1),                             \
+    (intptr_t)(x2),                             \
+    (intptr_t)(x3),                             \
+    (intptr_t)(x4)};                            \
   END_OF_CONTEXT_MACRO
 #define CONTEXT_4(fmt, x0, x1, x2, x3, ...)     \
   intptr_t __context[] = {                      \
     (intptr_t)__log_context,                    \
     (intptr_t)("\xff\xC4" fmt) + 1,             \
-    (intptr_t)(x0),                               \
-    (intptr_t)(x1),                               \
-    (intptr_t)(x2),                               \
-    (intptr_t)(x3)};                              \
+    (intptr_t)(x0),                             \
+    (intptr_t)(x1),                             \
+    (intptr_t)(x2),                             \
+    (intptr_t)(x3)};                            \
   END_OF_CONTEXT_MACRO
 #define CONTEXT_5(fmt, x0, x1, x2, ...)         \
   intptr_t __context[] = {                      \
     (intptr_t)__log_context,                    \
     (intptr_t)("\xff\xC3" fmt) + 1,             \
-    (intptr_t)(x0),                               \
-    (intptr_t)(x1),                               \
-    (intptr_t)(x2)};                              \
+    (intptr_t)(x0),                             \
+    (intptr_t)(x1),                             \
+    (intptr_t)(x2)};                            \
   END_OF_CONTEXT_MACRO
 #define CONTEXT_6(fmt, x0, x1, ...)             \
   intptr_t __context[] = {                      \
     (intptr_t)__log_context,                    \
     (intptr_t)("\xff\xC2" fmt) + 1,             \
-    (intptr_t)(x0),                               \
-    (intptr_t)(x1)};                              \
+    (intptr_t)(x0),                             \
+    (intptr_t)(x1)};                            \
   END_OF_CONTEXT_MACRO
 #define CONTEXT_7(fmt, x0, ...)                 \
   intptr_t __context[] = {                      \
@@ -384,7 +407,7 @@ struct context_s {
   do {                                                          \
     log_add_context();                                          \
     __context = "\xff\x48" fmt;                                 \
-    log_add((intptr_t)(__context + 1));                         \
+    log_add_first((intptr_t)(__context + 1));                   \
     log_add((intptr_t)(x0));                                    \
     log_add((intptr_t)(x1));                                    \
     log_add((intptr_t)(x2));                                    \
@@ -398,7 +421,7 @@ struct context_s {
   do {                                                          \
     log_add_context();                                          \
     __context = "\xff\x47" fmt;                                 \
-    log_add((intptr_t)(__context + 1));                         \
+    log_add_first((intptr_t)(__context + 1));                   \
     log_add((intptr_t)(x0));                                    \
     log_add((intptr_t)(x1));                                    \
     log_add((intptr_t)(x2));                                    \
@@ -411,7 +434,7 @@ struct context_s {
   do {                                                  \
     log_add_context();                                  \
     __context = "\xff\x46" fmt;                         \
-    log_add((intptr_t)(__context + 1));                 \
+    log_add_first((intptr_t)(__context + 1));           \
     log_add((intptr_t)(x0));                            \
     log_add((intptr_t)(x1));                            \
     log_add((intptr_t)(x2));                            \
@@ -423,7 +446,7 @@ struct context_s {
   do {                                                  \
     log_add_context();                                  \
     __context = "\xff\x45" fmt;                         \
-    log_add((intptr_t)(__context + 1));                 \
+    log_add_first((intptr_t)(__context + 1));           \
     log_add((intptr_t)(x0));                            \
     log_add((intptr_t)(x1));                            \
     log_add((intptr_t)(x2));                            \
@@ -434,7 +457,7 @@ struct context_s {
   do {                                          \
     log_add_context();                          \
     __context = "\xff\x44" fmt;                 \
-    log_add((intptr_t)(__context + 1));         \
+    log_add_first((intptr_t)(__context + 1));   \
     log_add((intptr_t)(x0));                    \
     log_add((intptr_t)(x1));                    \
     log_add((intptr_t)(x2));                    \
@@ -444,7 +467,7 @@ struct context_s {
   do {                                          \
     log_add_context();                          \
     __context = "\xff\x43" fmt;                 \
-    log_add((intptr_t)(__context + 1));         \
+    log_add_first((intptr_t)(__context + 1));   \
     log_add((intptr_t)(x0));                    \
     log_add((intptr_t)(x1));                    \
     log_add_last((intptr_t)(x2));               \
@@ -453,7 +476,7 @@ struct context_s {
   do {                                          \
     log_add_context();                          \
     __context = "\xff\x42" fmt;                 \
-    log_add((intptr_t)(__context + 1));         \
+    log_add_first((intptr_t)(__context + 1));   \
     log_add((intptr_t)(x0));                    \
     log_add_last((intptr_t)(x1));               \
   } while(0)
@@ -461,14 +484,14 @@ struct context_s {
   do {                                          \
     log_add_context();                          \
     __context = "\xff\x41" fmt;                 \
-    log_add((intptr_t)(__context + 1));         \
+    log_add_first((intptr_t)(__context + 1));   \
     log_add_last((intptr_t)(x0));               \
   } while(0)
 #define CONTEXT_LOG_8(fmt, ...)                 \
   do {                                          \
     log_add_context();                          \
     __context = "\xff\x40" fmt;                 \
-    log_add_last((intptr_t)(__context + 1));    \
+    log_add_only((intptr_t)(__context + 1));    \
   } while(0)
 #define CONTEXT_LOG(fmt, ...)                                           \
   const char *__context __attribute__((cleanup(log_cleanup_context_log))); \
