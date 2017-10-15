@@ -222,3 +222,16 @@ bool assert_ref(cell_t ***roots, size_t n) {
   }
   return check;
 }
+
+// assert on overlapping alts
+// c->alt->...->alt = a
+void assert_alt(cell_t *c, cell_t *a) {
+  alt_set_t alt_set = a->value.alt_set;
+  FOLLOW(p, c, alt) {
+    if(p == a) break;
+    assert_log(as_conflict(p->value.alt_set | alt_set),
+               "overlapping alts %d %d",
+               CELL_INDEX(p),
+               CELL_INDEX(a));
+  }
+}

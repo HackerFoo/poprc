@@ -617,6 +617,7 @@ bool tail_call_to_bottom(cell_t *entry, int x) {
 
 // reduce for tracing & compilation
 unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
+  cell_t *c = *cp;
   cell_t *tc = NULL, **prev = &tc;
   unsigned int alts = 0;
 
@@ -626,6 +627,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
   while(*p) {
     LOG("branch %d: %d", alts, CELL_INDEX(*p));
     if(!func_list(p, req_pos(REQ(return), entry->pos))) continue;
+    assert_alt(c, *p); // O(alts^2)
     cell_t **a;
     FORLIST(a, *p, true) {
       collapse_row(a);
