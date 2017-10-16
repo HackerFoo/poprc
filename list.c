@@ -88,6 +88,9 @@ bool func_list(cell_t **cp, type_request_t treq) {
   if(n && is_row_list(c) && is_list(c->value.ptr[n-1])) {
     if(!func_list(&c->value.ptr[n-1], req_pos(REQ(any), treq.pos))) goto fail;
   }
+  alt_set |= c->value.ptr[n-1]->value.alt_set;
+  if(as_conflict(alt_set)) goto fail;
+  c->value.alt_set = alt_set;
   return true;
 
  fail:

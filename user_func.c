@@ -163,9 +163,9 @@ cell_t **bind_pattern(cell_t *c, cell_t *pattern, cell_t **tail) {
 // unify c with pattern pat if possible, returning the unified result
 cell_t *unify_convert(cell_t *entry, cell_t *c, cell_t *pat) {
   if(!pat) return NULL;
-  assert_error(c->size == pat->size);
-  //assert_error(c->expr.out == pat->expr.out);
-  if(c->expr.out != pat->expr.out) return NULL; // ***
+  if(closure_in(c) != closure_in(pat)) {
+    return NULL;
+  }
   csize_t out = c->expr.out;
   cell_t *ret = NULL;
   if(out != 0) { // for now
@@ -454,7 +454,7 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
 
   size_t in = closure_in(c);
   cell_t *entry = c->expr.arg[in];
-  assert_error(entry->entry.out == 1, "TODO");
+  assert_error(entry->entry.out == 1, TODO);
   CONTEXT("exec_wrap %s: %d 0x%x", entry->word_name, CELL_INDEX(c), c->expr.flags);
 
   cell_t *new_entry = trace_start_entry(parent_entry, 1);
@@ -529,10 +529,12 @@ static
 bool exec_list(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   PRE(c, exec_list);
+
   if(treq.t != T_LIST || closure_out(c) != 0) {
     return true;
   }
 
+  CONTEXT_LOG("exec_list %d", CELL_INDEX(c));
   cell_t *res;
   csize_t
     in = closure_in(c),
@@ -648,7 +650,10 @@ bool func_exec(cell_t **cp, type_request_t treq) {
   cell_t *parent_entry = find_input_entry(c);
 
   if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
-    if(entry->initial) unify_exec(cp, parent_entry);
+    if(entry->initial && !unify_exec(cp, parent_entry)) {
+      fail(cp, treq);
+      return false;
+    }
     return
       exec_list(cp, treq) &&
       func_exec_trace(cp, treq, parent_entry);

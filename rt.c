@@ -122,9 +122,9 @@ void split_arg(cell_t *c, csize_t n) {
     pa = &p->expr.arg[n];
     if(*pa == a) {
       // insert a copy with the alt arg
-      p = dup_alt(p, n, ref((*pa)->alt))->alt;
+      p = dup_alt(p, n, ref(a->alt))->alt;
       // mark the arg
-      *pa = mark_ptr(*pa);
+      *pa = mark_ptr(a);
     } else p = p->alt;
   } while(p);
 }
@@ -443,6 +443,7 @@ void store_fail(cell_t *c, cell_t *alt) {
 }
 
 void store_dep(cell_t *c, trace_cell_t tc, csize_t pos, int t) {
+  assert_error(t != T_LIST);
   cell_t v = {
     .func = func_value,
     .n = c->n,

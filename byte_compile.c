@@ -675,6 +675,8 @@ void mark_barriers(cell_t *entry, cell_t *c) {
         trace_cell_ptr((*p)->value.tc)->value.tc = tc;
       } else if(x->func == func_ap) { // ***
         mark_barriers(entry, x);
+      } else {
+        x->pos = entry->pos;
       }
     }
   }
