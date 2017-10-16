@@ -709,12 +709,20 @@ void command_bc_in(UNUSED cell_t *rest) {
 
 // set a watched cell
 void command_watch(cell_t *rest) {
-  int arg[2];
-  if(parse_numeric_args(rest, arg, 2)) {
-    set_watch(arg[0], &cells[arg[1]]);
+  int idx = 0;
+  if(parse_numeric_args(rest, &idx, 1)) {
+    assert_throw(idx >= 0 && (unsigned int)idx < LENGTH(cells));
+    int i = set_watch(&cells[idx]);
+    if(i) {
+      printf("watch %d set: %d\n", i, idx);
+    } else {
+      printf("watch not set: %d\n", idx);
+    }
   } else if(rest && rest->tok_list.length == sizeof(tag_t)) {
     cell_t *next = rest->tok_list.next;
     bool after = next && next->tok_list.length == 1 && next->tok_list.location[0] == '+';
-    set_log_watch(rest->tok_list.location, after);
+    const char *tag = rest->tok_list.location;
+    set_log_watch(tag, after);
+    printf("log watch set for tag: " FORMAT_TAG "\n", tag);
   }
 }

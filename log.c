@@ -153,9 +153,6 @@ void log_add_last(intptr_t x) {
     if(set_log_watch_fmt) {
       log_watch_fmt = log[msg_head];
     }
-    unsigned int depth = 0;
-    printf(NOTE("LOG") " ");
-    log_printf(msg_head, &depth, true);
     breakpoint();
   }
 }
@@ -163,6 +160,11 @@ void log_add_last(intptr_t x) {
 void log_add_only(intptr_t x) {
   msg_head = log_head;
   log_add_last(x);
+}
+
+void print_last_log_msg() {
+  unsigned int depth = 0;
+  log_printf(msg_head, &depth, true);
 }
 
 static

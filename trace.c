@@ -685,3 +685,13 @@ cell_t *trace_expr_entry(uint8_t pos) {
 cell_t *param(int t, cell_t *entry) {
   return var_create_nonlist(t, (trace_cell_t) {entry, trace_alloc_var(entry)});
 }
+
+void print_active_entries(const char *msg) {
+  const char *sep = msg;
+  COUNTUP(i, prev_entry_pos) {
+    cell_t *e = active_entries[i];
+    printf("%s%s.%s", sep, e->module_name, e->word_name);
+    sep = ", ";
+  }
+  if(sep != msg) printf("\n");
+}

@@ -57,11 +57,15 @@ bool remove_root(cell_t **r) {
   return set_remove((uintptr_t)r, (uintptr_t *)rt_roots, rt_roots_n);
 }
 
-void set_watch(int i, cell_t *c) {
-  watch_enabled = true;
-  assert_throw(i > 0 &&
-               i <= (int)LENGTH(watched_cells));
-  watched_cells[i - 1] = c;
+int set_watch(cell_t *c) {
+  FOREACH(i, watched_cells) {
+    if(!watched_cells[i]) {
+      watch_enabled = true;
+      watched_cells[i] = c;
+      return i + 1;
+    }
+  }
+  return 0;
 }
 
 int get_watch(cell_t *c) {
@@ -814,4 +818,7 @@ void breakpoint() {
   if(write_graph) {
     make_graph_all(NULL, "breakpoint");
   }
+  printf(NOTE("BREAKPOINT") " ");
+  print_last_log_msg();
+  print_active_entries("  - while compiling ");
 }
