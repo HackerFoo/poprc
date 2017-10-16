@@ -662,5 +662,5 @@ int test_tag() {
   int x = read_tag(tag);
   write_tag(tag, x);
   printf("tag: %d = " FORMAT_TAG "\n", x, tag);
-  return strcmp("good", tag) == 0 ? 0 : -1;
+  return strncmp("good", tag, sizeof(tag)) == 0 ? 0 : -1;
 }

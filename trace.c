@@ -167,7 +167,10 @@ int trace_get_value(cell_t *entry, cell_t *r) {
 
 // reserve space in the trace
 int trace_alloc(cell_t *entry, csize_t args) {
-  if(!entry) return -1;
+  if(!entry) {
+    LOG(MARK("WARN") " NULL entry");
+    return -1;
+  }
   int index = entry->entry.len + 1;
   size_t size = calculate_cells(args);
   cell_t *tc = trace_cell_ptr((trace_cell_t) {entry, index});
@@ -666,6 +669,7 @@ unsigned int trace_reduce_one(cell_t *entry, cell_t *c) {
 
 int trace_alloc_var(cell_t *entry) {
   int x = trace_alloc(entry, 2);
+  if(x <= 0) return x;
   cell_t *tc = &entry[x];
   tc->func = func_value;
   tc->value.type.flags = T_VAR;

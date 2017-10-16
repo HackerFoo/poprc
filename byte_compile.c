@@ -554,6 +554,7 @@ void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *entry) {
   }
 }
 
+/*
 // matches:
 // ___ f (1 -> 1) ___
 // [0] var, type = ?f x1
@@ -659,6 +660,7 @@ finish:
   remove_root(root);
   return true;
 }
+*/
 
 // need a quote version that only marks vars
 void mark_barriers(cell_t *entry, cell_t *c) {

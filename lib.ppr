@@ -28,32 +28,32 @@ __ take rightmost value from quote
 head: popr swap drop
 
 __ return the length of a list
-length: function_t 0 swap length_
-length_:
-  [] ap20
-    [length_step]
-    [head is_nil not]
-    iterate popr drop head
+__ length: function_t 0 swap length_
+__ length_:
+__   [] ap20
+__     [length_step]
+__     [head is_nil not]
+__     iterate popr drop head
 length_step: [[1+] [popr drop] para] .
 
 __ right fold
 __ [... x] y [fn] foldr -> y'
-foldr: -swap2 foldr_
-foldr_:
-  [] ap30 __ fn xs y
-    [[foldr_step] .]
-    [popr drop head is_nil not]
-    iterate head
+__ foldr: -swap2 foldr_
+__ foldr_:
+__   [] ap30 __ fn xs y
+__     [[foldr_step] .]
+__     [popr drop head is_nil not]
+__     iterate head
 foldr_step: [popr] dip12 over3 ap21 swap drop
 
 __ left fold
 __ [... x] y [fn] foldl -> y'
-foldl: swap2 [] foldl_ ap11 swap drop
-foldl_:
-  [] ap30 __ fn xs y
-    [[foldl_step] .]
-    [popr drop head is_nil not]
-    iterate head
+__ foldl: swap2 [] foldl_ ap11 swap drop
+__ foldl_:
+__   [] ap30 __ fn xs y
+__     [[foldl_step] .]
+__     [popr drop head is_nil not]
+__     iterate head
 foldl_step: [popr over2 pushl] dip23 .
 
 dropl:
@@ -76,8 +76,8 @@ __     binrec pull2 drop swap
 
 __ index operator
 __ [f] index -> x
-!!: !!_ head
-!!_: dropl
+__ !!: !!_ head
+__ !!_: dropl
 
 __ a [a -> a] -> [a]
 iteratel: [dup [peek] dip22 iteratel swap] ap20
@@ -85,12 +85,12 @@ iteratel: [dup [peek] dip22 iteratel swap] ap20
 concat: [] [.] foldr
 
 mov_ap: dup -swap2 [. movr] dip32
-map: [] swap map_
-map_:
-  [] ap30
-    [[mov_ap] .]
-    [popr drop popr drop head is_nil not]
-    iterate popr drop head
+__ map: [] swap map_
+__ map_:
+__   [] ap30
+__     [[mov_ap] .]
+__     [popr drop popr drop head is_nil not]
+__     iterate popr drop head
 
 __ a [b..] [p]
 pushif:
@@ -99,12 +99,12 @@ pushif:
     ifte
 
 __ [l] [p] filter -> [..x..] such that for all x, x p == True
-filter: [] swap filter_
-filter_:
-  [] ap30
-    [[filter_step] .]
-    [popr drop popr drop head is_nil not]
-    iterate popr drop head
+__ filter: [] swap filter_
+__ filter_:
+__   [] ap30
+__     [[filter_step] .]
+__     [popr drop popr drop head is_nil not]
+__     iterate popr drop head
 
 __ [.. a] [b ..] [p] --> [..] [a b ..] if a p, otherwise [..] [b ..]
 filter_step: dup [[[popr] dip12] dip23 pushif] dip32
@@ -235,12 +235,12 @@ iterate:
     [fork] ap20 ifdo
 
 __ apply [f] n times
-times: swap times_
-times_: __ a [f] n
-  [] ap30
-    [[times_step] .]
-    [head 0 >]
-    iterate popr drop popr drop head
+__ times: swap times_
+__ times_: __ a [f] n
+__   [] ap30
+__     [[times_step] .]
+__     [head 0 >]
+__     iterate popr drop popr drop head
 times_step: [$keep] dip22 1-
 
 __ m [f] a -> a
@@ -292,12 +292,12 @@ exponent:
     iterate popr drop popr drop head
 
 __ raise to integer power using binary exponentiation
-^: 1 -swap2 exponent
+__ ^: 1 -swap2 exponent
 
 __ sums numbers in a list
-sum_: [[+] .] [popr drop is_nil not] iterate head int_t
-sum: 0 pushr sum_
+__ sum_: [[+] .] [popr drop is_nil not] iterate head int_t
+__ sum: 0 pushr sum_
 
 __ decreasing list from initial element
-iota_: [[dup 1-] .] [head 0 >] iterate
-iota: [1-] pushl iota_
+__ iota_: [[dup 1-] .] [head 0 >] iterate
+__ iota: [1-] pushl iota_

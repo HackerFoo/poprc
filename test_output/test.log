@@ -14,22 +14,23 @@ M:three
 ################
 comments => 0
 @ context
-log.c:501: A 2
-  log.c:503: (a) nonzero x
-log.c:501: A 1
-  log.c:495: B 0
-    log.c:496: (b) zero x
-  log.c:503: (a) nonzero x
-log.c:490: C 3
-log.c:513: D 42
-  log.c:508: E 42
-  log.c:515: exiting d
+log.c:543: A 2
+  log.c:545: (a) nonzero x [38;5;8mowxf[0m
+log.c:543: A 1
+  log.c:537: B 0
+    log.c:538: (b) zero x [38;5;8mmefp[0m
+  log.c:545: (a) nonzero x [38;5;8mliu7[0m
+log.c:532: C 3 [38;5;8mj9mc[0m
+log.c:555: D 42 [38;5;8miwdh[0m
+  log.c:550: E 42 [38;5;8mh4sv[0m
+  log.c:557: exiting d [38;5;8mg9cd[0m
 context => 0
 @ error
 i = 0
 i = 1
 i = 2
-error.c:162: test_error: Assertion `i < 3' failed: Don't worry, it's okay.
+[37;44mBREAKPOINT[0m [37;41m!!![0m error.c:194: test_error: Assertion `i < 3' failed: Don't worry, it's okay. [38;5;8memqn[0m
+error.c:194: test_error: Assertion `i < 3' failed: Don't worry, it's okay.
 error => 0
 @ expand_map
 map[10] = {{eight, 7}, {five, 4}, {four, 3}, {one, 0}, {seven, 6}, {six, 5}, {three, 2}, {two, 1}, {nine, 8}, {ten, 9}}
@@ -39,6 +40,8 @@ _check_flat_copy: 2 + 2 = 4
 _check_flat_copy: 0 + 1 = 1
 _check_flat_copy: 1 + 0 = 1
 flat_copy_list => 0
+@ flattened_list_copy
+flattened_list_copy => 0
 @ function_in
 function_in => 0
 @ lex
@@ -58,9 +61,9 @@ _check_list_remaining_size: 0 + 1 = 1
 _check_list_remaining_size: 1 + 0 = 1
 list_remaining_size => 0
 @ log
-log.c:259: test 1 + 2 = 3
-log.c:260: WAZZUP d00d
-log.c:261: [123]
+log.c:301: test 1 + 2 = 3 [38;5;8moi86[0m
+log.c:302: WAZZUP d00d [38;5;8mnnok[0m
+log.c:303: [123] [38;5;8mmefp[0m
 log => 0
 @ loops
 up: 0
@@ -192,12 +195,17 @@ set => 0
 index find existing: PASS
 index find missing: PASS
 sort => 0
+@ spread_gather_bits
+spread_gather_bits => 0
 @ string_map
 map[8] = {{abc, 3}, {bat, 5}, {cheese, 6}, {cow, 4}, {one, 0}, {quilt, 7}, {three, 2}, {two, 1}}
 cow => 4
 string_map => 0
 @ strings
 strings => 0
+@ tag
+tag: 20117 = good
+tag => 0
 @ var_count
 length(vl) = 5
 var_count => 0
