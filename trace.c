@@ -210,22 +210,6 @@ int trace_copy(cell_t *entry, const cell_t *c) {
   return index;
 }
 
-void trace_write_graph(cell_t *c, trace_cell_t tc) {
-  if(write_graph) {
-    char label[64];
-    const char
-      *module_name = tc.entry->module_name,
-      *word_name = tc.entry->word_name;
-
-    snprintf(label, sizeof(label), "%s.%s [%d]",
-             module_name,
-             word_name,
-             (int)tc.index);
-    mark_cell(c);
-    make_graph_all(NULL, label);
-  }
-}
-
 // store expression c in the trace
 static
 void trace_store_expr(cell_t *c, const cell_t *r) {
@@ -251,7 +235,6 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
   LOG("trace_store_expr: %d[%d] <- %d %d",
       entry_number(entry), (int)r->value.tc.index,
       CELL_INDEX(c), CELL_INDEX(r));
-  if(!is_value(c)) trace_write_graph(c, r->value.tc);
 
   refcount_t n = tc->n;
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
@@ -439,11 +422,6 @@ void trace_reduction(cell_t *c, cell_t *r) {
       }
       printf(" ->");
       show_one(r);
-      if(write_graph) {
-        mark_cell(c);
-        make_graph_all(NULL, "trace");
-        printf(" [%d -> %d]", CELL_INDEX(c), CELL_INDEX(r));
-      }
       printf("\n");
     }
     if(c->func != func_exec) { // is this still necessary?
@@ -533,7 +511,6 @@ cell_t *trace_quote_var(cell_t *l) {
 // store a return
 static
 int trace_return(cell_t *entry, cell_t *c) {
-  cell_t *c0 = c;
   c = flat_copy(c);
   cell_t **p;
   FORLIST(p, c, true) {
@@ -550,7 +527,6 @@ int trace_return(cell_t *entry, cell_t *c) {
   }
   int x = trace_copy(entry, c);
   trace_cell_t t = {entry, x};
-  trace_write_graph(c0, t);
   closure_free(c);
   cell_t *tc = trace_cell_ptr(t);
   tc->value.type.exclusive = T_RETURN;
@@ -694,7 +670,9 @@ void print_active_entries(const char *msg) {
   const char *sep = msg;
   COUNTUP(i, prev_entry_pos) {
     cell_t *e = active_entries[i];
-    printf("%s%s.%s", sep, e->module_name, e->word_name);
+    printf("%s%s.%s (%d)", sep,
+           e->module_name, e->word_name,
+           entry_number(e));
     sep = ", ";
   }
   if(sep != msg) printf("\n");

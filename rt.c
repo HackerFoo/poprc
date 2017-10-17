@@ -814,10 +814,11 @@ bool check_type(uint8_t requested, uint8_t expected) {
 }
 
 void breakpoint() {
-  static volatile unsigned int x = 0;
-  x++;
   if(write_graph) {
-    make_graph_all(NULL, "breakpoint");
+    char label[sizeof(tag_t) + 1];
+    label[sizeof(tag_t)] = 0;
+    get_tag(label);
+    make_graph_all(NULL, label);
   }
   printf(NOTE("BREAKPOINT") " ");
   print_last_log_msg();

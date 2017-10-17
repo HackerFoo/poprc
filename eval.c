@@ -190,6 +190,7 @@ int main(int argc, char **argv) {
   module_init();
 
   command_line = true;
+  write_graph = false;
   bool quit = false;
   tty = isatty(fileno(stdin)) && isatty(fileno(stdout));
   quiet = !tty;
@@ -435,7 +436,7 @@ void command_modules(UNUSED cell_t *rest) {
 }
 
 // toggle graphing
-void command_gra(UNUSED cell_t *rest) {
+void command_graph(UNUSED cell_t *rest) {
   write_graph = !write_graph;
   printf("graph %s\n", write_graph ? "ON" : "OFF");
 }
@@ -546,9 +547,7 @@ bool eval_command_string(char *start, char *end) {
 void reduce_root(cell_t **cp) {
   rt_init();
   insert_root(cp);
-  if(write_graph) make_graph_all(GRAPH_FILE, NULL);
   reduce_list(cp);
-  if(write_graph) make_graph_all(REDUCED_GRAPH_FILE, NULL);
   remove_root(cp);
 }
 

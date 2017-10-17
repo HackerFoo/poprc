@@ -664,3 +664,7 @@ int test_tag() {
   printf("tag: %d = " FORMAT_TAG "\n", x, tag);
   return strncmp("good", tag, sizeof(tag)) == 0 ? 0 : -1;
 }
+
+void get_tag(tag_t tag) {
+  write_tag(tag, log_head);
+}

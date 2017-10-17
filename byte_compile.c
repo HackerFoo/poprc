@@ -39,8 +39,6 @@
 #include "gen/log.h"
 #include "gen/trace.h"
 
-static int graph_entry = -1;
-
 // print bytecode for entry e
 void print_bytecode(cell_t *entry) {
   // word info (top line)
@@ -503,8 +501,6 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   (*entry)->alt = e; // ***
   *entry = e;
 
-  bool context_write_graph = write_graph;
-  if(entry_number(e) == graph_entry) write_graph = true;
   e->module_name = module_name(module);
   seg_t ident_seg = {
     .s = ident,
@@ -527,7 +523,6 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
 
   // finish
   free_def(l);
-  write_graph = context_write_graph;
   return true;
 }
 
@@ -889,20 +884,6 @@ void command_trace(cell_t *rest) {
       if(!set) printf("Invalid argument\n");
     } else {
       printf("Entry not found\n");
-    }
-  }
-}
-
-// graph the given entry number
-void command_gre(cell_t *rest) {
-  if(!rest) {
-    graph_entry = -1;
-  } else {
-    const char *s = rest->tok_list.location;
-    if(is_num(s)) {
-      graph_entry = atoi(s);
-    } else {
-      printf("graph_entry: requires an integer argument\n");
     }
   }
 }

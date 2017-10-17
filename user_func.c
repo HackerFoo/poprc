@@ -34,7 +34,6 @@
 #include "gen/print.h"
 #include "gen/log.h"
 #include "gen/parse.h" // for string_printf
-#include "gen/eval.h" // write_graph
 
 bool is_user_func(const cell_t *c) {
   return c->func == func_exec;
@@ -677,12 +676,6 @@ bool func_exec(cell_t **cp, type_request_t treq) {
       printf("TRACE: %s.%s", entry->module_name, entry->word_name);
       TRAVERSE(c, in) {
         show_one(*p);
-      }
-      if(write_graph) {
-        mark_cell(c);
-        mark_cell(res);
-        make_graph_all(NULL, "trace");
-        printf(" [%d -> %d]", CELL_INDEX(c), CELL_INDEX(res));
       }
       printf("\n");
     }

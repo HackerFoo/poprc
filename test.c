@@ -218,7 +218,6 @@ bool assert_ref(cell_t ***roots, size_t n) {
   clean_tmp(list);
   if(!check) {
     print_roots(roots, n);
-    make_graph_all(NULL, "assert_ref");
   }
   return check;
 }
