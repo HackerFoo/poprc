@@ -27,7 +27,6 @@
 
 bool func_value(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
-  CONTEXT("value: %d", CELL_INDEX(c));
   cell_t *res = NULL;
   PRE(c, value);
   stats.reduce_cnt--;
@@ -250,7 +249,6 @@ bool is_dep_of(cell_t *d, cell_t *c) {
 /* todo: propagate types here */
 bool func_dep(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
-  CONTEXT("dep: %d", CELL_INDEX(c));
   PRE(c, dep);
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
@@ -289,7 +287,6 @@ bool is_dep(cell_t const *c) {
 // WORD("??", placeholder, 0, 1)
 bool func_placeholder(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
-  CONTEXT("placeholder: %d", CELL_INDEX(c));
   PRE(c, placeholder);
   if(!check_type(treq.t, T_FUNCTION)) goto fail;
   csize_t in = closure_in(c), n = closure_args(c);
@@ -327,7 +324,7 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
       d->expr.arg[0] = res;
       store_dep(d, res->value.tc, i, T_ANY);
     } else {
-      LOG("dropped placeholder[%d] output", CELL_INDEX(c));
+      LOG("dropped placeholder[%C] output", c);
     }
   }
   store_reduced(cp, res);

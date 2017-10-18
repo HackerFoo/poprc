@@ -112,7 +112,7 @@ void print_word_pattern(cell_t *word) {
 // TODO add reduction back in
 cell_t **bind_pattern(cell_t *c, cell_t *pattern, cell_t **tail) {
   assert_error(c);
-  CONTEXT("bind_pattern %d %d", CELL_INDEX(c), CELL_INDEX(pattern));
+  CONTEXT("bind_pattern %C %C", c, pattern);
   if(!pattern || !tail) return NULL;
   if(c->tmp || c == *tail) return tail;
   if(c == pattern) {
@@ -177,9 +177,7 @@ cell_t *unify_convert(cell_t *entry, cell_t *c, cell_t *pat) {
   COUNTUP(i, closure_in(c)) {
     tail = bind_pattern(c->expr.arg[i], pat->expr.arg[i], tail);
     if(!tail) {
-      LOG("bind_pattern failed %d %d",
-          CELL_INDEX(c->expr.arg[i]),
-          CELL_INDEX(pat->expr.arg[i]));
+      LOG("bind_pattern failed %C %C", c->expr.arg[i], pat->expr.arg[i]);
       break;
     }
   }
@@ -238,7 +236,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
     results[i] = &c->expr.arg[n - 1 - i]; // ***
   }
 
-  CONTEXT("exec_expand %s: %d 0x%x", entry->word_name, CELL_INDEX(c), c->expr.flags);
+  CONTEXT("exec_expand %s: %C 0x%x", entry->word_name, c, c->expr.flags);
 
   assert_error(len && FLAG(entry->entry, ENTRY_COMPLETE));
   trace_clear_alt(entry); // *** probably shouldn't need this
@@ -314,7 +312,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
     if(t_entry &&
        *t_entry == entry) { // mark recursion
       FLAG_SET(t->expr, FLAGS_RECURSIVE);
-      //LOG("recursive exec %d -> %d", CELL_INDEX(c), trace_ptr-trace_cur);
+      //LOG("recursive exec %C -> %d", c, trace_ptr-trace_cur);
     }
   }
 
@@ -380,8 +378,7 @@ cell_t **input_var_list(cell_t *c, cell_t **tail) {
 // all c's input args must be params
 cell_t *flat_call(cell_t *c, cell_t *entry) {
   cell_t *parent_entry = entry->entry.parent;
-  CONTEXT("flat call %d (%d -> %d)",
-          CELL_INDEX(c),
+  CONTEXT("flat call %C (%d -> %d)", c,
           entry_number(parent_entry),
           entry_number(entry));
   csize_t
@@ -449,12 +446,12 @@ cell_t *wrap_vars(cell_t *res, csize_t out) {
 static
 bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   cell_t *c = *cp;
-  PRE(c, exec_wrap);
+  PRE_NO_CONTEXT(c, exec_wrap);
 
   size_t in = closure_in(c);
   cell_t *entry = c->expr.arg[in];
   assert_error(entry->entry.out == 1, TODO);
-  CONTEXT("exec_wrap %s: %d 0x%x", entry->word_name, CELL_INDEX(c), c->expr.flags);
+  CONTEXT("exec_wrap %s: %C 0x%x", entry->word_name, c, c->expr.flags);
 
   cell_t *new_entry = trace_start_entry(parent_entry, 1);
   new_entry->module_name = entry->module_name;
@@ -511,13 +508,9 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry) {
   cell_t *initial = entry->initial;
   cell_t *n = unify_convert(parent_entry, c, initial);
   if(n) {
-    LOG("unified %s.%s %d with initial_word in %s.%s %d",
-        entry->module_name,
-        entry->word_name,
-        CELL_INDEX(c),
-        parent_entry->module_name,
-        parent_entry->word_name,
-        CELL_INDEX(initial));
+    LOG("unified %s.%s %C with initial_word in %s.%s %C",
+        entry->module_name, entry->word_name, c,
+        parent_entry->module_name, parent_entry->word_name, initial);
     drop(c);
     *cp = n;
   }
@@ -527,13 +520,13 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry) {
 static
 bool exec_list(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
-  PRE(c, exec_list);
+  PRE_NO_CONTEXT(c, exec_list);
 
   if(treq.t != T_LIST || closure_out(c) != 0) {
     return true;
   }
 
-  CONTEXT_LOG("exec_list %d", CELL_INDEX(c));
+  CONTEXT_LOG("exec_list %C", c);
   cell_t *res;
   csize_t
     in = closure_in(c),
@@ -559,7 +552,7 @@ bool exec_list(cell_t **cp, type_request_t treq) {
 static
 bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   cell_t *c = *cp;
-  PRE(c, exec_trace);
+  PRE_NO_CONTEXT(c, exec_trace);
 
   size_t in = closure_in(c);
   assert_error(in, "recursive functions must have at least one input");
@@ -567,7 +560,7 @@ bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   size_t len = entry->entry.len;
   cell_t *res;
   type_t rtypes[entry->entry.out];
-  CONTEXT("exec_trace %s: %d 0x%x", entry->word_name, CELL_INDEX(c), c->expr.flags);
+  CONTEXT("exec_trace %s: %C 0x%x", entry->word_name, c, c->expr.flags);
 
   alt_set_t alt_set = 0;
   unsigned int nonvar = 0;
@@ -590,7 +583,7 @@ bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
     COUNTUP(i, in) {
       if(is_list(c->expr.arg[i]) &&
          closure_is_ready(*leftmost(&c->expr.arg[i]))) {
-        LOG("HACK forced cells[%d].expr.arg[%d]", CELL_INDEX(c), i);
+        LOG("HACK forced cells[%C].expr.arg[%d]", c, i);
         func_list(&c->expr.arg[i], REQ(return));
 
         // ensure quotes are stored first
@@ -686,7 +679,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
 
 void reduce_quote(cell_t **cp) {
   if(is_user_func(*cp) && closure_is_ready(*cp)) { // HACKy
-    LOG("HACK reduce_quote[%d]", CELL_INDEX(*cp));
+    LOG("HACK reduce_quote[%C]", *cp);
     insert_root(cp);
     reduce(cp, req_any);
     remove_root(cp);

@@ -232,9 +232,8 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
   assert_error(tc->size == c->size);
   assert_error(c->func != func_dep_entered &&
          c->func != func_dep);
-  LOG("trace_store_expr: %d[%d] <- %d %d",
-      entry_number(entry), (int)r->value.tc.index,
-      CELL_INDEX(c), CELL_INDEX(r));
+  LOG("trace_store_expr: %d[%d] <- %C %C",
+      entry_number(entry), (int)r->value.tc.index, c, r);
 
   refcount_t n = tc->n;
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
@@ -380,7 +379,7 @@ void trace_dep(cell_t *c) {
   cell_t *ph = trace_cell_ptr(c->value.tc);
   int ph_x = c->value.tc.index;
   ph->expr.arg[c->pos] = trace_encode(x);
-  LOG("trace_dep: %d <- %d %d[%d]", (int)x, CELL_INDEX(c), ph_x, c->pos);
+  LOG("trace_dep: %d <- %C %d[%d]", (int)x, c, ph_x, c->pos);
   tc->func = func_dep;
   tc->expr.arg[0] = trace_encode(ph_x);
   tc->expr_type.exclusive = c->value.type.exclusive;
@@ -604,7 +603,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
 
   cell_t **p = cp;
   while(*p) {
-    LOG("branch %d: %d", alts, CELL_INDEX(*p));
+    LOG("branch %d: %C", alts, *p);
     if(!func_list(p, req_pos(REQ(return), entry->pos))) continue;
     assert_alt(c, *p); // O(alts^2)
     cell_t **a;

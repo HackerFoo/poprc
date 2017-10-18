@@ -23,6 +23,7 @@
 
 #include "gen/error.h"
 #include "gen/log.h"
+#include "gen/cells.h"
 
 #define REVERSE 0x80
 #define INDENT  0x40
@@ -85,6 +86,11 @@ int log_entry_len(unsigned int idx) {
 }
 
 static
+int cell_index(intptr_t c) {
+  return is_cell((cell_t *)c) ? CELL_INDEX((cell_t *)c) : -1;
+}
+
+static
 unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
   const char *fmt = (const char *)log[idx++];
   tag_t tag;
@@ -99,21 +105,22 @@ unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
     printf("%.*s", (int)(n-p), p); // print the text
     if(!n[1]) break;
     switch(n[1]) {
-#define CASE(c, type, fmt)                                      \
+#define CASE(c, cast, fmt)                                      \
       case c:                                                   \
         if(len) {                                               \
           idx = idx % LOG_SIZE;                                 \
-          printf(fmt, (type)log[idx++]);                        \
+          printf(fmt, cast(log[idx++]));                        \
           len--;                                                \
         } else {                                                \
           printf("X");                                          \
         }                                                       \
         break;
-      CASE('d', int, "%d");
-      CASE('u', unsigned int, "%u");
-      CASE('x', int, "%x");
-      CASE('s', const char *, "%s");
-      CASE('p', void *, "%p");
+      CASE('d', (int), "%d");
+      CASE('u', (unsigned int), "%u");
+      CASE('x', (int), "%x");
+      CASE('s', (const char *), "%s");
+      CASE('p', (void *), "%p");
+      CASE('C', cell_index, "%d");
  #undef CASE
     case '.':
       if(n[2] == '*' && n[3] == 's') {

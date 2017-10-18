@@ -542,7 +542,7 @@ void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *entry) {
   }
 
   { // diagnostics for fall through, which shouldn't happen
-    CONTEXT_LOG("replace_var fall through: %d (%d)", CELL_INDEX(c), x);
+    CONTEXT_LOG("replace_var fall through: %C (%d)", c, x);
     COUNTUP(j, a_n) {
       LOG("%d -> %d", trace_decode(a[j]), j);
     }

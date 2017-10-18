@@ -216,7 +216,7 @@ bool reduce(cell_t **cp, type_request_t treq) {
   while(c) {
     assert_error(is_closure(c));
     if(!closure_is_ready(c)) {
-      LOG("reduce: closure not ready %d", CELL_INDEX(c));
+      LOG("reduce: closure not ready %C", c);
       fail(cp, treq);
       c = *cp;
       continue;
@@ -228,7 +228,7 @@ bool reduce(cell_t **cp, type_request_t treq) {
     // prevent infinite loops when debugging
     assert_counter(LENGTH(cells));
 
-    LOG_WHEN(!*cp, MARK("FAIL") ": %s %d", function_name(func), CELL_INDEX(c));
+    LOG_WHEN(!*cp, MARK("FAIL") ": %s %C", function_name(func), c);
     c = *cp;
     if(success) {
       if(marked) *cp = mark_ptr(c);
@@ -243,7 +243,7 @@ bool reduce(cell_t **cp, type_request_t treq) {
 void reduce_dep(cell_t **cp) {
   cell_t *c = *cp;
   if(!c || !closure_is_ready(c)) {
-    LOG("reduce_dep: closure not ready or null %d", c ? CELL_INDEX(c) : -1);
+    LOG("reduce_dep: closure not ready or null %C", c);
     fail(cp, req_any);
   } else {
     assert_error(is_closure(c) &&

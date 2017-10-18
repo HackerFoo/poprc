@@ -364,19 +364,21 @@
     return __VA_ARGS__;                         \
   } while(0)                                    \
 
-#define WATCH(c, msg)                           \
-  do {                                          \
-    int i = get_watch(c);                       \
-    if(i) {                                     \
-      LOG(NOTE("WATCH") " %d " msg " %d",       \
-          i, CELL_INDEX(c));                    \
-      breakpoint();                             \
-    }                                           \
+#define WATCH(c, msg)                                   \
+  do {                                                  \
+    int i = get_watch(c);                               \
+    if(i) {                                             \
+      LOG(NOTE("WATCH") " %d " msg " %C", i, c);        \
+      breakpoint();                                     \
+    }                                                   \
   } while(0)
 
+#define PRE_NO_CONTEXT(c, func)                 \
+  assert_error(!is_marked(c));                  \
+  WATCH(c, #func)
+
 #define PRE(c, func)                            \
-  do {                                          \
-    assert_error(!is_marked(c));                \
-    WATCH(c, #func);                            \
-  } while(0)
+  CONTEXT(#func ": %C", c);                     \
+  PRE_NO_CONTEXT(c, func)
+
 #endif
