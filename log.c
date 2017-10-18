@@ -33,8 +33,10 @@ static intptr_t log[LOG_SIZE];
 static unsigned int log_head = 0;
 static unsigned int log_tail = 0;
 static unsigned int log_watch = ~0;
+static unsigned int log_watch_to = ~0;
 static intptr_t log_watch_fmt = 0;
 static bool set_log_watch_fmt = false;
+static bool watching = false;
 static unsigned int msg_head = 0;
 
 context_t *__log_context = NULL;
@@ -44,11 +46,26 @@ void log_init() {
   log_head = 0;
   log_tail = 0;
   __log_context = NULL;
+  log_watch = ~0;
+  log_watch_to = ~0;
+  log_watch_fmt = 0;
+  set_log_watch_fmt = false;
+  watching = false;
+  msg_head = 0;
 }
 
 void set_log_watch(const tag_t tag, bool after) {
-  log_watch = read_tag(tag);
+  log_watch = log_watch_to = read_tag(tag);
   set_log_watch_fmt = after;
+  log_watch_fmt = 0;
+  watching = false;
+}
+
+void set_log_watch_range(const tag_t tag_from, const char *tag_to) {
+  log_watch = read_tag(tag_from);
+  log_watch_to = tag_to ? read_tag(tag_to) : ~0;
+  log_watch_fmt = 0;
+  watching = false;
 }
 
 void log_soft_init() {
@@ -149,9 +166,14 @@ void log_add_first(intptr_t x) {
 void log_add_last(intptr_t x) {
   log_add(x);
   if(log_head == log_watch ||
-     (log_watch_fmt && log[msg_head] == log_watch_fmt)) {
+     (watching &&
+      (!set_log_watch_fmt ||
+       log[msg_head] == log_watch_fmt))) {
+    watching = true;
     if(set_log_watch_fmt) {
       log_watch_fmt = log[msg_head];
+    } else if(log_head == log_watch_to) {
+      watching = false;
     }
     breakpoint();
   }

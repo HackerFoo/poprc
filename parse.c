@@ -261,6 +261,19 @@ bool match(const cell_t *c, const char *str) {
   return c && segcmp(str, tok_seg(c)) == 0;
 }
 
+bool match_class(const cell_t *c, char_class_t cc,
+                 uint min_length, uint max_length) {
+  return
+    c &&
+    c->char_class == cc &&
+    c->tok_list.length >= min_length &&
+    c->tok_list.length <= max_length;
+}
+
+int parse_num(const cell_t *c) {
+  return atoi(c->tok_list.location);
+}
+
 #define MATCH_IF_0(p, label, cond, var, ...) \
   do {                                       \
     if(!(p) || !(cond)) goto label;          \

@@ -706,10 +706,14 @@ void command_bc_in(UNUSED cell_t *rest) {
   quit = true;
 }
 
+bool match_log_tag(const cell_t *p) {
+  return match_class(p, CC_ALPHA, sizeof(tag_t), sizeof(tag_t));
+}
+
 // set a watched cell
 void command_watch(cell_t *rest) {
-  int idx = 0;
-  if(parse_numeric_args(rest, &idx, 1)) {
+  if(match_class(rest, CC_NUMERIC, 0, 64)) {
+    int idx = parse_num(rest);
     assert_throw(idx >= 0 && (unsigned int)idx < LENGTH(cells));
     int i = set_watch(&cells[idx]);
     if(i) {
@@ -717,11 +721,30 @@ void command_watch(cell_t *rest) {
     } else {
       printf("watch not set: %d\n", idx);
     }
-  } else if(rest && rest->tok_list.length == sizeof(tag_t)) {
-    cell_t *next = rest->tok_list.next;
-    bool after = next && next->tok_list.length == 1 && next->tok_list.location[0] == '+';
+  } else if(match_log_tag(rest)) {
     const char *tag = rest->tok_list.location;
-    set_log_watch(tag, after);
-    printf("log watch set for tag: " FORMAT_TAG "\n", tag);
+    cell_t *p = rest->tok_list.next;
+    if(match(p, "..")) {
+      p = p->tok_list.next;
+      const char *tag_to;
+      if(!p) {
+        tag_to = NULL;
+      } else {
+        assert_throw(match_log_tag(p), "not a log tag");
+        tag_to = p->tok_list.location;
+      }
+      set_log_watch_range(tag, tag_to);
+      if(tag_to) {
+        printf("log watch set for tags in range: " FORMAT_TAG " .. " FORMAT_TAG "\n", tag, tag_to);
+      } else {
+        printf("log watch set for tags from: " FORMAT_TAG "\n", tag);
+      }
+    } else if(match(p, "+")) {
+      set_log_watch(tag, true);
+      printf("log watch set for like tags from: " FORMAT_TAG "\n", tag);
+    } else {
+      set_log_watch(tag, false);
+      printf("log watch set for tag: " FORMAT_TAG "\n", tag);
+    }
   }
 }
