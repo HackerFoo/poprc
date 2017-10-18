@@ -14,16 +14,16 @@ M:three
 ################
 comments => 0
 @ context
-log.c:543: A 2
-  log.c:545: (a) nonzero x [38;5;8mowxf[0m
-log.c:543: A 1
-  log.c:537: B 0
-    log.c:538: (b) zero x [38;5;8mmefp[0m
-  log.c:545: (a) nonzero x [38;5;8mliu7[0m
-log.c:532: C 3 [38;5;8mj9mc[0m
-log.c:555: D 42 [38;5;8miwdh[0m
-  log.c:550: E 42 [38;5;8mh4sv[0m
-  log.c:557: exiting d [38;5;8mg9cd[0m
+log.c:565: A 2
+  log.c:567: (a) nonzero x [38;5;8mowxf[0m
+log.c:565: A 1
+  log.c:559: B 0
+    log.c:560: (b) zero x [38;5;8mmefp[0m
+  log.c:567: (a) nonzero x [38;5;8mliu7[0m
+log.c:554: C 3 [38;5;8mj9mc[0m
+log.c:577: D 42 [38;5;8miwdh[0m
+  log.c:572: E 42 [38;5;8mh4sv[0m
+  log.c:579: exiting d [38;5;8mg9cd[0m
 context => 0
 @ error
 i = 0
@@ -61,9 +61,9 @@ _check_list_remaining_size: 0 + 1 = 1
 _check_list_remaining_size: 1 + 0 = 1
 list_remaining_size => 0
 @ log
-log.c:301: test 1 + 2 = 3 [38;5;8moi86[0m
-log.c:302: WAZZUP d00d [38;5;8mnnok[0m
-log.c:303: [123] [38;5;8mmefp[0m
+log.c:323: test 1 + 2 = 3 [38;5;8moi86[0m
+log.c:324: WAZZUP d00d [38;5;8mnnok[0m
+log.c:325: [123] [38;5;8mmefp[0m
 log => 0
 @ loops
 up: 0
