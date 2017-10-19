@@ -378,9 +378,8 @@ cell_t **input_var_list(cell_t *c, cell_t **tail) {
 // all c's input args must be params
 cell_t *flat_call(cell_t *c, cell_t *entry) {
   cell_t *parent_entry = entry->entry.parent;
-  CONTEXT("flat call %C (%d -> %d)", c,
-          entry_number(parent_entry),
-          entry_number(entry));
+  CONTEXT("flat call %C (%E -> %E)", c,
+          parent_entry, entry);
   csize_t
     in = entry->entry.in,
     out = entry->entry.out;
@@ -456,7 +455,7 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   cell_t *new_entry = trace_start_entry(parent_entry, 1);
   new_entry->module_name = entry->module_name;
   new_entry->word_name = string_printf("%s_r%d", parent_entry->word_name, parent_entry->entry.sub_id++);
-  LOG("created entry %d", entry_number(new_entry));
+  LOG("created entry %E", new_entry);
 
   new_entry->initial = ref(c);
 

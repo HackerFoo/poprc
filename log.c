@@ -24,6 +24,8 @@
 #include "gen/error.h"
 #include "gen/log.h"
 #include "gen/cells.h"
+#include "gen/print.h"
+#include "gen/trace.h"
 
 #define REVERSE 0x80
 #define INDENT  0x40
@@ -91,11 +93,17 @@ int cell_index(intptr_t c) {
 }
 
 static
+int entry_number_int(intptr_t c) {
+  return entry_number((cell_t *)c);
+}
+
+static
 unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
   const char *fmt = (const char *)log[idx++];
   tag_t tag;
   //printf("%d %d %x %s\n", idx, *depth, fmt[0], fmt + 1);
   uint8_t len = fmt[0] & ~MASK;
+  intptr_t x;
   const char
     *p = fmt + 1,
     *n = strchr(p, '%');
@@ -105,22 +113,28 @@ unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
     printf("%.*s", (int)(n-p), p); // print the text
     if(!n[1]) break;
     switch(n[1]) {
-#define CASE(c, cast, fmt)                                      \
-      case c:                                                   \
-        if(len) {                                               \
-          idx = idx % LOG_SIZE;                                 \
-          printf(fmt, cast(log[idx++]));                        \
-          len--;                                                \
-        } else {                                                \
-          printf("X");                                          \
-        }                                                       \
+#define CASE_THEN(c, cast, fmt)                 \
+      case c:                                   \
+        if(len) {                               \
+          idx = idx % LOG_SIZE;                 \
+          printf(fmt, cast((x = log[idx++])));  \
+          len--;                                \
+        } else {                                \
+          printf("X");                          \
+        }
+#define CASE(c, cast, fmt)                      \
+      CASE_THEN(c, cast, fmt)                   \
         break;
+
       CASE('d', (int), "%d");
       CASE('u', (unsigned int), "%u");
       CASE('x', (int), "%x");
       CASE('s', (const char *), "%s");
       CASE('p', (void *), "%p");
-      CASE('C', cell_index, "%d");
+      CASE_THEN('C', cell_index, "%d");
+        mark_cell((cell_t *)x);
+        break;
+      CASE('E', entry_number_int, "%d");
  #undef CASE
     case '.':
       if(n[2] == '*' && n[3] == 's') {

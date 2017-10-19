@@ -131,11 +131,9 @@ void switch_entry_(cell_t *entry, trace_cell_t *tc) {
     trace_alloc_var(entry)
   };
   trace_cell_ptr(*tc)->value.tc = old;
-  LOG("%d[%d] -> %d[%d]",
-      entry_number(old.entry),
-      old.index,
-      entry_number(entry),
-      tc->index);
+  LOG("%E[%d] -> %E[%d]",
+      old.entry, old.index,
+      entry, tc->index);
 }
 
 //static
@@ -232,8 +230,8 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
   assert_error(tc->size == c->size);
   assert_error(c->func != func_dep_entered &&
          c->func != func_dep);
-  LOG("trace_store_expr: %d[%d] <- %C %C",
-      entry_number(entry), (int)r->value.tc.index, c, r);
+  LOG("trace_store_expr: %E[%d] <- %C %C",
+      entry, r->value.tc.index, c, r);
 
   refcount_t n = tc->n;
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
@@ -630,7 +628,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
 
   remove_root(cp);
   if(!alts) {
-    LOG("reduction failed for entry %d", entry_number(entry));
+    LOG("reduction failed for entry %E", entry);
   }
   return alts;
 }
