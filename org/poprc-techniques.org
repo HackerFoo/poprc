@@ -1,12 +1,14 @@
 #+TITLE: PoprC: Techniques
 #+AUTHOR: Dustin DeWeese
-#+DATE: 2017.2.22
+#+DATE: 2017.10.18
 
 #+OPTIONS: ^:nil num:nil
 #+REVEAL_ROOT: /reveal.js
 #+REVEAL_THEME: blood
 #+REVEAL_TRANS: linear
 
+* Or: How to Stay Sane Writing a Compiler in the Middle of the Night
+(Arguably)
 * Introduction
 Sustaining a complex project is difficult.
 I have developed practices and curated tools while working on such projects, the latest of which is the PoprC compiler.
@@ -68,6 +70,27 @@ A clear understanding speeds debugging and improves design.
 - Nicer interface than GDB, Python scripting
 - Conditional breakpoints to stop at reduction of a particular cell
 - Commands for often repeated tasks, such as generating diagrams
+** Structured logs
+- Context automatically added on event
+- Indentation to indicate context
+- Pushes arguments to a ring buffer
+  - Minimal overhead
+** Application breakpoints
+- faster than LLDB/GDB alone
+- Break on log messages
+  - On the same message afterwards
+  - On a range of log messages
+- Log tags are four character alphanumeric tags that are easy to read and remember
+** Application watchpoints
+- *Much* faster and less tedious
+- Break on cell throughout lifecycle
+  - Allocation
+  - Reduction
+  - Free
+** Breakpoint & Watchpoint Graph Integration
+- Generate graphs at each breakpoint/watchpoint
+  - Labeled with a log tag
+  - Any cells indices logged are highlighted in the graph
 * Confidence & Stability
 The ability to quickly verify changes gives confidence and allows aggressive development while maintaining stability.
 ** Tests
@@ -101,6 +124,10 @@ Planning provides a longer view and context. It helps me focus on what's next, o
 - Bug section is for regressions
   + Usually fixed on master
   + Periodically scanned for inadvertent fixes
+** Tooling development
+- Note tooling improvements that would be nice to have
+- Work on them when burnt out on the main task
+- Typically, completing a new tool inspires work on the main task with the new tool
 * Inspiration & Resources
 Development does not happen in isolation. I can not make something great if I don't learn from others.
 #+REVEAL: split
