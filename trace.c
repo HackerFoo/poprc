@@ -504,6 +504,7 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
 cell_t *trace_quote_var(cell_t *l) {
   if(l == &nil_cell) return l;
   cell_t *f = *leftmost_row(&l);
+  while(is_placeholder(f)) f = f->expr.arg[closure_in(f) - 1];
   assert_error(is_var(f), "not a var: %s %C", function_name(f->func), f);
   cell_t *entry = f->value.tc.entry;
   int x = trace_build_quote(entry, l);
@@ -512,12 +513,13 @@ cell_t *trace_quote_var(cell_t *l) {
 
 // store a return
 static
-int trace_return(cell_t *entry, cell_t *c) {
-  c = flat_copy(c);
+int trace_return(cell_t *entry, cell_t *c_) {
+  cell_t *c = flat_copy(c_);
   cell_t **p;
   FORLIST(p, c, true) {
     trace_index_t x;
     if(is_var(*p)) {
+      switch_entry(entry, *p);
       x = (*p)->value.tc.index;
     } else if(is_list(*p)) {
       x = trace_build_quote(entry, *p);
@@ -528,6 +530,7 @@ int trace_return(cell_t *entry, cell_t *c) {
     if(x >= 0) entry[x].n++;
   }
   int x = trace_copy(entry, c);
+  LOG("trace_return: %E[%d] <- %C", entry, x, c_);
   trace_cell_t t = {entry, x};
   closure_free(c);
   cell_t *tc = trace_cell_ptr(t);

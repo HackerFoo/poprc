@@ -337,10 +337,17 @@
 #define ARRAY_SHIFTL(elem, x, n) memmove(&(elem), &(elem) + (x), (n) * sizeof(elem))
 #define ARRAY_COPY(dst, src, n) memcpy(&(dst), &(src), (n) * sizeof(dst))
 
-#define MARK(x) "\x1b[37;41m" x "\x1b[0m"
-#define NOTE(x) "\x1b[37;44m" x "\x1b[0m"
-#define FADE(x) "\x1b[38;5;8m" x "\x1b[0m"
+#define COLOR(x) CONCAT(COLOR_, x)
+#define COLOR_red "\x1b[37;41m"
+#define COLOR_blue "\x1b[37;44m"
+#define COLOR_gray "\x1b[38;5;8m"
+#define COLOR_normal "\x1b[0m"
+
+#define MARK(x) COLOR(red) x COLOR(normal)
+#define NOTE(x) COLOR(blue) x COLOR(normal)
+#define FADE(x) COLOR(gray) x COLOR(normal)
 #define TODO MARK("TODO")
+#define HACK MARK("HACK")
 
 #define DISABLE(...)                            \
   do {                                          \

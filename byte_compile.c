@@ -668,7 +668,8 @@ void mark_barriers(cell_t *entry, cell_t *c) {
         *p = var_create_nonlist(x->value.type.exclusive,
                                 (trace_cell_t) {entry, trace_alloc_var(entry)});
         trace_cell_ptr((*p)->value.tc)->value.tc = tc;
-      } else if(x->func == func_ap) { // ***
+      } else if(x->func == func_ap) {
+        LOG(HACK " marking barrier through ap %C", x);
         mark_barriers(entry, x);
       } else {
         x->pos = entry->pos;

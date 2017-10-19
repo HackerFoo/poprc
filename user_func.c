@@ -165,7 +165,7 @@ cell_t **bind_pattern(cell_t *c, cell_t *pattern, cell_t **tail) {
 cell_t *unify_convert(cell_t *entry, cell_t *c, cell_t *pat) {
   if(!pat) return NULL;
   if(closure_in(c) != closure_in(pat)) {
-    return NULL;
+    return ref(c);
   }
   csize_t out = c->expr.out;
   cell_t *ret = NULL;
@@ -396,7 +396,7 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
   FOLLOW(p, vl, tmp) {
     assert_error(p->value.tc.entry == entry);
     cell_t *tn = trace_cell_ptr(p->value.tc);
-    assert_error(tn->pos);
+    assert_error(tn->pos, "%C", p);
     if(tn->pos != pos) {
       tn->pos = pos;
       FLAG_SET(entry->entry, ENTRY_MOV_VARS);
@@ -644,6 +644,8 @@ bool func_exec(cell_t **cp, type_request_t treq) {
 
   if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
     if(entry->initial && !unify_exec(cp, parent_entry)) {
+      LOG(MARK("WARN") " unify failed: %C %C",
+          *cp, entry->initial);
       fail(cp, treq);
       return false;
     }

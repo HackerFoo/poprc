@@ -76,8 +76,7 @@ __     binrec pull2 drop swap
 
 __ index operator
 __ [f] index -> x
-__ !!: !!_ head
-__ !!_: dropl
+__ !!: dropl head
 
 __ a [a -> a] -> [a]
 iteratel: [dup [peek] dip22 iteratel swap] ap20
