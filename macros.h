@@ -351,7 +351,7 @@
 #define WATCH(c, msg)                                           \
   do {                                                          \
     int i = get_watch(c);                                       \
-    if(i) {                                                     \
+    if_unlikely(i) {                                            \
       LOG_NOBREAK(NOTE("WATCH") " %d " msg " %C", i, c);        \
       breakpoint();                                             \
     }                                                           \
@@ -364,5 +364,8 @@
 #define PRE(c, func)                            \
   CONTEXT(#func ": %C", c);                     \
   PRE_NO_CONTEXT(c, func)
+
+#define if_unlikely(c) if(__builtin_expect((c), 0))
+#define if_likely(c) if(__builtin_expect((c), 1))
 
 #endif

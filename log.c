@@ -186,10 +186,10 @@ void log_add_first(intptr_t x) {
 
 bool log_add_last(intptr_t x) {
   log_add(x);
-  if(log_head == log_watch ||
-     (watching &&
-      (!set_log_watch_fmt ||
-       log[msg_head] == log_watch_fmt))) {
+  if_unlikely(log_head == log_watch ||
+              (watching &&
+               (!set_log_watch_fmt ||
+                log[msg_head] == log_watch_fmt))) {
     watching = true;
     if(set_log_watch_fmt) {
       log_watch_fmt = log[msg_head];
