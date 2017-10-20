@@ -184,7 +184,7 @@ void log_add_first(intptr_t x) {
   log_add(x);
 }
 
-void log_add_last(intptr_t x) {
+bool log_add_last(intptr_t x) {
   log_add(x);
   if(log_head == log_watch ||
      (watching &&
@@ -196,13 +196,14 @@ void log_add_last(intptr_t x) {
     } else if(log_head == log_watch_to) {
       watching = false;
     }
-    breakpoint();
+    return true;
   }
+  return false;
 }
 
-void log_add_only(intptr_t x) {
+bool log_add_only(intptr_t x) {
   msg_head = log_head;
-  log_add_last(x);
+  return log_add_last(x);
 }
 
 void print_last_log_msg() {
@@ -257,9 +258,9 @@ void log_print_all() {
     log_add_context();
 #define LOG_first(s, fmt) log_add_first((intptr_t)(s fmt));
 #define LOG_middle(x) log_add((intptr_t)(x));
-#define LOG_last(x) log_add_last((intptr_t)(x));
-#define LOG_only(s, fmt) log_add_only((intptr_t)(s fmt));
-#define LOG_post\
+#define LOG_last(x) if(log_add_last((intptr_t)(x))) breakpoint();
+#define LOG_only(s, fmt) if(log_add_only((intptr_t)(s fmt))) breakpoint();
+#define LOG_post                                \
   } while(0)
 #define LOG_a0 "\x00"
 #define LOG_a1 "\x01"
@@ -274,6 +275,28 @@ void log_print_all() {
 #define LOG(fmt, ...) LOG_NO_POS(__FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
 #define LOG_WHEN(test, fmt, ...) ((test) && (({ LOG(fmt, ##__VA_ARGS__); }), true))
 #define LOG_UNLESS(test, fmt, ...) ((test) || (({ LOG(fmt, ##__VA_ARGS__); }), false))
+
+// same as LOG, but don't call log_add_{last, only} to avoid calling breakpoint()
+#define LOG_NOBREAK_pre                         \
+  do {                                          \
+  log_add_context();
+#define LOG_NOBREAK_first(s, fmt) log_add_first((intptr_t)(s fmt));
+#define LOG_NOBREAK_middle(x) log_add((intptr_t)(x));
+#define LOG_NOBREAK_last(x) log_add_last((intptr_t)(x));
+#define LOG_NOBREAK_only(s, fmt) log_add_only((intptr_t)(s fmt));
+#define LOG_NOBREAK_post                        \
+  } while(0)
+#define LOG_NOBREAK_a0 "\x00"
+#define LOG_NOBREAK_a1 "\x01"
+#define LOG_NOBREAK_a2 "\x02"
+#define LOG_NOBREAK_a3 "\x03"
+#define LOG_NOBREAK_a4 "\x04"
+#define LOG_NOBREAK_a5 "\x05"
+#define LOG_NOBREAK_a6 "\x06"
+#define LOG_NOBREAK_a7 "\x07"
+#define LOG_NOBREAK_a8 "\x08"
+#define LOG_NOBREAK(fmt, ...) FORARG(LOG_NOBREAK, __FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
+
 #endif
 
 int test_log() {
