@@ -18,6 +18,8 @@
 #ifndef __MACROS__
 #define __MACROS__
 
+#include "dispatch.h"
+
 // MAKE COMPILERS HAPPY ________________________________________
 
 #ifdef __clang__
@@ -259,24 +261,6 @@
     __v->f = *__l;                              \
     *__l = __v;                                 \
   })
-
-
-
-// DISPATCH ________________________________________________________________________________
-
-// macro to allow handling optional macro arguments
-// DISPATCH(MAC, n, x_0 .. x_m) will reduce to MAC_i(x_0 .. x_m), where i = n-m, so i is the number of missing arguments
-#define DISPATCH(m, n, ...) CONCAT(DISPATCH, n)(m, __VA_ARGS__, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9)
-#define DISPATCH0(m, argc, ...) CONCAT(m, argc)()
-#define DISPATCH1(m, x0, argc, ...) CONCAT(m, argc)(x0)
-#define DISPATCH2(m, x0, x1, argc, ...) CONCAT(m, argc)(x0, x1)
-#define DISPATCH3(m, x0, x1, x2, argc, ...) CONCAT(m, argc)(x0, x1, x2)
-#define DISPATCH4(m, x0, x1, x2, x3, argc, ...) CONCAT(m, argc)(x0, x1, x2, x3)
-#define DISPATCH5(m, x0, x1, x2, x3, x4, argc, ...) CONCAT(m, argc)(x0, x1, x2, x3, x4)
-#define DISPATCH6(m, x0, x1, x2, x3, x4, x5, argc, ...) CONCAT(m, argc)(x0, x1, x2, x3, x4, x5)
-#define DISPATCH7(m, x0, x1, x2, x3, x4, x5, x6, argc, ...) CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6)
-#define DISPATCH8(m, x0, x1, x2, x3, x4, x5, x6, x7, argc, ...) CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7)
-#define DISPATCH9(m, x0, x1, x2, x3, x4, x5, x6, x7, x8, argc, ...) CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7, x8)
 
 
 
