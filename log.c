@@ -262,15 +262,7 @@ void log_print_all() {
 #define LOG_only(s, fmt) if(log_add_only((intptr_t)(s fmt))) breakpoint();
 #define LOG_post                                \
   } while(0)
-#define LOG_a0 "\x00"
-#define LOG_a1 "\x01"
-#define LOG_a2 "\x02"
-#define LOG_a3 "\x03"
-#define LOG_a4 "\x04"
-#define LOG_a5 "\x05"
-#define LOG_a6 "\x06"
-#define LOG_a7 "\x07"
-#define LOG_a8 "\x08"
+#define LOG_args ("\x00", "\x01", "\x02", "\x03", "\x04", "\x05", "\x06", "\x07", "\x08")
 #define LOG_NO_POS(...) FORARG(LOG, __VA_ARGS__)
 #define LOG(fmt, ...) LOG_NO_POS(__FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
 #define LOG_WHEN(test, fmt, ...) ((test) && (({ LOG(fmt, ##__VA_ARGS__); }), true))
@@ -286,15 +278,7 @@ void log_print_all() {
 #define LOG_NOBREAK_only(s, fmt) log_add_only((intptr_t)(s fmt));
 #define LOG_NOBREAK_post                        \
   } while(0)
-#define LOG_NOBREAK_a0 "\x00"
-#define LOG_NOBREAK_a1 "\x01"
-#define LOG_NOBREAK_a2 "\x02"
-#define LOG_NOBREAK_a3 "\x03"
-#define LOG_NOBREAK_a4 "\x04"
-#define LOG_NOBREAK_a5 "\x05"
-#define LOG_NOBREAK_a6 "\x06"
-#define LOG_NOBREAK_a7 "\x07"
-#define LOG_NOBREAK_a8 "\x08"
+#define LOG_NOBREAK_args LOG_args
 #define LOG_NOBREAK(fmt, ...) FORARG(LOG_NOBREAK, __FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
 
 #endif
@@ -331,15 +315,7 @@ struct context_s {
 #define CONTEXT_only(s, fmt) (intptr_t)(s fmt) + 1};
 #define CONTEXT_post                            \
   __log_context = (context_t *)__context;
-#define CONTEXT_a0 "\xff\xc0"
-#define CONTEXT_a1 "\xff\xc1"
-#define CONTEXT_a2 "\xff\xc2"
-#define CONTEXT_a3 "\xff\xc3"
-#define CONTEXT_a4 "\xff\xc4"
-#define CONTEXT_a5 "\xff\xc5"
-#define CONTEXT_a6 "\xff\xc6"
-#define CONTEXT_a7 "\xff\xc7"
-#define CONTEXT_a8 "\xff\xc8"
+#define CONTEXT_args ("\xff\xc0", "\xff\xc1", "\xff\xc2", "\xff\xc3", "\xff\xc4", "\xff\xc5", "\xff\xc6", "\xff\xc7", "\xff\xc8")
 #define CONTEXT(fmt, ...) FORARG(CONTEXT, __FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
 #endif
 
@@ -359,15 +335,7 @@ struct context_s {
   log_add_only((intptr_t)(__context + 1));
 #define CONTEXT_LOG_post                        \
   } while(0)
-#define CONTEXT_LOG_a0 "\xff\x40"
-#define CONTEXT_LOG_a1 "\xff\x41"
-#define CONTEXT_LOG_a2 "\xff\x42"
-#define CONTEXT_LOG_a3 "\xff\x43"
-#define CONTEXT_LOG_a4 "\xff\x44"
-#define CONTEXT_LOG_a5 "\xff\x45"
-#define CONTEXT_LOG_a6 "\xff\x46"
-#define CONTEXT_LOG_a7 "\xff\x47"
-#define CONTEXT_LOG_a8 "\xff\x48"
+#define CONTEXT_LOG_args ("\xff\x40", "\xff\x41", "\xff\x42", "\xff\x43", "\xff\x44", "\xff\x45", "\xff\x46", "\xff\x47", "\xff\x48")
 #define CONTEXT_LOG(fmt, ...) FORARG(CONTEXT_LOG, __FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
 #endif
 
