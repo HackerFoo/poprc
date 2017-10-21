@@ -65,6 +65,10 @@ typedef intptr_t trace_index_t;
 #define FOR_TRACE(...) DISPATCH(FOR_TRACE, 3, __VA_ARGS__)
 #endif
 
+bool is_trace_cell(void const *p) {
+  return p >= (void *)&trace_cells && p < (void *)(&trace_cells+1);
+}
+
 void trace_init() {
   prev_entry_pos = 0;
 }

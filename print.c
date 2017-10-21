@@ -103,7 +103,7 @@ char const *function_name(reduce_t *f) {
 void get_name(const cell_t *c, const char **module_name, const char **word_name) {
   if(is_user_func(c)) {
     cell_t *e = c->expr.arg[closure_in(c)];
-    if(e) {
+    if(is_trace_cell(e)) {
       *module_name = e->module_name;
       *word_name = e->word_name;
     } else {

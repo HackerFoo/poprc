@@ -141,6 +141,12 @@ ifndef OPEN_DIAGRAMS
 	OPEN_DIAGRAMS := $(shell command -v termux-share 2> /dev/null)
 endif
 ifndef OPEN_DIAGRAMS
+	OPEN_DIAGRAMS := $(shell command -v xdg-open 2> /dev/null)
+endif
+ifndef OPEN_DIAGRAMS
+	OPEN_DIAGRAMS := $(shell command -v qutebrowser 2> /dev/null)
+endif
+ifndef OPEN_DIAGRAMS
 	OPEN_DIAGRAMS := $(shell command -v google-chrome 2> /dev/null)
 endif
 ifndef OPEN_DIAGRAMS
