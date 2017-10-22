@@ -10,8 +10,8 @@ def __lldb_init_module(debugger, internal_dict):
     dbgcall("command script add -f lldbinit.plog plog")
     dbgcall("command script add -f lldbinit.bc bc")
     dbgcall("command script add -f lldbinit.ac ac")
-    dbgcall("b breakpoint");
-    dbgcall("breakpoint command add 1 --one-liner fin");
+    dbgcall("breakpoint set --name breakpoint");
+    dbgcall("breakpoint command add 1 --python-function lldbinit.breakpoint_hit");
     return
 
 def dbgcall(command):
@@ -19,13 +19,15 @@ def dbgcall(command):
     lldb.debugger.GetCommandInterpreter().HandleCommand(command, res)
     return res.GetOutput()
 
+def breakpoint_hit(frame, bp_loc, dict):
+    dbgcall("finish")
 
 def make(debugger, command, result, dict):
     os.system("make -j -s BUILD=debugger eval")
     dbgcall("target delete")
     dbgcall("target create \"eval\"")
-    dbgcall("b breakpoint");
-    dbgcall("breakpoint command add 1 --one-liner fin");
+    dbgcall("breakpoint set --name breakpoint");
+    dbgcall("breakpoint command add 1 --python-function lldbinit.breakpoint_hit");
 
 def graph(debugger, command, result, dict):
     dbgcall("p make_graph_all(0, 0)")

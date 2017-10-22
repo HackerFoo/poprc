@@ -156,7 +156,7 @@ void command_eval(cell_t *rest) {
 #ifndef EMSCRIPTEN
 static
 void crash_handler(int sig, UNUSED siginfo_t *info, UNUSED void *ctx) {
-  throw_error(__FILE__, __LINE__, __func__, strsignal(sig), ERROR_TYPE_UNEXPECTED);
+  throw_error(strsignal(sig), ERROR_TYPE_UNEXPECTED);
 }
 
 int main(int argc, char **argv) {

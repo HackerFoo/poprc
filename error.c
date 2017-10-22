@@ -62,14 +62,14 @@ typedef struct {
 #define assert_throw_0(cond, msg, ...)                                  \
   do {                                                                  \
     if(!(cond)) {                                                       \
-      throw_error(__FILE__, __LINE__, __func__, "Assertion `" #cond "' failed: " msg, ERROR_TYPE_LIMITATION); \
+      throw_error("Assertion `" #cond "' failed: " msg, ERROR_TYPE_LIMITATION); \
     }                                                                   \
   } while(0)
 
 #define assert_throw_1(cond, ...)                                       \
   do {                                                                  \
     if(!(cond)) {                                                       \
-      throw_error(__FILE__, __LINE__, __func__, "Assertion `" #cond "' failed.", ERROR_TYPE_LIMITATION); \
+      throw_error("Assertion `" #cond "' failed.", ERROR_TYPE_LIMITATION); \
     }                                                                   \
   } while(0)
 
@@ -83,14 +83,14 @@ typedef struct {
 #define assert_error_0(cond, msg, ...)                                  \
   do {                                                                  \
     if(!(cond)) {                                                       \
-      throw_error(__FILE__, __LINE__, __func__, "Assertion `" #cond "' failed: " msg, ERROR_TYPE_UNEXPECTED); \
+      throw_error("Assertion `" #cond "' failed: " msg, ERROR_TYPE_UNEXPECTED); \
     }                                                                   \
   } while(0)
 
 #define assert_error_1(cond, ...)                                       \
   do {                                                                  \
     if(!(cond)) {                                                       \
-      throw_error(__FILE__, __LINE__, __func__, "Assertion `" #cond "' failed.", ERROR_TYPE_UNEXPECTED); \
+      throw_error("Assertion `" #cond "' failed.", ERROR_TYPE_UNEXPECTED); \
     }                                                                   \
   } while(0)
 
@@ -110,11 +110,19 @@ typedef struct {
     static int counter = n;                                             \
     if(!counter--) {                                                    \
       counter = n;                                                      \
-      throw_error(__FILE__, __LINE__, __func__, "Assertion counter exhausted.", ERROR_TYPE_UNEXPECTED); \
+      throw_error("Assertion counter exhausted.", ERROR_TYPE_UNEXPECTED); \
     }                                                                   \
   } while(0)
 
 #define catch_error(e) (current_error = (e), !!setjmp((e)->env))
+
+#define throw_error(msg, type)                          \
+  do {                                                  \
+    log_error(__FILE__, __LINE__, __func__, msg, type); \
+    breakpoint();                                       \
+    return_error(type);                                 \
+  } while(0)
+
 #endif
 
 error_t *current_error = NULL;
@@ -158,12 +166,6 @@ void return_error(error_type_t type) {
   } else {
     exit(-1);
   }
-}
-
-void throw_error(const char *file, int line, const char *function, const char *msg, error_type_t type) {
-  log_error(file, line, function, msg, type);
-  breakpoint();
-  return_error(type);
 }
 
 void print_backtrace() {
