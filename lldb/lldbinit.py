@@ -30,7 +30,7 @@ def make(debugger, command, result, dict):
     dbgcall("breakpoint command add 1 --python-function lldbinit.breakpoint_hit");
 
 def graph(debugger, command, result, dict):
-    dbgcall("p make_graph_all(0, 0)")
+    dbgcall("p make_graph_all(0)")
 
 def cleandot(debugger, command, result, dict):
     os.system("make clean-dot")

@@ -37,6 +37,7 @@
 #include "gen/module.h"
 #include "gen/user_func.h"
 #include "gen/list.h"
+#include "gen/log.h"
 
 static BITSET_INDEX(visited, cells);
 static BITSET_INDEX(marked, cells);
@@ -163,21 +164,24 @@ void make_graph(char const *path, cell_t const *c) {
   fclose(f);
 }
 
-void make_graph_all(char const *path, char const *label) {
+void make_graph_all(char const *path) {
   static char autopath[16];
   static unsigned int autopath_count = 0;
   if(!path && autopath_count < 1000) {
     snprintf(autopath, sizeof(autopath), "graph%03d.dot", autopath_count++);
     path = autopath;
   }
+  char label[sizeof(tag_t) + 1];
+  label[sizeof(tag_t)] = 0;
+  get_tag(label);
   FILE *f = fopen(path, "w");
   fprintf(f, "digraph g {\n"
-             "label=\"%s\";\n"
+             "label=\"%s %s\";\n"
              "labelloc=bottom\n"
              "labeljust=right\n"
              "graph [\n"
              "rankdir = \"RL\"\n"
-             "];\n", label ? label : path);
+             "];\n", path, label);
   zero(visited);
   FOREACH(i, cells) {
     graph_cell(f, &cells[i]);

@@ -40,7 +40,6 @@ const size_t rt_roots_n = LENGTH(rt_roots);
 
 static cell_t *watched_cells[4] = {0};
 static bool watch_enabled = false;
-bool breakpoint_hit = false;
 
 #if INTERFACE
 #define ASSERT_REF() assert_error(assert_ref(rt_roots, rt_roots_n))
@@ -815,14 +814,10 @@ bool check_type(uint8_t requested, uint8_t expected) {
 }
 
 void breakpoint() {
-  breakpoint_hit = true;
   printf(NOTE("BREAKPOINT") " ");
   print_last_log_msg();
   print_active_entries("  - while compiling ");
   if(write_graph) {
-    char label[sizeof(tag_t) + 1];
-    label[sizeof(tag_t)] = 0;
-    get_tag(label);
-    make_graph_all(NULL, label);
+    make_graph_all(NULL);
   }
 }
