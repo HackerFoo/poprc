@@ -757,9 +757,9 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
 
   trace_clear_alt(parent_entry);
   cell_t *res = var(T_ANY, q, parent_entry->pos);
-  assert_log(res->value.tc.entry == parent_entry,
-             "parent: %E, tc.entry: %E",
-             parent_entry, res->value.tc.entry);
+  assert_error(res->value.tc.entry == parent_entry,
+               "parent: %E, tc.entry: %E",
+               parent_entry, res->value.tc.entry);
   int x = res->value.tc.index;
   trace_reduction(q, res);
   drop(q);

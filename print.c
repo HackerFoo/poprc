@@ -42,6 +42,8 @@
 static BITSET_INDEX(visited, cells);
 static BITSET_INDEX(marked, cells);
 
+bool write_graph = false;
+
 void mark_cell(cell_t *c) {
   if(is_cell(c)) {
     set_bit(marked, CELL_INDEX(c));
@@ -165,6 +167,7 @@ void make_graph(char const *path, cell_t const *c) {
 }
 
 void make_graph_all(char const *path) {
+  if(!write_graph) return;
   static char autopath[16];
   static unsigned int autopath_count = 0;
   if(!path && autopath_count < 1000) {

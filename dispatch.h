@@ -141,4 +141,16 @@
 
 #define FORARG(name, ...) DISPATCH(FORARG, 10, name, __VA_ARGS__)
 
+#define DUMMY_args (x, x, x, x, x, x, x, x, x)
+
+// drops the first argument, useful with __VA_ARGS__
+#define DROP_pre
+#define DROP_first(s, x)
+#define DROP_middle(x) ,x
+#define DROP_last(x) ,x
+#define DROP_only(s, x)
+#define DROP_post
+#define DROP_args DUMMY_args
+#define DROP(...) FORARG(DROP, __VA_ARGS__)
+
 #endif

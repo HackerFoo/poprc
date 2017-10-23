@@ -153,7 +153,9 @@ cell_t **bind_pattern(cell_t *c, cell_t *pattern, cell_t **tail) {
       }
     }
   } else {
-    assert_error(false, "binding error");
+    // This can be caused by an operation before an infinite loop
+    // This will prevent reducing the operation, and therefore fail to unify
+    assert_error(false, "binding error: %C %C", c, pattern);
     return NULL;
   }
   return tail;
@@ -388,7 +390,7 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
   nc->func = func_exec;
   cell_t *vl = 0;
   input_var_list(c, &vl);
-  assert_log(tmp_list_length(vl) == in, "%d != %d", tmp_list_length(vl), in);
+  assert_error(tmp_list_length(vl) == in, "%d != %d", tmp_list_length(vl), in);
 
   int pos = 1;
   FOLLOW(p, vl, tmp) {

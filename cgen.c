@@ -21,6 +21,7 @@
 #include <inttypes.h>
 
 #include "gen/error.h"
+#include "gen/log.h"
 #include "gen/cells.h"
 #include "gen/rt.h"
 #include "gen/primitive.h"

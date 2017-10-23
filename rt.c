@@ -812,12 +812,3 @@ bool check_type(uint8_t requested, uint8_t expected) {
   }
   return true;
 }
-
-void breakpoint() {
-  printf(NOTE("BREAKPOINT") " ");
-  print_last_log_msg();
-  print_active_entries("  - while compiling ");
-  if(write_graph) {
-    make_graph_all(NULL);
-  }
-}

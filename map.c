@@ -22,6 +22,7 @@
 #include <stddef.h>
 #include "rt_types.h"
 #include "gen/error.h"
+#include "gen/log.h"
 #include "gen/support.h"
 #include "gen/map.h"
 #include <stdlib.h>

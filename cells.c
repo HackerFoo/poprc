@@ -26,6 +26,7 @@
 #include "gen/list.h"
 #include "gen/user_func.h"
 #include "gen/log.h"
+#include "macros.h"
 
 // to catch errors that result in large allocations
 #define MAX_ALLOC_SIZE 128

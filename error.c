@@ -25,18 +25,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#ifdef BACKTRACE
-#ifdef EMSCRIPTEN
-#include <emscripten.h>
-#else
-#include <execinfo.h>
-#endif
-#endif
-
 #include "gen/error.h"
-#ifndef NOLOG
 #include "gen/log.h"
-#endif
+#include "gen/trace.h"
+#include "gen/print.h"
 
 #if INTERFACE
 #include <setjmp.h>
@@ -49,28 +41,28 @@ typedef enum error_type_e {
 
 typedef struct {
   jmp_buf env;
-  const char *msg;
-  const char *file;
-  int line;
   error_type_t type;
-  char function[64];
 } error_t;
 
-#define assert_throw(...) _assert_throw(__VA_ARGS__)
+#define assert_msg(...) DISPATCH(assert_msg, 10, ##__VA_ARGS__)
+#define assert_msg_0(cond, fmt, ...) "Assertion `" #cond "' failed: " fmt
+#define assert_msg_1(cond, fmt, ...) assert_msg_0(cond, fmt)
+#define assert_msg_2(cond, fmt, ...) assert_msg_0(cond, fmt)
+#define assert_msg_3(cond, fmt, ...) assert_msg_0(cond, fmt)
+#define assert_msg_4(cond, fmt, ...) assert_msg_0(cond, fmt)
+#define assert_msg_5(cond, fmt, ...) assert_msg_0(cond, fmt)
+#define assert_msg_6(cond, fmt, ...) assert_msg_0(cond, fmt)
+#define assert_msg_7(cond, fmt, ...) assert_msg_0(cond, fmt)
+#define assert_msg_8(cond, fmt, ...) assert_msg_0(cond, fmt)
+#define assert_msg_9(cond, ...) "Assertion `" #cond "' failed."
 
-#define _assert_throw(...) DISPATCH(assert_throw, 2, ##__VA_ARGS__)
-#define assert_throw_0(cond, msg, ...)                                  \
-  do {                                                                  \
-    if(!(cond)) {                                                       \
-      throw_error("Assertion `" #cond "' failed: " msg, ERROR_TYPE_LIMITATION); \
-    }                                                                   \
-  } while(0)
-
-#define assert_throw_1(cond, ...)                                       \
-  do {                                                                  \
-    if(!(cond)) {                                                       \
-      throw_error("Assertion `" #cond "' failed.", ERROR_TYPE_LIMITATION); \
-    }                                                                   \
+#define assert_throw(cond, ...)                         \
+  do {                                                  \
+    if(!(cond)) {                                       \
+      throw_error(ERROR_TYPE_LIMITATION,                \
+                  assert_msg(cond, ##__VA_ARGS__),      \
+                  ##__VA_ARGS__);                       \
+    }                                                   \
   } while(0)
 
 #ifdef NDEBUG
@@ -79,30 +71,13 @@ typedef struct {
 #define assert_error(...) _assert_error(__VA_ARGS__)
 #endif
 
-#define _assert_error(...) DISPATCH(assert_error, 2, ##__VA_ARGS__)
-#define assert_error_0(cond, msg, ...)                                  \
-  do {                                                                  \
-    if(!(cond)) {                                                       \
-      throw_error("Assertion `" #cond "' failed: " msg, ERROR_TYPE_UNEXPECTED); \
-    }                                                                   \
-  } while(0)
-
-#define assert_error_1(cond, ...)                                       \
-  do {                                                                  \
-    if(!(cond)) {                                                       \
-      throw_error("Assertion `" #cond "' failed.", ERROR_TYPE_UNEXPECTED); \
-    }                                                                   \
-  } while(0)
-
-
-#define assert_log(cond, fmt, ...) \
-  do {                                                                  \
-    if(!(cond)) {                                                       \
-      log_error(__FILE__, __LINE__, __func__, "Assertion `" #cond "' failed.", ERROR_TYPE_UNEXPECTED); \
-      LOG_NO_POS(MARK("!!!") " " fmt, ##__VA_ARGS__);                   \
-      breakpoint();                                                     \
-      return_error(ERROR_TYPE_UNEXPECTED);                              \
-    }                                                                   \
+#define _assert_error(cond, ...)                        \
+  do {                                                  \
+    if(!(cond)) {                                       \
+      throw_error(ERROR_TYPE_UNEXPECTED,                \
+                  assert_msg(cond, ##__VA_ARGS__),      \
+                  ##__VA_ARGS__);                       \
+    }                                                   \
   } while(0)
 
 #define assert_counter(n)                                               \
@@ -110,90 +85,43 @@ typedef struct {
     static int counter = n;                                             \
     if(!counter--) {                                                    \
       counter = n;                                                      \
-      throw_error("Assertion counter exhausted.", ERROR_TYPE_UNEXPECTED); \
+      throw_error(ERROR_TYPE_UNEXPECTED,                                \
+                  "Assertion counter exhausted.");                      \
     }                                                                   \
   } while(0)
 
 #define catch_error(e) (current_error = (e), !!setjmp((e)->env))
 
-#define throw_error(msg, type)                          \
-  do {                                                  \
-    log_error(__FILE__, __LINE__, __func__, msg, type); \
-    breakpoint();                                       \
-    return_error(type);                                 \
+#define throw_error(type, fmt, ...)                                     \
+  do {                                                                  \
+    LOG_NO_POS(MARK("!!!") " " __FILE__ ":" STRINGIFY(__LINE__)         \
+                  ": %s: " fmt, __func__ DROP(__VA_ARGS__));            \
+    breakpoint();                                                       \
+    return_error(type);                                                 \
   } while(0)
 
 #endif
 
 error_t *current_error = NULL;
 
-#ifdef BACKTRACE
-#ifdef EMSCRIPTEN
-static char backtrace_buf[4096];
-#else
-static void *backtrace_buf[128];
-#endif
-#endif
-
-static int backtrace_size = 0;
-
-void log_error(const char *file, int line, const char *function, const char *msg, error_type_t type) {
-  if(!current_error) {
-    printf("%s:%d: %s: %s\n", file, line, function, msg);
-  } else {
-#ifdef BACKTRACE
-#ifdef EMSCRIPTEN
-    backtrace_size = emscripten_get_callstack(EM_LOG_NO_PATHS | EM_LOG_FUNC_PARAMS,
-                                              backtrace_buf, sizeof(backtrace_buf));
-#else
-    backtrace_size = backtrace(backtrace_buf, LENGTH(backtrace_buf));
-#endif
-#endif
-    current_error->msg = msg;
-    current_error->file = file;
-    current_error->line = line;
-    current_error->type = type;
-#ifndef NOLOG
-    LOG_NO_POS(MARK("!!!") " %s:%d: %s: %s", file, line, function, msg);
-#endif
-    strncpy(current_error->function, function, sizeof(current_error->function));
-  }
-}
-
 void return_error(error_type_t type) {
   if(current_error) {
+    current_error->type = type;
     longjmp(current_error->env, type);
   } else {
     exit(-1);
   }
 }
 
-void print_backtrace() {
-#ifdef BACKTRACE
-  if(backtrace_size) {
-#ifdef EMSCRIPTEN
-    puts(backtrace_buf);
-#else
-    backtrace_symbols_fd(backtrace_buf, backtrace_size, STDOUT_FILENO);
-#endif
-  }
-#else
-  printf("backtrace not supported\n");
-#endif
-}
-
-void print_error(error_t *error) {
-    printf("%s:%d: %s: %s\n", error->file, error->line, error->function, error->msg);
-}
-
 int test_error() {
   error_t *prev_error = current_error;
   error_t test_error;
   if(catch_error(&test_error)) {
-    print_error(&test_error);
+    printf(NOTE("TEST") " ");
+    print_last_log_msg();
   } else {
     COUNTUP(i, 5) {
-      _assert_throw(i < 3, "Don't worry, it's okay.");
+      assert_throw(i < 3, "Don't worry, it's okay.");
       printf("i = %d\n", (int)i);
     }
   }
@@ -201,7 +129,9 @@ int test_error() {
   return 0;
 }
 
-// print a backtrace
-void command_bt(UNUSED cell_t *rest) {
-  print_backtrace();
+void breakpoint() {
+  printf(NOTE("BREAKPOINT") " ");
+  print_last_log_msg();
+  print_active_entries("  - while compiling ");
+  make_graph_all(NULL);
 }

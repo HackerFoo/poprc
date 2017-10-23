@@ -48,6 +48,7 @@
 #include "gen/module.h"
 #include "gen/list.h"
 #include "gen/log.h"
+#include "gen/trace.h"
 
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
@@ -156,7 +157,7 @@ void command_eval(cell_t *rest) {
 #ifndef EMSCRIPTEN
 static
 void crash_handler(int sig, UNUSED siginfo_t *info, UNUSED void *ctx) {
-  throw_error(strsignal(sig), ERROR_TYPE_UNEXPECTED);
+  throw_error(ERROR_TYPE_UNEXPECTED, "%s", _, strsignal(sig));
 }
 
 int main(int argc, char **argv) {
@@ -172,13 +173,13 @@ int main(int argc, char **argv) {
   bool exit_on_error = false;
 
   if(catch_error(&error)) {
-    print_error(&error);
+    printf(NOTE("ERROR") " ");
+    print_last_log_msg();
+    print_active_entries("  - while compiling ");
     if(exit_on_error) {
       printf("\nExiting on error.\n");
       printf("\n___ LOG ___\n");
       log_print_all();
-      printf("\n___ BACKTRACE ___\n");
-      print_backtrace();
       return -error.type;
     }
     exit_on_error = true;
@@ -346,7 +347,6 @@ static void initialize_readline()
 #define HISTORY_FILE ".poprc_history"
 #define GRAPH_FILE "cells.dot"
 #define REDUCED_GRAPH_FILE "reduced.dot"
-bool write_graph = false;
 
 void run_eval(bool echo) {
   char *line_raw, *line;

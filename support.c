@@ -26,6 +26,7 @@
 #include <unistd.h>
 
 #include "gen/error.h"
+#include "gen/log.h"
 #include "gen/support.h"
 
 // find the median of 3 integers

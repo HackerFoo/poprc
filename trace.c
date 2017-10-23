@@ -503,7 +503,7 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
 cell_t *trace_quote_var(cell_t *l) {
   if(l == &nil_cell) return l;
   cell_t *f = *leftmost_row(&l);
-  assert_error(is_var(f));
+  assert_error(is_var(f), "not a var: %s %C", function_name(f->func), f);
   cell_t *entry = f->value.tc.entry;
   int x = trace_build_quote(entry, l);
   return x == NIL_INDEX ? &nil_cell : var_create_nonlist(T_FUNCTION, (trace_cell_t) {entry, x});

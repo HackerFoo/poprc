@@ -228,7 +228,7 @@ void assert_alt(cell_t *c, cell_t *a) {
   alt_set_t alt_set = a->value.alt_set;
   FOLLOW(p, c, alt) {
     if(p == a) break;
-    assert_log(as_conflict(p->value.alt_set | alt_set),
-               "overlapping alts %C %C", p, a);
+    assert_error(as_conflict(p->value.alt_set | alt_set),
+                 "overlapping alts %C %C", p, a);
   }
 }

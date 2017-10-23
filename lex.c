@@ -20,6 +20,7 @@
 #include <stdio.h>
 
 #include "gen/error.h"
+#include "gen/log.h"
 #include "gen/cells.h"
 #include "gen/special.h"
 #include "gen/test.h"

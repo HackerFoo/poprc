@@ -21,6 +21,7 @@
 #include <stdlib.h>
 
 #include "gen/error.h"
+#include "gen/log.h"
 #include "gen/test.h"
 #include "gen/support.h"
 #include "gen/tok.h"
