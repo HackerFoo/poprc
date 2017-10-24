@@ -191,7 +191,6 @@ int main(int argc, char **argv) {
   module_init();
 
   command_line = true;
-  write_graph = false;
   bool quit = false;
   tty = isatty(fileno(stdin)) && isatty(fileno(stdout));
   quiet = !tty;
@@ -345,8 +344,6 @@ static void initialize_readline()
 #endif
 
 #define HISTORY_FILE ".poprc_history"
-#define GRAPH_FILE "cells.dot"
-#define REDUCED_GRAPH_FILE "reduced.dot"
 
 void run_eval(bool echo) {
   char *line_raw, *line;
@@ -433,12 +430,6 @@ bool run_command(seg_t name, cell_t *rest) {
 // print all modules
 void command_modules(UNUSED cell_t *rest) {
   print_modules();
-}
-
-// toggle graphing
-void command_graph(UNUSED cell_t *rest) {
-  write_graph = !write_graph;
-  printf("graph %s\n", write_graph ? "ON" : "OFF");
 }
 
 // load given file(s)
