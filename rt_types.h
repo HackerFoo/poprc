@@ -164,7 +164,8 @@ typedef enum char_class_t {
   CC_SYMBOL,
   CC_BRACKET,
   CC_VAR,
-  CC_COMMENT
+  CC_COMMENT,
+  CC_DOT
 } char_class_t;
 
 struct __attribute__((packed, aligned(4))) cell {

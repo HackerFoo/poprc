@@ -36,6 +36,7 @@ char_class_t char_class(char c) {
      (c >= 'A' && c <= 'Z'))
     return CC_ALPHA;
   if(c == '?') return CC_VAR;
+  if(c == '.') return CC_DOT;
   if(c == '_') return CC_COMMENT;
   if(strchr("[](){}", c))
     return CC_BRACKET;
@@ -181,11 +182,11 @@ seg_t tok(const char *s, const char* e, char_class_t *class) {
         continue;
       }
       break;
-    case CC_SYMBOL:
-      if(s[0] == '.') {
+    case CC_DOT:
+      if(s[1] != '.') {
         if(cc == CC_ALPHA) {
           cc = CC_NONE;
-          continue; // allow dots in alpha identifiers
+          continue; // allow single dots in identifiers
         }
         if(cc == CC_NUMERIC) {
           char *end;
@@ -211,6 +212,7 @@ seg_t tok(const char *s, const char* e, char_class_t *class) {
   }
   seg.n = s - seg.s;
 done:
+  if(cc == CC_DOT) cc = CC_SYMBOL;
   if(class) *class = cc;
   // separate trailing colon
   if(seg.n > 1 && seg.s[seg.n-1] == ':') seg.n--;
