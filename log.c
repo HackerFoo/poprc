@@ -99,6 +99,7 @@ int entry_number_int(intptr_t c) {
 
 static
 unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
+  unsigned int msg_id = idx;
   const char *fmt = (const char *)log[idx++];
   tag_t tag;
   //printf("%d %d %x %s\n", idx, *depth, fmt[0], fmt + 1);
@@ -162,7 +163,7 @@ unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
   }
   idx = idx % LOG_SIZE;
   if(event) {
-    write_tag(tag, idx);
+    write_tag(tag, msg_id);
     printf("%s " FADE(FORMAT_TAG) "\n", p, tag);
   } else {
     printf("%s\n", p);
@@ -186,14 +187,14 @@ void log_add_first(intptr_t x) {
 
 bool log_add_last(intptr_t x) {
   log_add(x);
-  if_unlikely(log_head == log_watch ||
+  if_unlikely(msg_head == log_watch ||
               (watching &&
                (!set_log_watch_fmt ||
                 log[msg_head] == log_watch_fmt))) {
     watching = true;
     if(set_log_watch_fmt) {
       log_watch_fmt = log[msg_head];
-    } else if(log_head == log_watch_to) {
+    } else if(msg_head == log_watch_to) {
       watching = false;
     }
     return true;
@@ -329,10 +330,10 @@ struct context_s {
 #define CONTEXT_LOG_middle(x)                   \
   log_add((intptr_t)(x));
 #define CONTEXT_LOG_last(x)                     \
-  log_add_last((intptr_t)(x));
-#define CONTEXT_LOG_only(s, fmt)                \
-  __context = s fmt;                            \
-  log_add_only((intptr_t)(__context + 1));
+  if(log_add_last((intptr_t)(x))) breakpoint();
+#define CONTEXT_LOG_only(s, fmt)                                \
+  __context = s fmt;                                            \
+  if(log_add_only((intptr_t)(__context + 1))) breakpoint();
 #define CONTEXT_LOG_post                        \
   } while(0)
 #define CONTEXT_LOG_args ("\xff\x40", "\xff\x41", "\xff\x42", "\xff\x43", "\xff\x44", "\xff\x45", "\xff\x46", "\xff\x47", "\xff\x48")
@@ -476,6 +477,7 @@ const unsigned int tag_factor_inverse = 96455;
 const unsigned int tag_mask = 0x7ffff;
 
 void write_tag(tag_t tag, unsigned int val) {
+  val += 1;
   val *= tag_factor;
   val &= tag_mask;
   COUNTDOWN(i, sizeof(tag_t)) {
@@ -493,7 +495,7 @@ int read_tag(const tag_t tag) {
   }
   val *= tag_factor_inverse;
   val &= tag_mask;
-  return val;
+  return val - 1;
 }
 
 int test_tag() {
@@ -505,5 +507,5 @@ int test_tag() {
 }
 
 void get_tag(tag_t tag) {
-  write_tag(tag, log_head);
+  write_tag(tag, msg_head);
 }

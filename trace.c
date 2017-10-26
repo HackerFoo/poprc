@@ -413,6 +413,7 @@ cell_t *get_list_function_var(cell_t *c) {
 
 // called when c is reduced to r to copy to pre-allocated space in the trace
 void trace_reduction(cell_t *c, cell_t *r) {
+  WATCH(c, "trace_reduction");
   cell_t *new_entry = trace_expr_entry(c->pos);
   if(!is_var(r)) {
     // print tracing information for a reduction
