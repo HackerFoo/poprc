@@ -19,6 +19,10 @@ gen/test_table.h.new: $(SRC)
 	@sed -n -e 's/^ *int test_\([a-zA-Z0-9_]*\).*/TEST(\1),\\/p' $(SRC) | LC_ALL=C sort >> $@
 	@echo '}' >> $@
 
+gen/formats.h.new: $(SRC)
+	@mkdir -p gen
+	@sed -n -e 's/^ *void format_\([a-zA-Z0-9_]*\).*/FORMAT('"'"'\1'"'"', format_\1)/p' $(SRC) | LC_ALL=C sort > $@
+
 gen/commands.h.new: $(SRC)
 	@mkdir -p gen
 	@sed -n -e 'N;s/^\/\/ *\(.*\)\n *void command_\([a-zA-Z0-9_]*\).*/COMMAND(\2, "\1")/p;D' $(SRC) | LC_ALL=C sort > $@

@@ -27,8 +27,8 @@
 
 #include "gen/error.h"
 #include "gen/log.h"
-#include "gen/trace.h"
-#include "gen/print.h"
+#include "gen/trace.h" // print_active_entries
+#include "gen/print.h" // make_graph_all
 
 #if INTERFACE
 #include <setjmp.h>

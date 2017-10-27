@@ -556,3 +556,18 @@ char *show_type_all_short(type_t t) {
   *p = 0;
   return buf;
 }
+
+void format_C(intptr_t i) {
+  cell_t *c = (cell_t *)i;
+  if(is_cell(c)) {
+    printf("%d", CELL_INDEX(c));
+    mark_cell(c);
+  } else {
+    printf("X");
+  }
+}
+
+void format_E(intptr_t c) {
+  int x = entry_number((cell_t *)c);
+  printf("%d", x);
+}
