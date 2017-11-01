@@ -144,27 +144,27 @@ bool func_div(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_IN
 val_t mod_op(val_t x, val_t y) { return x % y; }
 bool func_mod(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, mod_op, true); }
 
-// WORD(".&", bitand, 2, 1)
+// WORD("&b", bitand, 2, 1)
 val_t bitand_op(val_t x, val_t y) { return x & y; }
 bool func_bitand(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, bitand_op, false); }
 
-// WORD(".|", bitor, 2, 1)
+// WORD("|b", bitor, 2, 1)
 val_t bitor_op(val_t x, val_t y) { return x | y; }
 bool func_bitor(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, bitor_op, false); }
 
-// WORD(".^", bitxor, 2, 1)
+// WORD("^b", bitxor, 2, 1)
 val_t bitxor_op(val_t x, val_t y) { return x ^ y; }
 bool func_bitxor(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, bitxor_op, false); }
 
-// WORD(".<<", shiftl, 2, 1)
+// WORD("<<b", shiftl, 2, 1)
 val_t shiftl_op(val_t x, val_t y) { return x << y; }
 bool func_shiftl(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, shiftl_op, false); }
 
-// WORD(".>>", shiftr, 2, 1)
+// WORD(">>b", shiftr, 2, 1)
 val_t shiftr_op(val_t x, val_t y) { return x >> y; }
 bool func_shiftr(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, shiftr_op, false); }
 
-// WORD(".~", complement, 1, 1)
+// WORD("~b", complement, 1, 1)
 val_t complement_op(val_t x) { return ~x; }
 bool func_complement(cell_t **cp, type_request_t treq) { return func_op1(cp, treq, T_INT, T_INT, complement_op); }
 
