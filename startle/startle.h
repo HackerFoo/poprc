@@ -1,5 +1,0 @@
-#include "gen/startle/map.h"
-#include "gen/startle/support.h"
-#include "gen/startle/log.h"
-#include "gen/startle/error.h"
-#include "gen/startle/test.h"
