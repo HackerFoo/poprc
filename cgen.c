@@ -20,23 +20,24 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-#include "gen/error.h"
-#include "gen/log.h"
-#include "gen/cells.h"
-#include "gen/rt.h"
-#include "gen/primitive.h"
-#include "gen/special.h"
-#include "gen/test.h"
-#include "gen/support.h"
-#include "gen/byte_compile.h"
-#include "gen/map.h"
-#include "gen/parse.h"
-#include "gen/print.h"
-#include "gen/cgen.h"
-#include "gen/eval.h"
-#include "gen/lex.h"
-#include "gen/user_func.h"
-#include "gen/trace.h"
+#include "startle/error.h"
+#include "startle/log.h"
+#include "startle/test.h"
+#include "startle/support.h"
+#include "startle/map.h"
+
+#include "cells.h"
+#include "rt.h"
+#include "primitive.h"
+#include "special.h"
+#include "byte_compile.h"
+#include "parse.h"
+#include "print.h"
+#include "cgen.h"
+#include "eval.h"
+#include "lex.h"
+#include "user_func.h"
+#include "trace.h"
 
 // table of corresponding C types
 const char *ctype(type_t t) {

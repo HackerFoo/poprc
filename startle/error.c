@@ -15,20 +15,19 @@
     along with PoprC.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "rt_types.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <inttypes.h>
+#include <stdbool.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "gen/error.h"
-#include "gen/log.h"
-#include "gen/trace.h" // print_active_entries
-#include "gen/print.h" // make_graph_all
+#include "startle/macros.h"
+#include "startle/error.h"
+#include "startle/log.h"
 
 #if INTERFACE
 #include <setjmp.h>
@@ -129,9 +128,11 @@ int test_error() {
   return 0;
 }
 
+void __attribute__((weak)) breakpoint_hook();
+void breakpoint_hook() {}
+
 void breakpoint() {
   printf(NOTE("BREAKPOINT") " ");
   print_last_log_msg();
-  print_active_entries("  - while compiling ");
-  make_graph_all(NULL);
+  breakpoint_hook();
 }

@@ -20,11 +20,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "gen/error.h"
-#include "gen/log.h"
-#include "gen/test.h"
-#include "gen/support.h"
-#include "gen/tok.h"
+#include "startle/error.h"
+#include "startle/log.h"
+#include "startle/test.h"
+#include "startle/support.h"
+
+#include "tok.h"
 
 char_class_t char_class(char c) {
   assert_throw(c < 127, "ASCII only please");

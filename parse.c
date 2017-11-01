@@ -24,24 +24,25 @@
 #include <stdarg.h>
 #endif
 
-#include "gen/error.h"
-#include "gen/log.h"
-#include "gen/cells.h"
-#include "gen/rt.h"
-#include "gen/primitive.h"
-#include "gen/special.h"
-#include "gen/test.h"
-#include "gen/support.h"
-#include "gen/map.h"
-#include "gen/parse.h"
-#include "gen/word_table.h"
-#include "gen/byte_compile.h"
-#include "gen/trace.h"
-#include "gen/tok.h"
-#include "gen/lex.h"
-#include "gen/module.h"
-#include "gen/user_func.h"
-#include "gen/list.h"
+#include "startle/error.h"
+#include "startle/log.h"
+#include "startle/test.h"
+#include "startle/support.h"
+#include "startle/map.h"
+
+#include "cells.h"
+#include "rt.h"
+#include "primitive.h"
+#include "special.h"
+#include "parse.h"
+#include "word_table.h"
+#include "byte_compile.h"
+#include "trace.h"
+#include "tok.h"
+#include "lex.h"
+#include "module.h"
+#include "user_func.h"
+#include "list.h"
 
 #define FUNC_AP 1
 #define MAX_SYMBOLS 64

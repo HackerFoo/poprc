@@ -17,14 +17,16 @@
 
 #include <stdio.h>
 #include "rt_types.h"
-#include "gen/error.h"
-#include "gen/cells.h"
-#include "gen/rt.h"
-#include "gen/special.h"
-#include "gen/test.h"
-#include "gen/user_func.h"
-#include "gen/log.h"
-#include "gen/list.h"
+
+#include "startle/error.h"
+#include "startle/test.h"
+#include "startle/log.h"
+
+#include "cells.h"
+#include "rt.h"
+#include "special.h"
+#include "user_func.h"
+#include "list.h"
 
 cell_t *empty_list() {
   cell_t *c = closure_alloc(1);

@@ -18,17 +18,19 @@
 #include <string.h>
 #include <stdio.h>
 #include "rt_types.h"
-#include "gen/error.h"
-#include "gen/cells.h"
-#include "gen/rt.h"
-#include "gen/primitive.h"
-#include "gen/special.h"
-#include "gen/print.h"
-#include "gen/test.h"
-#include "gen/trace.h"
-#include "gen/support.h"
-#include "gen/list.h"
-#include "gen/log.h"
+
+#include "startle/error.h"
+#include "startle/test.h"
+#include "startle/support.h"
+#include "startle/log.h"
+
+#include "cells.h"
+#include "rt.h"
+#include "primitive.h"
+#include "special.h"
+#include "print.h"
+#include "trace.h"
+#include "list.h"
 
    /*-----------------------------------------------,
     |          VARIABLE NAME CONVENTIONS            |

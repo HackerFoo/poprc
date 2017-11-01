@@ -32,3 +32,4 @@ _darcs
 .tramp_history
 /node_modules
 /attic
+/startle/makeheaders/makeheaders

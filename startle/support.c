@@ -15,7 +15,6 @@
     along with PoprC.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "rt_types.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -24,10 +23,13 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdbool.h>
 
-#include "gen/error.h"
-#include "gen/log.h"
-#include "gen/support.h"
+#include "startle/types.h"
+#include "startle/macros.h"
+#include "startle/error.h"
+#include "startle/log.h"
+#include "startle/support.h"
 
 // find the median of 3 integers
 unsigned int median3(pair_t *array, unsigned int lo, unsigned int hi) {
@@ -338,7 +340,7 @@ bool munmap_file(struct mmfile *f) {
 
 int test_mmap_file() {
   struct mmfile f = {
-    .path = "support.c",
+    .path = "eval.c",
     .read_only = true
   };
   if(!mmap_file(&f)) return -1;

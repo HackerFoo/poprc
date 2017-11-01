@@ -1,6 +1,7 @@
 -include config.mk
 
 SHELL := bash
+ROOT := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 
 # defaults
 BUILD ?= debug
@@ -37,7 +38,10 @@ ifeq ($(findstring clang, $(CC)),clang)
 ifneq ($(UNAME_O),Android) # ubsan doesn't work on Termux
 	SANITIZE := -fsanitize=undefined -fno-sanitize=bounds
 endif
-	CFLAGS = -Wall -Wextra -pedantic -std=gnu11 -Wno-gnu-zero-variadic-macro-arguments -Wno-address-of-packed-member -Wno-unknown-warning-option -Werror=implicit-function-declaration -Werror=int-conversion
+	CFLAGS = -Wall -Wextra -pedantic -std=gnu11 \
+                 -Wno-gnu-zero-variadic-macro-arguments -Wno-address-of-packed-member \
+                 -Wno-unknown-warning-option -Wno-zero-length-array -Wno-array-bounds \
+                 -Werror=implicit-function-declaration -Werror=int-conversion
 	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -std=c++98 -m32
 	OPT_FLAG=-O3
 	LDFLAGS += -rdynamic
@@ -97,17 +101,18 @@ ifeq ($(BUILD),gprof)
 	LDFLAGS += -pg
 endif
 
-CFLAGS += $(COPT)
-CXXFLAGS += $(COPT)
+INCLUDE += -I$(ROOT) -I$(ROOT)gen
+CFLAGS += $(COPT) $(INCLUDE)
+CXXFLAGS += $(COPT) $(INCLUDE)
 
 BUILD_DIR := build/$(CC)/$(BUILD)
 DIAGRAMS := diagrams
 DIAGRAMS_FILE := diagrams.html
 
-SRC := $(wildcard *.c)
+SRC := $(wildcard *.c) $(wildcard startle/*.c)
 OBJS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SRC))
 DEPS := $(patsubst %.c, $(BUILD_DIR)/%.d, $(SRC))
-GEN := $(patsubst %.c, gen/%.h, $(SRC)) gen/word_table.h gen/test_table.h
+GEN := $(patsubst %.c, gen/%.h, $(SRC)) gen/word_table.h gen/test_list.h
 DOT := $(wildcard *.dot)
 DOTSVG := $(patsubst %.dot, $(DIAGRAMS)/%.svg, $(DOT))
 
@@ -118,7 +123,8 @@ fast:
 .PHONY: all
 all: test
 
-include Makefile.gen
+include gen.mk
+include startle/startle.mk
 
 ifneq "$(wildcard /opt/local/lib)" ""
 	LIBS += -L/opt/local/lib
@@ -163,8 +169,6 @@ DIFF_TEST := diff -U 3
 print-%:
 	@echo $* = $($*)
 
-# modified from http://scottmcpeak.com/autodepend/autodepend.html
-
 .PHONY: eval
 eval: $(BUILD_DIR)/eval
 	ln -fs $(BUILD_DIR)/eval $@
@@ -178,20 +182,6 @@ js/eval.js:
 	@mkdir -p js
 	make CC=emcc $(EMCC_OBJS)
 	emcc $(EMCC_OBJS) -o js/eval.js -s EXPORTED_FUNCTIONS="['_main', '_emscripten_eval']" --embed-file lib.ppr
-
-# pull in dependency info for *existing* .o files
--include $(DEPS)
-
-# generate dependency info and headers
-$(BUILD_DIR)/%.d: %.c
-	@mkdir -p $(BUILD_DIR)
-	@$(CC) -MM $(CFLAGS) $*.c -MG -MP -MT $(BUILD_DIR)/$*.o -MF $(BUILD_DIR)/$*.d
-
-# compile
-$(BUILD_DIR)/%.o: %.c $(BUILD_DIR)/%.d
-	$(CC) -c $(CFLAGS) $*.c -o $(BUILD_DIR)/$*.o
-
-.SECONDARY: $(GEN)
 
 $(BUILD_DIR)/linenoise.o: linenoise/linenoise.c linenoise/linenoise.h
 	@mkdir -p $(BUILD_DIR)

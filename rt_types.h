@@ -22,6 +22,9 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <time.h>
+
+#include "startle/macros.h"
+#include "startle/types.h"
 #include "macros.h"
 
 typedef unsigned int uint;
@@ -79,16 +82,6 @@ typedef intptr_t val_t;
 #pragma clang diagnostic ignored "-Wgnu-empty-initializer"
 #pragma clang diagnostic ignored "-Wextended-offsetof"
 #endif
-
-typedef struct pair_t {
-  uintptr_t first, second;
-} pair_t;
-
-// string segment
-typedef struct seg_t {
-  const char *s;
-  size_t n;
-} seg_t;
 
 typedef struct trace_cell {
   cell_t *entry;
@@ -217,8 +210,6 @@ typedef struct stats_t {
 #ifdef EMSCRIPTEN
 #define strnlen(s, n) strlen(s)
 #endif
-
-#define UNUSED __attribute__((unused))
 
 // Maximum number of alts
 #define AS_SIZE (sizeof(alt_set_t) * 4)

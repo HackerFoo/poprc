@@ -18,19 +18,21 @@
 #include <string.h>
 #include <stdio.h>
 #include "rt_types.h"
-#include "gen/error.h"
-#include "gen/cells.h"
-#include "gen/rt.h"
-#include "gen/primitive.h"
-#include "gen/special.h"
-#include "gen/eval.h"
-#include "gen/print.h"
-#include "gen/test.h"
-#include "gen/support.h"
-#include "gen/trace.h"
-#include "gen/list.h"
-#include "gen/user_func.h"
-#include "gen/log.h"
+
+#include "startle/error.h"
+#include "startle/test.h"
+#include "startle/support.h"
+#include "startle/log.h"
+
+#include "cells.h"
+#include "rt.h"
+#include "primitive.h"
+#include "special.h"
+#include "eval.h"
+#include "print.h"
+#include "trace.h"
+#include "list.h"
+#include "user_func.h"
 
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
@@ -811,4 +813,15 @@ bool check_type(uint8_t requested, uint8_t expected) {
     return false;
   }
   return true;
+}
+
+// assert on overlapping alts
+// c->alt->...->alt = a
+void assert_alt(cell_t *c, cell_t *a) {
+  alt_set_t alt_set = a->value.alt_set;
+  FOLLOW(p, c, alt) {
+    if(p == a) break;
+    assert_error(as_conflict(p->value.alt_set | alt_set),
+                 "overlapping alts %C %C", p, a);
+  }
 }

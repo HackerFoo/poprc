@@ -20,13 +20,15 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stddef.h>
-#include "rt_types.h"
-#include "gen/error.h"
-#include "gen/log.h"
-#include "gen/support.h"
-#include "gen/map.h"
 #include <stdlib.h>
 #include <inttypes.h>
+
+#include "startle/types.h"
+#include "startle/macros.h"
+#include "startle/error.h"
+#include "startle/log.h"
+#include "startle/support.h"
+#include "startle/map.h"
 
 #if INTERFACE
 typedef pair_t * map_t;

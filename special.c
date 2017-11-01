@@ -16,14 +16,16 @@
 */
 
 #include "rt_types.h"
-#include "gen/error.h"
-#include "gen/cells.h"
-#include "gen/rt.h"
-#include "gen/special.h"
-#include "gen/trace.h"
-#include "gen/test.h"
-#include "gen/list.h"
-#include "gen/log.h"
+
+#include "startle/error.h"
+#include "startle/test.h"
+#include "startle/log.h"
+
+#include "cells.h"
+#include "rt.h"
+#include "special.h"
+#include "trace.h"
+#include "list.h"
 
 bool func_value(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;

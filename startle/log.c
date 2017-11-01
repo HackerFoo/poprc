@@ -15,17 +15,18 @@
     along with PoprC.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "rt_types.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <inttypes.h>
+#include <stdbool.h>
 
-#include "gen/error.h"
-#include "gen/log.h"
+#include "startle/macros.h"
+#include "startle/error.h"
+#include "startle/log.h"
 
 #define FORMAT(c, f) extern void f(intptr_t);
-#include "gen/formats.h"
+#include "format_list.h"
 #undef FORMAT
 
 #define REVERSE 0x80
@@ -119,7 +120,7 @@ unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
 #define CASE(c, cast, fmt)                      \
       CASE_PRINT(c, printf(fmt, cast(x)))
 #define FORMAT(c, f) CASE_PRINT(c, f(x))
-      #include "gen/formats.h"
+      #include "format_list.h"
 #undef FORMAT
       CASE('d', (int), "%d");
       CASE('u', (unsigned int), "%u");
@@ -282,11 +283,6 @@ int test_log() {
   LOG("[%.*s]", 3, "12345");
   log_print_all();
   return 0;
-}
-
-// print the log
-void command_log(UNUSED cell_t *rest) {
-  log_print_all();
 }
 
 #if INTERFACE

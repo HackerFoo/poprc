@@ -19,14 +19,15 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "gen/error.h"
-#include "gen/log.h"
-#include "gen/cells.h"
-#include "gen/special.h"
-#include "gen/test.h"
-#include "gen/support.h"
-#include "gen/tok.h"
-#include "gen/lex.h"
+#include "startle/error.h"
+#include "startle/log.h"
+#include "startle/test.h"
+#include "startle/support.h"
+
+#include "cells.h"
+#include "special.h"
+#include "tok.h"
+#include "lex.h"
 
 seg_t tok_seg(const cell_t *c) {
   seg_t s = {

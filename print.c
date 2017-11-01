@@ -23,21 +23,22 @@
 #include <stdio.h>
 #endif
 
-#include "gen/error.h"
-#include "gen/cells.h"
-#include "gen/rt.h"
-#include "gen/primitive.h"
-#include "gen/special.h"
-#include "gen/test.h"
-#include "gen/support.h"
-#include "gen/trace.h"
-#include "gen/map.h"
-#include "gen/parse.h"
-#include "gen/print.h"
-#include "gen/module.h"
-#include "gen/user_func.h"
-#include "gen/list.h"
-#include "gen/log.h"
+#include "startle/error.h"
+#include "startle/test.h"
+#include "startle/support.h"
+#include "startle/map.h"
+#include "startle/log.h"
+
+#include "cells.h"
+#include "rt.h"
+#include "primitive.h"
+#include "special.h"
+#include "trace.h"
+#include "parse.h"
+#include "print.h"
+#include "module.h"
+#include "user_func.h"
+#include "list.h"
 
 static BITSET_INDEX(visited, cells);
 static BITSET_INDEX(marked, cells);
@@ -571,3 +572,10 @@ void format_E(intptr_t c) {
   int x = entry_number((cell_t *)c);
   printf("%d", x);
 }
+
+void breakpoint_hook() {
+  print_active_entries("  - while compiling ");
+  make_graph_all(NULL);
+}
+
+

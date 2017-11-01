@@ -32,23 +32,24 @@
 #define RAW_LINE
 #endif
 
-#include "gen/error.h"
-#include "gen/cells.h"
-#include "gen/rt.h"
-#include "gen/special.h"
-#include "gen/eval.h"
-#include "gen/test.h"
-#include "gen/support.h"
-#include "gen/byte_compile.h"
-#include "gen/parse.h"
-#include "gen/print.h"
-#include "gen/cgen.h"
-#include "gen/git_log.h"
-#include "gen/lex.h"
-#include "gen/module.h"
-#include "gen/list.h"
-#include "gen/log.h"
-#include "gen/trace.h"
+#include "startle/error.h"
+#include "startle/test.h"
+#include "startle/support.h"
+#include "startle/log.h"
+
+#include "cells.h"
+#include "rt.h"
+#include "special.h"
+#include "eval.h"
+#include "byte_compile.h"
+#include "parse.h"
+#include "print.h"
+#include "cgen.h"
+#include "lex.h"
+#include "module.h"
+#include "list.h"
+#include "trace.h"
+#include "git_log.h"
 
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
@@ -398,7 +399,7 @@ void run_eval(bool echo) {
     .second = (uintptr_t)&command_##name                 \
   },
 static pair_t commands[] = {
-#include "gen/commands.h"
+#include "command_list.h"
 };
 #undef COMMAND
 
@@ -408,7 +409,7 @@ static pair_t commands[] = {
     .second = (uintptr_t)desc                            \
   },
 static pair_t command_descriptions[] = {
-#include "gen/commands.h"
+#include "command_list.h"
 };
 #undef COMMAND
 
@@ -440,13 +441,6 @@ void command_load(cell_t *rest) {
     load_file(buf);
     rest = rest->tok_list.next;
   }
-}
-
-// run tests matching the argument
-void command_test(cell_t *rest) {
-  const char *name = rest ? rest->tok_list.location : "";
-  run_test(name);
-  if(command_line) quit = true;
 }
 
 // print arity of the given function
@@ -738,4 +732,15 @@ void command_watch(cell_t *rest) {
       printf("log watch set for tag: " FORMAT_TAG "\n", tag);
     }
   }
+}
+
+// run tests matching the argument
+void command_test(cell_t *rest) {
+  run_test(rest ? tok_seg(rest) : (seg_t){"", 0});
+  if(command_line) quit = true;
+}
+
+// print the log
+void command_log(UNUSED cell_t *rest) {
+  log_print_all();
 }

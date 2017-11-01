@@ -16,16 +16,21 @@
 */
 
 #include <string.h>
+#include <stdio.h>
+#include <inttypes.h>
+
 #include "rt_types.h"
-#include "gen/error.h"
-#include "gen/cells.h"
-#include "gen/special.h"
-#include "gen/rt.h"
-#include "gen/support.h"
-#include "gen/trace.h"
-#include "gen/list.h"
-#include "gen/user_func.h"
-#include "gen/log.h"
+
+#include "startle/error.h"
+#include "startle/support.h"
+#include "startle/log.h"
+
+#include "cells.h"
+#include "special.h"
+#include "rt.h"
+#include "trace.h"
+#include "list.h"
+#include "user_func.h"
 #include "macros.h"
 
 // to catch errors that result in large allocations
@@ -79,7 +84,7 @@ bool is_cell(void const *p) {
   return p >= (void *)&cells && p < (void *)(&cells+1);
 }
 
-// Is `p` a prointer to a closure (i.e. allocated cell)?
+// Is `p` a pointer to a closure (i.e. allocated cell)?
 bool is_closure(void const *p) {
   return is_data(p) && ((cell_t *)p)->func;
 }
@@ -464,4 +469,137 @@ void alloc_to(size_t n) {
     c->func = func_value;
     closure_free(c);
   }
+}
+
+bool check_cycle() {
+  size_t i = 0;
+  cell_t *start = cells_ptr, *ptr = start;
+  while(ptr->mem.next != start) {
+    if(i > LENGTH(cells)) return false;
+    i++;
+    assert_error(is_cell(ptr->mem.next->mem.next));
+    ptr = ptr->mem.next;
+  }
+  return true;
+}
+
+int test_alloc() {
+  cell_t *a[30];
+  LOOP(50) {
+    FOREACH(i, a) {
+      a[i] = func((reduce_t *)42, 9, 1);
+    }
+    FOREACH(i, a) {
+      closure_free(a[i]);
+    }
+  }
+  return leak_test() && check_cycle() ? 0 : -1;
+}
+
+bool leak_test() {
+  bool leak = false;
+  FOREACH(i, cells) {
+    cell_t *c = &cells[i];
+    if(is_closure(c)) {
+      if(c->n != PERSISTENT) {
+        printf("LEAK: %" PRIuPTR " (%u)\n", i, (unsigned int)cells[i].n);
+        leak = true;
+      }
+      i += closure_cells(c) - 1;
+    }
+  }
+  return !leak;
+}
+
+static
+cell_t **flatten(cell_t *c, cell_t **tail) {
+  c = clear_ptr(c);
+  if(c && !c->tmp && tail != &c->tmp && c->n != PERSISTENT) {
+    LIST_ADD(tmp, tail, c);
+    TRAVERSE(c, alt, in, ptrs) {
+      tail = flatten(*p, tail);
+    }
+  }
+  return tail;
+}
+
+void print_list(cell_t *c) {
+  if(c) {
+    printf("{%d", (int)(c-cells));
+    while((c = c->tmp)) {
+      printf(", %d", (int)(c-cells));
+    }
+    printf("}\n");
+  } else {
+    printf("{}\n");
+  }
+}
+
+static
+void assert_ref_dec(cell_t *c) {
+  while(c) {
+    TRAVERSE(c, alt, in, ptrs) {
+      cell_t *x = clear_ptr(*p);
+      if(x && x->n != PERSISTENT) --x->n;
+    }
+    c = c->tmp;
+  }
+}
+
+static
+void assert_ref_inc(cell_t *c) {
+  while(c) {
+    TRAVERSE(c, alt, in, ptrs) {
+      cell_t *x = clear_ptr(*p);
+      if(x && x->n != PERSISTENT) ++x->n;
+    }
+    c = c->tmp;
+  }
+}
+
+size_t count_root(const cell_t *c, cell_t ***roots, size_t n) {
+  size_t cnt = 0;
+  COUNTUP(i, n) {
+    if(roots[i] && c == *roots[i]) cnt++;
+  }
+  return cnt;
+}
+
+static
+void print_roots(cell_t ***roots, size_t n) {
+  COUNTUP(i, n) {
+    LOG_WHEN(roots[i] && *roots[i], "root: %d @ 0x%p", (int)((*roots[i])-cells), (void *)roots[i]);
+  }
+}
+
+static
+bool assert_ref_check(cell_t *c, cell_t ***roots, size_t roots_n) {
+  bool res = true;
+  while(c) {
+    refcount_t n = c->n + 1;
+    if(count_root(c, roots, roots_n)) n = 0;
+    if(n) {
+      LOG("assert_ref: cell[%d].n == %d", (int)(c - cells), (int)n);
+      res = false;
+    }
+    c = c->tmp;
+  }
+  return res;
+}
+
+// check ref counts starting at root
+bool assert_ref(cell_t ***roots, size_t n) {
+  cell_t *list = 0, **tail = &list;
+  COUNTUP(i, n) {
+    if(!roots[i] || !is_closure(*roots[i])) continue; // ***
+    tail = flatten(*roots[i], tail);
+  }
+  assert_ref_dec(list);
+  bool check = assert_ref_check(list, roots, n);
+  assert_ref_inc(list);
+  clean_tmp(list);
+  if(!check) {
+    print_roots(roots, n);
+  }
+  return check;
 }

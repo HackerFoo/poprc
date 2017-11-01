@@ -20,24 +20,25 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
-#include "gen/error.h"
-#include "gen/cells.h"
-#include "gen/rt.h"
-#include "gen/eval.h"
-#include "gen/primitive.h"
-#include "gen/special.h"
-#include "gen/test.h"
-#include "gen/support.h"
-#include "gen/map.h"
-#include "gen/byte_compile.h"
-#include "gen/parse.h"
-#include "gen/print.h"
-#include "gen/lex.h"
-#include "gen/module.h"
-#include "gen/user_func.h"
-#include "gen/list.h"
-#include "gen/log.h"
-#include "gen/trace.h"
+#include "startle/error.h"
+#include "startle/test.h"
+#include "startle/support.h"
+#include "startle/map.h"
+#include "startle/log.h"
+
+#include "cells.h"
+#include "rt.h"
+#include "eval.h"
+#include "primitive.h"
+#include "special.h"
+#include "byte_compile.h"
+#include "parse.h"
+#include "print.h"
+#include "lex.h"
+#include "module.h"
+#include "user_func.h"
+#include "list.h"
+#include "trace.h"
 
 // print bytecode for entry e
 void print_bytecode(cell_t *entry) {

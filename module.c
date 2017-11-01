@@ -19,19 +19,20 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "gen/error.h"
-#include "gen/log.h"
-#include "gen/cells.h"
-#include "gen/special.h"
-#include "gen/test.h"
-#include "gen/support.h"
-#include "gen/map.h"
-#include "gen/parse.h"
-#include "gen/word_table.h"
-#include "gen/lex.h"
-#include "gen/module.h"
-#include "gen/byte_compile.h"
-#include "gen/list.h"
+#include "startle/error.h"
+#include "startle/log.h"
+#include "startle/support.h"
+#include "startle/map.h"
+#include "startle/test.h"
+
+#include "cells.h"
+#include "special.h"
+#include "parse.h"
+#include "word_table.h"
+#include "lex.h"
+#include "module.h"
+#include "byte_compile.h"
+#include "list.h"
 
 pair_t primitive_module[] = WORDS;
 
