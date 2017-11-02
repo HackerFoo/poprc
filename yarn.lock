@@ -3,8 +3,8 @@
 
 
 jquery.terminal@^1.4.2:
-  version "1.4.2"
-  resolved "https://registry.yarnpkg.com/jquery.terminal/-/jquery.terminal-1.4.2.tgz#61f58d1d87264920aea18945398a9fca1e400ede"
+  version "1.9.0"
+  resolved "https://registry.yarnpkg.com/jquery.terminal/-/jquery.terminal-1.9.0.tgz#bb7ec5b5acee38ffb4c6c43e0be031969061fb2a"
   dependencies:
     jquery "~3"
 

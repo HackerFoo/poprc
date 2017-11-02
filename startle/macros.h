@@ -158,10 +158,17 @@
 #define ARRAY_COPY(dst, src, n) memcpy(&(dst), &(src), (n) * sizeof(dst))
 
 #define COLOR(x) CONCAT(COLOR_, x)
+#if !defined(EMSCRIPTEN)
 #define COLOR_red "\x1b[37;41m"
 #define COLOR_blue "\x1b[37;44m"
 #define COLOR_gray "\x1b[38;5;8m"
 #define COLOR_normal "\x1b[0m"
+#else
+#define COLOR_red "[[;#fff;#f00;]"
+#define COLOR_blue "[[;#fff;#00f;]"
+#define COLOR_gray "[[;#999;#000;]"
+#define COLOR_normal "]"
+#endif
 
 #define MARK(x) COLOR(red) x COLOR(normal)
 #define NOTE(x) COLOR(blue) x COLOR(normal)

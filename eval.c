@@ -486,7 +486,7 @@ COMMAND(quit, "quit interpreter") {
 int emscripten_eval(char *str, int len) {
   error_t error;
   if(catch_error(&error)) {
-    print_error(&error);
+    print_last_log_msg();
     return -error.type;
   } else {
     eval_command_string(str, str + len);
