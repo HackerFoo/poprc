@@ -558,7 +558,7 @@ char *show_type_all_short(type_t t) {
   return buf;
 }
 
-void format_C(intptr_t i) {
+FORMAT(cell, 'C') {
   cell_t *c = (cell_t *)i;
   if(is_cell(c)) {
     printf("%d", CELL_INDEX(c));
@@ -568,8 +568,8 @@ void format_C(intptr_t i) {
   }
 }
 
-void format_E(intptr_t c) {
-  int x = entry_number((cell_t *)c);
+FORMAT(entry, 'E') {
+  int x = entry_number((cell_t *)i);
   printf("%d", x);
 }
 

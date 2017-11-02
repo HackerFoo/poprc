@@ -431,8 +431,7 @@ void gen_main(cell_t *e) {
          "}\n\n");
 }
 
-// print C code for given function
-void command_cc(cell_t *rest) {
+COMMAND(cc, "print C code for given function") {
   if(rest) {
     command_define(rest);
     cell_t
@@ -444,8 +443,7 @@ void command_cc(cell_t *rest) {
   if(command_line) quit = true;
 }
 
-// print main() for given function
-void command_main(cell_t *rest) {
+COMMAND(main, "print main() for given function") {
   if(rest) {
     cell_t
       *m = eval_module(),

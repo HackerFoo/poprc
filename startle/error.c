@@ -112,7 +112,7 @@ void return_error(error_type_t type) {
   }
 }
 
-int test_error() {
+TEST(error) {
   error_t *prev_error = current_error;
   error_t test_error;
   if(catch_error(&test_error)) {

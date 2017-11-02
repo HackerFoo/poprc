@@ -234,4 +234,6 @@ typedef struct list_iterator {
 
 void breakpoint();
 
+#define COMMAND(name, desc) void command_##name(UNUSED cell_t *rest)
+
 #endif

@@ -107,7 +107,7 @@ void strings_drop() {
   } while(strings_top > strings && strings_top[-1]);
 }
 
-int test_strings() {
+TEST(strings) {
   const char *start = strings_top;
   seg_t s = {"Test", 4};
   const char *test = seg_string(s);
@@ -412,7 +412,7 @@ cell_t *parse_defs(cell_t **c, const char *module_name, cell_t **err) {
   return m;
 }
 
-int test_parse_def() {
+TEST(parse_def) {
   cell_t *p = lex("word: hi there this\n"
                   "        is the first definition\n"
                   "      and this\n"
@@ -456,7 +456,7 @@ fail:
   return false;
 }
 
-int test_parse_module() {
+TEST(parse_module) {
   cell_t *orig_modules = modules;
   modules = make_module();
   cell_t *p = lex("module a:\n"

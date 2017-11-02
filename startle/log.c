@@ -25,9 +25,9 @@
 #include "startle/error.h"
 #include "startle/log.h"
 
-#define FORMAT(c, f) extern void f(intptr_t);
+#define FORMAT_ITEM(name, c) extern FORMAT(name, c);
 #include "format_list.h"
-#undef FORMAT
+#undef FORMAT_ITEM
 
 #define REVERSE 0x80
 #define INDENT  0x40
@@ -119,9 +119,9 @@ unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
         break;
 #define CASE(c, cast, fmt)                      \
       CASE_PRINT(c, printf(fmt, cast(x)))
-#define FORMAT(c, f) CASE_PRINT(c, f(x))
+#define FORMAT_ITEM(name, c) CASE_PRINT(c, format_##name(x))
       #include "format_list.h"
-#undef FORMAT
+#undef FORMAT_ITEM
       CASE('d', (int), "%d");
       CASE('u', (unsigned int), "%u");
       CASE('x', (int), "%x");
@@ -276,7 +276,7 @@ void log_print_all() {
 
 #endif
 
-int test_log() {
+TEST(log) {
   log_init();
   LOG("test %d + %d = %d", 1, 2, 3);
   LOG("WAZZUP %s", "d00d");
@@ -384,7 +384,7 @@ void __test_context_d(int x) {
   LOG("exiting d");
 }
 
-int test_context() {
+TEST(context) {
   log_init();
   __test_context_a(2);
   __test_context_a(1);
@@ -451,7 +451,7 @@ int gather_bits(int y) {
   return x;
 }
 
-int test_spread_gather_bits() {
+TEST(spread_gather_bits) {
   int x = 0x9AC35;
   int spread = spread_bits(x);
   int gather = gather_bits(spread);
@@ -485,7 +485,7 @@ int read_tag(const tag_t tag) {
   return val - 1;
 }
 
-int test_tag() {
+TEST(tag) {
   tag_t tag = "good";
   int x = read_tag(tag);
   write_tag(tag, x);

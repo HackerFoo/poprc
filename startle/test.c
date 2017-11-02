@@ -27,11 +27,11 @@
 #include "startle/test.h"
 #include "startle/log.h"
 
-#define TEST(name) extern int test_##name();
+#define TEST_ITEM(name) extern int test_##name();
 #include "test_list.h"
-#undef TEST
+#undef TEST_ITEM
 
-#define TEST(name)                                       \
+#define TEST_ITEM(name)                                  \
   {                                                      \
     .first = (uintptr_t)#name,                           \
     .second = (uintptr_t)&test_##name                    \
@@ -41,7 +41,7 @@ pair_t tests[] = {
 #include "test_list.h"
 };
 
-#undef TEST
+#undef TEST_ITEM
 
 int run_test(seg_t name) {
   int fail = 0;
@@ -61,7 +61,7 @@ int run_test(seg_t name) {
 
 // Macro tests
 
-int test_loops() {
+TEST(loops) {
   COUNTUP(i, 3) {
     printf("up: %d\n", (unsigned int)i);
   }
@@ -91,7 +91,7 @@ int test_loops() {
 #define TEST_2(x0, x1, x2, ...) printf("TEST2(" x0 ", " x1 ", " x2 ")\n")
 #define TEST_1(...) printf("TEST1\n")
 
-int test_macro_dispatch() {
+TEST(macro_dispatch) {
   DISPATCH(TEST, 5, "1", "2", "3");
   DISPATCH(TEST, 5, "1", "2", "3", "4");
   return 0;

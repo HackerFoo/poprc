@@ -4,17 +4,11 @@
 
 SHELL := bash
 
-gen/test_list.h.new: $(SRC)
+# collects NAME(...) macros into a sorted list of NAME_ITEM(...) in gen/name_list.h
+gen/%_list.h.new: NAME=$(shell echo $(notdir $*) | tr a-z A-Z)
+gen/%_list.h.new: $(SRC)
 	@mkdir -p $(dir $@)
-	@sed -n -e 's/^ *int test_\([a-zA-Z0-9_]*\).*/TEST(\1)/p' $(SRC) | LC_ALL=C sort > $@
-
-gen/format_list.h.new: $(SRC)
-	@mkdir -p $(dir $@)
-	@sed -n -e 's/^ *void format_\([a-zA-Z0-9_]*\).*/FORMAT('"'"'\1'"'"', format_\1)/p' $(SRC) | LC_ALL=C sort > $@
-
-gen/command_list.h.new: $(SRC)
-	@mkdir -p $(dir $@)
-	@sed -n -e 'N;s/^\/\/ *\(.*\)\n *void command_\([a-zA-Z0-9_]*\).*/COMMAND(\2, "\1")/p;D' $(SRC) | LC_ALL=C sort > $@
+	sed -n -e 's/^ *'"$(NAME)"'(\(.*\)).*/'"$(NAME)_ITEM"'(\1)/p' $(SRC) | LC_ALL=C sort > $@
 
 gen/git_log.h.new: LOG = $(shell git log -1 --oneline)
 gen/git_log.h.new: $(SRC)

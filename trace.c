@@ -566,7 +566,7 @@ size_t tmp_list_length(cell_t *c) {
   return n;
 }
 
-int test_var_count() {
+TEST(var_count) {
   cell_t *l = lex("? [? +] [[?] dup] [[[[?]]]] ? dup", 0);
   const cell_t *p = l;
   cell_t *c = parse_expr(&p, NULL, NULL);

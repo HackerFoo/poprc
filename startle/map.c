@@ -212,7 +212,7 @@ bool string_cmp(uintptr_t a, uintptr_t b) {
   } while(0)
 
 
-int test_merge() {
+TEST(merge) {
   pair_t arr1[] = {{0, 0}, {2, 1}, {4, 2}, {6, 3}, {1, 4}, {3, 5}, {5, 6}, {7, 7}};
   MERGE_TEST(arr1);
 
@@ -294,7 +294,7 @@ void string_map_sort_full(map_t map) {
   _map_sort_full(map, string_cmp);
 }
 
-int test_map_sort_full() {
+TEST(map_sort_full) {
   MAP(a, 21);
   *map_cnt(a) = 21;
   COUNTUP(i, 16) {
@@ -403,7 +403,7 @@ bool string_map_union(map_t a, map_t b) {
   return _map_union(a, b, string_cmp);
 }
 
-int test_map_union() {
+TEST(map_union) {
   COUNTUP(n, 9) {
     MAP(a, 16);
     MAP(b, 8);
@@ -431,7 +431,7 @@ bool _map_replace_insert(map_t map, pair_t x, cmp_t cmp) {
   }
 }
 
-int test_map_merge() {
+TEST(map_merge) {
   pair_t map[17] = {
     {LENGTH(map) - 1, 5},
     {0,0}, {4,0}, {12, 0}, {16, 0},
@@ -557,7 +557,7 @@ pair_t *_find_test(map_t map, char *name, uintptr_t key) {
   return p;
 }
 
-int test_map() {
+TEST(map) {
   int ret = 0;
   MAP(map, 32);
   int elems[] = {2, 5, 8, 3, 1, 0, 4, 7, 6, 9, 10, 15, 13, 11, 12};
@@ -596,7 +596,7 @@ static bool expect(map_t map, uintptr_t key, uintptr_t x) {
   return true;
 }
 
-int test_map_stack_behavior() {
+TEST(map_stack_behavior) {
   #define M 2
   #define N 8
   MAP(map, (M * N));
@@ -617,7 +617,7 @@ int test_map_stack_behavior() {
   #undef N
 }
 
-int test_rotate() {
+TEST(rotate) {
   pair_t arr[7];
   FOREACH(i, arr) {
     arr[i].first = i;
@@ -634,7 +634,7 @@ int test_rotate() {
 }
 
 /*
-//int test_rotate_speed() {
+// TEST(rotate_speed) {
   size_t cnt = 1 << 28;
   pair_t *arr = calloc(cnt, sizeof(pair_t));
   rotate(arr, arr + (1 << 27) - 1, cnt);
@@ -643,7 +643,7 @@ int test_rotate() {
 }
 */
 
-int test_string_map() {
+TEST(string_map) {
   char *strings[] = {
     "one",
     "two",

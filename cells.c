@@ -424,7 +424,7 @@ alt_set_t as_more_general_than(alt_set_t a, alt_set_t b) {
 }
 */
 
-int test_alt_sets() {
+TEST(alt_sets) {
   bool ok = true;
   alt_set_t
     a0 = as_single(0, 0),
@@ -483,7 +483,7 @@ bool check_cycle() {
   return true;
 }
 
-int test_alloc() {
+TEST(alloc) {
   cell_t *a[30];
   LOOP(50) {
     FOREACH(i, a) {

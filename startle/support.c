@@ -91,7 +91,7 @@ void print_string_pairs(pair_t *array, size_t len) {
   }
 }
 
-int test_sort() {
+TEST(sort) {
   pair_t array[] = {{3, 0}, {7, 1}, {2, 2}, {4, 3}, {500, 4}, {0, 5}, {8, 6}, {4, 7}};
   quicksort(array, LENGTH(array));
   uintptr_t last = array[0].first;
@@ -338,7 +338,7 @@ bool munmap_file(struct mmfile *f) {
   return success;
 }
 
-int test_mmap_file() {
+TEST(mmap_file) {
   struct mmfile f = {
     .path = "eval.c",
     .read_only = true
@@ -447,7 +447,7 @@ bool set_remove(uintptr_t x, uintptr_t *set, size_t size) {
   return false;
 }
 
-int test_set() {
+TEST(set) {
   uintptr_t set[7] = {0};
   const size_t size = LENGTH(set);
   uintptr_t data[] = {7, 8, 9, 14, 21, 28};

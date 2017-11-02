@@ -85,7 +85,7 @@ void print_toks(cell_t *p) {
   printf("\n");
 }
 
-int test_lex() {
+TEST(lex) {
   cell_t *l = lex("testing\n[1 2+ 3]\n_ignore this_ 4\nDone", 0);
   if(!l) return -1;
   print_toks(l);

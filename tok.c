@@ -117,7 +117,7 @@ void mark_comments(char c, char *str) {
   }
 }
 
-int test_comments() {
+TEST(comments) {
   char str[] =
     "[1] One def\n"
     "[2] T_w_o def\n"

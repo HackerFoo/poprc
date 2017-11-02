@@ -174,7 +174,7 @@ bool _check_list_next(csize_t x, csize_t y) {
   return x + y == z;
 }
 
-int test_list_next() {
+TEST(list_next) {
   bool ret = true;
   ret &= _check_list_next(2, 2);
   ret &= _check_list_next(0, 1);
@@ -210,7 +210,7 @@ bool _check_list_remaining_size(csize_t x, csize_t y) {
   return x + y == z;
 }
 
-int test_list_remaining_size() {
+TEST(list_remaining_size) {
   bool ret = true;
   ret &= _check_list_remaining_size(2, 2);
   ret &= _check_list_remaining_size(0, 1);
@@ -282,7 +282,7 @@ bool _check_flat_copy(csize_t x, csize_t y) {
   return x + y == z;
 }
 
-int test_flat_copy_list() {
+TEST(flat_copy_list) {
   bool ret = true;
   ret &= _check_flat_copy(2, 2);
   ret &= _check_flat_copy(0, 1);
@@ -318,7 +318,7 @@ cell_t *flattened_list_copy(cell_t *l) {
   return fl;
 }
 
-int test_flattened_list_copy() {
+TEST(flattened_list_copy) {
   cell_t *l1 = make_list(1);
   l1->value.ptr[0] = int_val(1);
   cell_t *l2 = make_list(2);
@@ -397,7 +397,7 @@ csize_t function_in(const cell_t *l) {
   return in;
 }
 
-int test_function_in() {
+TEST(function_in) {
   cell_t *l = make_list(2);
   l->value.ptr[0] = int_val(2);
   l->value.ptr[1] = quote(func(func_exec, 2, 1));

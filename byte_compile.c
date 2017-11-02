@@ -466,8 +466,7 @@ size_t expand_sym(char *buf, size_t n, seg_t src) {
   return out - buf;
 }
 
-// convert symbol to C identifier
-void command_ident(cell_t *rest) {
+COMMAND(ident, "convert symbol to C identifier") {
   cell_t *p = rest;
   while(p) {
     char ident[64]; // ***
@@ -838,8 +837,7 @@ cell_t *entry_from_token(cell_t *tok) {
   }
 }
 
-// print bytecode for a word, or all
-void command_bc(cell_t *rest) {
+COMMAND(bc, "print bytecode for a word, or all") {
   if(rest) {
     CONTEXT("bytecode command");
     command_define(rest);
@@ -854,8 +852,7 @@ void command_bc(cell_t *rest) {
   }
 }
 
-// trace an instruction
-void command_trace(cell_t *rest) {
+COMMAND(trace, "trace an instruction") {
   if(rest) {
     CONTEXT("trace command");
     cell_t *e = entry_from_token(rest);

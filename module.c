@@ -226,7 +226,7 @@ cell_t *expand_map(cell_t *c, csize_t n) {
   }
 }
 
-int test_expand_map() {
+TEST(expand_map) {
   cell_t *m = make_module();
   char *strings[] = {
     "one",
@@ -402,7 +402,7 @@ const char *entry_name(cell_t *module, cell_t *entry) {
   return NULL;
 }
 
-int test_module_lookup() {
+TEST(module_lookup) {
   cell_t *orig_modules = modules;
   modules = make_module();
   cell_t *p = lex("module a:\n"
@@ -456,8 +456,7 @@ int test_module_lookup() {
   return e ? -1 : 0;
 }
 
-// import given module(s), or all
-void command_import(cell_t *rest) {
+COMMAND(import, "import given module(s), or all") {
   cell_t *eval_module = module_get_or_create(modules, string_seg("eval"));
   cell_t *eval_imports = module_get_or_create(eval_module, string_seg("imports"));
   if(!rest) { // import all
