@@ -261,7 +261,7 @@ bool func_dep(cell_t **cp, UNUSED type_request_t treq) {
   c->func = func_dep_entered;
   reduce_dep(&p);
   trace_dep(c);
-  assert_error(c->func != func_dep_entered);
+  assert_error(c->func != func_dep_entered, "result not written to dep");
   remove_root(&p);
   drop(p);
   return false;

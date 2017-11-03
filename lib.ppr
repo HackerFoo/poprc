@@ -56,11 +56,11 @@ __     [popr drop head is_nil not]
 __     iterate head
 foldl_step: [popr over2 pushl] dip23 .
 
-dropl:
-  [] ap20
-    [[[popr drop] [1-] para] .]
-    [head 0 >]
-    iterate popr drop head
+__ dropl:
+__   [] ap20
+__     [[[popr drop] [1-] para] .]
+__     [head 0 >]
+__     iterate popr drop head
 
 __ [a.. x] [b..] -> [a..] [x b..]
 movr: [popr] dip12 pushl
@@ -284,11 +284,11 @@ reduce_power: [dup *] [1 >>b] para
 __ acc x power -> acc' x^2 power/2
 power_step: in2 [acc_odd_power] dip31 ap02 swap2 drop reduce_power
 
-exponent:
-  [] ap30
-    [[power_step] .]
-    [head 0 !=]
-    iterate popr drop popr drop head
+__ exponent:
+__   [] ap30
+__     [[power_step] .]
+__     [head 0 !=]
+__     iterate popr drop popr drop head
 
 __ raise to integer power using binary exponentiation
 __ ^: 1 -swap2 exponent
@@ -298,5 +298,6 @@ __ sum_: [[+] .] [popr drop is_nil not] iterate head int_t
 __ sum: 0 pushr sum_
 
 __ decreasing list from initial element
-__ iota_: [[dup 1-] .] [head 0 >] iterate
-__ iota: [1-] pushl iota_
+iota: [1-] pushl [[dup 1-] .] [head 0 >] iterate
+__ iota2: [[dup 1-] .] [head 0 >] iterate
+__ iota3: [] pushl [[dup 1-] .] [head 0 >] iterate

@@ -675,6 +675,7 @@ void mark_barriers(cell_t *entry, cell_t *c) {
       //  LOG(HACK " marking barrier through ap %C", x);
       //  mark_barriers(entry, x);
       } else {
+        LOG("set pos: cells[%C].pos = %d (%e)", x, entry->pos, entry);
         x->pos = entry->pos;
       }
     }

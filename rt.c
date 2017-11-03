@@ -751,6 +751,32 @@ void store_lazy(cell_t **cp, cell_t *r, alt_set_t alt_set) {
   }
 }
 
+void store_lazy_and_update_deps(cell_t **cp, cell_t *r, alt_set_t alt_set) {
+  cell_t *c = *cp;
+  refcount_t n = 0;
+  csize_t out_n = closure_out(c);
+  assert_error(closure_out(r) == out_n);
+  if(out_n) {
+    cell_t
+      **c_out = &c->expr.arg[closure_args(c) - out_n],
+      **r_out = &r->expr.arg[closure_args(r) - out_n];
+    COUNTUP(i, out_n) {
+      cell_t *d = c_out[i];
+      if(d) {
+        d->expr.arg[0] = r;
+        r_out[i] = d;
+        n++;
+      }
+    }
+
+    // update ref counts
+    refn(r, n);
+    assert_error(c->n >= n);
+    c->n -= n;
+  }
+  store_lazy(cp, r, alt_set);
+}
+
 void store_lazy_dep(cell_t *d, cell_t *r, alt_set_t alt_set) {
   if(d) {
     drop(d->expr.arg[0]);

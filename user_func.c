@@ -51,10 +51,10 @@ cell_t *map_cell(cell_t *entry, intptr_t x) {
 static
 cell_t *get_return_arg(cell_t *entry, cell_t *returns, intptr_t x) {
   trace_index_t i = trace_decode(returns->value.ptr[x]);
+  assert_error(x < entry->entry.out);
+  assert_error(i == NIL_INDEX || i > 0);
   return // can't use map_cell, returns empty_list() instead of &nil_cell
-    i == NIL_INDEX ? empty_list() :
-    i <= 0 ? NULL :
-    entry[i].alt;
+    i == NIL_INDEX ? empty_list() : entry[i].alt;
 }
 
 // given a list l with arity in -> out, produce an application of the list
@@ -157,36 +157,47 @@ cell_t **bind_pattern(cell_t *c, cell_t *pattern, cell_t **tail) {
     // This can be caused by an operation before an infinite loop
     // This will prevent reducing the operation, and therefore fail to unify
     assert_error(false, "binding error: %C %C", c, pattern);
+    // TODO promote to var instead of failing
     return NULL;
   }
   return tail;
 }
 
 // unify c with pattern pat if possible, returning the unified result
-cell_t *unify_convert(cell_t *entry, cell_t *c, cell_t *pat) {
-  if(!pat) return NULL;
-  if(closure_in(c) != closure_in(pat)) {
-    return ref(c);
-  }
-  csize_t out = c->expr.out;
-  cell_t *ret = NULL;
-  if(out != 0) { // for now
-    LOG(TODO " unify_convert %d: out(%d) != 0", c-cells, out);
-    return NULL;
+bool unify_exec(cell_t **cp, cell_t *parent_entry) {
+  cell_t *c = *cp;
+  PRE(c, unify_exec, " #wrap");
+
+  csize_t
+    in = closure_in(c),
+    out = closure_out(c);
+  cell_t
+    *entry = c->expr.arg[in],
+    *pat = entry->initial;
+
+  if(!pat) return false;
+  if(in != closure_in(pat)) {
+    LOG(HACK " pattern arity mismatch %C %C", c, pat);
+    return true;
   }
 
-  cell_t *vl = 0;
-  cell_t **tail = &vl;
-  COUNTUP(i, closure_in(c)) {
+  LOG_WHEN(out != 0, TODO " unify_convert %d: out(%d) != 0 @unify-multiout", c-cells, out);
+
+  cell_t
+    *vl = 0,
+    **tail = &vl;
+  COUNTUP(i, in) {
     tail = bind_pattern(c->expr.arg[i], pat->expr.arg[i], tail);
     if(!tail) {
       LOG("bind_pattern failed %C %C", c->expr.arg[i], pat->expr.arg[i]);
       break;
     }
   }
+
   if(tail) {
     csize_t in = tmp_list_length(vl);
     cell_t *n = closure_alloc(in + out + 1);
+    n->expr.out = out;
     n->func = func_exec;
     n->expr.arg[in] = entry;
     FLAG_SET(n->expr, FLAGS_RECURSIVE);
@@ -195,14 +206,24 @@ cell_t *unify_convert(cell_t *entry, cell_t *c, cell_t *pat) {
       n->expr.arg[in - 1 - pos] = p;
       pos++;
     }
-    ret = n;
+    clean_tmp(vl);
+
+    LOG("unified %E %C with initial_word in %E %C",
+        entry, c, parent_entry, pat);
+    LOG_WHEN(closure_out(c), TODO " handle deps in c = %C, n = %C", c, n);
+
+    TRAVERSE(c, in) {
+      drop(*p);
+    }
+    store_lazy_and_update_deps(cp, n, 0);
+    return true;
   } else {
     FOLLOW(p, vl, tmp) {
       drop(p);
     }
+    clean_tmp(vl);
+    return false;
   }
-  clean_tmp(vl);
-  return ret;
 }
 
 static
@@ -239,7 +260,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
     results[i] = &c->expr.arg[n - 1 - i]; // ***
   }
 
-  CONTEXT("exec_expand %s: %C 0x%x", entry->word_name, c, c->expr.flags);
+  CONTEXT("exec_expand %E: %C 0x%x", entry, c, c->expr.flags);
 
   assert_error(len && FLAG(entry->entry, ENTRY_COMPLETE));
   trace_clear_alt(entry); // *** probably shouldn't need this
@@ -418,10 +439,17 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
 static
 cell_t *unwrap(cell_t *c, type_request_t treq) {
   if(treq.t != T_LIST) {
-    return quote(c);
+    return c;
   }
 
+  assert_error(is_list(c) && list_size(c) == 1);
+  { // ***
+    cell_t *tmp = c;
+    c = ref(c->value.ptr[0]);
+    drop(tmp);
+  }
   cell_t *l = make_list(treq.out);
+  LOG("unwrap %d %C", treq.out, l);
   cell_t *ap = func(func_ap, 1, treq.out + 1);
   COUNTUP(i, treq.out) {
     cell_t **p = &l->value.ptr[i];
@@ -436,6 +464,7 @@ cell_t *unwrap(cell_t *c, type_request_t treq) {
 cell_t *wrap_vars(cell_t *res, csize_t out) {
   csize_t n = trace_cell_ptr(res->value.tc)->size;
   cell_t *l = make_list(out);
+  LOG("wrap_vars %d %C", out, l);
   COUNTUP(i, out - 1) {
     cell_t *d = closure_alloc(1);
     store_dep(d, res->value.tc, n - i - 1, T_ANY);
@@ -450,13 +479,15 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   cell_t *c = *cp;
   PRE_NO_CONTEXT(c, exec_wrap);
 
-  size_t in = closure_in(c);
+  size_t
+    in = closure_in(c),
+    out = closure_out(c);
   cell_t *entry = c->expr.arg[in];
-  assert_error(entry->entry.out == 1, TODO);
-  CONTEXT("exec_wrap %s: %C 0x%x #wrap", entry->word_name, c, c->expr.flags);
+  CONTEXT("exec_wrap %E: %C 0x%x #wrap", entry, c, c->expr.flags);
+  LOG_UNLESS(entry->entry.out == 1, "out = %d #unify-multiout", entry->entry.out);
 
-  cell_t *new_entry = trace_start_entry(parent_entry, 1);
-  new_entry->module_name = entry->module_name;
+  cell_t *new_entry = trace_start_entry(parent_entry, entry->entry.out);
+  new_entry->module_name = parent_entry->module_name;
   new_entry->word_name = string_printf("%s_r%d", parent_entry->word_name, parent_entry->entry.sub_id++);
   LOG("created entry %E", new_entry);
 
@@ -464,9 +495,19 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   move_changing_values(new_entry, c);
 
   cell_t *nc = COPY_REF(c, in);
+  cell_t *l = make_list(out + 1);
+  {
+    int n = out;
+    TRAVERSE(nc, out) {
+      *p = dep(nc);
+      l->value.ptr[--n] = *p;
+    }
+    refn(nc, out);
+  }
   mark_barriers(new_entry, nc);
   cell_t *p = exec_expand(nc, new_entry); // deps will be in nc ***
-  p = unwrap(p, treq);
+  l->value.ptr[out] = p;
+  l = unwrap(l, treq);
 
   if(treq.t == T_LIST) {
     new_entry->entry.out = treq.out; // ***
@@ -475,8 +516,8 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   // TODO delay this to avoid quote creation
   TRAVERSE_REF(nc, in);
   insert_root(&nc);
-  new_entry->entry.alts = trace_reduce(new_entry, &p);
-  drop(p);
+  new_entry->entry.alts = trace_reduce(new_entry, &l);
+  drop(l);
   remove_root(&nc);
 
   p = flat_call(nc, new_entry);
@@ -499,25 +540,6 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   *cp = p;
   store_reduced(cp, res);
   return true;
-}
-
-static
-bool unify_exec(cell_t **cp, cell_t *parent_entry) {
-  cell_t *c = *cp;
-  PRE(c, unify_exec, " #wrap");
-
-  size_t in = closure_in(c);
-  cell_t *entry = c->expr.arg[in];
-  cell_t *initial = entry->initial;
-  cell_t *n = unify_convert(parent_entry, c, initial);
-  if(n) {
-    LOG("unified %s.%s %C with initial_word in %s.%s %C",
-        entry->module_name, entry->word_name, c,
-        parent_entry->module_name, parent_entry->word_name, initial);
-    drop(c);
-    *cp = n;
-  }
-  return n != NULL;
 }
 
 static
@@ -562,8 +584,10 @@ bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   cell_t *entry = c->expr.arg[in];
   size_t len = entry->entry.len;
   cell_t *res;
-  type_t rtypes[entry->entry.out];
-  CONTEXT("exec_trace %s: %C 0x%x", entry->word_name, c, c->expr.flags);
+  const size_t entry_out = entry->entry.out;
+  type_t rtypes[entry_out];
+  CONTEXT("exec_trace %E: %C 0x%x", entry, c, c->expr.flags);
+  assert_error(closure_out(c) + 1 == entry_out);
 
   alt_set_t alt_set = 0;
   unsigned int nonvar = 0;
@@ -586,7 +610,7 @@ bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
     COUNTUP(i, in) {
       if(is_list(c->expr.arg[i]) &&
          closure_is_ready(*leftmost(&c->expr.arg[i]))) {
-        LOG("HACK forced cells[%C].expr.arg[%d]", c, i);
+        LOG(HACK " forced cells[%C].expr.arg[%d]", c, i);
         func_list(&c->expr.arg[i], REQ(return));
 
         // ensure quotes are stored first
@@ -599,7 +623,7 @@ bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
 
   if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
     // this will be fixed up for tail calls in tail_call_to_bottom()
-    COUNTUP(i, entry->entry.out) {
+    COUNTUP(i, entry_out) {
       rtypes[i].exclusive = T_ANY;
     }
   } else {
@@ -615,14 +639,15 @@ bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   }
 
   // replace outputs with variables
-  RANGEUP(i, in + 1, in + entry->entry.out) {
-    cell_t *d = c->expr.arg[i];
+  cell_t **c_out = &c->expr.arg[in + 1];
+  COUNTUP(i, entry_out) {
+    cell_t *d = c_out[i];
     if(d && is_dep(d)) {
       assert_error(d->expr.arg[0] == c);
       drop(c);
       uint8_t t = rtypes[i].exclusive;
       if(t == T_FUNCTION) t = T_LIST;
-      store_dep(d, res->value.tc, i, t);
+      store_dep(d, res->value.tc, i + in + 1, t);
     }
   }
 

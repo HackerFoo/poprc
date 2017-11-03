@@ -269,6 +269,10 @@ void graph_cell(FILE *f, cell_t const *c) {
         print_cell_pointer(f, c->value.ptr[n]);
         fprintf(f, "</td></tr>");
       }
+      if(c->pos) {
+        fprintf(f, "<tr><td bgcolor=\"orange\">trace: %d</td></tr>",
+                entry_number(trace_expr_entry(c->pos)));
+      }
     } else if(is_fail(c)) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
     } else if(is_var(c)) {

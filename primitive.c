@@ -353,6 +353,7 @@ bool func_swap(cell_t **cp, UNUSED type_request_t treq) {
 }
 
 cell_t *id(cell_t *c, alt_set_t as) {
+  if(!c) return NULL;
   cell_t *i = closure_alloc(1);
   i->func = func_id;
   i->expr.arg[0] = c;
@@ -422,6 +423,8 @@ bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   cell_t *l = compose(it, ref(c->expr.arg[in]));
   reverse_ptrs((void **)c->expr.arg, in);
 
+  int pos = c->pos ? c->pos : c->expr.arg[in]->pos;
+
   bool is_nil = c->expr.arg[in] == &nil_cell;
   if(!is_nil) insert_root(&c->expr.arg[in]);
   it = list_begin(l);
@@ -434,12 +437,14 @@ bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
     }
     cell_t *d = c->expr.arg[n-1-i];
     store_lazy_dep(d, ref(*x), alt_set);
+    if(d) d->pos = pos; // ***
   }
   if(!is_nil) remove_root(&c->expr.arg[in]);
 
   cell_t *res = list_rest(it);
   drop(l);
   store_reduced(cp, mod_alt(res, c->alt, alt_set));
+  (*cp)->pos = pos; // ***
   ASSERT_REF();
   return true;
 fail:

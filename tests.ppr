@@ -98,3 +98,5 @@ __ ap_loop3: [] pushl [] ap_loop head
 
 __ dup_ap_alt: [2 |] dup 1 swap $
 
+__ a needlessly expensive `drop`
+drop_loop: [] ap20 [[1-] .] [head 0 >] iterate popr drop popr swap drop

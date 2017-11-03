@@ -153,7 +153,7 @@ void switch_entry(cell_t *entry, cell_t *r) {
 // find a matching trace cell given a variable or value
 static
 int trace_get_value(cell_t *entry, cell_t *r) {
-  assert_error(r && is_value(r));
+  assert_error(r && is_value(r), "%C", r);
   if(is_list(r)) {
     return trace_build_quote(entry, r); // *** TODO prevent building duplicate quotes
   } else if(is_var(r)) {
@@ -180,6 +180,7 @@ int trace_alloc(cell_t *entry, csize_t args) {
   entry->entry.len += size;
   tc->n = -1;
   tc->size = args;
+  LOG("trace_alloc %e[%d] size = %d", entry, index, args);
   return index;
 }
 
