@@ -724,3 +724,21 @@ COMMAND(test, "run tests matching the argument") {
 COMMAND(log, "print the log") {
   log_print_all();
 }
+
+COMMAND(tweak, "tweak a value") {
+  bool set = false;
+  if(match_log_tag(rest)) {
+    const char *tag = rest->tok_list.location;
+    cell_t *arg = rest->tok_list.next;
+    if(arg && arg->char_class == CC_NUMERIC) {
+      intptr_t val = parse_num(arg);
+      printf("tweak set: " FORMAT_TAG " => %d\n", tag, (int)val);
+      log_set_tweak(tag, val);
+      set = true;
+    }
+  }
+  if(!set) {
+    printf("tweak unset\n");
+    log_unset_tweak();
+  }
+}

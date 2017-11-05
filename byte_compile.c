@@ -357,8 +357,10 @@ void trace_final_pass(cell_t *entry) {
     }
     prev = p;
   }
-  condense(entry);
-  move_vars(entry);
+  if(TWEAK(true, "to disable condense/move_vars in %E", entry)) {
+    condense(entry);
+    move_vars(entry);
+  }
 }
 
 // add an entry and all sub-entries to a module

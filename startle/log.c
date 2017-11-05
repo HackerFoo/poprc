@@ -44,6 +44,10 @@ static bool set_log_watch_fmt = false;
 static bool watching = false;
 static unsigned int msg_head = 0;
 
+static bool tweak_enabled = false;
+static unsigned int tweak_trigger = ~0;
+static intptr_t tweak_value = 0;
+
 context_t *__log_context = NULL;
 
 void log_init() {
@@ -495,4 +499,39 @@ TEST(tag) {
 
 void get_tag(tag_t tag) {
   write_tag(tag, msg_head);
+}
+
+#if INTERFACE
+#define TWEAK(default_value, fmt, ...)                          \
+  ({                                                            \
+    const char *c;                                              \
+    intptr_t x;                                                 \
+    if unlikely(log_do_tweak(&x)) {                             \
+      c = COLOR_blue;                                           \
+    } else {                                                    \
+      x = (default_value);                                      \
+      c = COLOR_normal;                                         \
+    }                                                           \
+    LOG(COLORs("TWEAK(%d)") " " fmt, c, x, ##__VA_ARGS__);      \
+    x;                                                          \
+  })
+#endif
+
+bool log_do_tweak(intptr_t *x) {
+  if unlikely(tweak_enabled && log_head == tweak_trigger) {
+    *x = tweak_value;
+    return true;
+  } else {
+    return false;
+  }
+}
+
+void log_set_tweak(const tag_t tag, intptr_t value) {
+  tweak_enabled = true;
+  tweak_trigger = read_tag(tag);
+  tweak_value = value;
+}
+
+void log_unset_tweak() {
+  tweak_enabled = false;
 }
