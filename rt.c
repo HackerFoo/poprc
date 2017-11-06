@@ -230,7 +230,7 @@ bool reduce(cell_t **cp, type_request_t treq) {
     // prevent infinite loops when debugging
     assert_counter(LENGTH(cells));
 
-    LOG_WHEN(!*cp, MARK("FAIL") ": %s %C", function_name(func), c);
+    LOG_WHEN(!*cp, MARK("FAIL") ": %F %C", func, c);
     c = *cp;
     if(success) {
       if(marked) *cp = mark_ptr(c);

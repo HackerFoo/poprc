@@ -579,7 +579,7 @@ bool assert_ref_check(cell_t *c, cell_t ***roots, size_t roots_n) {
     refcount_t n = c->n + 1;
     if(count_root(c, roots, roots_n)) n = 0;
     if(n) {
-      LOG("assert_ref: cell[%d].n == %d", (int)(c - cells), (int)n);
+      LOG("assert_ref: cell[%C].n == %d", c, n);
       res = false;
     }
     c = c->tmp;

@@ -136,7 +136,7 @@ void switch_entry_(cell_t *entry, trace_cell_t *tc) {
     trace_alloc_var(entry)
   };
   trace_cell_ptr(*tc)->value.tc = old;
-  LOG("%E[%d] -> %E[%d]",
+  LOG("%e[%d] -> %e[%d]",
       old.entry, old.index,
       entry, tc->index);
 }
@@ -235,7 +235,7 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
   assert_error(tc->size == c->size);
   assert_error(c->func != func_dep_entered &&
          c->func != func_dep);
-  LOG("trace_store_expr: %E[%d] <- %C %C",
+  LOG("trace_store_expr: %e[%d] <- %C %C",
       entry, r->value.tc.index, c, r);
 
   refcount_t n = tc->n;
@@ -382,7 +382,7 @@ void trace_dep(cell_t *c) {
   cell_t *ph = trace_cell_ptr(c->value.tc);
   int ph_x = c->value.tc.index;
   ph->expr.arg[c->pos] = trace_encode(x);
-  LOG("trace_dep: %d <- %C %d[%d]", (int)x, c, ph_x, c->pos);
+  LOG("trace_dep: %d <- %C %d[%d]", x, c, ph_x, c->pos);
   tc->func = func_dep;
   tc->expr.arg[0] = trace_encode(ph_x);
   tc->expr_type.exclusive = c->value.type.exclusive;
@@ -506,7 +506,7 @@ cell_t *trace_quote_var(cell_t *l) {
   if(l == &nil_cell) return l;
   cell_t *f = *leftmost_row(&l);
   while(is_placeholder(f)) f = f->expr.arg[closure_in(f) - 1];
-  assert_error(is_var(f), "not a var: %s %C", function_name(f->func), f);
+  assert_error(is_var(f), "not a var: %F %C", f->func, f);
   cell_t *entry = f->value.tc.entry;
   int x = trace_build_quote(entry, l);
   return x == NIL_INDEX ? &nil_cell : var_create_nonlist(T_FUNCTION, (trace_cell_t) {entry, x});
@@ -531,7 +531,7 @@ int trace_return(cell_t *entry, cell_t *c_) {
     if(x >= 0) entry[x].n++;
   }
   int x = trace_copy(entry, c);
-  LOG("trace_return: %E[%d] <- %C", entry, x, c_);
+  LOG("trace_return: %e[%d] <- %C", entry, x, c_);
   trace_cell_t t = {entry, x};
   closure_free(c);
   cell_t *tc = trace_cell_ptr(t);

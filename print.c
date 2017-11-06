@@ -569,8 +569,25 @@ FORMAT(cell, 'C') {
 }
 
 FORMAT(entry, 'E') {
-  int x = entry_number((cell_t *)i);
-  printf("%d", x);
+  cell_t *entry = (cell_t *)i;
+  printf("%s.%s(%d)",
+         entry->module_name,
+         entry->word_name,
+         entry_number(entry));
+}
+
+FORMAT(entry_short, 'e') {
+  cell_t *entry = (cell_t *)i;
+  if(entry->word_name) {
+    printf("%s", entry->word_name);
+  } else {
+    printf("%d", entry_number(entry));
+  }
+}
+
+FORMAT(function, 'F') {
+  reduce_t *func = (reduce_t *)i;
+  printf("%s", function_name(func));
 }
 
 void breakpoint_hook() {

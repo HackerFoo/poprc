@@ -211,7 +211,7 @@ void move_vars(cell_t *entry) {
   int idx = 1 + in;
   int nvars = 0;
 
-  CONTEXT("move_vars for entry %E", entry);
+  CONTEXT("move_vars for entry %e", entry);
 
   // calculate mapping
   FOR_TRACE(p, entry) {
@@ -357,7 +357,7 @@ void trace_final_pass(cell_t *entry) {
     }
     prev = p;
   }
-  if(TWEAK(true, "to disable condense/move_vars in %E", entry)) {
+  if(TWEAK(true, "to disable condense/move_vars in %e", entry)) {
     condense(entry);
     move_vars(entry);
   }
@@ -509,7 +509,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
     .n = expand_sym(ident, LENGTH(ident), name)
   };
   e->word_name = seg_string(ident_seg); // TODO fix unnecessary alloc
-  CONTEXT_LOG("compiling %s.%.*s at entry %E", e->module_name, name.n, name.s, e);
+  CONTEXT_LOG("compiling entry %E", e);
 
   // parse
   cell_t *c = parse_expr(&toks, module, e);
@@ -696,7 +696,7 @@ void mark_quote_barriers(cell_t *entry, cell_t *c) {
 }
 
 cell_t *flat_quote(cell_t *new_entry, cell_t *parent_entry) {
-  CONTEXT("flat quote (%E -> %E)", parent_entry, new_entry);
+  CONTEXT("flat quote (%e -> %e)", parent_entry, new_entry);
   unsigned int in = new_entry->entry.in;
 
   FOR_TRACE(p, new_entry) {
@@ -729,10 +729,7 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
   cell_t *e = trace_start_entry(parent_entry, 1);
   e->module_name = parent_entry->module_name;
   e->word_name = string_printf("%s_q%d", parent_entry->word_name, parent_entry->entry.sub_id++);
-  CONTEXT_LOG("compiling quote %s.%s at entry %E",
-              e->module_name,
-              e->word_name,
-              e);
+  CONTEXT_LOG("compiling quote %E", e);
 
   // conversion
   csize_t len = function_out(l, true);

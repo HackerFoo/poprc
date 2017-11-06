@@ -118,7 +118,7 @@ void placeholder_extend(cell_t **lp, int in, int out) {
     left = leftmost_row(&l);
     f = *left;
   }
-  LOG("placeholder_extend: (%d, %d) %d -> %d", in, out, (*lp)-cells, l-cells);
+  LOG("placeholder_extend: (%d, %d) %C -> %C", in, out, *lp, l);
 
   if(d_out) {
     cell_t *l_exp = make_list(d_out + 1);

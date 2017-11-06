@@ -381,7 +381,7 @@ cell_t **input_var_list(cell_t *c, cell_t **tail) {
 // all c's input args must be params
 cell_t *flat_call(cell_t *c, cell_t *entry) {
   cell_t *parent_entry = entry->entry.parent;
-  CONTEXT("flat call %C (%E -> %E)", c,
+  CONTEXT("flat call %C (%e -> %e)", c,
           parent_entry, entry);
   csize_t
     in = entry->entry.in,
@@ -397,7 +397,7 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
   FOLLOW(p, vl, tmp) {
     assert_error(p->value.tc.entry == entry);
     cell_t *tn = trace_cell_ptr(p->value.tc);
-    assert_error(tn->pos, "%C", p);
+    assert_error(tn->pos, "%e[%d] (%C)", p->value.tc.entry, p->value.tc.index, p);
     if(tn->pos != pos) {
       tn->pos = pos;
       FLAG_SET(entry->entry, ENTRY_MOV_VARS);
