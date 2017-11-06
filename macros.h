@@ -203,7 +203,7 @@
 #define WATCH(c, msg)                                           \
   do {                                                          \
     int i = get_watch(c);                                       \
-    if_unlikely(i) {                                            \
+    if unlikely(i) {                                            \
       LOG_NOBREAK(NOTE("WATCH") " %d " msg " %C", i, c);        \
       breakpoint();                                             \
     }                                                           \

@@ -179,7 +179,7 @@ void log_add_first(intptr_t x) {
 
 bool log_add_last(intptr_t x) {
   log_add(x);
-  if_unlikely(msg_head == log_watch ||
+  if unlikely(msg_head == log_watch ||
               (watching &&
                (!set_log_watch_fmt ||
                 log[msg_head] == log_watch_fmt))) {

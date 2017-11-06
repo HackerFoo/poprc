@@ -182,8 +182,9 @@
     return __VA_ARGS__;                         \
   } while(0)                                    \
 
-#define if_unlikely(c) if(__builtin_expect((c), 0))
-#define if_likely(c) if(__builtin_expect((c), 1))
+// if [un]likely(...) { ...
+#define unlikely(c) (__builtin_expect((c), 0))
+#define likely(c) (__builtin_expect((c), 1))
 
 #define TEST(name) int test_##name()
 #define FORMAT(name, c) void format_##name(intptr_t i)
