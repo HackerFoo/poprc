@@ -501,3 +501,12 @@ char *arguments(int argc, char **argv) {
   *p = '\0';
   return result;
 }
+
+uintptr_t nonzero_hash(const char *str, size_t len)
+{
+  uintptr_t hash = 5381;
+  LOOP(len) {
+    hash = hash * 33 + (unsigned char)*str++;
+  }
+  return hash ? hash : -1;
+}

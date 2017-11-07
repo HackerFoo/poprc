@@ -14,16 +14,16 @@ M:three
 ################
 comments => 0
 @ context
-startle/log.c:370: A 2
-  startle/log.c:372: (a) nonzero x [38;5;8mowxf[0m
-startle/log.c:370: A 1
-  startle/log.c:364: B 0
-    startle/log.c:365: (b) zero x [38;5;8mmefp[0m
-  startle/log.c:372: (a) nonzero x [38;5;8mliu7[0m
-startle/log.c:359: C 3 [38;5;8mknel[0m
-startle/log.c:382: D 42 [38;5;8mjd5q[0m
-  startle/log.c:377: E 42 [38;5;8miik8[0m
-  startle/log.c:384: exiting d [38;5;8mg9cd[0m
+startle/log.c:420: A 2
+  startle/log.c:422: (a) nonzero x [38;5;8mowxf[0m
+startle/log.c:420: A 1
+  startle/log.c:414: B 0
+    startle/log.c:415: (b) zero x [38;5;8mmefp[0m
+  startle/log.c:422: (a) nonzero x [38;5;8mliu7[0m
+startle/log.c:409: C 3 [38;5;8mknel[0m
+startle/log.c:432: D 42 [38;5;8mjd5q[0m
+  startle/log.c:427: E 42 [38;5;8miik8[0m
+  startle/log.c:434: exiting d [38;5;8mg9cd[0m
 context => 0
 @ error
 i = 0
@@ -61,9 +61,9 @@ _check_list_remaining_size: 0 + 1 = 1
 _check_list_remaining_size: 1 + 0 = 1
 list_remaining_size => 0
 @ log
-startle/log.c:281: test 1 + 2 = 3 [38;5;8mpshx[0m
-startle/log.c:282: WAZZUP d00d [38;5;8mn5gt[0m
-startle/log.c:283: [123] [38;5;8mm9wb[0m
+startle/log.c:331: test 1 + 2 = 3 [38;5;8mpshx[0m
+startle/log.c:332: WAZZUP d00d [38;5;8mn5gt[0m
+startle/log.c:333: [123] [38;5;8mm9wb[0m
 log => 0
 @ loops
 up: 0

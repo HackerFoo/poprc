@@ -21,9 +21,11 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
+#include "startle/types.h"
 #include "startle/macros.h"
 #include "startle/error.h"
 #include "startle/log.h"
+#include "startle/support.h"
 
 #define FORMAT_ITEM(name, c) extern FORMAT(name, c);
 #include "format_list.h"
@@ -48,6 +50,8 @@ static bool tweak_enabled = false;
 static unsigned int tweak_trigger = ~0;
 static intptr_t tweak_value = 0;
 
+static uintptr_t hash_tag_set[63];
+
 context_t *__log_context = NULL;
 
 void log_init() {
@@ -61,6 +65,7 @@ void log_init() {
   set_log_watch_fmt = false;
   watching = false;
   msg_head = 0;
+  zero(hash_tag_set);
 }
 
 void set_log_watch(const tag_t tag, bool after) {
@@ -93,6 +98,13 @@ int log_entry_len(unsigned int idx) {
   return (uint8_t)(len & ~MASK);
 }
 
+// not the most efficient
+static
+char *strchrnul(const char *s, int c) {
+  char *res = strchr(s, c);
+  return res ? res : strchr(s, 0);
+}
+
 static
 unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
   unsigned int msg_id = idx;
@@ -103,59 +115,69 @@ unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
   intptr_t x;
   const char
     *p = fmt + 1,
-    *n = strchr(p, '%');
+    *n = strpbrk(p, "%#@");
   LOOP(*depth * 2) putchar(' ');
   if(fmt[0] & INDENT) (*depth)++;
   while(n) {
     printf("%.*s", (int)(n-p), p); // print the text
     if(!n[1]) break;
-    switch(n[1]) {
+    if(n[0] != '%') {
+      p = strchrnul(n, ' ');
+      uintptr_t key = nonzero_hash(n+1, p-n-1);
+      if(n[0] == '@' || set_member(key, hash_tag_set, LENGTH(hash_tag_set))) {
+        printf(NOTE("%.*s"), (int)(p-n), n);
+      } else {
+        printf("%.*s", (int)(p-n), n);
+      }
+    } else {
+      switch(n[1]) {
 #define CASE_PRINT(c, print)                    \
-      case c:                                   \
-        if(len) {                               \
-          idx = idx % LOG_SIZE;                 \
-          x = log[idx++];                       \
-          print;                                \
-          len--;                                \
-        } else {                                \
-          printf("X");                          \
-        }                                       \
-        break;
+        case c:                                 \
+          if(len) {                             \
+            idx = idx % LOG_SIZE;               \
+            x = log[idx++];                     \
+            print;                              \
+            len--;                              \
+          } else {                              \
+            printf("X");                        \
+          }                                     \
+          break;
 #define CASE(c, cast, fmt)                      \
-      CASE_PRINT(c, printf(fmt, cast(x)))
+        CASE_PRINT(c, printf(fmt, cast(x)))
 #define FORMAT_ITEM(name, c) CASE_PRINT(c, format_##name(x))
-      #include "format_list.h"
+#include "format_list.h"
 #undef FORMAT_ITEM
-      CASE('d', (int), "%d");
-      CASE('u', (unsigned int), "%u");
-      CASE('x', (int), "%x");
-      CASE('s', (const char *), "%s");
-      CASE('p', (void *), "%p");
+        CASE('d', (int), "%d");
+        CASE('u', (unsigned int), "%u");
+        CASE('x', (int), "%x");
+        CASE('s', (const char *), "%s");
+        CASE('p', (void *), "%p");
 #undef CASE
 #undef CASE_PRINT
-    case '.':
-      if(n[2] == '*' && n[3] == 's') {
-        if(len > 1) {
-          idx = idx % LOG_SIZE;
-          int size = log[idx++];
-          idx = idx % LOG_SIZE;
-          printf("%.*s", size, (const char *)log[idx++]);
-          len -= 2;
-        } else {
-          printf("X");
+      case '.':
+        if(n[2] == '*' && n[3] == 's') {
+          if(len > 1) {
+            idx = idx % LOG_SIZE;
+            int size = log[idx++];
+            idx = idx % LOG_SIZE;
+            printf("%.*s", size, (const char *)log[idx++]);
+            len -= 2;
+          } else {
+            printf("X");
+          }
+          n += 2;
+          break;
         }
-        n += 2;
+      case '%':
+        printf("%%");
+        break;
+      default:
+        printf("!?");
         break;
       }
-    case '%':
-      printf("%%");
-      break;
-    default:
-      printf("!?");
-      break;
+      p = n + 2;
     }
-    p = n + 2;
-    n = strchr(p, '%');
+    n = strpbrk(p, "%#@");
   }
   idx = idx % LOG_SIZE;
   if(event) {
@@ -235,6 +257,7 @@ unsigned int print_contexts(unsigned int idx, unsigned int *depth) {
 }
 
 void log_print_all() {
+  log_scan_tags();
   unsigned int
     depth = 0,
     i = log_tail;
@@ -245,6 +268,29 @@ void log_print_all() {
       i = (i + 1) % LOG_SIZE;
     } else {
       i = log_printf(i, &depth, true);
+    }
+  }
+}
+
+void log_scan_tags() {
+  zero(hash_tag_set);
+  unsigned int i = log_tail;
+  while(i != log_head) {
+    const char *fmt = (const char *)log[i];
+    if(*fmt == '\xff') {
+      i++;
+      continue;
+    }
+    uint8_t len = *fmt & ~MASK;
+    i += len + 1;
+    const char *p = fmt;
+    while((p = strchr(p, '@'))) {
+      p++;
+      const char *e = strchrnul(p, ' ');
+      if(p == e) continue;
+      uintptr_t key = nonzero_hash(p, e-p);
+      set_insert(key, hash_tag_set, LENGTH(hash_tag_set));
+      p = e;
     }
   }
 }

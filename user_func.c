@@ -391,7 +391,7 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
   nc->func = func_exec;
   cell_t *vl = 0;
   input_var_list(c, &vl);
-  assert_error(tmp_list_length(vl) == in, "%d != %d", tmp_list_length(vl), in);
+  assert_error(tmp_list_length(vl) == in, "%d != %d @wrap", tmp_list_length(vl), in);
 
   int pos = 1;
   FOLLOW(p, vl, tmp) {
@@ -453,7 +453,7 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   size_t in = closure_in(c);
   cell_t *entry = c->expr.arg[in];
   assert_error(entry->entry.out == 1, TODO);
-  CONTEXT("exec_wrap %s: %C 0x%x", entry->word_name, c, c->expr.flags);
+  CONTEXT("exec_wrap %s: %C 0x%x #wrap", entry->word_name, c, c->expr.flags);
 
   cell_t *new_entry = trace_start_entry(parent_entry, 1);
   new_entry->module_name = entry->module_name;
@@ -503,7 +503,7 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
 static
 bool unify_exec(cell_t **cp, cell_t *parent_entry) {
   cell_t *c = *cp;
-  PRE(c, unify_exec);
+  PRE(c, unify_exec, " #wrap");
 
   size_t in = closure_in(c);
   cell_t *entry = c->expr.arg[in];
