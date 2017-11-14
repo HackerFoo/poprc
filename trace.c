@@ -273,7 +273,6 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
 }
 
 // store value c in the trace
-static
 int trace_store_value(cell_t *entry, const cell_t *c) {
   if(!entry) return -1;
   assert_error(!is_list(c));
@@ -313,7 +312,12 @@ uint8_t trace_recursive_changes(cell_t *entry) {
        p->expr.arg[in = closure_in(p)] == encoded_entry) {
       unsigned int cnt = 0;
       COUNTUP(i, in) {
-        if(trace_decode(p->expr.arg[i]) != (trace_index_t)(in - 1 - i)) cnt++;
+        trace_index_t v = in - i;
+        if(trace_decode(p->expr.arg[i]) != v) {
+          cnt++;
+          // mark variables that change during recursion
+          FLAG_SET(entry[v].value.type, T_CHANGES);
+        }
       }
 
       // if cnt == 0, a recusive call has been made without modifying any arguments

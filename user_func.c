@@ -113,7 +113,7 @@ void print_word_pattern(cell_t *word) {
 // TODO add reduction back in
 cell_t **bind_pattern(cell_t *c, cell_t *pattern, cell_t **tail) {
   assert_error(c);
-  CONTEXT("bind_pattern %C %C", c, pattern);
+  CONTEXT("bind_pattern %C %C @barrier", c, pattern);
   if(!pattern || !tail) return NULL;
   if(c->tmp || c == *tail) return tail;
   if(c == pattern) {
@@ -461,6 +461,7 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   LOG("created entry %E", new_entry);
 
   new_entry->initial = ref(c);
+  move_changing_values(new_entry, c);
 
   cell_t *nc = COPY_REF(c, in);
   mark_barriers(new_entry, nc);

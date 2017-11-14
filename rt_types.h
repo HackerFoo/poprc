@@ -50,6 +50,7 @@ typedef struct __attribute__((packed)) type {
 
 // type flags
 #define T_DEP        0x02
+#define T_CHANGES    0x04
 #define T_INCOMPLETE 0x08
 #define T_ROW        0x10
 #define T_TRACED     0x20

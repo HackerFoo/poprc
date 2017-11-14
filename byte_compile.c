@@ -664,18 +664,35 @@ void mark_barriers(cell_t *entry, cell_t *c) {
   TRAVERSE(c, in) {
     cell_t *x = *p;
     if(x) {
+      LOG("barrier %E %C[%d]: %C #barrier", entry, c, p-c->expr.arg, x);
       if(is_var(x)) {
         trace_cell_t tc = x->value.tc;
         drop(x);
         *p = var_create_nonlist(x->value.type.exclusive,
                                 (trace_cell_t) {entry, trace_alloc_var(entry)});
         trace_cell_ptr((*p)->value.tc)->value.tc = tc;
-      } else if(x->func == func_ap) {
-        LOG(HACK " marking barrier through ap %C", x);
-        mark_barriers(entry, x);
+      //} else if(x->func == func_ap) {
+      //  LOG(HACK " marking barrier through ap %C", x);
+      //  mark_barriers(entry, x);
       } else {
         x->pos = entry->pos;
       }
+    }
+  }
+}
+
+void move_changing_values(cell_t *entry, cell_t *c) {
+  cell_t *expanding = c->expr.arg[closure_in(c)];
+  TRAVERSE(c, in) {
+    cell_t *x = *p;
+    int i = expanding->entry.in - (p - c->expr.arg);
+    if(x && is_value(x) && !is_var(x) &&
+       FLAG(expanding[i].value.type, T_CHANGES)) {
+      LOG("move value %C out %e[%d]", x, expanding, i);
+      int t = trace_store_value(entry->entry.parent, x);
+      *p = var_create_nonlist(x->value.type.exclusive,
+                              (trace_cell_t) {entry->entry.parent, t});
+      drop(x);
     }
   }
 }
