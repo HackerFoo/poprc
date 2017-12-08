@@ -12,10 +12,11 @@ print-%:
 $(BUILD_DIR)/%.d: %.c
 	@mkdir -p $(dir $@)
 	@$(CC) $(INCLUDE) -MM $(CFLAGS) $*.c -MG -MP -MT $(BUILD_DIR)/$*.o -o- | \
-	  sed -e 's/\([^ .]*\)\.h/gen\/\1.h/g' > $(BUILD_DIR)/$*.d
+	  sed -E -e 's/ ([a-zA-Z][^ .]*)\.h/ gen\/\1.h/g' > $(BUILD_DIR)/$*.d
 
 # compile
 $(BUILD_DIR)/%.o: %.c $(BUILD_DIR)/%.d
+	@echo $*.o
 	$(CC) -c $(CFLAGS) $*.c -o $(BUILD_DIR)/$*.o
 
 .SECONDARY: $(GEN)

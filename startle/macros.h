@@ -18,7 +18,7 @@
 #ifndef __STARTLE_MACROS__
 #define __STARTLE_MACROS__
 
-#include "dispatch.h"
+#include "startle/dispatch.h"
 
 // MAKE COMPILERS HAPPY ________________________________________
 
