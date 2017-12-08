@@ -278,11 +278,11 @@ void log_scan_tags() {
   while(i != log_head) {
     const char *fmt = (const char *)log[i];
     if(*fmt == '\xff') {
-      i++;
+      i = (i + 1) % LOG_SIZE;
       continue;
     }
     uint8_t len = *fmt & ~MASK;
-    i += len + 1;
+    i = (i + len + 1) % LOG_SIZE;
     const char *p = fmt;
     while((p = strchr(p, '@'))) {
       p++;
