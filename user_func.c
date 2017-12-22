@@ -676,7 +676,7 @@ bool func_exec(cell_t **cp, type_request_t treq) {
       }
       printf("\n");
     }
-    store_lazy(cp, c, res, 0);
+    store_lazy(cp, res, 0);
     return false;
   }
 }

@@ -220,7 +220,7 @@ bool func_alt(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *r0 = id(c->expr.arg[0], as_single(a, 0));
   cell_t *r1 = id(c->expr.arg[1], as_single(a, 1));
   r0->alt = r1;
-  store_lazy(cp, c, r0, 0);
+  store_lazy(cp, r0, 0);
   return false;
 }
 
@@ -348,7 +348,7 @@ bool func_swap(cell_t **cp, UNUSED type_request_t treq) {
   PRE(c, swap);
   cell_t *d = c->expr.arg[2];
   store_lazy_dep(d, c->expr.arg[0], 0);
-  store_lazy(cp, c, c->expr.arg[1], 0);
+  store_lazy(cp, c->expr.arg[1], 0);
   return false;
 }
 
@@ -366,7 +366,7 @@ bool func_dup(cell_t **cp, UNUSED type_request_t treq) {
   PRE(c, dup);
   cell_t *d = c->expr.arg[1];
   store_lazy_dep(d, ref(c->expr.arg[0]), 0);
-  store_lazy(cp, c, c->expr.arg[0], 0);
+  store_lazy(cp, c->expr.arg[0], 0);
   return false;
 }
 

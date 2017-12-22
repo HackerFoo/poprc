@@ -511,7 +511,7 @@ void store_reduced(cell_t **cp, cell_t *r) {
       drop(r);
     }
    } else {
-    store_lazy(cp, c, r, 0);
+    store_lazy(cp, r, 0);
   }
 }
 
@@ -731,7 +731,8 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
   return n;
 }
 
-void store_lazy(cell_t **cp, cell_t *c, cell_t *r, alt_set_t alt_set) {
+void store_lazy(cell_t **cp, cell_t *r, alt_set_t alt_set) {
+  cell_t *c = *cp;
   if(c->n || alt_set || c->pos) {
     closure_shrink(c, 1); // *** does not drop arguments first
     c->func = func_id;
