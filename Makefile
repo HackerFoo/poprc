@@ -101,7 +101,7 @@ ifeq ($(BUILD),gprof)
 	LDFLAGS += -pg
 endif
 
-INCLUDE += -I$(ROOT) -I$(ROOT)gen
+INCLUDE += -I.gen
 CFLAGS += $(COPT) $(INCLUDE)
 CXXFLAGS += $(COPT) $(INCLUDE)
 
@@ -112,7 +112,7 @@ DIAGRAMS_FILE := diagrams.html
 SRC := $(wildcard *.c) $(wildcard startle/*.c)
 OBJS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SRC))
 DEPS := $(patsubst %.c, $(BUILD_DIR)/%.d, $(SRC))
-GEN := $(patsubst %.c, gen/%.h, $(SRC)) gen/word_table.h gen/test_list.h
+GEN := $(patsubst %.c, .gen/%.h, $(SRC)) .gen/word_table.h .gen/test_list.h
 DOT := $(wildcard *.dot)
 DOTSVG := $(patsubst %.dot, $(DIAGRAMS)/%.svg, $(DOT))
 
@@ -288,7 +288,7 @@ gen: $(GEN)
 .PHONY: clean
 clean:
 	rm -f eval js/eval.js
-	rm -rf build gen diagrams
+	rm -rf build .gen diagrams
 	rm -f make-eval.log compile_commands.json
 	rm -f $(DIAGRAMS_FILE)
 	rm -f *.dot

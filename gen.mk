@@ -4,7 +4,7 @@
 
 SHELL := bash
 
-gen/word_table.h.new: $(SRC)
+.gen/word_table.h.new: $(SRC)
 	@mkdir -p $(dir $@)
 	@sed -n -e 's/.*WORD([^,]*, *\([a-zA-Z0-9_]*\).*).*/extern reduce_t func_\1;/p' $(SRC) | sort > $@
 	@echo '#define WORDS {\' >> $@

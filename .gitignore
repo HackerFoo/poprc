@@ -33,3 +33,5 @@ _darcs
 /node_modules
 /attic
 /startle/makeheaders/makeheaders
+/startle/bin
+/.gen
