@@ -329,17 +329,18 @@ bool is_any(cell_t const *c) {
   return is_value(c) && c->value.type.exclusive == T_ANY;
 }
 
-void drop(cell_t *c) {
+void dropn(cell_t *c, refcount_t n) {
   c = clear_ptr(c);
   if(!is_cell(c) || c->n == PERSISTENT) return;
   assert_error(is_closure(c));
-  if(!c->n) {
+  if(n > c->n) {
     cell_t *p;
     TRAVERSE(c, alt, in, ptrs) {
       drop(*p);
     }
     if(is_dep(c) && !is_value(p = c->expr.arg[0]) && is_closure(p)) {
       /* mark dep arg as gone */
+      // TODO improve this using stored pos
       csize_t n = closure_args(p);
       while(n--) {
         if(p->expr.arg[n] == c) {
@@ -353,8 +354,12 @@ void drop(cell_t *c) {
     }
     closure_free(c);
   } else {
-    --c->n;
+    c->n -= n;
   }
+}
+
+void drop(cell_t *c) {
+  dropn(c, 1);
 }
 
 void drop_multi(cell_t **a, csize_t n) {
