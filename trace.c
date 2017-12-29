@@ -55,15 +55,15 @@ typedef intptr_t trace_index_t;
 #define NIL_INDEX (-4096)
 
 // cell_t *c ranges from start to end
-#define FOR_TRACE_0(c, e, n, ...)                             \
+#define FOR_TRACE_3(c, e, n)                                  \
   for(cell_t                                                  \
         *_entry = (e),                                        \
         *c = _entry + 1 + (n),                                \
         *_end = c + _entry->entry.len;                        \
       c < _end;                                               \
       c += calculate_cells(c->size))
-#define FOR_TRACE_1(c, e, ...) FOR_TRACE_0(c, e, 0)
-#define FOR_TRACE(...) DISPATCH(FOR_TRACE, 3, __VA_ARGS__)
+#define FOR_TRACE_2(c, e) FOR_TRACE_3(c, e, 0)
+#define FOR_TRACE(...) DISPATCH(FOR_TRACE, __VA_ARGS__)
 #endif
 
 bool is_trace_cell(void const *p) {

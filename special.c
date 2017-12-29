@@ -196,9 +196,9 @@ cell_t *var_(uint8_t t, cell_t *c, uint8_t pos) {
 }
 
 #if INTERFACE
-#define var(...) DISPATCH(var, 3, __VA_ARGS__)
-#define var_0(t, c, pos, ...) var_(t, c, pos)
-#define var_1(t, c, ...) var_(t, c, 0)
+#define var(...) DISPATCH(var, __VA_ARGS__)
+#define var_3(t, c, pos) var_(t, c, pos)
+#define var_2(t, c) var_(t, c, 0)
 #endif
 
 bool is_var(cell_t const *c) {

@@ -88,11 +88,13 @@ TEST(loops) {
   return 0;
 }
 
-#define TEST_2(x0, x1, x2, ...) printf("TEST2(" x0 ", " x1 ", " x2 ")\n")
-#define TEST_1(...) printf("TEST1\n")
+#define TEST_0() printf("TEST_0()\n")
+#define TEST_1(x0) printf("TEST_1(" x0 ")\n")
+#define TEST_2(x0, x1) printf("TEST_2(" x0 ", " x1 ")\n")
 
 TEST(macro_dispatch) {
-  DISPATCH(TEST, 5, "1", "2", "3");
-  DISPATCH(TEST, 5, "1", "2", "3", "4");
+  DISPATCH(TEST);
+  DISPATCH(TEST, "1");
+  DISPATCH(TEST, "1", "2");
   return 0;
 }

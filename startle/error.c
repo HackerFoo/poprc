@@ -43,17 +43,17 @@ typedef struct {
   error_type_t type;
 } error_t;
 
-#define assert_msg(...) DISPATCH(assert_msg, 10, ##__VA_ARGS__)
-#define assert_msg_0(cond, fmt, ...) "Assertion `" #cond "' failed: " fmt
-#define assert_msg_1(cond, fmt, ...) assert_msg_0(cond, fmt)
-#define assert_msg_2(cond, fmt, ...) assert_msg_0(cond, fmt)
-#define assert_msg_3(cond, fmt, ...) assert_msg_0(cond, fmt)
-#define assert_msg_4(cond, fmt, ...) assert_msg_0(cond, fmt)
-#define assert_msg_5(cond, fmt, ...) assert_msg_0(cond, fmt)
-#define assert_msg_6(cond, fmt, ...) assert_msg_0(cond, fmt)
-#define assert_msg_7(cond, fmt, ...) assert_msg_0(cond, fmt)
-#define assert_msg_8(cond, fmt, ...) assert_msg_0(cond, fmt)
-#define assert_msg_9(cond, ...) "Assertion `" #cond "' failed."
+#define assert_msg(...) DISPATCH(assert_msg, ##__VA_ARGS__)
+#define assert_msg_1(cond, ...) "Assertion `" #cond "' failed."
+#define assert_msg_2(cond, fmt, ...) "Assertion `" #cond "' failed: " fmt
+#define assert_msg_3(cond, fmt, ...) assert_msg_2(cond, fmt)
+#define assert_msg_4(cond, fmt, ...) assert_msg_2(cond, fmt)
+#define assert_msg_5(cond, fmt, ...) assert_msg_2(cond, fmt)
+#define assert_msg_6(cond, fmt, ...) assert_msg_2(cond, fmt)
+#define assert_msg_7(cond, fmt, ...) assert_msg_2(cond, fmt)
+#define assert_msg_8(cond, fmt, ...) assert_msg_2(cond, fmt)
+#define assert_msg_9(cond, fmt, ...) assert_msg_2(cond, fmt)
+#define assert_msg_10(cond, fmt, ...) assert_msg_2(cond, fmt)
 
 #define assert_throw(cond, ...)                         \
   do {                                                  \

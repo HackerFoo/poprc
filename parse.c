@@ -276,13 +276,13 @@ int parse_num(const cell_t *c) {
   return atoi(c->tok_list.location);
 }
 
-#define MATCH_IF_0(p, label, cond, var, ...) \
+#define MATCH_IF_4(p, label, cond, var)      \
   do {                                       \
     if(!(p) || !(cond)) goto label;          \
     var = p;                                 \
     p = p->tok_list.next;                    \
   } while(0)
-#define MATCH_IF_1(p, label, cond, ...) \
+#define MATCH_IF_3(p, label, cond)      \
   do {                                  \
     if(!(p) || !(cond)) goto label;     \
     cell_t *tmp = p;                    \
@@ -290,7 +290,7 @@ int parse_num(const cell_t *c) {
     cell_free(tmp);                     \
   } while(0)
 
-#define MATCH_IF(cond, ...) DISPATCH(MATCH_IF, 4, p, fail, cond , ##__VA_ARGS__)
+#define MATCH_IF(cond, ...) DISPATCH(MATCH_IF, p, fail, cond , ##__VA_ARGS__)
 #define MATCH_ONLY(str, ...) MATCH_IF(match(p, str) , ##__VA_ARGS__)
 
 bool is_reserved(seg_t s) {

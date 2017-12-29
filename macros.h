@@ -19,13 +19,13 @@
 #define __MACROS__
 
 // chunky list iterators
-#define FORLIST_0(x, l, r, ...) for(list_iterator_t __it = list_begin(l); (x = list_next(&__it, (r))) ; )
-#define FORLIST_1(x, l, ...) FORLIST_0(x, l, false)
-#define FORLIST(...) DISPATCH(FORLIST, 3, ##__VA_ARGS__)
+#define FORLIST_3(x, l, r) for(list_iterator_t __it = list_begin(l); (x = list_next(&__it, (r))) ; )
+#define FORLIST_2(x, l) FORLIST_3(x, l, false)
+#define FORLIST(...) DISPATCH(FORLIST, ##__VA_ARGS__)
 
-#define WHILELIST_0(x, it, r, ...) while((x = list_next(&it, (r))))
-#define WHILELIST_1(x, it, ...) WHILELIST_0(x, it, false)
-#define WHILELIST(...) DISPATCH(WHILELIST, 3, ##__VA_ARGS__)
+#define WHILELIST_3(x, it, r) while((x = list_next(&it, (r))))
+#define WHILELIST_2(x, it) WHILELIST_3(x, it, false)
+#define WHILELIST(...) DISPATCH(WHILELIST, ##__VA_ARGS__)
 
 #define TRAVERSE_alt_args_ptrs(c)                                       \
   for(cell_t **p = &c->alt,                                             \
@@ -109,11 +109,11 @@
         p < end;                                \
         p++)
 
-#define CONCAT_ARGS_0(w, x, y, z, ...) CONCAT_ARGS_1(CONCAT_UNDERSCORE(w, x), y, z)
-#define CONCAT_ARGS_1(w, x, y, ...)    CONCAT_ARGS_2(CONCAT_UNDERSCORE(w, x), y)
-#define CONCAT_ARGS_2(w, x, ...)       CONCAT_ARGS_3(CONCAT_UNDERSCORE(w, x))
-#define CONCAT_ARGS_3(w, ...)          w
-#define CONCAT_ARGS(...) DISPATCH(CONCAT_ARGS, 4, ##__VA_ARGS__)
+#define CONCAT_ARGS_1(w)          w
+#define CONCAT_ARGS_2(w, x)       CONCAT_ARGS_1(CONCAT_UNDERSCORE(w, x))
+#define CONCAT_ARGS_3(w, x, y)    CONCAT_ARGS_2(CONCAT_UNDERSCORE(w, x), y)
+#define CONCAT_ARGS_4(w, x, y, z) CONCAT_ARGS_3(CONCAT_UNDERSCORE(w, x), y, z)
+#define CONCAT_ARGS(...) DISPATCH(CONCAT_ARGS, ##__VA_ARGS__)
 
 #define TRAVERSE(c, ...) CONCAT_ARGS(TRAVERSE, __VA_ARGS__)(c)
 
@@ -130,15 +130,15 @@
   })
 
 // embedded linked list
-#define FOLLOW_1(p, l, next, ...) for(__typeof__(l) p = (l); p != NULL; p = p->next)
+#define FOLLOW_3(p, l, next) for(__typeof__(l) p = (l); p != NULL; p = p->next)
 
 // embedded zig-zag (alternating) linked list
-#define FOLLOW_0(p, q, l, next, ...)                 \
+#define FOLLOW_4(p, q, l, next)                      \
   for(__typeof__(l) p = (l), q = p ? p->next : NULL; \
       q != NULL;                                     \
       p = q->next, q = p ? p->next : NULL)
 
-#define FOLLOW(...) DISPATCH(FOLLOW, 4, ##__VA_ARGS__)
+#define FOLLOW(...) DISPATCH(FOLLOW, ##__VA_ARGS__)
 
 
 // CODE GENERATION ________________________________________
@@ -163,16 +163,16 @@
 
 
 // unions of alt_sets
-#define AS_UNION_0(c, x, y, z, ...)    \
+#define AS_UNION_2(c, x)               \
+  (c->expr.arg[x]->value.alt_set)
+#define AS_UNION_3(c, x, y)            \
+  (c->expr.arg[x]->value.alt_set |     \
+   c->expr.arg[y]->value.alt_set)
+#define AS_UNION_4(c, x, y, z)         \
   (c->expr.arg[x]->value.alt_set |     \
    c->expr.arg[y]->value.alt_set |     \
    c->expr.arg[z]->value.alt_set)
-#define AS_UNION_1(c, x, y, ...)       \
-  (c->expr.arg[x]->value.alt_set |     \
-   c->expr.arg[y]->value.alt_set)
-#define AS_UNION_2(c, x, ...)          \
-  (c->expr.arg[x]->value.alt_set)
-#define AS_UNION(c, ...) DISPATCH(AS_UNION, 4, c, ##__VA_ARGS__)
+#define AS_UNION(c, ...) DISPATCH(AS_UNION, c, ##__VA_ARGS__)
 
 // encode small integers as pointers
 #define FLIP_PTR(p) ((void *)~(uintptr_t)(p))
