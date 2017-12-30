@@ -100,3 +100,6 @@ __ dup_ap_alt: [2 |] dup 1 swap $
 
 __ a needlessly expensive `drop`
 drop_loop: [] ap20 [[1-] .] [head 0 >] iterate popr drop popr swap drop
+
+__ rec_a: rec_b 1 +
+__ rec_b: rec_a 1 -

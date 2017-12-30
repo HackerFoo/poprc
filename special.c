@@ -48,7 +48,19 @@ bool func_value(cell_t **cp, type_request_t treq) {
         res = var_create(T_LIST, c->value.tc, treq.in, treq.out);
         res->value.alt_set = c->value.alt_set;
         res->alt = c->alt;
-        drop(c);
+        if(c->n) {
+          c->n--;
+          LOG(TODO " share list var %C -> %C", c, res);
+#if 0 // TODO get this working
+          closure_shrink(c, 2);
+          c->value.type.exclusive = T_LIST;
+          FLAG_SET(c->value.type, T_ROW);
+          FLAG_CLEAR(c->value.type, T_VAR);
+          c->value.ptr[0] = ref(res);
+#endif
+        } else {
+          closure_free(c);
+        }
         *cp = res;
       } else if(treq.t != T_ANY) {
         c->value.type.exclusive = treq.t;

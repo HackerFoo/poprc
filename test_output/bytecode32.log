@@ -597,6 +597,31 @@ ___ control.times_step (3 -> 3) ___
 [7] __primitive.dep 6, type = a x1
 [8] return [ 7 2 4 ], type = r x1
 
+___ list.dropl (2 -> 1) ___
+[1] var, type = ?a x1
+[2] var, type = ?a x1
+[3] list.dropl_r0 2 1 -> X, type = a x1
+[5] return [ 3 ], type = r x1
+
+___ list.dropl_r0 (2 -> 2) x2 rec ___
+[1] var, type = ?*i x4
+[2] var, type = ?*a x2
+[3] __primitive.gt 1 4, type = s x2
+[4] val 0, type = i x2
+[5] __primitive.assert 11 3, type = a x1
+[6] __primitive.sub 1 7, type = i x1
+[7] val 1, type = i x1
+[8] __primitive.ap 2 -> -1, type = f x1
+[9] list.dropl_r0 8 6 -> 11, type = a x2
+[11] __primitive.dep 9, type = a x1
+[12] __primitive.assert 9 3, type = a x1
+[13] return [ 12 5 ], type = r -> 18 x1
+[14] __primitive.gt 1 4, type = s x1
+[15] __primitive.not 14, type = s x2
+[16] __primitive.assert 2 15, type = a x1
+[17] __primitive.assert 1 15, type = i x1
+[18] return [ 16 17 ], type = r x1
+
 ___ list.filter_step (3 -> 3) x2 ___
 [1] var, type = ?f x3
 [2] var, type = ?f x2

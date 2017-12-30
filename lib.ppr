@@ -56,11 +56,11 @@ __     [popr drop head is_nil not]
 __     iterate head
 foldl_step: [popr over2 pushl] dip23 .
 
-__ dropl:
-__   [] ap20
-__     [[[popr drop] [1-] para] .]
-__     [head 0 >]
-__     iterate popr drop head
+dropl:
+  [] ap20
+    [[[popr drop] [1-] para] .]
+    [head 0 >]
+    iterate popr drop head
 
 __ [a.. x] [b..] -> [a..] [x b..]
 movr: [popr] dip12 pushl

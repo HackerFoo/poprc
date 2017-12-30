@@ -85,8 +85,12 @@ void print_bytecode(cell_t *entry) {
       if(can_have_alt && c->alt) printf(" -> %d", trace_decode(c->alt));
     } else { // print a call
       const char *module_name = NULL, *word_name = NULL;
-      if(NOT_FLAG(c->expr_type, T_INCOMPLETE)) trace_get_name(c, &module_name, &word_name);
-      printf(" %s.%s", module_name, word_name);
+      if(NOT_FLAG(c->expr_type, T_INCOMPLETE)) {
+        trace_get_name(c, &module_name, &word_name);
+        printf(" %s.%s", module_name, word_name);
+      } else {
+        printf(" incomplete %s", function_name(c->func));
+      }
       TRAVERSE(c, in) {
         int x = trace_decode(*p);
         if(x == 0) {
@@ -753,8 +757,10 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
   csize_t len = function_out(l, true);
   cell_t *ph = func(func_placeholder, len + 1, 1);
   arg(ph, &nil_cell);
-  COUNTUP(i, len) {
-    arg(ph, ref(l->value.ptr[i]));
+  cell_t **p;
+  FORLIST(p, l, true) {
+    LOG("arg %C %C", ph, *p);
+    arg(ph, ref(*p));
   }
 
   mark_quote_barriers(e, ph);

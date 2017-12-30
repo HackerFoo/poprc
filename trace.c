@@ -131,11 +131,25 @@ void switch_entry_(cell_t *entry, trace_cell_t *tc) {
     switch_entry_(entry->entry.parent, tc);
   }
   trace_cell_t old = *tc;
+  // a little hacky because ideally variables shouldn't be duplicated
+  // see TODO in func_value
+  FOR_TRACE(c, entry) {
+    if(is_var(c) &&
+       c->value.tc.entry == old.entry &&
+       c->value.tc.index == old.index) {
+      *tc = (trace_cell_t) {
+        entry,
+        c-entry
+      };
+      goto end;
+    }
+  }
   *tc = (trace_cell_t) {
     entry,
     trace_alloc_var(entry)
   };
   trace_cell_ptr(*tc)->value.tc = old;
+end:
   LOG("%e[%d] -> %e[%d]",
       old.entry, old.index,
       entry, tc->index);
@@ -143,6 +157,7 @@ void switch_entry_(cell_t *entry, trace_cell_t *tc) {
 
 //static
 void switch_entry(cell_t *entry, cell_t *r) {
+  CONTEXT("switch_entry %E %C", entry, r);
   assert_error(is_var(r));
   if(r->value.tc.entry != entry) {
     assert_error(is_ancestor_of(r->value.tc.entry, entry));

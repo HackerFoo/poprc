@@ -580,13 +580,13 @@ bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   PRE_NO_CONTEXT(c, exec_trace);
 
   size_t in = closure_in(c);
-  assert_error(in, "recursive functions must have at least one input");
   cell_t *entry = c->expr.arg[in];
   size_t len = entry->entry.len;
   cell_t *res;
   const size_t entry_out = entry->entry.out;
   type_t rtypes[entry_out];
   CONTEXT("exec_trace %E: %C 0x%x", entry, c, c->expr.flags);
+  assert_error(in, "recursive functions must have at least one input");
   assert_error(closure_out(c) + 1 == entry_out);
 
   alt_set_t alt_set = 0;
@@ -608,14 +608,23 @@ bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   // HACK force lists on tail calls
   if(entry == parent_entry) {
     COUNTUP(i, in) {
-      if(is_list(c->expr.arg[i]) &&
-         closure_is_ready(*leftmost(&c->expr.arg[i]))) {
+      cell_t **ap = &c->expr.arg[i];
+      cell_t *left;
+      if(is_list(*ap) &&
+         closure_is_ready(left = *leftmost(ap))) {
         LOG(HACK " forced cells[%C].expr.arg[%d]", c, i);
-        func_list(&c->expr.arg[i], REQ(return));
+        // hacky, switches function var in placeholders
+        if(is_placeholder(left)) {
+          cell_t *f = left->expr.arg[closure_in(left) - 1];
+          if(is_var(f)) {
+            switch_entry(entry, f);
+          }
+        }
+        func_list(ap, REQ(return));
 
         // ensure quotes are stored first
-        cell_t *l = c->expr.arg[i];
-        c->expr.arg[i] = trace_quote_var(l);
+        cell_t *l = *ap;
+        *ap = trace_quote_var(l);
         drop(l);
       }
     }
