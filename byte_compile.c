@@ -211,7 +211,7 @@ void move_vars(cell_t *entry) {
   int idx = 1 + in;
   int nvars = 0;
 
-  CONTEXT("move_vars for entry %e", entry);
+  CONTEXT("move_vars for %E", entry);
 
   // calculate mapping
   FOR_TRACE(p, entry) {
@@ -509,7 +509,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
     .n = expand_sym(ident, LENGTH(ident), name)
   };
   e->word_name = seg_string(ident_seg); // TODO fix unnecessary alloc
-  CONTEXT_LOG("compiling entry %E", e);
+  CONTEXT_LOG("compiling %E", e);
 
   // parse
   cell_t *c = parse_expr(&toks, module, e);

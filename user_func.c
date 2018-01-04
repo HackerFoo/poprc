@@ -489,7 +489,7 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   cell_t *new_entry = trace_start_entry(parent_entry, entry->entry.out);
   new_entry->module_name = parent_entry->module_name;
   new_entry->word_name = string_printf("%s_r%d", parent_entry->word_name, parent_entry->entry.sub_id++);
-  LOG("created entry %E", new_entry);
+  LOG("created entry for %E", new_entry);
 
   new_entry->initial = ref(c);
   move_changing_values(new_entry, c);

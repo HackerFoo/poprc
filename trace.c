@@ -642,7 +642,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
 
   remove_root(cp);
   if(!alts) {
-    LOG("reduction failed for entry %E", entry);
+    LOG("reduction failed for %E", entry);
   }
   return alts;
 }
