@@ -436,22 +436,20 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
 }
 
 // TODO generalize these
-static
-cell_t *unwrap(cell_t *c, type_request_t treq) {
-  if(treq.t != T_LIST) {
-    return c;
-  }
 
+// [[...]] -> [...]
+static
+cell_t *unwrap(cell_t *c, csize_t out) {
+
+  // head
   assert_error(is_list(c) && list_size(c) == 1);
-  { // ***
-    cell_t *tmp = c;
-    c = ref(c->value.ptr[0]);
-    drop(tmp);
-  }
-  cell_t *l = make_list(treq.out);
-  LOG("unwrap %d %C", treq.out, l);
-  cell_t *ap = func(func_ap, 1, treq.out + 1);
-  COUNTUP(i, treq.out) {
+  c = CUT(c, value.ptr[0]);
+
+  // N = out, ap0N swapN drop
+  cell_t *l = make_list(out);
+  LOG("unwrap %d %C", out, l);
+  cell_t *ap = func(func_ap, 1, out + 1);
+  COUNTUP(i, out) {
     cell_t **p = &l->value.ptr[i];
     *p = dep(ref(ap));
     arg(ap, *p);
@@ -474,14 +472,27 @@ cell_t *wrap_vars(cell_t *res, csize_t out) {
   return l;
 }
 
+// expand a user function into a list of outputs
+static
+cell_t *expand_list(cell_t *entry, cell_t *c) {
+  size_t out = closure_out(c);
+  cell_t *l = make_list(out + 1);
+  int n = out;
+  TRAVERSE(c, out) {
+    *p = dep(c);
+    l->value.ptr[--n] = *p;
+  }
+  refn(c, out);
+  l->value.ptr[out] = exec_expand(c, entry); // deps will be in c ***
+  return l;
+}
+
 static
 bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   cell_t *c = *cp;
   PRE_NO_CONTEXT(c, exec_wrap);
 
-  size_t
-    in = closure_in(c),
-    out = closure_out(c);
+  size_t in = closure_in(c);
   cell_t *entry = c->expr.arg[in];
   CONTEXT("exec_wrap %E: %C 0x%x #wrap", entry, c, c->expr.flags);
   LOG_UNLESS(entry->entry.out == 1, "out = %d #unify-multiout", entry->entry.out);
@@ -494,22 +505,15 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   new_entry->initial = ref(c);
   move_changing_values(new_entry, c);
 
+  // make a list with expanded outputs of c
   cell_t *nc = COPY_REF(c, in);
-  cell_t *l = make_list(out + 1);
-  {
-    int n = out;
-    TRAVERSE(nc, out) {
-      *p = dep(nc);
-      l->value.ptr[--n] = *p;
-    }
-    refn(nc, out);
-  }
   mark_barriers(new_entry, nc);
-  cell_t *p = exec_expand(nc, new_entry); // deps will be in nc ***
-  l->value.ptr[out] = p;
-  l = unwrap(l, treq);
 
+  cell_t *l = expand_list(new_entry, nc);
+
+  // eliminate intermediate list
   if(treq.t == T_LIST) {
+    l = unwrap(l, treq.out);
     new_entry->entry.out = treq.out; // ***
   }
 
@@ -520,7 +524,7 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   drop(l);
   remove_root(&nc);
 
-  p = flat_call(nc, new_entry);
+  cell_t *p = flat_call(nc, new_entry);
   drop(nc);
   drop(c);
 
@@ -529,6 +533,8 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
 
   trace_clear_alt(parent_entry);
   cell_t *res = var_create_with_entry(T_ANY, parent_entry, p->size);
+
+  // build list expected by caller
   if(treq.t == T_LIST) {
     res = wrap_vars(res, treq.out);
     csize_t n = closure_args(p);
