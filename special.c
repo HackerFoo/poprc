@@ -306,8 +306,7 @@ bool func_placeholder(cell_t **cp, type_request_t treq) {
   csize_t in = closure_in(c), n = closure_args(c);
 
   if(n == 1) {
-    *cp = ref(c->expr.arg[0]);
-    drop(c);
+    *cp = CUT(c, expr.arg[0]);
     return false;
   }
 

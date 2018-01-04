@@ -323,8 +323,7 @@ bool func_id(cell_t **cp, type_request_t treq) {
     store_reduced(cp, mod_alt(ref(c->expr.arg[0]), c->alt, alt_set));
     return true;
   } else {
-    *cp = ref(c->expr.arg[0]);
-    drop(c);
+    *cp = CUT(c, expr.arg[0]);
     return false;
   }
  fail:
@@ -336,9 +335,7 @@ bool func_id(cell_t **cp, type_request_t treq) {
 bool func_drop(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
   PRE(c, drop);
-  cell_t *p = ref(c->expr.arg[0]);
-  drop(c);
-  *cp = p;
+  *cp = CUT(c, expr.arg[0]);
   return false;
 }
 
