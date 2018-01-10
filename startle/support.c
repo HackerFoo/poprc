@@ -1,18 +1,18 @@
-/* Copyright 2012-2017 Dustin DeWeese
-   This file is part of PoprC.
+/* Copyright 2012-2018 Dustin M. DeWeese
 
-    PoprC is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+   This file is part of the Startle library.
 
-    PoprC is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    You should have received a copy of the GNU General Public License
-    along with PoprC.  If not, see <http://www.gnu.org/licenses/>.
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 */
 
 #include <string.h>
@@ -31,7 +31,11 @@
 #include "startle/log.h"
 #include "startle/support.h"
 
-// find the median of 3 integers
+/** @file
+ *  @brief Generally useful functions
+ */
+
+/** Estimate the median of an array */
 unsigned int median3(pair_t *array, unsigned int lo, unsigned int hi) {
   unsigned int mid = lo + (hi - lo) / 2;
   uint32_t
@@ -61,12 +65,14 @@ unsigned int median3(pair_t *array, unsigned int lo, unsigned int hi) {
   }
 }
 
+/** Swap two pairs. */
 void swap(pair_t *x, pair_t *y) {
   pair_t tmp = *x;
   *x = *y;
   *y = tmp;
 }
 
+/** Print the pairs in an array. */
 void print_pairs(pair_t *array, size_t len) {
   if(!len) {
     printf("{}\n");
@@ -79,6 +85,7 @@ void print_pairs(pair_t *array, size_t len) {
   }
 }
 
+/** Print the pairs in an array, where the first item is a string. */
 void print_string_pairs(pair_t *array, size_t len) {
   if(!len) {
     printf("{}\n");
@@ -92,6 +99,7 @@ void print_string_pairs(pair_t *array, size_t len) {
 }
 
 TEST(sort) {
+  /** [sort] */
   pair_t array[] = {{3, 0}, {7, 1}, {2, 2}, {4, 3}, {500, 4}, {0, 5}, {8, 6}, {4, 7}};
   quicksort(array, LENGTH(array));
   uintptr_t last = array[0].first;
@@ -110,10 +118,13 @@ TEST(sort) {
   printf("index find existing: %s\n", r1 ? "PASS" : "FAIL");
   bool r2 = !find(array, LENGTH(array), 5);
   printf("index find missing: %s\n", r2 ? "PASS" : "FAIL");
-
+  /** [sort] */
   return r1 && r2 ? 0 : -1;
 }
 
+/** Use the Quicksort algorithm to sort an array of pairs by the first element.
+ * @snippet support.c sort
+ */
 void quicksort(pair_t *array, unsigned int size) {
   if(size <= 1) return;
 
@@ -161,7 +172,9 @@ void quicksort(pair_t *array, unsigned int size) {
   }
 }
 
-// find the index of a value in a sorted array
+/** Find a pair with matching key in a sorted array of pairs using binary search.
+ * O(log n) time.
+ */
 pair_t *find(pair_t *array, size_t size, uintptr_t key) {
   size_t low = 0, high = size;
   while(high > low) {
@@ -178,7 +191,9 @@ pair_t *find(pair_t *array, size_t size, uintptr_t key) {
   return NULL;
 }
 
-// find the last index of a value in a sorted array
+/** Like `find`, but find the last match.
+ * O(log n) time.
+ */
 pair_t *find_last(pair_t *array, size_t size, uintptr_t key) {
   size_t low = 0, high = size;
   while(high > low + 1) {
@@ -194,7 +209,9 @@ pair_t *find_last(pair_t *array, size_t size, uintptr_t key) {
   return p->first == key ? p : NULL;
 }
 
-// find the last index of a value in a sorted array with string keys
+/** Like `find`, but find the last match, with a string key.
+ * O(log n) time.
+ */
 pair_t *find_last_string(pair_t *array, size_t size, const char *key) {
   size_t low = 0, high = size;
   while(high > low + 1) {
@@ -210,7 +227,7 @@ pair_t *find_last_string(pair_t *array, size_t size, const char *key) {
   return strcmp((char *)p->first, key) == 0 ? p : NULL;
 }
 
-// compare a string to a seg_t
+/** Compare a string to a seg_t */
 int segcmp(const char *str, seg_t seg) {
   size_t cnt = seg.n;
   const char *a = str, *b = seg.s;
@@ -223,7 +240,9 @@ int segcmp(const char *str, seg_t seg) {
   return *a;
 }
 
-// find the last index of a value in a sorted array with string keys using a seg_t key
+/** Like `find`, but find the last match, with a string segment key.
+ * O(log n) time.
+ */
 pair_t *find_last_seg(pair_t *array, size_t size, seg_t key) {
   size_t low = 0, high = size;
   while(high > low + 1) {
@@ -239,11 +258,12 @@ pair_t *find_last_seg(pair_t *array, size_t size, seg_t key) {
   return segcmp((char *)p->first, key) == 0 ? p : NULL;
 }
 
-// string segments
+/** Return a pointer after the end of the string segment. */
 const char *seg_end(seg_t seg) {
   return seg.s ? seg.s + seg.n : NULL;
 }
 
+/** Copy a string segment into a character array, as a zero terminated C string. */
 size_t seg_read(seg_t seg, char *str, size_t size) {
   size_t n = size - 1 < seg.n ? size - 1 : seg.n;
   memcpy(str, seg.s, n);
@@ -251,7 +271,8 @@ size_t seg_read(seg_t seg, char *str, size_t size) {
   return n;
 }
 
-seg_t seg_rindex(seg_t s, char c) {
+/** Return the segment after the first character matching `c`. */
+seg_t seg_after(seg_t s, char c) {
   const char *p = s.s;
   const char *end = p + s.n;
   while(p < end) {
@@ -262,6 +283,21 @@ seg_t seg_rindex(seg_t s, char c) {
   return s;
 }
 
+/** Create a string segment from a C string. */
+seg_t string_seg(const char *str) {
+  seg_t seg = {str, strlen(str)};
+  return seg;
+}
+
+/** Look up the string segment key in a sorted table.
+ * Each row starts with a C string key.
+ * Binary search, O(log n) time.
+ * @param table the table
+ * @param width width of each row in bytes
+ * @param rows the number of rows
+ * @param key_seg the key string segment
+ * @snippet support.c lookup
+ */
 void *lookup(void *table, size_t width, size_t rows, seg_t key_seg) {
   size_t low = 0, high = rows, pivot;
   char const *key = key_seg.s;
@@ -282,6 +318,44 @@ void *lookup(void *table, size_t width, size_t rows, seg_t key_seg) {
   return ret;
 }
 
+TEST(lookup) {
+  /** [lookup] */
+  struct row {
+    char name[8]; // must be large enough for the key and terminating null byte
+    int count;
+    double cost_per;
+  };
+
+  /* The rows must be sorted by the key. */
+  struct row table[] = {
+    { "apple", 3, 0.95 },
+    { "grape", 5, 0.50 },
+    { "pear", 2, 1.50 }
+  };
+
+  struct row *result = lookup(table, WIDTH(table), LENGTH(table), string_seg("grape"));
+  if(result) {
+    printf("The total for %d %ss at $%.2f each is $%.2f.\n",
+           result->count,
+           result->name,
+           result->cost_per,
+           result->count * result->cost_per);
+    return 0;
+  } else {
+    printf("Sorry, we don't have any of that.\n");
+    return -1;
+  }
+  /** [lookup] */
+}
+
+/** Look up the string segment key in an unsorted table.
+ * Each row starts with a C string key.
+ * Linear search, O(n) time.
+ * @param table the table
+ * @param width width of each row in bytes
+ * @param rows the number of rows
+ * @param key_seg the key string segment
+ */
 void *lookup_linear(void *table, size_t width, size_t rows, seg_t key_seg) {
   char const *key = key_seg.s;
   size_t key_length = key_seg.n;
@@ -297,14 +371,20 @@ void *lookup_linear(void *table, size_t width, size_t rows, seg_t key_seg) {
 
 #if INTERFACE
 struct mmfile {
-  const char *path;
-  int fd;
-  size_t size;
-  char *data;
-  bool read_only;
+  const char *path; /**< File path */
+  int fd; /**< File descriptor */
+  size_t size; /**< Size in bytes, set by mmap_file */
+  char *data; /**< Pointer to char data, set by mmap_file */
+  bool read_only; /**< True if read-only */
 };
 #endif
 
+/** Map a file to memory
+ * Use `path` and `read_only` from the `mmfile` referenced by `f`.
+ * Sets `data` and `size`.
+ * @return `true` on success, otherwise `false`.
+ * @snippet support.c mmap_file
+ */
 bool mmap_file(struct mmfile *f) {
   f->fd = open(f->path, f->read_only ? O_RDONLY : O_RDWR);
   if(f->fd < 0) return false;
@@ -330,6 +410,9 @@ bool mmap_file(struct mmfile *f) {
   }
 }
 
+/** Un-map a file from memory using the data set by `mmap_file`.
+ * @snippet support.c mmap_file
+ */
 bool munmap_file(struct mmfile *f) {
   bool success = true;
   success &= munmap(f->data, f->size) == 0;
@@ -339,6 +422,7 @@ bool munmap_file(struct mmfile *f) {
 }
 
 TEST(mmap_file) {
+  /** [mmap_file] */
   struct mmfile f = {
     .path = "eval.c",
     .read_only = true
@@ -352,9 +436,11 @@ TEST(mmap_file) {
     c++;
   }
   if(!munmap_file(&f)) return -1;
+  /** [mmap_file] */
   return 0;
 }
 
+/** Count lines to reach `e` starting from `s`. */
 size_t line_number(const char *s, const char *e) {
   if(!s || !e) return 0;
   size_t cnt = 1;
@@ -364,6 +450,12 @@ size_t line_number(const char *s, const char *e) {
   return cnt;
 }
 
+/** Find a line containing the address.
+ * @param x address into a line of text
+ * @s [in,out] start of text/line
+ * @size [in,out] size of text/line
+ * @return true if the line was found
+ */
 bool find_line(const char *x, const char **s, size_t *size) {
   if(!x || !s || !size || !*s || x < *s || (size_t)(x - *s) >= *size) return false;
   const char *e = *s + *size;
@@ -388,14 +480,24 @@ bool find_line(const char *x, const char **s, size_t *size) {
   return true;
 }
 
+/** Integer log2 */
 unsigned int int_log2(unsigned int x) {
   return x <= 1 ? 0 : (sizeof(x) * 8) - __builtin_clz(x - 1);
 }
 
+/** Long integer log2 */
 unsigned int int_log2l(long unsigned int x) {
   return x <= 1 ? 0 : (sizeof(x) * 8) - __builtin_clzl(x - 1);
 }
 
+/** Insert into a set.
+ * O(1) time.
+ * @param x to insert
+ * @param set the set
+ * @param size number of entries the set can hold
+ * @return true if `x` was already in the set
+ * @snippet support.c set
+ */
 bool set_insert(uintptr_t x, uintptr_t *set, size_t size) {
   assert_error(x);
   size_t j = x % size;
@@ -424,6 +526,15 @@ bool set_insert(uintptr_t x, uintptr_t *set, size_t size) {
   return false;
 }
 
+
+/** Return if an item is in the set.
+ * O(1) time.
+ * @param x item to test
+ * @param set the set
+ * @param size number of entries the set can hold
+ * @return true if `x` is in the set
+ * @snippet support.c set
+ */
 bool set_member(uintptr_t x, uintptr_t *set, size_t size) {
   if(!x) return false;
   size_t offset = x % size;
@@ -434,6 +545,14 @@ bool set_member(uintptr_t x, uintptr_t *set, size_t size) {
   return false;
 }
 
+/** Remove an item from the set.
+ * O(1) time.
+ * @param x to remove
+ * @param set the set
+ * @param size number of entries the set can hold
+ * @return true if `x` was in the set
+ * @snippet support.c set
+ */
 bool set_remove(uintptr_t x, uintptr_t *set, size_t size) {
   if(!x) return false;
   size_t offset = x % size;
@@ -448,6 +567,7 @@ bool set_remove(uintptr_t x, uintptr_t *set, size_t size) {
 }
 
 TEST(set) {
+  /** [set] */
   uintptr_t set[7] = {0};
   const size_t size = LENGTH(set);
   uintptr_t data[] = {7, 8, 9, 14, 21, 28};
@@ -463,15 +583,20 @@ TEST(set) {
   FOREACH(i, data) {
     if(!set_remove(data[i], set, size)) return -3;
   }
+  /** [set] */
   return 0;
 }
 
+/** Swap two pointers. */
 void swap_ptrs(void **x, void **y) {
   void *tmp = *x;
   *x = *y;
   *y = tmp;
 }
 
+/** Reverse an array of pointers.
+ * @param n number of pointers.
+ */
 void reverse_ptrs(void **a, size_t n) {
   size_t m = n / 2;
   void **b = a + n;
@@ -502,6 +627,7 @@ char *arguments(int argc, char **argv) {
   return result;
 }
 
+/** Hash the string to a non-zero number. */
 uintptr_t nonzero_hash(const char *str, size_t len)
 {
   uintptr_t hash = 5381;

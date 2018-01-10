@@ -1,18 +1,18 @@
-/* Copyright 2012-2017 Dustin DeWeese
-   This file is part of PoprC.
+/* Copyright 2012-2018 Dustin M. DeWeese
 
-    PoprC is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+   This file is part of the Startle library.
 
-    PoprC is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    You should have received a copy of the GNU General Public License
-    along with PoprC.  If not, see <http://www.gnu.org/licenses/>.
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 */
 
 #include <stdio.h>
@@ -26,6 +26,10 @@
 #include "startle/error.h"
 #include "startle/test.h"
 #include "startle/log.h"
+
+/** @file
+ *  @brief Unit testing
+ */
 
 #define TEST_ITEM(name) extern int test_##name();
 #include "test_list.h"
@@ -43,6 +47,7 @@ pair_t tests[] = {
 
 #undef TEST_ITEM
 
+/** Run all tests matching the name. */
 int run_test(seg_t name) {
   int fail = 0;
   FOREACH(i, tests) {
@@ -62,6 +67,7 @@ int run_test(seg_t name) {
 // Macro tests
 
 TEST(loops) {
+  /** [loops] */
   COUNTUP(i, 3) {
     printf("up: %d\n", (unsigned int)i);
   }
@@ -85,9 +91,11 @@ TEST(loops) {
     }
     putchar('\n');
   }
+  /** [loops] */
   return 0;
 }
 
+/** [macro_dispatch] */
 #define TEST_0() printf("TEST_0()\n")
 #define TEST_1(x0) printf("TEST_1(" x0 ")\n")
 #define TEST_2(x0, x1) printf("TEST_2(" x0 ", " x1 ")\n")
@@ -98,3 +106,4 @@ TEST(macro_dispatch) {
   DISPATCH(TEST, "1", "2");
   return 0;
 }
+/** [macro_dispatch] */

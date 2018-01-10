@@ -1,18 +1,18 @@
-/* Copyright 2012-2017 Dustin DeWeese
-   This file is part of PoprC.
+/* Copyright 2012-2018 Dustin M. DeWeese
 
-    PoprC is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+   This file is part of the Startle library.
 
-    PoprC is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    You should have received a copy of the GNU General Public License
-    along with PoprC.  If not, see <http://www.gnu.org/licenses/>.
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 */
 
 #include <stdlib.h>
@@ -26,6 +26,11 @@
 #include "startle/error.h"
 #include "startle/log.h"
 #include "startle/support.h"
+
+/** @file
+ *  @brief Structured in-memory logging
+ */
+
 
 #define FORMAT_ITEM(name, c) extern FORMAT(name, c);
 #include "format_list.h"
@@ -54,6 +59,7 @@ static uintptr_t hash_tag_set[63];
 
 context_t *__log_context = NULL;
 
+/** Call this first to initialize the log. */
 void log_init() {
   log[0] = 0;
   log_head = 0;
@@ -68,6 +74,10 @@ void log_init() {
   zero(hash_tag_set);
 }
 
+/** Set a tag to break on.
+ * Break when this tag is reached.
+ * @param after break on at the same point after hitting the tag.
+ */
 void set_log_watch(const tag_t tag, bool after) {
   log_watch = log_watch_to = read_tag(tag);
   set_log_watch_fmt = after;
@@ -75,6 +85,10 @@ void set_log_watch(const tag_t tag, bool after) {
   watching = false;
 }
 
+/** Set a range to break.
+ * @param tag_from first tag to break on.
+ * @param tag_to last tag to break on.
+ */
 void set_log_watch_range(const tag_t tag_from, const char *tag_to) {
   log_watch = read_tag(tag_from);
   log_watch_to = tag_to ? read_tag(tag_to) : ~0;
@@ -82,6 +96,7 @@ void set_log_watch_range(const tag_t tag_from, const char *tag_to) {
   watching = false;
 }
 
+/** Re-initialize the log without clearing it. */
 void log_soft_init() {
   if(log_head != log_tail) {
     log_add((intptr_t)"\xff\xff"); // reset indentation
@@ -256,6 +271,7 @@ unsigned int print_contexts(unsigned int idx, unsigned int *depth) {
   return ret;
 }
 
+/** Print all stored log entries. */
 void log_print_all() {
   log_scan_tags();
   unsigned int
@@ -307,8 +323,16 @@ void log_scan_tags() {
   } while(0)
 #define LOG_args ("\x00", "\x01", "\x02", "\x03", "\x04", "\x05", "\x06", "\x07", "\x08")
 #define LOG_NO_POS(...) FORARG(LOG, __VA_ARGS__)
+
+/** Log the format string and arguments.
+ * @snippet log.c log
+ */
 #define LOG(fmt, ...) LOG_NO_POS(__FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
+
+/** Log when `test` is true. */
 #define LOG_WHEN(test, fmt, ...) ((test) && (({ LOG(fmt, ##__VA_ARGS__); }), true))
+
+/** Log unless `test` is true. */
 #define LOG_UNLESS(test, fmt, ...) ((test) || (({ LOG(fmt, ##__VA_ARGS__); }), false))
 
 // same as LOG, but don't call log_add_{last, only} to avoid calling breakpoint()
@@ -327,11 +351,13 @@ void log_scan_tags() {
 #endif
 
 TEST(log) {
+  /** [log] */
   log_init();
   LOG("test %d + %d = %d", 1, 2, 3);
   LOG("WAZZUP %s", "d00d");
   LOG("[%.*s]", 3, "12345");
   log_print_all();
+  /** [log] */
   return 0;
 }
 
@@ -354,6 +380,12 @@ struct context_s {
 #define CONTEXT_post                            \
   __log_context = (context_t *)__context;
 #define CONTEXT_args ("\xff\xc0", "\xff\xc1", "\xff\xc2", "\xff\xc3", "\xff\xc4", "\xff\xc5", "\xff\xc6", "\xff\xc7", "\xff\xc8")
+
+/** Store log context.
+ * Context is logged if a message is logged within the context's scope.
+ * This allows for more non-local information to be logged about an event.
+ * @snippet log.c context
+ */
 #define CONTEXT(fmt, ...) FORARG(CONTEXT, __FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
 #endif
 
@@ -373,6 +405,10 @@ struct context_s {
   if(log_add_only((intptr_t)(__context + 1))) breakpoint();
 #define CONTEXT_LOG_post                        \
   } while(0)
+
+/** Store context to log.
+ * Like CONTEXT, but always logged.
+ */
 #define CONTEXT_LOG_args ("\xff\x40", "\xff\x41", "\xff\x42", "\xff\x43", "\xff\x44", "\xff\x45", "\xff\x46", "\xff\x47", "\xff\x48")
 #define CONTEXT_LOG(fmt, ...) FORARG(CONTEXT_LOG, __FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
 #endif
@@ -404,6 +440,7 @@ void log_add_context() {
   }
 }
 
+/** [context] */
 static
 void __test_context_c(int x) {
   CONTEXT_LOG("C %d", x);
@@ -444,6 +481,7 @@ TEST(context) {
   log_print_all();
   return 0;
 }
+/** [context] */
 
 #if INTERFACE
 typedef char tag_t[4];
@@ -513,6 +551,9 @@ const unsigned int tag_factor = 510199;
 const unsigned int tag_factor_inverse = 96455;
 const unsigned int tag_mask = 0x7ffff;
 
+/** Write log tag for the given value.
+ * @snippet log.c tag
+ */
 void write_tag(tag_t tag, unsigned int val) {
   val += 1;
   val *= tag_factor;
@@ -523,6 +564,9 @@ void write_tag(tag_t tag, unsigned int val) {
   }
 }
 
+/** Return value from the given log tag.
+ * @snippet log.c tag
+ */
 int read_tag(const tag_t tag) {
   unsigned int val = 0;
   COUNTUP(i, sizeof(tag_t)) {
@@ -536,18 +580,27 @@ int read_tag(const tag_t tag) {
 }
 
 TEST(tag) {
+  /** [tag] */
   tag_t tag = "good";
   int x = read_tag(tag);
   write_tag(tag, x);
   printf("tag: %d = " FORMAT_TAG "\n", x, tag);
   return strncmp("good", tag, sizeof(tag)) == 0 ? 0 : -1;
+  /** [tag] */
 }
 
+/** Get the most recent log tag. */
 void get_tag(tag_t tag) {
   write_tag(tag, msg_head);
 }
 
 #if INTERFACE
+/** Tweaks are values that can be changed at a specific point.
+ * Tweaks allow modifying something at a specific time, identified
+ * by looking up the log tag in the log.
+ * @param default_value value returned when not "tweaked."
+ * Remaining arguments are logged.
+ */
 #define TWEAK(default_value, fmt, ...)                          \
   ({                                                            \
     const char *c;                                              \
@@ -572,12 +625,16 @@ bool log_do_tweak(intptr_t *x) {
   }
 }
 
+/** Tweak to the value at the given log tag.
+ * Only one tweak can be set at a time.
+ */
 void log_set_tweak(const tag_t tag, intptr_t value) {
   tweak_enabled = true;
   tweak_trigger = read_tag(tag);
   tweak_value = value;
 }
 
+/** Clear the tweak. */
 void log_unset_tweak() {
   tweak_enabled = false;
 }

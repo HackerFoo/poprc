@@ -1,8 +1,32 @@
+/* Copyright 2012-2018 Dustin M. DeWeese
+
+   This file is part of the Startle library.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
 #ifndef __DISPATCH__
 #define __DISPATCH__
 
+/** @file
+ *  @brief Function dispatch for variable arguments
+ */
+
 // GET ________________________________________________________________________________
 
+/** Accessor macro for simulated tuples.
+ * GET(N, (x0, x1, ..., xN)) returns xN
+ */
 #define GET(n, t) CONCAT(GET, n) t
 #define GET0(x0, ...) x0
 #define GET1(x0, x1, ...) x1
@@ -17,9 +41,16 @@
 
 // DISPATCH ________________________________________________________________________________
 
+/** Return the number of arguments */
 #define ARG_COUNT(...) GET20(_X, ##__VA_ARGS__, _19, _18, _17, _16, _15, _14, _13, _12, _11, _10, _9, _8, _7, _6, _5, _4, _3, _2, _1, _0)
 
-// macro to allow handling optional macro arguments
+/** macro to allow handling optional macro arguments
+ * DISPATCH(MACRO_NAME, ...) calls MACRO_NAME_N(...) where N is the number of arguments other than MACRO_NAME.
+ * The typical use is:
+ * #define MACRO_NAME(...) DISPATCH(MACRO_NAME, __VA_ARGS__)
+ * to define an overloaded macro that takes a variable number of arguments
+ * @snippet test.c macro_dispatch
+ */
 #define DISPATCH(m, ...) CONCAT(m, ARG_COUNT(__VA_ARGS__))(__VA_ARGS__)
 
 // FORARG ________________________________________________________________________________
@@ -97,6 +128,27 @@
   CONCAT(name, _last)(x8)                                       \
   CONCAT(name, _post)
 
+/** Create a macro that iterates over its arguments.
+ * FORARG is a flexible iteration macro that can expand its
+ * arguments into repeated actions.
+ *
+ * FORARG(NAME, ...) where
+ * #define NAME_pre
+ *   expanded before FORARG(NAME, ...)
+ * #define NAME_first(s, x)
+ *   s is selected from NAME_args based on the number of arguments
+ *   x is the first argument
+ * #define NAME_middle(x)
+ *   x is an argument that is neither first nor last
+ * #define NAME_last(x)
+ *   x is the last argument
+ * #define NAME_only(x)
+ *   x is the only argument
+ * #define NAME_post
+ *   expanded after FORARG(NAME, ...)
+ * #define NAME_args (x0, x1, ..., xN)
+ *   used in NAME_first for `s`
+ */
 #define FORARG(name, ...) DISPATCH(FORARG, name, __VA_ARGS__)
 
 #define DUMMY_args (x, x, x, x, x, x, x, x, x)

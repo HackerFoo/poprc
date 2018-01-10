@@ -10,6 +10,7 @@ SHELL := bash
 	@mkdir -p $(dir $@)
 	sed -n -e 's/^ *'"$(NAME)"'(\(.*\)).*/'"$(NAME)_ITEM"'(\1)/p' $(SRC) | LC_ALL=C sort > $@
 
+# store the current git commit
 .gen/git_log.h.new: LOG = $(shell git log -1 --oneline)
 .gen/git_log.h.new: $(SRC)
 	@mkdir -p $(dir $@)
