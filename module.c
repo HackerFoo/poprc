@@ -352,7 +352,7 @@ seg_t parse_split(char c, const char **start, const char *end) {
 }
 
 seg_t path_name(seg_t path) {
-  seg_t s = seg_rindex(path, '.');
+  seg_t s = seg_after(path, '.');
   if(*s.s == '.' && s.n > 0) {
     s.s++;
     s.n--;
