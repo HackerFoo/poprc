@@ -181,7 +181,7 @@ js/eval.js: EMCC_OBJS := $(patsubst %.c, build/emcc/$(BUILD)/%.o, $(SRC))
 js/eval.js:
 	@mkdir -p js
 	make CC=emcc $(EMCC_OBJS)
-	emcc $(EMCC_OBJS) -o js/eval.js -s EXPORTED_FUNCTIONS="['_main', '_emscripten_eval']" --embed-file lib.ppr
+	emcc $(EMCC_OBJS) -o js/eval.js -s EXPORTED_FUNCTIONS="['_main', '_emscripten_eval']" -s EXTRA_EXPORTED_RUNTIME_METHODS="['ccall']" --embed-file lib.ppr
 
 $(BUILD_DIR)/linenoise.o: linenoise/linenoise.c linenoise/linenoise.h
 	@mkdir -p $(BUILD_DIR)
