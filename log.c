@@ -1,18 +1,18 @@
-/* Copyright 2012-2017 Dustin DeWeese
-   This file is part of PoprC.
+/* Copyright 2012-2018 Dustin M. DeWeese
 
-    PoprC is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+   This file is part of the Startle library.
 
-    PoprC is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    You should have received a copy of the GNU General Public License
-    along with PoprC.  If not, see <http://www.gnu.org/licenses/>.
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 */
 
 #include <stdlib.h>
@@ -21,13 +21,20 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
+#include "startle/types.h"
 #include "startle/macros.h"
 #include "startle/error.h"
 #include "startle/log.h"
+#include "startle/support.h"
 
-#define FORMAT(c, f) extern void f(intptr_t);
+/** @file
+ *  @brief Structured in-memory logging
+ */
+
+
+#define FORMAT_ITEM(name, c) extern FORMAT(name, c);
 #include "format_list.h"
-#undef FORMAT
+#undef FORMAT_ITEM
 
 #define REVERSE 0x80
 #define INDENT  0x40
@@ -44,8 +51,15 @@ static bool set_log_watch_fmt = false;
 static bool watching = false;
 static unsigned int msg_head = 0;
 
+static bool tweak_enabled = false;
+static unsigned int tweak_trigger = ~0;
+static intptr_t tweak_value = 0;
+
+static uintptr_t hash_tag_set[63];
+
 context_t *__log_context = NULL;
 
+/** Call this first to initialize the log. */
 void log_init() {
   log[0] = 0;
   log_head = 0;
@@ -57,8 +71,13 @@ void log_init() {
   set_log_watch_fmt = false;
   watching = false;
   msg_head = 0;
+  zero(hash_tag_set);
 }
 
+/** Set a tag to break on.
+ * Break when this tag is reached.
+ * @param after break on at the same point after hitting the tag.
+ */
 void set_log_watch(const tag_t tag, bool after) {
   log_watch = log_watch_to = read_tag(tag);
   set_log_watch_fmt = after;
@@ -66,6 +85,10 @@ void set_log_watch(const tag_t tag, bool after) {
   watching = false;
 }
 
+/** Set a range to break.
+ * @param tag_from first tag to break on.
+ * @param tag_to last tag to break on.
+ */
 void set_log_watch_range(const tag_t tag_from, const char *tag_to) {
   log_watch = read_tag(tag_from);
   log_watch_to = tag_to ? read_tag(tag_to) : ~0;
@@ -73,6 +96,7 @@ void set_log_watch_range(const tag_t tag_from, const char *tag_to) {
   watching = false;
 }
 
+/** Re-initialize the log without clearing it. */
 void log_soft_init() {
   if(log_head != log_tail) {
     log_add((intptr_t)"\xff\xff"); // reset indentation
@@ -89,6 +113,13 @@ int log_entry_len(unsigned int idx) {
   return (uint8_t)(len & ~MASK);
 }
 
+// not the most efficient
+static
+char *strchrnul(const char *s, int c) {
+  char *res = strchr(s, c);
+  return res ? res : strchr(s, 0);
+}
+
 static
 unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
   unsigned int msg_id = idx;
@@ -99,59 +130,69 @@ unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
   intptr_t x;
   const char
     *p = fmt + 1,
-    *n = strchr(p, '%');
+    *n = strpbrk(p, "%#@");
   LOOP(*depth * 2) putchar(' ');
   if(fmt[0] & INDENT) (*depth)++;
   while(n) {
     printf("%.*s", (int)(n-p), p); // print the text
     if(!n[1]) break;
-    switch(n[1]) {
+    if(n[0] != '%') {
+      p = strchrnul(n, ' ');
+      uintptr_t key = nonzero_hash(n+1, p-n-1);
+      if(n[0] == '@' || set_member(key, hash_tag_set, LENGTH(hash_tag_set))) {
+        printf(NOTE("%.*s"), (int)(p-n), n);
+      } else {
+        printf("%.*s", (int)(p-n), n);
+      }
+    } else {
+      switch(n[1]) {
 #define CASE_PRINT(c, print)                    \
-      case c:                                   \
-        if(len) {                               \
-          idx = idx % LOG_SIZE;                 \
-          x = log[idx++];                       \
-          print;                                \
-          len--;                                \
-        } else {                                \
-          printf("X");                          \
-        }                                       \
-        break;
+        case c:                                 \
+          if(len) {                             \
+            idx = idx % LOG_SIZE;               \
+            x = log[idx++];                     \
+            print;                              \
+            len--;                              \
+          } else {                              \
+            printf("X");                        \
+          }                                     \
+          break;
 #define CASE(c, cast, fmt)                      \
-      CASE_PRINT(c, printf(fmt, cast(x)))
-#define FORMAT(c, f) CASE_PRINT(c, f(x))
-      #include "format_list.h"
-#undef FORMAT
-      CASE('d', (int), "%d");
-      CASE('u', (unsigned int), "%u");
-      CASE('x', (int), "%x");
-      CASE('s', (const char *), "%s");
-      CASE('p', (void *), "%p");
+        CASE_PRINT(c, printf(fmt, cast(x)))
+#define FORMAT_ITEM(name, c) CASE_PRINT(c, format_##name(x))
+#include "format_list.h"
+#undef FORMAT_ITEM
+        CASE('d', (int), "%d");
+        CASE('u', (unsigned int), "%u");
+        CASE('x', (int), "%x");
+        CASE('s', (const char *), "%s");
+        CASE('p', (void *), "%p");
 #undef CASE
 #undef CASE_PRINT
-    case '.':
-      if(n[2] == '*' && n[3] == 's') {
-        if(len > 1) {
-          idx = idx % LOG_SIZE;
-          int size = log[idx++];
-          idx = idx % LOG_SIZE;
-          printf("%.*s", size, (const char *)log[idx++]);
-          len -= 2;
-        } else {
-          printf("X");
+      case '.':
+        if(n[2] == '*' && n[3] == 's') {
+          if(len > 1) {
+            idx = idx % LOG_SIZE;
+            int size = log[idx++];
+            idx = idx % LOG_SIZE;
+            printf("%.*s", size, (const char *)log[idx++]);
+            len -= 2;
+          } else {
+            printf("X");
+          }
+          n += 2;
+          break;
         }
-        n += 2;
+      case '%':
+        printf("%%");
+        break;
+      default:
+        printf("!?");
         break;
       }
-    case '%':
-      printf("%%");
-      break;
-    default:
-      printf("!?");
-      break;
+      p = n + 2;
     }
-    p = n + 2;
-    n = strchr(p, '%');
+    n = strpbrk(p, "%#@");
   }
   idx = idx % LOG_SIZE;
   if(event) {
@@ -179,7 +220,7 @@ void log_add_first(intptr_t x) {
 
 bool log_add_last(intptr_t x) {
   log_add(x);
-  if_unlikely(msg_head == log_watch ||
+  if unlikely(msg_head == log_watch ||
               (watching &&
                (!set_log_watch_fmt ||
                 log[msg_head] == log_watch_fmt))) {
@@ -230,7 +271,9 @@ unsigned int print_contexts(unsigned int idx, unsigned int *depth) {
   return ret;
 }
 
+/** Print all stored log entries. */
 void log_print_all() {
+  log_scan_tags();
   unsigned int
     depth = 0,
     i = log_tail;
@@ -241,6 +284,29 @@ void log_print_all() {
       i = (i + 1) % LOG_SIZE;
     } else {
       i = log_printf(i, &depth, true);
+    }
+  }
+}
+
+void log_scan_tags() {
+  zero(hash_tag_set);
+  unsigned int i = log_tail;
+  while(i != log_head) {
+    const char *fmt = (const char *)log[i];
+    if(*fmt == '\xff') {
+      i = (i + 1) % LOG_SIZE;
+      continue;
+    }
+    uint8_t len = *fmt & ~MASK;
+    i = (i + len + 1) % LOG_SIZE;
+    const char *p = fmt;
+    while((p = strchr(p, '@'))) {
+      p++;
+      const char *e = strchrnul(p, ' ');
+      if(p == e) continue;
+      uintptr_t key = nonzero_hash(p, e-p);
+      set_insert(key, hash_tag_set, LENGTH(hash_tag_set));
+      p = e;
     }
   }
 }
@@ -257,8 +323,16 @@ void log_print_all() {
   } while(0)
 #define LOG_args ("\x00", "\x01", "\x02", "\x03", "\x04", "\x05", "\x06", "\x07", "\x08")
 #define LOG_NO_POS(...) FORARG(LOG, __VA_ARGS__)
+
+/** Log the format string and arguments.
+ * @snippet log.c log
+ */
 #define LOG(fmt, ...) LOG_NO_POS(__FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
+
+/** Log when `test` is true. */
 #define LOG_WHEN(test, fmt, ...) ((test) && (({ LOG(fmt, ##__VA_ARGS__); }), true))
+
+/** Log unless `test` is true. */
 #define LOG_UNLESS(test, fmt, ...) ((test) || (({ LOG(fmt, ##__VA_ARGS__); }), false))
 
 // same as LOG, but don't call log_add_{last, only} to avoid calling breakpoint()
@@ -276,12 +350,14 @@ void log_print_all() {
 
 #endif
 
-int test_log() {
+TEST(log) {
+  /** [log] */
   log_init();
   LOG("test %d + %d = %d", 1, 2, 3);
   LOG("WAZZUP %s", "d00d");
   LOG("[%.*s]", 3, "12345");
   log_print_all();
+  /** [log] */
   return 0;
 }
 
@@ -304,6 +380,12 @@ struct context_s {
 #define CONTEXT_post                            \
   __log_context = (context_t *)__context;
 #define CONTEXT_args ("\xff\xc0", "\xff\xc1", "\xff\xc2", "\xff\xc3", "\xff\xc4", "\xff\xc5", "\xff\xc6", "\xff\xc7", "\xff\xc8")
+
+/** Store log context.
+ * Context is logged if a message is logged within the context's scope.
+ * This allows for more non-local information to be logged about an event.
+ * @snippet log.c context
+ */
 #define CONTEXT(fmt, ...) FORARG(CONTEXT, __FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
 #endif
 
@@ -323,6 +405,10 @@ struct context_s {
   if(log_add_only((intptr_t)(__context + 1))) breakpoint();
 #define CONTEXT_LOG_post                        \
   } while(0)
+
+/** Store context to log.
+ * Like CONTEXT, but always logged.
+ */
 #define CONTEXT_LOG_args ("\xff\x40", "\xff\x41", "\xff\x42", "\xff\x43", "\xff\x44", "\xff\x45", "\xff\x46", "\xff\x47", "\xff\x48")
 #define CONTEXT_LOG(fmt, ...) FORARG(CONTEXT_LOG, __FILE__ ":" STRINGIFY(__LINE__) ": " fmt, ##__VA_ARGS__)
 #endif
@@ -354,6 +440,7 @@ void log_add_context() {
   }
 }
 
+/** [context] */
 static
 void __test_context_c(int x) {
   CONTEXT_LOG("C %d", x);
@@ -384,7 +471,7 @@ void __test_context_d(int x) {
   LOG("exiting d");
 }
 
-int test_context() {
+TEST(context) {
   log_init();
   __test_context_a(2);
   __test_context_a(1);
@@ -394,6 +481,7 @@ int test_context() {
   log_print_all();
   return 0;
 }
+/** [context] */
 
 #if INTERFACE
 typedef char tag_t[4];
@@ -451,7 +539,7 @@ int gather_bits(int y) {
   return x;
 }
 
-int test_spread_gather_bits() {
+TEST(spread_gather_bits) {
   int x = 0x9AC35;
   int spread = spread_bits(x);
   int gather = gather_bits(spread);
@@ -463,6 +551,9 @@ const unsigned int tag_factor = 510199;
 const unsigned int tag_factor_inverse = 96455;
 const unsigned int tag_mask = 0x7ffff;
 
+/** Write log tag for the given value.
+ * @snippet log.c tag
+ */
 void write_tag(tag_t tag, unsigned int val) {
   val += 1;
   val *= tag_factor;
@@ -473,6 +564,9 @@ void write_tag(tag_t tag, unsigned int val) {
   }
 }
 
+/** Return value from the given log tag.
+ * @snippet log.c tag
+ */
 int read_tag(const tag_t tag) {
   unsigned int val = 0;
   COUNTUP(i, sizeof(tag_t)) {
@@ -485,14 +579,62 @@ int read_tag(const tag_t tag) {
   return val - 1;
 }
 
-int test_tag() {
+TEST(tag) {
+  /** [tag] */
   tag_t tag = "good";
   int x = read_tag(tag);
   write_tag(tag, x);
   printf("tag: %d = " FORMAT_TAG "\n", x, tag);
   return strncmp("good", tag, sizeof(tag)) == 0 ? 0 : -1;
+  /** [tag] */
 }
 
+/** Get the most recent log tag. */
 void get_tag(tag_t tag) {
   write_tag(tag, msg_head);
+}
+
+#if INTERFACE
+/** Tweaks are values that can be changed at a specific point.
+ * Tweaks allow modifying something at a specific time, identified
+ * by looking up the log tag in the log.
+ * @param default_value value returned when not "tweaked."
+ * Remaining arguments are logged.
+ */
+#define TWEAK(default_value, fmt, ...)                          \
+  ({                                                            \
+    const char *c;                                              \
+    intptr_t x;                                                 \
+    if unlikely(log_do_tweak(&x)) {                             \
+      c = COLOR_blue;                                           \
+    } else {                                                    \
+      x = (default_value);                                      \
+      c = COLOR_normal;                                         \
+    }                                                           \
+    LOG(COLORs("TWEAK(%d)") " " fmt, c, x, ##__VA_ARGS__);      \
+    x;                                                          \
+  })
+#endif
+
+bool log_do_tweak(intptr_t *x) {
+  if unlikely(tweak_enabled && log_head == tweak_trigger) {
+    *x = tweak_value;
+    return true;
+  } else {
+    return false;
+  }
+}
+
+/** Tweak to the value at the given log tag.
+ * Only one tweak can be set at a time.
+ */
+void log_set_tweak(const tag_t tag, intptr_t value) {
+  tweak_enabled = true;
+  tweak_trigger = read_tag(tag);
+  tweak_value = value;
+}
+
+/** Clear the tweak. */
+void log_unset_tweak() {
+  tweak_enabled = false;
 }

@@ -1,58 +1,32 @@
+/* Copyright 2012-2018 Dustin M. DeWeese
+
+   This file is part of the Startle library.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
 #ifndef __DISPATCH__
 #define __DISPATCH__
 
-// DISPATCH ________________________________________________________________________________
-
-// macro to allow handling optional macro arguments
-// DISPATCH(MAC, n, x_0 .. x_m) will reduce to MAC_i(x_0 .. x_m), where i = n-m, so i is the number of missing arguments
-#define DISPATCH(m, n, ...) \
-  CONCAT(DISPATCH, n)(m, __VA_ARGS__, _0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, _17, _18, _19, _20)
-#define  DISPATCH0(m, argc, ...) \
-      CONCAT(m, argc)()
-#define  DISPATCH1(m, x0, argc, ...) \
-      CONCAT(m, argc)(x0)
-#define  DISPATCH2(m, x0, x1, argc, ...) \
-      CONCAT(m, argc)(x0, x1)
-#define  DISPATCH3(m, x0, x1, x2, argc, ...) \
-      CONCAT(m, argc)(x0, x1, x2)
-#define  DISPATCH4(m, x0, x1, x2, x3, argc, ...) \
-      CONCAT(m, argc)(x0, x1, x2, x3)
-#define  DISPATCH5(m, x0, x1, x2, x3, x4, argc, ...) \
-      CONCAT(m, argc)(x0, x1, x2, x3, x4)
-#define  DISPATCH6(m, x0, x1, x2, x3, x4, x5, argc, ...) \
-      CONCAT(m, argc)(x0, x1, x2, x3, x4, x5)
-#define  DISPATCH7(m, x0, x1, x2, x3, x4, x5, x6, argc, ...) \
-      CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6)
-#define  DISPATCH8(m, x0, x1, x2, x3, x4, x5, x6, x7, argc, ...) \
-      CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7)
-#define  DISPATCH9(m, x0, x1, x2, x3, x4, x5, x6, x7, x8, argc, ...) \
-      CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7, x8)
-#define DISPATCH10(m, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, argc, ...) \
-      CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9)
-#define DISPATCH11(m, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, argc, ...) \
-      CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10)
-#define DISPATCH12(m, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, argc, ...) \
-      CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11)
-#define DISPATCH13(m, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, argc, ...) \
-      CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12)
-#define DISPATCH14(m, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, argc, ...) \
-      CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13)
-#define DISPATCH15(m, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, argc, ...) \
-      CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14)
-#define DISPATCH16(m, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, argc, ...) \
-      CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15)
-#define DISPATCH17(m, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, argc, ...) \
-      CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16)
-#define DISPATCH18(m, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, argc, ...) \
-      CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17)
-#define DISPATCH19(m, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, argc, ...) \
-      CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18)
-#define DISPATCH20(m, x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, argc, ...) \
-      CONCAT(m, argc)(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19)
-
+/** @file
+ *  @brief Function dispatch for variable arguments
+ */
 
 // GET ________________________________________________________________________________
 
+/** Accessor macro for simulated tuples.
+ * GET(N, (x0, x1, ..., xN)) returns xN
+ */
 #define GET(n, t) CONCAT(GET, n) t
 #define GET0(x0, ...) x0
 #define GET1(x0, x1, ...) x1
@@ -63,10 +37,85 @@
 #define GET6(x0, x1, x2, x3, x4, x5, x6, ...) x6
 #define GET7(x0, x1, x2, x3, x4, x5, x6, x7, ...) x7
 #define GET8(x0, x1, x2, x3, x4, x5, x6, x7, x8, ...) x8
+#define GET20(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, ...) x20
+
+// DISPATCH ________________________________________________________________________________
+
+/** Return the number of arguments */
+#define ARG_COUNT(...) GET20(_X, ##__VA_ARGS__, _19, _18, _17, _16, _15, _14, _13, _12, _11, _10, _9, _8, _7, _6, _5, _4, _3, _2, _1, _0)
+
+/** macro to allow handling optional macro arguments
+ * DISPATCH(MACRO_NAME, ...) calls MACRO_NAME_N(...) where N is the number of arguments other than MACRO_NAME.
+ * The typical use is:
+ * #define MACRO_NAME(...) DISPATCH(MACRO_NAME, __VA_ARGS__)
+ * to define an overloaded macro that takes a variable number of arguments
+ * @snippet test.c macro_dispatch
+ */
+#define DISPATCH(m, ...) CONCAT(m, ARG_COUNT(__VA_ARGS__))(__VA_ARGS__)
 
 // FORARG ________________________________________________________________________________
 
-#define FORARG_0(name, x0, x1, x2, x3, x4, x5, x6, x7, x8, ...) \
+#define FORARG_2(name, x0)                              \
+  CONCAT(name, _pre)                                    \
+  CONCAT(name, _only)(GET(0, CONCAT(name, _args)), x0)  \
+  CONCAT(name, _post)
+#define FORARG_3(name, x0, x1)                          \
+  CONCAT(name, _pre)                                    \
+  CONCAT(name, _first)(GET(1, CONCAT(name, _args)), x0) \
+  CONCAT(name, _last)(x1)                               \
+  CONCAT(name, _post)
+#define FORARG_4(name, x0, x1, x2)                      \
+  CONCAT(name, _pre)                                    \
+  CONCAT(name, _first)(GET(2, CONCAT(name, _args)), x0) \
+  CONCAT(name, _middle)(x1)                             \
+  CONCAT(name, _last)(x2)                               \
+  CONCAT(name, _post)
+#define FORARG_5(name, x0, x1, x2, x3)                  \
+  CONCAT(name, _pre)                                    \
+  CONCAT(name, _first)(GET(3, CONCAT(name, _args)), x0) \
+  CONCAT(name, _middle)(x1)                             \
+  CONCAT(name, _middle)(x2)                             \
+  CONCAT(name, _last)(x3)                               \
+  CONCAT(name, _post)
+#define FORARG_6(name, x0, x1, x2, x3, x4)              \
+  CONCAT(name, _pre)                                    \
+  CONCAT(name, _first)(GET(4, CONCAT(name, _args)), x0) \
+  CONCAT(name, _middle)(x1)                             \
+  CONCAT(name, _middle)(x2)                             \
+  CONCAT(name, _middle)(x3)                             \
+  CONCAT(name, _last)(x4)                               \
+  CONCAT(name, _post)
+#define FORARG_7(name, x0, x1, x2, x3, x4, x5)          \
+  CONCAT(name, _pre)                                    \
+  CONCAT(name, _first)(GET(5, CONCAT(name, _args)), x0) \
+  CONCAT(name, _middle)(x1)                             \
+  CONCAT(name, _middle)(x2)                             \
+  CONCAT(name, _middle)(x3)                             \
+  CONCAT(name, _middle)(x4)                             \
+  CONCAT(name, _last)(x5)                               \
+  CONCAT(name, _post)
+#define FORARG_8(name, x0, x1, x2, x3, x4, x5, x6)      \
+  CONCAT(name, _pre)                                    \
+  CONCAT(name, _first)(GET(6, CONCAT(name, _args)), x0) \
+  CONCAT(name, _middle)(x1)                             \
+  CONCAT(name, _middle)(x2)                             \
+  CONCAT(name, _middle)(x3)                             \
+  CONCAT(name, _middle)(x4)                             \
+  CONCAT(name, _middle)(x5)                             \
+  CONCAT(name, _last)(x6)                               \
+  CONCAT(name, _post)
+#define FORARG_9(name, x0, x1, x2, x3, x4, x5, x6, x7)          \
+  CONCAT(name, _pre)                                            \
+  CONCAT(name, _first)(GET(7, CONCAT(name, _args)), x0)         \
+  CONCAT(name, _middle)(x1)                                     \
+  CONCAT(name, _middle)(x2)                                     \
+  CONCAT(name, _middle)(x3)                                     \
+  CONCAT(name, _middle)(x4)                                     \
+  CONCAT(name, _middle)(x5)                                     \
+  CONCAT(name, _middle)(x6)                                     \
+  CONCAT(name, _last)(x7)                                       \
+  CONCAT(name, _post)
+#define FORARG_10(name, x0, x1, x2, x3, x4, x5, x6, x7, x8)     \
   CONCAT(name, _pre)                                            \
   CONCAT(name, _first)(GET(8, CONCAT(name, _args)), x0)         \
   CONCAT(name, _middle)(x1)                                     \
@@ -78,68 +127,29 @@
   CONCAT(name, _middle)(x7)                                     \
   CONCAT(name, _last)(x8)                                       \
   CONCAT(name, _post)
-#define FORARG_1(name, x0, x1, x2, x3, x4, x5, x6, x7, ...)     \
-  CONCAT(name, _pre)                                            \
-  CONCAT(name, _first)(GET(7, CONCAT(name, _args)), x0)         \
-  CONCAT(name, _middle)(x1)                                     \
-  CONCAT(name, _middle)(x2)                                     \
-  CONCAT(name, _middle)(x3)                                     \
-  CONCAT(name, _middle)(x4)                                     \
-  CONCAT(name, _middle)(x5)                                     \
-  CONCAT(name, _middle)(x6)                                     \
-  CONCAT(name, _last)(x7)                                       \
-  CONCAT(name, _post)
-#define FORARG_2(name, x0, x1, x2, x3, x4, x5, x6, ...) \
-  CONCAT(name, _pre)                                    \
-  CONCAT(name, _first)(GET(6, CONCAT(name, _args)), x0) \
-  CONCAT(name, _middle)(x1)                             \
-  CONCAT(name, _middle)(x2)                             \
-  CONCAT(name, _middle)(x3)                             \
-  CONCAT(name, _middle)(x4)                             \
-  CONCAT(name, _middle)(x5)                             \
-  CONCAT(name, _last)(x6)                               \
-  CONCAT(name, _post)
-#define FORARG_3(name, x0, x1, x2, x3, x4, x5, ...)     \
-  CONCAT(name, _pre)                                    \
-  CONCAT(name, _first)(GET(5, CONCAT(name, _args)), x0) \
-  CONCAT(name, _middle)(x1)                             \
-  CONCAT(name, _middle)(x2)                             \
-  CONCAT(name, _middle)(x3)                             \
-  CONCAT(name, _middle)(x4)                             \
-  CONCAT(name, _last)(x5)                               \
-  CONCAT(name, _post)
-#define FORARG_4(name, x0, x1, x2, x3, x4, ...)         \
-  CONCAT(name, _pre)                                    \
-  CONCAT(name, _first)(GET(4, CONCAT(name, _args)), x0) \
-  CONCAT(name, _middle)(x1)                             \
-  CONCAT(name, _middle)(x2)                             \
-  CONCAT(name, _middle)(x3)                             \
-  CONCAT(name, _last)(x4)                               \
-  CONCAT(name, _post)
-#define FORARG_5(name, x0, x1, x2, x3, ...)             \
-  CONCAT(name, _pre)                                    \
-  CONCAT(name, _first)(GET(3, CONCAT(name, _args)), x0) \
-  CONCAT(name, _middle)(x1)                             \
-  CONCAT(name, _middle)(x2)                             \
-  CONCAT(name, _last)(x3)                               \
-  CONCAT(name, _post)
-#define FORARG_6(name, x0, x1, x2, ...)                 \
-  CONCAT(name, _pre)                                    \
-  CONCAT(name, _first)(GET(2, CONCAT(name, _args)), x0) \
-  CONCAT(name, _middle)(x1)                             \
-  CONCAT(name, _last)(x2)                               \
-  CONCAT(name, _post)
-#define FORARG_7(name, x0, x1, ...)                     \
-  CONCAT(name, _pre)                                    \
-  CONCAT(name, _first)(GET(1, CONCAT(name, _args)), x0) \
-  CONCAT(name, _last)(x1)                               \
-  CONCAT(name, _post)
-#define FORARG_8(name, x0, ...)                         \
-  CONCAT(name, _pre)                                    \
-  CONCAT(name, _only)(GET(0, CONCAT(name, _args)), x0)  \
-  CONCAT(name, _post)
 
-#define FORARG(name, ...) DISPATCH(FORARG, 10, name, __VA_ARGS__)
+/** Create a macro that iterates over its arguments.
+ * FORARG is a flexible iteration macro that can expand its
+ * arguments into repeated actions.
+ *
+ * FORARG(NAME, ...) where
+ * #define NAME_pre
+ *   expanded before FORARG(NAME, ...)
+ * #define NAME_first(s, x)
+ *   s is selected from NAME_args based on the number of arguments
+ *   x is the first argument
+ * #define NAME_middle(x)
+ *   x is an argument that is neither first nor last
+ * #define NAME_last(x)
+ *   x is the last argument
+ * #define NAME_only(x)
+ *   x is the only argument
+ * #define NAME_post
+ *   expanded after FORARG(NAME, ...)
+ * #define NAME_args (x0, x1, ..., xN)
+ *   used in NAME_first for `s`
+ */
+#define FORARG(name, ...) DISPATCH(FORARG, name, __VA_ARGS__)
 
 #define DUMMY_args (x, x, x, x, x, x, x, x, x)
 

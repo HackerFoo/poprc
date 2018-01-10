@@ -1,18 +1,18 @@
-/* Copyright 2012-2017 Dustin DeWeese
-   This file is part of PoprC.
+/* Copyright 2012-2018 Dustin M. DeWeese
 
-    PoprC is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+   This file is part of the Startle library.
 
-    PoprC is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-    You should have received a copy of the GNU General Public License
-    along with PoprC.  If not, see <http://www.gnu.org/licenses/>.
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 */
 
 #include <stdio.h>
@@ -30,14 +30,26 @@
 #include "startle/support.h"
 #include "startle/map.h"
 
+/** @file
+ *  @brief Zero space overhead maps
+ */
+
 #if INTERFACE
+
+/** A map for key-value pairs. */
 typedef pair_t * map_t;
+
+/** Declare a map to hold `size` key-value pairs. */
 #define MAP(name, size) pair_t name[(size) + 1] = {{(size), 0}}
+
+/** A key comparison function. */
 typedef bool (cmp_t)(uintptr_t, uintptr_t);
+
 #endif
+
 #define DEBUG 0
 
-// scans for a pair with a lesser key
+/** Scan for a pair with a lesser key. */
 static
 size_t scan(pair_t *start, pair_t *end, uintptr_t key, cmp_t cmp) {
   size_t cnt = 0;
@@ -49,21 +61,21 @@ size_t scan(pair_t *start, pair_t *end, uintptr_t key, cmp_t cmp) {
   return cnt;
 }
 
-// NOTE: non-overlapping
+/** Swap two non-overlapping blocks of `n` pairs. */
 void swap_block(pair_t *a, pair_t *b, size_t n) {
   while(n--) {
     swap(a++, b++);
   }
 }
 
-
+/** Reverse `n` pairs. */
 void reverse(pair_t *a, size_t n) {
   size_t m = n / 2;
   pair_t *b = a + n;
   while(m--) swap(a++, --b);
 }
 
-// O(n) inplace rotate
+/** O(n) in-place rotation by `n` pairs. */
 void rotate(pair_t *a, pair_t *b, size_t n) {
   if(a == b) return;
   const size_t m = b - a;
@@ -115,8 +127,12 @@ bool is_ordered(pair_t *x, size_t r, size_t n, cmp_t cmp) {
 }
 #endif
 
-// arr points to the array of size n
-// b is the start of the second sorted section
+/** Merge an array of two sorted sequences of pairs into one.
+ * @param arr the array
+ * @b pointer to second sequence
+ * @n number of pairs in the array
+ * @param cmp key comparison function.
+ */
 static
 void merge(pair_t *arr, pair_t *b, size_t n, cmp_t cmp) {
 #if(DEBUG)
@@ -194,11 +210,13 @@ void merge(pair_t *arr, pair_t *b, size_t n, cmp_t cmp) {
   }
 }
 
+/** Direct key comparison. */
 static
 bool key_cmp(uintptr_t a, uintptr_t b) {
   return a < b;
 }
 
+/** String key comparison. */
 static
 bool string_cmp(uintptr_t a, uintptr_t b) {
   return strcmp((char *)a, (char *)b) < 0;
@@ -212,7 +230,7 @@ bool string_cmp(uintptr_t a, uintptr_t b) {
   } while(0)
 
 
-int test_merge() {
+TEST(merge) {
   pair_t arr1[] = {{0, 0}, {2, 1}, {4, 2}, {6, 3}, {1, 4}, {3, 5}, {5, 6}, {7, 7}};
   MERGE_TEST(arr1);
 
@@ -243,14 +261,17 @@ int test_merge() {
   return 0;
 }
 
+/** Return number of entries that can be stored in a map. */
 size_t map_size(map_t map) {
   return map[0].first;
 }
 
+/** Return number of entries currently stored in a map. */
 size_t *map_cnt(map_t map) {
   return &map[0].second;
 }
 
+/** Clear all entries from the map. */
 void map_clear(map_t map) {
   *map_cnt(map) = 0;
 }
@@ -286,15 +307,20 @@ void _map_sort_full(map_t map, cmp_t cmp) {
   }
 }
 
+/** Fully sort map.
+ * Takes O(log n) time.
+ * Lookup will be O(log n) afterwards.
+ */
 void map_sort_full(map_t map) {
   _map_sort_full(map, key_cmp);
 }
 
+/** Fully sort a map with string keys. */
 void string_map_sort_full(map_t map) {
   _map_sort_full(map, string_cmp);
 }
 
-int test_map_sort_full() {
+TEST(map_sort_full) {
   MAP(a, 21);
   *map_cnt(a) = 21;
   COUNTUP(i, 16) {
@@ -325,10 +351,16 @@ bool _map_insert(map_t map, pair_t x, cmp_t cmp) {
   return true;
 }
 
+/** Insert an entry into a map.
+ * O(log n) average time, up to O(n).
+ * @return true if inserted
+ * @snippet map.c map
+ */
 bool map_insert(map_t map, pair_t x) {
   return _map_insert(map, x, key_cmp);
 }
 
+/** Insert an entry into a string map. */
 bool string_map_insert(map_t map, pair_t x) {
   return _map_insert(map, x, string_cmp);
 }
@@ -366,10 +398,12 @@ bool _map_merge(map_t map, pair_t *x, size_t n, cmp_t cmp) {
   return true;
 }
 
+/** Merge `n` sorted entries at `x` into the map. */
 bool map_merge(map_t map, pair_t *x, size_t n) {
   return _map_merge(map, x, n, key_cmp);
 }
 
+/** Merge `n` sorted string entries at `x` into the map. */
 bool string_map_merge(map_t map, pair_t *x, size_t n) {
   return _map_merge(map, x, n, string_cmp);
 }
@@ -395,15 +429,17 @@ bool _map_union(map_t a, map_t b, cmp_t cmp) {
   return true;
 }
 
+/** Merge both maps into `a`. */
 bool map_union(map_t a, map_t b) {
   return _map_union(a, b, key_cmp);
 }
 
+/** Merge both string maps into `a`. */
 bool string_map_union(map_t a, map_t b) {
   return _map_union(a, b, string_cmp);
 }
 
-int test_map_union() {
+TEST(map_union) {
   COUNTUP(n, 9) {
     MAP(a, 16);
     MAP(b, 8);
@@ -431,7 +467,7 @@ bool _map_replace_insert(map_t map, pair_t x, cmp_t cmp) {
   }
 }
 
-int test_map_merge() {
+TEST(map_merge) {
   pair_t map[17] = {
     {LENGTH(map) - 1, 5},
     {0,0}, {4,0}, {12, 0}, {16, 0},
@@ -452,14 +488,22 @@ int test_map_merge() {
   return 0;
 }
 
+/** Insert into a map, replacing any entry with the same key. */
 bool map_replace_insert(map_t map, pair_t x) {
   return _map_replace_insert(map, x, key_cmp);
 }
 
+/** Insert into a string map, replacing any entry with the same key. */
 bool string_map_replace_insert(map_t map, pair_t x) {
   return _map_replace_insert(map, x, string_cmp);
 }
 
+/** Look up an entry in a map.
+ * O((log n)^2) time
+ * O(log n) time if the map is fully sorted.
+ * @see map_sort_full
+ * @return a pointer to the entry if found, otherwise NULL.
+ */
 pair_t *map_find(map_t map, uintptr_t key) {
   uintptr_t x = *map_cnt(map);
   pair_t *elems = map_elems(map);
@@ -475,12 +519,21 @@ pair_t *map_find(map_t map, uintptr_t key) {
   return result;
 }
 
+/** Return the value for a key in a map.
+ * Raises an error if the key in not found.
+ */
 uintptr_t map_get(map_t map, uintptr_t key) {
   pair_t *x = map_find(map, key);
   assert_error(x);
   return x->second;
 }
 
+/** Look up an entry in a string map.
+ * O((log n)^2) time
+ * O(log n) time if the map is fully sorted.
+ * @see map_sort_full
+ * @return pointer to the entry if found, otherwise NULL
+ */
 pair_t *string_map_find(map_t map, const char *key) {
   uintptr_t x = *map_cnt(map);
   pair_t *elems = map_elems(map);
@@ -496,6 +549,12 @@ pair_t *string_map_find(map_t map, const char *key) {
   return result;
 }
 
+/** Look up an entry in a string segment map.
+ * O((log n)^2) time
+ * O(log n) time if the map is fully sorted.
+ * @see map_sort_full
+ * @return pointer to the entry if found, otherwise NULL
+ */
 pair_t *seg_map_find(map_t map, seg_t key) {
   uintptr_t x = *map_cnt(map);
   pair_t *elems = map_elems(map);
@@ -511,6 +570,10 @@ pair_t *seg_map_find(map_t map, seg_t key) {
   return result;
 }
 
+/** Look up a value in a map.
+ * O(n) time
+ * @return pointer to the value if found, otherwise NULL
+ */
 pair_t *map_find_value(map_t map, uintptr_t value) {
   uintptr_t x = *map_cnt(map);
   pair_t *elems = map_elems(map);
@@ -525,6 +588,7 @@ pair_t *map_find_value(map_t map, uintptr_t value) {
 }
 
 #if INTERFACE
+/** Print a map. */
 #define print_map(map) _print_map(#map, map)
 #endif
 
@@ -535,6 +599,7 @@ void _print_map(char *name, map_t map) {
 }
 
 #if INTERFACE
+/** Print a string map. */
 #define print_string_map(map) _print_string_map(#map, map)
 #endif
 
@@ -557,7 +622,8 @@ pair_t *_find_test(map_t map, char *name, uintptr_t key) {
   return p;
 }
 
-int test_map() {
+TEST(map) {
+  /** [map] */
   int ret = 0;
   MAP(map, 32);
   int elems[] = {2, 5, 8, 3, 1, 0, 4, 7, 6, 9, 10, 15, 13, 11, 12};
@@ -566,6 +632,7 @@ int test_map() {
     map_insert(map, p);
   }
   print_map(map);
+  /** [map] */
 
   FOREACH(i, elems) {
     pair_t *p = find_test(map, elems[i]);
@@ -596,7 +663,7 @@ static bool expect(map_t map, uintptr_t key, uintptr_t x) {
   return true;
 }
 
-int test_map_stack_behavior() {
+TEST(map_stack_behavior) {
   #define M 2
   #define N 8
   MAP(map, (M * N));
@@ -617,7 +684,7 @@ int test_map_stack_behavior() {
   #undef N
 }
 
-int test_rotate() {
+TEST(rotate) {
   pair_t arr[7];
   FOREACH(i, arr) {
     arr[i].first = i;
@@ -634,7 +701,7 @@ int test_rotate() {
 }
 
 /*
-//int test_rotate_speed() {
+// TEST(rotate_speed) {
   size_t cnt = 1 << 28;
   pair_t *arr = calloc(cnt, sizeof(pair_t));
   rotate(arr, arr + (1 << 27) - 1, cnt);
@@ -643,7 +710,7 @@ int test_rotate() {
 }
 */
 
-int test_string_map() {
+TEST(string_map) {
   char *strings[] = {
     "one",
     "two",
