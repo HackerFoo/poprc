@@ -57,7 +57,6 @@ cell_t *_op2(val_t (*op)(val_t, val_t), cell_t *x, cell_t *y) {
     res->value.integer[i] = op(x->value.integer[i],
                                y->value.integer[i]);
   }
-  res->size = size + 1;
   return res;
 }
 
@@ -67,7 +66,6 @@ cell_t *_op1(val_t (*op)(val_t), cell_t *x) {
   COUNTUP(i, size) {
     res->value.integer[i] = op(x->value.integer[i]);
   }
-  res->size = size + 1;
   return res;
 }
 
@@ -132,7 +130,6 @@ cell_t *_op2_float(double (*op)(double, double), cell_t *x, cell_t *y) {
     res->value.flt[i] = op(x->value.flt[i],
                            y->value.flt[i]);
   }
-  res->size = size + 1;
   return res;
 }
 
@@ -255,6 +252,72 @@ bool func_eq_s(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_S
 val_t neq_op(val_t x, val_t y) { return x != y; }
 bool func_neq(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, neq_op, false); }
 bool func_neq_s(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_SYMBOL, T_SYMBOL, neq_op, false); }
+
+// WORD("->f", to_float, 1, 1)
+bool func_to_float(cell_t **cp, type_request_t treq) {
+  cell_t *c = *cp;
+  cell_t *res = 0;
+  PRE(c, to_float);
+
+  if(!check_type(treq.t, T_FLOAT)) goto fail;
+
+  alt_set_t alt_set = 0;
+  if(!reduce_arg(c, 0, &alt_set, req_simple(T_INT))) goto fail;
+  clear_flags(c);
+
+  cell_t *p = c->expr.arg[0];
+  if(is_var(p)) {
+    res = var(T_FLOAT, c);
+  } else {
+    csize_t size = val_size(p);
+    res = vector(size);
+    COUNTUP(i, size) {
+      res->value.flt[i] = p->value.integer[i];
+    }
+  }
+  res->value.type.exclusive = T_FLOAT;
+  res->alt = c->alt;
+  res->value.alt_set = alt_set;
+  store_reduced(cp, res);
+  return true;
+
+ fail:
+  fail(cp, treq);
+  return false;
+}
+
+// WORD("trunc", trunc, 1, 1)
+bool func_trunc(cell_t **cp, type_request_t treq) {
+  cell_t *c = *cp;
+  cell_t *res = 0;
+  PRE(c, to_float);
+
+  if(!check_type(treq.t, T_INT)) goto fail;
+
+  alt_set_t alt_set = 0;
+  if(!reduce_arg(c, 0, &alt_set, req_simple(T_FLOAT))) goto fail;
+  clear_flags(c);
+
+  cell_t *p = c->expr.arg[0];
+  if(is_var(p)) {
+    res = var(T_INT, c);
+  } else {
+    csize_t size = val_size(p);
+    res = vector(size);
+    COUNTUP(i, size) {
+      res->value.integer[i] = p->value.flt[i];
+    }
+  }
+  res->value.type.exclusive = T_INT;
+  res->alt = c->alt;
+  res->value.alt_set = alt_set;
+  store_reduced(cp, res);
+  return true;
+
+ fail:
+  fail(cp, treq);
+  return false;
+}
 
 // WORD("pushr", pushr, 2, 1)
 bool func_pushr(cell_t **cp, UNUSED type_request_t treq) {
