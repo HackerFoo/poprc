@@ -33,6 +33,17 @@ bool func_value(cell_t **cp, type_request_t treq) {
   PRE(c, value);
   stats.reduce_cnt--;
 
+  // promote integer constants to float constants
+  if(treq.t == T_FLOAT &&
+     NOT_FLAG(c->value.type, T_VAR) &&
+     c->value.type.exclusive == T_INT) {
+    val_t x = c->value.integer[0];
+    LOG("convert integer constant %d", x);
+    *cp = float_val(x);
+    drop(c);
+    return false;
+  }
+
   if(FLAG(c->value.type, T_FAIL) ||
      !type_match(treq.t, c)) {
     if(treq.t == T_FUNCTION && c == &nil_cell) return true; // HACK

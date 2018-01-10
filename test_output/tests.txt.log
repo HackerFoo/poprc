@@ -94,3 +94,6 @@ __ test assert with > 2 alts
   2
 [1] 2 pushr [3] 4 pushr .
   [ 1 2 3 4 ]
+__ test integer -> float promotion
+1 2.3 +f
+  3.3

@@ -81,7 +81,7 @@ __ !!: dropl head
 __ a [a -> a] -> [a]
 iteratel: [dup [peek] dip22 iteratel swap] ap20
 
-concat: [] [.] foldr
+__ concat: [] [.] foldr
 
 mov_ap: dup -swap2 [. movr] dip32
 __ map: [] swap map_

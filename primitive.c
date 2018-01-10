@@ -124,6 +124,46 @@ bool func_op1(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_
   return false;
 }
 
+cell_t *_op2_float(double (*op)(double, double), cell_t *x, cell_t *y) {
+  csize_t size = min(val_size(x),
+                     val_size(y));
+  cell_t *res = vector(size);
+  COUNTUP(i, size) {
+    res->value.flt[i] = op(x->value.flt[i],
+                           y->value.flt[i]);
+  }
+  res->size = size + 1;
+  return res;
+}
+
+bool func_op2_float(cell_t **cp, type_request_t treq, double (*op)(double, double), bool nonzero) {
+  cell_t *c = *cp;
+  cell_t *res = 0;
+  PRE(c, op2);
+
+  if(!check_type(treq.t, T_FLOAT)) goto fail;
+
+  alt_set_t alt_set = 0;
+  type_request_t atr = req_simple(T_FLOAT);
+  if(!reduce_arg(c, 0, &alt_set, atr) ||
+     !reduce_arg(c, 1, &alt_set, atr) ||
+     as_conflict(alt_set)) goto fail;
+  clear_flags(c);
+
+  cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
+  if(nonzero && !is_var(q) && q->value.flt[0] == 0.0) goto fail; // TODO assert this for variables
+  res = is_var(p) || is_var(q) ? var(treq.t, c) : _op2_float(op, p, q);
+  res->value.type.exclusive = T_FLOAT;
+  res->alt = c->alt;
+  res->value.alt_set = alt_set;
+  store_reduced(cp, res);
+  return true;
+
+ fail:
+  fail(cp, treq);
+  return false;
+}
+
 // WORD("+", add, 2, 1)
 val_t add_op(val_t x, val_t y) { return x + y; }
 bool func_add(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, add_op, false); }
@@ -143,6 +183,22 @@ bool func_div(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_IN
 // WORD("%", mod, 2, 1)
 val_t mod_op(val_t x, val_t y) { return x % y; }
 bool func_mod(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, mod_op, true); }
+
+// WORD("+f", add_float, 2, 1)
+double add_float_op(double x, double y) { return x + y; }
+bool func_add_float(cell_t **cp, type_request_t treq) { return func_op2_float(cp, treq, add_float_op, false); }
+
+// WORD("*f", mul_float, 2, 1)
+double mul_float_op(double x, double y) { return x * y; }
+bool func_mul_float(cell_t **cp, type_request_t treq) { return func_op2_float(cp, treq, mul_float_op, false); }
+
+// WORD("-f", sub_float, 2, 1)
+double sub_float_op(double x, double y) { return x - y; }
+bool func_sub_float(cell_t **cp, type_request_t treq) { return func_op2_float(cp, treq, sub_float_op, false); }
+
+// WORD("/f", div_float, 2, 1)
+double div_float_op(double x, double y) { return x / y; }
+bool func_div_float(cell_t **cp, type_request_t treq) { return func_op2_float(cp, treq, div_float_op, true); }
 
 // WORD("&b", bitand, 2, 1)
 val_t bitand_op(val_t x, val_t y) { return x & y; }
@@ -497,39 +553,6 @@ bool func_print(cell_t **cp, type_request_t treq) {
 
 bool is_list_var(cell_t *c) {
   return is_row_list(c) && is_placeholder(c->value.ptr[0]);
-}
-
-// WORD("is_nil", is_nil, 1, 1)
-bool func_is_nil(cell_t **cp, type_request_t treq) {
-  cell_t *c = *cp;
-  PRE(c, is_nil);
-
-  if(!check_type(treq.t, T_SYMBOL)) goto fail;
-
-  alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 0, &alt_set, REQ(list, 0, 0))) goto fail;
-  clear_flags(c);
-
-  cell_t *p = c->expr.arg[0];
-  cell_t *res;
-
-  if(is_list_var(p)) {
-    // ensure quote is stored first
-    c->expr.arg[0] = trace_quote_var(p);
-    drop(p);
-    res = var(T_SYMBOL, c);
-  } else {
-    res = symbol(is_empty_list(p) ? SYM_True : SYM_False);
-  }
-
-  res->value.alt_set = alt_set;
-  res->alt = c->alt;
-  store_reduced(cp, res);
-  return true;
-
- fail:
-  fail(cp, treq);
-  return false;
 }
 
 bool func_type(cell_t **cp, type_request_t treq, uint8_t type) {
