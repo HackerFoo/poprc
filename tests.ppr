@@ -103,3 +103,6 @@ drop_loop: [] ap20 [[1-] .] [head 0 >] iterate popr drop popr swap drop
 
 __ rec_a: rec_b 1 +
 __ rec_b: rec_a 1 -
+
+__ using floats
+pct: ->f 100 /f 1 +f *f

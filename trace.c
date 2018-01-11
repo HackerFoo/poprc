@@ -101,14 +101,27 @@ int trace_decode(cell_t *c) {
   return (int)(intptr_t)FLIP_PTR(c);
 }
 
+bool equal_value(const cell_t *a, const cell_t *b) {
+  int type = a->value.type.exclusive;
+  if(b->value.type.exclusive != type) return false;
+  switch(type) {
+  case T_INT:
+  case T_SYMBOL:
+    return a->value.integer[0] == b->value.integer[0];
+  case T_FLOAT:
+    return a->value.flt[0] == b->value.flt[0];
+  default:
+    return false;
+  }
+}
+
 // look through the trace for a matching value
 static
-int trace_lookup_value_linear(cell_t *entry, int type, val_t value) {
+int trace_lookup_value_linear(cell_t *entry, const cell_t *c) {
   FOR_TRACE(p, entry) {
     if(p->func == func_value &&
        NOT_FLAG(p->value.type, T_VAR) &&
-       p->value.type.exclusive == type &&
-       p->value.integer[0] == value)
+       equal_value(p, c))
       return p - entry;
   }
   return -1;
@@ -176,7 +189,7 @@ int trace_get_value(cell_t *entry, cell_t *r) {
     switch_entry(entry, r);
     return r->value.tc.index;
   } else {
-    int t = trace_lookup_value_linear(entry, r->value.type.exclusive, r->value.integer[0]);
+    int t = trace_lookup_value_linear(entry, r);
     if(t) return t;
   }
   assert_error(false);
@@ -294,7 +307,7 @@ int trace_store_value(cell_t *entry, const cell_t *c) {
   assert_error(!is_list(c));
 
   // look to see if the value already is in the trace
-  int x = trace_lookup_value_linear(entry, c->value.type.exclusive, c->value.integer[0]);
+  int x = trace_lookup_value_linear(entry, c);
   if(x == -1) {
     x = trace_copy(entry, c);
     cell_t *tc = &entry[x];

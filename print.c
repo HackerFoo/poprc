@@ -497,6 +497,7 @@ char *show_type(type_t t) {
   _case(T_MAP);
   _case(T_STRING);
   _case(T_RETURN);
+  _case(T_FLOAT);
   _case(T_FUNCTION);
   _case(T_BOTTOM);
   default: return "???";
@@ -536,6 +537,7 @@ char type_char(type_t t) {
   case T_MAP: return 'm';
   case T_STRING: return 'S';
   case T_RETURN: return 'r';
+  case T_FLOAT: return 'd';
   case T_FUNCTION: return 'f';
   case T_BOTTOM: return '0';
   }

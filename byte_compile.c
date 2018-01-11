@@ -40,6 +40,27 @@
 #include "list.h"
 #include "trace.h"
 
+static void print_value(const cell_t *c) {
+  switch(c->value.type.exclusive) {
+  case T_INT:
+    printf(" val %" PRIdPTR, c->value.integer[0]);
+    break;
+  case T_SYMBOL: {
+    val_t x = c->value.integer[0];
+    const char *str = symbol_string(x);
+    if(!str) str = "??";
+    printf(" val %s", str);
+    break;
+  }
+  case T_FLOAT:
+    printf(" val %g", c->value.flt[0]);
+    break;
+  default:
+    printf(" val ??");
+    break;
+  }
+}
+
 // print bytecode for entry e
 void print_bytecode(cell_t *entry) {
   // word info (top line)
@@ -79,7 +100,7 @@ void print_bytecode(cell_t *entry) {
       } else if(is_var(c)) { // variable
         printf(" var");
       } else { // value
-        printf(" val %" PRIdPTR, c->value.integer[0]);
+        print_value(c);
       }
       printf(", type = %s", show_type_all_short(c->value.type));
       if(can_have_alt && c->alt) printf(" -> %d", trace_decode(c->alt));

@@ -437,7 +437,7 @@ ___ control.either (3 -> 1) x2 ___
 [4] __primitive.ap 3 -> 9 5, type = f x2
 [5] __primitive.dep 4, type = s x1
 [6] __primitive.eq_s 5 7, type = s x1
-[7] val 4, type = s x1
+[7] val Right, type = s x1
 [8] __primitive.assert 9 6, type = a x1
 [9] __primitive.dep 4, type = a x1
 [10] __primitive.ap 8 1 -> 11, type = f x1
@@ -446,7 +446,7 @@ ___ control.either (3 -> 1) x2 ___
 [13] __primitive.ap 3 -> 18 14, type = f x2
 [14] __primitive.dep 13, type = s x1
 [15] __primitive.eq_s 14 16, type = s x1
-[16] val 5, type = s x1
+[16] val Left, type = s x1
 [17] __primitive.assert 18 15, type = a x1
 [18] __primitive.dep 13, type = a x1
 [19] __primitive.ap 17 2 -> 20, type = f x1
@@ -541,7 +541,7 @@ ___ control.maybe (3 -> 1) x2 ___
 [4] __primitive.ap 1 2 3 -> 10 X 6, type = f x2
 [6] __primitive.dep 4, type = s x1
 [7] __primitive.eq_s 6 8, type = s x1
-[8] val 6, type = s x1
+[8] val Nothing, type = s x1
 [9] __primitive.assert 10 7, type = a x1
 [10] __primitive.dep 4, type = a x1
 [11] return [ 9 ], type = r -> 22 x1
@@ -549,7 +549,7 @@ ___ control.maybe (3 -> 1) x2 ___
 [14] __primitive.dep 12, type = f x1
 [15] __primitive.dep 12, type = s x1
 [16] __primitive.eq_s 15 17, type = s x1
-[17] val 7, type = s x1
+[17] val Just, type = s x1
 [18] __primitive.assert 19 16, type = a x1
 [19] __primitive.dep 12, type = a x1
 [20] __primitive.ap 18 14 -> 21, type = f x1
@@ -739,7 +739,7 @@ ___ logic.and (2 -> 1) x2 ___
 [4] return [ 3 ], type = r -> 8 x1
 [5] __primitive.not 1, type = s x1
 [6] __primitive.assert 7 5, type = s x1
-[7] val 0, type = s x1
+[7] val False, type = s x1
 [8] return [ 6 ], type = r x1
 
 ___ logic.implies (2 -> 1) x2 ___
@@ -750,7 +750,7 @@ ___ logic.implies (2 -> 1) x2 ___
 [5] __primitive.assert 1 4, type = a x1
 [6] return [ 5 ], type = r -> 9 x1
 [7] __primitive.assert 8 3, type = s x1
-[8] val 1, type = s x1
+[8] val True, type = s x1
 [9] return [ 7 ], type = r x1
 
 ___ logic.or (2 -> 1) x2 ___
@@ -760,7 +760,7 @@ ___ logic.or (2 -> 1) x2 ___
 [4] __primitive.assert 2 3, type = a x1
 [5] return [ 4 ], type = r -> 8 x1
 [6] __primitive.assert 7 1, type = s x1
-[7] val 1, type = s x1
+[7] val True, type = s x1
 [8] return [ 6 ], type = r x1
 
 ___ num.max (2 -> 1) x2 ___
@@ -1333,6 +1333,17 @@ ___ tests.it10b_r0_q0 (2 -> 1) ___
 [2] var, type = ?i x1
 [3] __primitive.compose 1 2 [], type = f x1
 [4] return [ 3 ], type = r x1
+
+___ tests.pct (2 -> 1) ___
+[1] var, type = ?i x1
+[2] var, type = ?d x1
+[3] __primitive.to_float 1, type = d x1
+[4] __primitive.div_float 3 5, type = d x1
+[5] val 100, type = d x1
+[6] __primitive.add_float 4 7, type = d x1
+[7] val 1, type = d x1
+[8] __primitive.mul_float 2 6, type = d x1
+[9] return [ 8 ], type = r x1
 
 ___ tests.popr_quote_compose (1 -> 1) ___
 [1] var, type = ?f x1
