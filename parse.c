@@ -229,7 +229,7 @@ cell_t *parse_vector(const cell_t **l) {
       t = tl->next;
       break;
     } else if(is_num(s)) {
-      c = pushl_val(atoi(s), c);
+      c = pushl_val(strtol(s, NULL, 0), c);
       t = tl->next;
     } else {
       drop(c);
@@ -273,7 +273,7 @@ bool match_class(const cell_t *c, char_class_t cc,
 }
 
 int parse_num(const cell_t *c) {
-  return atoi(c->tok_list.location);
+  return strtol(c->tok_list.location, NULL, 0);
 }
 
 #define MATCH_IF_4(p, label, cond, var)      \
@@ -511,7 +511,7 @@ cell_t *parse_expr(const cell_t **l, cell_t *module, cell_t *entry) {
 
     case CC_NUMERIC:
       assert_throw(n < MAX_ARGS);
-      arg_stack[n++] = int_val(atoi(seg.s));
+      arg_stack[n++] = int_val(strtol(seg.s, NULL, 0));
       break;
     case CC_FLOAT:
     {
@@ -679,7 +679,7 @@ cell_t *parse_expr_string(const char *expr) {
 bool parse_numeric_args(cell_t *l, int *arg, int n) {
   while(n--) {
     if(l && l->char_class == CC_NUMERIC) {
-      *arg++ = atoi(l->tok_list.location);
+      *arg++ = strtol(l->tok_list.location, NULL, 0);
       l = l->tok_list.next;
     } else {
       return false;

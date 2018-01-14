@@ -874,7 +874,7 @@ void trace_get_name(const cell_t *c, const char **module_name, const char **word
 cell_t *entry_from_token(cell_t *tok) {
   seg_t id = tok_seg(tok);
   if(tok->char_class == CC_NUMERIC) {
-    return entry_from_number(atoi(id.s));
+    return entry_from_number(strtol(id.s, NULL, 0));
   } else {
     cell_t *m = eval_module();
     return module_lookup_compiled(id, &m);
@@ -910,7 +910,7 @@ COMMAND(trace, "trace an instruction") {
                e->module_name,
                e->word_name);
       } else if(arg->char_class == CC_NUMERIC) {
-        int x = atoi(arg->tok_list.location);
+        int x = strtol(arg->tok_list.location, NULL, 0);
         if(x > 0 &&
            x <= e->entry.len &&
            !is_value(&e[x])) {

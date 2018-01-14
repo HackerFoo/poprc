@@ -39,9 +39,15 @@
 #include "module.h"
 #include "user_func.h"
 #include "list.h"
+#include "lex.h"
 
 static BITSET_INDEX(visited, cells);
 static BITSET_INDEX(marked, cells);
+
+static enum {
+  BASE_DEC = 0,
+  BASE_HEX
+} display_base = BASE_DEC;
 
 void mark_cell(cell_t *c) {
   if(is_cell(c)) {
@@ -352,15 +358,29 @@ void graph_cell(FILE *f, cell_t const *c) {
   }
 }
 
+static
+void print_int(val_t x) {
+  switch(display_base) {
+  case BASE_HEX:
+    printf(" 0x%" PRIxPTR, x);
+    break;
+  case BASE_DEC:
+  default:
+    printf(" %" PRIdPTR, x);
+    break;
+  }
+}
+
 void show_int(cell_t const *c) {
   assert_error(c && type_match(T_INT, c));
   int n = val_size(c);
   switch(n) {
   case 0: printf(" ()"); break;
-  case 1: printf(" %" PRIdPTR, c->value.integer[0]); break;
+  case 1:
+    print_int(c->value.integer[0]); break;
   default:
     printf(" (");
-    while(n--) printf(" %" PRIdPTR, c->value.integer[n]);
+    while(n--) print_int(c->value.integer[n]);
     printf(" )");
     break;
   }
@@ -607,4 +627,23 @@ void breakpoint_hook() {
   make_graph_all(NULL);
 }
 
+static char *show_base[] = {
+  [BASE_DEC] = "decimal",
+  [BASE_HEX] = "hexadecimal"
+};
 
+COMMAND(base, "set numeric base for display") {
+  if(rest) {
+    seg_t base = tok_seg(rest);
+    if(segcmp("dec", base) == 0) {
+      display_base = BASE_DEC;
+    } else if(segcmp("hex", base) == 0) {
+      display_base = BASE_HEX;
+    } else {
+      printf("Unknown base\n");
+    }
+  } else {
+    printf("Base is %s\n",
+           show_base[min(display_base, LENGTH(show_base)-1)]);
+  }
+}
