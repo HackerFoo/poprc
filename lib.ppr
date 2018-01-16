@@ -67,15 +67,15 @@ movr: [popr] dip12 pushl
 
 __ not working
 __ split_at: [[[]] pushl] dip11 [[movr] .] times ap02 swap2 drop
-__ split_at:
-__   [] ap30
-__     [[[movr] dip22 1-] .]
-__     [head 0 >]
-__     [popr drop]
-__     binrec pull2 drop swap
+split_at:
+  [] ap30
+    [[[movr] dip22 1-] .]
+    [head 0 >]
+    iterate popr drop pull2 drop swap
 
 __ index operator
 __ [f] index -> x
+__ ERROR: user_func.c:446: unwrap: Assertion `is_list(c) && list_size(c) == 1' failed
 __ !!: dropl head
 
 __ a [a -> a] -> [a]
@@ -113,7 +113,7 @@ module stack:
 imports:
   module control
 
-__ [x_1 ... x_n] -> [] x_n ... x_1
+__ [x_1 ... x_n] -> x_n ... x_1 []
 pull: popr swap
 pull2: pull pull
 pull3: pull2 pull
@@ -121,6 +121,8 @@ pull4: pull3 pull
 pull5: pull4 pull
 pull6: pull5 pull
 pull7: pull6 pull
+
+popd: popr drop
 
 rev3: [] ap30 pull3 drop
 
@@ -235,6 +237,7 @@ iterate:
 
 __ apply [f] n times
 __ times: swap times_
+__ ERROR user_func.c:416: flat_call: Assertion `tmp_list_length(vl) == in' failed: 3 != 4
 __ times_: __ a [f] n
 __   [] ap30
 __     [[times_step] .]
@@ -273,7 +276,7 @@ gcd:
   [] ap20 __ quote arguments [a b]
     [[tuck %] .] __ step: [a b] -> [b (a % b)]
     [head 0 !=] __ while: b != 0
-    iterate popr drop head __ return: a
+    iterate popd head __ return: a
 
 __ acc x power -> if odd power, acc*x, otherwise acc
 acc_odd_power: [[*] dip21 odd] ap20 ifdo
@@ -284,6 +287,7 @@ reduce_power: [dup *] [1 >>b] para
 __ acc x power -> acc' x^2 power/2
 power_step: in2 [acc_odd_power] dip31 ap02 swap2 drop reduce_power
 
+__ ERROR rt.c:864: assert_alt: Assertion `as_conflict(p->value.alt_set | alt_set)' failed: overlapping alts
 __ exponent:
 __   [] ap30
 __     [[power_step] .]
@@ -298,6 +302,7 @@ __ sum_: [[+] .] [popr drop is_nil not] iterate head int_t
 __ sum: 0 pushr sum_
 
 __ decreasing list from initial element
+__ ERROR byte_compile.c:207: condense: Assertion `trace_decode(*p) > 0' failed.
 __ iota: [1-] pushl [[dup 1-] .] [head 0 >] iterate
-__ iota2: [[dup 1-] .] [head 0 >] iterate
+iota2: [[dup 1-] .] [head 0 >] iterate
 __ iota3: [] pushl [[dup 1-] .] [head 0 >] iterate

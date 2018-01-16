@@ -65,7 +65,7 @@ cell_t *apply_list(cell_t *l, csize_t in, csize_t out) {
   if(in) {
     c->expr.arg[0] = (cell_t *)(intptr_t)(in - 1);
   } else {
-    FLAG_CLEAR(c->expr, FLAGS_NEEDS_ARG);
+    FLAG_CLEAR(c->expr, EXPR_NEEDS_ARG);
   }
   c->expr.arg[in] = l;
   RANGEUP(i, in+1, in+1+out) {
@@ -177,10 +177,10 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry) {
     *pat = entry->entry.initial;
 
   if(!pat) return false;
-  if(in != closure_in(pat)) {
-    LOG(HACK " pattern arity mismatch %C %C", c, pat);
-    return true;
-  }
+  if(!is_value(c) &&
+     FLAG(c->expr, EXPR_NO_UNIFY)) return true;
+
+  assert_error(in == closure_in(pat));
 
   LOG_WHEN(out != 0, TODO " unify_convert %d: out(%d) != 0 @unify-multiout", c-cells, out);
 
@@ -201,7 +201,7 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry) {
     n->expr.out = out;
     n->op = OP_exec;
     n->expr.arg[in] = entry;
-    FLAG_SET(n->expr, FLAGS_RECURSIVE);
+    FLAG_SET(n->expr, EXPR_RECURSIVE);
     int pos = 0;
     FOLLOW(p, vl, tmp) { // get arguments from the binding list
       n->expr.arg[in - 1 - pos] = p;
@@ -336,7 +336,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
     // TODO remove this
     if(t_entry &&
        *t_entry == entry) { // mark recursion
-      FLAG_SET(t->expr, FLAGS_RECURSIVE);
+      FLAG_SET(t->expr, EXPR_RECURSIVE);
       //LOG("recursive exec %C -> %d", c, trace_ptr-trace_cur);
     }
   }
@@ -443,7 +443,7 @@ static
 cell_t *unwrap(cell_t *c, csize_t out) {
 
   // head
-  assert_error(is_list(c) && list_size(c) == 1);
+  assert_error(is_list(c) && list_size(c) == 1, TODO " %C", c);
   c = CUT(c, value.ptr[0]);
 
   // N = out, ap0N swapN drop
@@ -518,6 +518,8 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
     new_entry->entry.out = treq.out; // ***
   }
 
+  // IDEA break here?
+
   // TODO delay this to avoid quote creation
   TRAVERSE_REF(nc, in);
   insert_root(&nc);
@@ -525,6 +527,7 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   drop(l);
   remove_root(&nc);
 
+  // IDEA split this up? {
   cell_t *p = flat_call(nc, new_entry);
   drop(nc);
   drop(c);
@@ -534,6 +537,7 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
 
   trace_clear_alt(parent_entry);
   cell_t *res = var_create_with_entry(T_ANY, parent_entry, p->size);
+  // }
 
   // build list expected by caller
   if(treq.t == T_LIST) {
@@ -568,6 +572,7 @@ bool exec_list(cell_t **cp, type_request_t treq) {
   // if treq.t == T_LIST, need to wrap here
   // move to func_exec; expand, wrap, and return the original function
   c = expand(c, out);
+  FLAG_SET(c->expr, EXPR_NO_UNIFY);
   c->expr.out = out;
   res = make_list(treq.out);
   res->value.ptr[out] = c;
@@ -700,7 +705,7 @@ OP(exec) {
   } else {
     assert_counter(1000);
 
-    if(FLAG(c->expr, FLAGS_RECURSIVE)) {
+    if(FLAG(c->expr, EXPR_RECURSIVE)) {
       TRAVERSE(c, in) {
         if(!reduce(p, req_any)) {
           fail(cp, treq);

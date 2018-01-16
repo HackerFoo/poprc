@@ -346,9 +346,11 @@ uint8_t trace_recursive_changes(cell_t *entry) {
       COUNTUP(i, in) {
         trace_index_t v = in - i;
         if(trace_decode(p->expr.arg[i]) != v) {
+          cell_t *a = &entry[v];
+          assert_error(is_var(a));
           cnt++;
           // mark variables that change during recursion
-          FLAG_SET(entry[v].value.type, T_CHANGES);
+          FLAG_SET(a->value.type, T_CHANGES);
         }
       }
 
@@ -454,7 +456,7 @@ void trace_reduction(cell_t *c, cell_t *r) {
   cell_t *new_entry = trace_expr_entry(c->pos);
   if(!is_var(r)) {
     // print tracing information for a reduction
-    if(FLAG(c->expr, FLAGS_TRACE)) {
+    if(FLAG(c->expr, EXPR_TRACE)) {
       printf("TRACE: %s", op_name(c->op));
       TRAVERSE(c, in) {
         show_one(*p);

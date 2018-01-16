@@ -93,13 +93,13 @@ bool is_closure(void const *p) {
 // Is the closure `c` ready to reduce?
 bool closure_is_ready(cell_t const *c) {
   assert_error(is_closure(c));
-  return is_value(c) || NOT_FLAG(c->expr, FLAGS_NEEDS_ARG);
+  return is_value(c) || NOT_FLAG(c->expr, EXPR_NEEDS_ARG);
 }
 
 // Set the readiness of closure `c` to state `r`
 void closure_set_ready(cell_t *c, bool r) {
   assert_error(is_closure(c));
-  FLAG_SET_TO(c->expr, FLAGS_NEEDS_ARG, !r);
+  FLAG_SET_TO(c->expr, EXPR_NEEDS_ARG, !r);
 }
 
 cell_t *cells_next() {

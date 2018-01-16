@@ -91,9 +91,10 @@ typedef struct trace_cell {
 
 typedef bool (reduce_t)(cell_t **cell, type_request_t treq);
 
-#define FLAGS_NEEDS_ARG 0x01
-#define FLAGS_RECURSIVE 0x02
-#define FLAGS_TRACE     0x04
+#define EXPR_NEEDS_ARG 0x01
+#define EXPR_RECURSIVE 0x02
+#define EXPR_TRACE     0x04
+#define EXPR_NO_UNIFY  0x08
 
 /* unevaluated expression */
 struct __attribute__((packed)) expr {

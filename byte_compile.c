@@ -137,7 +137,7 @@ void print_bytecode(cell_t *entry) {
       printf(", type = %s", show_type_all_short(c->expr_type));
     }
     printf(" x%d", c->n + 1);
-    if(!is_value(c) && FLAG(c->expr, FLAGS_TRACE)) {
+    if(!is_value(c) && FLAG(c->expr, EXPR_TRACE)) {
       printf(" [TRACING]");
     }
     if(t >= entry->entry.in &&
@@ -922,7 +922,7 @@ COMMAND(trace, "trace an instruction") {
         if(x > 0 &&
            x <= e->entry.len &&
            !is_value(&e[x])) {
-          FLAG_SET(e[x].expr, FLAGS_TRACE);
+          FLAG_SET(e[x].expr, EXPR_TRACE);
           set = true;
           printf("tracing %s.%s [%d]\n",
                  e->module_name,
