@@ -161,99 +161,99 @@ bool func_op2_float(cell_t **cp, type_request_t treq, double (*op)(double, doubl
   return false;
 }
 
-// WORD("+", add, 2, 1)
+WORD("+", add, 2, 1)
 val_t add_op(val_t x, val_t y) { return x + y; }
 bool func_add(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, add_op, false); }
 
-// WORD("*", mul, 2, 1)
+WORD("*", mul, 2, 1)
 val_t mul_op(val_t x, val_t y) { return x * y; }
 bool func_mul(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, mul_op, false); }
 
-// WORD("-", sub, 2, 1)
+WORD("-", sub, 2, 1)
 val_t sub_op(val_t x, val_t y) { return x - y; }
 bool func_sub(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, sub_op, false); }
 
-// WORD("/", div, 2, 1)
+WORD("/", div, 2, 1)
 val_t div_op(val_t x, val_t y) { return x / y; }
 bool func_div(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, div_op, true); }
 
-// WORD("%", mod, 2, 1)
+WORD("%", mod, 2, 1)
 val_t mod_op(val_t x, val_t y) { return x % y; }
 bool func_mod(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, mod_op, true); }
 
-// WORD("+f", add_float, 2, 1)
+WORD("+f", add_float, 2, 1)
 double add_float_op(double x, double y) { return x + y; }
 bool func_add_float(cell_t **cp, type_request_t treq) { return func_op2_float(cp, treq, add_float_op, false); }
 
-// WORD("*f", mul_float, 2, 1)
+WORD("*f", mul_float, 2, 1)
 double mul_float_op(double x, double y) { return x * y; }
 bool func_mul_float(cell_t **cp, type_request_t treq) { return func_op2_float(cp, treq, mul_float_op, false); }
 
-// WORD("-f", sub_float, 2, 1)
+WORD("-f", sub_float, 2, 1)
 double sub_float_op(double x, double y) { return x - y; }
 bool func_sub_float(cell_t **cp, type_request_t treq) { return func_op2_float(cp, treq, sub_float_op, false); }
 
-// WORD("/f", div_float, 2, 1)
+WORD("/f", div_float, 2, 1)
 double div_float_op(double x, double y) { return x / y; }
 bool func_div_float(cell_t **cp, type_request_t treq) { return func_op2_float(cp, treq, div_float_op, true); }
 
-// WORD("&b", bitand, 2, 1)
+WORD("&b", bitand, 2, 1)
 val_t bitand_op(val_t x, val_t y) { return x & y; }
 bool func_bitand(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, bitand_op, false); }
 
-// WORD("|b", bitor, 2, 1)
+WORD("|b", bitor, 2, 1)
 val_t bitor_op(val_t x, val_t y) { return x | y; }
 bool func_bitor(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, bitor_op, false); }
 
-// WORD("^b", bitxor, 2, 1)
+WORD("^b", bitxor, 2, 1)
 val_t bitxor_op(val_t x, val_t y) { return x ^ y; }
 bool func_bitxor(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, bitxor_op, false); }
 
-// WORD("<<b", shiftl, 2, 1)
+WORD("<<b", shiftl, 2, 1)
 val_t shiftl_op(val_t x, val_t y) { return x << y; }
 bool func_shiftl(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, shiftl_op, false); }
 
-// WORD(">>b", shiftr, 2, 1)
+WORD(">>b", shiftr, 2, 1)
 val_t shiftr_op(val_t x, val_t y) { return x >> y; }
 bool func_shiftr(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_INT, shiftr_op, false); }
 
-// WORD("~b", complement, 1, 1)
+WORD("~b", complement, 1, 1)
 val_t complement_op(val_t x) { return ~x; }
 bool func_complement(cell_t **cp, type_request_t treq) { return func_op1(cp, treq, T_INT, T_INT, complement_op); }
 
-// WORD("not", not, 1, 1)
+WORD("not", not, 1, 1)
 val_t not_op(val_t x) { return !x; }
 bool func_not(cell_t **cp, type_request_t treq) { return func_op1(cp, treq, T_SYMBOL, T_SYMBOL, not_op); }
 
-// WORD(">", gt, 2, 1)
+WORD(">", gt, 2, 1)
 val_t gt_op(val_t x, val_t y) { return x > y; }
 bool func_gt(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, gt_op, false); }
 
-// WORD(">=", gte, 2, 1)
+WORD(">=", gte, 2, 1)
 val_t gte_op(val_t x, val_t y) { return x >= y; }
 bool func_gte(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, gte_op, false); }
 
-// WORD("<", lt, 2, 1)
+WORD("<", lt, 2, 1)
 val_t lt_op(val_t x, val_t y) { return x < y; }
 bool func_lt(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, lt_op, false); }
 
-// WORD("<=", lte, 2, 1)
+WORD("<=", lte, 2, 1)
 val_t lte_op(val_t x, val_t y) { return x <= y; }
 bool func_lte(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, lte_op, false); }
 
-// WORD("==", eq, 2, 1)
-// WORD("=:=", eq_s, 2, 1)
+WORD("==", eq, 2, 1)
+WORD("=:=", eq_s, 2, 1)
 val_t eq_op(val_t x, val_t y) { return x == y; }
 bool func_eq(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, eq_op, false); }
 bool func_eq_s(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_SYMBOL, T_SYMBOL, eq_op, false); }
 
-// WORD("!=", neq, 2, 1)
-// WORD("!:=", neq_s, 2, 1)
+WORD("!=", neq, 2, 1)
+WORD("!:=", neq_s, 2, 1)
 val_t neq_op(val_t x, val_t y) { return x != y; }
 bool func_neq(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_INT, T_SYMBOL, neq_op, false); }
 bool func_neq_s(cell_t **cp, type_request_t treq) { return func_op2(cp, treq, T_SYMBOL, T_SYMBOL, neq_op, false); }
 
-// WORD("->f", to_float, 1, 1)
+WORD("->f", to_float, 1, 1)
 bool func_to_float(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   cell_t *res = 0;
@@ -286,7 +286,7 @@ bool func_to_float(cell_t **cp, type_request_t treq) {
   return false;
 }
 
-// WORD("trunc", trunc, 1, 1)
+WORD("trunc", trunc, 1, 1)
 bool func_trunc(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   cell_t *res = 0;
@@ -319,7 +319,7 @@ bool func_trunc(cell_t **cp, type_request_t treq) {
   return false;
 }
 
-// WORD("pushr", pushr, 2, 1)
+WORD("pushr", pushr, 2, 1)
 bool func_pushr(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
 
@@ -331,7 +331,7 @@ bool func_pushr(cell_t **cp, UNUSED type_request_t treq) {
   return false;
 }
 
-// WORD("|", alt, 2, 1)
+WORD("|", alt, 2, 1)
 bool func_alt(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
   PRE(c, alt);
@@ -375,7 +375,7 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
   return nc;
 }
 
-// WORD("!", assert, 2, 1)
+WORD("!", assert, 2, 1)
 bool func_assert(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   PRE(c, assert);
@@ -428,7 +428,7 @@ fail:
   return false;
 }
 
-// WORD("id", id, 1, 1)
+WORD("id", id, 1, 1)
 bool func_id(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   PRE(c, id);
@@ -450,7 +450,7 @@ bool func_id(cell_t **cp, type_request_t treq) {
   return false;
 }
 
-// WORD("drop", drop, 2, 1)
+WORD("drop", drop, 2, 1)
 bool func_drop(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
   PRE(c, drop);
@@ -458,7 +458,7 @@ bool func_drop(cell_t **cp, UNUSED type_request_t treq) {
   return false;
 }
 
-// WORD("swap", swap, 2, 2)
+WORD("swap", swap, 2, 2)
 bool func_swap(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
   PRE(c, swap);
@@ -477,7 +477,7 @@ cell_t *id(cell_t *c, alt_set_t as) {
   return i;
 }
 
-// WORD("dup", dup, 1, 2)
+WORD("dup", dup, 1, 2)
 bool func_dup(cell_t **cp, UNUSED type_request_t treq) {
   cell_t *c = *cp;
   PRE(c, dup);
@@ -568,18 +568,18 @@ fail:
   return false;
 }
 
-// WORD("pushl", ap, 2, 1)
-// WORD("popr", ap, 1, 2)
+WORD("pushl", ap, 2, 1)
+WORD("popr", ap, 1, 2)
 bool func_ap(cell_t **cp, type_request_t treq) {
   return func_compose_ap(cp, treq, false);
 }
 
-// WORD(".", compose, 2, 1)
+WORD(".", compose, 2, 1)
 bool func_compose(cell_t **cp, type_request_t treq) {
   return func_compose_ap(cp, treq, true);
 }
 
-// WORD("print", print, 2, 1)
+WORD("print", print, 2, 1)
 bool func_print(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   cell_t *res = 0;
@@ -640,11 +640,11 @@ bool func_type(cell_t **cp, type_request_t treq, uint8_t type) {
 
 // annotations to work around inference failures
 
-// WORD("int_t", int_t, 1, 1)
+WORD("int_t", int_t, 1, 1)
 bool func_int_t(cell_t **cp, type_request_t treq) { return func_type(cp, treq, T_INT); }
 
-// WORD("function_t", function_t, 1, 1)
+WORD("function_t", function_t, 1, 1)
 bool func_function_t(cell_t **cp, type_request_t treq) { return func_type(cp, treq, T_FUNCTION); }
 
-// WORD("symbol_t", symbol_t, 1, 1)
+WORD("symbol_t", symbol_t, 1, 1)
 bool func_symbol_t(cell_t **cp, type_request_t treq) { return func_type(cp, treq, T_SYMBOL); }

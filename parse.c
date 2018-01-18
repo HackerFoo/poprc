@@ -35,7 +35,7 @@
 #include "primitive.h"
 #include "special.h"
 #include "parse.h"
-#include "word_table.h"
+#include "words.h"
 #include "byte_compile.h"
 #include "trace.h"
 #include "tok.h"

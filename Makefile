@@ -123,7 +123,9 @@ fast:
 .PHONY: all
 all: test
 
-include gen.mk
+# prevent makeheaders from trying to generate this
+LOCAL_HEADERS := ./linenoise/linenoise.h
+
 include startle/startle.mk
 
 ifneq "$(wildcard /opt/local/lib)" ""
@@ -182,6 +184,11 @@ js/eval.js:
 	@mkdir -p js
 	make CC=emcc $(EMCC_OBJS)
 	emcc $(EMCC_OBJS) -o js/eval.js -s EXPORTED_FUNCTIONS="['_main', '_emscripten_eval']" -s EXTRA_EXPORTED_RUNTIME_METHODS="['ccall']" --embed-file lib.ppr
+
+# fetch linenoise if it's missing
+.NOTPARALLEL linenoise/linenoise.h:
+	git submodule init
+	git submodule update
 
 $(BUILD_DIR)/linenoise.o: linenoise/linenoise.c linenoise/linenoise.h
 	@mkdir -p $(BUILD_DIR)

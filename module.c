@@ -28,13 +28,40 @@
 #include "cells.h"
 #include "special.h"
 #include "parse.h"
-#include "word_table.h"
 #include "lex.h"
 #include "module.h"
 #include "byte_compile.h"
 #include "list.h"
+#include "words.h"
 
-pair_t primitive_module[] = WORDS;
+// count the number of words
+#define WORD_ITEM(...) CONCAT(anon, __LINE__),
+enum word_count {
+  #include "word_list.h"
+  WORD_COUNT
+};
+#undef WORD_ITEM
+
+#define WORD_ITEM(__name, __func, __in, __out)           \
+  {                                                      \
+    .first = (uintptr_t)__name,                          \
+    .second = (uintptr_t)&(cell_t) {                     \
+      .func = func_##__func,                             \
+      .module_name = PRIMITIVE_MODULE_NAME,              \
+      .word_name = __name "\0" #__func,                  \
+      .entry = {                                         \
+        .in = __in,                                      \
+        .out = __out,                                    \
+        .len = 0,                                        \
+        .flags = ENTRY_PRIMITIVE                         \
+      }                                                  \
+    }                                                    \
+  },
+
+pair_t primitive_module[] = {
+  { .first = WORD_COUNT, .second = WORD_COUNT },
+  #include "word_list.h"
+};
 
 cell_t *modules = NULL;
 

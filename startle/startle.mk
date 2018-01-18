@@ -14,12 +14,13 @@ $(BUILD_DIR)/%.d: %.c
 	@$(CC) $(INCLUDE) -MM $(CFLAGS) $*.c -MG -MT $(BUILD_DIR)/$*.o -o- | \
 	  sed -E -e 's/ ([a-zA-Z][^ .]*)\.h/ .gen\/\1.h/g' > $(BUILD_DIR)/$*.d
 
-LOCAL_HEADERS := $(patsubst ./%.h, .gen/%.h, $(shell find -L . -not -path './.gen/*' -name '*.h'))
+LOCAL_HEADERS += $(shell find -L . -not -path './.gen/*' -name '*.h')
+GEN_LOCAL_HEADERS := $(patsubst ./%.h, .gen/%.h, $(LOCAL_HEADERS))
 
 # hack to catch any dependencies in .gen that are local headers
-$(LOCAL_HEADERS): .gen/%.h:
+$(GEN_LOCAL_HEADERS): .gen/%.h: %.h
 	@mkdir -p $(dir $@)
-	ln -s $(PWD)/$*.h .gen/$*.h
+	ln -fs $(PWD)/$*.h .gen/$*.h
 
 # compile
 $(BUILD_DIR)/%.o: %.c $(BUILD_DIR)/%.d

@@ -141,27 +141,6 @@
 #define FOLLOW(...) DISPATCH(FOLLOW, ##__VA_ARGS__)
 
 
-// CODE GENERATION ________________________________________
-
-#define WORD_COUNT(n) { .first = (n), .second = (n) }
-#define WORD(__name, __func, __in, __out)                \
-  {                                                      \
-    .first = (uintptr_t)__name,                          \
-    .second = (uintptr_t)&(cell_t) {                     \
-      .func = func_##__func,                             \
-      .module_name = PRIMITIVE_MODULE_NAME,              \
-      .word_name = __name "\0" #__func,                  \
-      .entry = {                                         \
-        .in = __in,                                      \
-        .out = __out,                                    \
-        .len = 0,                                        \
-        .flags = ENTRY_PRIMITIVE                         \
-      }                                                  \
-    }                                                    \
-  }
-
-
-
 // unions of alt_sets
 #define AS_UNION_2(c, x)               \
   (c->expr.arg[x]->value.alt_set)
@@ -216,5 +195,8 @@
       drop(c);                                  \
       tmp;                                      \
     })
+
+// define away WORD annotations
+#define WORD(...)
 
 #endif
