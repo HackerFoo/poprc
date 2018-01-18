@@ -148,6 +148,7 @@ struct __attribute__((packed)) entry {
   uint8_t rec, flags, alts, sub_id;
   csize_t in, out, len;
   cell_t *parent;
+  cell_t *initial;
 };
 
 typedef enum char_class_t {
@@ -163,18 +164,14 @@ typedef enum char_class_t {
 } char_class_t;
 
 struct __attribute__((packed, aligned(4))) cell {
-  /* func indicates the type:
-   * NULL         -> mem
-   * func_value   -> value
+  /* op indicates the type:
+   * OP_null      -> mem
+   * OP_value     -> value
    * otherwise    -> expr
    */
   union {
     uintptr_t raw[8];
     struct {
-      union {
-        reduce_t *func;
-        cell_t *initial; // entry
-      };
       union {
         cell_t *alt;
         const char *word_name; // entry
@@ -185,8 +182,9 @@ struct __attribute__((packed, aligned(4))) cell {
         type_t expr_type; // trace
         char_class_t char_class; // tok_list
       };
+      uint8_t op, pos;
       refcount_t n;
-      csize_t size, pos;
+      csize_t size;
       union {
         expr_t expr;
         value_t value;

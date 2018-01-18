@@ -32,6 +32,7 @@
 #include "list.h"
 #include "user_func.h"
 #include "macros.h"
+#include "ops.h"
 
 // to catch errors that result in large allocations
 #define MAX_ALLOC_SIZE 128
@@ -58,14 +59,14 @@ static cell_t *uninitialized_cells_end;
 
 // Predefined failure cell
 cell_t fail_cell = {
-  .func = func_value,
+  .op = OP_value,
   .size = 1,
   .n = PERSISTENT,
   .value.type.flags = T_FAIL
 };
 
 cell_t nil_cell = {
-  .func = func_value,
+  .op = OP_value,
   .size = 1,
   .n = PERSISTENT,
   .value.type.exclusive = T_LIST
@@ -86,7 +87,7 @@ bool is_cell(void const *p) {
 
 // Is `p` a pointer to a closure (i.e. allocated cell)?
 bool is_closure(void const *p) {
-  return is_data(p) && ((cell_t *)p)->func;
+  return is_data(p) && ((cell_t *)p)->op;
 }
 
 // Is the closure `c` ready to reduce?
@@ -214,7 +215,7 @@ csize_t closure_cells(cell_t const *c) {
 }
 
 void cell_free(cell_t *c) {
-  c->func = 0;
+  c->op = 0;
   c->mem.next = cells_ptr;
   c->mem.prev = cells_ptr->mem.prev;
   cells_ptr->mem.prev = c;
@@ -230,7 +231,7 @@ void closure_shrink(cell_t *c, csize_t s) {
     assert_error(is_closure(c));
     cell_t *prev = cells_ptr->mem.prev;
     RANGEUP(i, s, size) {
-      c[i].func = 0;
+      c[i].op = 0;
       c[i].mem.prev = prev;
       prev->mem.next = &c[i];
       prev = &c[i];
@@ -471,7 +472,7 @@ void alloc_to(size_t n) {
      uninitialized_cells < &cells[n]) {
     size_t s = &cells[n] - uninitialized_cells;
     cell_t *c = closure_alloc_cells(s);
-    c->func = func_value;
+    c->op = OP_value;
     closure_free(c);
   }
 }
@@ -492,7 +493,7 @@ TEST(alloc) {
   cell_t *a[30];
   LOOP(50) {
     FOREACH(i, a) {
-      a[i] = func((reduce_t *)42, 9, 1);
+      a[i] = func(OP_ap, 9, 1);
     }
     FOREACH(i, a) {
       closure_free(a[i]);

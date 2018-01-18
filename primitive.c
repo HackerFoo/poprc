@@ -31,6 +31,7 @@
 #include "print.h"
 #include "trace.h"
 #include "list.h"
+#include "ops.h"
 
    /*-----------------------------------------------,
     |          VARIABLE NAME CONVENTIONS            |
@@ -374,7 +375,7 @@ OP(pushr) {
   // lower to compose
   c = expand(c, 1);
   c->expr.arg[2] = &nil_cell;
-  c->func = func_compose;
+  c->op = OP_compose;
   *cp = c;
   return false;
 }
@@ -404,7 +405,7 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
   TRAVERSE(nc, ptrs) {
     if(*p) {
       cell_t *np = closure_alloc(2);
-      np->func = func_assert;
+      np->op = OP_assert;
       np->expr.arg[0] = ref(*p);
       np->expr.arg[1] = ref(t);
       *p = np;
@@ -415,7 +416,7 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
     *left = v;
   } else {
     // slip in v as an extra arg to assert
-    assert_error((*left)->func == func_assert);
+    assert_error((*left)->op == OP_assert);
     (*left)->size++;
     (*left)->expr.arg[2] = v;
   }
@@ -519,7 +520,7 @@ OP(swap) {
 cell_t *id(cell_t *c, alt_set_t as) {
   if(!c) return NULL;
   cell_t *i = closure_alloc(1);
-  i->func = func_id;
+  i->op = OP_id;
   i->expr.arg[0] = c;
   i->expr.alt_set = as;
   return i;

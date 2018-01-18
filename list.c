@@ -27,10 +27,11 @@
 #include "special.h"
 #include "user_func.h"
 #include "list.h"
+#include "ops.h"
 
 cell_t *empty_list() {
   cell_t *c = closure_alloc(1);
-  c->func = func_value;
+  c->op = OP_value;
   c->value.type.exclusive = T_LIST;
   return c;
 }
@@ -38,14 +39,14 @@ cell_t *empty_list() {
 cell_t *make_list(csize_t n) {
   if(n == 0) return &nil_cell;
   cell_t *c = closure_alloc(n + 1);
-  c->func = func_value;
+  c->op = OP_value;
   c->value.type.exclusive = T_LIST;
   return c;
 }
 
 cell_t *quote(cell_t *x) {
   cell_t *c = closure_alloc(2);
-  c->func = func_value;
+  c->op = OP_value;
   c->value.type.exclusive = T_LIST;
   c->value.ptr[0] = x;
   return c;
@@ -400,7 +401,7 @@ csize_t function_in(const cell_t *l) {
 TEST(function_in) {
   cell_t *l = make_list(2);
   l->value.ptr[0] = int_val(2);
-  l->value.ptr[1] = quote(func(func_exec, 2, 1));
+  l->value.ptr[1] = quote(func(OP_exec, 2, 1));
   l->value.type.flags = T_ROW;
   csize_t in = function_in(l);
   drop(l);

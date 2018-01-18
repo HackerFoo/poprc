@@ -33,6 +33,7 @@
 #include "trace.h"
 #include "list.h"
 #include "user_func.h"
+#include "ops.h"
 
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
@@ -210,6 +211,17 @@ void clear_flags(cell_t *c) {
   }
 }
 
+static reduce_t *_func[] = {
+#define OP_ITEM(name) func_##name,
+#include "op_list.h"
+#undef OP_ITEM
+};
+
+reduce_t *op_func(uint8_t op) {
+  assert_error(op > 0 && op < OP_COUNT);
+  return _func[op - 1];
+}
+
 // Reduce *cp with type t
 bool reduce(cell_t **cp, type_request_t treq) {
   bool marked = is_marked(*cp);
@@ -224,13 +236,13 @@ bool reduce(cell_t **cp, type_request_t treq) {
       continue;
     }
     stats.reduce_cnt++;
-    reduce_t *func = c->func;
-    bool success = func(cp, treq);
+    uint8_t op = c->op;
+    bool success = op_func(op)(cp, treq);
 
     // prevent infinite loops when debugging
     assert_counter(LENGTH(cells));
 
-    LOG_WHEN(!*cp, MARK("FAIL") ": %F %C", func, c);
+    LOG_WHEN(!*cp, MARK("FAIL") ": %O %C", op, c);
     c = *cp;
     if(success) {
       if(marked) *cp = mark_ptr(c);
@@ -251,7 +263,7 @@ void reduce_dep(cell_t **cp) {
     assert_error(is_closure(c) &&
            closure_is_ready(c));
     stats.reduce_cnt++;
-    c->func(cp, req_any);
+    op_func(c->op)(cp, req_any);
   }
 }
 
@@ -351,13 +363,13 @@ cell_t *compose(list_iterator_t it, cell_t *b) {
   return b;
 }
 
-cell_t *func(reduce_t *f, csize_t in, csize_t out) {
+cell_t *func(uint8_t op, csize_t in, csize_t out) {
   assert_error(out > 0);
   csize_t args = in + out - 1;
   cell_t *c = closure_alloc(args);
   c->expr.out = out - 1;
   c->expr.flags = 0;
-  c->func = f;
+  c->op = op;
   if(args) c->expr.arg[0] = (cell_t *)(intptr_t)(args - 1);
   closure_set_ready(c, !args);
   return c;
@@ -439,7 +451,7 @@ loop:
 void store_fail(cell_t *c, cell_t *alt) {
   closure_shrink(c, 1);
   memset(&c->value, 0, sizeof(c->value));
-  c->func = func_value;
+  c->op = OP_value;
   FLAG_SET(c->value.type, T_FAIL);
   c->alt = alt;
 }
@@ -447,7 +459,7 @@ void store_fail(cell_t *c, cell_t *alt) {
 void store_dep(cell_t *c, trace_cell_t tc, csize_t pos, int t) {
   assert_error(t != T_LIST);
   cell_t v = {
-    .func = func_value,
+    .op = OP_value,
     .n = c->n,
     .size = 2,
     .pos = pos,
@@ -461,7 +473,7 @@ void store_dep(cell_t *c, trace_cell_t tc, csize_t pos, int t) {
       .tc = tc
     }
   };
-  if(c->func) closure_shrink(c, 1);
+  if(c->op) closure_shrink(c, 1);
   *c = v;
 }
 
@@ -486,7 +498,7 @@ void fail(cell_t **cp, type_request_t treq) {
     }
     closure_shrink(c, 1);
     memset(&c->value, 0, sizeof(c->value));
-    c->func = func_value;
+    c->op = OP_value;
     c->value.type.flags = T_FAIL;
   }
   drop(c);
@@ -497,7 +509,7 @@ void fail(cell_t **cp, type_request_t treq) {
 void store_reduced(cell_t **cp, cell_t *r) {
   cell_t *c = *cp;
   assert_error(!is_marked(c));
-  r->func = func_value;
+  r->op = OP_value;
   trace_reduction(c, r);
   drop_multi(c->expr.arg, closure_in(c));
   csize_t size = is_closure(r) ? closure_cells(r) : 0;
@@ -735,7 +747,7 @@ void store_lazy(cell_t **cp, cell_t *r, alt_set_t alt_set) {
   cell_t *c = *cp;
   if(c->n || alt_set || c->pos) {
     closure_shrink(c, 1); // *** does not drop arguments first
-    c->func = func_id;
+    c->op = OP_id;
     c->size = 1;
     c->expr.out = 0;
     c->expr.arg[0] = r;
@@ -780,7 +792,7 @@ void store_lazy_and_update_deps(cell_t **cp, cell_t *r, alt_set_t alt_set) {
 void store_lazy_dep(cell_t *d, cell_t *r, alt_set_t alt_set) {
   if(d) {
     drop(d->expr.arg[0]);
-    d->func = func_id;
+    d->op = OP_id;
     d->size = 1;
     d->expr.out = 0;
     d->expr.arg[0] = r;

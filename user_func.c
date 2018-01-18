@@ -35,9 +35,10 @@
 #include "user_func.h"
 #include "print.h"
 #include "parse.h" // for string_printf
+#include "ops.h"
 
 bool is_user_func(const cell_t *c) {
-  return c->func == func_exec;
+  return c->op == OP_exec;
 }
 
 static
@@ -60,7 +61,7 @@ cell_t *get_return_arg(cell_t *entry, cell_t *returns, intptr_t x) {
 // given a list l with arity in -> out, produce an application of the list
 // [X -> Y] => [X -> Y] apXY
 cell_t *apply_list(cell_t *l, csize_t in, csize_t out) {
-  cell_t *c = func(func_ap, in + 1, out + 1);
+  cell_t *c = func(OP_ap, in + 1, out + 1);
   if(in) {
     c->expr.arg[0] = (cell_t *)(intptr_t)(in - 1);
   } else {
@@ -173,7 +174,7 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry) {
     out = closure_out(c);
   cell_t
     *entry = c->expr.arg[in],
-    *pat = entry->initial;
+    *pat = entry->entry.initial;
 
   if(!pat) return false;
   if(in != closure_in(pat)) {
@@ -198,7 +199,7 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry) {
     csize_t in = tmp_list_length(vl);
     cell_t *n = closure_alloc(in + out + 1);
     n->expr.out = out;
-    n->func = func_exec;
+    n->op = OP_exec;
     n->expr.arg[in] = entry;
     FLAG_SET(n->expr, FLAGS_RECURSIVE);
     int pos = 0;
@@ -274,7 +275,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
   // allocate, copy, and index
   FOR_TRACE(p, entry, in) {
     int i = p - entry;
-    if(!p->func) {
+    if(!p->op) {
       p->alt = 0;
       continue; // skip empty cells TODO remove these
     }
@@ -409,7 +410,7 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
     out = entry->entry.out;
   cell_t *nc = closure_alloc(in + out);
   nc->expr.out = out - 1;
-  nc->func = func_exec;
+  nc->op = OP_exec;
   cell_t *vl = 0;
   input_var_list(c, &vl);
   assert_error(tmp_list_length(vl) == in, "%d != %d @wrap", tmp_list_length(vl), in);
@@ -448,7 +449,7 @@ cell_t *unwrap(cell_t *c, csize_t out) {
   // N = out, ap0N swapN drop
   cell_t *l = make_list(out);
   LOG("unwrap %d %C", out, l);
-  cell_t *ap = func(func_ap, 1, out + 1);
+  cell_t *ap = func(OP_ap, 1, out + 1);
   COUNTUP(i, out) {
     cell_t **p = &l->value.ptr[i];
     *p = dep(ref(ap));
@@ -502,7 +503,7 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   new_entry->word_name = string_printf("%s_r%d", parent_entry->word_name, parent_entry->entry.sub_id++);
   LOG("created entry for %E", new_entry);
 
-  new_entry->initial = ref(c);
+  new_entry->entry.initial = ref(c);
   move_changing_values(new_entry, c);
 
   // make a list with expanded outputs of c
@@ -685,9 +686,9 @@ OP(exec) {
   cell_t *parent_entry = find_input_entry(c);
 
   if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
-    if(entry->initial && !unify_exec(cp, parent_entry)) {
+    if(entry->entry.initial && !unify_exec(cp, parent_entry)) {
       LOG(MARK("WARN") " unify failed: %C %C",
-          *cp, entry->initial);
+          *cp, entry->entry.initial);
       fail(cp, treq);
       return false;
     }

@@ -43,6 +43,7 @@
 #include "module.h"
 #include "user_func.h"
 #include "list.h"
+#include "ops.h"
 
 #define FUNC_AP 1
 #define MAX_SYMBOLS 64
@@ -166,10 +167,10 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n, cell_t *entry) {
     c = param(T_ANY, entry);
 #if FUNC_AP
   } else if(in = 1, out = 1, match_param_word("ap", w, &in, &out)) {
-    c = func(func_ap, ++in, ++out);
+    c = func(OP_ap, ++in, ++out);
   } else if(in = 1, out = 1, match_param_word("comp", w, &in, &out)) {
     in += 2;
-    c = func(func_compose, in, ++out);
+    c = func(OP_compose, in, ++out);
 #endif
   } else {
     cell_t *e = lookup_word(w);
@@ -178,17 +179,17 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n, cell_t *entry) {
       in = e->entry.in;
       out = e->entry.out;
       if(FLAG(e->entry, ENTRY_PRIMITIVE)) {
-        if(e->func == func_placeholder) {
-          c = func(func_placeholder, n + 1, 1);
+        if(e->op == OP_placeholder) {
+          c = func(OP_placeholder, n + 1, 1);
           int x = trace_alloc(entry, n + 2);
           in = n;
           out = 1;
           data = var_create(T_FUNCTION, (trace_cell_t) {entry, x}, 0, 0);
         } else {
-          c = func(e->func, e->entry.in, e->entry.out);
+          c = func(e->op, e->entry.in, e->entry.out);
         }
       } else {
-        c = func(func_exec, e->entry.in + 1, e->entry.out);
+        c = func(OP_exec, e->entry.in + 1, e->entry.out);
         data = e;
       }
     } else {
@@ -571,7 +572,7 @@ cell_t *parse_expr(const cell_t **l, cell_t *module, cell_t *entry) {
           }
         }
         assert_throw(n < MAX_ARGS);
-        if(c->func == func_placeholder) {
+        if(c->op == OP_placeholder) {
           drop(ph); // HACK probably should chain placeholders somehow
           ph = c;
         } else {

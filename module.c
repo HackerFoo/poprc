@@ -46,7 +46,7 @@ enum word_count {
   {                                                      \
     .first = (uintptr_t)__name,                          \
     .second = (uintptr_t)&(cell_t) {                     \
-      .func = func_##__func,                             \
+      .op = OP_##__func,                                 \
       .module_name = PRIMITIVE_MODULE_NAME,              \
       .word_name = __name "\0" #__func,                  \
       .entry = {                                         \
@@ -67,7 +67,7 @@ cell_t *modules = NULL;
 
 cell_t *make_module() {
   cell_t *l = closure_alloc(2);
-  l->func = func_value;
+  l->op = OP_value;
   l->value.type.exclusive = T_MODULE;
   l->n = PERSISTENT;
   return l;

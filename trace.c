@@ -36,6 +36,7 @@
 #include "list.h"
 #include "trace.h"
 #include "byte_compile.h"
+#include "ops.h"
 
 // storage for tracing
 static cell_t trace_cells[1 << 16] __attribute__((aligned(64)));
@@ -119,7 +120,7 @@ bool equal_value(const cell_t *a, const cell_t *b) {
 static
 int trace_lookup_value_linear(cell_t *entry, const cell_t *c) {
   FOR_TRACE(p, entry) {
-    if(p->func == func_value &&
+    if(p->op == OP_value &&
        NOT_FLAG(p->value.type, T_VAR) &&
        equal_value(p, c))
       return p - entry;
@@ -249,7 +250,7 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
   cell_t *tc = trace_cell_ptr(r->value.tc);
   if(!tc) return;
   type_t t = r->value.type;
-  if(tc->func) {
+  if(tc->op) {
     // this cell has already been written
     // update the types
     if(t.exclusive != T_ANY) {
@@ -262,8 +263,8 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
     return;
   }
   assert_error(tc->size == c->size);
-  assert_error(c->func != func_dep_entered &&
-         c->func != func_dep);
+  assert_error(c->op != OP_dep_entered &&
+         c->op != OP_dep);
   LOG("trace_store_expr: %e[%d] <- %C %C",
       entry, r->value.tc.index, c, r);
 
@@ -297,7 +298,7 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
     tc->value.type = t;
   }
   tc->expr_type.exclusive = t.exclusive;
-  if(tc->func == func_placeholder) FLAG_SET(tc->expr_type, T_INCOMPLETE);
+  if(tc->op == OP_placeholder) FLAG_SET(tc->expr_type, T_INCOMPLETE);
   tc->alt = NULL;
 }
 
@@ -337,7 +338,7 @@ uint8_t trace_recursive_changes(cell_t *entry) {
 
   FOR_TRACE(p, entry) {
     csize_t in;
-    if(p->func == func_exec &&
+    if(p->op == OP_exec &&
        p->expr.arg[in = closure_in(p)] == encoded_entry) {
       unsigned int cnt = 0;
       COUNTUP(i, in) {
@@ -373,8 +374,8 @@ cell_t *trace_start_entry(cell_t *parent, csize_t out) {
     .out = out
   };
   e->entry.parent = parent;
-  e->initial = NULL;
-  insert_root(&e->initial);
+  e->entry.initial = NULL;
+  insert_root(&e->entry.initial);
 
   // active_entries[e->pos-1] = e
   active_entries[prev_entry_pos++] = e;
@@ -385,9 +386,9 @@ cell_t *trace_start_entry(cell_t *parent, csize_t out) {
 
 // finish tracing
 void trace_end_entry(cell_t *e) {
-  drop(e->initial);
-  remove_root(&e->initial);
-  e->initial = NULL;
+  drop(e->entry.initial);
+  remove_root(&e->entry.initial);
+  e->entry.initial = NULL;
   FLAG_SET(e->entry, ENTRY_COMPLETE);
   e->entry.rec = trace_recursive_changes(e);
 }
@@ -416,7 +417,7 @@ void trace_dep(cell_t *c) {
   int ph_x = c->value.tc.index;
   ph->expr.arg[c->pos] = trace_encode(x);
   LOG("trace_dep: %d <- %C %d[%d]", x, c, ph_x, c->pos);
-  tc->func = func_dep;
+  tc->op = OP_dep;
   tc->expr.arg[0] = trace_encode(ph_x);
   tc->expr_type.exclusive = c->value.type.exclusive;
   ph->n++;
@@ -430,7 +431,7 @@ void trace_drop(cell_t *r) {
   if(!r || !is_var(r)) return;
   trace_cell_t tc = r->value.tc;
   cell_t *c = trace_cell_ptr(tc);
-  if(tc.entry && !c->func &&
+  if(tc.entry && !c->op &&
      tc.entry->entry.len - (tc.index - 1) == calculate_cells(c->size)) {
     tc.entry->entry.len = tc.index - 1;
   }
@@ -452,7 +453,7 @@ void trace_reduction(cell_t *c, cell_t *r) {
   if(!is_var(r)) {
     // print tracing information for a reduction
     if(FLAG(c->expr, FLAGS_TRACE)) {
-      printf("TRACE: %s", function_name(c->func));
+      printf("TRACE: %s", op_name(c->op));
       TRAVERSE(c, in) {
         show_one(*p);
       }
@@ -460,7 +461,7 @@ void trace_reduction(cell_t *c, cell_t *r) {
       show_one(r);
       printf("\n");
     }
-    if(c->func != func_exec) { // is this still necessary?
+    if(c->op != OP_exec) { // is this still necessary?
       return;
     }
   }
@@ -495,7 +496,7 @@ void trace_update_type(cell_t *c) {
   int t = c->value.type.exclusive;
   if(t != T_LIST) {
     cell_t *tc = trace_cell_ptr(c->value.tc);
-    if(tc && tc->func) {
+    if(tc && tc->op) {
       trace_set_type(tc, t);
     }
   }
@@ -539,7 +540,7 @@ cell_t *trace_quote_var(cell_t *l) {
   if(l == &nil_cell) return l;
   cell_t *f = *leftmost_row(&l);
   while(is_placeholder(f)) f = f->expr.arg[closure_in(f) - 1];
-  assert_error(is_var(f), "not a var: %F %C", f->func, f);
+  assert_error(is_var(f), "not a var: %O %C", f->op, f);
   cell_t *entry = f->value.tc.entry;
   int x = trace_build_quote(entry, l);
   return x == NIL_INDEX ? &nil_cell : var_create_nonlist(T_FUNCTION, (trace_cell_t) {entry, x});
@@ -616,8 +617,8 @@ TEST(var_count) {
 bool tail_call_to_bottom(cell_t *entry, int x) {
   if(x < 0) return false;
   cell_t *tc = &entry[x];
-  bool is_assert = tc->func == func_assert;
-  if((is_assert || (tc->func == func_exec &&
+  bool is_assert = tc->op == OP_assert;
+  if((is_assert || (tc->op == OP_exec &&
                     trace_decode(tc->expr.arg[closure_in(tc)]) == (int)entry->entry.len-1)) &&
      tc->expr_type.exclusive == T_ANY) {
     if(is_assert) {
@@ -686,7 +687,7 @@ int trace_alloc_var(cell_t *entry) {
   int x = trace_alloc(entry, 2);
   if(x <= 0) return x;
   cell_t *tc = &entry[x];
-  tc->func = func_value;
+  tc->op = OP_value;
   tc->value.type.flags = T_VAR;
   tc->pos = ++entry->entry.in;
   if(tc->pos != x) {

@@ -28,6 +28,7 @@
 #include "special.h"
 #include "tok.h"
 #include "lex.h"
+#include "ops.h"
 
 seg_t tok_seg(const cell_t *c) {
   seg_t s = {
@@ -53,7 +54,7 @@ cell_t *lex(const char* s, const char* e) {
     update_line(s, next, &line);
     s = next;
     cell_t *c = closure_alloc(1);
-    c->func = func_fail; // HACK
+    c->op = OP_fail; // HACK
     c->n = PERSISTENT;
     tok_set_seg(c, t);
     c->tok_list.line = line;

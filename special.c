@@ -90,7 +90,7 @@ fail:
 
 cell_t *int_val(val_t x) {
   cell_t *c = closure_alloc(2);
-  c->func = func_value;
+  c->op = OP_value;
   c->value.type.exclusive = T_INT;
   c->value.integer[0] = x;
   return c;
@@ -98,7 +98,7 @@ cell_t *int_val(val_t x) {
 
 cell_t *float_val(double x) {
   cell_t *c = closure_alloc(2);
-  c->func = func_value;
+  c->op = OP_value;
   c->value.type.exclusive = T_FLOAT;
   c->value.flt[0] = x;
   return c;
@@ -106,14 +106,14 @@ cell_t *float_val(double x) {
 
 cell_t *symbol(val_t sym) {
   cell_t *c = closure_alloc(2);
-  c->func = func_value;
+  c->op = OP_value;
   c->value.type.exclusive = T_SYMBOL;
   c->value.integer[0] = sym;
   return c;
 }
 
 bool is_value(cell_t const *c) {
-  return c && c->func == func_value;
+  return c && c->op == OP_value;
 }
 
 void placeholder_extend(cell_t **lp, int in, int out) {
@@ -128,10 +128,10 @@ void placeholder_extend(cell_t **lp, int in, int out) {
   cell_t **left = leftmost_row(&l);
   if(!left) return;
   // HACK need to map_assert after extending
-  if((*left)->func == func_assert) reduce(left, REQ(any));
+  if((*left)->op == OP_assert) reduce(left, REQ(any));
   cell_t *f = *left;
   if(!(is_function(f) || is_placeholder(f))) return;
-  cell_t *ph = func(func_placeholder, d_in + 1, d_out + 1);
+  cell_t *ph = func(OP_placeholder, d_in + 1, d_out + 1);
 
   if(l->n) {
     l->n--;
@@ -168,7 +168,7 @@ cell_t *var_create(int t, trace_cell_t tc, int in, int out) {
 
 cell_t *var_create_nonlist(int t, trace_cell_t tc) {
   cell_t *c = closure_alloc(1);
-  c->func = func_value;
+  c->op = OP_value;
   c->size = 2;
   c->value.tc = tc;
   c->value.type.flags = T_VAR;
@@ -179,7 +179,7 @@ cell_t *var_create_nonlist(int t, trace_cell_t tc) {
 
 cell_t *var_create_list(cell_t *f, int in, int out, int shift) {
   cell_t *c = make_list(out + shift + 1);
-  cell_t *ph = func(func_placeholder, in + 1, out + 1);
+  cell_t *ph = func(OP_placeholder, in + 1, out + 1);
   cell_t **a = &c->value.ptr[shift];
   COUNTUP(i, out) {
     cell_t *d = dep(ph);
@@ -229,7 +229,7 @@ bool is_var(cell_t const *c) {
 
 cell_t *vector(csize_t n) {
   cell_t *c = closure_alloc(n+1);
-  c->func = func_value;
+  c->op = OP_value;
   c->value.type.exclusive = T_ANY;
   return c;
 }
@@ -238,7 +238,7 @@ cell_t *make_map(csize_t s) {
   csize_t cs = calculate_map_size(s);
   cell_t *c = closure_alloc_cells(cs);
   uintptr_t size = (sizeof(cell_t) * cs - offsetof(cell_t, value.map)) / sizeof(pair_t) - 1;
-  c->func = func_value;
+  c->op = OP_value;
   c->size = 2 * (size + 1) + 1;
   c->value.type.exclusive = T_MAP;
   c->value.map[0].first = size;
@@ -252,7 +252,7 @@ bool is_map(cell_t const *c) {
 
 cell_t *make_string(seg_t s) {
   cell_t *c = closure_alloc(1);
-  c->func = func_value;
+  c->op = OP_value;
   c->value.type.exclusive = T_STRING;
   c->value.str = s;
   return c;
@@ -280,10 +280,10 @@ OP(dep) {
   cell_t *p = ref(c->expr.arg[0]);
   assert_error(is_dep_of(c, p));
   insert_root(&p);
-  c->func = func_dep_entered;
+  c->op = OP_dep_entered;
   reduce_dep(&p);
   trace_dep(c);
-  assert_error(c->func != func_dep_entered, "result not written to dep");
+  assert_error(c->op != OP_dep_entered, "result not written to dep");
   remove_root(&p);
   drop(p);
   return false;
@@ -298,13 +298,13 @@ OP(dep_entered) {
 
 cell_t *dep(cell_t *c) {
   cell_t *n = closure_alloc(1);
-  n->func = func_dep;
+  n->op = OP_dep;
   n->expr.arg[0] = c;
   return n;
 }
 
 bool is_dep(cell_t const *c) {
-  return c->func == func_dep || c->func == func_dep_entered;
+  return c->op == OP_dep || c->op == OP_dep_entered;
 }
 
 // this shouldn't reduced directly, but is called through reduce_partial from func_dep
@@ -360,7 +360,7 @@ OP(placeholder) {
 }
 
 bool is_placeholder(cell_t const *c) {
-  return c && c->func == func_placeholder;
+  return c && c->op == OP_placeholder;
 }
 
 OP(fail) {

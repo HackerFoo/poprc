@@ -38,6 +38,7 @@
 #include "lex.h"
 #include "user_func.h"
 #include "trace.h"
+#include "ops.h"
 
 // table of corresponding C types
 const char *ctype(type_t t) {
@@ -100,7 +101,7 @@ void gen_function_signatures(cell_t *e) {
   printf(";\n");
 
   FOR_TRACE(c, e) {
-    if(c->func == func_exec && c->expr_type.exclusive != T_BOTTOM) {
+    if(c->op == OP_exec && c->expr_type.exclusive != T_BOTTOM) {
       cell_t *x = get_entry(c);
       if(x != e) {
         gen_function_signatures(x);
@@ -159,8 +160,8 @@ void gen_decl(cell_t *e, cell_t *c) {
   type_t t = trace_type(c);
   if(t.exclusive != T_RETURN &&
      t.exclusive != T_BOTTOM &&
-     c->func != func_assert) {
-    if(c->func == func_value) {
+     c->op != OP_assert) {
+    if(c->op == OP_value) {
       printf("  %s%s%d = ", ctype(t), cname(t), i);
       gen_value_rhs(c);
     } else {
@@ -172,12 +173,12 @@ void gen_decl(cell_t *e, cell_t *c) {
 void gen_instruction(cell_t *e, cell_t *c) {
   if(trace_type(c).exclusive == T_RETURN) {
     gen_return(e, c);
-  } else if(c->func == func_value) {
+  } else if(c->op == OP_value) {
     // values are already declared
     // gen_value(e, c);
-  } else if(c->func == func_assert) {
+  } else if(c->op == OP_assert) {
     gen_assert(e, c);
-  } else if(c->func == func_dep) {
+  } else if(c->op == OP_dep) {
     // don't generate anything
   } else {
     gen_call(e, c);
@@ -215,7 +216,7 @@ void gen_call(cell_t *e, cell_t *c) {
     trace_get_name(c, &module_name, &word_name);
 
     printf("  %s%d = %s_%s", cname(trace_type(c)), i, module_name, word_name);
-    if(c->func == func_ap || c->func == func_compose) {
+    if(c->op == OP_ap || c->op == OP_compose) {
       assert_error(in >= 1);
       printf("%d%d", in-1, out);
     }
@@ -302,7 +303,7 @@ void gen_assert(cell_t *e, cell_t *c) {
       cell_t *next = p + closure_cells(p);
       if(next < end) {
         if(bottom &&
-           next->func == func_assert &&
+           next->op == OP_assert &&
            next->expr.arg[1] == c->expr.arg[1]) {
           FLAG_SET(next->expr_type, T_TRACED);
           continue;
@@ -321,7 +322,7 @@ done:
 
 void gen_function(cell_t *e) {
   FOR_TRACE(c, e) {
-    if(c->func != func_exec) continue;
+    if(c->op != OP_exec) continue;
     gen_function_signature(get_entry(c));
     printf(";\n");
   }
@@ -332,7 +333,7 @@ void gen_function(cell_t *e) {
   printf("}\n");
 
   FOR_TRACE(c, e) {
-    if(c->func == func_exec && c->expr_type.exclusive != T_BOTTOM) {
+    if(c->op == OP_exec && c->expr_type.exclusive != T_BOTTOM) {
       cell_t *x = get_entry(c);
       if(x != e) {
         printf("\n");
@@ -347,7 +348,7 @@ void gen_functions(cell_t *e) {
   printf("\n");
 
   FOR_TRACE(c, e) {
-    if(c->func == func_exec) {
+    if(c->op == OP_exec) {
       cell_t *x = get_entry(c);
       if(x != e) gen_functions(x);
     }

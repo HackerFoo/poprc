@@ -40,6 +40,7 @@
 #include "user_func.h"
 #include "list.h"
 #include "lex.h"
+#include "ops.h"
 
 static BITSET_INDEX(visited, cells);
 static BITSET_INDEX(marked, cells);
@@ -87,25 +88,15 @@ char const *entry_function_name(cell_t *e) {
   return s;
 }
 
-char const *function_name(reduce_t *f) {
-#define CASE(x) if(f == func_##x) return #x
-  CASE(value);
-  CASE(fail);
-  CASE(dep);
-  CASE(dep_entered);
-  CASE(ap);
-  CASE(exec);
-#undef CASE
-  const char *s = NULL;
-  FORMAP(i, primitive_module) {
-    cell_t *e = (cell_t *)primitive_module[i].second;
-    if(e->func == f) {
-      s = entry_function_name(e);
-      break;
-    }
-  }
-  assert_error(s);
-  return s;
+#define OP_ITEM(name) #name,
+static const char *_op_name[] = {
+  OP_ITEM(null)
+#include "op_list.h"
+};
+
+char const *op_name(uint8_t op) {
+  assert_error(op < OP_COUNT);
+  return _op_name[op];
 }
 
 void get_name(const cell_t *c, const char **module_name, const char **word_name) {
@@ -120,14 +111,14 @@ void get_name(const cell_t *c, const char **module_name, const char **word_name)
     }
   } else {
     *module_name = PRIMITIVE_MODULE_NAME;
-    *word_name = function_name(c->func);
+    *word_name = op_name(c->op);
   }
 }
 
 char const *function_token(const cell_t *c) {
   static char ap_str[] = "ap00";
-  reduce_t *f = c->func;
-  if(f == func_ap) {
+  op op = c->op;
+  if(op == OP_ap) {
     csize_t
       in = closure_in(c),
       out = closure_out(c),
@@ -149,7 +140,7 @@ char const *function_token(const cell_t *c) {
   FORMAP(i, primitive_module) {
     pair_t *p = &primitive_module[i];
     cell_t *e = (cell_t *)p->second;
-    if(e && e->func == f)
+    if(e && e->op == op)
       return (char *)p->first;
   }
   return NULL;
@@ -308,7 +299,7 @@ void graph_cell(FILE *f, cell_t const *c) {
       print_cell_pointer(f, c->expr.arg[i]);
       fprintf(f, "</td></tr>");
     }
-    if(c->func == func_id && c->expr.arg[1]) {
+    if(c->op == OP_id && c->expr.arg[1]) {
       fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
               show_alt_set((alt_set_t)c->expr.arg[1]));
     }
@@ -452,7 +443,7 @@ void show_func(cell_t const *c) {
       show_one(arg);
     }
   }
-  if(c->func != func_id) { // to reduce noise and allow diff'ing test output
+  if(c->op != OP_id) { // to reduce noise and allow diff'ing test output
     printf(" %s", s);
   }
 }
@@ -617,9 +608,8 @@ FORMAT(entry_short, 'e') {
   }
 }
 
-FORMAT(function, 'F') {
-  reduce_t *func = (reduce_t *)i;
-  printf("%s", function_name(func));
+FORMAT(function, 'O') {
+  printf("%s", op_name(i));
 }
 
 void breakpoint_hook() {

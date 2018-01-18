@@ -15,6 +15,7 @@ $(BUILD_DIR)/%.d: %.c
 	  sed -E -e 's/ ([a-zA-Z][^ .]*)\.h/ .gen\/\1.h/g' > $(BUILD_DIR)/$*.d
 
 LOCAL_HEADERS += $(shell find -L . -not -path './.gen/*' -name '*.h')
+LOCAL_HEADERS := $(sort $(LOCAL_HEADERS))
 GEN_LOCAL_HEADERS := $(patsubst ./%.h, .gen/%.h, $(LOCAL_HEADERS))
 
 # hack to catch any dependencies in .gen that are local headers
