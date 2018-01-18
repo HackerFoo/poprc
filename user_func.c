@@ -677,7 +677,7 @@ fail:
   return false;
 }
 
-bool func_exec(cell_t **cp, type_request_t treq) {
+OP(exec) {
   cell_t *c = *cp;
   PRE(c, exec);
 

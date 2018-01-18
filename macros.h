@@ -198,5 +198,6 @@
 
 // define away WORD annotations
 #define WORD(...)
+#define OP(name) bool func_##name(cell_t **cp, UNUSED type_request_t treq)
 
 #endif

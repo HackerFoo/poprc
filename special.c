@@ -26,8 +26,9 @@
 #include "special.h"
 #include "trace.h"
 #include "list.h"
+#include "ops.h"
 
-bool func_value(cell_t **cp, type_request_t treq) {
+OP(value) {
   cell_t *c = *cp;
   cell_t *res = NULL;
   PRE(c, value);
@@ -114,8 +115,6 @@ cell_t *symbol(val_t sym) {
 bool is_value(cell_t const *c) {
   return c && c->func == func_value;
 }
-
-extern reduce_t func_assert;
 
 void placeholder_extend(cell_t **lp, int in, int out) {
   cell_t *l = *lp;
@@ -272,7 +271,7 @@ bool is_dep_of(cell_t *d, cell_t *c) {
 }
 
 /* todo: propagate types here */
-bool func_dep(cell_t **cp, UNUSED type_request_t treq) {
+OP(dep) {
   cell_t *c = *cp;
   PRE(c, dep);
   /* rely on another cell for reduction */
@@ -290,7 +289,7 @@ bool func_dep(cell_t **cp, UNUSED type_request_t treq) {
   return false;
 }
 
-bool func_dep_entered(cell_t **cp, type_request_t treq) {
+OP(dep_entered) {
   // shouldn't happen; circular dependency
   assert_error(false);
   fail(cp, treq);
@@ -310,7 +309,7 @@ bool is_dep(cell_t const *c) {
 
 // this shouldn't reduced directly, but is called through reduce_partial from func_dep
 WORD("??", placeholder, 0, 1)
-bool func_placeholder(cell_t **cp, type_request_t treq) {
+OP(placeholder) {
   cell_t *c = *cp;
   PRE(c, placeholder);
   if(!check_type(treq.t, T_FUNCTION)) goto fail;
@@ -364,7 +363,7 @@ bool is_placeholder(cell_t const *c) {
   return c && c->func == func_placeholder;
 }
 
-bool func_fail(cell_t **cp, type_request_t treq) {
+OP(fail) {
   cell_t *c = *cp;
   PRE(c, fail);
   stats.reduce_cnt--;
