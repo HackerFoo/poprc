@@ -193,13 +193,19 @@ void condense(cell_t *entry) {
         COUNTUP(i, list_size(tc)) {
           cell_t **p = &tc->value.ptr[i];
           int x = trace_decode(*p);
-          if(x > 0) *p = entry[x].alt;
+          if(x > 0) {
+            *p = entry[x].alt;
+            assert_error(trace_decode(*p) > 0);
+          }
         }
       } else {
         TRAVERSE(tc, args, ptrs) {
           if(p != e) {
             int x = trace_decode(*p);
-            if(x > 0) *p = entry[x].alt;
+            if(x > 0) {
+              *p = entry[x].alt;
+              assert_error(trace_decode(*p) > 0);
+            }
           }
         }
       }
@@ -757,7 +763,8 @@ cell_t *flat_quote(cell_t *new_entry, cell_t *parent_entry) {
       switch_entry(parent_entry, p); // ***
       assert_error(p->value.tc.entry == parent_entry);
       cell_t *tp = trace_cell_ptr(p->value.tc);
-      cell_t *v = var_create_nonlist(T_ANY, (trace_cell_t) {parent_entry, tp-parent_entry});
+      cell_t *v = var_create_nonlist(trace_type(tp).exclusive,
+                                     (trace_cell_t) {parent_entry, tp-parent_entry});
       assert_error(p->pos);
       nc->expr.arg[in - p->pos] = v;
       LOG("arg[%d] -> %d", in - p->pos, tp - parent_entry);
@@ -773,7 +780,7 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
   cell_t *e = trace_start_entry(parent_entry, 1);
   e->module_name = parent_entry->module_name;
   e->word_name = string_printf("%s_q%d", parent_entry->word_name, parent_entry->entry.sub_id++);
-  CONTEXT_LOG("compiling quote %E", e);
+  CONTEXT_LOG("compiling %C to quote %E", l, e);
 
   // conversion
   csize_t len = function_out(l, true);

@@ -13,7 +13,8 @@ Compile to direct C when possible
 **** closure_set_ready
 **** split_args
 * major
-** TODO remove underscore hack
+** TODO define symbols in modules and limit exporting
+** DONE remove underscore hack
 ** DONE avoid expanding placeholders
 ** DONE overhaul byte_compile to use variable ids
 ** DONE don't trace pushl/pushr/popr again, let assertion mapping enforce assertions

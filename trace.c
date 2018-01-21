@@ -162,7 +162,9 @@ void switch_entry_(cell_t *entry, trace_cell_t *tc) {
     entry,
     trace_alloc_var(entry)
   };
-  trace_cell_ptr(*tc)->value.tc = old;
+  cell_t *p = trace_cell_ptr(*tc);
+  p->value.tc = old;
+  p->value.type.exclusive = trace_type(trace_cell_ptr(old)).exclusive;
 end:
   LOG("%e[%d] -> %e[%d]",
       old.entry, old.index,
@@ -265,8 +267,8 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
   assert_error(tc->size == c->size);
   assert_error(c->op != OP_dep_entered &&
          c->op != OP_dep);
-  LOG("trace_store_expr: %e[%d] <- %C %C",
-      entry, r->value.tc.index, c, r);
+  CONTEXT_LOG("trace_store_expr: %e[%d] <- %C %C",
+              entry, r->value.tc.index, c, r);
 
   refcount_t n = tc->n;
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
@@ -494,7 +496,7 @@ void trace_reduction(cell_t *c, cell_t *r) {
 // update the type of c in the trace
 void trace_update_type(cell_t *c) {
   int t = c->value.type.exclusive;
-  if(t != T_LIST) {
+  if(t != T_ANY && t != T_LIST) {
     cell_t *tc = trace_cell_ptr(c->value.tc);
     if(tc && tc->op) {
       trace_set_type(tc, t);
@@ -529,6 +531,7 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
        closure_out(p) == 0) p = p->expr.arg[0]; //***
     if(is_var(p) && is_function(p)) {
       // identity list, so just return the trace cell for the item in the list
+      switch_entry(entry, p);
       return p->value.tc.index;
     }
   }

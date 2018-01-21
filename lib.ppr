@@ -298,6 +298,6 @@ __ sum_: [[+] .] [popr drop is_nil not] iterate head int_t
 __ sum: 0 pushr sum_
 
 __ decreasing list from initial element
-iota: [1-] pushl [[dup 1-] .] [head 0 >] iterate
+__ iota: [1-] pushl [[dup 1-] .] [head 0 >] iterate
 __ iota2: [[dup 1-] .] [head 0 >] iterate
 __ iota3: [] pushl [[dup 1-] .] [head 0 >] iterate
