@@ -3,14 +3,14 @@
 
 
 jquery.terminal@^1.4.2:
-  version "1.9.0"
-  resolved "https://registry.yarnpkg.com/jquery.terminal/-/jquery.terminal-1.9.0.tgz#bb7ec5b5acee38ffb4c6c43e0be031969061fb2a"
+  version "1.11.3"
+  resolved "https://registry.yarnpkg.com/jquery.terminal/-/jquery.terminal-1.11.3.tgz#3086bb439b4e4737e60b41987fc83850b6515d0e"
   dependencies:
     jquery "~3"
 
 jquery@~3:
-  version "3.2.1"
-  resolved "https://registry.yarnpkg.com/jquery/-/jquery-3.2.1.tgz#5c4d9de652af6cd0a770154a631bba12b015c787"
+  version "3.3.1"
+  resolved "https://registry.yarnpkg.com/jquery/-/jquery-3.3.1.tgz#958ce29e81c9790f31be7792df5d4d95fc57fbca"
 
 keyboardevent-key-polyfill@^1.1.0:
   version "1.1.0"

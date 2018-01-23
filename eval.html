@@ -11,9 +11,15 @@
 </body>
 <script>
   var term;
+  function term_echo(str) {
+    if(!str) {
+      str = ' ';
+    }
+    term.echo(str);
+  }
   var Module = {
-    'print' : function(str) { term.echo(str); },
-    'printErr' : function(str) { term.echo(str); },
+    'print' : term_echo,
+    'printErr' : term_echo,
   };
 
   var is_ready = false;
@@ -40,7 +46,7 @@
     prompt: ': ',
     greetings: "          ,------------------,\n" +
                " ,--------' Popr Interpreter '--------,\n" +
-               " | [[;#f00;;]Copyright 2013-2017 Dustin DeWeese] |\n" +
+               " | [[;#f00;;]Copyright 2013-2018 Dustin DeWeese] |\n" +
                " '------------------------------------'\n" +
                "   type :help for help\n \n",
     onClear: function(term) {
