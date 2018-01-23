@@ -104,6 +104,7 @@ endif
 INCLUDE += -I.gen
 CFLAGS += $(COPT) $(INCLUDE)
 CXXFLAGS += $(COPT) $(INCLUDE)
+LIBS += -lm
 
 BUILD_DIR := build/$(CC)/$(BUILD)
 DIAGRAMS := diagrams

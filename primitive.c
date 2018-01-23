@@ -17,6 +17,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 #include "rt_types.h"
 
 #include "startle/error.h"
@@ -134,10 +135,19 @@ cell_t *_op2_float(double (*op)(double, double), cell_t *x, cell_t *y) {
   return res;
 }
 
+cell_t *_op1_float(double (*op)(double), cell_t *x) {
+  csize_t size = val_size(x);
+  cell_t *res = vector(size);
+  COUNTUP(i, size) {
+    res->value.flt[i] = op(x->value.flt[i]);
+  }
+  return res;
+}
+
 bool func_op2_float(cell_t **cp, type_request_t treq, double (*op)(double, double), bool nonzero) {
   cell_t *c = *cp;
   cell_t *res = 0;
-  PRE(c, op2);
+  PRE(c, op2_float);
 
   if(!check_type(treq.t, T_FLOAT)) goto fail;
 
@@ -151,6 +161,31 @@ bool func_op2_float(cell_t **cp, type_request_t treq, double (*op)(double, doubl
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   if(nonzero && !is_var(q) && q->value.flt[0] == 0.0) goto fail; // TODO assert this for variables
   res = is_var(p) || is_var(q) ? var(treq.t, c) : _op2_float(op, p, q);
+  res->value.type.exclusive = T_FLOAT;
+  res->alt = c->alt;
+  res->value.alt_set = alt_set;
+  store_reduced(cp, res);
+  return true;
+
+ fail:
+  fail(cp, treq);
+  return false;
+}
+
+bool func_op1_float(cell_t **cp, type_request_t treq, double (*op)(double)) {
+  cell_t *c = *cp;
+  cell_t *res = 0;
+  PRE(c, op1_float);
+
+  if(!check_type(treq.t, T_FLOAT)) goto fail;
+
+  alt_set_t alt_set = 0;
+  type_request_t atr = req_simple(T_FLOAT);
+  if(!reduce_arg(c, 0, &alt_set, atr)) goto fail;
+  clear_flags(c);
+
+  cell_t *p = c->expr.arg[0];
+  res = is_var(p) ? var(treq.t, c) : _op1_float(op, p);
   res->value.type.exclusive = T_FLOAT;
   res->alt = c->alt;
   res->value.alt_set = alt_set;
@@ -214,6 +249,36 @@ WORD("/f", div_float, 2, 1)
 double div_float_op(double x, double y) { return x / y; }
 OP(div_float) {
   return func_op2_float(cp, treq, div_float_op, true);
+}
+
+WORD("log", log, 1, 1)
+OP(log) {
+  return func_op1_float(cp, treq, log);
+}
+
+WORD("exp", exp, 1, 1)
+OP(exp) {
+  return func_op1_float(cp, treq, exp);
+}
+
+WORD("cos", cos, 1, 1)
+OP(cos) {
+  return func_op1_float(cp, treq, cos);
+}
+
+WORD("sin", sin, 1, 1)
+OP(sin) {
+  return func_op1_float(cp, treq, sin);
+}
+
+WORD("tan", tan, 1, 1)
+OP(tan) {
+  return func_op1_float(cp, treq, tan);
+}
+
+WORD("atan2", atan2, 2, 1)
+OP(atan2) {
+  return func_op2_float(cp, treq, atan2, false);
 }
 
 WORD("&b", bitand, 2, 1)
