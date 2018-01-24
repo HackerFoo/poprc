@@ -31,11 +31,11 @@
  *  @brief Unit testing
  */
 
-#define TEST_ITEM(name) extern int test_##name();
+#define TEST__ITEM(name) extern int test_##name();
 #include "test_list.h"
-#undef TEST_ITEM
+#undef TEST__ITEM
 
-#define TEST_ITEM(name)                                  \
+#define TEST__ITEM(name)                                 \
   {                                                      \
     .first = (uintptr_t)#name,                           \
     .second = (uintptr_t)&test_##name                    \
@@ -45,7 +45,7 @@ pair_t tests[] = {
 #include "test_list.h"
 };
 
-#undef TEST_ITEM
+#undef TEST__ITEM
 
 /** Run all tests matching the name. */
 int run_test(seg_t name) {

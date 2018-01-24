@@ -386,7 +386,7 @@ void run_eval(bool echo) {
   }
 }
 
-#define COMMAND_ITEM(name, desc)                         \
+#define COMMAND__ITEM(name, desc)                        \
   {                                                      \
     .first = (uintptr_t)#name,                           \
     .second = (uintptr_t)&command_##name                 \
@@ -394,9 +394,9 @@ void run_eval(bool echo) {
 static pair_t commands[] = {
 #include "command_list.h"
 };
-#undef COMMAND_ITEM
+#undef COMMAND__ITEM
 
-#define COMMAND_ITEM(name, desc)                         \
+#define COMMAND__ITEM(name, desc)                        \
   {                                                      \
     .first = (uintptr_t)#name,                           \
     .second = (uintptr_t)desc                            \
@@ -404,7 +404,7 @@ static pair_t commands[] = {
 static pair_t command_descriptions[] = {
 #include "command_list.h"
 };
-#undef COMMAND_ITEM
+#undef COMMAND__ITEM
 
 bool run_command(seg_t name, cell_t *rest) {
   FOREACH(i, commands) {

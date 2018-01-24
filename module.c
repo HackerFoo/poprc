@@ -35,14 +35,14 @@
 #include "ops.h"
 
 // count the number of words
-#define WORD_ITEM(...) CONCAT(anon, __LINE__),
+#define WORD__ITEM(...) CONCAT(anon, __LINE__),
 enum word_count {
   #include "word_list.h"
   WORD_COUNT
 };
-#undef WORD_ITEM
+#undef WORD__ITEM
 
-#define WORD_ITEM(__name, __func, __in, __out)           \
+#define WORD__ITEM(__name, __func, __in, __out)          \
   {                                                      \
     .first = (uintptr_t)__name,                          \
     .second = (uintptr_t)&(cell_t) {                     \

@@ -212,9 +212,9 @@ void clear_flags(cell_t *c) {
 }
 
 static reduce_t *_func[] = {
-#define OP_ITEM(name) func_##name,
+#define OP__ITEM(name) func_##name,
 #include "op_list.h"
-#undef OP_ITEM
+#undef OP__ITEM
 };
 
 reduce_t *op_func(uint8_t op) {

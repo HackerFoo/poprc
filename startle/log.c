@@ -32,9 +32,9 @@
  */
 
 
-#define FORMAT_ITEM(name, c) extern FORMAT(name, c);
+#define FORMAT__ITEM(name, c) extern FORMAT(name, c);
 #include "format_list.h"
-#undef FORMAT_ITEM
+#undef FORMAT__ITEM
 
 #define REVERSE 0x80
 #define INDENT  0x40
@@ -159,9 +159,9 @@ unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
           break;
 #define CASE(c, cast, fmt)                      \
         CASE_PRINT(c, printf(fmt, cast(x)))
-#define FORMAT_ITEM(name, c) CASE_PRINT(c, format_##name(x))
+#define FORMAT__ITEM(name, c) CASE_PRINT(c, format_##name(x))
 #include "format_list.h"
-#undef FORMAT_ITEM
+#undef FORMAT__ITEM
         CASE('d', (int), "%d");
         CASE('u', (unsigned int), "%u");
         CASE('x', (int), "%x");
