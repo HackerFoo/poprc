@@ -35,4 +35,6 @@ _darcs
 /startle/makeheaders/makeheaders
 /startle/bin
 /.gen
-
+/tex/*.aux
+/tex/*.log
+/tex/*.pdf
