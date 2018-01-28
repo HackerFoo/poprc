@@ -730,10 +730,12 @@ COMMAND(tweak, "tweak a value") {
   if(match_log_tag(rest)) {
     const char *tag = rest->tok_list.location;
     cell_t *arg = rest->tok_list.next;
+    bool after = match(arg, "+");
+    if(after) arg = arg->tok_list.next;
     if(arg && arg->char_class == CC_NUMERIC) {
       intptr_t val = parse_num(arg);
-      printf("tweak set: " FORMAT_TAG " => %d\n", tag, (int)val);
-      log_set_tweak(tag, val);
+      printf("tweak set%s: " FORMAT_TAG " => %d\n", after ? " starting at" : "", tag, (int)val);
+      log_set_tweak(tag, val, after);
       set = true;
     }
   }

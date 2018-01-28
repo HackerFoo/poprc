@@ -52,6 +52,8 @@ static bool watching = false;
 static unsigned int msg_head = 0;
 
 static bool tweak_enabled = false;
+static bool set_tweak_fmt = false;
+static char *tweak_fmt = NULL;
 static unsigned int tweak_trigger = ~0;
 static intptr_t tweak_value = 0;
 
@@ -70,6 +72,10 @@ void log_init() {
   log_watch_fmt = 0;
   set_log_watch_fmt = false;
   watching = false;
+  tweak_enabled = false;
+  tweak_trigger = ~0;
+  set_tweak_fmt = false;
+  tweak_fmt = NULL;
   msg_head = 0;
   zero(hash_tag_set);
 }
@@ -603,22 +609,26 @@ void get_tag(tag_t tag) {
  */
 #define TWEAK(default_value, fmt, ...)                          \
   ({                                                            \
-    const char *c;                                              \
-    intptr_t x;                                                 \
-    if unlikely(log_do_tweak(&x)) {                             \
-      c = COLOR_blue;                                           \
-    } else {                                                    \
-      x = (default_value);                                      \
-      c = COLOR_normal;                                         \
+    const char *__c;                                            \
+    intptr_t __x;                                               \
+    if unlikely(log_do_tweak(&__x, fmt)) {                      \
+        __c = COLOR_blue;                                       \
+      } else {                                                  \
+      __x = (default_value);                                    \
+      __c = COLOR_normal;                                       \
     }                                                           \
-    LOG(COLORs("TWEAK(%d)") " " fmt, c, x, ##__VA_ARGS__);      \
-    x;                                                          \
+    LOG(COLORs("TWEAK(%d)") " " fmt, __c, __x, ##__VA_ARGS__);  \
+    __x;                                                        \
   })
 #endif
 
-bool log_do_tweak(intptr_t *x) {
-  if unlikely(tweak_enabled && log_head == tweak_trigger) {
+bool log_do_tweak(intptr_t *x, char *fmt) {
+  log_add_context();
+  if unlikely(tweak_enabled &&
+              (log_head == tweak_trigger ||
+               (set_tweak_fmt && tweak_fmt == fmt))) {
     *x = tweak_value;
+    if(set_tweak_fmt && !tweak_fmt) tweak_fmt = fmt;
     return true;
   } else {
     return false;
@@ -628,10 +638,11 @@ bool log_do_tweak(intptr_t *x) {
 /** Tweak to the value at the given log tag.
  * Only one tweak can be set at a time.
  */
-void log_set_tweak(const tag_t tag, intptr_t value) {
+void log_set_tweak(const tag_t tag, intptr_t value, bool after) {
   tweak_enabled = true;
   tweak_trigger = read_tag(tag);
   tweak_value = value;
+  set_tweak_fmt = after;
 }
 
 /** Clear the tweak. */

@@ -14,16 +14,16 @@ M:three
 ################
 comments => 0
 @ context
-startle/log.c:457: A 2
-  startle/log.c:459: (a) nonzero x [38;5;8mowxf[0m
-startle/log.c:457: A 1
-  startle/log.c:451: B 0
-    startle/log.c:452: (b) zero x [38;5;8mmefp[0m
-  startle/log.c:459: (a) nonzero x [38;5;8mliu7[0m
-startle/log.c:446: C 3 [38;5;8mknel[0m
-startle/log.c:469: D 42 [38;5;8mjd5q[0m
-  startle/log.c:464: E 42 [38;5;8miik8[0m
-  startle/log.c:471: exiting d [38;5;8mg9cd[0m
+startle/log.c:463: A 2
+  startle/log.c:465: (a) nonzero x [38;5;8mowxf[0m
+startle/log.c:463: A 1
+  startle/log.c:457: B 0
+    startle/log.c:458: (b) zero x [38;5;8mmefp[0m
+  startle/log.c:465: (a) nonzero x [38;5;8mliu7[0m
+startle/log.c:452: C 3 [38;5;8mknel[0m
+startle/log.c:475: D 42 [38;5;8mjd5q[0m
+  startle/log.c:470: E 42 [38;5;8miik8[0m
+  startle/log.c:477: exiting d [38;5;8mg9cd[0m
 context => 0
 @ error
 i = 0
@@ -61,9 +61,9 @@ _check_list_remaining_size: 0 + 1 = 1
 _check_list_remaining_size: 1 + 0 = 1
 list_remaining_size => 0
 @ log
-startle/log.c:356: test 1 + 2 = 3 [38;5;8mpshx[0m
-startle/log.c:357: WAZZUP d00d [38;5;8mn5gt[0m
-startle/log.c:358: [123] [38;5;8mm9wb[0m
+startle/log.c:362: test 1 + 2 = 3 [38;5;8mpshx[0m
+startle/log.c:363: WAZZUP d00d [38;5;8mn5gt[0m
+startle/log.c:364: [123] [38;5;8mm9wb[0m
 log => 0
 @ lookup
 The total for 5 grapes at $0.50 each is $2.50.
