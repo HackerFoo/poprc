@@ -1190,6 +1190,37 @@ ___ tests.drop_loop1_r0 (1 -> 1) x2 rec ___
 [11] __primitive.assert 1 10, type = i x1
 [12] return [ 11 ], type = r x1
 
+___ tests.drop_loop2 (2 -> 1) ___
+[1] var, type = ?i x1
+[2] var, type = ?a x1
+[3] tests.drop_loop2_r0 2 1, type = a x1
+[4] return [ 3 ], type = r x1
+
+___ tests.drop_loop2_r0 (2 -> 1) x2 rec ___
+[1] var, type = ?*i x4
+[2] var, type = ?a x2
+[3] __primitive.gt 1 4, type = s x1
+[4] val 0, type = i x2
+[5] __primitive.assert 8 3, type = a x1
+[6] __primitive.sub 1 7, type = i x1
+[7] val 1, type = i x1
+[8] tests.drop_loop2_r0 2 6, type = a x1
+[9] return [ 5 ], type = r -> 16 x1
+[10] __primitive.gt 1 4, type = s x1
+[11] __primitive.not 10, type = s x3
+[12] __primitive.assert [] 11, type = f x1
+[13] __primitive.assert 2 11, type = a x1
+[14] __primitive.assert 1 11, type = i x1
+[15] tests.drop_loop2_r0_q0 14 13 12, type = a x1
+[16] return [ 15 ], type = r x1
+
+___ tests.drop_loop2_r0_q0 (3 -> 1) ___
+[1] var, type = ?f x1
+[2] var, type = ?a x1
+[3] var, type = ?i x1
+[4] __primitive.compose 1 2 3 [], type = f x1
+[5] return [ 4 ], type = r x1
+
 ___ tests.drop_loop3 (3 -> 2) ___
 [1] var, type = ?i x1
 [2] var, type = ?a x1
@@ -1495,6 +1526,20 @@ ___ tests.pushl2 (3 -> 1) ___
 [3] var, type = ?a x1
 [4] __primitive.ap 3 2 1, type = f x1
 [5] return [ 4 ], type = r x1
+
+___ tests.pushl_assert (2 -> 1) ___
+[1] var, type = ?a x1
+[2] var, type = ?s x2
+[3] __primitive.assert [] 2, type = f x1
+[4] __primitive.assert 1 2, type = a x1
+[5] tests.pushl_assert_q0 4 3, type = a x1
+[6] return [ 5 ], type = r x1
+
+___ tests.pushl_assert_q0 (2 -> 1) ___
+[1] var, type = ?f x1
+[2] var, type = ?a x1
+[3] __primitive.compose 1 2 [], type = f x1
+[4] return [ 3 ], type = r x1
 
 ___ tests.qdec (1 -> 1) x2 rec ___
 [1] var, type = ?*f x4

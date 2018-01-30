@@ -154,6 +154,8 @@ cell_t **bind_pattern(cell_t *c, cell_t *pattern, cell_t **tail) {
         }
       }
     }
+  } else if(pattern->op == OP_id) {
+    return bind_pattern(c, pattern->expr.arg[0], tail);
   } else {
     // This can be caused by an operation before an infinite loop
     // This will prevent reducing the operation, and therefore fail to unify

@@ -527,6 +527,7 @@ OP(assert) {
     }
     res->value.alt_set = alt_set;
     res->alt = c->alt;
+    trace_store_row_assert(c, res);
   } else if(is_var(q)) {
     res = var(q->value.type.exclusive, c);
     res->value.alt_set = alt_set;

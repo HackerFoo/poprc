@@ -68,6 +68,7 @@ movr: [popr] dip12 pushl
 __ not working
 __ split_at: [[[]] pushl] dip11 [[movr] .] times ap02 swap2 drop
 split_at:
+  __ [] swap
   [] ap30
     [[[movr] dip22 1-] .]
     [head 0 >]
@@ -302,7 +303,7 @@ __ sum_: [[+] .] [popr drop is_nil not] iterate head int_t
 __ sum: 0 pushr sum_
 
 __ decreasing list from initial element
-__ ERROR byte_compile.c:207: condense: Assertion `trace_decode(*p) > 0' failed.
+__ ERROR: doesn't actually build the list
 __ iota: [1-] pushl [[dup 1-] .] [head 0 >] iterate
 iota2: [[dup 1-] .] [head 0 >] iterate
 __ iota3: [] pushl [[dup 1-] .] [head 0 >] iterate

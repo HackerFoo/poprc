@@ -304,6 +304,28 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
   tc->alt = NULL;
 }
 
+void trace_store_row_assert(cell_t *c, cell_t *r) {
+  cell_t
+    *p = c->expr.arg[0],
+    *q = c->expr.arg[1];
+  if(!is_var(q) || !is_list(p)) return;
+  assert_error(is_row_list(r));
+  cell_t *f = *left_elem(r);
+  if(!is_var(f)) return;
+  assert_error(is_function(f));
+  cell_t *entry = f->value.tc.entry;
+  cell_t *t = trace_cell_ptr(f->value.tc);
+  if(t->op) return;
+  t->op = OP_assert;
+  t->expr.arg[0] = trace_encode(is_row_list(p) ?
+                                trace_get_value(entry, *left_elem(p)) :
+                                NIL_INDEX);
+  int tq = trace_get_value(entry, q);
+  entry[tq].n++;
+  t->expr.arg[1] = trace_encode(tq);
+  t->expr_type.exclusive = T_FUNCTION;
+}
+
 // store value c in the trace
 int trace_store_value(cell_t *entry, const cell_t *c) {
   if(!entry) return -1;

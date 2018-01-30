@@ -169,18 +169,30 @@ void condense(cell_t *entry) {
   int idx = 1;
 
   // calculate mapping
-  FOR_TRACE(p, entry) {
-    if(p->n < 0) p->op = OP_null;
-    if(p->op) {
-      if(is_value(p) && p->value.type.exclusive == T_RETURN) {
-        if(ret) ret->alt = trace_encode(idx);
-        ret = p;
+  FOR_TRACE(tc, entry) {
+    if(tc->op) {
+      if(tc->n < 0) {
+        // drop args and ptrs
+        cell_t **e = is_user_func(tc) ? &tc->expr.arg[closure_in(tc)] : NULL;
+        TRAVERSE(tc, args, ptrs) {
+          if(p != e) {
+            int x = trace_decode(*p);
+            if(x > 0) entry[x].n--;
+          }
+        }
+        tc->op = OP_null;
+        LOG("collapse/drop %d", tc - entry);
       } else {
-        p->alt = trace_encode(idx);
+        if(is_value(tc) && tc->value.type.exclusive == T_RETURN) {
+          if(ret) ret->alt = trace_encode(idx);
+          ret = tc;
+        } else {
+          tc->alt = trace_encode(idx);
+        }
+        idx += calculate_cells(tc->size);
       }
-      idx += calculate_cells(p->size);
     } else {
-      LOG("collapse %d", p - entry);
+      LOG("collapse %d", tc - entry);
     }
   }
 

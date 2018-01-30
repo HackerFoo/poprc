@@ -113,12 +113,11 @@ drop_loop1:
     [head 0 >]
     iterate head
 
-__ ERROR: byte_compile.c:207: condense: Assertion `trace_decode(*p) > 0' failed.
-__ drop_loop2:
-__   [] ap20
-__     [[1-] .]
-__     [head 0 >]
-__     iterate
+drop_loop2:
+  [] ap20
+    [[1-] .]
+    [head 0 >]
+    iterate
 
 drop_loop3:
   [] ap30
@@ -132,11 +131,10 @@ drop_loop4:
     [head 0 >]
     iterate popd pull3 drop
 
-__ ERROR byte_compile.c:207: condense: Assertion `trace_decode(*p) > 0' failed.
-__ drop_loop_q: [] ap20 [[1-] .] [head 0 >] iterate
-
 __ rec_a: rec_b 1 +
 __ rec_b: rec_a 1 -
 
 __ using floats
 pct: ->f 100 /f 1 +f *f
+
+pushl_assert: [] pushl swap !
