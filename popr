@@ -8,6 +8,6 @@ if [ ! -f eval ]; then
     make
 fi
 
-./eval -lo lib.ppr -im
+./eval -lo *.ppr -im
 
 popd > /dev/null
