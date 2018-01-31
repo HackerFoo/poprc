@@ -28,7 +28,7 @@ SHELL := bash
 	startle/bin/makeheaders $<:$@
 
 .gen/%.h: .gen/%.h.new $(wildcard %.c)
-	@cmp --silent $< $@ || cp $< $@
+	@cmp -s $< $@ || cp $< $@
 
 startle/bin/makeheaders: startle/makeheaders/makeheaders.c
 	@mkdir -p startle/bin
