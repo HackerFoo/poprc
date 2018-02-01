@@ -44,6 +44,8 @@ flat_copy_list => 0
 flattened_list_copy => 0
 @ function_in
 function_in => 0
+@ inrange
+inrange => 0
 @ lex
 testing 
 [ 1 2 + 3 ] 
@@ -149,6 +151,8 @@ a.cd.f6:
 f7:
   6 5 -
 module_lookup => 0
+@ oneof
+oneof => 0
 @ parse_def
 another:
   oh heres another

@@ -174,6 +174,81 @@
     _b > _a ? 0 : _a - _b;                      \
   })
 
+#define INRANGE_3(x, lo0, hi0)                  \
+  ({                                            \
+    __typeof__(x) _x = (x);                     \
+    _x >= (lo0) && _x <= (hi0);                 \
+  })
+
+#define INRANGE_5(x, lo0, hi0, lo1, hi1)        \
+  ({                                            \
+    __typeof__(x) _x = (x);                     \
+    (_x >= (lo0) && _x <= (hi0))                \
+      || (_x >= (lo1) && _x <= (hi1));          \
+  })
+
+#define INRANGE_7(x, lo0, hi0, lo1, hi1, lo2, hi2)      \
+  ({                                                    \
+    __typeof__(x) _x = (x);                             \
+    (_x >= (lo0) && _x <= (hi0))                        \
+      || (_x >= (lo1) && _x <= (hi1))                   \
+      || (_x >= (lo2) && _x <= (hi2));                  \
+  })
+
+#define INRANGE(...) DISPATCH(INRANGE, __VA_ARGS__)
+
+#define ONEOF_2(x, y0)                          \
+  ({                                            \
+    __typeof__(x) _x = (x);                     \
+    _x == (y0);                                 \
+  })
+
+#define ONEOF_3(x, y0, y1)                      \
+  ({                                            \
+    __typeof__(x) _x = (x);                     \
+    _x == (y0)                                  \
+      || _x == (y1);                            \
+  })
+
+#define ONEOF_4(x, y0, y1, y2)                  \
+  ({                                            \
+    __typeof__(x) _x = (x);                     \
+    _x == (y0)                                  \
+      || _x == (y1)                             \
+      || _x == (y2);                            \
+  })
+
+#define ONEOF_5(x, y0, y1, y2, y3)              \
+  ({                                            \
+    __typeof__(x) _x = (x);                     \
+    _x == (y0)                                  \
+      || _x == (y1)                             \
+      || _x == (y2)                             \
+      || _x == (y3);                            \
+  })
+
+#define ONEOF_6(x, y0, y1, y2, y3, y4)          \
+  ({                                            \
+    __typeof__(x) _x = (x);                     \
+    _x == (y0)                                  \
+      || _x == (y1)                             \
+      || _x == (y2)                             \
+      || _x == (y3)                             \
+      || _x == (y4);                            \
+  })
+
+#define ONEOF_7(x, y0, y1, y2, y3, y4, y5)      \
+  ({                                            \
+    __typeof__(x) _x = (x);                     \
+    _x == (y0)                                  \
+      || _x == (y1)                             \
+      || _x == (y2)                             \
+      || _x == (y3)                             \
+      || _x == (y4)                             \
+      || _x == (y5);                            \
+  })
+
+#define ONEOF(...) DISPATCH(ONEOF, __VA_ARGS__)
 
 // UM... OTHER STUFF ________________________________________
 

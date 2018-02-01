@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 POPRC_ROOT=$HOME/src/poprc
 

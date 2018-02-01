@@ -106,4 +106,19 @@ TEST(macro_dispatch) {
   DISPATCH(TEST, "1", "2");
   return 0;
 }
+
+TEST(inrange) {
+  if(!INRANGE(1, -3, 3)) return -1;
+  if(!INRANGE(12, -3, 3, 10, 20)) return -2;
+  if(!INRANGE(42, -3, 3, 10, 20, 40, 100)) return -3;
+  return 0;
+}
+
+TEST(oneof) {
+  if(!ONEOF(1, 1)) return -1;
+  if(!ONEOF(2, 1, 2)) return -2;
+  if(!ONEOF(3, 1, 2, 3)) return -3;
+  return 0;
+}
+
 /** [macro_dispatch] */

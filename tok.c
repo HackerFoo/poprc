@@ -18,7 +18,6 @@
 #include "rt_types.h"
 #include <string.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 #include "startle/error.h"
 #include "startle/log.h"
@@ -29,17 +28,16 @@
 
 char_class_t char_class(char c) {
   assert_throw(c < 127, "ASCII only please");
-  if(c <= ' ' || c > '~')
+  if(!INRANGE(c, '!', '~'))
     return CC_NONE;
-  if(c >= '0' && c <= '9')
+  if(INRANGE(c, '0', '9'))
     return CC_NUMERIC;
-  if((c >= 'a' && c <= 'z') ||
-     (c >= 'A' && c <= 'Z'))
+  if(INRANGE(c, 'a', 'z', 'A', 'Z'))
     return CC_ALPHA;
   if(c == '?') return CC_VAR;
   if(c == '.') return CC_DOT;
   if(c == '_') return CC_COMMENT;
-  if(strchr("[](){}", c))
+  if(ONEOF(c, '[', ']', '(', ')', '{', '}'))
     return CC_BRACKET;
   return CC_SYMBOL;
 }
@@ -154,13 +152,16 @@ seg_t tok(const char *s, const char* e, char_class_t *class) {
   seg.s = s;
 
   /* allow adjacent brackets to be separately tokenized */
-  if(cc == CC_BRACKET ||
-     cc == CC_COMMENT) {
+  if(ONEOF(cc, CC_BRACKET, CC_COMMENT)) {
     seg.n = 1;
     goto done;
   }
 
+  bool hex_mode = false;
+  int i = 0;
+
   while(++s < e && *s) {
+    i++;
     char_class_t ncc = char_class(*s);
     if(cc == ncc || cc == CC_NONE) {
       cc = ncc;
@@ -170,16 +171,16 @@ seg_t tok(const char *s, const char* e, char_class_t *class) {
     // exceptions
     switch(ncc) {
     case CC_NUMERIC: // negative numbers
+      if(cc == CC_FLOAT) continue;
       if(s[-1] == '-') {
-        cc = ncc;
+        cc = CC_NUMERIC;;
         continue;
       } else if(cc == CC_ALPHA) { // allow numeric after alpha
         continue;
       }
       break;
-    case CC_COMMENT: // comment char inside token
-      if(cc == CC_ALPHA ||
-         cc == CC_SYMBOL) {
+    case CC_COMMENT: // underscore after token e.g. foo_bar
+      if(ONEOF(cc, CC_ALPHA, CC_SYMBOL)) {
         continue;
       }
       break;
@@ -187,21 +188,32 @@ seg_t tok(const char *s, const char* e, char_class_t *class) {
       if(s[1] != '.') {
         if(cc == CC_ALPHA) {
           cc = CC_NONE;
-          continue; // allow single dots in identifiers
+          continue; // allow single dots in identifiers e.g. foo.bar
         }
-        if(cc == CC_NUMERIC) {
-          char *end;
-          strtod(seg.s, &end);
-          if(end != seg.s) {
-            seg.n = end - seg.s;
-            if(class) *class = CC_FLOAT;
-            return seg;
-          }
+        if(cc == CC_NUMERIC) { // e.g. 1.2
+          cc = CC_FLOAT;
+          continue;
         }
       }
       break;
     case CC_ALPHA:
-      if(cc == CC_NUMERIC && s[0] == 'x' && s[-1] == '0') continue;
+      if(cc == CC_NUMERIC) {
+        // 0x... or -0x...
+        if(*s == 'x' &&
+           INRANGE(i, 1, 2) &&
+           s[-1] == '0' &&
+           (i == 1 || s[-2] == '-')) {
+          hex_mode = true;
+          continue;
+        }
+        // allow a-fA-F in hex
+        if(hex_mode && INRANGE(*s, 'a', 'f', 'A', 'F')) continue;
+      }
+      if(ONEOF(cc, CC_NUMERIC, CC_FLOAT) &&
+         ONEOF(*s, 'e', 'E')) { // e.g. 1.2e3
+        cc = CC_FLOAT;
+        continue;
+      }
       if(cc == CC_SYMBOL && s[-1] != ':') {
         cc = CC_ALPHA;
         continue; // allow symbols to be followed with letters

@@ -76,3 +76,10 @@ __ test assert with > 2 alts
 
 __ test integer -> float promotion
 1 2.3 +f
+
+__ numeric parsing
+-0xf0e1
+0xf0e1
+1e3
+1.2e3
+1.2
