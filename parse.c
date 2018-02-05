@@ -511,9 +511,10 @@ cell_t *parse_expr(const cell_t **l, cell_t *module, cell_t *entry) {
     switch(t->char_class) {
 
     case CC_NUMERIC:
+    {
       assert_throw(n < MAX_ARGS);
       arg_stack[n++] = int_val(strtol(seg.s, NULL, 0));
-      break;
+    } break;
     case CC_FLOAT:
     {
       char *end;
@@ -522,8 +523,7 @@ cell_t *parse_expr(const cell_t **l, cell_t *module, cell_t *entry) {
         assert_throw(n < MAX_ARGS);
         arg_stack[n++] = float_val(x);
       }
-      break;
-    }
+    } break;
 
     case CC_SYMBOL:
       if(seg.n == 1 && *seg.s == ',') {
@@ -557,7 +557,10 @@ cell_t *parse_expr(const cell_t **l, cell_t *module, cell_t *entry) {
         arg_stack[n++] = string_symbol(seg);
       } else {
         cell_t *c = parse_word(seg, module, n, entry);
-        if(!c) goto fail;
+        if(!c) {
+          LOG("parse failure");
+          goto fail;
+        }
         bool f = !is_value(c);
         if(f) {
           while(n && !closure_is_ready(c)) {
@@ -585,39 +588,42 @@ cell_t *parse_expr(const cell_t **l, cell_t *module, cell_t *entry) {
           }
         }
       }
-    }
+    } break;
 
     case CC_BRACKET:
-    if(seg.n == 1) {
-      switch(*seg.s) {
-      case ']':
-        goto done;
-      case '[':
-      {
-        cell_t *c = parse_expr(l, module, entry);
-        if(c) {
-          assert_throw(n < MAX_ARGS);
-          arg_stack[n++] = c;
-        } else {
-          goto fail;
+    {
+      if(seg.n == 1) {
+        switch(*seg.s) {
+        case ']':
+          goto done;
+        case '[':
+        {
+          cell_t *c = parse_expr(l, module, entry);
+          if(c) {
+            assert_throw(n < MAX_ARGS);
+            arg_stack[n++] = c;
+          } else {
+            LOG("parse failure");
+            goto fail;
+          }
+        } break;
+        case '(':
+        {
+          cell_t *v = parse_vector(l);
+          if(v) {
+            assert_throw(n < MAX_ARGS);
+            arg_stack[n++] = v;
+          } else {
+            LOG("parse failure");
+            goto fail;
+          }
+          break;
         }
-        break;
-      }
-      case '(':
-      {
-        cell_t *v = parse_vector(l);
-        if(v) {
-          assert_throw(n < MAX_ARGS);
-          arg_stack[n++] = v;
-        } else {
-          goto fail;
+        default:
+          break;
         }
-        break;
       }
-      default:
-        break;
-      }
-    }
+    } break;
 
     default:
       break;
