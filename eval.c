@@ -233,7 +233,7 @@ int main(int argc, char **argv) {
   parse_init();
   module_init();
 
-  eval_command_string(":load lib.ppr", 0);
+  eval_command_string(":load lib.ppr tests.ppr", 0);
   eval_command_string(":import", 0);
   emscripten_exit_with_live_runtime();
   return 0;
