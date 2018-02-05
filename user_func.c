@@ -154,7 +154,8 @@ cell_t **bind_pattern(cell_t *c, cell_t *pattern, cell_t **tail) {
         }
       }
     }
-  } else if(pattern->op == OP_id) {
+  } else if(pattern->op == OP_id &&
+            pattern->expr.alt_set == 0) {
     return bind_pattern(c, pattern->expr.arg[0], tail);
   } else {
     // This can be caused by an operation before an infinite loop
@@ -468,7 +469,7 @@ cell_t *wrap_vars(cell_t *res, csize_t out) {
   LOG("wrap_vars %d %C", out, l);
   COUNTUP(i, out - 1) {
     cell_t *d = closure_alloc(1);
-    store_dep(d, res->value.tc, n - i - 1, T_ANY);
+    store_dep(d, res->value.tc, n - i - 1, T_ANY, 0);
     l->value.ptr[i] = d;
   }
   l->value.ptr[out - 1] = res;
@@ -593,6 +594,8 @@ bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   cell_t *c = *cp;
   PRE_NO_CONTEXT(c, exec_trace);
 
+  assert_error(parent_entry);
+
   size_t in = closure_in(c);
   cell_t *entry = c->expr.arg[in];
   size_t len = entry->entry.len;
@@ -604,7 +607,6 @@ bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   assert_error(closure_out(c) + 1 == entry_out);
 
   alt_set_t alt_set = 0;
-  unsigned int nonvar = 0;
 
   // reduce all inputs
   COUNTUP(i, in) {
@@ -615,7 +617,7 @@ bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
     // if all vars in a recursive function, don't expand
     // TODO make this less dumb
     cell_t *a = clear_ptr(c->expr.arg[i]);
-    if(!is_var(a)) nonvar++;
+    LOG_WHEN(a->alt, "split %C[%d] = %C #exec_split", c, i, a);
   }
   clear_flags(c);
 
@@ -670,7 +672,7 @@ bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
       drop(c);
       uint8_t t = rtypes[i].exclusive;
       if(t == T_FUNCTION) t = T_LIST;
-      store_dep(d, res->value.tc, i + in + 1, t);
+      store_dep(d, res->value.tc, i + in + 1, t, alt_set);
     }
   }
 
@@ -687,12 +689,17 @@ fail:
 
 OP(exec) {
   cell_t *c = *cp;
-  PRE(c, exec);
+  PRE_NO_CONTEXT(c, exec);
 
   cell_t *entry = c->expr.arg[closure_in(c)];
   cell_t *parent_entry = find_input_entry(c);
 
+  CONTEXT("exec %E: %C", entry, c);
+
   if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
+    assert_error(parent_entry,
+                 "incomplete entry can't be unified without "
+                 "a parent entry %C @exec_split", c);
     if(entry->entry.initial && !unify_exec(cp, parent_entry)) {
       LOG(MARK("WARN") " unify failed: %C %C",
           *cp, entry->entry.initial);

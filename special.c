@@ -340,12 +340,13 @@ OP(placeholder) {
 
   cell_t *res = var(T_FUNCTION, c, treq.pos);
   res->alt = c->alt;
+  res->value.alt_set = alt_set;
   RANGEUP(i, in, n) {
     cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {
       drop(c);
       d->expr.arg[0] = res;
-      store_dep(d, res->value.tc, i, T_ANY);
+      store_dep(d, res->value.tc, i, T_ANY, alt_set);
     } else {
       LOG("dropped placeholder[%C] output", c);
     }

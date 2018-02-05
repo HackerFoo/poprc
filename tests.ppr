@@ -4,6 +4,7 @@ imports:
   module list
   module stack
   module control
+  module num
 
 __ f2b: | popr ! cut popr swap drop
 
@@ -95,6 +96,9 @@ ap_loop: dup [$] dip21 ap_loop
 ap_loop1: [1+] ap_loop
 ap_loop2: [[1+] .] ap_loop
 
+__ ERROR: user_func.c:185: unify_exec: Assertion `in == closure_in(pat)' failed.
+__ alt_ap_loop: [dup | 1+] ap_loop
+
 __ ERROR: user_func.c:160: bind_pattern: Assertion `0' failed: binding error
 __ ap_loop3: [] pushl [] ap_loop head
 
@@ -131,6 +135,47 @@ drop_loop4:
     [head 0 >]
     iterate popd pull3 drop
 
+collatz:
+  [dup 2/ swap even]
+    [dup 3* 1+ swap odd]
+    | pushl pull2 drop swap!
+
+__ ERROR: user_func.c:418: flat_call: Assertion `tmp_list_length(vl) == in' failed: 2 != 3
+__ collatz_loop:
+__   [] ap20
+__     [[swap 1+ swap collatz] .]
+__     [head 1 >]
+__     iterate popd head
+
+decel:
+  [dup 1- swap 5<=]
+    [dup 5- swap 5>]
+    | pushl pull2 drop swap!
+
+__ ERROR: user_func.c:418: flat_call: Assertion `tmp_list_length(vl) == in' failed: 2 != 3
+__ decel_loop:
+__   [] ap20
+__     [[swap 1+ swap decel] .]
+__     [head 1 >]
+__     iterate popd head
+
+altf_loop:
+  [] ap20
+    [[dup | 1-] .]
+    [head 1 >]
+    iterate popd head
+
+__ ERROR: user_func.c:702: func_exec: Assertion `parent_entry' failed: incomplete entry can't be unified without a parent entry
+__ altf_loop2:
+__   [] ap10
+__     [[0 |] .]
+__     [head 1 >]
+__     iterate popd head
+
+__ ERROR: trace.c:179: switch_entry: Assertion `is_ancestor_of(r->value.tc.entry, entry)' failed.
+__ alt_ap_f: [dup 1+] [dup 2+] | pushl
+__ alt_ap: alt_ap_f pull2 drop swap
+
 __ rec_a: rec_b 1 +
 __ rec_b: rec_a 1 -
 
@@ -138,3 +183,5 @@ __ using floats
 pct: ->f 100 /f 1 +f *f
 
 pushl_assert: [] pushl swap !
+
+alt_list: | [dup] pushl

@@ -456,7 +456,7 @@ void store_fail(cell_t *c, cell_t *alt) {
   c->alt = alt;
 }
 
-void store_dep(cell_t *c, trace_cell_t tc, csize_t pos, int t) {
+void store_dep(cell_t *c, trace_cell_t tc, csize_t pos, int t, alt_set_t alt_set) {
   assert_error(t != T_LIST);
   cell_t v = {
     .op = OP_value,
@@ -465,7 +465,7 @@ void store_dep(cell_t *c, trace_cell_t tc, csize_t pos, int t) {
     .pos = pos,
     .alt = c->alt,
     .value = {
-      .alt_set = 0,
+      .alt_set = alt_set,
       .type = {
         .flags = T_VAR | T_DEP,
         .exclusive = t
@@ -861,6 +861,6 @@ void assert_alt(cell_t *c, cell_t *a) {
   FOLLOW(p, c, alt) {
     if(p == a) break;
     assert_error(as_conflict(p->value.alt_set | alt_set),
-                 "overlapping alts %C %C", p, a);
+                 "overlapping alts %C %C @exec_split", p, a);
   }
 }
