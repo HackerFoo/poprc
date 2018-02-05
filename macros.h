@@ -175,9 +175,27 @@
   assert_error(!is_marked(c));                  \
   WATCH(c, #func)
 
-#define PRE(c, func, ...)                       \
-  CONTEXT(#func ": %C" __VA_ARGS__, c);         \
+#define PRE_2(c, func)                          \
+  CONTEXT(#func ": %C", c);                     \
   PRE_NO_CONTEXT(c, func)
+
+#define PRE_3(c, func, fmt)                     \
+  CONTEXT(#func ": %C" fmt, c);                 \
+  PRE_NO_CONTEXT(c, func)
+
+#define PRE_4(c, func, fmt, x)                  \
+  CONTEXT(#func ": %C" fmt, c, x);              \
+  PRE_NO_CONTEXT(c, func)
+
+#define PRE_5(c, func, fmt, x, y)               \
+  CONTEXT(#func ": %C" fmt, c, x, y);           \
+  PRE_NO_CONTEXT(c, func)
+
+#define PRE_6(c, func, fmt, x, y, z)            \
+  CONTEXT(#func ": %C" fmt, c, x, y, z);        \
+  PRE_NO_CONTEXT(c, func)
+
+#define PRE(...) DISPATCH2(PRE, ##__VA_ARGS__)
 
 #define WATCH(c, msg)                                           \
   do {                                                          \

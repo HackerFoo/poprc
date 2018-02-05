@@ -494,11 +494,9 @@ cell_t *expand_list(cell_t *entry, cell_t *c) {
 static
 bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   cell_t *c = *cp;
-  PRE_NO_CONTEXT(c, exec_wrap);
-
   size_t in = closure_in(c);
   cell_t *entry = c->expr.arg[in];
-  CONTEXT("exec_wrap %E: %C 0x%x #wrap", entry, c, c->expr.flags);
+  PRE(c, exec_wrap, " %E 0x%x #wrap", entry, c->expr.flags);
   LOG_UNLESS(entry->entry.out == 1, "out = %d #unify-multiout", entry->entry.out);
 
   cell_t *new_entry = trace_start_entry(parent_entry, entry->entry.out);
@@ -592,17 +590,16 @@ bool exec_list(cell_t **cp, type_request_t treq) {
 static
 bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   cell_t *c = *cp;
-  PRE_NO_CONTEXT(c, exec_trace);
+  size_t in = closure_in(c);
+  cell_t *entry = c->expr.arg[in];
+  PRE(c, exec_trace, " %E 0x%x", entry, c->expr.flags);
 
   assert_error(parent_entry);
 
-  size_t in = closure_in(c);
-  cell_t *entry = c->expr.arg[in];
   size_t len = entry->entry.len;
   cell_t *res;
   const size_t entry_out = entry->entry.out;
   type_t rtypes[entry_out];
-  CONTEXT("exec_trace %E: %C 0x%x", entry, c, c->expr.flags);
   assert_error(in, "recursive functions must have at least one input");
   assert_error(closure_out(c) + 1 == entry_out);
 
@@ -689,12 +686,10 @@ fail:
 
 OP(exec) {
   cell_t *c = *cp;
-  PRE_NO_CONTEXT(c, exec);
-
   cell_t *entry = c->expr.arg[closure_in(c)];
-  cell_t *parent_entry = find_input_entry(c);
+  PRE(c, exec, " %E", entry);
 
-  CONTEXT("exec %E: %C", entry, c);
+  cell_t *parent_entry = find_input_entry(c);
 
   if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
     assert_error(parent_entry,

@@ -53,6 +53,10 @@
  */
 #define DISPATCH(m, ...) CONCAT(m, ARG_COUNT(__VA_ARGS__))(__VA_ARGS__)
 
+// DISPATCH cannot be nested, so this is a workaround
+#define DISPATCH2(m, ...) CONCAT(m, ARG_COUNT(__VA_ARGS__))(__VA_ARGS__)
+#define DISPATCH3(m, ...) CONCAT(m, ARG_COUNT(__VA_ARGS__))(__VA_ARGS__)
+
 // FORARG ________________________________________________________________________________
 
 #define FORARG_2(name, x0)                              \
