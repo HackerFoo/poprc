@@ -164,6 +164,19 @@ typedef enum char_class_t {
   CC_DOT
 } char_class_t;
 
+
+// define the op enum
+#define OP__ITEM(name) \
+  OP_##name,
+
+typedef enum __attribute__((packed)) op {
+  OP__ITEM(null)
+  #include "op_list.h"
+  OP_COUNT
+} op;
+
+#undef OP__ITEM
+
 struct __attribute__((packed, aligned(4))) cell {
   /* op indicates the type:
    * OP_null      -> mem
@@ -183,7 +196,8 @@ struct __attribute__((packed, aligned(4))) cell {
         type_t expr_type; // trace
         char_class_t char_class; // tok_list
       };
-      uint8_t op, pos;
+      op op;
+      uint8_t pos;
       refcount_t n;
       csize_t size;
       union {

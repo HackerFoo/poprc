@@ -35,7 +35,6 @@
 #include "user_func.h"
 #include "print.h"
 #include "parse.h" // for string_printf
-#include "ops.h"
 
 bool is_user_func(const cell_t *c) {
   return c->op == OP_exec;

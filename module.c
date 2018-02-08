@@ -32,7 +32,6 @@
 #include "module.h"
 #include "byte_compile.h"
 #include "list.h"
-#include "ops.h"
 
 // count the number of words
 #define WORD__ITEM(...) CONCAT(anon, __LINE__),

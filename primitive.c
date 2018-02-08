@@ -32,7 +32,6 @@
 #include "print.h"
 #include "trace.h"
 #include "list.h"
-#include "ops.h"
 
    /*-----------------------------------------------,
     |          VARIABLE NAME CONVENTIONS            |

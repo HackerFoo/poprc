@@ -26,7 +26,6 @@
 #include "special.h"
 #include "trace.h"
 #include "list.h"
-#include "ops.h"
 
 OP(value) {
   cell_t *c = *cp;

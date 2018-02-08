@@ -27,7 +27,6 @@
 #include "special.h"
 #include "user_func.h"
 #include "list.h"
-#include "ops.h"
 
 cell_t *empty_list() {
   cell_t *c = closure_alloc(1);

@@ -36,7 +36,6 @@
 #include "list.h"
 #include "trace.h"
 #include "byte_compile.h"
-#include "ops.h"
 
 // storage for tracing
 static cell_t trace_cells[1 << 16] __attribute__((aligned(64)));

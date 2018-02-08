@@ -40,7 +40,6 @@
 #include "user_func.h"
 #include "list.h"
 #include "lex.h"
-#include "ops.h"
 
 static BITSET_INDEX(visited, cells);
 static BITSET_INDEX(marked, cells);
@@ -94,7 +93,7 @@ static const char *_op_name[] = {
 #include "op_list.h"
 };
 
-char const *op_name(uint8_t op) {
+char const *op_name(op op) {
   assert_error(op < OP_COUNT);
   return _op_name[op];
 }

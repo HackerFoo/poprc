@@ -28,7 +28,6 @@
 #include "special.h"
 #include "tok.h"
 #include "lex.h"
-#include "ops.h"
 
 seg_t tok_seg(const cell_t *c) {
   seg_t s = {

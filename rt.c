@@ -33,7 +33,6 @@
 #include "trace.h"
 #include "list.h"
 #include "user_func.h"
-#include "ops.h"
 
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
@@ -217,7 +216,7 @@ static reduce_t *_func[] = {
 #undef OP__ITEM
 };
 
-reduce_t *op_func(uint8_t op) {
+reduce_t *op_func(op op) {
   assert_error(op > 0 && op < OP_COUNT);
   return _func[op - 1];
 }
@@ -236,7 +235,7 @@ bool reduce(cell_t **cp, type_request_t treq) {
       continue;
     }
     stats.reduce_cnt++;
-    uint8_t op = c->op;
+    op op = c->op;
     bool success = op_func(op)(cp, treq);
 
     // prevent infinite loops when debugging
@@ -363,7 +362,7 @@ cell_t *compose(list_iterator_t it, cell_t *b) {
   return b;
 }
 
-cell_t *func(uint8_t op, csize_t in, csize_t out) {
+cell_t *func(op op, csize_t in, csize_t out) {
   assert_error(out > 0);
   csize_t args = in + out - 1;
   cell_t *c = closure_alloc(args);

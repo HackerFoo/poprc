@@ -35,7 +35,6 @@
 #include "primitive.h"
 #include "special.h"
 #include "parse.h"
-#include "ops.h"
 #include "byte_compile.h"
 #include "trace.h"
 #include "tok.h"
@@ -43,7 +42,6 @@
 #include "module.h"
 #include "user_func.h"
 #include "list.h"
-#include "ops.h"
 
 #define FUNC_AP 1
 #define MAX_SYMBOLS 64

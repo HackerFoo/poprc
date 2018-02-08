@@ -32,7 +32,6 @@
 #include "list.h"
 #include "user_func.h"
 #include "macros.h"
-#include "ops.h"
 
 // to catch errors that result in large allocations
 #define MAX_ALLOC_SIZE 128

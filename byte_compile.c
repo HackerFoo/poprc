@@ -39,7 +39,6 @@
 #include "user_func.h"
 #include "list.h"
 #include "trace.h"
-#include "ops.h"
 
 static void print_value(const cell_t *c) {
   switch(c->value.type.exclusive) {

@@ -38,7 +38,6 @@
 #include "lex.h"
 #include "user_func.h"
 #include "trace.h"
-#include "ops.h"
 
 // table of corresponding C types
 const char *ctype(type_t t) {
