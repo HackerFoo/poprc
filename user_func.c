@@ -415,7 +415,7 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
   nc->op = OP_exec;
   cell_t *vl = 0;
   input_var_list(c, &vl);
-  assert_error(tmp_list_length(vl) == in, "%d != %d @wrap", tmp_list_length(vl), in);
+  assert_error(tmp_list_length(vl) == in, "%d != %d, %E @wrap", tmp_list_length(vl), in, entry);
 
   int pos = 1;
   FOLLOW(p, vl, tmp) {

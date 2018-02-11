@@ -197,7 +197,7 @@
 
 #define PRE(...) DISPATCH2(PRE, ##__VA_ARGS__)
 
-#define WATCH(c, msg)                                           \
+#define WATCH_2(c, msg)                                         \
   do {                                                          \
     int i = get_watch(c);                                       \
     if unlikely(i) {                                            \
@@ -206,6 +206,16 @@
     }                                                           \
   } while(0)
 
+#define WATCH_4(c, msg, fmt, x)                                         \
+  do {                                                                  \
+    int i = get_watch(c);                                               \
+    if unlikely(i) {                                                    \
+      LOG_NOBREAK(NOTE("WATCH") " %d " msg " %C " fmt, i, c, (x));      \
+      breakpoint();                                                     \
+    }                                                                   \
+  } while(0)
+
+#define WATCH(...) DISPATCH3(WATCH, ##__VA_ARGS__)
 
 #define CUT(c, field)                           \
     ({                                          \

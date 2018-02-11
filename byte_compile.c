@@ -776,7 +776,7 @@ cell_t *flat_quote(cell_t *new_entry, cell_t *parent_entry) {
       cell_t *tp = trace_cell_ptr(p->value.tc);
       cell_t *v = var_create_nonlist(trace_type(tp).exclusive,
                                      (trace_cell_t) {parent_entry, tp-parent_entry});
-      assert_error(p->pos);
+      assert_error(INRANGE(p->pos, 1, in));
       nc->expr.arg[in - p->pos] = v;
       LOG("arg[%d] -> %d", in - p->pos, tp - parent_entry);
     }

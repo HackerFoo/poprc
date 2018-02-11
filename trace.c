@@ -473,7 +473,7 @@ cell_t *get_list_function_var(cell_t *c) {
 
 // called when c is reduced to r to copy to pre-allocated space in the trace
 void trace_reduction(cell_t *c, cell_t *r) {
-  WATCH(c, "trace_reduction");
+  WATCH(c, "trace_reduction", "%C", r);
   cell_t *new_entry = trace_expr_entry(c->pos);
   if(!is_var(r)) {
     // print tracing information for a reduction
@@ -722,10 +722,13 @@ int trace_alloc_var(cell_t *entry) {
   return x;
 }
 
+bool valid_pos(uint8_t pos) {
+  return INRANGE(pos, 1, prev_entry_pos);
+}
+
 cell_t *trace_expr_entry(uint8_t pos) {
-  if(pos == 0) return NULL;
-  assert_error(pos <= prev_entry_pos);
-  return active_entries[pos - 1];
+  return valid_pos(pos) ?
+    active_entries[pos - 1] : NULL;
 }
 
 cell_t *param(int t, cell_t *entry) {

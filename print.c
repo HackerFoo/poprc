@@ -378,7 +378,7 @@ void show_int(cell_t const *c) {
 
 void show_float(cell_t const *c) {
   assert_error(c && type_match(T_FLOAT, c));
-  printf(" %g", c->value.flt[0]);
+  printf(" %.15g", c->value.flt[0]);
 }
 
 bool any_alt_overlap(cell_t const * const *p, csize_t size) {
@@ -585,6 +585,10 @@ FORMAT(cell, 'C') {
   if(is_cell(c)) {
     printf("%d", CELL_INDEX(c));
     mark_cell(c);
+  } else if(c == &nil_cell) {
+    printf("nil");
+  } else if(c == &fail_cell) {
+    printf("fail");
   } else {
     printf("X");
   }
