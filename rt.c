@@ -856,10 +856,15 @@ bool check_type(uint8_t requested, uint8_t expected) {
 // assert on overlapping alts
 // c->alt->...->alt = a
 void assert_alt(cell_t *c, cell_t *a) {
+#ifdef NDEBUG
+  (void)c;
+  (void)a;
+#else
   alt_set_t alt_set = a->value.alt_set;
   FOLLOW(p, c, alt) {
     if(p == a) break;
     assert_error(as_conflict(p->value.alt_set | alt_set),
                  "overlapping alts %C %C @exec_split", p, a);
   }
+#endif
 }

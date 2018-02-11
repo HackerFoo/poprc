@@ -385,6 +385,7 @@ uint8_t trace_recursive_changes(cell_t *entry) {
 }
 
 cell_t *get_trace_ptr(size_t size) {
+  (void)size;
   assert_error((void *)(trace_ptr + size) < (void *)(&trace_cells+1));
   return trace_ptr;
 }

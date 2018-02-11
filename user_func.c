@@ -253,7 +253,6 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
     out = closure_out(c),
     n = closure_args(c);
   cell_t *entry = c->expr.arg[in];
-  size_t len = entry->entry.len;
   cell_t *res;
   cell_t *returns = NULL;
   cell_t **results[out + 1];
@@ -265,7 +264,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
 
   CONTEXT("exec_expand %E: %C 0x%x", entry, c, c->expr.flags);
 
-  assert_error(len && FLAG(entry->entry, ENTRY_COMPLETE));
+  assert_error(entry->entry.len && FLAG(entry->entry, ENTRY_COMPLETE));
   trace_clear_alt(entry); // *** probably shouldn't need this
 
   COUNTUP(i, in) {
