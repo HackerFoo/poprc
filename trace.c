@@ -538,6 +538,12 @@ void trace_set_type(cell_t *tc, int t) {
   tc->expr_type.exclusive = t;
   if(is_value(tc)) {
     tc->value.type.exclusive = t;
+    if(is_var(tc)) {
+      cell_t *p = trace_cell_ptr(tc->value.tc);
+      if(p) {
+        trace_set_type(p, t);
+      }
+    }
   }
 }
 

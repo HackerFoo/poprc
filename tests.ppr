@@ -140,24 +140,28 @@ collatz:
     [dup 3* 1+ swap odd]
     | pushl pull2 drop swap!
 
-__ ERROR: user_func.c:418: flat_call: Assertion `tmp_list_length(vl) == in' failed: 2 != 3
-__ collatz_loop:
-__   [] ap20
-__     [[swap 1+ swap collatz] .]
-__     [head 1 >]
-__     iterate popd head
+collatz_loop:
+  [] ap20
+    [[swap 1+ swap collatz] .]
+    [head 1 >]
+    iterate popd head
 
 decel:
   [dup 1- swap 5<=]
     [dup 5- swap 5>]
     | pushl pull2 drop swap!
 
-__ ERROR: user_func.c:418: flat_call: Assertion `tmp_list_length(vl) == in' failed: 2 != 3
-__ decel_loop:
-__   [] ap20
-__     [[swap 1+ swap decel] .]
-__     [head 1 >]
-__     iterate popd head
+decel_loop:
+  [] ap20
+    [[swap 1+ swap decel] .]
+    [head 1 >]
+    iterate popd head
+
+leak_loop:
+  [] ap20
+    [[swap 3+ swap] .]
+    [head 1 >]
+    iterate popd head
 
 altf_loop:
   [] ap20

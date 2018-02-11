@@ -626,6 +626,7 @@ bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
     out = closure_out(c);
 
   cell_t *p = NULL;
+  int pos = c->pos ? c->pos : c->expr.arg[in]->pos;
 
   alt_set_t alt_set = 0;
   if(row) {
@@ -645,15 +646,29 @@ bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
 
   list_iterator_t it;
 
+  // *** prevent leaking outside variables into lists
+  if(pos) {
+    int skip = TWEAK(-1, "to disable ap barrier %C -> %E", c, trace_expr_entry(pos));
+    cell_t *e = trace_expr_entry(pos);
+    RANGEUP(i, row, in) {
+      if(skip == (int)i) continue;
+      cell_t **pa = &c->expr.arg[i];
+      if(is_var(*pa)) {
+        // *pa = id(*pa, 0);
+        switch_entry(e, *pa); // ***
+      } else {
+        (*pa)->pos = pos;
+      }
+    }
+  }
+
   reverse_ptrs((void **)c->expr.arg, in);
   it.array = c->expr.arg;
   it.index = 0;
   it.size = in - row;
   it.row = row;
-  cell_t *l = compose(it, ref(c->expr.arg[in]));
+  cell_t *l = compose(it, ref(c->expr.arg[in])); // TODO prevent leaking outside variables
   reverse_ptrs((void **)c->expr.arg, in);
-
-  int pos = c->pos ? c->pos : c->expr.arg[in]->pos;
 
   bool is_nil = c->expr.arg[in] == &nil_cell;
   if(!is_nil) insert_root(&c->expr.arg[in]);

@@ -240,7 +240,7 @@ iterate:
 
 __ apply [f] n times
 __ times: swap times_
-__ ERROR user_func.c:416: flat_call: Assertion `tmp_list_length(vl) == in' failed: 3 != 4
+__ ERROR byte_compile.c:779: flat_quote: Assertion `p->pos && p->pos <= in' failed.
 __ times_: __ a [f] n
 __   [] ap30
 __     [[times_step] .]
@@ -290,12 +290,11 @@ reduce_power: [dup *] [1 >>b] para
 __ acc x power -> acc' x^2 power/2
 power_step: in2 [acc_odd_power] dip31 ap02 swap2 drop reduce_power
 
-__ ERROR user_func.c:418: flat_call: Assertion `tmp_list_length(vl) == in' failed: 3 != 5
-__ exponent:
-__   [] ap30
-__     [[power_step] .]
-__     [head 0 !=]
-__     iterate popr drop popr drop head
+exponent:
+  [] ap30
+    [[power_step] .]
+    [head 0 !=]
+    iterate popr drop popr drop head
 
 __ raise to integer power using binary exponentiation
 __ ^: 1 -swap2 exponent
@@ -305,7 +304,7 @@ __ sum_: [[+] .] [popr drop is_nil not] iterate head int_t
 __ sum: 0 pushr sum_
 
 __ decreasing list from initial element
-__ ERROR: doesn't actually build the list
+__ ERROR: user_func.c:424: flat_call: Assertion `tn->pos' failed
 __ iota: [1-] pushl [[dup 1-] .] [head 0 >] iterate
 iota2: [[dup 1-] .] [head 0 >] iterate
 __ iota3: [] pushl [[dup 1-] .] [head 0 >] iterate
