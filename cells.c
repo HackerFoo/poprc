@@ -224,7 +224,7 @@ void cell_free(cell_t *c) {
 void closure_shrink(cell_t *c, csize_t s) {
   if(!c) return;
   assert_error(is_cell(c));
-  WATCH(c, "closure_shrink");
+  if(s == 0) WATCH(c, "closure_shrink");
   csize_t size = closure_cells(c);
   if(size > s) {
     assert_error(is_closure(c));

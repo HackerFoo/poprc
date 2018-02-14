@@ -595,11 +595,15 @@ FORMAT(cell, 'C') {
 }
 
 FORMAT(entry, 'E') {
-  cell_t *entry = (cell_t *)i;
-  printf("%s.%s(%d)",
-         entry->module_name,
-         entry->word_name,
-         entry_number(entry));
+  if(i) {
+    cell_t *entry = (cell_t *)i;
+    printf("%s.%s(%d)",
+           entry->module_name,
+           entry->word_name,
+           entry_number(entry));
+  } else {
+    printf("null_entry");
+  }
 }
 
 FORMAT(entry_short, 'e') {

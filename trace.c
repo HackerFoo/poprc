@@ -289,10 +289,11 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
   }
   // encode outputs
   TRAVERSE(tc, out) {
+    int x = 0;
     if(*p) {
-      int x = trace_get_value(entry, *p);
-      *p = trace_encode(x);
+      x = trace_get_value(entry, *p);
     }
+    *p = trace_encode(x);
   }
   if(is_value(c)) {
     tc->value.alt_set = 0;
@@ -337,6 +338,7 @@ int trace_store_value(cell_t *entry, const cell_t *c) {
     cell_t *tc = &entry[x];
     tc->value.alt_set = 0;
     tc->alt = NULL;
+    tc->pos = 0;
     tc->n = -1;
   }
   return x;
