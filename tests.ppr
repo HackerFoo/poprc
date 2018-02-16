@@ -135,33 +135,39 @@ drop_loop4:
     [head 0 >]
     iterate popd pull3 drop
 
-collatz:
+collatz_step:
   [dup 2/ swap even]
     [dup 3* 1+ swap odd]
     | pushl pull2 drop swap!
 
 collatz_loop:
   [] ap20
-    [[swap 1+ swap collatz] .]
+    [[swap 1+ swap collatz_step] .]
     [head 1 >]
     iterate popd head
 
-decel:
+collatz: 0 swap collatz_loop
+
+decel_step:
   [dup 1- swap 5<=]
     [dup 5- swap 5>]
     | pushl pull2 drop swap!
 
 decel_loop:
   [] ap20
-    [[swap 1+ swap decel] .]
+    [[swap 1+ swap decel_step] .]
     [head 1 >]
     iterate popd head
+
+decel: 0 swap decel_loop
 
 leak_loop:
   [] ap20
     [[swap 3+ swap] .]
     [head 1 >]
     iterate popd head
+
+leak: 0 swap leak_loop
 
 altf_loop:
   [] ap20

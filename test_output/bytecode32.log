@@ -1,3 +1,10 @@
+___ algorithm.__caret__ (2 -> 1) ___
+[1] var, type = ?i x1
+[2] var, type = ?i x1
+[3] algorithm.exponent_r0 5 2 1 -> X X, type = a x1
+[5] val 1, type = i x1
+[6] return [ 3 ], type = r x1
+
 ___ algorithm.acc_odd_power (3 -> 1) x2 ___
 [1] var, type = ?i x2
 [2] var, type = ?i x1
@@ -618,18 +625,43 @@ ___ control.peek (2 -> 2) ___
 [4] __primitive.dep 3, type = a x1
 [5] return [ 2 4 ], type = r x1
 
-___ stack.swap2 (3 -> 3) ___
-[1] var, type = ?a x1
-[2] var, type = ?a x1
-[3] var, type = ?a x1
-[4] return [ 2 1 3 ], type = r x1
-
 ___ stack.swap3 (4 -> 4) ___
 [1] var, type = ?a x1
 [2] var, type = ?a x1
 [3] var, type = ?a x1
 [4] var, type = ?a x1
 [5] return [ 3 2 1 4 ], type = r x1
+
+___ control.times (3 -> 1) ___
+[1] var, type = ?a x1
+[2] var, type = ?f x1
+[3] var, type = ?a x1
+[4] control.times_r0 3 2 1 -> X X, type = a x1
+[6] return [ 4 ], type = r x1
+
+___ control.times_r0 (3 -> 3) x2 rec ___
+[1] var, type = ?*i x4
+[2] var, type = ?f x3
+[3] var, type = ?*a x2
+[4] __primitive.gt 1 5, type = s x3
+[5] val 0, type = i x2
+[6] __primitive.assert 13 4, type = a x1
+[7] __primitive.ap 3 2 -> 8, type = f x1
+[8] __primitive.dep 7, type = i x1
+[9] __primitive.sub 1 10, type = i x1
+[10] val 1, type = i x1
+[11] control.times_r0 8 2 9 -> 15 13, type = a x3
+[13] __primitive.dep 11, type = a x1
+[14] __primitive.assert 15 4, type = a x1
+[15] __primitive.dep 11, type = a x1
+[16] __primitive.assert 11 4, type = a x1
+[17] return [ 16 14 6 ], type = r -> 23 x1
+[18] __primitive.gt 1 5, type = s x1
+[19] __primitive.not 18, type = s x3
+[20] __primitive.assert 3 19, type = a x1
+[21] __primitive.assert 2 19, type = f x1
+[22] __primitive.assert 1 19, type = i x1
+[23] return [ 20 21 22 ], type = r x1
 
 ___ control.times_step (3 -> 3) ___
 [1] var, type = ?i x1
@@ -640,6 +672,14 @@ ___ control.times_step (3 -> 3) ___
 [6] __primitive.ap 3 2 -> 7, type = f x1
 [7] __primitive.dep 6, type = a x1
 [8] return [ 7 2 4 ], type = r x1
+
+___ list.!! (2 -> 1) ___
+[1] var, type = ?i x1
+[2] var, type = ?a x1
+[3] list.dropl_r0 2 1 -> X, type = f x1
+[4] __primitive.ap 3 -> 5, type = f x1
+[5] __primitive.dep 4, type = a x1
+[6] return [ 5 ], type = r x1
 
 ___ list.dropl (2 -> 1) ___
 [1] var, type = ?a x1
@@ -1199,23 +1239,11 @@ ___ tests.br10_r0 (1 -> 1) x2 rec ___
 [11] __primitive.assert 1 10, type = i x1
 [12] return [ 11 ], type = r x1
 
-___ tests.collatz (1 -> 1) x2 ___
-[1] var, type = ?i x4
-[2] __primitive.bitand 1 3, type = i x1
-[3] val 1, type = i x4
-[4] __primitive.eq 2 5, type = s x1
-[5] val 0, type = i x1
-[6] __primitive.assert 7 4, type = i x1
-[7] __primitive.div 1 8, type = i x1
-[8] val 2, type = i x1
-[9] return [ 6 ], type = r -> 16 x1
-[10] __primitive.mul 1 11, type = i x1
-[11] val 3, type = i x1
-[12] __primitive.add 10 3, type = i x1
-[13] __primitive.bitand 1 3, type = i x1
-[14] __primitive.eq 13 3, type = s x1
-[15] __primitive.assert 12 14, type = i x1
-[16] return [ 15 ], type = r x1
+___ tests.collatz (1 -> 1) ___
+[1] var, type = ?i x1
+[2] tests.collatz_loop_r0 3 1 -> X, type = a x1
+[3] val 0, type = i x1
+[4] return [ 2 ], type = r x1
 
 ___ tests.collatz_loop (2 -> 1) ___
 [1] var, type = ?a x1
@@ -1257,6 +1285,24 @@ ___ tests.collatz_loop_r0 (2 -> 2) x3 rec ___
 [31] return [ 17 28 ], type = r -> 32 x1
 [32] return [ 27 30 ], type = r x1
 
+___ tests.collatz_step (1 -> 1) x2 ___
+[1] var, type = ?i x4
+[2] __primitive.bitand 1 3, type = i x1
+[3] val 1, type = i x4
+[4] __primitive.eq 2 5, type = s x1
+[5] val 0, type = i x1
+[6] __primitive.assert 7 4, type = i x1
+[7] __primitive.div 1 8, type = i x1
+[8] val 2, type = i x1
+[9] return [ 6 ], type = r -> 16 x1
+[10] __primitive.mul 1 11, type = i x1
+[11] val 3, type = i x1
+[12] __primitive.add 10 3, type = i x1
+[13] __primitive.bitand 1 3, type = i x1
+[14] __primitive.eq 13 3, type = s x1
+[15] __primitive.assert 12 14, type = i x1
+[16] return [ 15 ], type = r x1
+
 ___ tests.compose_alt (1 -> 1) x2 ___
 [1] var, type = ?f x2
 [2] __primitive.ap 1 -> 3, type = f x1
@@ -1295,18 +1341,11 @@ ___ tests.dec (1 -> 1) x2 rec ___
 [10] tests.dec 8, type = a x1
 [11] return [ 7 ], type = r x1
 
-___ tests.decel (1 -> 1) x2 ___
-[1] var, type = ?i x4
-[2] __primitive.lte 1 3, type = s x1
-[3] val 5, type = i x3
-[4] __primitive.assert 5 2, type = i x1
-[5] __primitive.sub 1 6, type = i x1
-[6] val 1, type = i x1
-[7] return [ 4 ], type = r -> 11 x1
-[8] __primitive.sub 1 3, type = i x1
-[9] __primitive.gt 1 3, type = s x1
-[10] __primitive.assert 8 9, type = i x1
-[11] return [ 10 ], type = r x1
+___ tests.decel (1 -> 1) ___
+[1] var, type = ?i x1
+[2] tests.decel_loop_r0 3 1 -> X, type = a x1
+[3] val 0, type = i x1
+[4] return [ 2 ], type = r x1
 
 ___ tests.decel_loop (2 -> 1) ___
 [1] var, type = ?a x1
@@ -1342,6 +1381,19 @@ ___ tests.decel_loop_r0 (2 -> 2) x3 rec ___
 [25] __primitive.assert 1 21, type = i x1
 [26] return [ 15 23 ], type = r -> 27 x1
 [27] return [ 22 25 ], type = r x1
+
+___ tests.decel_step (1 -> 1) x2 ___
+[1] var, type = ?i x4
+[2] __primitive.lte 1 3, type = s x1
+[3] val 5, type = i x3
+[4] __primitive.assert 5 2, type = i x1
+[5] __primitive.sub 1 6, type = i x1
+[6] val 1, type = i x1
+[7] return [ 4 ], type = r -> 11 x1
+[8] __primitive.sub 1 3, type = i x1
+[9] __primitive.gt 1 3, type = s x1
+[10] __primitive.assert 8 9, type = i x1
+[11] return [ 10 ], type = r x1
 
 ___ tests.drop_loop (2 -> 1) ___
 [1] var, type = ?a x1
@@ -1688,6 +1740,30 @@ ___ tests.it10b_r0_q0 (2 -> 1) ___
 [2] var, type = ?i x1
 [3] __primitive.compose 1 2 [], type = f x1
 [4] return [ 3 ], type = r x1
+
+___ tests.leak (1 -> 1) ___
+[1] var, type = ?i x1
+[2] val 0, type = i x1
+[3] tests.leak_r0 1 2 -> X, type = a x1
+[4] return [ 3 ], type = r x1
+
+___ tests.leak_r0 (2 -> 2) x2 rec ___
+[1] var, type = ?*i x2
+[2] var, type = ?*i x4
+[3] __primitive.gt 2 4, type = s x2
+[4] val 1, type = i x2
+[5] __primitive.assert 9 3, type = a x1
+[6] __primitive.add 1 7, type = i x1
+[7] val 3, type = i x1
+[8] tests.leak_r0 6 2 -> 9, type = a x2
+[9] __primitive.dep 8, type = a x1
+[10] __primitive.assert 8 3, type = a x1
+[11] return [ 10 5 ], type = r -> 16 x1
+[12] __primitive.gt 2 4, type = s x1
+[13] __primitive.not 12, type = s x2
+[14] __primitive.assert 1 13, type = i x1
+[15] __primitive.assert 2 13, type = i x1
+[16] return [ 14 15 ], type = r x1
 
 ___ tests.leak_loop (2 -> 1) ___
 [1] var, type = ?a x1

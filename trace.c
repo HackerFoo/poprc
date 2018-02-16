@@ -366,6 +366,7 @@ uint8_t trace_recursive_changes(cell_t *entry) {
     if(p->op == OP_exec &&
        p->expr.arg[in = closure_in(p)] == encoded_entry) {
       unsigned int cnt = 0;
+      assert_error(in == entry->entry.in, "incorrect self call arity at %E %d", entry, p-entry);
       COUNTUP(i, in) {
         trace_index_t v = in - i;
         if(trace_decode(p->expr.arg[i]) != v) {

@@ -682,6 +682,15 @@ fail:
   return false;
 }
 
+bool all_dynamic(cell_t *entry) {
+  COUNTUP(i, entry->entry.in) {
+    if(NOT_FLAG(entry[i+1].value.type, T_CHANGES)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 OP(exec) {
   cell_t *c = *cp;
   cell_t *entry = c->expr.arg[closure_in(c)];
@@ -702,6 +711,8 @@ OP(exec) {
     return
       exec_list(cp, treq) &&
       func_exec_trace(cp, treq, parent_entry);
+  } else if(parent_entry && all_dynamic(entry)) {
+    return func_exec_trace(cp, treq, parent_entry);
   } else if(parent_entry && entry->entry.rec) {
     return func_exec_wrap(cp, treq, parent_entry);
   } else {

@@ -80,7 +80,27 @@ OP(value) {
     }
   } else if(is_row_list(c)) {
     placeholder_extend(cp, treq.in, treq.out);
+  } else if(c->pos && !is_list(c)) {
+    // *** probably shouldn't be calling trace functions directly here
+    cell_t *entry = trace_expr_entry(c->pos);
+    cell_t *parent = entry->entry.parent;
+    if(parent) {
+      int v = trace_store_value(entry->entry.parent, c);
+      int t = trace_alloc_var(entry);
+      LOG("move value %C %e[%d] -> %e[%d]", c, entry, t, parent, v);
+      c->value.tc = (trace_cell_t) {
+        .entry = entry,
+        .index = t
+      };
+      c->value.type.flags = T_VAR;
+      cell_t *tc = trace_cell_ptr(c->value.tc);
+      tc->value.tc = (trace_cell_t) {
+        .entry = parent,
+        .index = v
+      };
+    }
   }
+
   return true;
 fail:
   fail(cp, treq);

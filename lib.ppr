@@ -68,7 +68,7 @@ __ [a.. x] [b..] -> [a..] [x b..]
 movr: [popr] dip12 pushl
 
 __ not working
-__ split_at: [[[]] pushl] dip11 [[movr] .] times ap02 swap2 drop
+__ split_at: [[[]] pushl] dip11 [[movr] .] swap times ap02 swap2 drop
 split_at:
   __ [] swap
   [] ap30
@@ -78,8 +78,7 @@ split_at:
 
 __ index operator
 __ [f] index -> x
-__ ERROR: user_func.c:446: unwrap: Assertion `is_list(c) && list_size(c) == 1' failed
-__ !!: dropl head
+!!: dropl head
 
 __ a [a -> a] -> [a]
 iteratel: [dup [peek] dip22 iteratel swap] ap20
@@ -239,13 +238,11 @@ iterate:
     [fork] ap20 ifdo
 
 __ apply [f] n times
-__ times: swap times_
-__ ERROR byte_compile.c:779: flat_quote: Assertion `p->pos && p->pos <= in' failed.
-__ times_: __ a [f] n
-__   [] ap30
-__     [[times_step] .]
-__     [head 0 >]
-__     iterate popr drop popr drop head
+times: __ a [f] n
+  [] ap30
+    [[times_step] .]
+    [head 0 >]
+    iterate popr drop popr drop head
 times_step: [$keep] dip22 1-
 
 __ m [f] a -> a
@@ -297,7 +294,7 @@ exponent:
     iterate popr drop popr drop head
 
 __ raise to integer power using binary exponentiation
-__ ^: 1 -swap2 exponent
+^: 1 -swap2 exponent
 
 __ sums numbers in a list
 __ sum_: [[+] .] [popr drop is_nil not] iterate head int_t

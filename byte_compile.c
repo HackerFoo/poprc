@@ -725,18 +725,27 @@ void mark_barriers(cell_t *entry, cell_t *c) {
   }
 }
 
+void set_pos_for_values(cell_t *c, cell_t *entry) {
+  if(is_value(c)) {
+    if(!is_var(c) && is_cell(c)) {
+      LOG("set pos for %C to %e", c, entry);
+      c->pos = entry->pos;
+    }
+  } else if(c->op == OP_ap ||
+            c->op == OP_swap ||
+            c->op == OP_exec) { // *** HACK
+    TRAVERSE(c, in) {
+      if(*p) set_pos_for_values(*p, entry);
+    }
+  }
+}
+
 void move_changing_values(cell_t *entry, cell_t *c) {
   cell_t *expanding = c->expr.arg[closure_in(c)];
   TRAVERSE(c, in) {
-    cell_t *x = *p;
     int i = expanding->entry.in - (p - c->expr.arg);
-    if(x && is_value(x) && !is_var(x) &&
-       FLAG(expanding[i].value.type, T_CHANGES)) {
-      LOG("move value %C out %e[%d]", x, expanding, i);
-      int t = trace_store_value(entry->entry.parent, x);
-      *p = var_create_nonlist(x->value.type.exclusive,
-                              (trace_cell_t) {entry->entry.parent, t});
-      drop(x);
+    if(FLAG(expanding[i].value.type, T_CHANGES)) {
+      set_pos_for_values(*p, entry);
     }
   }
 }
