@@ -3,7 +3,7 @@
 LIBS="*.ppr"
 LOAD=""
 
-CFLAGS="-g -O0"
+CFLAGS="-g -O0 -Wall -Wno-unused-variable -Wno-unused-label"
 if [[ "$1" == "-O" ]]; then
     CFLAGS="-g -DNDEBUG -O2"
     shift

@@ -458,6 +458,7 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
       np->op = OP_assert;
       np->expr.arg[0] = ref(*p);
       np->expr.arg[1] = ref(t);
+      closure_set_ready(np, closure_is_ready(*p));
       *p = np;
     }
   }

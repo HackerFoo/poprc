@@ -305,8 +305,16 @@ __ raise to integer power using binary exponentiation
     iterate popd2 head
 
 __ sums numbers in a list
-__ sum_: [[+] .] [popr drop is_nil not] iterate head int_t
-__ sum: 0 pushr sum_
+__ [l] length -> sum
+__ sum: 1- [[+] .] swap times head
+__ sum1: [] pushl [[+] .] 0 times head
+
+__ iterate version
+__ sum:
+__   pushr
+__     [[[+] dip21 1-] .]
+__     [head 0 !=]
+__     iterate popd head
 
 __ decreasing list from initial element
 __ ERROR: user_func.c:424: flat_call: Assertion `tn->pos' failed

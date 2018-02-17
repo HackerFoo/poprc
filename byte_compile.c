@@ -170,7 +170,7 @@ void condense(cell_t *entry) {
   // calculate mapping
   FOR_TRACE(tc, entry) {
     if(tc->op) {
-      if(tc->n < 0) {
+      if(tc->n < 0 && !(is_var(tc) && tc->pos)) {
         // drop args and ptrs
         cell_t **e = is_user_func(tc) ? &tc->expr.arg[closure_in(tc)] : NULL;
         TRAVERSE(tc, args, ptrs) {
@@ -806,7 +806,7 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
   cell_t **p;
   FORLIST(p, l, true) {
     LOG("arg %C %C", ph, *p);
-    arg(ph, ref(*p));
+    arg(ph, ref(*p)); // *** destructive arg okay?
   }
 
   mark_quote_barriers(e, ph);

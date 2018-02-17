@@ -193,6 +193,18 @@ alt_list: | [dup] pushl
 
 default_max: dup2 < ! swap default
 
+assert_nready: [1+] swap ! $
+
+comp_assert: [2] swap ! [1+] swap2 ! . head
+empty_assert: [] swap ! ap22 drop swap drop
+
+__ times_noop: [id] 1 times
+
+after0:
+  [popd]
+    [head 0 !=]
+    iterate popd head
+
 __ vlength:
 __   [[1-] dip11 popd]
 __   [popr valid]

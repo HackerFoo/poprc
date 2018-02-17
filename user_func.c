@@ -269,8 +269,13 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
 
   COUNTUP(i, in) {
     cell_t *p = &entry[i + 1];
+    cell_t *a = c->expr.arg[in - 1 - i];
     assert_error(is_var(p));
-    p->alt = refn(c->expr.arg[in - 1 - i], p->n);
+    if(p->n + 1 == 0) {
+      drop(a);
+    } else {
+      p->alt = refn(a, p->n);
+    }
   }
 
   // allocate, copy, and index
@@ -478,28 +483,33 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
 
 // TODO generalize these
 
-// [[...]] -> [...]
+// [[...] ...] -> [...]
 static
 cell_t *unwrap(cell_t *c, csize_t out) {
+  int offset = list_size(c) - 1;
 
   // head
-  assert_error(is_list(c) && list_size(c) == 1, TODO " %C", c);
-  c = CUT(c, value.ptr[0]);
+  //assert_error(is_list(c) && list_size(c) == 1, TODO " size = %d, %C", list_size(c), c);
 
   // N = out, ap0N swapN drop
-  cell_t *l = make_list(out);
+  cell_t *l = make_list(out + offset);
   LOG("unwrap %d %C", out, l);
   cell_t *ap = func(OP_ap, 1, out + 1);
+  COUNTUP(i, offset) {
+    l->value.ptr[i] = ref(c->value.ptr[i]);
+  }
   COUNTUP(i, out) {
-    cell_t **p = &l->value.ptr[i];
+    cell_t **p = &l->value.ptr[i + offset];
     *p = dep(ref(ap));
     arg(ap, *p);
   }
-  arg(ap, c);
+  arg(ap, ref(c->value.ptr[offset]));
   drop(ap);
+  drop(c);
   return l;
 }
 
+// [res dep_0 ... dep_out-1]
 cell_t *wrap_vars(cell_t *res, csize_t out) {
   csize_t n = trace_cell_ptr(res->value.tc)->size;
   cell_t *l = make_list(out);
@@ -531,7 +541,9 @@ cell_t *expand_list(cell_t *entry, cell_t *c) {
 static
 response func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   cell_t *c = *cp;
-  size_t in = closure_in(c);
+  size_t
+    in = closure_in(c),
+    out = closure_out(c);
   cell_t *entry = c->expr.arg[in];
   wrap_data wrap;
   PRE(c, exec_wrap, " %E 0x%x #wrap", entry, c->expr.flags);
@@ -557,7 +569,7 @@ response func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) 
   // eliminate intermediate list
   if(treq.t == T_LIST) {
     l = unwrap(l, treq.out);
-    new_entry->entry.out = treq.out; // ***
+    new_entry->entry.out += treq.out - 1;
   }
 
   // IDEA break here?
@@ -585,15 +597,34 @@ response func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) 
   cell_t *res = var_create_with_entry(rtypes[0], parent_entry, p->size);
   // }
 
+  csize_t n = closure_args(p);
+  trace_cell_t tc = res->value.tc;
+
   // build list expected by caller
   if(treq.t == T_LIST) {
     res = wrap_vars(res, treq.out);
-    csize_t n = closure_args(p);
     COUNTUP(i, treq.out - 1) {
       p->expr.arg[n - i - 1] = res->value.ptr[i];
     }
     trace_reduction(p, res->value.ptr[treq.out - 1]);
   }
+
+  // handle deps
+  if(out) {
+    // replace outputs with variables
+    cell_t **c_out = &c->expr.arg[in + 1];
+    COUNTUP(i, out) {
+      cell_t *d = c_out[i];
+      if(d && is_dep(d)) {
+        assert_error(d->expr.arg[0] == c);
+        drop(c);
+        uint8_t t = rtypes[i+1];
+        store_dep(d, tc, i + in + 1, t, 0);
+        p->expr.arg[in + 1 + i] = d;
+      }
+    }
+  }
+
   *cp = p;
   store_reduced(cp, res);
   return SUCCESS;
@@ -646,7 +677,7 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
   const size_t entry_out = entry->entry.out;
   type_t rtypes[entry_out];
   assert_error(in, "recursive functions must have at least one input");
-  assert_error(closure_out(c) + 1 == entry_out);
+  assert_error(closure_out(c) + 1 == entry_out, "%d %d", closure_out(c), entry_out);
 
   alt_set_t alt_set = 0;
 

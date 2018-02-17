@@ -80,6 +80,7 @@ response func_list(cell_t **cp, type_request_t treq) {
   // if(treq.t == T_ANY && treq.t == T_LIST) return SUCCESS; // *** always fails
   CHECK(!check_type(treq.t, T_RETURN), FAIL);
   csize_t n = list_size(c);
+  if(n == 0) return SUCCESS;
 
   // this may not be necessary
   assert_error(n < MAX_RETURN_VALUES);
@@ -393,17 +394,34 @@ cell_t **leftmost_row(cell_t **lp) {
 }
 
 // TODO optimize this
-cell_t **leftmost(cell_t **lp) {
+cell_t **leftmost_2(cell_t **lp, bool row) {
   cell_t *l = *lp, **x, **last = lp;
-  FORLIST(x, l, true) {
+  FORLIST(x, l, row) {
     last = x;
   }
   return last;
 }
 
-csize_t function_in(const cell_t *l) {
-  if(!l || !is_list(l) || is_empty_list(l)) return 0;
-  cell_t *c = *leftmost((cell_t **)&l); // ***
+cell_t **leftmost_1(cell_t **lp) {
+  return leftmost_2(lp, true);
+}
+
+#if INTERFACE
+#define leftmost(...) DISPATCH(leftmost, __VA_ARGS__)
+#endif
+
+// optimize later
+cell_t **needs_arg(cell_t *l) {
+  cell_t **x;
+  FORLIST(x, l, true) {
+    if(*x && !closure_is_ready(*x)) {
+      return x;
+    }
+  }
+  return NULL;
+}
+
+csize_t args_required(const cell_t *c) {
   if(!c) return 0;
   if(closure_is_ready(c)) return 0;
   csize_t in = 1;
@@ -411,6 +429,16 @@ csize_t function_in(const cell_t *l) {
     csize_t i = closure_next_child(c);
     in += i;
     c = c->expr.arg[i];
+  }
+  return in;
+}
+
+csize_t function_in(cell_t *l) {
+  if(!l || !is_list(l) || is_empty_list(l)) return 0;
+  csize_t in = 0;
+  cell_t **x;
+  FORLIST(x, l, true) {
+    in += args_required(*x);
   }
   return in;
 }

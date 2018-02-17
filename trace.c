@@ -274,8 +274,8 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
   }
   assert_error(tc->size == c->size);
   assert_error(c->op != OP_dep);
-  CONTEXT_LOG("trace_store_expr: %e[%d] <- %C %C",
-              entry, r->value.tc.index, c, r);
+  CONTEXT_LOG("trace_store_expr: %e[%d] <- %s %C %C",
+              entry, r->value.tc.index, op_name(c->op), c, r);
 
   refcount_t n = tc->n;
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
@@ -688,8 +688,10 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
 
   cell_t **p = cp;
   while(*p) {
-    LOG("branch %d: %C", alts, *p);
-    if(func_list(p, req_pos(REQ(return), entry->pos)) != SUCCESS) continue;
+    CONTEXT("branch %d: %C", alts, *p);
+    response rsp = func_list(p, req_pos(REQ(return), entry->pos));
+    // TODO handle rotating alts
+    if(rsp != SUCCESS) continue;
     assert_alt(c, *p); // O(alts^2)
     cell_t **a;
     FORLIST(a, *p, true) {

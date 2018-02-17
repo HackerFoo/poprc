@@ -343,13 +343,13 @@ cell_t *compose(list_iterator_t it, cell_t *b) {
   csize_t b_in = function_in(b);
   if(b_in && (x = list_next(&it, true))) {
     b_in--;
-    cell_t **left = leftmost(&b);
+    cell_t **left = needs_arg(b);
     b = arg_nd(*left, ref(*x), b);
-    left = leftmost(&b);
-    // left is now safe for arg() because arg_nd() made necessary copies
+    // left is now safe for arg() because arg_nd() made necessary copies ***
     while(b_in) {
       b_in--;
       if(!(x = list_next(&it, true))) break;
+      left = needs_arg(b); // ***
       arg(*left, ref(*x));
     }
   }
