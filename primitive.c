@@ -70,44 +70,45 @@ cell_t *_op1(val_t (*op)(val_t), cell_t *x) {
   return res;
 }
 
-bool func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t, val_t), bool nonzero) {
+response func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t, val_t), bool nonzero) {
   cell_t *c = *cp;
+  response rsp;
   cell_t *res = 0;
   PRE(c, op2);
 
-  if(!check_type(treq.t, res_type)) goto fail;
+  CHECK(!check_type(treq.t, res_type), FAIL);
 
   alt_set_t alt_set = 0;
   type_request_t atr = req_simple(arg_type);
-  if(!reduce_arg(c, 0, &alt_set, atr) ||
-     !reduce_arg(c, 1, &alt_set, atr) ||
-     as_conflict(alt_set)) goto fail;
+  CHECK(AND0(reduce_arg(c, 0, &alt_set, atr),
+             reduce_arg(c, 1, &alt_set, atr),
+             fail_if(as_conflict(alt_set))));
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
-  if(nonzero && !is_var(q) && q->value.integer[0] == 0) goto fail; // TODO assert this for variables
+  CHECK(nonzero && !is_var(q) && q->value.integer[0] == 0, FAIL); // TODO assert this for variables
   res = is_var(p) || is_var(q) ? var(treq.t, c) : _op2(op, p, q);
   res->value.type.exclusive = res_type;
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   store_reduced(cp, res);
-  return true;
+  return SUCCESS;
 
- fail:
-  fail(cp, treq);
-  return false;
+ abort:
+  return abort_op(rsp, cp, treq);
 }
 
-bool func_op1(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t)) {
+response func_op1(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t)) {
   cell_t *c = *cp;
+  response rsp;
   cell_t *res = 0;
   PRE(c, op1);
 
-  if(!check_type(treq.t, res_type)) goto fail;
+  CHECK(!check_type(treq.t, res_type), FAIL);
 
   alt_set_t alt_set = 0;
   type_request_t atr = req_simple(arg_type);
-  if(!reduce_arg(c, 0, &alt_set, atr)) goto fail;
+  CHECK(reduce_arg(c, 0, &alt_set, atr));
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
@@ -116,11 +117,10 @@ bool func_op1(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   store_reduced(cp, res);
-  return true;
+  return SUCCESS;
 
- fail:
-  fail(cp, treq);
-  return false;
+ abort:
+  return abort_op(rsp, cp, treq);
 }
 
 cell_t *_op2_float(double (*op)(double, double), cell_t *x, cell_t *y) {
@@ -143,44 +143,45 @@ cell_t *_op1_float(double (*op)(double), cell_t *x) {
   return res;
 }
 
-bool func_op2_float(cell_t **cp, type_request_t treq, double (*op)(double, double), bool nonzero) {
+response func_op2_float(cell_t **cp, type_request_t treq, double (*op)(double, double), bool nonzero) {
   cell_t *c = *cp;
+  response rsp;
   cell_t *res = 0;
   PRE(c, op2_float);
 
-  if(!check_type(treq.t, T_FLOAT)) goto fail;
+  CHECK(!check_type(treq.t, T_FLOAT), FAIL);
 
   alt_set_t alt_set = 0;
   type_request_t atr = req_simple(T_FLOAT);
-  if(!reduce_arg(c, 0, &alt_set, atr) ||
-     !reduce_arg(c, 1, &alt_set, atr) ||
-     as_conflict(alt_set)) goto fail;
+  CHECK(AND0(reduce_arg(c, 0, &alt_set, atr),
+             reduce_arg(c, 1, &alt_set, atr),
+             fail_if(as_conflict(alt_set))));
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
-  if(nonzero && !is_var(q) && q->value.flt[0] == 0.0) goto fail; // TODO assert this for variables
+  CHECK(nonzero && !is_var(q) && q->value.flt[0] == 0.0, FAIL); // TODO assert this for variables
   res = is_var(p) || is_var(q) ? var(treq.t, c) : _op2_float(op, p, q);
   res->value.type.exclusive = T_FLOAT;
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   store_reduced(cp, res);
-  return true;
+  return SUCCESS;
 
- fail:
-  fail(cp, treq);
-  return false;
+ abort:
+  return abort_op(rsp, cp, treq);
 }
 
-bool func_op1_float(cell_t **cp, type_request_t treq, double (*op)(double)) {
+response func_op1_float(cell_t **cp, type_request_t treq, double (*op)(double)) {
   cell_t *c = *cp;
+  response rsp;
   cell_t *res = 0;
   PRE(c, op1_float);
 
-  if(!check_type(treq.t, T_FLOAT)) goto fail;
+  CHECK(!check_type(treq.t, T_FLOAT), FAIL);
 
   alt_set_t alt_set = 0;
   type_request_t atr = req_simple(T_FLOAT);
-  if(!reduce_arg(c, 0, &alt_set, atr)) goto fail;
+  CHECK(reduce_arg(c, 0, &alt_set, atr));
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
@@ -189,11 +190,10 @@ bool func_op1_float(cell_t **cp, type_request_t treq, double (*op)(double)) {
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   store_reduced(cp, res);
-  return true;
+  return SUCCESS;
 
- fail:
-  fail(cp, treq);
-  return false;
+ abort:
+  return abort_op(rsp, cp, treq);
 }
 
 WORD("+", add, 2, 1)
@@ -369,13 +369,14 @@ OP(neq_s) {
 WORD("->f", to_float, 1, 1)
 OP(to_float) {
   cell_t *c = *cp;
+  response rsp;
   cell_t *res = 0;
   PRE(c, to_float);
 
-  if(!check_type(treq.t, T_FLOAT)) goto fail;
+  CHECK(!check_type(treq.t, T_FLOAT), FAIL);
 
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 0, &alt_set, req_simple(T_INT))) goto fail;
+  CHECK(reduce_arg(c, 0, &alt_set, req_simple(T_INT)));
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
@@ -392,23 +393,23 @@ OP(to_float) {
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   store_reduced(cp, res);
-  return true;
+  return SUCCESS;
 
- fail:
-  fail(cp, treq);
-  return false;
+ abort:
+  return abort_op(rsp, cp, treq);
 }
 
 WORD("trunc", trunc, 1, 1)
 OP(trunc) {
   cell_t *c = *cp;
+  response rsp;
   cell_t *res = 0;
   PRE(c, to_float);
 
-  if(!check_type(treq.t, T_INT)) goto fail;
+  CHECK(!check_type(treq.t, T_INT), FAIL);
 
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 0, &alt_set, req_simple(T_FLOAT))) goto fail;
+  CHECK(reduce_arg(c, 0, &alt_set, req_simple(T_FLOAT)));
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
@@ -425,11 +426,10 @@ OP(trunc) {
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   store_reduced(cp, res);
-  return true;
+  return SUCCESS;
 
- fail:
-  fail(cp, treq);
-  return false;
+ abort:
+  return abort_op(rsp, cp, treq);
 }
 
 WORD("pushr", pushr, 2, 1)
@@ -441,7 +441,7 @@ OP(pushr) {
   c->expr.arg[2] = &nil_cell;
   c->op = OP_compose;
   *cp = c;
-  return false;
+  return RETRY;
 }
 
 WORD("|", alt, 2, 1)
@@ -453,7 +453,7 @@ OP(alt) {
   cell_t *r1 = id(c->expr.arg[1], as_single(a, 1));
   r0->alt = r1;
   store_lazy(cp, r0, 0);
-  return false;
+  return RETRY;
 }
 
 cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
@@ -491,15 +491,16 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
 WORD("!", assert, 2, 1)
 OP(assert) {
   cell_t *c = *cp;
+  response rsp;
   PRE(c, assert);
 
   cell_t *res = NULL;
   alt_set_t alt_set = 0;
   csize_t in = closure_in(c);
-  if(!reduce_arg(c, 1, &alt_set, REQ(symbol))) goto fail;
+  CHECK(reduce_arg(c, 1, &alt_set, REQ(symbol)));
   cell_t *p = clear_ptr(c->expr.arg[1]);
 
-  if(!(p->value.integer[0] == SYM_True || is_var(p))) goto fail;
+  CHECK(!(p->value.integer[0] == SYM_True || is_var(p)), FAIL);
 
   if(in == 3) {
     // use var from earlier
@@ -509,8 +510,8 @@ OP(assert) {
     res = var(treq.t != T_LIST ? treq.t : T_FUNCTION, c);
   }
 
-  if(!reduce_arg(c, 0, &alt_set, treq) ||
-     as_conflict(alt_set)) goto fail;
+  CHECK(AND0(reduce_arg(c, 0, &alt_set, treq),
+             fail_if(as_conflict(alt_set))));
   clear_flags(c);
   cell_t *q = c->expr.arg[0];
 
@@ -535,33 +536,34 @@ OP(assert) {
     res = mod_alt(ref(q), c->alt, alt_set);
   }
   store_reduced(cp, res);
-  return true;
-fail:
+  return SUCCESS;
+
+ abort:
   drop(res);
-  fail(cp, treq);
-  return false;
+  return abort_op(rsp, cp, treq);
 }
 
 WORD("id", id, 1, 1)
 OP(id) {
   cell_t *c = *cp;
+  response rsp;
   PRE(c, id);
   alt_set_t alt_set = c->expr.alt_set;
 
   if(alt_set || c->alt || c->pos) {
-    if(!reduce_arg(c, 0, &alt_set, treq) ||
-       as_conflict(alt_set)) goto fail;
+    CHECK(AND0(reduce_arg(c, 0, &alt_set, treq),
+               fail_if(as_conflict(alt_set))));
     clear_flags(c);
 
     store_reduced(cp, mod_alt(ref(c->expr.arg[0]), c->alt, alt_set));
-    return true;
+    return SUCCESS;
   } else {
     *cp = CUT(c, expr.arg[0]);
-    return false;
+    return RETRY;
   }
- fail:
-  fail(cp, treq);
-  return false;
+
+ abort:
+  return abort_op(rsp, cp, treq);
 }
 
 WORD("drop", drop, 2, 1)
@@ -569,7 +571,7 @@ OP(drop) {
   cell_t *c = *cp;
   PRE(c, drop);
   *cp = CUT(c, expr.arg[0]);
-  return false;
+  return RETRY;
 }
 
 WORD("swap", swap, 2, 2)
@@ -579,7 +581,7 @@ OP(swap) {
   cell_t *d = c->expr.arg[2];
   store_lazy_dep(d, c->expr.arg[0], 0);
   store_lazy(cp, c->expr.arg[1], 0);
-  return false;
+  return RETRY;
 }
 
 cell_t *id(cell_t *c, alt_set_t as) {
@@ -598,7 +600,7 @@ OP(dup) {
   cell_t *d = c->expr.arg[1];
   store_lazy_dep(d, ref(c->expr.arg[0]), 0);
   store_lazy(cp, c->expr.arg[0], 0);
-  return false;
+  return RETRY;
 }
 
 // outputs required from the left operand given the rignt operand
@@ -614,8 +616,9 @@ csize_t function_compose_in(cell_t *c, csize_t req_in, csize_t arg_in, bool row)
 }
 
 static
-bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
+response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   cell_t *c = *cp;
+  response rsp;
   CONTEXT("%s: %C", row ? "compose" : "ap", c);
   PRE_NO_CONTEXT(c, compose_ap);
 
@@ -630,11 +633,14 @@ bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
 
   alt_set_t alt_set = 0;
   if(row) {
-    if(!reduce_arg(c, 0, &alt_set, REQ(list, treq.in, 0))) goto fail;
+    CHECK(reduce_arg(c, 0, &alt_set, REQ(list, treq.in, 0)));
     p = clear_ptr(c->expr.arg[0]);
   }
-  if(!reduce_arg(c, in, &alt_set, REQ(list, function_compose_in(p, out ? 0 : treq.in, arg_in, false /*_1_*/), treq.out + out)) ||
-     as_conflict(alt_set)) goto fail;
+  CHECK(AND0(reduce_arg(c, in, &alt_set,
+                        REQ(list,
+                            function_compose_in(p, out ? 0 : treq.in, arg_in, false /*_1_*/),
+                            treq.out + out)),
+             fail_if(as_conflict(alt_set))));
 
   clear_flags(c);
   if(row) {
@@ -678,7 +684,7 @@ bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
     if(!x) {
       drop(l);
       LOG("null quote output");
-      goto fail;
+      ABORT(FAIL);
     }
     cell_t *d = c->expr.arg[n-1-i];
     store_lazy_dep(d, ref(*x), alt_set);
@@ -691,10 +697,10 @@ bool func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   store_reduced(cp, mod_alt(res, c->alt, alt_set));
   (*cp)->pos = pos; // ***
   ASSERT_REF();
-  return true;
-fail:
-  fail(cp, treq);
-  return false;
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, treq);
 }
 
 WORD("pushl", ap, 2, 1)
@@ -711,15 +717,16 @@ OP(compose) {
 WORD("print", print, 2, 1)
 OP(print) {
   cell_t *c = *cp;
+  response rsp;
   cell_t *res = 0;
   PRE(c, print);
 
-  if(!check_type(treq.t, T_SYMBOL)) goto fail;
+  CHECK(!check_type(treq.t, T_SYMBOL), FAIL);
 
   alt_set_t alt_set = 0;
-  if(!reduce_arg(c, 0, &alt_set, REQ(symbol)) ||
-     !reduce_arg(c, 1, &alt_set, REQ(any)) ||
-     as_conflict(alt_set)) goto fail;
+  CHECK(AND0(reduce_arg(c, 0, &alt_set, REQ(symbol)),
+             reduce_arg(c, 1, &alt_set, REQ(any)),
+             fail_if(as_conflict(alt_set))));
   clear_flags(c);
 
   if(c->alt) {
@@ -733,38 +740,39 @@ OP(print) {
   } else if(p->value.integer[0] == SYM_IO) {
     show_one(q);
     res = ref(p);
-  } else goto fail;
+  } else {
+    ABORT(FAIL);
+  }
   store_reduced(cp, res);
-  return true;
+  return SUCCESS;
 
- fail:
+ abort:
   drop(res);
-  fail(cp, treq);
-  return false;
+  return abort_op(rsp, cp, treq);
 }
 
 bool is_list_var(cell_t *c) {
   return is_row_list(c) && is_placeholder(c->value.ptr[0]);
 }
 
-bool func_type(cell_t **cp, type_request_t treq, uint8_t type) {
+response func_type(cell_t **cp, type_request_t treq, uint8_t type) {
   cell_t *c = *cp;
+  response rsp;
   PRE(c, type);
 
-  if(!check_type(treq.t, type)) goto fail;
+  CHECK(!check_type(treq.t, type), FAIL);
 
   alt_set_t alt_set = 0;
   type_request_t atr = req_simple(type);
-  if(!reduce_arg(c, 0, &alt_set, atr)) goto fail;
+  CHECK(reduce_arg(c, 0, &alt_set, atr));
   clear_flags(c);
 
   *cp = mod_alt(ref(c->expr.arg[0]), ref(c->alt), 0);
   drop(c);
-  return true;
+  return SUCCESS;
 
- fail:
-  fail(cp, treq);
-  return false;
+ abort:
+  return abort_op(rsp, cp, treq);
 }
 
 // annotations to work around inference failures

@@ -89,12 +89,20 @@ typedef struct trace_cell {
   val_t index;
 } trace_cell_t;
 
-typedef bool (reduce_t)(cell_t **cell, type_request_t treq);
+typedef enum response {
+  SUCCESS = 0,
+  FAIL,
+  RETRY,
+  DELAY
+} response;
+
+typedef response (reduce_t)(cell_t **cell, type_request_t treq);
 
 #define EXPR_NEEDS_ARG 0x01
 #define EXPR_RECURSIVE 0x02
 #define EXPR_TRACE     0x04
 #define EXPR_NO_UNIFY  0x08
+#define EXPR_DELAYED   0x10
 
 /* unevaluated expression */
 struct __attribute__((packed)) expr {

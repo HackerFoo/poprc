@@ -71,37 +71,37 @@ bool is_function(cell_t const *c) {
 
 
 // not really a func
-bool func_list(cell_t **cp, type_request_t treq) {
+response func_list(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
+  response rsp;
   PRE(c, list);
-  if(treq.t == T_ANY && treq.t == T_LIST) return true;
-  if(!check_type(treq.t, T_RETURN)) goto fail;
+  if(treq.t == T_ANY && treq.t == T_LIST) return SUCCESS;
+  CHECK(!check_type(treq.t, T_RETURN), FAIL);
   csize_t n = list_size(c);
 
   alt_set_t alt_set = c->value.alt_set;
   COUNTUP(i, n) {
-    if(!reduce_ptr(c, i, &alt_set, req_pos(REQ(any), treq.pos)) ||
-      as_conflict(alt_set)) goto fail;
+    CHECK(AND0(reduce_ptr(c, i, &alt_set, req_pos(REQ(any), treq.pos)),
+               fail_if(as_conflict(alt_set))));
   }
   TRAVERSE(c, ptrs) {
     *p = clear_ptr(*p);
   }
   if(n && is_row_list(c) && is_list(c->value.ptr[n-1])) {
-    if(!func_list(&c->value.ptr[n-1], req_pos(REQ(any), treq.pos))) goto fail;
+    CHECK(func_list(&c->value.ptr[n-1], req_pos(REQ(any), treq.pos)));
   }
   alt_set |= c->value.ptr[n-1]->value.alt_set;
-  if(as_conflict(alt_set)) goto fail;
+  CHECK(as_conflict(alt_set), FAIL);
   c->value.alt_set = alt_set;
-  return true;
+  return SUCCESS;
 
- fail:
-  fail(cp, treq);
-  return false;
+ abort:
+  return abort_op(rsp, cp, treq);
 }
 
 void reduce_list(cell_t **cp) {
   while(*cp) {
-    if(func_list(cp, REQ(return))) {
+    if(func_list(cp, REQ(return)) == SUCCESS) {
       cp = &(*cp)->alt;
     }
   }

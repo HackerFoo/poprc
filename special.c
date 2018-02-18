@@ -29,6 +29,7 @@
 
 OP(value) {
   cell_t *c = *cp;
+  response rsp;
   cell_t *res = NULL;
   PRE(c, value);
   stats.reduce_cnt--;
@@ -41,13 +42,14 @@ OP(value) {
     LOG("convert integer constant %d", x);
     *cp = float_val(x);
     drop(c);
-    return false;
+    return RETRY;
   }
 
   if(FLAG(c->value.type, T_FAIL) ||
      !type_match(treq.t, c)) {
-    if(treq.t == T_FUNCTION && c == &nil_cell) return true; // HACK
-    goto fail;
+    if(treq.t == T_FUNCTION && c == &nil_cell) return SUCCESS; // HACK
+    rsp = FAIL;
+    goto abort;
   }
 
   // NOTE: may create multiple placeholder
@@ -101,10 +103,10 @@ OP(value) {
     }
   }
 
-  return true;
-fail:
-  fail(cp, treq);
-  return false;
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, treq);
 }
 
 cell_t *int_val(val_t x) {
@@ -303,7 +305,7 @@ OP(dep) {
   trace_dep(c);
   remove_root(&p);
   drop(p);
-  return false;
+  return RETRY;
 }
 
 cell_t *dep(cell_t *c) {
@@ -321,21 +323,22 @@ bool is_dep(cell_t const *c) {
 WORD("??", placeholder, 0, 1)
 OP(placeholder) {
   cell_t *c = *cp;
+  response rsp;
   PRE(c, placeholder);
-  if(!check_type(treq.t, T_FUNCTION)) goto fail;
+  CHECK(!check_type(treq.t, T_FUNCTION), FAIL);
   csize_t in = closure_in(c), n = closure_args(c);
 
   if(n == 1) {
     *cp = CUT(c, expr.arg[0]);
-    return false;
+    return RETRY;
   }
 
   alt_set_t alt_set = 0;
   assert_error(in >= 1);
-  if(!reduce_arg(c, in - 1, &alt_set, REQ(function))) goto fail;
+  CHECK(reduce_arg(c, in - 1, &alt_set, REQ(function)));
   COUNTUP(i, in - 1) {
-    if(!reduce_arg(c, i, &alt_set, REQ(any)) ||
-      as_conflict(alt_set)) goto fail;
+    CHECK(AND0(reduce_arg(c, i, &alt_set, REQ(any)),
+               fail_if(as_conflict(alt_set))));
   }
   clear_flags(c);
 
@@ -345,7 +348,7 @@ OP(placeholder) {
      list_size(c->expr.arg[1]) == 0 &&
      is_function(c->expr.arg[0])) {
     store_reduced(cp, mod_alt(ref(c->expr.arg[0]), c->alt, alt_set));
-    return true;
+    return SUCCESS;
   }
 
   cell_t *res = var(T_FUNCTION, c, treq.pos);
@@ -363,11 +366,10 @@ OP(placeholder) {
   }
   store_reduced(cp, res);
   ASSERT_REF();
-  return true;
+  return SUCCESS;
 
- fail:
-  fail(cp, treq);
-  return false;
+ abort:
+  return abort_op(rsp, cp, treq);
 }
 
 bool is_placeholder(cell_t const *c) {
@@ -378,6 +380,5 @@ OP(fail) {
   cell_t *c = *cp;
   PRE(c, fail);
   stats.reduce_cnt--;
-  fail(cp, treq);
-  return false;
+  return abort_op(FAIL, cp, treq);
 }

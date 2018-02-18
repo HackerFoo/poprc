@@ -272,6 +272,7 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
   tc->pos = 0;
   tc->n = n;
+  FLAG_CLEAR(tc->expr, EXPR_DELAYED);
   if(is_user_func(tc)) {
     // encode the entry
     cell_t **e = &tc->expr.arg[closure_in(tc)];
@@ -680,7 +681,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
   cell_t **p = cp;
   while(*p) {
     LOG("branch %d: %C", alts, *p);
-    if(!func_list(p, req_pos(REQ(return), entry->pos))) continue;
+    if(func_list(p, req_pos(REQ(return), entry->pos)) != SUCCESS) continue;
     assert_alt(c, *p); // O(alts^2)
     cell_t **a;
     FORLIST(a, *p, true) {

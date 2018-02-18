@@ -226,6 +226,37 @@
 
 // define away WORD annotations
 #define WORD(...)
-#define OP(name) bool func_##name(cell_t **cp, UNUSED type_request_t treq)
+#define OP(name) response func_##name(cell_t **cp, UNUSED type_request_t treq)
+
+#define AND0_1(a) (a)
+#define AND0_2(a, b)                            \
+  ({                                            \
+    __typeof__(a) __a = (a);                    \
+    __a ? __a : (b);                            \
+  })
+#define AND0_3(a, b, c) AND0_2(a, AND0_2(b, c))
+#define AND0_4(a, b, c, d) AND0_3(a, b, AND0_2(c, d))
+#define AND0_5(a, b, c, d, e) AND0_4(a, b, c, AND0_2(d, e))
+#define AND0(...) DISPATCH(AND0, __VA_ARGS__)
+
+#define CHECK_1(x)                              \
+  do {                                          \
+    rsp = (x);                                  \
+    if(rsp) goto abort;                         \
+  } while(0)
+#define CHECK_2(x, v)                           \
+  do {                                          \
+    if(x) {                                     \
+      rsp = (v);                                \
+      goto abort;                               \
+    }                                           \
+  } while(0)
+#define CHECK(...) DISPATCH(CHECK, __VA_ARGS__)
+
+#define ABORT(x)                                \
+  do {                                          \
+    rsp = (x);                                  \
+    goto abort;                                 \
+  } while(0)
 
 #endif

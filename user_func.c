@@ -490,7 +490,7 @@ cell_t *expand_list(cell_t *entry, cell_t *c) {
 }
 
 static
-bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
+response func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   cell_t *c = *cp;
   size_t in = closure_in(c);
   cell_t *entry = c->expr.arg[in];
@@ -549,16 +549,16 @@ bool func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   }
   *cp = p;
   store_reduced(cp, res);
-  return true;
+  return SUCCESS;
 }
 
 static
-bool exec_list(cell_t **cp, type_request_t treq) {
+response exec_list(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   PRE_NO_CONTEXT(c, exec_list);
 
   if(treq.t != T_LIST || closure_out(c) != 0) {
-    return true;
+    return SUCCESS;
   }
 
   CONTEXT_LOG("exec_list %C", c);
@@ -582,12 +582,13 @@ bool exec_list(cell_t **cp, type_request_t treq) {
     c->expr.arg[j] = d;
   }
   *cp = res;
-  return false;
+  return RETRY;
 }
 
 static
-bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
+response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   cell_t *c = *cp;
+  response rsp;
   size_t in = closure_in(c);
   cell_t *entry = c->expr.arg[in];
   PRE(c, exec_trace, " %E 0x%x", entry, c->expr.flags);
@@ -607,8 +608,8 @@ bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   COUNTUP(i, in) {
     uint8_t t = len > 0 ? entry[in - i].value.type.exclusive : T_ANY; // ***
     if(t == T_FUNCTION) t = T_ANY; // HACK, T_FUNCTION breaks things
-    if(!reduce_arg(c, i, &alt_set, req_simple(t)) ||
-       as_conflict(alt_set)) goto fail;
+    CHECK(AND0(reduce_arg(c, i, &alt_set, req_simple(t)),
+               fail_if(as_conflict(alt_set))));
     // if all vars in a recursive function, don't expand
     // TODO make this less dumb
     cell_t *a = clear_ptr(c->expr.arg[i]);
@@ -675,11 +676,10 @@ bool func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   res->alt = c->alt;
 
   store_reduced(cp, res);
-  return true;
+  return SUCCESS;
 
-fail:
-  fail(cp, treq);
-  return false;
+ abort:
+  return abort_op(rsp, cp, treq);
 }
 
 bool all_dynamic(cell_t *entry) {
@@ -693,24 +693,28 @@ bool all_dynamic(cell_t *entry) {
 
 OP(exec) {
   cell_t *c = *cp;
+  response rsp;
   cell_t *entry = c->expr.arg[closure_in(c)];
   PRE(c, exec, " %E", entry);
 
   cell_t *parent_entry = find_input_entry(c);
 
   if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
+    if(NOT_FLAG(c->expr, EXPR_DELAYED)) {
+      FLAG_SET(c->expr, EXPR_DELAYED);
+      LOG("delay exec %E %C", entry, c);
+      return DELAY;
+    }
     assert_error(parent_entry,
                  "incomplete entry can't be unified without "
                  "a parent entry %C @exec_split", c);
     if(entry->entry.initial && !unify_exec(cp, parent_entry)) {
       LOG(MARK("WARN") " unify failed: %C %C",
           *cp, entry->entry.initial);
-      fail(cp, treq);
-      return false;
+      ABORT(FAIL);
     }
-    return
-      exec_list(cp, treq) &&
-      func_exec_trace(cp, treq, parent_entry);
+    return AND0(exec_list(cp, treq),
+                func_exec_trace(cp, treq, parent_entry));
   } else if(parent_entry && all_dynamic(entry)) {
     return func_exec_trace(cp, treq, parent_entry);
   } else if(parent_entry && entry->entry.rec) {
@@ -720,10 +724,7 @@ OP(exec) {
 
     if(FLAG(c->expr, EXPR_RECURSIVE)) {
       TRAVERSE(c, in) {
-        if(!reduce(p, req_any)) {
-          fail(cp, treq);
-          return false;
-        }
+        CHECK(reduce(p, req_any));
       }
     }
     cell_t *res = exec_expand(c, entry);
@@ -737,8 +738,11 @@ OP(exec) {
       printf("\n");
     }
     store_lazy(cp, res, 0);
-    return false;
+    return RETRY;
   }
+
+ abort:
+  return abort_op(rsp, cp, treq);
 }
 
 void reduce_quote(cell_t **cp) {

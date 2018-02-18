@@ -94,6 +94,7 @@ cell_t *dup_alt(cell_t *c, csize_t n, cell_t *b) {
     args = closure_args(c);
   assert_error(n < in);
   cell_t *a = copy(c);
+  FLAG_CLEAR(a->expr, EXPR_DELAYED);
 
   // ref args
   COUNTUP(i, in) {
@@ -142,12 +143,12 @@ void split_expr(cell_t *c) {
 }
 
 // Reduce then split c->arg[n]
-bool reduce_arg(cell_t *c,
+response reduce_arg(cell_t *c,
                 csize_t n,
                 alt_set_t *ctx,
                 type_request_t treq) {
   cell_t **ap = &c->expr.arg[n];
-  bool r = reduce(ap, treq);
+  response r = reduce(ap, treq);
   cell_t *a = clear_ptr(*ap);
   *ctx |= a->value.alt_set;
   split_arg(c, n);
@@ -190,13 +191,13 @@ void split_ptr(cell_t *c, csize_t n) {
 
 // Reduce then split c->arg[n]
 // NOTE: c should never have a row
-bool reduce_ptr(cell_t *c,
-                csize_t n,
-                alt_set_t *ctx,
-                type_request_t treq) {
+response reduce_ptr(cell_t *c,
+                    csize_t n,
+                    alt_set_t *ctx,
+                    type_request_t treq) {
   assert_error(is_list(c));
   cell_t **ap = &c->value.ptr[n];
-  bool r = reduce(ap, treq);
+  response r = reduce(ap, treq);
   cell_t *a = clear_ptr(*ap);
   *ctx |= a->value.alt_set;
   split_ptr(c, n);
@@ -222,7 +223,7 @@ reduce_t *op_func(op op) {
 }
 
 // Reduce *cp with type t
-bool reduce(cell_t **cp, type_request_t treq) {
+response reduce(cell_t **cp, type_request_t treq) {
   bool marked = is_marked(*cp);
   *cp = clear_ptr(*cp);
   cell_t *c = *cp;
@@ -230,26 +231,27 @@ bool reduce(cell_t **cp, type_request_t treq) {
     assert_error(is_closure(c));
     if(!closure_is_ready(c)) {
       LOG("reduce: closure not ready %C", c);
-      fail(cp, treq);
+      abort_op(FAIL, cp, treq);
       c = *cp;
       continue;
     }
     stats.reduce_cnt++;
     op op = c->op;
-    bool success = op_func(op)(cp, treq);
+    response r = op_func(op)(cp, treq);
 
     // prevent infinite loops when debugging
     assert_counter(LENGTH(cells));
 
     LOG_WHEN(!*cp, MARK("FAIL") ": %O %C", op, c);
     c = *cp;
-    if(success) {
+    if(r == SUCCESS ||
+       r == DELAY) {
       if(marked) *cp = mark_ptr(c);
-      return true;
+      return r;
     }
   }
   *cp = &fail_cell;
-  return false;
+  return FAIL;
 }
 
 // Perform one reduction step on *cp
@@ -257,7 +259,7 @@ void reduce_dep(cell_t **cp) {
   cell_t *c = *cp;
   if(!c || !closure_is_ready(c)) {
     LOG("reduce_dep: closure not ready or null %C", c);
-    fail(cp, req_any);
+    abort_op(FAIL, cp, req_any);
   } else {
     assert_error(is_closure(c) &&
            closure_is_ready(c));
@@ -476,33 +478,43 @@ void store_dep(cell_t *c, trace_cell_t tc, csize_t pos, int t, alt_set_t alt_set
   *c = v;
 }
 
-void fail(cell_t **cp, type_request_t treq) {
+response abort_op(response rsp, cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
-  if(!is_cell(c)) {
-    *cp = NULL;
-    return;
-  }
-  assert_error(!is_marked(c));
-  cell_t *alt = ref(c->alt);
-  if(c->n && treq.t == T_ANY) { // HACK this should be more sophisticated
-    TRAVERSE(c, in) {
-      drop(*p);
+  if(rsp == FAIL) {
+    if(!is_cell(c)) {
+      *cp = NULL;
+      return rsp;
     }
-    TRAVERSE(c, out) {
-      cell_t *d = *p;
-      if(d && is_dep(d)) {
-        drop(c);
-        store_fail(d, d->alt);
+    assert_error(!is_marked(c));
+    cell_t *alt = ref(c->alt);
+    if(c->n && treq.t == T_ANY) { // HACK this should be more sophisticated
+      TRAVERSE(c, in) {
+        drop(*p);
       }
+      TRAVERSE(c, out) {
+        cell_t *d = *p;
+        if(d && is_dep(d)) {
+          drop(c);
+          store_fail(d, d->alt);
+        }
+      }
+      closure_shrink(c, 1);
+      memset(&c->value, 0, sizeof(c->value));
+      c->op = OP_value;
+      c->value.type.flags = T_FAIL;
     }
-    closure_shrink(c, 1);
-    memset(&c->value, 0, sizeof(c->value));
-    c->op = OP_value;
-    c->value.type.flags = T_FAIL;
+    drop(c);
+    *cp = alt;
+    stats.fail_cnt++;
+  } else if(rsp == DELAY && c->alt) {
+    // rotate alts
+    cell_t *a = c->alt;
+    c->alt = NULL;
+    *cp = conc_alt(a, c);
+    LOG("rotate alts %C %C", c, a);
+    return RETRY;
   }
-  drop(c);
-  *cp = alt;
-  stats.fail_cnt++;
+  return rsp;
 }
 
 void store_reduced(cell_t **cp, cell_t *r) {
@@ -867,4 +879,8 @@ void assert_alt(cell_t *c, cell_t *a) {
                  "overlapping alts %C %C @exec_split", p, a);
   }
 #endif
+}
+
+response fail_if(bool x) {
+  return x ? FAIL : SUCCESS;
 }
