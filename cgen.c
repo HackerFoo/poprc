@@ -148,7 +148,7 @@ void gen_return(cell_t *e, cell_t *l) {
 end:
   {
     cell_t *next = closure_next(l);
-    if(closure_next(l) < end) {
+    if(closure_next(l) <= end) {
       printf("\nblock%d:\n", (int)(next - e));
     }
   }
@@ -233,7 +233,7 @@ void gen_call(cell_t *e, cell_t *c) {
 
     RANGEUP(i, start_out, n) {
       int a = trace_decode(c->expr.arg[i]);
-      if(a == -1) {
+      if(a <= 0) {
         printf("%sNULL", sep);
       } else {
         printf("%s&%s%d", sep, cname(trace_type(&e[a])), a);
