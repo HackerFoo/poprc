@@ -264,8 +264,7 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
     return;
   }
   assert_error(tc->size == c->size);
-  assert_error(c->op != OP_dep_entered &&
-         c->op != OP_dep);
+  assert_error(c->op != OP_dep);
   CONTEXT_LOG("trace_store_expr: %e[%d] <- %C %C",
               entry, r->value.tc.index, c, r);
 

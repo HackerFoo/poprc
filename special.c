@@ -299,19 +299,10 @@ OP(dep) {
   cell_t *p = ref(c->expr.arg[0]);
   assert_error(is_dep_of(c, p));
   insert_root(&p);
-  c->op = OP_dep_entered;
   reduce_dep(&p);
   trace_dep(c);
-  assert_error(c->op != OP_dep_entered, "result not written to dep");
   remove_root(&p);
   drop(p);
-  return false;
-}
-
-OP(dep_entered) {
-  // shouldn't happen; circular dependency
-  assert_error(false);
-  fail(cp, treq);
   return false;
 }
 
@@ -323,7 +314,7 @@ cell_t *dep(cell_t *c) {
 }
 
 bool is_dep(cell_t const *c) {
-  return c->op == OP_dep || c->op == OP_dep_entered;
+  return c->op == OP_dep;
 }
 
 // this shouldn't reduced directly, but is called through reduce_partial from func_dep
