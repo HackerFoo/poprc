@@ -291,21 +291,41 @@ bool is_dep_of(cell_t *d, cell_t *c) {
   return ret;
 }
 
+void move_delay_flag(cell_t *src, cell_t *dst) {
+  if(FLAG(src->expr, EXPR_DELAYED) &&
+     NOT_FLAG(dst->expr, EXPR_DELAYED)) {
+    FLAG_CLEAR(src->expr, EXPR_DELAYED);
+    FLAG_SET(dst->expr, EXPR_DELAYED);
+  }
+}
+
 /* todo: propagate types here */
 OP(dep) {
   cell_t *c = *cp;
+  response rsp;
   PRE(c, dep);
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
   /* must temporarily reference to avoid replacement of p which is referenced elsewhere */
   cell_t *p = ref(c->expr.arg[0]);
   assert_error(is_dep_of(c, p));
+  // move delay flag out to dep
+  move_delay_flag(p, c);
   insert_root(&p);
-  reduce_dep(&p);
+  CHECK(reduce_dep(&p));
   trace_dep(c);
   remove_root(&p);
   drop(p);
   return RETRY;
+
+ abort:
+  // move delay flag out to dep
+  if(rsp == DELAY) {
+    move_delay_flag(p, c);
+  }
+  remove_root(&p);
+  drop(p);
+  return abort_op(rsp, cp, treq);
 }
 
 cell_t *dep(cell_t *c) {

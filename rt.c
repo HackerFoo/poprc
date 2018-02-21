@@ -255,16 +255,16 @@ response reduce(cell_t **cp, type_request_t treq) {
 }
 
 // Perform one reduction step on *cp
-void reduce_dep(cell_t **cp) {
+response reduce_dep(cell_t **cp) {
   cell_t *c = *cp;
   if(!c || !closure_is_ready(c)) {
     LOG("reduce_dep: closure not ready or null %C", c);
-    abort_op(FAIL, cp, req_any);
+    return abort_op(FAIL, cp, req_any);
   } else {
     assert_error(is_closure(c) &&
            closure_is_ready(c));
     stats.reduce_cnt++;
-    op_func(c->op)(cp, req_any);
+    return op_func(c->op)(cp, req_any);
   }
 }
 

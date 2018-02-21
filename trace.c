@@ -676,6 +676,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
   cell_t *tc = NULL, **prev = &tc;
   unsigned int alts = 0;
 
+  CONTEXT("trace_reduce %E %C", entry, c);
   insert_root(cp);
 
   cell_t **p = cp;
