@@ -256,7 +256,7 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
     // update the types
     if(t.exclusive != T_ANY) {
       if(is_value(tc)) {
-        tc->value.type = t;
+        trace_set_type(tc, t.exclusive);
         FOR_TRACE(x, entry) {
           // update through assertions
           if(x->op == OP_assert) {

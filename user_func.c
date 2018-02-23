@@ -580,7 +580,9 @@ response func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) 
   drop(wrap.initial);
 
   trace_clear_alt(parent_entry);
-  cell_t *res = var_create_with_entry(T_ANY, parent_entry, p->size);
+  type_t rtypes[new_entry->entry.out];
+  resolve_types(new_entry, rtypes);
+  cell_t *res = var_create_with_entry(rtypes[0].exclusive, parent_entry, p->size);
   // }
 
   // build list expected by caller
