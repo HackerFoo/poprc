@@ -390,7 +390,7 @@ void gen_main(cell_t *e) {
          "#include <assert.h>\n"
          "#include \"macros.h\"\n"
          "#include \"rt_types.h\"\n"
-         "#include \"gen/support.h\"\n"
+         "#include \"startle/support.h\"\n"
          "#include \"cgen/primitives.h\"\n\n");
 
   gen_function_signatures(e);
@@ -403,7 +403,7 @@ void gen_main(cell_t *e) {
          "  array out[arity_out];\n"
          "  error_t error;\n"
          "  if(catch_error(&error)) {\n"
-         "    print_error(&error);\n"
+         "    log_print_all();\n"
          "    return -1;\n"
          "  }\n"
          "  if(argc < 2) {\n"

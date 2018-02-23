@@ -3,8 +3,8 @@
 #include <stdio.h>
 
 #include "primitives.h"
-#include "gen/tok.h"
-#include "gen/support.h"
+#include "tok.h"
+#include "startle/support.h"
 
 static int mem[256];
 static int *mem_ptr = mem;
@@ -69,3 +69,9 @@ array parse(const char **sp, const char *e) {
   *sp = seg_end(t);
   return arr;
 }
+
+// dummy formatters
+FORMAT(cell, 'C') {}
+FORMAT(entry, 'E') {}
+FORMAT(entry_short, 'e') {}
+FORMAT(function, 'O') {}

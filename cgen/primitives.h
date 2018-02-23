@@ -2,7 +2,8 @@
 #define __cgen_primitives__
 
 #include <string.h>
-#include "gen/error.h"
+#include "startle/error.h"
+#include "startle/log.h"
 
 #define __primitive_add(x, y) x + y
 #define __primitive_sub(x, y) x - y
@@ -23,6 +24,7 @@
 #define __primitive_shiftl(x, y) x << y
 #define __primitive_shiftr(x, y) x >> y
 #define __primitive_complement(x) ~x
+#define __primitive_div(x, y) x / y
 
 typedef struct array {
   int size;
