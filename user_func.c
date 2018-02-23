@@ -176,7 +176,7 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry) {
     out = closure_out(c);
   cell_t
     *entry = c->expr.arg[in],
-    *pat = entry->entry.initial;
+    *pat = entry->entry.wrap->initial;
 
   if(!pat) return false;
   if(!is_value(c) &&
@@ -400,6 +400,46 @@ cell_t **input_var_list(cell_t *c, cell_t **tail) {
   return tail;
 }
 
+void vars_in_entry(cell_t **p, cell_t *entry) {
+  while(*p) {
+    cell_t *v = *p;
+    cell_t **next = &v->tmp;
+    if(v->value.tc.entry != entry) {
+      // remove from list
+      *p = *next;
+      v->tmp = 0;
+    }
+    p = next;
+  }
+}
+
+void reassign_input_order(cell_t *entry) {
+  if(!entry->entry.wrap) return;
+  cell_t *c = entry->entry.wrap->expand;
+  if(!c) return;
+  cell_t *parent_entry = entry->entry.parent;
+  CONTEXT("reassign input order %C (%e -> %e)", c,
+          parent_entry, entry);
+  csize_t in = entry->entry.in;
+  cell_t *vl = 0;
+  input_var_list(c, &vl);
+  vars_in_entry(&vl, entry);
+  assert_error(tmp_list_length(vl) == in, "%d != %d, %E %C @wrap", tmp_list_length(vl), in, entry, c);
+
+  int pos = 1;
+  FOLLOW(p, vl, tmp) {
+    assert_error(p->value.tc.entry == entry);
+    cell_t *tn = trace_cell_ptr(p->value.tc);
+    assert_error(tn->pos, "%e[%d] (%C)", p->value.tc.entry, p->value.tc.index, p);
+    if(tn->pos != pos) {
+      tn->pos = pos;
+      FLAG_SET(entry->entry, ENTRY_MOV_VARS);
+    }
+    pos++;
+  }
+  clean_tmp(vl);
+}
+
 // this doesn't work for quotes
 // all c's input args must be params
 cell_t *flat_call(cell_t *c, cell_t *entry) {
@@ -420,11 +460,9 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
   FOLLOW(p, vl, tmp) {
     assert_error(p->value.tc.entry == entry);
     cell_t *tn = trace_cell_ptr(p->value.tc);
-    assert_error(tn->pos, "%e[%d] (%C)", p->value.tc.entry, p->value.tc.index, p);
-    if(tn->pos != pos) {
-      tn->pos = pos;
-      FLAG_SET(entry->entry, ENTRY_MOV_VARS);
-    }
+    // Is it okay to update this from reassign_input_order?
+    tn->pos = pos;
+    // assert_error(tn->pos == pos, "%e[%d] (%C)", p->value.tc.entry, p->value.tc.index, p);
     switch_entry(parent_entry, tn);
     assert_error(tn->value.tc.entry == parent_entry);
     cell_t *tp = trace_cell_ptr(tn->value.tc);
@@ -433,6 +471,7 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
     LOG("arg[%d] -> %d", in - pos, tp - parent_entry);
     pos++;
   }
+  clean_tmp(vl);
   nc->expr.arg[in] = entry;
   return nc;
 }
@@ -494,20 +533,24 @@ response func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) 
   cell_t *c = *cp;
   size_t in = closure_in(c);
   cell_t *entry = c->expr.arg[in];
+  wrap_data wrap;
   PRE(c, exec_wrap, " %E 0x%x #wrap", entry, c->expr.flags);
   LOG_UNLESS(entry->entry.out == 1, "out = %d #unify-multiout", entry->entry.out);
 
   cell_t *new_entry = trace_start_entry(parent_entry, entry->entry.out);
+  new_entry->entry.wrap = &wrap;
   new_entry->module_name = parent_entry->module_name;
   new_entry->word_name = string_printf("%s_r%d", parent_entry->word_name, parent_entry->entry.sub_id++);
   LOG("created entry for %E", new_entry);
 
-  new_entry->entry.initial = ref(c);
+  wrap.initial = ref(c);
+  insert_root(&wrap.initial);
   move_changing_values(new_entry, c);
 
   // make a list with expanded outputs of c
   cell_t *nc = COPY_REF(c, in);
   mark_barriers(new_entry, nc);
+  wrap.expand = nc;
 
   cell_t *l = expand_list(new_entry, nc);
 
@@ -533,6 +576,8 @@ response func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) 
 
   trace_final_pass(new_entry);
   trace_end_entry(new_entry);
+  remove_root(&wrap.initial);
+  drop(wrap.initial);
 
   trace_clear_alt(parent_entry);
   cell_t *res = var_create_with_entry(T_ANY, parent_entry, p->size);
@@ -585,6 +630,21 @@ response exec_list(cell_t **cp, type_request_t treq) {
   return RETRY;
 }
 
+// linear scan for variables to find the type ***
+static
+int input_type(cell_t *entry, int pos) {
+  if(INRANGE(pos, 0, entry->entry.in)) {
+    FOR_TRACE(c, entry) {
+      if(is_var(c) && c->pos == pos) {
+        return trace_type(c).exclusive;
+      }
+    }
+  } else {
+    LOG("input_type pos out of bounds: %E %d", entry, pos);
+  }
+  return T_ANY;
+}
+
 static
 response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   cell_t *c = *cp;
@@ -595,7 +655,6 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
 
   assert_error(parent_entry);
 
-  size_t len = entry->entry.len;
   cell_t *res;
   const size_t entry_out = entry->entry.out;
   type_t rtypes[entry_out];
@@ -605,8 +664,9 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
   alt_set_t alt_set = 0;
 
   // reduce all inputs
+  reassign_input_order(entry);
   COUNTUP(i, in) {
-    uint8_t t = len > 0 ? entry[in - i].value.type.exclusive : T_ANY; // ***
+    uint8_t t = input_type(entry, in - i);
     if(t == T_FUNCTION) t = T_ANY; // HACK, T_FUNCTION breaks things
     CHECK(AND0(reduce_arg(c, i, &alt_set, req_simple(t)),
                fail_if(as_conflict(alt_set))));
@@ -642,14 +702,7 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
     }
   }
 
-  if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
-    // this will be fixed up for tail calls in tail_call_to_bottom()
-    COUNTUP(i, entry_out) {
-      rtypes[i].exclusive = T_ANY;
-    }
-  } else {
-    resolve_types(entry, rtypes);
-  }
+  resolve_types(entry, rtypes);
   {
     uint8_t t = rtypes[0].exclusive;
     if(t == T_ANY) {
@@ -661,12 +714,12 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
 
   // replace outputs with variables
   cell_t **c_out = &c->expr.arg[in + 1];
-  COUNTUP(i, entry_out) {
+  COUNTUP(i, entry_out-1) {
     cell_t *d = c_out[i];
     if(d && is_dep(d)) {
       assert_error(d->expr.arg[0] == c);
       drop(c);
-      uint8_t t = rtypes[i].exclusive;
+      uint8_t t = rtypes[i+1].exclusive;
       if(t == T_FUNCTION) t = T_LIST;
       store_dep(d, res->value.tc, i + in + 1, t, alt_set);
     }
@@ -708,9 +761,9 @@ OP(exec) {
     assert_error(parent_entry,
                  "incomplete entry can't be unified without "
                  "a parent entry %C @exec_split", c);
-    if(entry->entry.initial && !unify_exec(cp, parent_entry)) {
+    if(entry->entry.wrap && !unify_exec(cp, parent_entry)) {
       LOG(MARK("WARN") " unify failed: %C %C",
-          *cp, entry->entry.initial);
+          *cp, entry->entry.wrap->initial);
       ABORT(FAIL);
     }
     return AND0(exec_list(cp, treq),

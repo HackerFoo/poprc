@@ -152,12 +152,17 @@ struct __attribute__((packed)) mem {
 #define ENTRY_MOV_VARS  0x20
 #define ENTRY_COMPLETE  0x80
 
+typedef struct wrap_data {
+  cell_t *initial;
+  cell_t *expand;
+} wrap_data;
+
 /* word entry */
 struct __attribute__((packed)) entry {
   uint8_t rec, flags, alts, sub_id;
   csize_t in, out, len;
   cell_t *parent;
-  cell_t *initial;
+  wrap_data *wrap;
 };
 
 typedef enum char_class_t {

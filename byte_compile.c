@@ -876,11 +876,12 @@ void resolve_types(cell_t *e, type_t *t) {
   while(p) {
     COUNTUP(i, out) {
       int pt = trace_type(tref(e, p->value.ptr[i])).exclusive;
-      if(t[i].exclusive == T_BOTTOM) {
-        t[i].exclusive = pt;
-      } else if(t[i].exclusive != pt &&
+      type_t *rt = &t[out-1 - i];
+      if(rt->exclusive == T_BOTTOM) {
+        rt->exclusive = pt;
+      } else if(rt->exclusive != pt &&
                 pt != T_BOTTOM) {
-        t[i].exclusive = T_ANY;
+        rt->exclusive = T_ANY;
       }
     }
     p = tref(e, p->alt);

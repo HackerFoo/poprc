@@ -257,6 +257,14 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
     if(t.exclusive != T_ANY) {
       if(is_value(tc)) {
         tc->value.type = t;
+        FOR_TRACE(x, entry) {
+          // update through assertions
+          if(x->op == OP_assert) {
+            if(trace_decode(x->expr.arg[0]) == r->value.tc.index) {
+              x->expr_type.exclusive = t.exclusive;
+            }
+          }
+        }
       } else if(is_dep(tc)) {
         tc->expr_type.exclusive = t.exclusive;
       }
@@ -403,8 +411,7 @@ cell_t *trace_start_entry(cell_t *parent, csize_t out) {
     .out = out
   };
   e->entry.parent = parent;
-  e->entry.initial = NULL;
-  insert_root(&e->entry.initial);
+  e->entry.wrap = NULL;
 
   // active_entries[e->pos-1] = e
   active_entries[prev_entry_pos++] = e;
@@ -415,9 +422,7 @@ cell_t *trace_start_entry(cell_t *parent, csize_t out) {
 
 // finish tracing
 void trace_end_entry(cell_t *e) {
-  drop(e->entry.initial);
-  remove_root(&e->entry.initial);
-  e->entry.initial = NULL;
+  e->entry.wrap = NULL;
   FLAG_SET(e->entry, ENTRY_COMPLETE);
   e->entry.rec = trace_recursive_changes(e);
 }
