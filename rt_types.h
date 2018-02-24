@@ -49,6 +49,7 @@ typedef struct __attribute__((packed)) type {
 #define T_BOTTOM    0x7f
 
 // type flags
+#define T_DELAYED    0x01
 #define T_DEP        0x02
 #define T_CHANGES    0x04
 #define T_INCOMPLETE 0x08
@@ -98,11 +99,11 @@ typedef enum response {
 
 typedef response (reduce_t)(cell_t **cell, type_request_t treq);
 
-#define EXPR_NEEDS_ARG 0x01
-#define EXPR_RECURSIVE 0x02
-#define EXPR_TRACE     0x04
-#define EXPR_NO_UNIFY  0x08
-#define EXPR_DELAYED   0x10
+#define EXPR_DELAYED   0x01
+#define EXPR_NEEDS_ARG 0x02
+#define EXPR_RECURSIVE 0x04
+#define EXPR_TRACE     0x08
+#define EXPR_NO_UNIFY  0x10
 
 /* unevaluated expression */
 struct __attribute__((packed)) expr {
@@ -226,6 +227,7 @@ struct __attribute__((packed, aligned(4))) cell {
 
 static_assert(sizeof(cell_t) == sizeof_field(cell_t, raw), "cell_t wrong size");
 static_assert(offsetof(cell_t, expr.arg[1]) == offsetof(cell_t, value.ptr[0]), "second arg not aliased with first ptr");
+static_assert(offsetof(cell_t, expr.flags) == offsetof(cell_t, value.type.flags), "expr.flags should alias value.type.flags");
 
 typedef struct stats_t {
   unsigned int reduce_cnt, fail_cnt, alloc_cnt, max_alloc_cnt;

@@ -151,7 +151,7 @@ response reduce_arg(cell_t *c,
   response r = reduce(ap, treq);
   cell_t *a = clear_ptr(*ap);
   *ctx |= a->value.alt_set;
-  split_arg(c, n);
+  if(r != DELAY) split_arg(c, n);
   return r;
 }
 
@@ -200,7 +200,7 @@ response reduce_ptr(cell_t *c,
   response r = reduce(ap, treq);
   cell_t *a = clear_ptr(*ap);
   *ctx |= a->value.alt_set;
-  split_ptr(c, n);
+  if(r != DELAY) split_ptr(c, n);
   return r;
 }
 
@@ -506,13 +506,24 @@ response abort_op(response rsp, cell_t **cp, type_request_t treq) {
     drop(c);
     *cp = alt;
     stats.fail_cnt++;
-  } else if(rsp == DELAY && c->alt) {
-    // rotate alts
-    cell_t *a = c->alt;
-    c->alt = NULL;
-    *cp = conc_alt(a, c);
-    LOG("rotate alts %C %C", c, a);
-    return RETRY;
+  } else if(rsp == DELAY) {
+    FLAG_SET(c->expr, EXPR_DELAYED);
+    cell_t **next = &c->alt;
+    while(*next) {
+      if(FLAG((*next)->expr, EXPR_DELAYED)) {
+        next = &(*next)->alt;
+        continue;
+      }
+
+      // rotate alts
+      cell_t *a = *next;
+      *next = NULL;
+      *cp = conc_alt(a, c);
+
+      // TODO make sure delayed alts remain last
+      LOG("rotate alts %C %C", a, c);
+      return RETRY;
+    }
   }
   return rsp;
 }

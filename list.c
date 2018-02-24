@@ -81,6 +81,15 @@ response func_list(cell_t **cp, type_request_t treq) {
 
   alt_set_t alt_set = c->value.alt_set;
   COUNTUP(i, n) {
+    cell_t *a = clear_ptr(c->value.ptr[i]);
+    if(NOT_FLAG(a->expr, EXPR_DELAYED)) {
+      CHECK(AND0(reduce_ptr(c, i, &alt_set, req_pos(REQ(any), treq.pos)),
+                 fail_if(as_conflict(alt_set))));
+    } else {
+      LOG("skip delayed %C", a);
+    }
+  }
+  COUNTUP(i, n) {
     CHECK(AND0(reduce_ptr(c, i, &alt_set, req_pos(REQ(any), treq.pos)),
                fail_if(as_conflict(alt_set))));
   }
