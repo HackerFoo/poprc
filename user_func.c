@@ -668,12 +668,17 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
   // reduce all inputs
   reassign_input_order(entry);
   COUNTUP(i, in) {
+    treq.delay_assert = true;
     uint8_t t = input_type(entry, in - i);
     if(t == T_FUNCTION) t = T_ANY; // HACK, T_FUNCTION breaks things
-    CHECK(AND0(reduce_arg(c, i, &alt_set, req_simple(t)),
+    CHECK(reduce(&c->expr.arg[i], REQ(t, t)) == FAIL, FAIL);
+  }
+  COUNTUP(i, in) {
+    treq.delay_assert = false;
+    uint8_t t = input_type(entry, in - i);
+    if(t == T_FUNCTION) t = T_ANY; // HACK, T_FUNCTION breaks things
+    CHECK(AND0(reduce_arg(c, i, &alt_set, REQ(t, t)),
                fail_if(as_conflict(alt_set))));
-    // if all vars in a recursive function, don't expand
-    // TODO make this less dumb
     cell_t *a = clear_ptr(c->expr.arg[i]);
     LOG_WHEN(a->alt, "split %C[%d] = %C #exec_split", c, i, a);
   }
@@ -779,7 +784,7 @@ OP(exec) {
 
     if(FLAG(c->expr, EXPR_RECURSIVE)) {
       TRAVERSE(c, in) {
-        CHECK(reduce(p, req_any));
+        CHECK(reduce(p, REQ(any)));
       }
     }
     cell_t *res = exec_expand(c, entry);
@@ -804,7 +809,7 @@ void reduce_quote(cell_t **cp) {
   if(is_user_func(*cp) && closure_is_ready(*cp)) { // HACKy
     LOG("HACK reduce_quote[%C]", *cp);
     insert_root(cp);
-    reduce(cp, req_any);
+    reduce(cp, REQ(any));
     remove_root(cp);
   }
 }

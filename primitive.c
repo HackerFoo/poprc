@@ -79,7 +79,7 @@ response func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, 
   CHECK(!check_type(treq.t, res_type), FAIL);
 
   alt_set_t alt_set = 0;
-  type_request_t atr = req_simple(arg_type);
+  type_request_t atr = REQ(t, arg_type);
   CHECK(AND0(reduce_arg(c, 0, &alt_set, atr),
              reduce_arg(c, 1, &alt_set, atr),
              fail_if(as_conflict(alt_set))));
@@ -107,7 +107,7 @@ response func_op1(cell_t **cp, type_request_t treq, int arg_type, int res_type, 
   CHECK(!check_type(treq.t, res_type), FAIL);
 
   alt_set_t alt_set = 0;
-  type_request_t atr = req_simple(arg_type);
+  type_request_t atr = REQ(t, arg_type);
   CHECK(reduce_arg(c, 0, &alt_set, atr));
   clear_flags(c);
 
@@ -152,7 +152,7 @@ response func_op2_float(cell_t **cp, type_request_t treq, double (*op)(double, d
   CHECK(!check_type(treq.t, T_FLOAT), FAIL);
 
   alt_set_t alt_set = 0;
-  type_request_t atr = req_simple(T_FLOAT);
+  type_request_t atr = REQ(float);
   CHECK(AND0(reduce_arg(c, 0, &alt_set, atr),
              reduce_arg(c, 1, &alt_set, atr),
              fail_if(as_conflict(alt_set))));
@@ -180,7 +180,7 @@ response func_op1_float(cell_t **cp, type_request_t treq, double (*op)(double)) 
   CHECK(!check_type(treq.t, T_FLOAT), FAIL);
 
   alt_set_t alt_set = 0;
-  type_request_t atr = req_simple(T_FLOAT);
+  type_request_t atr = REQ(float);
   CHECK(reduce_arg(c, 0, &alt_set, atr));
   clear_flags(c);
 
@@ -376,7 +376,7 @@ OP(to_float) {
   CHECK(!check_type(treq.t, T_FLOAT), FAIL);
 
   alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, req_simple(T_INT)));
+  CHECK(reduce_arg(c, 0, &alt_set, REQ(int)));
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
@@ -409,7 +409,7 @@ OP(trunc) {
   CHECK(!check_type(treq.t, T_INT), FAIL);
 
   alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, req_simple(T_FLOAT)));
+  CHECK(reduce_arg(c, 0, &alt_set, REQ(float)));
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
@@ -507,6 +507,7 @@ OP(assert) {
     res = c->expr.arg[2];
     c->size--;
   } else if(is_var(p)) {
+    CHECK(treq.delay_assert, DELAY_ARG);
     res = var(treq.t != T_LIST ? treq.t : T_FUNCTION, c);
   }
 
@@ -528,7 +529,7 @@ OP(assert) {
     res->value.alt_set = alt_set;
     res->alt = c->alt;
     trace_store_row_assert(c, res);
-  } else if(is_var(q)) {
+  } else if(is_var(q)) { // *** delete this?
     res = var(q->value.type.exclusive, c);
     res->value.alt_set = alt_set;
     res->alt = c->alt;
@@ -763,7 +764,7 @@ response func_type(cell_t **cp, type_request_t treq, uint8_t type) {
   CHECK(!check_type(treq.t, type), FAIL);
 
   alt_set_t alt_set = 0;
-  type_request_t atr = req_simple(type);
+  type_request_t atr = REQ(t, type);
   CHECK(reduce_arg(c, 0, &alt_set, atr));
   clear_flags(c);
 

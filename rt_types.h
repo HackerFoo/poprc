@@ -62,6 +62,7 @@ typedef struct __attribute__((packed)) type {
 typedef struct type_request {
   csize_t in, out;
   uint8_t t, pos;
+  bool delay_assert;
 } type_request_t;
 
 typedef struct cell cell_t;
@@ -94,7 +95,10 @@ typedef enum response {
   SUCCESS = 0,
   FAIL,
   RETRY,
-  DELAY
+
+  // delay types only
+  DELAY,
+  DELAY_ARG
 } response;
 
 typedef response (reduce_t)(cell_t **cell, type_request_t treq);

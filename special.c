@@ -312,7 +312,7 @@ OP(dep) {
   // move delay flag out to dep
   move_delay_flag(p, c);
   insert_root(&p);
-  CHECK(reduce_dep(&p));
+  CHECK(reduce_dep(&p, REQ(any)));
   trace_dep(c);
   remove_root(&p);
   drop(p);

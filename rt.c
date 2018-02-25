@@ -151,7 +151,7 @@ response reduce_arg(cell_t *c,
   response r = reduce(ap, treq);
   cell_t *a = clear_ptr(*ap);
   *ctx |= a->value.alt_set;
-  if(r != DELAY) split_arg(c, n);
+  if(r < DELAY) split_arg(c, n);
   return r;
 }
 
@@ -200,7 +200,7 @@ response reduce_ptr(cell_t *c,
   response r = reduce(ap, treq);
   cell_t *a = clear_ptr(*ap);
   *ctx |= a->value.alt_set;
-  if(r != DELAY) split_ptr(c, n);
+  if(r < DELAY) split_ptr(c, n);
   return r;
 }
 
@@ -245,7 +245,7 @@ response reduce(cell_t **cp, type_request_t treq) {
     LOG_WHEN(!*cp, MARK("FAIL") ": %O %C", op, c);
     c = *cp;
     if(r == SUCCESS ||
-       r == DELAY) {
+       r >= DELAY) {
       if(marked) *cp = mark_ptr(c);
       return r;
     }
@@ -255,16 +255,16 @@ response reduce(cell_t **cp, type_request_t treq) {
 }
 
 // Perform one reduction step on *cp
-response reduce_dep(cell_t **cp) {
+response reduce_dep(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   if(!c || !closure_is_ready(c)) {
     LOG("reduce_dep: closure not ready or null %C", c);
-    return abort_op(FAIL, cp, req_any);
+    return abort_op(FAIL, cp, treq);
   } else {
     assert_error(is_closure(c) &&
            closure_is_ready(c));
     stats.reduce_cnt++;
-    return op_func(c->op)(cp, req_any);
+    return op_func(c->op)(cp, treq);
   }
 }
 
@@ -830,37 +830,21 @@ uint8_t new_alt_id(unsigned int n) {
 
 #if INTERFACE
 #define REQ(type, ...) CONCAT(REQ_, type)(__VA_ARGS__)
-#define REQ_list(in, out) req_list((in), (out))
-#define REQ_any() req_any
-#define REQ_int() req_int
-#define REQ_symbol() req_symbol
-#define REQ_function() req_function
-#define REQ_return() req_return
+#define REQ_list(_in, _out) \
+  ((type_request_t) { .t = T_LIST, .in = _in, .out = _out, .delay_assert = treq.delay_assert})
+#define REQ_t(_t) \
+  ((type_request_t) { .t = _t, .delay_assert = treq.delay_assert })
+#define REQ_any() REQ_t(T_ANY)
+#define REQ_int() REQ_t(T_INT)
+#define REQ_float() REQ_t(T_FLOAT)
+#define REQ_symbol() REQ_t(T_SYMBOL)
+#define REQ_function() REQ_t(T_FUNCTION)
+#define REQ_return() \
+  ((type_request_t) { .t = T_RETURN })
 #endif
 
-type_request_t req_list(int in, int out) {
-  type_request_t req = {
-    .t = T_LIST,
-    .in = in,
-    .out = out,
-  };
-  return req;
-}
-
-const type_request_t req_any = { .t = T_ANY };
-const type_request_t req_int = { .t = T_INT };
-const type_request_t req_symbol = { .t = T_SYMBOL };
-const type_request_t req_function = { .t = T_FUNCTION };
-const type_request_t req_return = { .t = T_RETURN };
-
-type_request_t req_simple(int t) {
-  type_request_t req = {
-    .t = t,
-    .in = 0,
-    .out = 0,
-  };
-  return req;
-}
+// default 'treq' for REQ(...) to inherit
+const type_request_t treq = { .t = T_ANY };
 
 type_request_t req_pos(type_request_t treq, uint8_t pos) {
   treq.pos = pos;
