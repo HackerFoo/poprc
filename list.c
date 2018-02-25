@@ -16,6 +16,7 @@
 */
 
 #include <stdio.h>
+#include <string.h>
 #include "rt_types.h"
 
 #include "startle/error.h"
@@ -71,6 +72,7 @@ bool is_function(cell_t const *c) {
 
 
 // not really a func
+#define MAX_RETURN_VALUES 64
 response func_list(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   response rsp;
@@ -79,10 +81,16 @@ response func_list(cell_t **cp, type_request_t treq) {
   CHECK(!check_type(treq.t, T_RETURN), FAIL);
   csize_t n = list_size(c);
 
+  // this may not be necessary
+  assert_error(n < MAX_RETURN_VALUES);
+  BITSET(reduced_args, MAX_RETURN_VALUES);
+  zero(reduced_args);
+
   alt_set_t alt_set = c->value.alt_set;
   COUNTUP(i, n) {
     cell_t *a = clear_ptr(c->value.ptr[i]);
     if(NOT_FLAG(a->expr, EXPR_DELAYED)) {
+      set_bit(reduced_args, i);
       CHECK(AND0(reduce_ptr(c, i, &alt_set, req_pos(REQ(any), treq.pos)),
                  fail_if(as_conflict(alt_set))));
     } else {
@@ -90,6 +98,7 @@ response func_list(cell_t **cp, type_request_t treq) {
     }
   }
   COUNTUP(i, n) {
+    if(check_bit(reduced_args, i)) continue;
     CHECK(AND0(reduce_ptr(c, i, &alt_set, req_pos(REQ(any), treq.pos)),
                fail_if(as_conflict(alt_set))));
   }
