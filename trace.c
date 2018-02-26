@@ -58,9 +58,8 @@ typedef intptr_t trace_index_t;
 #define FOR_TRACE_3(c, e, n)                                  \
   for(cell_t                                                  \
         *_entry = (e),                                        \
-        *c = _entry + 1 + (n),                                \
-        *_end = c + _entry->entry.len;                        \
-      c < _end;                                               \
+        *c = _entry + 1 + (n);                                \
+      c - _entry - 1 < _entry->entry.len;                     \
       c += calculate_cells(c->size))
 #define FOR_TRACE_2(c, e) FOR_TRACE_3(c, e, 0)
 #define FOR_TRACE(...) DISPATCH(FOR_TRACE, __VA_ARGS__)

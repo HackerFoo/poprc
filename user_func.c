@@ -632,21 +632,6 @@ response exec_list(cell_t **cp, type_request_t treq) {
   return RETRY;
 }
 
-// linear scan for variables to find the type ***
-static
-int input_type(cell_t *entry, int pos) {
-  if(INRANGE(pos, 0, entry->entry.in)) {
-    FOR_TRACE(c, entry) {
-      if(is_var(c) && c->pos == pos) {
-        return trace_type(c).exclusive;
-      }
-    }
-  } else {
-    LOG("input_type pos out of bounds: %E %d", entry, pos);
-  }
-  return T_ANY;
-}
-
 static
 response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   cell_t *c = *cp;
@@ -666,21 +651,31 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
   alt_set_t alt_set = 0;
 
   // reduce all inputs
-  reassign_input_order(entry);
-  COUNTUP(i, in) {
+  {
+    csize_t n = 0;
+    uint8_t in_types[in];
+    memset(in_types, 0, in * sizeof(in_types[0]));
+    reassign_input_order(entry);
+
     treq.delay_assert = true;
-    uint8_t t = input_type(entry, in - i);
-    if(t == T_FUNCTION) t = T_ANY; // HACK, T_FUNCTION breaks things
-    CHECK(reduce(&c->expr.arg[i], REQ(t, t)) == FAIL, FAIL);
-  }
-  COUNTUP(i, in) {
+    FOR_TRACE(p, entry) {
+      if(is_var(p) && p->pos) {
+        int i = in - p->pos;
+        uint8_t t = p->value.type.exclusive;
+        if(t == T_FUNCTION) t = T_ANY; // HACK, T_FUNCTION breaks things
+        in_types[i] = t;
+        CHECK(reduce(&c->expr.arg[i], REQ(t, t)) == FAIL, FAIL);
+        if(++n >= in) break;
+      }
+    }
+
     treq.delay_assert = false;
-    uint8_t t = input_type(entry, in - i);
-    if(t == T_FUNCTION) t = T_ANY; // HACK, T_FUNCTION breaks things
-    CHECK(AND0(reduce_arg(c, i, &alt_set, REQ(t, t)),
-               fail_if(as_conflict(alt_set))));
-    cell_t *a = clear_ptr(c->expr.arg[i]);
-    LOG_WHEN(a->alt, "split %C[%d] = %C #exec_split", c, i, a);
+    COUNTUP(i, in) {
+      CHECK(AND0(reduce_arg(c, i, &alt_set, REQ(t, in_types[i])),
+                 fail_if(as_conflict(alt_set))));
+      cell_t *a = clear_ptr(c->expr.arg[i]);
+      LOG_WHEN(a->alt, "split %C[%d] = %C #exec_split", c, i, a);
+    }
   }
   clear_flags(c);
 
