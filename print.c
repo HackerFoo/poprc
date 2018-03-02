@@ -232,7 +232,7 @@ void graph_cell(FILE *f, cell_t const *c) {
           word_name,
           closure_is_ready(c) ? "" : "*");
   if(is_value(c)) {
-    fprintf(f, "%s ", show_type_all_short(c->value.type));
+    fprintf(f, "%s ", show_type_all_short(c));
   }
 
   if(is_root(c)) {
@@ -254,7 +254,7 @@ void graph_cell(FILE *f, cell_t const *c) {
     }
     if(is_list(c)) {
       csize_t n = list_size(c);
-      if(n && (FLAG(c->value.type, T_ROW))) {
+      if(n && FLAG(c->value, VALUE_ROW)) {
         n--;
         fprintf(f, "<tr><td port=\"ptr%u\" bgcolor=\"gray90\" >row: ", (unsigned int)n);
         print_cell_pointer(f, c->value.ptr[n]);
@@ -276,7 +276,7 @@ void graph_cell(FILE *f, cell_t const *c) {
         fprintf(f, "<tr><td bgcolor=\"orange\">trace: %d.%d",
                 entry_number(c->value.tc.entry),
                 (int)c->value.tc.index);
-        if(FLAG(c->value.type, T_DEP)) {
+        if(FLAG(c->value, VALUE_DEP)) {
           fprintf(f, "[%d]", (int)c->pos);
         }
         fprintf(f, "</td></tr>");
@@ -498,7 +498,7 @@ void show_alts(cell_t const *c) {
 
 char *show_type(type_t t) {
 #define _case(x) case x: return #x
-  switch(t.exclusive) {
+  switch(t) {
   _case(T_ANY);
   _case(T_INT);
   _case(T_IO);
@@ -510,27 +510,27 @@ char *show_type(type_t t) {
   _case(T_FLOAT);
   _case(T_FUNCTION);
   _case(T_BOTTOM);
+  _case(T_MODULE);
   default: return "???";
   }
 #undef case
 }
 
 // unsafe
-char *show_type_all(type_t t) {
+char *show_type_all(const cell_t *c) {
   const static char *type_flag_name[] = {
-    "T_VAR",
-    "T_FAIL",
-    "T_TRACED",
-    "T_ROW",
-    "T_INCOMPLETE",
-    "T_CHANGES",
-    "T_DEP"
+    "VAR",
+    "FAIL",
+    "TRACED",
+    "ROW",
+    "CHANGES",
+    "DEP"
   };
   static char buf[64];
   char *p = buf;
-  p += sprintf(p, "%s", show_type(t));
+  p += sprintf(p, "%s", show_type(c->value.type));
   FOREACH(i, type_flag_name) {
-    if(FLAG(t, 0x80 >> i)) {
+    if(FLAG(c->value, 0x80 >> i)) {
       p += sprintf(p, "|%s", type_flag_name[i]);
     }
   }
@@ -538,7 +538,7 @@ char *show_type_all(type_t t) {
 }
 
 char type_char(type_t t) {
-  switch(t.exclusive) {
+  switch(t) {
   case T_ANY: return 'a';
   case T_INT: return 'i';
   case T_IO: return 'w';
@@ -550,18 +550,18 @@ char type_char(type_t t) {
   case T_FLOAT: return 'd';
   case T_FUNCTION: return 'f';
   case T_BOTTOM: return '0';
+  case T_MODULE: return 'M';
   }
   return 'x';
 }
 
 // unsafe
-char *show_type_all_short(type_t t) {
+char *show_type_all_short(const cell_t *c) {
   const static char type_flag_char[] = {
     '?',
     '!',
     '.',
     '@',
-    '-',
     '*',
     '^'
   };
@@ -570,12 +570,12 @@ char *show_type_all_short(type_t t) {
   char *p = buf;
 
   FOREACH(i, type_flag_char) {
-    if(FLAG(t, 0x80 >> i)) {
+    if(FLAG(c->value, 0x80 >> i)) {
       *p++ = type_flag_char[i];
     }
   }
 
-  *p++ = type_char(t);
+  *p++ = type_char(c->value.type);
   *p = 0;
   return buf;
 }

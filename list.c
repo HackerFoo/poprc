@@ -32,7 +32,7 @@
 cell_t *empty_list() {
   cell_t *c = closure_alloc(1);
   c->op = OP_value;
-  c->value.type.exclusive = T_LIST;
+  c->value.type = T_LIST;
   return c;
 }
 
@@ -40,34 +40,34 @@ cell_t *make_list(csize_t n) {
   if(n == 0) return &nil_cell;
   cell_t *c = closure_alloc(n + 1);
   c->op = OP_value;
-  c->value.type.exclusive = T_LIST;
+  c->value.type = T_LIST;
   return c;
 }
 
 cell_t *quote(cell_t *x) {
   cell_t *c = closure_alloc(2);
   c->op = OP_value;
-  c->value.type.exclusive = T_LIST;
+  c->value.type = T_LIST;
   c->value.ptr[0] = x;
   return c;
 }
 
 cell_t *row_quote(cell_t *x) {
   cell_t *q = quote(x);
-  FLAG_SET(q->value.type, T_ROW);
+  FLAG_SET(q->value, VALUE_ROW);
   return q;
 }
 
 bool is_list(cell_t const *c) {
-  return c && is_value(c) && c->value.type.exclusive == T_LIST;
+  return c && is_value(c) && c->value.type == T_LIST;
 }
 
 bool is_row_list(cell_t const *c) {
-  return is_list(c) && FLAG(c->value.type, T_ROW);
+  return is_list(c) && FLAG(c->value, VALUE_ROW);
 }
 
 bool is_function(cell_t const *c) {
-  return c && is_value(c) && c->value.type.exclusive == T_FUNCTION;
+  return c && is_value(c) && c->value.type == T_FUNCTION;
 }
 
 
@@ -170,7 +170,7 @@ cell_t *_make_test_list(csize_t n, cell_t *row) {
   }
   if(row) {
     l->value.ptr[n] = row;
-    FLAG_SET(l->value.type, T_ROW);
+    FLAG_SET(l->value, VALUE_ROW);
   }
   return l;
 }
@@ -255,7 +255,7 @@ cell_t *list_rest(list_iterator_t it) {
     COUNTUP(i, elems) {
       rest->value.ptr[i] = ref(it.array[i + it.index]);
     }
-    if(it.row) FLAG_SET(rest->value.type, T_ROW);
+    if(it.row) FLAG_SET(rest->value, VALUE_ROW);
   }
   return rest;
 }
@@ -276,7 +276,7 @@ cell_t *flat_copy(cell_t *l) {
   if(!n) return &nil_cell;
   cell_t *res = make_list(n);
   res->value.type = l->value.type;
-  FLAG_CLEAR(res->value.type, T_ROW);
+  FLAG_CLEAR(res->value, VALUE_ROW);
   cell_t **p, **rp = res->value.ptr;
   list_iterator_t it = list_begin(l);
   WHILELIST(p, it, true) {
@@ -284,7 +284,7 @@ cell_t *flat_copy(cell_t *l) {
   }
 
   if(it.row) {
-    FLAG_SET(res->value.type, T_ROW);
+    FLAG_SET(res->value, VALUE_ROW);
   }
   return res;
 }
@@ -353,7 +353,7 @@ TEST(flattened_list_copy) {
   int status = 0;
   FORLIST(p, fl) {
     if(!is_value(*p) ||
-       (*p)->value.type.exclusive != T_INT ||
+       (*p)->value.type != T_INT ||
        (*p)->value.integer[0] != x++) {
       status = -1;
       break;
@@ -419,7 +419,7 @@ TEST(function_in) {
   cell_t *l = make_list(2);
   l->value.ptr[0] = int_val(2);
   l->value.ptr[1] = quote(func(OP_exec, 2, 1));
-  l->value.type.flags = T_ROW;
+  l->value.flags = VALUE_ROW;
   csize_t in = function_in(l);
   drop(l);
   return in == 2 ? 0 : -1;

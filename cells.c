@@ -61,14 +61,14 @@ cell_t fail_cell = {
   .op = OP_value,
   .size = 1,
   .n = PERSISTENT,
-  .value.type.flags = T_FAIL
+  .value.flags = VALUE_FAIL
 };
 
 cell_t nil_cell = {
   .op = OP_value,
   .size = 1,
   .n = PERSISTENT,
-  .value.type.exclusive = T_LIST
+  .value.type = T_LIST
 };
 
 // Structs for storing statistics
@@ -322,11 +322,11 @@ cell_t *refn(cell_t *c, refcount_t n) {
 }
 
 bool is_fail(cell_t const *c) {
-  return is_value(c) && FLAG(c->value.type, T_FAIL) != 0;
+  return is_value(c) && FLAG(c->value, VALUE_FAIL) != 0;
 }
 
 bool is_any(cell_t const *c) {
-  return is_value(c) && c->value.type.exclusive == T_ANY;
+  return is_value(c) && c->value.type == T_ANY;
 }
 
 void dropn(cell_t *c, refcount_t n) {

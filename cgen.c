@@ -54,8 +54,8 @@ const char *ctype(type_t t) {
     [T_FUNCTION] = "array ",
     [T_BOTTOM]   = "void ",
   };
-  assert_error(t.exclusive < LENGTH(table));
-  return table[t.exclusive];
+  assert_error(t < LENGTH(table));
+  return table[t];
 }
 
 // table of identifier prefixes for each type
@@ -71,8 +71,8 @@ const char *cname(type_t t) {
     [T_FUNCTION] = "func",
     [T_BOTTOM]   = "bot"
   };
-  assert_error(t.exclusive < LENGTH(table));
-  return table[t.exclusive];
+  assert_error(t < LENGTH(table));
+  return table[t];
 }
 
 void gen_function_signature(cell_t *e) {
@@ -102,7 +102,7 @@ void gen_function_signatures(cell_t *e) {
   printf(";\n");
 
   FOR_TRACE(c, e) {
-    if(c->op == OP_exec && c->expr_type.exclusive != T_BOTTOM) {
+    if(c->op == OP_exec && c->trace.type != T_BOTTOM) {
       cell_t *x = get_entry(c);
       if(x != e) {
         gen_function_signatures(x);
@@ -120,7 +120,7 @@ void gen_body(cell_t *e) {
   FOR_TRACE(c, e) {
     if(is_var(c)) continue;
     gen_instruction(e, c);
-    FLAG_CLEAR(c->expr_type, T_TRACED);
+    FLAG_CLEAR(c->trace, TRACE_TRACED);
   }
 }
 
@@ -129,13 +129,13 @@ void gen_return(cell_t *e, cell_t *l) {
   csize_t out_n = list_size(l);
   int ires = trace_decode(l->value.ptr[out_n - 1]);
 
-  if(FLAG(l->expr_type, T_TRACED)) goto end;
+  if(FLAG(l->trace, TRACE_TRACED)) goto end;
 
   // skip if T_BOTTOM
   COUNTDOWN(i, out_n) {
     int ai = trace_decode(l->value.ptr[i]);
     type_t t = trace_type(&e[ai]);
-    if(t.exclusive == T_BOTTOM) goto end;
+    if(t == T_BOTTOM) goto end;
   }
 
   COUNTDOWN(i, out_n-1) {
@@ -160,8 +160,8 @@ end:
 void gen_decl(cell_t *e, cell_t *c) {
   int i = c - e;
   type_t t = trace_type(c);
-  if(t.exclusive != T_RETURN &&
-     t.exclusive != T_BOTTOM &&
+  if(t != T_RETURN &&
+     t != T_BOTTOM &&
      c->op != OP_assert) {
     if(c->op == OP_value) {
       printf("  %s%s%d = ", ctype(t), cname(t), i);
@@ -173,7 +173,7 @@ void gen_decl(cell_t *e, cell_t *c) {
 }
 
 void gen_instruction(cell_t *e, cell_t *c) {
-  if(trace_type(c).exclusive == T_RETURN) {
+  if(trace_type(c) == T_RETURN) {
     gen_return(e, c);
   } else if(c->op == OP_value) {
     // values are already declared
@@ -191,7 +191,7 @@ static
 bool last_call(cell_t *e, cell_t *c) {
   c = closure_next(c);
   FOR_TRACE(p, e, c - e - 1) {
-    if(trace_type(p).exclusive == T_RETURN) {
+    if(trace_type(p) == T_RETURN) {
       return true;
     } else if(p->op != OP_dep &&
               p->op != OP_assert) {
@@ -204,13 +204,13 @@ bool last_call(cell_t *e, cell_t *c) {
 void skip_to_next_block(cell_t *e, cell_t *c) {
   c = closure_next(c);
   FOR_TRACE(p, e, c - e - 1) {
-    FLAG_SET(p->expr_type, T_TRACED);
-    if(trace_type(p).exclusive == T_RETURN) break;
+    FLAG_SET(p->trace, TRACE_TRACED);
+    if(trace_type(p) == T_RETURN) break;
   }
 }
 
 void gen_call(cell_t *e, cell_t *c) {
-  if(FLAG(c->expr_type, T_TRACED)) return;
+  if(FLAG(c->trace, TRACE_TRACED)) return;
   int i = c - e;
   char *sep = "";
   const char *module_name, *word_name;
@@ -232,7 +232,7 @@ void gen_call(cell_t *e, cell_t *c) {
 
     // jump to the beginning
     printf("  goto body;\n");
-  } else if(trace_type(c).exclusive != T_BOTTOM) {
+  } else if(trace_type(c) != T_BOTTOM) {
     csize_t
       in = closure_in(c),
       out = closure_out(c),
@@ -275,7 +275,7 @@ void gen_call(cell_t *e, cell_t *c) {
 // print the RHS to initialize a value
 void gen_value_rhs(cell_t *c) {
   type_t t = trace_type(c);
-  switch(t.exclusive) {
+  switch(t) {
   case T_INT:
   case T_SYMBOL:
     printf("%d;\n", (int)c->value.integer[0]);
@@ -301,18 +301,18 @@ void gen_skipped(cell_t *e, int start_after, int until) {
   if(start_after > until) {
     FOR_TRACE(c, e, start_after) {
       type_t t = trace_type(c);
-      if(t.exclusive == T_RETURN) break;
+      if(t == T_RETURN) break;
       TRAVERSE(c, in) {
         if(*p && trace_decode(*p) == until) return;
       }
       gen_instruction(e, c);
-      FLAG_SET(c->expr_type, T_TRACED);
+      FLAG_SET(c->trace, TRACE_TRACED);
     }
   }
 }
 
 void gen_assert(cell_t *e, cell_t *c) {
-  if(FLAG(c->expr_type, T_TRACED)) return;
+  if(FLAG(c->trace, TRACE_TRACED)) return;
   int
     i = c - e,
     ip = trace_decode(c->expr.arg[0]),
@@ -321,7 +321,7 @@ void gen_assert(cell_t *e, cell_t *c) {
   cell_t *ret = NULL;
   printf("\n  // assert %d\n", iq);
   cell_t *end = e + e->entry.len + 1;
-  bool bottom = trace_type(c).exclusive == T_BOTTOM;
+  bool bottom = trace_type(c) == T_BOTTOM;
   if(!bottom) {
     // use #define to replace references to the assertion output to the output of arg[0]
     printf("  #define %s%d %s%d\n", cn, i, cname(trace_type(&e[ip])), ip); // a little HACKy
@@ -329,7 +329,7 @@ void gen_assert(cell_t *e, cell_t *c) {
 
   if(!set_insert(iq, assert_set, LENGTH(assert_set))) {
     FOR_TRACE(p, e, closure_next(c) - e - 1) {
-      if(!ret && trace_type(p).exclusive == T_RETURN) {
+      if(!ret && trace_type(p) == T_RETURN) {
         ret = p;
       }
       if(p->op == OP_assert && trace_decode(p->expr.arg[1]) == iq) {
@@ -357,7 +357,7 @@ void gen_function(cell_t *e) {
   printf("}\n");
 
   FOR_TRACE(c, e) {
-    if(c->op == OP_exec && c->expr_type.exclusive != T_BOTTOM) {
+    if(c->op == OP_exec && c->trace.type != T_BOTTOM) {
       cell_t *x = get_entry(c);
       if(x != e) {
         printf("\n");
@@ -422,7 +422,7 @@ void gen_main(cell_t *e) {
          "  }\n\n");
 
   char *sep = "";
-  if(rtypes[0].exclusive == T_FUNCTION) {
+  if(rtypes[0] == T_FUNCTION) {
     printf("  out[0]");
   } else {
     printf("  *alloc_arr(&out[0], 1)");
@@ -431,7 +431,7 @@ void gen_main(cell_t *e) {
   cell_t *code = e + 1;
   csize_t in = e->entry.in;
   COUNTUP(i, in) {
-    if(code[in - 1 - i].value.type.exclusive == T_FUNCTION) {
+    if(code[in - 1 - i].value.type == T_FUNCTION) {
       printf("%sin[%d]", sep, (int)i);
     } else {
       printf("%sin[%d].elem[0]", sep, (int)i);
@@ -439,7 +439,7 @@ void gen_main(cell_t *e) {
     sep = ", ";
   }
   RANGEUP(i, 1, e->entry.out) {
-    if(rtypes[i].exclusive == T_FUNCTION) {
+    if(rtypes[i] == T_FUNCTION) {
       printf("%s&out[%d]", sep, (int)i);
     } else {
       printf("%salloc_arr(&out[%d], 1)", sep, (int)i);

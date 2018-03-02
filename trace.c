@@ -101,8 +101,8 @@ int trace_decode(cell_t *c) {
 }
 
 bool equal_value(const cell_t *a, const cell_t *b) {
-  int type = a->value.type.exclusive;
-  if(b->value.type.exclusive != type) return false;
+  int type = a->value.type;
+  if(b->value.type != type) return false;
   switch(type) {
   case T_INT:
   case T_SYMBOL:
@@ -119,7 +119,7 @@ static
 int trace_lookup_value_linear(cell_t *entry, const cell_t *c) {
   FOR_TRACE(p, entry) {
     if(p->op == OP_value &&
-       NOT_FLAG(p->value.type, T_VAR) &&
+       NOT_FLAG(p->value, VALUE_VAR) &&
        equal_value(p, c))
       return p - entry;
   }
@@ -162,7 +162,7 @@ void switch_entry_(cell_t *entry, trace_cell_t *tc) {
   };
   cell_t *p = trace_cell_ptr(*tc);
   p->value.tc = old;
-  p->value.type.exclusive = trace_type(trace_cell_ptr(old)).exclusive;
+  p->value.type = trace_type(trace_cell_ptr(old));
 end:
   LOG("%e[%d] -> %e[%d]",
       old.entry, old.index,
@@ -186,7 +186,7 @@ int trace_get_value(cell_t *entry, cell_t *r) {
   if(is_list(r)) {
     return trace_build_quote(entry, r); // *** TODO prevent building duplicate quotes
   } else if(is_var(r)) {
-    if(FLAG(r->value.type, T_DEP)) return 0;
+    if(FLAG(r->value, VALUE_DEP)) return 0;
     switch_entry(entry, r);
     return r->value.tc.index;
   } else {
@@ -253,19 +253,19 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
   if(tc->op) {
     // this cell has already been written
     // update the types
-    if(t.exclusive != T_ANY) {
+    if(t != T_ANY) {
       if(is_value(tc)) {
-        trace_set_type(tc, t.exclusive);
+        trace_set_type(tc, t);
         FOR_TRACE(x, entry) {
           // update through assertions
           if(x->op == OP_assert) {
             if(trace_decode(x->expr.arg[0]) == r->value.tc.index) {
-              x->expr_type.exclusive = t.exclusive;
+              x->trace.type = t;
             }
           }
         }
       } else if(is_dep(tc)) {
-        tc->expr_type.exclusive = t.exclusive;
+        tc->trace.type = t;
       }
     }
     return;
@@ -306,8 +306,8 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
     tc->value.alt_set = 0;
     tc->value.type = t;
   }
-  tc->expr_type.exclusive = t.exclusive;
-  if(tc->op == OP_placeholder) FLAG_SET(tc->expr_type, T_INCOMPLETE);
+  tc->trace.type = t;
+  if(tc->op == OP_placeholder) FLAG_SET(tc->trace, TRACE_INCOMPLETE);
   tc->alt = NULL;
 }
 
@@ -330,7 +330,7 @@ void trace_store_row_assert(cell_t *c, cell_t *r) {
   int tq = trace_get_value(entry, q);
   entry[tq].n++;
   t->expr.arg[1] = trace_encode(tq);
-  t->expr_type.exclusive = T_FUNCTION;
+  t->trace.type = T_FUNCTION;
 }
 
 // store value c in the trace
@@ -355,7 +355,7 @@ int trace_store_value(cell_t *entry, const cell_t *c) {
 static
 void trace_store(cell_t *c, const cell_t *r) {
   assert_error(is_var(r));
-  if(FLAG(r->value.type, T_DEP)) {
+  if(FLAG(r->value, VALUE_DEP)) {
     trace_dep(c);
   } else {
     trace_store_expr(c, r);
@@ -381,7 +381,7 @@ uint8_t trace_recursive_changes(cell_t *entry) {
           assert_error(is_var(a));
           cnt++;
           // mark variables that change during recursion
-          FLAG_SET(a->value.type, T_CHANGES);
+          FLAG_SET(a->value, VALUE_CHANGES);
         }
       }
 
@@ -428,7 +428,7 @@ void trace_end_entry(cell_t *e) {
 
 void trace_clear_alt(cell_t *entry) {
   FOR_TRACE(c, entry) {
-    if(is_value(c) && c->value.type.exclusive == T_RETURN) continue;
+    if(is_value(c) && c->value.type == T_RETURN) continue;
     c->alt = 0;
   }
 }
@@ -441,7 +441,7 @@ void trace_update(cell_t *c, cell_t *r) {
 
 void trace_dep(cell_t *c) {
   if(!is_var(c)) return;
-  if(NOT_FLAG(c->value.type, T_DEP)) return;
+  if(NOT_FLAG(c->value, VALUE_DEP)) return;
   cell_t *entry = c->value.tc.entry;
   if(!entry) return;
   int x = trace_alloc(entry, 1);
@@ -452,11 +452,11 @@ void trace_dep(cell_t *c) {
   LOG("trace_dep: %d <- %C %d[%d]", x, c, ph_x, c->pos);
   tc->op = OP_dep;
   tc->expr.arg[0] = trace_encode(ph_x);
-  tc->expr_type.exclusive = c->value.type.exclusive;
+  tc->trace.type = c->value.type;
   ph->n++;
   c->value.tc.index = x;
   c->pos = 0;
-  FLAG_CLEAR(c->value.type, T_DEP);
+  FLAG_CLEAR(c->value, VALUE_DEP);
 }
 
 // reclaim failed allocation if possible
@@ -526,7 +526,7 @@ void trace_reduction(cell_t *c, cell_t *r) {
 
 // update the type of c in the trace
 void trace_update_type(cell_t *c) {
-  int t = c->value.type.exclusive;
+  type_t t = c->value.type;
   if(t != T_ANY && t != T_LIST) {
     cell_t *tc = trace_cell_ptr(c->value.tc);
     if(tc && tc->op) {
@@ -542,10 +542,10 @@ void trace_clear(cell_t *e) {
 }
 
 // update the traced type
-void trace_set_type(cell_t *tc, int t) {
-  tc->expr_type.exclusive = t;
+void trace_set_type(cell_t *tc, type_t t) {
+  tc->trace.type = t;
   if(is_value(tc)) {
-    tc->value.type.exclusive = t;
+    tc->value.type = t;
     if(is_var(tc)) {
       cell_t *p = trace_cell_ptr(tc->value.tc);
       if(p) {
@@ -609,7 +609,7 @@ int trace_return(cell_t *entry, cell_t *c_) {
   trace_cell_t t = {entry, x};
   closure_free(c);
   cell_t *tc = trace_cell_ptr(t);
-  tc->value.type.exclusive = T_RETURN;
+  tc->value.type = T_RETURN;
   tc->n = -1;
   tc->alt = NULL;
   return x;
@@ -660,14 +660,14 @@ bool tail_call_to_bottom(cell_t *entry, int x) {
   bool is_assert = tc->op == OP_assert;
   if((is_assert || (tc->op == OP_exec &&
                     trace_decode(tc->expr.arg[closure_in(tc)]) == (int)entry->entry.len-1)) &&
-     tc->expr_type.exclusive == T_ANY) {
+     tc->trace.type == T_ANY) {
     if(is_assert) {
       if(tail_call_to_bottom(entry, trace_decode(tc->expr.arg[0]))) {
-        tc->expr_type.exclusive = T_BOTTOM;
+        tc->trace.type = T_BOTTOM;
         return true;
       }
     } else {
-      tc->expr_type.exclusive = T_BOTTOM;
+      tc->trace.type = T_BOTTOM;
       return true;
     }
   }
@@ -729,7 +729,7 @@ int trace_alloc_var(cell_t *entry) {
   if(x <= 0) return x;
   cell_t *tc = &entry[x];
   tc->op = OP_value;
-  tc->value.type.flags = T_VAR;
+  tc->value.flags = VALUE_VAR;
   tc->pos = ++entry->entry.in;
   if(tc->pos != x) {
     FLAG_SET(entry->entry, ENTRY_MOV_VARS);

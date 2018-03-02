@@ -280,7 +280,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
       p->alt = 0;
       continue; // skip empty cells TODO remove these
     }
-    if(trace_type(p).exclusive == T_RETURN) {
+    if(trace_type(p) == T_RETURN) {
       if(!returns) returns = p;
       continue;
     }
@@ -315,7 +315,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
   FOR_TRACE(p, entry, in) {
     int i = p - entry;
     cell_t *t = map_cell(entry, i);
-    if((is_value(p) && p->value.type.exclusive == T_RETURN) || !t) continue;
+    if((is_value(p) && p->value.type == T_RETURN) || !t) continue;
 
     if(is_row_list(t)) t = t->value.ptr[0]; // for row quotes created above
 
@@ -582,7 +582,7 @@ response func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) 
   trace_clear_alt(parent_entry);
   type_t rtypes[new_entry->entry.out];
   resolve_types(new_entry, rtypes);
-  cell_t *res = var_create_with_entry(rtypes[0].exclusive, parent_entry, p->size);
+  cell_t *res = var_create_with_entry(rtypes[0], parent_entry, p->size);
   // }
 
   // build list expected by caller
@@ -661,7 +661,7 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
     FOR_TRACE(p, entry) {
       if(is_var(p) && p->pos) {
         int i = in - p->pos;
-        uint8_t t = p->value.type.exclusive;
+        type_t t = p->value.type;
         if(t == T_FUNCTION) t = T_ANY; // HACK, T_FUNCTION breaks things
         in_types[i] = t;
         CHECK(reduce(&c->expr.arg[i], REQ(t, t)) == FAIL, FAIL);
@@ -706,7 +706,7 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
 
   resolve_types(entry, rtypes);
   {
-    uint8_t t = rtypes[0].exclusive;
+    type_t t = rtypes[0];
     if(t == T_ANY) {
       t = treq.t;
     }
@@ -721,7 +721,7 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
     if(d && is_dep(d)) {
       assert_error(d->expr.arg[0] == c);
       drop(c);
-      uint8_t t = rtypes[i+1].exclusive;
+      type_t t = rtypes[i+1];
       if(t == T_FUNCTION) t = T_LIST;
       store_dep(d, res->value.tc, i + in + 1, t, alt_set);
     }
@@ -739,7 +739,7 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
 
 bool all_dynamic(cell_t *entry) {
   COUNTUP(i, entry->entry.in) {
-    if(NOT_FLAG(entry[i+1].value.type, T_CHANGES)) {
+    if(NOT_FLAG(entry[i+1].value, VALUE_CHANGES)) {
       return false;
     }
   }

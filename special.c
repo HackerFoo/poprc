@@ -36,8 +36,8 @@ OP(value) {
 
   // promote integer constants to float constants
   if(treq.t == T_FLOAT &&
-     NOT_FLAG(c->value.type, T_VAR) &&
-     c->value.type.exclusive == T_INT) {
+     NOT_FLAG(c->value, VALUE_VAR) &&
+     c->value.type == T_INT) {
     val_t x = c->value.integer[0];
     LOG("convert integer constant %d", x);
     *cp = float_val(x);
@@ -45,7 +45,7 @@ OP(value) {
     return RETRY;
   }
 
-  if(FLAG(c->value.type, T_FAIL) ||
+  if(FLAG(c->value, VALUE_FAIL) ||
      !type_match(treq.t, c)) {
     if(treq.t == T_FUNCTION && c == &nil_cell) return SUCCESS; // HACK
     rsp = FAIL;
@@ -66,9 +66,9 @@ OP(value) {
           LOG(TODO " share list var %C -> %C", c, res);
 #if 0 // TODO get this working
           closure_shrink(c, 2);
-          c->value.type.exclusive = T_LIST;
-          FLAG_SET(c->value.type, T_ROW);
-          FLAG_CLEAR(c->value.type, T_VAR);
+          c->value.type = T_LIST;
+          FLAG_SET(c->value, T_ROW);
+          FLAG_CLEAR(c->value, T_VAR);
           c->value.ptr[0] = ref(res);
 #endif
         } else {
@@ -76,7 +76,7 @@ OP(value) {
         }
         *cp = res;
       } else if(treq.t != T_ANY) {
-        c->value.type.exclusive = treq.t;
+        c->value.type = treq.t;
         trace_update(c, c);
       }
     }
@@ -94,7 +94,7 @@ OP(value) {
         .entry = entry,
         .index = t
       };
-      c->value.type.flags = T_VAR;
+      c->value.flags = VALUE_VAR;
       cell_t *tc = trace_cell_ptr(c->value.tc);
       tc->value.tc = (trace_cell_t) {
         .entry = parent,
@@ -112,7 +112,7 @@ OP(value) {
 cell_t *int_val(val_t x) {
   cell_t *c = closure_alloc(2);
   c->op = OP_value;
-  c->value.type.exclusive = T_INT;
+  c->value.type = T_INT;
   c->value.integer[0] = x;
   return c;
 }
@@ -120,7 +120,7 @@ cell_t *int_val(val_t x) {
 cell_t *float_val(double x) {
   cell_t *c = closure_alloc(2);
   c->op = OP_value;
-  c->value.type.exclusive = T_FLOAT;
+  c->value.type = T_FLOAT;
   c->value.flt[0] = x;
   return c;
 }
@@ -128,7 +128,7 @@ cell_t *float_val(double x) {
 cell_t *symbol(val_t sym) {
   cell_t *c = closure_alloc(2);
   c->op = OP_value;
-  c->value.type.exclusive = T_SYMBOL;
+  c->value.type = T_SYMBOL;
   c->value.integer[0] = sym;
   return c;
 }
@@ -165,7 +165,7 @@ void placeholder_extend(cell_t **lp, int in, int out) {
 
   if(d_out) {
     cell_t *l_exp = make_list(d_out + 1);
-    l_exp->value.type.flags = T_ROW;
+    l_exp->value.flags = VALUE_ROW;
     COUNTUP(i, d_out) {
       cell_t *d = dep(ph);
       l_exp->value.ptr[i] = d;
@@ -181,19 +181,19 @@ void placeholder_extend(cell_t **lp, int in, int out) {
   *lp = l;
 }
 
-cell_t *var_create(int t, trace_cell_t tc, int in, int out) {
+cell_t *var_create(type_t t, trace_cell_t tc, int in, int out) {
   return t == T_LIST ?
     var_create_list(var_create_nonlist(T_FUNCTION, tc), in, out, 0) :
     var_create_nonlist(t, tc);
 }
 
-cell_t *var_create_nonlist(int t, trace_cell_t tc) {
+cell_t *var_create_nonlist(type_t t, trace_cell_t tc) {
   cell_t *c = closure_alloc(1);
   c->op = OP_value;
   c->size = 2;
   c->value.tc = tc;
-  c->value.type.flags = T_VAR;
-  c->value.type.exclusive = t;
+  c->value.flags = VALUE_VAR;
+  c->value.type = t;
   trace_update_type(c);
   return c;
 }
@@ -210,17 +210,17 @@ cell_t *var_create_list(cell_t *f, int in, int out, int shift) {
   arg(ph, f);
   refn(ph, out);
   a[out] = ph;
-  c->value.type.flags = T_ROW;
+  c->value.flags = VALUE_ROW;
   return c;
 }
 
-cell_t *var_create_with_entry(int t, cell_t *entry, csize_t size) {
+cell_t *var_create_with_entry(type_t t, cell_t *entry, csize_t size) {
   assert_error(entry);
   int ix = trace_alloc(entry, size);
   return var_create(t, (trace_cell_t) {entry, ix}, 0, 0);
 }
 
-cell_t *var_(uint8_t t, cell_t *c, uint8_t pos) {
+cell_t *var_(type_t t, cell_t *c, uint8_t pos) {
   assert_error(c);
   cell_t *entry = trace_expr_entry(pos);
   TRAVERSE(c, in) {
@@ -245,13 +245,13 @@ cell_t *var_(uint8_t t, cell_t *c, uint8_t pos) {
 #endif
 
 bool is_var(cell_t const *c) {
-  return c && is_value(c) && FLAG(c->value.type, T_VAR);
+  return c && is_value(c) && FLAG(c->value, VALUE_VAR);
 }
 
 cell_t *vector(csize_t n) {
   cell_t *c = closure_alloc(n+1);
   c->op = OP_value;
-  c->value.type.exclusive = T_ANY;
+  c->value.type = T_ANY;
   return c;
 }
 
@@ -261,26 +261,26 @@ cell_t *make_map(csize_t s) {
   uintptr_t size = (sizeof(cell_t) * cs - offsetof(cell_t, value.map)) / sizeof(pair_t) - 1;
   c->op = OP_value;
   c->size = 2 * (size + 1) + 1;
-  c->value.type.exclusive = T_MAP;
+  c->value.type = T_MAP;
   c->value.map[0].first = size;
   c->value.map[0].second = 0;
   return c;
 }
 
 bool is_map(cell_t const *c) {
-  return c && is_value(c) && c->value.type.exclusive == T_MAP;
+  return c && is_value(c) && c->value.type == T_MAP;
 }
 
 cell_t *make_string(seg_t s) {
   cell_t *c = closure_alloc(1);
   c->op = OP_value;
-  c->value.type.exclusive = T_STRING;
+  c->value.type = T_STRING;
   c->value.str = s;
   return c;
 }
 
 bool is_string(cell_t const *c) {
-  return c && is_value(c) && c->value.type.exclusive == T_STRING;
+  return c && is_value(c) && c->value.type == T_STRING;
 }
 
 bool is_dep_of(cell_t *d, cell_t *c) {

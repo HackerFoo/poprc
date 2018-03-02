@@ -67,13 +67,13 @@ cell_t *modules = NULL;
 cell_t *make_module() {
   cell_t *l = closure_alloc(2);
   l->op = OP_value;
-  l->value.type.exclusive = T_MODULE;
+  l->value.type = T_MODULE;
   l->n = PERSISTENT;
   return l;
 }
 
 bool is_module(const cell_t *c) {
-  return is_value(c) && c->value.type.exclusive == T_MODULE;
+  return is_value(c) && c->value.type == T_MODULE;
 }
 
 cell_t **module_ref(cell_t *m) {

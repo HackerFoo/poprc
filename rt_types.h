@@ -30,38 +30,26 @@
 typedef unsigned int uint;
 
 typedef uint16_t csize_t;
-typedef struct __attribute__((packed)) type {
-  uint8_t exclusive, flags;
+
+typedef enum __attribute__((packed)) type_t {
+  T_ANY = 0,
+  T_INT,
+  T_IO,
+  T_LIST,
+  T_SYMBOL,
+  T_MAP,
+  T_STRING,
+  T_RETURN,
+  T_FLOAT,
+  T_FUNCTION,
+  T_MODULE,
+  T_BOTTOM
 } type_t;
-
-// exclusive types
-#define T_ANY       0x00
-#define T_INT       0x01
-#define T_IO        0x02
-#define T_LIST      0x03
-#define T_SYMBOL    0x04
-#define T_MAP       0x05
-#define T_STRING    0x06
-#define T_RETURN    0x07
-#define T_FLOAT     0x08
-#define T_FUNCTION  0x09
-#define T_MODULE    0x0a
-#define T_BOTTOM    0x7f
-
-// type flags
-#define T_DELAYED    0x01
-#define T_DEP        0x02
-#define T_CHANGES    0x04
-#define T_INCOMPLETE 0x08
-#define T_ROW        0x10
-#define T_TRACED     0x20
-#define T_FAIL       0x40
-#define T_VAR        0x80
-
 
 typedef struct type_request {
   csize_t in, out;
-  uint8_t t, pos;
+  type_t t;
+  uint8_t pos;
   bool delay_assert;
 } type_request_t;
 
@@ -122,9 +110,23 @@ struct __attribute__((packed)) expr {
   };
 };
 
+// value flags
+#define VALUE_DELAYED    0x01
+#define VALUE_DEP        0x04
+#define VALUE_CHANGES    0x08
+#define VALUE_ROW        0x10
+#define VALUE_TRACED     0x20
+#define VALUE_FAIL       0x40
+#define VALUE_VAR        0x80
+
+// trace flags
+#define TRACE_INCOMPLETE 0x08
+#define TRACE_TRACED     0x20
+
 /* reduced value */
 struct __attribute__((packed)) value {
   type_t type;
+  uint8_t flags;
   alt_set_t alt_set;
   union {
     val_t integer[2]; /* integer */
@@ -211,8 +213,11 @@ struct __attribute__((packed, aligned(4))) cell {
       union {
         cell_t *tmp;
         const char *module_name; // entry
-        type_t expr_type; // trace
         char_class_t char_class; // tok_list
+        struct { // trace
+          type_t type;
+          uint8_t flags;
+        } trace;
       };
       op op;
       uint8_t pos;
@@ -231,7 +236,7 @@ struct __attribute__((packed, aligned(4))) cell {
 
 static_assert(sizeof(cell_t) == sizeof_field(cell_t, raw), "cell_t wrong size");
 static_assert(offsetof(cell_t, expr.arg[1]) == offsetof(cell_t, value.ptr[0]), "second arg not aliased with first ptr");
-static_assert(offsetof(cell_t, expr.flags) == offsetof(cell_t, value.type.flags), "expr.flags should alias value.type.flags");
+static_assert(offsetof(cell_t, expr.flags) == offsetof(cell_t, value.flags), "expr.flags should alias value.flags");
 
 typedef struct stats_t {
   unsigned int reduce_cnt, fail_cnt, alloc_cnt, max_alloc_cnt;

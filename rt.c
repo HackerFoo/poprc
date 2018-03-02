@@ -269,7 +269,7 @@ response reduce_dep(cell_t **cp, type_request_t treq) {
 }
 
 bool type_match(int t, cell_t const *c) {
-  int tc = c->value.type.exclusive;
+  type_t tc = c->value.type;
   return t == T_ANY || tc == T_ANY || t == tc;
 }
 
@@ -358,7 +358,7 @@ cell_t *compose(list_iterator_t it, cell_t *b) {
     WHILELIST(x, it, true) {
       *bp++ = ref(*x);
     }
-    if(it.row) FLAG_SET((*ll)->value.type, T_ROW);
+    if(it.row) FLAG_SET((*ll)->value, VALUE_ROW);
   }
 
   return b;
@@ -453,11 +453,11 @@ void store_fail(cell_t *c, cell_t *alt) {
   closure_shrink(c, 1);
   memset(&c->value, 0, sizeof(c->value));
   c->op = OP_value;
-  FLAG_SET(c->value.type, T_FAIL);
+  FLAG_SET(c->value, VALUE_FAIL);
   c->alt = alt;
 }
 
-void store_dep(cell_t *c, trace_cell_t tc, csize_t pos, int t, alt_set_t alt_set) {
+void store_dep(cell_t *c, trace_cell_t tc, csize_t pos, type_t t, alt_set_t alt_set) {
   assert_error(t != T_LIST);
   cell_t v = {
     .op = OP_value,
@@ -467,10 +467,8 @@ void store_dep(cell_t *c, trace_cell_t tc, csize_t pos, int t, alt_set_t alt_set
     .alt = c->alt,
     .value = {
       .alt_set = alt_set,
-      .type = {
-        .flags = T_VAR | T_DEP,
-        .exclusive = t
-      },
+      .type = t,
+      .flags = VALUE_VAR | VALUE_DEP,
       .tc = tc
     }
   };
@@ -501,7 +499,7 @@ response abort_op(response rsp, cell_t **cp, type_request_t treq) {
       closure_shrink(c, 1);
       memset(&c->value, 0, sizeof(c->value));
       c->op = OP_value;
-      c->value.type.flags = T_FAIL;
+      c->value.flags = VALUE_FAIL;
     }
     drop(c);
     *cp = alt;

@@ -41,7 +41,7 @@
 #include "trace.h"
 
 static void print_value(const cell_t *c) {
-  switch(c->value.type.exclusive) {
+  switch(c->value.type) {
   case T_INT:
     printf(" val %" PRIdPTR, c->value.integer[0]);
     break;
@@ -89,9 +89,9 @@ void print_bytecode(cell_t *entry) {
     }
     if(is_value(c)) {
       bool can_have_alt = false;
-      if(is_list(c) || c->value.type.exclusive == T_RETURN) { // return
+      if(is_list(c) || c->value.type == T_RETURN) { // return
         can_have_alt = true;
-        if(c->value.type.exclusive == T_RETURN) printf(" return");
+        if(c->value.type == T_RETURN) printf(" return");
         printf(" [");
         COUNTDOWN(i, list_size(c)) {
           printf(" %d", trace_decode(c->value.ptr[i]));
@@ -102,11 +102,11 @@ void print_bytecode(cell_t *entry) {
       } else { // value
         print_value(c);
       }
-      printf(", type = %s", show_type_all_short(c->value.type));
+      printf(", type = %s", show_type_all_short(c));
       if(can_have_alt && c->alt) printf(" -> %d", trace_decode(c->alt));
     } else { // print a call
       const char *module_name = NULL, *word_name = NULL;
-      if(NOT_FLAG(c->expr_type, T_INCOMPLETE)) {
+      if(NOT_FLAG(c->trace, TRACE_INCOMPLETE)) {
         trace_get_name(c, &module_name, &word_name);
         printf(" %s.%s", module_name, word_name);
       } else {
@@ -133,7 +133,7 @@ void print_bytecode(cell_t *entry) {
           }
         }
       }
-      printf(", type = %s", show_type_all_short(c->expr_type));
+      printf(", type = %c", type_char(c->trace.type));
     }
     printf(" x%d", c->n + 1);
     if(!is_value(c) && FLAG(c->expr, EXPR_TRACE)) {
@@ -182,7 +182,7 @@ void condense(cell_t *entry) {
         tc->op = OP_null;
         LOG("collapse/drop %d", tc - entry);
       } else {
-        if(is_value(tc) && tc->value.type.exclusive == T_RETURN) {
+        if(is_value(tc) && tc->value.type == T_RETURN) {
           if(ret) ret->alt = trace_encode(idx);
           ret = tc;
         } else {
@@ -200,7 +200,7 @@ void condense(cell_t *entry) {
     if(tc->op) {
       cell_t **e = is_user_func(tc) ? &tc->expr.arg[closure_in(tc)] : NULL;
       if(is_value(tc) &&
-         tc->value.type.exclusive == T_RETURN) {
+         tc->value.type == T_RETURN) {
         COUNTUP(i, list_size(tc)) {
           cell_t **p = &tc->value.ptr[i];
           int x = trace_decode(*p);
@@ -227,7 +227,7 @@ void condense(cell_t *entry) {
   FOR_TRACE(p, entry) {
     if(p->op) {
       csize_t s = calculate_cells(p->size);
-      if(!(is_value(p) && p->value.type.exclusive == T_RETURN)) {
+      if(!(is_value(p) && p->value.type == T_RETURN)) {
         p->alt = NULL;
       }
       if(idx < p - entry) {
@@ -259,7 +259,7 @@ void move_vars(cell_t *entry) {
   // calculate mapping
   FOR_TRACE(p, entry) {
     if(!is_var(p)) {
-      if(is_value(p) && p->value.type.exclusive == T_RETURN) {
+      if(is_value(p) && p->value.type == T_RETURN) {
         if(ret) ret->alt = trace_encode(idx);
         ret = p;
       } else {
@@ -285,7 +285,7 @@ void move_vars(cell_t *entry) {
     if(tc->op) {
       cell_t **e = is_user_func(tc) ? &tc->expr.arg[closure_in(tc)] : NULL;
       if(is_value(tc) &&
-         tc->value.type.exclusive == T_RETURN) {
+         tc->value.type == T_RETURN) {
         COUNTUP(i, list_size(tc)) {
           cell_t **p = &tc->value.ptr[i];
           int x = trace_decode(*p);
@@ -306,7 +306,7 @@ void move_vars(cell_t *entry) {
   FOR_TRACE(p, entry) {
     if(p->op) {
       csize_t s = calculate_cells(p->size);
-      if(!(is_value(p) && p->value.type.exclusive == T_RETURN)) {
+      if(!(is_value(p) && p->value.type == T_RETURN)) {
         p->alt = NULL;
       }
       if(idx < p - entry) {
@@ -332,7 +332,7 @@ void trace_replace_arg(cell_t *entry, cell_t *old, cell_t *new) {
     if(tc->op) {
       cell_t **e = is_user_func(tc) ? &tc->expr.arg[closure_in(tc)] : NULL;
       if(is_value(tc) &&
-         tc->value.type.exclusive == T_RETURN) {
+         tc->value.type == T_RETURN) {
         COUNTUP(i, list_size(tc)) {
           cell_t **p = &tc->value.ptr[i];
           if(*p == old) *p = new;
@@ -356,18 +356,18 @@ void trace_final_pass(cell_t *entry) {
   // propagate types to asserts
   FOR_TRACE(p, entry) {
     if(p->op == OP_assert &&
-       p->expr_type.exclusive == T_ANY) {
-      p->expr_type.exclusive = trace_type(&entry[trace_decode(p->expr.arg[0])]).exclusive;
+       p->trace.type == T_ANY) {
+      p->trace.type = trace_type(&entry[trace_decode(p->expr.arg[0])]);
     }
   }
 
   FOR_TRACE(p, entry) {
-    if(FLAG(p->expr_type, T_INCOMPLETE)) {
+    if(FLAG(p->trace, TRACE_INCOMPLETE)) {
       if(p->op == OP_placeholder) { // convert a placeholder to ap or compose
-        FLAG_CLEAR(p->expr_type, T_INCOMPLETE);
+        FLAG_CLEAR(p->trace, TRACE_INCOMPLETE);
         trace_index_t left = trace_decode(p->expr.arg[0]);
         assert_error(left >= 0);
-        if(closure_in(p) > 1 && trace_type(&entry[left]).exclusive == T_FUNCTION) {
+        if(closure_in(p) > 1 && trace_type(&entry[left]) == T_FUNCTION) {
           p->op = OP_compose;
         } else {
           p->op = OP_ap;
@@ -448,14 +448,14 @@ cell_t *module_lookup_compiled(seg_t path, cell_t **context) {
   cell_t *p = module_lookup(path, context);
   if(!p) return NULL;
   if(!is_list(p)) return p;
-  if(FLAG(p->value.type, T_TRACED)) {
+  if(FLAG(p->value, VALUE_TRACED)) {
     if(p->alt) { // HACKy
       return p->alt;
     } else {
       return lookup_word(string_seg("??"));
     }
   }
-  FLAG_SET(p->value.type, T_TRACED);
+  FLAG_SET(p->value, VALUE_TRACED);
   seg_t name = path_name(path);
   return compile_entry(name, *context);
 }
@@ -579,7 +579,7 @@ void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *entry) {
     if(y == x) {
       int xn = a_n - j;
       cell_t *tc = &entry[xn];
-      tc->value.type.exclusive = trace_type(trace_cell_ptr(c->value.tc)).exclusive;
+      tc->value.type = trace_type(trace_cell_ptr(c->value.tc));
       c->value.tc.index = xn;
       c->value.tc.entry = entry;
       return;
@@ -608,13 +608,11 @@ bool is_tail(cell_t *e) {
       .op = OP_value,
       .size = 2,
       .value = {
-        .type = {
-          .exclusive = T_FUNCTION,
-          .flags = T_VAR }}},
+        .type = T_FUNCTION,
+        .flags = T_VAR }},
     [1] = {
       .op = OP_ap,
-      .expr_type = {
-        .exclusive = T_FUNCTION},
+      .trace = { .type = T_FUNCTION },
       .size = 2,
       .expr = {
         .out = 1,
@@ -623,8 +621,7 @@ bool is_tail(cell_t *e) {
       .op = OP_value,
       .size = 2,
       .value = {
-        .type = {
-          .exclusive = T_RETURN },
+        .type = T_RETURN,
         .ptr = { OPERAND(2) }}}
   };
   return
@@ -650,7 +647,7 @@ bool is_ap(cell_t *e) {
      list_size(ret) != 1 ||
      trace_decode(ret->value.ptr[0]) != ap - code ||
      FLAG(ret->value.type, T_ROW) ||
-     ret->value.type.exclusive != T_RETURN) return false;
+     ret->value.type != T_RETURN) return false;
   return true;
 }
 
@@ -661,8 +658,8 @@ bool simplify_quote(cell_t *e, cell_t *parent_entry, cell_t *q) {
     LOG("%d -> tail", q-parent_entry-1);
     trace_shrink(q, 2);
     q->op = OP_ap;
-    q->expr_type.exclusive = T_FUNCTION;
-    q->expr_type.flags = 0;
+    q->trace.type = T_FUNCTION;
+    q->trace.flags = 0;
     q->expr.out = 1;
     // q->expr.arg[0] stays the same
     q->expr.arg[1] = NULL;
@@ -689,8 +686,8 @@ bool simplify_quote(cell_t *e, cell_t *parent_entry, cell_t *q) {
       }
 
       q->op = ap->op;
-      q->expr_type.exclusive = T_FUNCTION;
-      q->expr_type.flags = 0;
+      q->trace.type = T_FUNCTION;
+      q->trace.flags = 0;
       goto finish;
     }
   }
@@ -711,7 +708,7 @@ void mark_barriers(cell_t *entry, cell_t *c) {
       if(is_var(x)) {
         trace_cell_t tc = x->value.tc;
         drop(x);
-        *p = var_create_nonlist(x->value.type.exclusive,
+        *p = var_create_nonlist(x->value.type,
                                 (trace_cell_t) {entry, trace_alloc_var(entry)});
         trace_cell_ptr((*p)->value.tc)->value.tc = tc;
       //} else if(x->op == OP_ap) {
@@ -744,7 +741,7 @@ void move_changing_values(cell_t *entry, cell_t *c) {
   cell_t *expanding = c->expr.arg[closure_in(c)];
   TRAVERSE(c, in) {
     int i = expanding->entry.in - (p - c->expr.arg);
-    if(FLAG(expanding[i].value.type, T_CHANGES)) {
+    if(FLAG(expanding[i].value, VALUE_CHANGES)) {
       set_pos_for_values(*p, entry);
     }
   }
@@ -758,7 +755,7 @@ void mark_quote_barriers(cell_t *entry, cell_t *c) {
       trace_cell_t tc = x->value.tc;
       if(tc.entry == entry) continue;
       drop(x);
-      *p = var_create_nonlist(x->value.type.exclusive,
+      *p = var_create_nonlist(x->value.type,
                               (trace_cell_t) {entry, trace_alloc_var(entry)});
       trace_cell_ptr((*p)->value.tc)->value.tc = tc;
     }
@@ -783,7 +780,7 @@ cell_t *flat_quote(cell_t *new_entry, cell_t *parent_entry) {
       switch_entry(parent_entry, p); // ***
       assert_error(p->value.tc.entry == parent_entry);
       cell_t *tp = trace_cell_ptr(p->value.tc);
-      cell_t *v = var_create_nonlist(trace_type(tp).exclusive,
+      cell_t *v = var_create_nonlist(trace_type(tp),
                                      (trace_cell_t) {parent_entry, tp-parent_entry});
       assert_error(INRANGE(p->pos, 1, in));
       nc->expr.arg[in - p->pos] = v;
@@ -852,7 +849,7 @@ cell_t *tref(cell_t *entry, cell_t *c) {
 
 // get the return type
 type_t trace_type(cell_t *c) {
-  return is_value(c) ? c->value.type : c->expr_type;
+  return is_value(c) ? c->value.type : c->trace.type;
 }
 
 // resolve types in each return in e starting at c, storing the resulting types in t
@@ -860,13 +857,13 @@ void resolve_types(cell_t *e, type_t *t) {
   csize_t out = e->entry.out;
 
   COUNTUP(i, out) {
-    t[i].exclusive = T_BOTTOM;
+    t[i] = T_BOTTOM;
   }
 
   // find first return
   cell_t *p = NULL;
   FOR_TRACE(tc, e) {
-    if(trace_type(tc).exclusive == T_RETURN) {
+    if(trace_type(tc) == T_RETURN) {
       p = tc;
       break;
     }
@@ -875,13 +872,13 @@ void resolve_types(cell_t *e, type_t *t) {
 
   while(p) {
     COUNTUP(i, out) {
-      int pt = trace_type(tref(e, p->value.ptr[i])).exclusive;
+      type_t pt = trace_type(tref(e, p->value.ptr[i]));
       type_t *rt = &t[out-1 - i];
-      if(rt->exclusive == T_BOTTOM) {
-        rt->exclusive = pt;
-      } else if(rt->exclusive != pt &&
+      if(*rt == T_BOTTOM) {
+        *rt = pt;
+      } else if(*rt != pt &&
                 pt != T_BOTTOM) {
-        rt->exclusive = T_ANY;
+        *rt = T_ANY;
       }
     }
     p = tref(e, p->alt);

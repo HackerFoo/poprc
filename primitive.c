@@ -88,7 +88,7 @@ response func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   CHECK(nonzero && !is_var(q) && q->value.integer[0] == 0, FAIL); // TODO assert this for variables
   res = is_var(p) || is_var(q) ? var(treq.t, c) : _op2(op, p, q);
-  res->value.type.exclusive = res_type;
+  res->value.type = res_type;
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   store_reduced(cp, res);
@@ -113,7 +113,7 @@ response func_op1(cell_t **cp, type_request_t treq, int arg_type, int res_type, 
 
   cell_t *p = c->expr.arg[0];
   res = is_var(p) ? var(treq.t, c) : _op1(op, p);
-  res->value.type.exclusive = res_type;
+  res->value.type = res_type;
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   store_reduced(cp, res);
@@ -161,7 +161,7 @@ response func_op2_float(cell_t **cp, type_request_t treq, double (*op)(double, d
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   CHECK(nonzero && !is_var(q) && q->value.flt[0] == 0.0, FAIL); // TODO assert this for variables
   res = is_var(p) || is_var(q) ? var(treq.t, c) : _op2_float(op, p, q);
-  res->value.type.exclusive = T_FLOAT;
+  res->value.type = T_FLOAT;
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   store_reduced(cp, res);
@@ -186,7 +186,7 @@ response func_op1_float(cell_t **cp, type_request_t treq, double (*op)(double)) 
 
   cell_t *p = c->expr.arg[0];
   res = is_var(p) ? var(treq.t, c) : _op1_float(op, p);
-  res->value.type.exclusive = T_FLOAT;
+  res->value.type = T_FLOAT;
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   store_reduced(cp, res);
@@ -389,7 +389,7 @@ OP(to_float) {
       res->value.flt[i] = p->value.integer[i];
     }
   }
-  res->value.type.exclusive = T_FLOAT;
+  res->value.type = T_FLOAT;
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   store_reduced(cp, res);
@@ -422,7 +422,7 @@ OP(trunc) {
       res->value.integer[i] = p->value.flt[i];
     }
   }
-  res->value.type.exclusive = T_INT;
+  res->value.type = T_INT;
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   store_reduced(cp, res);
@@ -459,9 +459,9 @@ OP(alt) {
 cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
   cell_t *nc;
   assert_error(is_list(c));
-  if(NOT_FLAG(c->value.type, T_ROW)) {
+  if(NOT_FLAG(c->value, VALUE_ROW)) {
     nc = copy_expand(c, 1);
-    v->value.type.exclusive = T_FUNCTION;
+    v->value.type = T_FUNCTION;
     nc->value.ptr[list_size(nc) - 1] = 0;
   } else {
     nc = copy(c);
@@ -476,7 +476,7 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
     }
   }
   cell_t **left = &nc->value.ptr[list_size(nc) - 1];
-  if(NOT_FLAG(c->value.type, T_ROW)) {
+  if(NOT_FLAG(c->value, VALUE_ROW)) {
     *left = v;
   } else {
     // slip in v as an extra arg to assert
@@ -484,7 +484,7 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
     (*left)->size++;
     (*left)->expr.arg[2] = v;
   }
-  FLAG_SET(nc->value.type, T_ROW);
+  FLAG_SET(nc->value, VALUE_ROW);
   return nc;
 }
 
@@ -524,13 +524,13 @@ OP(assert) {
       res = map_assert(q, p, res);
     } else {
       res->value.type = q->value.type;
-      FLAG_SET(res->value.type, T_VAR);
+      FLAG_SET(res->value, VALUE_VAR);
     }
     res->value.alt_set = alt_set;
     res->alt = c->alt;
     trace_store_row_assert(c, res);
   } else if(is_var(q)) { // *** delete this?
-    res = var(q->value.type.exclusive, c);
+    res = var(q->value.type, c);
     res->value.alt_set = alt_set;
     res->alt = c->alt;
   } else {
