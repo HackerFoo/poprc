@@ -34,7 +34,6 @@ typedef uint16_t csize_t;
 typedef enum __attribute__((packed)) type_t {
   T_ANY = 0,
   T_INT,
-  T_IO,
   T_LIST,
   T_SYMBOL,
   T_MAP,

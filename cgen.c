@@ -46,7 +46,6 @@ const char *ctype(type_t t) {
   static const char *table[] = {
     [T_ANY]      = "any_t ",
     [T_INT]      = "int ",
-    [T_IO]       = "void *",
     [T_LIST]     = "array ",
     [T_SYMBOL]   = "int ",
     [T_MAP]      = "map_t ",
@@ -63,7 +62,6 @@ const char *cname(type_t t) {
   static const char *table[] = {
     [T_ANY]      = "any",
     [T_INT]      = "int",
-    [T_IO]       = "io",
     [T_LIST]     = "lst",
     [T_SYMBOL]   = "sym",
     [T_MAP]      = "map",

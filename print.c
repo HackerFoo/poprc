@@ -501,7 +501,6 @@ char *show_type(type_t t) {
   switch(t) {
   _case(T_ANY);
   _case(T_INT);
-  _case(T_IO);
   _case(T_LIST);
   _case(T_SYMBOL);
   _case(T_MAP);
@@ -541,7 +540,6 @@ char type_char(type_t t) {
   switch(t) {
   case T_ANY: return 'a';
   case T_INT: return 'i';
-  case T_IO: return 'w';
   case T_LIST: return 'l';
   case T_SYMBOL: return 's';
   case T_MAP: return 'm';
