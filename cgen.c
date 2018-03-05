@@ -50,7 +50,6 @@ const char *ctype(type_t t) {
     [T_SYMBOL]   = "int ",
     [T_MAP]      = "map_t ",
     [T_STRING]   = "seg_t ",
-    [T_FUNCTION] = "array ",
     [T_BOTTOM]   = "void ",
   };
   assert_error(t < LENGTH(table));
@@ -66,7 +65,6 @@ const char *cname(type_t t) {
     [T_SYMBOL]   = "sym",
     [T_MAP]      = "map",
     [T_STRING]   = "str",
-    [T_FUNCTION] = "func",
     [T_BOTTOM]   = "bot"
   };
   assert_error(t < LENGTH(table));
@@ -420,7 +418,7 @@ void gen_main(cell_t *e) {
          "  }\n\n");
 
   char *sep = "";
-  if(rtypes[0] == T_FUNCTION) {
+  if(rtypes[0] == T_LIST) {
     printf("  out[0]");
   } else {
     printf("  *alloc_arr(&out[0], 1)");
@@ -429,7 +427,7 @@ void gen_main(cell_t *e) {
   cell_t *code = e + 1;
   csize_t in = e->entry.in;
   COUNTUP(i, in) {
-    if(code[in - 1 - i].value.type == T_FUNCTION) {
+    if(code[in - 1 - i].value.type == T_LIST) {
       printf("%sin[%d]", sep, (int)i);
     } else {
       printf("%sin[%d].elem[0]", sep, (int)i);
@@ -437,7 +435,7 @@ void gen_main(cell_t *e) {
     sep = ", ";
   }
   RANGEUP(i, 1, e->entry.out) {
-    if(rtypes[i] == T_FUNCTION) {
+    if(rtypes[i] == T_LIST) {
       printf("%s&out[%d]", sep, (int)i);
     } else {
       printf("%salloc_arr(&out[%d], 1)", sep, (int)i);

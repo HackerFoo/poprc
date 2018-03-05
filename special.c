@@ -30,7 +30,6 @@
 OP(value) {
   cell_t *c = *cp;
   response rsp;
-  cell_t *res = NULL;
   PRE(c, value);
   stats.reduce_cnt--;
 
@@ -47,7 +46,6 @@ OP(value) {
 
   if(FLAG(c->value, VALUE_FAIL) ||
      !type_match(treq.t, c)) {
-    if(treq.t == T_FUNCTION && c == &nil_cell) return SUCCESS; // HACK
     rsp = FAIL;
     goto abort;
   }
@@ -56,29 +54,13 @@ OP(value) {
   // TODO use rows to work around this
   if(is_var(c)) {
     trace_dep(c);
-    if(is_any(c)) {
-      if(treq.t == T_LIST) {
-        res = var_create(T_LIST, c->value.tc, treq.in, treq.out);
-        res->value.alt_set = c->value.alt_set;
-        res->alt = c->alt;
-        if(c->n) {
-          c->n--;
-          LOG(TODO " share list var %C -> %C", c, res);
-#if 0 // TODO get this working
-          closure_shrink(c, 2);
-          c->value.type = T_LIST;
-          FLAG_SET(c->value, T_ROW);
-          FLAG_CLEAR(c->value, T_VAR);
-          c->value.ptr[0] = ref(res);
-#endif
-        } else {
-          closure_free(c);
-        }
-        *cp = res;
-      } else if(treq.t != T_ANY) {
-        c->value.type = treq.t;
-        trace_update(c, c);
-      }
+    if(is_any(c) && treq.t != T_ANY) {
+      c->value.type = treq.t;
+      trace_update(c, c);
+    }
+    if(treq.t == T_LIST &&
+       is_function(c)) {
+      placeholder_extend(cp, treq.in, treq.out);
     }
   } else if(is_row_list(c)) {
     placeholder_extend(cp, treq.in, treq.out);
@@ -139,6 +121,12 @@ bool is_value(cell_t const *c) {
 
 void placeholder_extend(cell_t **lp, int in, int out) {
   cell_t *l = *lp;
+  assert_error(l->value.type == T_LIST);
+  if(in == 0 && out == 0) return;
+  if(is_var(l)) {
+    *lp = var_create_list(l, in, out, 0);
+    return;
+  }
   if(!is_row_list(l)) return;
   csize_t
     f_in = function_in(l),
@@ -182,9 +170,10 @@ void placeholder_extend(cell_t **lp, int in, int out) {
 }
 
 cell_t *var_create(type_t t, trace_cell_t tc, int in, int out) {
-  return t == T_LIST ?
-    var_create_list(var_create_nonlist(T_FUNCTION, tc), in, out, 0) :
-    var_create_nonlist(t, tc);
+  cell_t *v = var_create_nonlist(t, tc);
+  return t == T_LIST && (in || out) ?
+    var_create_list(v, in, out, 0) :
+    v;
 }
 
 cell_t *var_create_nonlist(type_t t, trace_cell_t tc) {
@@ -345,7 +334,7 @@ OP(placeholder) {
   cell_t *c = *cp;
   response rsp;
   PRE(c, placeholder);
-  CHECK(!check_type(treq.t, T_FUNCTION), FAIL);
+  CHECK(!check_type(treq.t, T_LIST), FAIL);
   csize_t in = closure_in(c), n = closure_args(c);
 
   if(n == 1) {
@@ -355,7 +344,7 @@ OP(placeholder) {
 
   alt_set_t alt_set = 0;
   assert_error(in >= 1);
-  CHECK(reduce_arg(c, in - 1, &alt_set, REQ(function)));
+  CHECK(reduce_arg(c, in - 1, &alt_set, REQ(list, 0, 0))); // *** should use treq
   COUNTUP(i, in - 1) {
     CHECK(AND0(reduce_arg(c, i, &alt_set, REQ(any)),
                fail_if(as_conflict(alt_set))));
@@ -371,7 +360,7 @@ OP(placeholder) {
     return SUCCESS;
   }
 
-  cell_t *res = var(T_FUNCTION, c, treq.pos);
+  cell_t *res = var(T_LIST, c, treq.pos);
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   RANGEUP(i, in, n) {

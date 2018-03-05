@@ -662,7 +662,7 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
       if(is_var(p) && p->pos) {
         int i = in - p->pos;
         type_t t = p->value.type;
-        if(t == T_FUNCTION) t = T_ANY; // HACK, T_FUNCTION breaks things
+        if(t == T_LIST) t = T_ANY; // HACK, T_FUNCTION breaks things
         in_types[i] = t;
         CHECK(reduce(&c->expr.arg[i], REQ(t, t)) == FAIL, FAIL);
         if(++n >= in) break;
@@ -694,7 +694,7 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
             switch_entry(entry, f);
           }
         }
-        func_list(ap, REQ(return));
+        CHECK(func_list(ap, REQ(return)));
 
         // ensure quotes are stored first
         cell_t *l = *ap;
@@ -710,7 +710,6 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
     if(t == T_ANY) {
       t = treq.t;
     }
-    if(t == T_FUNCTION) t = T_LIST;
     res = var(t, c, parent_entry->pos);
   }
 
@@ -722,7 +721,6 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
       assert_error(d->expr.arg[0] == c);
       drop(c);
       type_t t = rtypes[i+1];
-      if(t == T_FUNCTION) t = T_LIST;
       store_dep(d, res->value.tc, i + in + 1, t, alt_set);
     }
   }

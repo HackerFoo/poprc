@@ -367,7 +367,7 @@ void trace_final_pass(cell_t *entry) {
         FLAG_CLEAR(p->trace, TRACE_INCOMPLETE);
         trace_index_t left = trace_decode(p->expr.arg[0]);
         assert_error(left >= 0);
-        if(closure_in(p) > 1 && trace_type(&entry[left]) == T_FUNCTION) {
+        if(closure_in(p) > 1 && trace_type(&entry[left]) == T_LIST) {
           p->op = OP_compose;
         } else {
           p->op = OP_ap;
@@ -608,11 +608,11 @@ bool is_tail(cell_t *e) {
       .op = OP_value,
       .size = 2,
       .value = {
-        .type = T_FUNCTION,
+        .type = T_LIST,
         .flags = T_VAR }},
     [1] = {
       .op = OP_ap,
-      .trace = { .type = T_FUNCTION },
+      .trace = { .type = T_LIST },
       .size = 2,
       .expr = {
         .out = 1,
@@ -658,7 +658,7 @@ bool simplify_quote(cell_t *e, cell_t *parent_entry, cell_t *q) {
     LOG("%d -> tail", q-parent_entry-1);
     trace_shrink(q, 2);
     q->op = OP_ap;
-    q->trace.type = T_FUNCTION;
+    q->trace.type = T_LIST;
     q->trace.flags = 0;
     q->expr.out = 1;
     // q->expr.arg[0] stays the same
@@ -686,7 +686,7 @@ bool simplify_quote(cell_t *e, cell_t *parent_entry, cell_t *q) {
       }
 
       q->op = ap->op;
-      q->trace.type = T_FUNCTION;
+      q->trace.type = T_LIST;
       q->trace.flags = 0;
       goto finish;
     }

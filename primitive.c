@@ -461,8 +461,8 @@ cell_t *map_assert(cell_t *c, cell_t *t, cell_t *v) {
   assert_error(is_list(c));
   if(NOT_FLAG(c->value, VALUE_ROW)) {
     nc = copy_expand(c, 1);
-    v->value.type = T_FUNCTION;
     nc->value.ptr[list_size(nc) - 1] = 0;
+    v->value.type = T_LIST; // *** update trace type?
   } else {
     nc = copy(c);
   }
@@ -508,16 +508,13 @@ OP(assert) {
     c->size--;
   } else if(is_var(p)) {
     CHECK(treq.delay_assert, DELAY_ARG);
-    res = var(treq.t != T_LIST ? treq.t : T_FUNCTION, c);
+    res = var(treq.t, c);
   }
 
   CHECK(AND0(reduce_arg(c, 0, &alt_set, treq),
              fail_if(as_conflict(alt_set))));
   clear_flags(c);
   cell_t *q = c->expr.arg[0];
-
-  // bare functions should not pass through a normal assert
-  if(in == 2) assert_error(!is_function(q));
 
   if(is_var(p)) {
     if(is_list(q)) {
@@ -781,11 +778,6 @@ response func_type(cell_t **cp, type_request_t treq, uint8_t type) {
 WORD("int_t", int_t, 1, 1)
 OP(int_t) {
   return func_type(cp, treq, T_INT);
-}
-
-WORD("function_t", function_t, 1, 1)
-OP(function_t) {
-  return func_type(cp, treq, T_FUNCTION);
 }
 
 WORD("symbol_t", symbol_t, 1, 1)

@@ -59,7 +59,7 @@ cell_t *row_quote(cell_t *x) {
 }
 
 bool is_list(cell_t const *c) {
-  return c && is_value(c) && c->value.type == T_LIST;
+  return c && is_value(c) && !is_var(c) && c->value.type == T_LIST;
 }
 
 bool is_row_list(cell_t const *c) {
@@ -67,7 +67,7 @@ bool is_row_list(cell_t const *c) {
 }
 
 bool is_function(cell_t const *c) {
-  return c && is_value(c) && c->value.type == T_FUNCTION;
+  return c && is_var(c) && c->value.type == T_LIST;
 }
 
 
@@ -77,7 +77,7 @@ response func_list(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   response rsp;
   PRE(c, list);
-  if(treq.t == T_ANY && treq.t == T_LIST) return SUCCESS;
+  // if(treq.t == T_ANY && treq.t == T_LIST) return SUCCESS; // *** always fails
   CHECK(!check_type(treq.t, T_RETURN), FAIL);
   csize_t n = list_size(c);
 
@@ -369,7 +369,7 @@ bool is_empty_list(const cell_t *l) {
 }
 
 csize_t function_out(const cell_t *l, bool include_row_var) {
-  if(!l) return 0;
+  if(!l || !is_list(l)) return 0;
   list_iterator_t it = list_begin((cell_t *)l);
   return list_remaining_size(it, include_row_var);
 }
@@ -402,7 +402,7 @@ cell_t **leftmost(cell_t **lp) {
 }
 
 csize_t function_in(const cell_t *l) {
-  if(!l || is_empty_list(l)) return 0;
+  if(!l || !is_list(l) || is_empty_list(l)) return 0;
   cell_t *c = *leftmost((cell_t **)&l); // ***
   if(!c) return 0;
   if(closure_is_ready(c)) return 0;

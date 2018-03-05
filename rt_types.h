@@ -32,17 +32,16 @@ typedef unsigned int uint;
 typedef uint16_t csize_t;
 
 typedef enum __attribute__((packed)) type_t {
-  T_ANY = 0,
+  T_ANY = 0, /**< type variable */
   T_INT,
-  T_LIST,
+  T_LIST, /**< a list/quote */
   T_SYMBOL,
   T_MAP,
   T_STRING,
-  T_RETURN,
+  T_RETURN, /**< a list of return values, trace ONLY */
   T_FLOAT,
-  T_FUNCTION,
-  T_MODULE,
-  T_BOTTOM
+  T_MODULE, /**< module definition ONLY */
+  T_BOTTOM /**< the uninhabited type */
 } type_t;
 
 typedef struct type_request {

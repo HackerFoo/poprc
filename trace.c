@@ -330,7 +330,7 @@ void trace_store_row_assert(cell_t *c, cell_t *r) {
   int tq = trace_get_value(entry, q);
   entry[tq].n++;
   t->expr.arg[1] = trace_encode(tq);
-  t->trace.type = T_FUNCTION;
+  t->trace.type = T_LIST;
 }
 
 // store value c in the trace
@@ -527,7 +527,7 @@ void trace_reduction(cell_t *c, cell_t *r) {
 // update the type of c in the trace
 void trace_update_type(cell_t *c) {
   type_t t = c->value.type;
-  if(t != T_ANY && t != T_LIST) {
+  if(t != T_ANY) {
     cell_t *tc = trace_cell_ptr(c->value.tc);
     if(tc && tc->op) {
       trace_set_type(tc, t);
@@ -578,12 +578,13 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
 
 cell_t *trace_quote_var(cell_t *l) {
   if(l == &nil_cell) return l;
+  assert_error(l != NULL);
   cell_t *f = *leftmost_row(&l);
   while(is_placeholder(f)) f = f->expr.arg[closure_in(f) - 1];
   assert_error(is_var(f), "not a var: %O %C", f->op, f);
   cell_t *entry = f->value.tc.entry;
   int x = trace_build_quote(entry, l);
-  return x == NIL_INDEX ? &nil_cell : var_create_nonlist(T_FUNCTION, (trace_cell_t) {entry, x});
+  return x == NIL_INDEX ? &nil_cell : var_create_nonlist(T_LIST, (trace_cell_t) {entry, x});
 }
 
 // store a return

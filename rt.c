@@ -458,7 +458,6 @@ void store_fail(cell_t *c, cell_t *alt) {
 }
 
 void store_dep(cell_t *c, trace_cell_t tc, csize_t pos, type_t t, alt_set_t alt_set) {
-  assert_error(t != T_LIST);
   cell_t v = {
     .op = OP_value,
     .n = c->n,
@@ -836,7 +835,6 @@ uint8_t new_alt_id(unsigned int n) {
 #define REQ_int() REQ_t(T_INT)
 #define REQ_float() REQ_t(T_FLOAT)
 #define REQ_symbol() REQ_t(T_SYMBOL)
-#define REQ_function() REQ_t(T_FUNCTION)
 #define REQ_return() \
   ((type_request_t) { .t = T_RETURN })
 #endif
