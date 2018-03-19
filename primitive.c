@@ -784,3 +784,30 @@ WORD("symbol_t", symbol_t, 1, 1)
 OP(symbol_t) {
   return func_type(cp, treq, T_SYMBOL);
 }
+
+WORD("otherwise", otherwise, 2, 1)
+OP(otherwise) {
+  cell_t *c = *cp;
+  cell_t *res = NULL;
+  PRE(c, otherwise);
+
+  alt_set_t alt_set = 0;
+  response rsp = AND0(reduce_arg(c, 0, &alt_set, REQ(any)),
+                      reduce_arg(c, 1, &alt_set, treq),
+                      fail_if(as_conflict(alt_set)));
+  clear_flags(c);
+
+  if(rsp == FAIL) {
+    res = ref(c->expr.arg[1]);
+  } else {
+    cell_t *p = c->expr.arg[0];
+    CHECK(!is_var(p), FAIL);
+    res = var(treq.t, c);
+  }
+
+  store_reduced(cp, res);
+  return SUCCESS;
+
+abort:
+  return abort_op(rsp, cp, treq);
+}

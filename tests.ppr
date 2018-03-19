@@ -5,6 +5,7 @@ imports:
   module stack
   module control
   module num
+  module logic
 
 __ f2b: | popr ! cut popr swap drop
 
@@ -195,3 +196,5 @@ pct: ->f 100 /f 1 +f *f
 pushl_assert: [] pushl swap !
 
 alt_list: | [dup] pushl
+
+default_max: dup2 < ! swap default

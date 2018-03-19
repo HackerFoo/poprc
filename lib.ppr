@@ -259,9 +259,16 @@ either:
 
 module logic:
 
+imports:
+  module stack
+  module control
+
 or: [not!] [True swap!] | ap21 swap drop
 and: [!] [False swap not!] | ap21 swap drop
 implies: swap not or
+
+__ A B default -> A, or B if A fails
+default: [dup] dip12 otherwise |
 
 module algorithm:
 

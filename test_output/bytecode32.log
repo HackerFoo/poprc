@@ -859,6 +859,13 @@ ___ logic.and (2 -> 1) x2 ___
 [7] val False, type = s x1
 [8] return [ 6 ], type = r x1
 
+___ logic.default (2 -> 1) x2 ___
+[1] var, type = ?a x1
+[2] var, type = ?a x2
+[3] return [ 2 ], type = r -> 5 x1
+[4] __primitive.otherwise 2 1, type = a x1
+[5] return [ 4 ], type = r x1
+
 ___ logic.implies (2 -> 1) x2 ___
 [1] var, type = ?a x1
 [2] var, type = ?s x1
@@ -1394,6 +1401,15 @@ ___ tests.decel_step (1 -> 1) x2 ___
 [9] __primitive.gt 1 3, type = s x1
 [10] __primitive.assert 8 9, type = i x1
 [11] return [ 10 ], type = r x1
+
+___ tests.default_max (2 -> 1) x2 ___
+[1] var, type = ?i x2
+[2] var, type = ?i x2
+[3] __primitive.lt 2 1, type = s x1
+[4] __primitive.assert 1 3, type = i x2
+[5] return [ 4 ], type = r -> 7 x1
+[6] __primitive.otherwise 4 2, type = a x1
+[7] return [ 6 ], type = r x1
 
 ___ tests.drop_loop (2 -> 1) ___
 [1] var, type = ?i x1
