@@ -125,6 +125,7 @@ pull6: pull5 pull
 pull7: pull6 pull
 
 popd: popr drop
+popd2: popd popd
 
 rev3: [] ap30 pull3 drop
 
@@ -242,7 +243,7 @@ times: __ a [f] n
   [] ap30
     [[times_step] .]
     [head 0 >]
-    iterate popr drop popr drop head
+    iterate popd2 head
 times_step: [$keep] dip22 1-
 
 __ m [f] a -> a
@@ -294,14 +295,12 @@ reduce_power: [dup *] [1 >>b] para
 __ acc x power -> acc' x^2 power/2
 power_step: in2 [acc_odd_power] dip31 ap02 swap2 drop reduce_power
 
-exponent:
-  [] ap30
+__ raise to integer power using binary exponentiation
+^:
+  1 -swap2 [] ap30
     [[power_step] .]
     [head 0 !=]
-    iterate popr drop popr drop head
-
-__ raise to integer power using binary exponentiation
-^: 1 -swap2 exponent
+    iterate popd2 head
 
 __ sums numbers in a list
 __ sum_: [[+] .] [popr drop is_nil not] iterate head int_t
