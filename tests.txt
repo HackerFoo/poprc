@@ -83,3 +83,9 @@ __ numeric parsing
 1e3
 1.2e3
 1.2
+
+__ otherwise
+1 0 / 40 2 + otherwise
+1 0 / 2 3 | otherwise
+1 2 | 3 otherwise
+1 2 otherwise 3 otherwise

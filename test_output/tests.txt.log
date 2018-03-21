@@ -108,3 +108,12 @@ __ numeric parsing
   1200
 1.2
   1.2
+__ otherwise
+1 0 / 40 2 + otherwise
+  42
+1 0 / 2 3 | otherwise
+  2
+  3
+1 2 | 3 otherwise
+1 2 otherwise 3 otherwise
+  3

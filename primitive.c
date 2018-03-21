@@ -788,20 +788,24 @@ OP(symbol_t) {
 WORD("otherwise", otherwise, 2, 1)
 OP(otherwise) {
   cell_t *c = *cp;
+  response rsp;
   cell_t *res = NULL;
   PRE(c, otherwise);
 
   alt_set_t alt_set = 0;
-  response rsp = AND0(reduce_arg(c, 0, &alt_set, REQ(any)),
-                      reduce_arg(c, 1, &alt_set, treq),
-                      fail_if(as_conflict(alt_set)));
-  clear_flags(c);
 
-  if(rsp == FAIL) {
-    res = ref(c->expr.arg[1]);
+  response rsp0 = reduce(&c->expr.arg[0], REQ(any));
+
+  if(rsp0 == FAIL) {
+    CHECK(reduce_arg(c, 1, &alt_set, treq));
+    clear_flags(c);
+    res = mod_alt(ref(c->expr.arg[1]), c->alt, alt_set);
   } else {
-    cell_t *p = c->expr.arg[0];
+    cell_t *p = clear_ptr(c->expr.arg[0]);
     CHECK(!is_var(p), FAIL);
+    CHECK(AND0(rsp0,
+               reduce_arg(c, 1, &alt_set, treq)));
+    clear_flags(c);
     res = var(treq.t, c);
   }
 
