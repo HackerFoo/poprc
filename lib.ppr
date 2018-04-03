@@ -271,6 +271,8 @@ implies: swap not or
 __ A B default -> A, or B if A fails
 default: [dup] dip12 otherwise |
 
+valid: False otherwise [] [True otherwise] | $
+
 module algorithm:
 
 imports:

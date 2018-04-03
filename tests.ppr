@@ -192,3 +192,10 @@ pushl_assert: [] pushl swap !
 alt_list: | [dup] pushl
 
 default_max: dup2 < ! swap default
+
+__ vlength:
+__   [[1-] dip11 popd]
+__   [popr valid]
+__   iterate popd head
+
+vifte: swap2 valid -swap2 ifte

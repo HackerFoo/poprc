@@ -880,6 +880,15 @@ ___ logic.or (2 -> 1) x2 ___
 [7] val True, type = s x1
 [8] return [ 6 ], type = r x1
 
+___ logic.valid (1 -> 1) x2 ___
+[1] var, type = ?a x1
+[2] __primitive.otherwise 1 3, type = a x2
+[3] val False, type = s x1
+[4] return [ 2 ], type = r -> 7 x1
+[5] __primitive.otherwise 2 6, type = a x1
+[6] val True, type = s x1
+[7] return [ 5 ], type = r x1
+
 ___ num.even (1 -> 1) ___
 [1] var, type = ?i x1
 [2] __primitive.bitand 1 3, type = i x1
@@ -1880,4 +1889,23 @@ ___ tests.test_ap21 (3 -> 1) ___
 [4] __primitive.ap 3 2 1 -> 5, type = l x1
 [5] __primitive.dep 4, type = a x1
 [6] return [ 5 ], type = r x1
+
+___ tests.vifte (3 -> 1) x4 ___
+[1] var, type = ?a x2
+[2] var, type = ?a x2
+[3] var, type = ?a x1
+[4] __primitive.otherwise 3 5, type = s x3
+[5] val False, type = s x1
+[6] __primitive.not 4, type = s x1
+[7] __primitive.assert 1 6, type = a x1
+[8] return [ 7 ], type = r -> 13 x1
+[9] __primitive.otherwise 4 10, type = s x2
+[10] val True, type = s x1
+[11] __primitive.not 9, type = s x1
+[12] __primitive.assert 1 11, type = a x1
+[13] return [ 12 ], type = r -> 15 x1
+[14] __primitive.assert 2 4, type = a x1
+[15] return [ 14 ], type = r -> 17 x1
+[16] __primitive.assert 2 9, type = a x1
+[17] return [ 16 ], type = r x1
 
