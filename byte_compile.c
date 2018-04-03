@@ -43,17 +43,17 @@
 static void print_value(const cell_t *c) {
   switch(c->value.type) {
   case T_INT:
-    printf(" val %" PRIdPTR, c->value.integer[0]);
+    printf(" val %" PRIdPTR, c->value.integer);
     break;
   case T_SYMBOL: {
-    val_t x = c->value.integer[0];
+    val_t x = c->value.integer;
     const char *str = symbol_string(x);
     if(!str) str = "??";
     printf(" val %s", str);
     break;
   }
   case T_FLOAT:
-    printf(" val %g", c->value.flt[0]);
+    printf(" val %g", c->value.flt);
     break;
   default:
     printf(" val ??");

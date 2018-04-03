@@ -555,13 +555,6 @@ cell_t *conc_alt(cell_t *a, cell_t *b) {
   return a;
 }
 
-cell_t *pushl_val(intptr_t x, cell_t *c) {
-  csize_t n = val_size(c);
-  c = expand(c, 1);
-  c->value.integer[n] = x;
-  return c;
-}
-
 void check_tmps() {
   size_t i = 0;
   cell_t *p;

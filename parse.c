@@ -206,41 +206,6 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n, cell_t *entry) {
   return c;
 }
 
-void reverse_vector(cell_t *c) {
-  csize_t n = val_size(c);
-  COUNTUP(i, n/2) {
-    val_t tmp = c->value.integer[i];
-    c->value.integer[i] = c->value.integer[--n];
-    c->value.integer[n] = tmp;
-  }
-}
-
-cell_t *parse_vector(const cell_t **l) {
-  const tok_list_t *tl;
-  const char *s;
-  const cell_t *t = *l;
-  cell_t *c = vector(0);
-  c->value.type = T_INT; // for now
-  while(t) {
-    tl = &t->tok_list;
-    s = tl->location;
-    if(s[0] == ')') {
-      t = tl->next;
-      break;
-    } else if(is_num(s)) {
-      c = pushl_val(strtol(s, NULL, 0), c);
-      t = tl->next;
-    } else {
-      drop(c);
-      return NULL;
-    }
-  }
-
-  *l = t;
-  reverse_vector(c);
-  return c;
-}
-
 val_t fill_args(cell_t *entry, cell_t *l) {
   if(!l) return 0;
   val_t i = 0;
@@ -606,17 +571,10 @@ cell_t *parse_expr(const cell_t **l, cell_t *module, cell_t *entry) {
           }
         } break;
         case '(':
-        {
-          cell_t *v = parse_vector(l);
-          if(v) {
-            assert_throw(n < MAX_ARGS);
-            arg_stack[n++] = v;
-          } else {
-            LOG("parse failure");
-            goto fail;
-          }
+        case ')':
+          LOG("parse failure - vectors unsupported");
+          goto fail;
           break;
-        }
         default:
           break;
         }

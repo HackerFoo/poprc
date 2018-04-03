@@ -106,9 +106,9 @@ bool equal_value(const cell_t *a, const cell_t *b) {
   switch(type) {
   case T_INT:
   case T_SYMBOL:
-    return a->value.integer[0] == b->value.integer[0];
+    return a->value.integer == b->value.integer;
   case T_FLOAT:
-    return a->value.flt[0] == b->value.flt[0];
+    return a->value.flt == b->value.flt;
   default:
     return false;
   }

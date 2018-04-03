@@ -282,9 +282,7 @@ void graph_cell(FILE *f, cell_t const *c) {
         fprintf(f, "</td></tr>");
       }
     } else {
-      int n = val_size(c);
-      while(n--)
-        fprintf(f, "<tr><td bgcolor=\"yellow\">val: %" PRIdPTR "</td></tr>", c->value.integer[n]);
+      fprintf(f, "<tr><td bgcolor=\"yellow\">val: %" PRIdPTR "</td></tr>", c->value.integer);
     }
   } else {
     COUNTUP(i, closure_in(c)) {
@@ -363,22 +361,12 @@ void print_int(val_t x) {
 
 void show_int(cell_t const *c) {
   assert_error(c && type_match(T_INT, c));
-  int n = val_size(c);
-  switch(n) {
-  case 0: printf(" ()"); break;
-  case 1:
-    print_int(c->value.integer[0]); break;
-  default:
-    printf(" (");
-    while(n--) print_int(c->value.integer[n]);
-    printf(" )");
-    break;
-  }
+  print_int(c->value.integer);
 }
 
 void show_float(cell_t const *c) {
   assert_error(c && type_match(T_FLOAT, c));
-  printf(" %.15g", c->value.flt[0]);
+  printf(" %.15g", c->value.flt);
 }
 
 bool any_alt_overlap(cell_t const * const *p, csize_t size) {
@@ -474,7 +462,7 @@ void show_one(cell_t const *c) {
   } else if(type_match(T_LIST, c)) {
     show_list(c);
   } else if(type_match(T_SYMBOL, c)) {
-    val_t x = c->value.integer[0];
+    val_t x = c->value.integer;
     const char *str = symbol_string(x);
     if(str) {
       printf(" %s", str);

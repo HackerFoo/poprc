@@ -127,12 +127,14 @@ struct __attribute__((packed)) value {
   uint8_t flags;
   alt_set_t alt_set;
   union {
-    val_t integer[2]; /* integer */
-    double flt[1];    /* float */
-    cell_t *ptr[2];   /* list */
+    struct {
+      val_t integer; /* integer */
+      trace_cell_t tc;  /* variable */
+    };
+    double flt;    /* float */
+    cell_t *ptr[3];   /* list */
     pair_t map[1];    /* map */
     seg_t str;        /* string */
-    trace_cell_t tc;  /* variable */
   };
 };
 
@@ -232,7 +234,10 @@ struct __attribute__((packed, aligned(4))) cell {
   };
 };
 
+#ifndef EMSCRIPTEN
 static_assert(sizeof(cell_t) == sizeof_field(cell_t, raw), "cell_t wrong size");
+#endif
+
 static_assert(offsetof(cell_t, expr.arg[1]) == offsetof(cell_t, value.ptr[0]), "second arg not aliased with first ptr");
 static_assert(offsetof(cell_t, expr.flags) == offsetof(cell_t, value.flags), "expr.flags should alias value.flags");
 

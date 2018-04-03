@@ -51,23 +51,12 @@
     '-----------------------------------------------*/
 
 cell_t *_op2(val_t (*op)(val_t, val_t), cell_t *x, cell_t *y) {
-  csize_t size = min(val_size(x),
-                     val_size(y));
-  cell_t *res = vector(size);
-  COUNTUP(i, size) {
-    res->value.integer[i] = op(x->value.integer[i],
-                               y->value.integer[i]);
-  }
-  return res;
+  return int_val(op(x->value.integer,
+                    y->value.integer));
 }
 
 cell_t *_op1(val_t (*op)(val_t), cell_t *x) {
-  csize_t size = val_size(x);
-  cell_t *res = vector(size);
-  COUNTUP(i, size) {
-    res->value.integer[i] = op(x->value.integer[i]);
-  }
-  return res;
+  return int_val(op(x->value.integer));
 }
 
 response func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t, val_t), bool nonzero) {
@@ -86,7 +75,7 @@ response func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, 
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
-  CHECK(nonzero && !is_var(q) && q->value.integer[0] == 0, FAIL); // TODO assert this for variables
+  CHECK(nonzero && !is_var(q) && q->value.integer == 0, FAIL); // TODO assert this for variables
   res = is_var(p) || is_var(q) ? var(treq.t, c) : _op2(op, p, q);
   res->value.type = res_type;
   res->alt = c->alt;
@@ -124,23 +113,12 @@ response func_op1(cell_t **cp, type_request_t treq, int arg_type, int res_type, 
 }
 
 cell_t *_op2_float(double (*op)(double, double), cell_t *x, cell_t *y) {
-  csize_t size = min(val_size(x),
-                     val_size(y));
-  cell_t *res = vector(size);
-  COUNTUP(i, size) {
-    res->value.flt[i] = op(x->value.flt[i],
-                           y->value.flt[i]);
-  }
-  return res;
+  return float_val(op(x->value.flt,
+                      y->value.flt));
 }
 
 cell_t *_op1_float(double (*op)(double), cell_t *x) {
-  csize_t size = val_size(x);
-  cell_t *res = vector(size);
-  COUNTUP(i, size) {
-    res->value.flt[i] = op(x->value.flt[i]);
-  }
-  return res;
+  return float_val(op(x->value.flt));
 }
 
 response func_op2_float(cell_t **cp, type_request_t treq, double (*op)(double, double), bool nonzero) {
@@ -159,7 +137,7 @@ response func_op2_float(cell_t **cp, type_request_t treq, double (*op)(double, d
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
-  CHECK(nonzero && !is_var(q) && q->value.flt[0] == 0.0, FAIL); // TODO assert this for variables
+  CHECK(nonzero && !is_var(q) && q->value.flt == 0.0, FAIL); // TODO assert this for variables
   res = is_var(p) || is_var(q) ? var(treq.t, c) : _op2_float(op, p, q);
   res->value.type = T_FLOAT;
   res->alt = c->alt;
@@ -383,11 +361,7 @@ OP(to_float) {
   if(is_var(p)) {
     res = var(T_FLOAT, c);
   } else {
-    csize_t size = val_size(p);
-    res = vector(size);
-    COUNTUP(i, size) {
-      res->value.flt[i] = p->value.integer[i];
-    }
+    res = float_val(p->value.integer);
   }
   res->value.type = T_FLOAT;
   res->alt = c->alt;
@@ -416,11 +390,7 @@ OP(trunc) {
   if(is_var(p)) {
     res = var(T_INT, c);
   } else {
-    csize_t size = val_size(p);
-    res = vector(size);
-    COUNTUP(i, size) {
-      res->value.integer[i] = p->value.flt[i];
-    }
+    res = int_val(p->value.flt);
   }
   res->value.type = T_INT;
   res->alt = c->alt;
@@ -500,7 +470,7 @@ OP(assert) {
   CHECK(reduce_arg(c, 1, &alt_set, REQ(symbol)));
   cell_t *p = clear_ptr(c->expr.arg[1]);
 
-  CHECK(!(p->value.integer[0] == SYM_True || is_var(p)), FAIL);
+  CHECK(!(p->value.integer == SYM_True || is_var(p)), FAIL);
 
   if(in == 3) {
     // use var from earlier
@@ -735,7 +705,7 @@ OP(print) {
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   if(is_var(p) || is_var(q)) {
     res = var(T_SYMBOL, c);
-  } else if(p->value.integer[0] == SYM_IO) {
+  } else if(p->value.integer == SYM_IO) {
     show_one(q);
     res = ref(p);
   } else {

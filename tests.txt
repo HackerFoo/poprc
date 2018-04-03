@@ -47,8 +47,6 @@ __ [[[! force 1- ' [dup] dip12 pushl swap pushl popr swap drop] [0 == ! force dr
 
 __ [[[! 1- [] force pushl [dup] dip12 pushl swap pushl popr swap drop] [dup 0 == ! force drop [] force pushl force pushl] | . popr swap drop cut] 5] [! 1- [] force pushl [dup] dip12 pushl swap pushl popr swap drop] [dup 0 == ! force drop [] force pushl force pushl] | . popr swap drop cut
 
-(1 6) (2 7) | dup + dup +
-
 1 0 | dup
 1 [1- dup 0 > !] [1+ dup 0 > !] | pushl popr
 [0 |] dup 4 swap pushl popr swap drop swap 3 swap pushl popr swap drop +

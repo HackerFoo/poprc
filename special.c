@@ -37,18 +37,17 @@ OP(value) {
   if(treq.t == T_FLOAT &&
      NOT_FLAG(c->value, VALUE_VAR) &&
      c->value.type == T_INT) {
-    val_t x = c->value.integer[0];
+    val_t x = c->value.integer;
     LOG("convert integer constant %d", x);
     *cp = float_val(x);
     drop(c);
     return RETRY;
   }
 
-  if(FLAG(c->value, VALUE_FAIL) ||
-     !type_match(treq.t, c)) {
-    rsp = FAIL;
-    goto abort;
-  }
+  // TODO move this check out - treq shouldn't cause a FAIL
+  CHECK(FLAG(c->value, VALUE_FAIL) ||
+        !type_match(treq.t, c),
+        FAIL);
 
   // NOTE: may create multiple placeholder
   // TODO use rows to work around this
@@ -95,7 +94,7 @@ cell_t *int_val(val_t x) {
   cell_t *c = closure_alloc(2);
   c->op = OP_value;
   c->value.type = T_INT;
-  c->value.integer[0] = x;
+  c->value.integer = x;
   return c;
 }
 
@@ -103,7 +102,7 @@ cell_t *float_val(double x) {
   cell_t *c = closure_alloc(2);
   c->op = OP_value;
   c->value.type = T_FLOAT;
-  c->value.flt[0] = x;
+  c->value.flt = x;
   return c;
 }
 
@@ -111,7 +110,7 @@ cell_t *symbol(val_t sym) {
   cell_t *c = closure_alloc(2);
   c->op = OP_value;
   c->value.type = T_SYMBOL;
-  c->value.integer[0] = sym;
+  c->value.integer = sym;
   return c;
 }
 
@@ -235,13 +234,6 @@ cell_t *var_(type_t t, cell_t *c, uint8_t pos) {
 
 bool is_var(cell_t const *c) {
   return c && is_value(c) && FLAG(c->value, VALUE_VAR);
-}
-
-cell_t *vector(csize_t n) {
-  cell_t *c = closure_alloc(n+1);
-  c->op = OP_value;
-  c->value.type = T_ANY;
-  return c;
 }
 
 cell_t *make_map(csize_t s) {

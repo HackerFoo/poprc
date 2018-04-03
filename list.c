@@ -354,7 +354,7 @@ TEST(flattened_list_copy) {
   FORLIST(p, fl) {
     if(!is_value(*p) ||
        (*p)->value.type != T_INT ||
-       (*p)->value.integer[0] != x++) {
+       (*p)->value.integer != x++) {
       status = -1;
       break;
     }

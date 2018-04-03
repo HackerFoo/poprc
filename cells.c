@@ -201,10 +201,6 @@ csize_t calculate_list_size(csize_t n) {
   return calc_size(value.ptr, n);
 }
 
-csize_t calculate_val_size(csize_t n) {
-  return calc_size(value.integer, n);
-}
-
 csize_t calculate_map_size(csize_t n) {
   return calc_size(value.map, n + 1);
 }
@@ -251,10 +247,6 @@ bool is_offset(cell_t const *c) {
 }
 
 csize_t list_size(cell_t const *c) {
-  return c->size ? c->size - 1 : 0;
-}
-
-csize_t val_size(cell_t const *c) {
   return c->size ? c->size - 1 : 0;
 }
 
