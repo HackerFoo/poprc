@@ -43,7 +43,7 @@ static cell_t *trace_ptr = &trace_cells[0];
 static cell_t *active_entries[1 << 6];
 static int prev_entry_pos = 0;
 
-const trace_cell_t nulltc = {NULL, 0};
+const trace_cell_t nulltc = {NULL, 0, 0};
 
 #if INTERFACE
 typedef intptr_t trace_index_t;
@@ -151,14 +151,16 @@ void switch_entry_(cell_t *entry, trace_cell_t *tc) {
        c->value.tc.index == old.index) {
       *tc = (trace_cell_t) {
         entry,
-        c-entry
+        c-entry,
+        0
       };
       goto end;
     }
   }
   *tc = (trace_cell_t) {
     entry,
-    trace_alloc_var(entry)
+    trace_alloc_var(entry),
+    0
   };
   cell_t *p = trace_cell_ptr(*tc);
   p->value.tc = old;
@@ -205,7 +207,7 @@ int trace_alloc(cell_t *entry, csize_t args) {
   }
   int index = entry->entry.len + 1;
   size_t size = calculate_cells(args);
-  cell_t *tc = trace_cell_ptr((trace_cell_t) {entry, index});
+  cell_t *tc = trace_cell_ptr((trace_cell_t) {entry, index, 0});
   entry->entry.len += size;
   tc->n = -1;
   tc->size = args;
@@ -584,7 +586,7 @@ cell_t *trace_quote_var(cell_t *l) {
   assert_error(is_var(f), "not a var: %O %C", f->op, f);
   cell_t *entry = f->value.tc.entry;
   int x = trace_build_quote(entry, l);
-  return x == NIL_INDEX ? &nil_cell : var_create_nonlist(T_LIST, (trace_cell_t) {entry, x});
+  return x == NIL_INDEX ? &nil_cell : var_create_nonlist(T_LIST, (trace_cell_t) {entry, x, 0});
 }
 
 // store a return
@@ -607,7 +609,7 @@ int trace_return(cell_t *entry, cell_t *c_) {
   }
   int x = trace_copy(entry, c);
   LOG("trace_return: %e[%d] <- %C", entry, x, c_);
-  trace_cell_t t = {entry, x};
+  trace_cell_t t = {entry, x, 0};
   closure_free(c);
   cell_t *tc = trace_cell_ptr(t);
   tc->value.type = T_RETURN;
@@ -748,7 +750,7 @@ cell_t *trace_expr_entry(uint8_t pos) {
 }
 
 cell_t *param(int t, cell_t *entry) {
-  return var_create_nonlist(t, (trace_cell_t) {entry, trace_alloc_var(entry)});
+  return var_create_nonlist(t, (trace_cell_t) {entry, trace_alloc_var(entry), 0});
 }
 
 void print_active_entries(const char *msg) {

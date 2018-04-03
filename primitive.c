@@ -50,13 +50,31 @@
     |                                               |
     '-----------------------------------------------*/
 
-cell_t *_op2(val_t (*op)(val_t, val_t), cell_t *x, cell_t *y) {
-  return int_val(op(x->value.integer,
-                    y->value.integer));
+cell_t *_op2(cell_t *c, uint8_t t, val_t (*op)(val_t, val_t), cell_t *x, cell_t *y) {
+  if(is_var(x) || is_var(y)) {
+    cell_t *res = var(t, c);
+    if(value_in_integer(x) &&
+       value_in_integer(y)) {
+      set_var_value(res, op(x->value.integer,
+                            y->value.integer));
+    }
+    return res;
+  } else {
+    return val(t, op(x->value.integer,
+                     y->value.integer));
+  }
 }
 
-cell_t *_op1(val_t (*op)(val_t), cell_t *x) {
-  return int_val(op(x->value.integer));
+cell_t *_op1(cell_t *c, uint8_t t, val_t (*op)(val_t), cell_t *x) {
+  if(is_var(x)) {
+    cell_t *res = var(t, c);
+    if(value_in_integer(x)) {
+      set_var_value(res, op(x->value.integer));
+    }
+    return res;
+  } else {
+    return val(t, op(x->value.integer));
+  }
 }
 
 response func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t, val_t), bool nonzero) {
@@ -76,8 +94,7 @@ response func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, 
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   CHECK(nonzero && !is_var(q) && q->value.integer == 0, FAIL); // TODO assert this for variables
-  res = is_var(p) || is_var(q) ? var(treq.t, c) : _op2(op, p, q);
-  res->value.type = res_type;
+  res = _op2(c, res_type, op, p, q);
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   store_reduced(cp, res);
@@ -87,7 +104,7 @@ response func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, 
   return abort_op(rsp, cp, treq);
 }
 
-response func_op1(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t)) {
+response func_op1(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t), val_t (*inv_op)(val_t)) {
   cell_t *c = *cp;
   response rsp;
   cell_t *res = 0;
@@ -96,13 +113,12 @@ response func_op1(cell_t **cp, type_request_t treq, int arg_type, int res_type, 
   CHECK(!check_type(treq.t, res_type), FAIL);
 
   alt_set_t alt_set = 0;
-  type_request_t atr = REQ(t, arg_type);
+  type_request_t atr = REQ(t, arg_type, REQ_INV(inv_op));
   CHECK(reduce_arg(c, 0, &alt_set, atr));
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
-  res = is_var(p) ? var(treq.t, c) : _op1(op, p);
-  res->value.type = res_type;
+  res = _op1(c, res_type, op, p);
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   store_reduced(cp, res);
@@ -291,13 +307,13 @@ OP(shiftr) {
 WORD("~b", complement, 1, 1)
 val_t complement_op(val_t x) { return ~x; }
 OP(complement) {
-  return func_op1(cp, treq, T_INT, T_INT, complement_op);
+  return func_op1(cp, treq, T_INT, T_INT, complement_op, complement_op);
 }
 
 WORD("not", not, 1, 1)
 val_t not_op(val_t x) { return !x; }
 OP(not) {
-  return func_op1(cp, treq, T_SYMBOL, T_SYMBOL, not_op);
+  return func_op1(cp, treq, T_SYMBOL, T_SYMBOL, not_op, not_op);
 }
 
 WORD(">", gt, 2, 1)
@@ -467,16 +483,18 @@ OP(assert) {
   cell_t *res = NULL;
   alt_set_t alt_set = 0;
   csize_t in = closure_in(c);
-  CHECK(reduce_arg(c, 1, &alt_set, REQ(symbol)));
+  CHECK(reduce_arg(c, 1, &alt_set, REQ(symbol, SYM_True)));
   cell_t *p = clear_ptr(c->expr.arg[1]);
 
-  CHECK(!(p->value.integer == SYM_True || is_var(p)), FAIL);
+  CHECK((!is_var(p) ||
+         value_in_integer(p)) &&
+        p->value.integer != SYM_True, FAIL);
 
   if(in == 3) {
-    // use var from earlier
+    // use var from map_assert
     res = c->expr.arg[2];
     c->size--;
-  } else if(is_var(p)) {
+  } else if(is_var(p) && !value_in_integer(p)) { // TODO clean this up
     CHECK(treq.delay_assert, DELAY_ARG);
     res = var(treq.t, c);
   }
@@ -487,22 +505,33 @@ OP(assert) {
   cell_t *q = c->expr.arg[0];
 
   if(is_var(p)) {
-    if(is_list(q)) {
-      res = map_assert(q, p, res);
-    } else {
-      res->value.type = q->value.type;
-      FLAG_SET(res->value, VALUE_VAR);
+    if(!value_in_integer(p)) {
+      if(is_list(q)) {
+        res = map_assert(q, p, res);
+      } else {
+        res->value.type = q->value.type;
+        FLAG_SET(res->value, VALUE_VAR);
+      }
+    } else if(is_var(q)) {
+      /* The `success dependency` of p must still be carried
+         through the assert, because replacing the assert with
+         q will lose this dependency e.g. in `True otherwise !`
+         the resulting value would not depend on the result of
+         `otherwise`. */
+      res = var(q->value.type, c);
+      if(FLAG(q->value.tc, TC_VALUE)) {
+        set_var_value(res, q->value.integer);
+      }
     }
     res->value.alt_set = alt_set;
     res->alt = c->alt;
     trace_store_row_assert(c, res);
-  } else if(is_var(q)) { // *** delete this?
-    res = var(q->value.type, c);
-    res->value.alt_set = alt_set;
-    res->alt = c->alt;
-  } else {
+  }
+
+  if(!res) {
     res = mod_alt(ref(q), c->alt, alt_set);
   }
+
   store_reduced(cp, res);
   return SUCCESS;
 
@@ -773,10 +802,12 @@ OP(otherwise) {
   } else {
     cell_t *p = clear_ptr(c->expr.arg[0]);
     CHECK(!is_var(p), FAIL);
+    res = var(T_ANY, c);
     CHECK(AND0(rsp0,
                reduce_arg(c, 1, &alt_set, treq)));
     clear_flags(c);
-    res = var(treq.t, c);
+    cell_t *q = c->expr.arg[1];
+    update_var_from_value(res, q);
   }
 
   store_reduced(cp, res);

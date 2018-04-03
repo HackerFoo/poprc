@@ -182,7 +182,7 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n, cell_t *entry) {
           int x = trace_alloc(entry, n + 2);
           in = n;
           out = 1;
-          data = var_create(T_LIST, (trace_cell_t) {entry, x}, 0, 0);
+          data = var_create(T_LIST, (trace_cell_t) {entry, x, 0}, 0, 0);
         } else {
           c = func(e->op, e->entry.in, e->entry.out);
         }

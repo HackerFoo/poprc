@@ -44,13 +44,6 @@ typedef enum __attribute__((packed)) type_t {
   T_BOTTOM /**< the uninhabited type */
 } type_t;
 
-typedef struct type_request {
-  csize_t in, out;
-  type_t t;
-  uint8_t pos;
-  bool delay_assert;
-} type_request_t;
-
 typedef struct cell cell_t;
 typedef struct expr expr_t;
 typedef struct value value_t;
@@ -72,9 +65,21 @@ typedef intptr_t val_t;
 #pragma clang diagnostic ignored "-Wextended-offsetof"
 #endif
 
+typedef struct type_request {
+  csize_t in, out;
+  type_t t;
+  uint8_t pos;
+  bool delay_assert;
+  bool expected;
+  val_t expected_value;
+} type_request_t;
+
+#define TC_VALUE 0x01
+
 typedef struct trace_cell {
   cell_t *entry;
-  val_t index;
+  csize_t index;
+  uint8_t flags;
 } trace_cell_t;
 
 typedef enum response {
@@ -128,13 +133,13 @@ struct __attribute__((packed)) value {
   alt_set_t alt_set;
   union {
     struct {
-      val_t integer; /* integer */
-      trace_cell_t tc;  /* variable */
+      val_t integer;   /* integer */
+      trace_cell_t tc; /* variable */
     };
-    double flt;    /* float */
-    cell_t *ptr[3];   /* list */
-    pair_t map[1];    /* map */
-    seg_t str;        /* string */
+    double flt;        /* float */
+    cell_t *ptr[3];    /* list */
+    pair_t map[1];     /* map */
+    seg_t str;         /* string */
   };
 };
 

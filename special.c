@@ -49,6 +49,12 @@ OP(value) {
         !type_match(treq.t, c),
         FAIL);
 
+  if(treq.expected && !is_var(c) &&
+     treq.expected_value != c->value.integer) {
+    LOG("expected %C to be %d, but got %d",
+        c, treq.expected_value, c->value.integer);
+  }
+
   // NOTE: may create multiple placeholder
   // TODO use rows to work around this
   if(is_var(c)) {
@@ -90,32 +96,54 @@ OP(value) {
   return abort_op(rsp, cp, treq);
 }
 
-cell_t *int_val(val_t x) {
+cell_t *make_val(uint8_t t) {
   cell_t *c = closure_alloc(2);
   c->op = OP_value;
-  c->value.type = T_INT;
+  c->value.type = t;
+  return c;
+}
+
+cell_t *val(uint8_t t, val_t x) {
+  cell_t *c = make_val(t);
   c->value.integer = x;
   return c;
 }
 
+cell_t *int_val(val_t x) {
+  return val(T_INT, x);
+}
+
 cell_t *float_val(double x) {
-  cell_t *c = closure_alloc(2);
-  c->op = OP_value;
-  c->value.type = T_FLOAT;
+  cell_t *c = make_val(T_FLOAT);
   c->value.flt = x;
   return c;
 }
 
 cell_t *symbol(val_t sym) {
-  cell_t *c = closure_alloc(2);
-  c->op = OP_value;
-  c->value.type = T_SYMBOL;
-  c->value.integer = sym;
-  return c;
+  return val(T_SYMBOL, sym);
 }
 
 bool is_value(cell_t const *c) {
   return c && c->op == OP_value;
+}
+
+bool value_in_integer(const cell_t *c) {
+  assert_error(is_value(c) && ONEOF(c->value.type, T_INT, T_SYMBOL));
+  return !is_var(c) || FLAG(c->value.tc, TC_VALUE);
+}
+
+void set_var_value(cell_t *c, val_t x) {
+  FLAG_SET(c->value.tc, TC_VALUE);
+  c->value.integer = x;
+}
+
+cell_t *update_var_from_value(cell_t *v, cell_t *a) {
+  assert_error(is_value(a));
+  uint8_t t = v->value.type = a->value.type;
+  if(ONEOF(t, T_INT, T_SYMBOL) && value_in_integer(a)) {
+    set_var_value(v, a->value.integer);
+  }
+  return v;
 }
 
 void placeholder_extend(cell_t **lp, int in, int out) {
@@ -205,7 +233,7 @@ cell_t *var_create_list(cell_t *f, int in, int out, int shift) {
 cell_t *var_create_with_entry(type_t t, cell_t *entry, csize_t size) {
   assert_error(entry);
   int ix = trace_alloc(entry, size);
-  return var_create(t, (trace_cell_t) {entry, ix}, 0, 0);
+  return var_create(t, (trace_cell_t) {entry, ix, 0}, 0, 0);
 }
 
 cell_t *var_(type_t t, cell_t *c, uint8_t pos) {

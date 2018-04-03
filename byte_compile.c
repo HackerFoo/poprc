@@ -709,7 +709,7 @@ void mark_barriers(cell_t *entry, cell_t *c) {
         trace_cell_t tc = x->value.tc;
         drop(x);
         *p = var_create_nonlist(x->value.type,
-                                (trace_cell_t) {entry, trace_alloc_var(entry)});
+                                (trace_cell_t) {entry, trace_alloc_var(entry), 0});
         trace_cell_ptr((*p)->value.tc)->value.tc = tc;
       //} else if(x->op == OP_ap) {
       //  LOG(HACK " marking barrier through ap %C", x);
@@ -756,7 +756,7 @@ void mark_quote_barriers(cell_t *entry, cell_t *c) {
       if(tc.entry == entry) continue;
       drop(x);
       *p = var_create_nonlist(x->value.type,
-                              (trace_cell_t) {entry, trace_alloc_var(entry)});
+                              (trace_cell_t) {entry, trace_alloc_var(entry), 0});
       trace_cell_ptr((*p)->value.tc)->value.tc = tc;
     }
   }
@@ -781,7 +781,7 @@ cell_t *flat_quote(cell_t *new_entry, cell_t *parent_entry) {
       assert_error(p->value.tc.entry == parent_entry);
       cell_t *tp = trace_cell_ptr(p->value.tc);
       cell_t *v = var_create_nonlist(trace_type(tp),
-                                     (trace_cell_t) {parent_entry, tp-parent_entry});
+                                     (trace_cell_t) {parent_entry, tp-parent_entry, 0});
       assert_error(INRANGE(p->pos, 1, in));
       nc->expr.arg[in - p->pos] = v;
       LOG("arg[%d] -> %d", in - p->pos, tp - parent_entry);

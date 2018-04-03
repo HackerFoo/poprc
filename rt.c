@@ -484,7 +484,7 @@ response abort_op(response rsp, cell_t **cp, type_request_t treq) {
     }
     assert_error(!is_marked(c));
     cell_t *alt = ref(c->alt);
-    if(c->n && treq.t == T_ANY) { // HACK this should be more sophisticated
+    if(c->n && treq.t == T_ANY && !treq.expected) { // HACK this should be more sophisticated
       TRAVERSE(c, in) {
         drop(*p);
       }
@@ -822,14 +822,20 @@ uint8_t new_alt_id(unsigned int n) {
 #define REQ(type, ...) CONCAT(REQ_, type)(__VA_ARGS__)
 #define REQ_list(_in, _out) \
   ((type_request_t) { .t = T_LIST, .in = _in, .out = _out, .delay_assert = treq.delay_assert})
-#define REQ_t(_t) \
-  ((type_request_t) { .t = _t, .delay_assert = treq.delay_assert })
-#define REQ_any() REQ_t(T_ANY)
-#define REQ_int() REQ_t(T_INT)
-#define REQ_float() REQ_t(T_FLOAT)
-#define REQ_symbol() REQ_t(T_SYMBOL)
+#define REQ_t_1(_t)                                                     \
+  ((type_request_t) { .t = _t, .delay_assert = treq.delay_assert, .expected = false })
+#define REQ_t_2(_t, _expected_val)                                          \
+  ((type_request_t) { .t = _t, .delay_assert = treq.delay_assert, .expected = true, .expected_value = _expected_val })
+#define REQ_t_3(_t, _expected, _expected_val)                            \
+  ((type_request_t) { .t = _t, .delay_assert = treq.delay_assert, .expected = _expected, .expected_value = _expected_val })
+#define REQ_t(...) DISPATCH(REQ_t, __VA_ARGS__)
+#define REQ_any(...) REQ_t(T_ANY, ##__VA_ARGS__)
+#define REQ_int(...) REQ_t(T_INT, ##__VA_ARGS__)
+#define REQ_float(...) REQ_t(T_FLOAT, ##__VA_ARGS__)
+#define REQ_symbol(...) REQ_t(T_SYMBOL, ##__VA_ARGS__)
 #define REQ_return() \
   ((type_request_t) { .t = T_RETURN })
+#define REQ_INV(invert) treq.expected, (treq.expected ? invert(treq.expected_value) : 0)
 #endif
 
 // default 'treq' for REQ(...) to inherit

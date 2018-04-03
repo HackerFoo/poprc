@@ -466,7 +466,7 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
     switch_entry(parent_entry, tn);
     assert_error(tn->value.tc.entry == parent_entry);
     cell_t *tp = trace_cell_ptr(tn->value.tc);
-    cell_t *v = var_create_nonlist(T_ANY, (trace_cell_t) {parent_entry, tp-parent_entry});
+    cell_t *v = var_create_nonlist(T_ANY, (trace_cell_t) {parent_entry, tp-parent_entry, 0});
     nc->expr.arg[in - pos] = v;
     LOG("arg[%d] -> %d", in - pos, tp - parent_entry);
     pos++;

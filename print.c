@@ -281,8 +281,13 @@ void graph_cell(FILE *f, cell_t const *c) {
         }
         fprintf(f, "</td></tr>");
       }
-    } else {
-      fprintf(f, "<tr><td bgcolor=\"yellow\">val: %" PRIdPTR "</td></tr>", c->value.integer);
+    }
+    if(is_value(c)) {
+      if(ONEOF(c->value.type, T_INT, T_SYMBOL) && value_in_integer(c)) {
+        fprintf(f, "<tr><td bgcolor=\"yellow\">val: %" PRIdPTR "</td></tr>", c->value.integer);
+      } else if(c->value.type == T_FLOAT && !is_var(c)) {
+        fprintf(f, "<tr><td bgcolor=\"yellow\">val: %.15g</td></tr>", c->value.flt);
+      }
     }
   } else {
     COUNTUP(i, closure_in(c)) {
