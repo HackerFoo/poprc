@@ -335,6 +335,16 @@ void trace_store_row_assert(cell_t *c, cell_t *r) {
   t->trace.type = T_LIST;
 }
 
+int trace_otherwise(cell_t *p) {
+  cell_t *entry = p->value.tc.entry;
+  int x = trace_alloc(entry, 2);
+  cell_t *tc = &entry[x];
+  tc->op = OP_otherwise;
+  tc->expr.arg[0] = trace_encode(p->value.tc.index);
+  entry[p->value.tc.index].n++;
+  return x;
+}
+
 // store value c in the trace
 int trace_store_value(cell_t *entry, const cell_t *c) {
   if(!entry) return -1;
@@ -350,6 +360,17 @@ int trace_store_value(cell_t *entry, const cell_t *c) {
     tc->pos = 0;
     tc->n = -1;
   }
+
+  if(c->value.otherwise) {
+    int ow = c->value.otherwise;
+    cell_t *tc = &entry[ow];
+    if(!tc->expr.arg[1]) {
+      tc->expr.arg[1] = trace_encode(x);
+      entry[x].n++;
+    }
+    x = ow;
+  }
+
   return x;
 }
 

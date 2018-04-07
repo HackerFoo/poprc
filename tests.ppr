@@ -205,11 +205,17 @@ after0:
     [head 0 !=]
     iterate popd head
 
-__ vlength:
-__   [[1-] dip11 popd]
-__   [popr valid]
-__   iterate popd head
+vlength: 0 swap vlength_
+vlength_:
+  [] ap20
+    [[[1-] [popd] para] .]
+    [popr popr valid]
+    iterate popd head
 
 vifte: swap2 valid -swap2 ifte
 
 __ bad_deps: [dup] popr swap 1 swap dup swap [ap21] dip32 2 swap ap11
+
+ow_assert: True swap True otherwise !
+ow_assert2: True False | otherwise not !
+ow_not: False otherwise not

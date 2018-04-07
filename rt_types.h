@@ -133,13 +133,16 @@ struct __attribute__((packed)) value {
   alt_set_t alt_set;
   union {
     struct {
-      val_t integer;   /* integer */
-      trace_cell_t tc; /* variable */
+      union {
+        val_t integer; /* integer */
+        double flt;    /* float */
+      };
+      int otherwise;
     };
-    double flt;        /* float */
     cell_t *ptr[3];    /* list */
     pair_t map[1];     /* map */
     seg_t str;         /* string */
+    trace_cell_t tc;   /* variable */
   };
 };
 

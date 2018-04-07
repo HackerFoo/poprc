@@ -119,6 +119,7 @@ response func_op1(cell_t **cp, type_request_t treq, int arg_type, int res_type, 
 
   cell_t *p = c->expr.arg[0];
   res = _op1(c, res_type, op, p);
+  if(!is_var(p)) otherwise(res, p->value.otherwise);
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   store_reduced(cp, res);
@@ -509,11 +510,14 @@ OP(assert) {
     if(!value_in_integer(p)) {
       if(is_list(q)) {
         res = map_assert(q, p, res);
+        res->value.alt_set = alt_set;
+        res->alt = c->alt;
+        trace_store_row_assert(c, res);
       } else {
         res->value.type = q->value.type;
         FLAG_SET(res->value, VALUE_VAR);
       }
-    } else if(is_var(q)) {
+    } else {
       /* The `success dependency` of p must still be carried
          through the assert, because replacing the assert with
          q will lose this dependency e.g. in `True otherwise !`
@@ -526,11 +530,17 @@ OP(assert) {
     }
     res->value.alt_set = alt_set;
     res->alt = c->alt;
-    trace_store_row_assert(c, res);
-  }
-
-  if(!res) {
-    res = mod_alt(ref(q), c->alt, alt_set);
+  } else {
+    res = ref(q);
+    if(res->value.alt_set != alt_set ||
+       c->alt ||
+       p->value.otherwise) {
+      unique(&res);
+      drop(res->alt);
+    }
+    res->value.alt_set = alt_set;
+    res->alt = c->alt;
+    res->value.otherwise = p->value.otherwise;
   }
 
   store_reduced(cp, res);
@@ -785,6 +795,18 @@ OP(symbol_t) {
   return func_type(cp, treq, T_SYMBOL);
 }
 
+cell_t *otherwise(cell_t *c, int t) {
+  if(is_var(c)) {
+    cell_t *tc = &c->value.tc.entry[t];
+    tc->expr.arg[1] = trace_encode(c->value.tc.index);
+  } else {
+    unique(&c);
+    assert_error(!c->value.otherwise); // TODO
+    c->value.otherwise = t;
+  }
+  return c;
+}
+
 WORD("otherwise", otherwise, 2, 1)
 OP(otherwise) {
   cell_t *c = *cp;
@@ -803,12 +825,14 @@ OP(otherwise) {
   } else {
     cell_t *p = clear_ptr(c->expr.arg[0]);
     CHECK(!is_var(p), FAIL);
-    res = var(T_ANY, c);
+    int t = trace_otherwise(p);
     CHECK(AND0(rsp0,
                reduce_arg(c, 1, &alt_set, treq)));
     clear_flags(c);
-    cell_t *q = c->expr.arg[1];
-    update_var_from_value(res, q);
+    cell_t *q = take(&c->expr.arg[1]);
+    res = otherwise(q, t);
+    res->value.alt_set = alt_set;
+    res->alt = c->alt;
   }
 
   store_reduced(cp, res);

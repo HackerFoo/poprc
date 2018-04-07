@@ -745,20 +745,14 @@ void clean_tmp(cell_t *l) {
 
 cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
   assert_error(is_value(c));
-  cell_t *n;
-  if(c->alt == alt &&
-     c->value.alt_set == alt_set) return c;
-  if(!c->n) {
-    n = c;
+  if(c->alt != alt ||
+     c->value.alt_set != alt_set) {
+    unique(&c);
     drop(c->alt);
-  } else {
-    if(c->n != PERSISTENT) --c->n;
-    n = copy(c);
-    TRAVERSE_REF(n, args, ptrs);
   }
-  n->alt = alt;
-  n->value.alt_set = alt_set;
-  return n;
+  c->alt = alt;
+  c->value.alt_set = alt_set;
+  return c;
 }
 
 void store_lazy(cell_t **cp, cell_t *r, alt_set_t alt_set) {

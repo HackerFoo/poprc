@@ -600,3 +600,19 @@ bool assert_ref(cell_t ***roots, size_t n) {
   }
   return check;
 }
+
+cell_t *take(cell_t **cp) {
+  cell_t *r = *cp;
+  *cp = NULL;
+  return r;
+}
+
+void unique(cell_t **cp) {
+  cell_t *c = *cp;
+  if(c->n) {
+    if(c->n != PERSISTENT) --c->n;
+    cell_t *n = copy(c);
+    TRAVERSE_REF(n, alt, args, ptrs);
+    *cp = n;
+  }
+}
