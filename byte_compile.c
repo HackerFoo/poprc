@@ -573,15 +573,14 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
 
 // replace variable c if there is a matching entry in a
 void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *entry) {
-  int x = c->value.tc.index;
+  int x = var_index(c->value.var);
   COUNTUP(j, a_n) {
     int y = trace_decode(a[j]);
     if(y == x) {
       int xn = a_n - j;
       cell_t *tc = &entry[xn];
-      tc->value.type = trace_type(trace_cell_ptr(c->value.tc));
-      c->value.tc.index = xn;
-      c->value.tc.entry = entry;
+      tc->value.type = trace_type(c->value.var);
+      c->value.var = &entry[xn];
       return;
     }
   }
@@ -706,11 +705,11 @@ void mark_barriers(cell_t *entry, cell_t *c) {
     if(x) {
       LOG("barrier %E %C[%d]: %C #barrier", entry, c, p-c->expr.arg, x);
       if(is_var(x)) {
-        trace_cell_t tc = x->value.tc;
+        cell_t *v = x->value.var;
         drop(x);
         *p = var_create_nonlist(x->value.type,
-                                (trace_cell_t) {entry, trace_alloc_var(entry), 0});
-        trace_cell_ptr((*p)->value.tc)->value.tc = tc;
+                                trace_alloc_var(entry));
+        (*p)->value.var->value.var = v;
       //} else if(x->op == OP_ap) {
       //  LOG(HACK " marking barrier through ap %C", x);
       //  mark_barriers(entry, x);
@@ -752,12 +751,12 @@ void mark_quote_barriers(cell_t *entry, cell_t *c) {
     cell_t *x = *p;
     if(!x) continue;
     if(is_var(x)) {
-      trace_cell_t tc = x->value.tc;
-      if(tc.entry == entry) continue;
+      cell_t *v = x->value.var;
+      if(var_entry(v) == entry) continue;
       drop(x);
       *p = var_create_nonlist(x->value.type,
-                              (trace_cell_t) {entry, trace_alloc_var(entry), 0});
-      trace_cell_ptr((*p)->value.tc)->value.tc = tc;
+                              trace_alloc_var(entry));
+      (*p)->value.var->value.var = v;
     }
   }
 }
@@ -767,7 +766,7 @@ cell_t *flat_quote(cell_t *new_entry, cell_t *parent_entry) {
   unsigned int in = new_entry->entry.in;
 
   FOR_TRACE(p, new_entry) {
-    if(is_var(p) && !p->value.tc.entry) {
+    if(is_var(p) && !p->value.var) {
       in--;
     }
   }
@@ -776,12 +775,11 @@ cell_t *flat_quote(cell_t *new_entry, cell_t *parent_entry) {
   nc->op = OP_exec;
 
   FOR_TRACE(p, new_entry) {
-    if(is_var(p) && p->value.tc.entry) {
+    if(is_var(p) && p->value.var) {
       switch_entry(parent_entry, p); // ***
-      assert_error(p->value.tc.entry == parent_entry);
-      cell_t *tp = trace_cell_ptr(p->value.tc);
-      cell_t *v = var_create_nonlist(trace_type(tp),
-                                     (trace_cell_t) {parent_entry, tp-parent_entry, 0});
+      assert_error(var_entry(p->value.var) == parent_entry);
+      cell_t *tp = p->value.var;
+      cell_t *v = var_create_nonlist(trace_type(tp), tp);
       assert_error(INRANGE(p->pos, 1, in));
       nc->expr.arg[in - p->pos] = v;
       LOG("arg[%d] -> %d", in - p->pos, tp - parent_entry);
@@ -827,10 +825,10 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
 
   trace_clear_alt(parent_entry);
   cell_t *res = var(T_ANY, q, parent_entry->pos);
-  assert_error(res->value.tc.entry == parent_entry,
+  assert_error(var_entry(res->value.var) == parent_entry,
                "parent: %E, tc.entry: %E",
-               parent_entry, res->value.tc.entry);
-  int x = res->value.tc.index;
+               parent_entry, var_entry(res->value.var));
+  int x = var_index(res->value.var);
   trace_reduction(q, res);
   drop(q);
   drop(res);

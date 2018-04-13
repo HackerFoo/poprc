@@ -15,33 +15,33 @@ ___ algorithm.__caret___r0 (3 -> 3) x3 rec ___
 [7] __primitive.assert 1 6, type = i x1
 [8] __primitive.assert 2 6, type = i x1
 [9] __primitive.assert 3 6, type = i x1
-[10] return [ 9 8 7 ], type = r -> 26 x1
-[11] __primitive.neq 1 5, type = s x6
-[12] __primitive.assert 22 11, type = i x1
-[13] __primitive.shiftr 1 14, type = i x2
-[14] val 1, type = i x5
-[15] __primitive.mul 2 2, type = i x2
-[16] __primitive.bitand 1 14, type = i x1
-[17] __primitive.eq 16 14, type = s x1
-[18] __primitive.assert 19 17, type = i x1
-[19] __primitive.mul 3 2, type = i x1
-[20] algorithm.__caret___r0 18 15 13 -> 24 22, type = i x3
-[22] __primitive.dep 20, type = i x1
-[23] __primitive.assert 24 11, type = i x1
-[24] __primitive.dep 20, type = i x1
-[25] __primitive.assert 20 11, type = i x1
-[26] return [ 25 23 12 ], type = r -> 38 x1
-[27] __primitive.assert 34 11, type = i x1
-[28] __primitive.bitand 1 14, type = i x1
-[29] __primitive.eq 28 14, type = s x1
-[30] __primitive.not 29, type = s x1
-[31] __primitive.assert 3 30, type = i x1
-[32] algorithm.__caret___r0 31 15 13 -> 34 36, type = i x3
-[34] __primitive.dep 32, type = i x1
-[35] __primitive.assert 36 11, type = i x1
-[36] __primitive.dep 32, type = i x1
-[37] __primitive.assert 32 11, type = i x1
-[38] return [ 37 27 35 ], type = r x1
+[10] return [ 9 8 7 ], type = r -> 27 x1
+[12] __primitive.neq 1 5, type = s x6
+[13] __primitive.assert 23 12, type = i x1
+[14] __primitive.shiftr 1 15, type = i x2
+[15] val 1, type = i x5
+[16] __primitive.mul 2 2, type = i x2
+[17] __primitive.bitand 1 15, type = i x1
+[18] __primitive.eq 17 15, type = s x1
+[19] __primitive.assert 20 18, type = i x1
+[20] __primitive.mul 3 2, type = i x1
+[21] algorithm.__caret___r0 19 16 14 -> 25 23, type = i x3
+[23] __primitive.dep 21, type = i x1
+[24] __primitive.assert 25 12, type = i x1
+[25] __primitive.dep 21, type = i x1
+[26] __primitive.assert 21 12, type = i x1
+[27] return [ 26 24 13 ], type = r -> 40 x1
+[29] __primitive.assert 36 12, type = i x1
+[30] __primitive.bitand 1 15, type = i x1
+[31] __primitive.eq 30 15, type = s x1
+[32] __primitive.not 31, type = s x1
+[33] __primitive.assert 3 32, type = i x1
+[34] algorithm.__caret___r0 33 16 14 -> 36 38, type = i x3
+[36] __primitive.dep 34, type = i x1
+[37] __primitive.assert 38 12, type = i x1
+[38] __primitive.dep 34, type = i x1
+[39] __primitive.assert 34 12, type = i x1
+[40] return [ 39 29 37 ], type = r x1
 
 ___ algorithm.acc_odd_power (3 -> 1) x2 ___
 [1] var, type = ?i x2
@@ -126,12 +126,12 @@ ___ algorithm.power_step (3 -> 3) x2 ___
 [8] __primitive.eq 7 5, type = s x1
 [9] __primitive.assert 10 8, type = i x1
 [10] __primitive.mul 3 2, type = i x1
-[11] return [ 9 6 4 ], type = r -> 16 x1
-[12] __primitive.bitand 1 5, type = i x1
-[13] __primitive.eq 12 5, type = s x1
-[14] __primitive.not 13, type = s x1
-[15] __primitive.assert 3 14, type = i x1
-[16] return [ 15 6 4 ], type = r x1
+[11] return [ 9 6 4 ], type = r -> 17 x1
+[13] __primitive.bitand 1 5, type = i x1
+[14] __primitive.eq 13 5, type = s x1
+[15] __primitive.not 14, type = s x1
+[16] __primitive.assert 3 15, type = i x1
+[17] return [ 16 6 4 ], type = r x1
 
 ___ algorithm.reduce_power (2 -> 2) ___
 [1] var, type = ?i x1
@@ -642,19 +642,19 @@ ___ control.times_r0 (3 -> 3) x2 rec ___
 [7] __primitive.assert 1 6, type = i x1
 [8] __primitive.assert 2 6, type = l x1
 [9] __primitive.assert 3 6, type = a x1
-[10] return [ 9 8 7 ], type = r -> 23 x1
-[11] __primitive.gt 1 5, type = s x3
-[12] __primitive.assert 19 11, type = i x1
-[13] __primitive.ap 3 2 -> 14, type = l x1
-[14] __primitive.dep 13, type = a x1
-[15] __primitive.sub 1 16, type = i x1
-[16] val 1, type = i x1
-[17] control.times_r0 14 2 15 -> 21 19, type = a x3
-[19] __primitive.dep 17, type = i x1
-[20] __primitive.assert 21 11, type = l x1
-[21] __primitive.dep 17, type = l x1
-[22] __primitive.assert 17 11, type = a x1
-[23] return [ 22 20 12 ], type = r x1
+[10] return [ 9 8 7 ], type = r -> 24 x1
+[12] __primitive.gt 1 5, type = s x3
+[13] __primitive.assert 20 12, type = i x1
+[14] __primitive.ap 3 2 -> 15, type = l x1
+[15] __primitive.dep 14, type = a x1
+[16] __primitive.sub 1 17, type = i x1
+[17] val 1, type = i x1
+[18] control.times_r0 15 2 16 -> 22 20, type = a x3
+[20] __primitive.dep 18, type = i x1
+[21] __primitive.assert 22 12, type = l x1
+[22] __primitive.dep 18, type = l x1
+[23] __primitive.assert 18 12, type = a x1
+[24] return [ 23 21 13 ], type = r x1
 
 ___ control.times_step (3 -> 3) ___
 [1] var, type = ?i x1
@@ -709,10 +709,10 @@ ___ list.filter_step (3 -> 3) x2 ___
 [7] __primitive.dep 6, type = s x2
 [8] __primitive.not 7, type = s x1
 [9] __primitive.assert 2 8, type = l x1
-[10] return [ 4 9 1 ], type = r -> 13 x1
-[11] __primitive.assert 12 7, type = l x1
-[12] __primitive.ap 5 2, type = l x1
-[13] return [ 4 11 1 ], type = r x1
+[10] return [ 4 9 1 ], type = r -> 14 x1
+[12] __primitive.assert 13 7, type = l x1
+[13] __primitive.ap 5 2, type = l x1
+[14] return [ 4 12 1 ], type = r x1
 
 ___ list.foldl_step (3 -> 3) ___
 [1] var, type = ?l x1
@@ -827,20 +827,20 @@ ___ list.split_at_r0 (3 -> 3) x2 rec ___
 [7] __primitive.assert 1 6, type = i x1
 [8] __primitive.assert 2 6, type = l x1
 [9] __primitive.assert 3 6, type = l x1
-[10] return [ 9 8 7 ], type = r -> 24 x1
-[11] __primitive.gt 1 5, type = s x3
-[12] __primitive.assert 20 11, type = i x1
-[13] __primitive.sub 1 14, type = i x1
-[14] val 1, type = i x1
-[15] __primitive.ap 3 -> 16, type = l x2
-[16] __primitive.dep 15, type = a x1
-[17] __primitive.ap 16 2, type = l x1
-[18] list.split_at_r0 15 17 13 -> 22 20, type = l x3
-[20] __primitive.dep 18, type = i x1
-[21] __primitive.assert 22 11, type = l x1
-[22] __primitive.dep 18, type = l x1
-[23] __primitive.assert 18 11, type = l x1
-[24] return [ 23 21 12 ], type = r x1
+[10] return [ 9 8 7 ], type = r -> 25 x1
+[12] __primitive.gt 1 5, type = s x3
+[13] __primitive.assert 21 12, type = i x1
+[14] __primitive.sub 1 15, type = i x1
+[15] val 1, type = i x1
+[16] __primitive.ap 3 -> 17, type = l x2
+[17] __primitive.dep 16, type = a x1
+[18] __primitive.ap 17 2, type = l x1
+[19] list.split_at_r0 16 18 14 -> 23 21, type = l x3
+[21] __primitive.dep 19, type = i x1
+[22] __primitive.assert 23 12, type = l x1
+[23] __primitive.dep 19, type = l x1
+[24] __primitive.assert 19 12, type = l x1
+[25] return [ 24 22 13 ], type = r x1
 
 ___ logic.and (2 -> 1) x2 ___
 [1] var, type = ?s x2
@@ -851,13 +851,6 @@ ___ logic.and (2 -> 1) x2 ___
 [6] __primitive.assert 7 5, type = s x1
 [7] val False, type = s x1
 [8] return [ 6 ], type = r x1
-
-___ logic.default (2 -> 1) x2 ___
-[1] var, type = ?a x1
-[2] var, type = ?a x2
-[3] return [ 2 ], type = r -> 5 x1
-[4] __primitive.otherwise 2 1, type = a x1
-[5] return [ 4 ], type = r x1
 
 ___ logic.implies (2 -> 1) x2 ___
 [1] var, type = ?a x1
@@ -879,15 +872,6 @@ ___ logic.or (2 -> 1) x2 ___
 [6] __primitive.assert 7 1, type = s x1
 [7] val True, type = s x1
 [8] return [ 6 ], type = r x1
-
-___ logic.valid (1 -> 1) x2 ___
-[1] var, type = ?a x1
-[2] __primitive.otherwise 1 3, type = s x2
-[3] val False, type = s x1
-[4] return [ 2 ], type = r -> 7 x1
-[5] __primitive.otherwise 2 6, type = s x1
-[6] val True, type = s x1
-[7] return [ 5 ], type = r x1
 
 ___ num.even (1 -> 1) ___
 [1] var, type = ?i x1
@@ -1444,15 +1428,6 @@ ___ tests.decel_step (1 -> 1) x2 ___
 [10] __primitive.assert 8 9, type = i x1
 [11] return [ 10 ], type = r x1
 
-___ tests.default_max (2 -> 1) x2 ___
-[1] var, type = ?i x2
-[2] var, type = ?i x2
-[3] __primitive.lt 2 1, type = s x1
-[4] __primitive.assert 1 3, type = i x2
-[5] return [ 4 ], type = r -> 7 x1
-[6] __primitive.otherwise 4 2, type = i x1
-[7] return [ 6 ], type = r x1
-
 ___ tests.drop_loop (2 -> 1) ___
 [1] var, type = ?i x1
 [2] var, type = ?a x1
@@ -1545,17 +1520,17 @@ ___ tests.drop_loop3_r0 (3 -> 3) x2 rec ___
 [7] __primitive.assert 1 6, type = i x1
 [8] __primitive.assert 2 6, type = a x1
 [9] __primitive.assert 3 6, type = a x1
-[10] return [ 9 8 7 ], type = r -> 21 x1
-[11] __primitive.gt 1 5, type = s x3
-[12] __primitive.assert 17 11, type = i x1
-[13] __primitive.sub 1 14, type = i x1
-[14] val 1, type = i x1
-[15] tests.drop_loop3_r0 3 2 13 -> 19 17, type = a x3
-[17] __primitive.dep 15, type = i x1
-[18] __primitive.assert 19 11, type = a x1
-[19] __primitive.dep 15, type = a x1
-[20] __primitive.assert 15 11, type = a x1
-[21] return [ 20 18 12 ], type = r x1
+[10] return [ 9 8 7 ], type = r -> 22 x1
+[12] __primitive.gt 1 5, type = s x3
+[13] __primitive.assert 18 12, type = i x1
+[14] __primitive.sub 1 15, type = i x1
+[15] val 1, type = i x1
+[16] tests.drop_loop3_r0 3 2 14 -> 20 18, type = a x3
+[18] __primitive.dep 16, type = i x1
+[19] __primitive.assert 20 12, type = a x1
+[20] __primitive.dep 16, type = a x1
+[21] __primitive.assert 16 12, type = a x1
+[22] return [ 21 19 13 ], type = r x1
 
 ___ tests.drop_loop4 (4 -> 3) ___
 [1] var, type = ?i x1
@@ -1945,18 +1920,4 @@ ___ tests.test_ap21 (3 -> 1) ___
 [4] __primitive.ap 3 2 1 -> 5, type = l x1
 [5] __primitive.dep 4, type = a x1
 [6] return [ 5 ], type = r x1
-
-___ tests.vifte (3 -> 1) x2 ___
-[1] var, type = ?a x1
-[2] var, type = ?a x1
-[3] var, type = ?a x1
-[4] __primitive.otherwise 3 5, type = s x2
-[5] val False, type = s x1
-[6] __primitive.not 4, type = s x1
-[7] __primitive.assert 1 6, type = a x1
-[8] return [ 7 ], type = r -> 12 x1
-[9] __primitive.otherwise 4 10, type = s x1
-[10] val True, type = s x1
-[11] __primitive.assert 2 9, type = a x1
-[12] return [ 11 ], type = r x1
 

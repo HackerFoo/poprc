@@ -271,22 +271,22 @@ void graph_cell(FILE *f, cell_t const *c) {
       }
     } else if(is_fail(c)) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
-    } else if(is_var(c)) {
-      if(c->value.tc.entry) {
+    } else if(is_value(c)) {
+      if(c->value.var) {
         fprintf(f, "<tr><td bgcolor=\"orange\">trace: %d.%d",
-                entry_number(c->value.tc.entry),
-                (int)c->value.tc.index);
+                entry_number(var_entry(c->value.var)),
+                (int)var_index(c->value.var));
         if(FLAG(c->value, VALUE_DEP)) {
           fprintf(f, "[%d]", (int)c->pos);
         }
         fprintf(f, "</td></tr>");
       }
-    }
-    if(is_value(c)) {
-      if(ONEOF(c->value.type, T_INT, T_SYMBOL) && value_in_integer(c)) {
-        fprintf(f, "<tr><td bgcolor=\"yellow\">val: %" PRIdPTR "</td></tr>", c->value.integer);
-      } else if(c->value.type == T_FLOAT && !is_var(c)) {
-        fprintf(f, "<tr><td bgcolor=\"yellow\">val: %.15g</td></tr>", c->value.flt);
+      if(!is_var(c)) {
+        if(ONEOF(c->value.type, T_INT, T_SYMBOL)) {
+          fprintf(f, "<tr><td bgcolor=\"yellow\">val: %" PRIdPTR "</td></tr>", c->value.integer);
+        } else if(c->value.type == T_FLOAT && !is_var(c)) {
+          fprintf(f, "<tr><td bgcolor=\"yellow\">val: %.15g</td></tr>", c->value.flt);
+        }
       }
     }
   } else {
@@ -580,27 +580,6 @@ FORMAT(cell, 'C') {
     printf("fail");
   } else {
     printf("X");
-  }
-}
-
-FORMAT(entry, 'E') {
-  if(i) {
-    cell_t *entry = (cell_t *)i;
-    printf("%s.%s(%d)",
-           entry->module_name,
-           entry->word_name,
-           entry_number(entry));
-  } else {
-    printf("null_entry");
-  }
-}
-
-FORMAT(entry_short, 'e') {
-  cell_t *entry = (cell_t *)i;
-  if(entry->word_name) {
-    printf("%s", entry->word_name);
-  } else {
-    printf("%d", entry_number(entry));
   }
 }
 

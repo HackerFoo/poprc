@@ -75,18 +75,11 @@ OP(value) {
     cell_t *parent = entry->entry.parent;
     if(parent) {
       int v = trace_store_value(entry->entry.parent, c);
-      int t = trace_alloc_var(entry);
-      LOG("move value %C %e[%d] -> %e[%d]", c, entry, t, parent, v);
-      c->value.tc = (trace_cell_t) {
-        .entry = entry,
-        .index = t
-      };
+      cell_t *tc = trace_alloc_var(entry);
+      LOG("move value %C %T -> %T", c, tc, &parent[v]);
+      c->value.var = tc;
       c->value.flags = VALUE_VAR;
-      cell_t *tc = trace_cell_ptr(c->value.tc);
-      tc->value.tc = (trace_cell_t) {
-        .entry = parent,
-        .index = v
-      };
+      tc->value.var = &parent[v];
     }
   }
 
@@ -125,25 +118,6 @@ cell_t *symbol(val_t sym) {
 
 bool is_value(cell_t const *c) {
   return c && c->op == OP_value;
-}
-
-bool value_in_integer(const cell_t *c) {
-  assert_error(is_value(c) && ONEOF(c->value.type, T_INT, T_SYMBOL));
-  return !is_var(c) || FLAG(c->value.tc, TC_VALUE);
-}
-
-void set_var_value(cell_t *c, val_t x) {
-  FLAG_SET(c->value.tc, TC_VALUE);
-  c->value.integer = x;
-}
-
-cell_t *update_var_from_value(cell_t *v, cell_t *a) {
-  assert_error(is_value(a));
-  uint8_t t = v->value.type = a->value.type;
-  if(ONEOF(t, T_INT, T_SYMBOL) && value_in_integer(a)) {
-    set_var_value(v, a->value.integer);
-  }
-  return v;
 }
 
 void placeholder_extend(cell_t **lp, int in, int out) {
@@ -196,18 +170,18 @@ void placeholder_extend(cell_t **lp, int in, int out) {
   *lp = l;
 }
 
-cell_t *var_create(type_t t, trace_cell_t tc, int in, int out) {
+cell_t *var_create(type_t t, cell_t *tc, int in, int out) {
   cell_t *v = var_create_nonlist(t, tc);
   return t == T_LIST && (in || out) ?
     var_create_list(v, in, out, 0) :
     v;
 }
 
-cell_t *var_create_nonlist(type_t t, trace_cell_t tc) {
+cell_t *var_create_nonlist(type_t t, cell_t *tc) {
   cell_t *c = closure_alloc(1);
   c->op = OP_value;
   c->size = 2;
-  c->value.tc = tc;
+  c->value.var = tc;
   c->value.flags = VALUE_VAR;
   c->value.type = t;
   trace_update_type(c);
@@ -233,7 +207,7 @@ cell_t *var_create_list(cell_t *f, int in, int out, int shift) {
 cell_t *var_create_with_entry(type_t t, cell_t *entry, csize_t size) {
   assert_error(entry);
   int ix = trace_alloc(entry, size);
-  return var_create(t, (trace_cell_t) {entry, ix, 0}, 0, 0);
+  return var_create(t, tc_get(entry, ix), 0, 0);
 }
 
 cell_t *var_(type_t t, cell_t *c, uint8_t pos) {
@@ -243,7 +217,7 @@ cell_t *var_(type_t t, cell_t *c, uint8_t pos) {
     cell_t *a = clear_ptr(*p);
     if(a && is_var(a)) {
       // inherit entry with highest pos
-      cell_t *e = a->value.tc.entry;
+      cell_t *e = var_entry(a->value.var);
       if(e && e->pos > pos) {
         pos = e->pos;
         entry = e;
@@ -388,7 +362,7 @@ OP(placeholder) {
     if(d && is_dep(d)) {
       drop(c);
       d->expr.arg[0] = res;
-      store_dep(d, res->value.tc, i, T_ANY, alt_set);
+      store_dep(d, res->value.var, i, T_ANY, alt_set);
     } else {
       LOG("dropped placeholder[%C] output", c);
     }

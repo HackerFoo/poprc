@@ -74,14 +74,6 @@ typedef struct type_request {
   val_t expected_value;
 } type_request_t;
 
-#define TC_VALUE 0x01
-
-typedef struct trace_cell {
-  cell_t *entry;
-  csize_t index;
-  uint8_t flags;
-} trace_cell_t;
-
 typedef enum response {
   SUCCESS = 0,
   FAIL,
@@ -133,16 +125,15 @@ struct __attribute__((packed)) value {
   alt_set_t alt_set;
   union {
     struct {
+      cell_t *var; /* variable */
       union {
-        val_t integer; /* integer */
-        double flt;    /* float */
+        val_t integer;  /* integer */
+        double flt;     /* float */
+        seg_t str;      /* string */
+        cell_t *ptr[2]; /* list */
       };
-      int otherwise;
     };
-    cell_t *ptr[3];    /* list */
-    pair_t map[1];     /* map */
-    seg_t str;         /* string */
-    trace_cell_t tc;   /* variable */
+    pair_t map[1]; /* map */
   };
 };
 
@@ -242,11 +233,13 @@ struct __attribute__((packed, aligned(4))) cell {
   };
 };
 
+#define LIST_OFFSET ((offsetof(cell_t, value.ptr) - offsetof(cell_t, expr.arg)) / sizeof(cell_t *))
+
 #ifndef EMSCRIPTEN
 static_assert(sizeof(cell_t) == sizeof_field(cell_t, raw), "cell_t wrong size");
 #endif
 
-static_assert(offsetof(cell_t, expr.arg[1]) == offsetof(cell_t, value.ptr[0]), "second arg not aliased with first ptr");
+//static_assert(offsetof(cell_t, expr.arg[1]) == offsetof(cell_t, value.ptr[0]), "second arg not aliased with first ptr"); // what relies on this?
 static_assert(offsetof(cell_t, expr.flags) == offsetof(cell_t, value.flags), "expr.flags should alias value.flags");
 
 typedef struct stats_t {

@@ -463,7 +463,7 @@ void store_fail(cell_t *c, cell_t *alt) {
   c->alt = alt;
 }
 
-void store_dep(cell_t *c, trace_cell_t tc, csize_t pos, type_t t, alt_set_t alt_set) {
+void store_dep(cell_t *c, cell_t *tc, csize_t pos, type_t t, alt_set_t alt_set) {
   cell_t v = {
     .op = OP_value,
     .n = c->n,
@@ -474,7 +474,7 @@ void store_dep(cell_t *c, trace_cell_t tc, csize_t pos, type_t t, alt_set_t alt_
       .alt_set = alt_set,
       .type = t,
       .flags = VALUE_VAR | VALUE_DEP,
-      .tc = tc
+      .var = tc
     }
   };
   if(c->op) closure_shrink(c, 1);

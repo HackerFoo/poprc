@@ -43,7 +43,7 @@ static cell_t *trace_ptr = &trace_cells[0];
 static cell_t *active_entries[1 << 6];
 static int prev_entry_pos = 0;
 
-const trace_cell_t nulltc = {NULL, 0, 0};
+#define ENTRY_BLOCK_SIZE 64
 
 #if INTERFACE
 typedef intptr_t trace_index_t;
@@ -84,10 +84,20 @@ int entry_number(cell_t const *e) {
 
 cell_t *entry_from_number(int n) {
   assert_throw(n >= 0 &&
-               n % 64 == 0 &&
+               n % ENTRY_BLOCK_SIZE == 0 &&
                n < trace_ptr - trace_cells,
                "invalid entry number");
   return &trace_cells[n];
+}
+
+cell_t *var_entry(cell_t *v) {
+  size_t offset = v - trace_cells;
+  return &trace_cells[offset & ~(ENTRY_BLOCK_SIZE - 1)];
+}
+
+int var_index(cell_t *v) {
+  size_t offset = v - trace_cells;
+  return offset & (ENTRY_BLOCK_SIZE - 1);
 }
 
 // trace_encode/decode allow small integers to be encoded as pointers
@@ -138,46 +148,34 @@ bool is_ancestor_of(cell_t *ancestor, cell_t *entry) {
 }
 
 static
-void switch_entry_(cell_t *entry, trace_cell_t *tc) {
-  if(tc->entry != entry->entry.parent) {
-    switch_entry_(entry->entry.parent, tc);
+void switch_entry_(cell_t *entry, cell_t **v) {
+  if(var_entry(*v) != entry->entry.parent) {
+    switch_entry_(entry->entry.parent, v);
   }
-  trace_cell_t old = *tc;
+  cell_t *old = *v;
   // a little hacky because ideally variables shouldn't be duplicated
   // see TODO in func_value
   FOR_TRACE(c, entry) {
     if(is_var(c) &&
-       c->value.tc.entry == old.entry &&
-       c->value.tc.index == old.index) {
-      *tc = (trace_cell_t) {
-        entry,
-        c-entry,
-        0
-      };
+       c->value.var == old) {
+      *v = c;
       goto end;
     }
   }
-  *tc = (trace_cell_t) {
-    entry,
-    trace_alloc_var(entry),
-    0
-  };
-  cell_t *p = trace_cell_ptr(*tc);
-  p->value.tc = old;
-  p->value.type = trace_type(trace_cell_ptr(old));
+  cell_t *p = *v = trace_alloc_var(entry);
+  p->value.var = old;
+  p->value.type = trace_type(old);
 end:
-  LOG("%e[%d] -> %e[%d]",
-      old.entry, old.index,
-      entry, tc->index);
+  LOG("%T -> %T", old, *v);
 }
 
 //static
 void switch_entry(cell_t *entry, cell_t *r) {
   CONTEXT("switch_entry %E %C", entry, r);
   assert_error(is_var(r));
-  if(r->value.tc.entry != entry) {
-    assert_error(is_ancestor_of(r->value.tc.entry, entry));
-    switch_entry_(entry, &r->value.tc);
+  if(var_entry(r->value.var) != entry) {
+    assert_error(is_ancestor_of(var_entry(r->value.var), entry));
+    switch_entry_(entry, &r->value.var);
   }
 }
 
@@ -190,7 +188,7 @@ int trace_get_value(cell_t *entry, cell_t *r) {
   } else if(is_var(r)) {
     if(FLAG(r->value, VALUE_DEP)) return 0;
     switch_entry(entry, r);
-    return r->value.tc.index;
+    return var_index(r->value.var);
   } else {
     int t = trace_lookup_value_linear(entry, r);
     if(t) return t;
@@ -207,16 +205,12 @@ int trace_alloc(cell_t *entry, csize_t args) {
   }
   int index = entry->entry.len + 1;
   size_t size = calculate_cells(args);
-  cell_t *tc = trace_cell_ptr((trace_cell_t) {entry, index, 0});
+  cell_t *tc = &entry[index];
   entry->entry.len += size;
   tc->n = -1;
   tc->size = args;
-  LOG("trace_alloc %e[%d] size = %d", entry, index, args);
+  LOG("trace_alloc %T size = %d", tc, args);
   return index;
-}
-
-cell_t *trace_cell_ptr(trace_cell_t tc) {
-  return tc.entry && tc.index > 0 ? &tc.entry[tc.index] : NULL;
 }
 
 // reduce allocated space in the trace
@@ -245,11 +239,21 @@ int trace_copy(cell_t *entry, const cell_t *c) {
   return index;
 }
 
+void trace_arg(cell_t *tc, int n, cell_t *a) {
+  assert_error(is_var(a));
+  cell_t **p = &tc->expr.arg[n];
+  if(!*p) {
+    cell_t *v = a->value.var;
+    *p = trace_encode(var_index(v));
+    v->n++;
+  }
+}
+
 // store expression c in the trace
 static
 void trace_store_expr(cell_t *c, const cell_t *r) {
-  cell_t *entry = r->value.tc.entry;
-  cell_t *tc = trace_cell_ptr(r->value.tc);
+  cell_t *entry = var_entry(r->value.var);
+  cell_t *tc = r->value.var;
   if(!tc) return;
   type_t t = r->value.type;
   if(tc->op) {
@@ -261,7 +265,7 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
         FOR_TRACE(x, entry) {
           // update through assertions
           if(x->op == OP_assert) {
-            if(trace_decode(x->expr.arg[0]) == r->value.tc.index) {
+            if(trace_decode(x->expr.arg[0]) == var_index(r->value.var)) {
               x->trace.type = t;
             }
           }
@@ -274,8 +278,8 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
   }
   assert_error(tc->size == c->size);
   assert_error(c->op != OP_dep);
-  CONTEXT_LOG("trace_store_expr: %e[%d] <- %s %C %C",
-              entry, r->value.tc.index, op_name(c->op), c, r);
+  CONTEXT_LOG("trace_store_expr: %T <- %s %C %C",
+              r->value.var, op_name(c->op), c, r);
 
   refcount_t n = tc->n;
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
@@ -322,8 +326,8 @@ void trace_store_row_assert(cell_t *c, cell_t *r) {
   cell_t *f = *left_elem(r);
   if(!is_var(f)) return;
   assert_error(is_function(f));
-  cell_t *entry = f->value.tc.entry;
-  cell_t *t = trace_cell_ptr(f->value.tc);
+  cell_t *entry = var_entry(f->value.var);
+  cell_t *t = f->value.var;
   if(t->op) return;
   t->op = OP_assert;
   t->expr.arg[0] = trace_encode(is_row_list(p) ?
@@ -335,14 +339,15 @@ void trace_store_row_assert(cell_t *c, cell_t *r) {
   t->trace.type = T_LIST;
 }
 
-int trace_otherwise(cell_t *p) {
-  cell_t *entry = p->value.tc.entry;
+// for otherwise and assert
+cell_t *trace_partial(op op, int n, cell_t *p) {
+  cell_t *entry = var_entry(p->value.var);
   int x = trace_alloc(entry, 2);
   cell_t *tc = &entry[x];
-  tc->op = OP_otherwise;
-  tc->expr.arg[0] = trace_encode(p->value.tc.index);
-  entry[p->value.tc.index].n++;
-  return x;
+  tc->op = op;
+  tc->expr.arg[n] = trace_encode(var_index(p->value.var));
+  p->value.var->n++;
+  return tc;
 }
 
 // store value c in the trace
@@ -356,22 +361,46 @@ int trace_store_value(cell_t *entry, const cell_t *c) {
     x = trace_copy(entry, c);
     cell_t *tc = &entry[x];
     tc->value.alt_set = 0;
+    tc->value.var = NULL;
     tc->alt = NULL;
     tc->pos = 0;
     tc->n = -1;
   }
 
-  if(c->value.otherwise) {
-    int ow = c->value.otherwise;
-    cell_t *tc = &entry[ow];
-    if(!tc->expr.arg[1]) {
-      tc->expr.arg[1] = trace_encode(x);
-      entry[x].n++;
-    }
-    x = ow;
+  if(c->value.var) {
+    trace_apply_condition(c->value.var, &entry[x]);
+    x = var_index(c->value.var);
   }
 
   return x;
+}
+
+// feed a through tc
+void trace_apply_condition(cell_t *tc, cell_t *a) {
+  cell_t **p = NULL;
+  cell_t *entry = var_entry(tc);
+  assert_error(entry == var_entry(a));
+
+  // add a to the end of the chain starting at tc
+  do {
+    switch(tc->op) {
+    case OP_assert:
+      p = &tc->expr.arg[0];
+      break;
+    case OP_otherwise:
+      p = &tc->expr.arg[1];
+      break;
+    default:
+      assert_error(false, "value.var set for invalid op");
+    }
+    if(*p) tc = &entry[trace_decode(*p)];
+  } while(*p && tc != a);
+
+  if(tc != a) {
+    LOG("%T arg <- %T", tc, a);
+    *p = trace_encode(var_index(a));
+    a->n++;
+  }
 }
 
 // store c which reduces to r in the trace
@@ -465,19 +494,19 @@ void trace_update(cell_t *c, cell_t *r) {
 void trace_dep(cell_t *c) {
   if(!is_var(c)) return;
   if(NOT_FLAG(c->value, VALUE_DEP)) return;
-  cell_t *entry = c->value.tc.entry;
+  cell_t *entry = var_entry(c->value.var);
   if(!entry) return;
   int x = trace_alloc(entry, 1);
   cell_t *tc = &entry[x];
-  cell_t *ph = trace_cell_ptr(c->value.tc);
-  int ph_x = c->value.tc.index;
+  cell_t *ph = c->value.var;
+  int ph_x = var_index(c->value.var);
   ph->expr.arg[c->pos] = trace_encode(x);
   LOG("trace_dep: %d <- %C %d[%d]", x, c, ph_x, c->pos);
   tc->op = OP_dep;
   tc->expr.arg[0] = trace_encode(ph_x);
   tc->trace.type = c->value.type;
   ph->n++;
-  c->value.tc.index = x;
+  c->value.var = tc;
   c->pos = 0;
   FLAG_CLEAR(c->value, VALUE_DEP);
 }
@@ -485,11 +514,13 @@ void trace_dep(cell_t *c) {
 // reclaim failed allocation if possible
 void trace_drop(cell_t *r) {
   if(!r || !is_var(r)) return;
-  trace_cell_t tc = r->value.tc;
-  cell_t *c = trace_cell_ptr(tc);
-  if(tc.entry && !c->op &&
-     tc.entry->entry.len - (tc.index - 1) == calculate_cells(c->size)) {
-    tc.entry->entry.len = tc.index - 1;
+  cell_t *v = r->value.var;
+  if(v && !v->op) {
+    cell_t *e = var_entry(v);
+    int ix = var_index(v);
+    if(e->entry.len - (ix - 1) == calculate_cells(v->size)) {
+      e->entry.len = ix - 1;
+    }
   }
 }
 
@@ -526,7 +557,7 @@ void trace_reduction(cell_t *c, cell_t *r) {
     if(!r) return;
   }
 
-  cell_t *entry = r->value.tc.entry;
+  cell_t *entry = var_entry(r->value.var);
   if(!entry) entry = new_entry;
 
   // make sure all input arguments are stored
@@ -551,7 +582,7 @@ void trace_reduction(cell_t *c, cell_t *r) {
 void trace_update_type(cell_t *c) {
   type_t t = c->value.type;
   if(t != T_ANY) {
-    cell_t *tc = trace_cell_ptr(c->value.tc);
+    cell_t *tc = c->value.var;
     if(tc && tc->op) {
       trace_set_type(tc, t);
     }
@@ -570,7 +601,7 @@ void trace_set_type(cell_t *tc, type_t t) {
   if(is_value(tc)) {
     tc->value.type = t;
     if(is_var(tc)) {
-      cell_t *p = trace_cell_ptr(tc->value.tc);
+      cell_t *p = tc->value.var;
       if(p) {
         trace_set_type(p, t);
       }
@@ -592,7 +623,7 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
     if(is_var(p) && is_function(p)) {
       // identity list, so just return the trace cell for the item in the list
       switch_entry(entry, p);
-      return p->value.tc.index;
+      return var_index(p->value.var);
     }
   }
 
@@ -605,9 +636,9 @@ cell_t *trace_quote_var(cell_t *l) {
   cell_t *f = *leftmost_row(&l);
   while(is_placeholder(f)) f = f->expr.arg[closure_in(f) - 1];
   assert_error(is_var(f), "not a var: %O %C", f->op, f);
-  cell_t *entry = f->value.tc.entry;
+  cell_t *entry = var_entry(f->value.var);
   int x = trace_build_quote(entry, l);
-  return x == NIL_INDEX ? &nil_cell : var_create_nonlist(T_LIST, (trace_cell_t) {entry, x, 0});
+  return x == NIL_INDEX ? &nil_cell : var_create_nonlist(T_LIST, &entry[x]);
 }
 
 // store a return
@@ -619,7 +650,7 @@ int trace_return(cell_t *entry, cell_t *c_) {
     trace_index_t x;
     if(is_var(*p)) {
       switch_entry(entry, *p);
-      x = (*p)->value.tc.index;
+      x = var_index((*p)->value.var);
     } else if(is_list(*p)) {
       x = trace_build_quote(entry, *p);
     } else {
@@ -629,10 +660,9 @@ int trace_return(cell_t *entry, cell_t *c_) {
     if(x >= 0) entry[x].n++;
   }
   int x = trace_copy(entry, c);
-  LOG("trace_return: %e[%d] <- %C", entry, x, c_);
-  trace_cell_t t = {entry, x, 0};
+  cell_t *tc = &entry[x];
+  LOG("trace_return: %T <- %C", tc, c_);
   closure_free(c);
-  cell_t *tc = trace_cell_ptr(t);
   tc->value.type = T_RETURN;
   tc->n = -1;
   tc->alt = NULL;
@@ -750,9 +780,9 @@ unsigned int trace_reduce_one(cell_t *entry, cell_t *c) {
   return alts;
 }
 
-int trace_alloc_var(cell_t *entry) {
+cell_t *trace_alloc_var(cell_t *entry) {
   int x = trace_alloc(entry, 2);
-  if(x <= 0) return x;
+  if(x <= 0) return NULL;
   cell_t *tc = &entry[x];
   tc->op = OP_value;
   tc->value.flags = VALUE_VAR;
@@ -760,7 +790,7 @@ int trace_alloc_var(cell_t *entry) {
   if(tc->pos != x) {
     FLAG_SET(entry->entry, ENTRY_MOV_VARS);
   }
-  return x;
+  return &entry[x];
 }
 
 bool valid_pos(uint8_t pos) {
@@ -773,7 +803,7 @@ cell_t *trace_expr_entry(uint8_t pos) {
 }
 
 cell_t *param(int t, cell_t *entry) {
-  return var_create_nonlist(t, (trace_cell_t) {entry, trace_alloc_var(entry), 0});
+  return var_create_nonlist(t, trace_alloc_var(entry));
 }
 
 void print_active_entries(const char *msg) {
@@ -787,3 +817,79 @@ void print_active_entries(const char *msg) {
   }
   if(sep != msg) printf("\n");
 }
+
+cell_t *tc_get(cell_t *entry, int x) {
+  return entry && x > 0 ? &entry[x] : NULL;
+}
+
+FORMAT(entry, 'E') {
+  if(i) {
+    cell_t *entry = (cell_t *)i;
+    printf("%s.%s(%d)",
+           entry->module_name,
+           entry->word_name,
+           entry_number(entry));
+  } else {
+    printf("null_entry");
+  }
+}
+
+FORMAT(entry_short, 'e') {
+  cell_t *entry = (cell_t *)i;
+  if(entry->word_name) {
+    printf("%s", entry->word_name);
+  } else {
+    printf("%d", entry_number(entry));
+  }
+}
+
+FORMAT(trace_cell, 'T') {
+  cell_t *tc = (cell_t *)i;
+  format_entry_short((val_t)var_entry(tc));
+  printf("[%d]", var_index(tc));
+}
+
+/* condiitons */
+
+cell_t *compose_conditions(cell_t *a, cell_t *b) {
+  if(!a) return b;
+  if(b) trace_apply_condition(a, b);
+  return a;
+}
+
+void add_condition_var(cell_t **v, cell_t *a) {
+  *v = compose_conditions(a, *v);
+}
+
+void add_condition(cell_t **v, cell_t *a) {
+  if(a &&
+     is_value(a) &&
+     !is_var(a)) {
+    add_condition_var(v, a->value.var);
+  }
+}
+
+void add_conditions_2(cell_t *res, cell_t *a0) {
+  add_condition(&res->value.var, a0);
+}
+
+void add_conditions_3(cell_t *res, cell_t *a0, cell_t *a1) {
+  cell_t **v = &res->value.var;
+  add_condition(v, a0);
+  add_condition(v, a1);
+}
+
+void add_conditions_var_2(cell_t *res, cell_t *a0) {
+  add_condition_var(&res->value.var, a0);
+}
+
+void add_conditions_var_3(cell_t *res, cell_t *a0, cell_t *a1) {
+  cell_t **v = &res->value.var;
+  add_condition(v, a0);
+  add_condition_var(v, a1);
+}
+
+#if INTERFACE
+#define add_conditions(...) DISPATCH(add_conditions, __VA_ARGS__)
+#define add_conditions_var(...) DISPATCH(add_conditions_var, __VA_ARGS__)
+#endif

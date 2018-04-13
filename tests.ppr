@@ -191,7 +191,7 @@ pushl_assert: [] pushl swap !
 
 alt_list: | [dup] pushl
 
-default_max: dup2 < ! swap default
+__ default_max: dup2 < ! swap default
 
 assert_nready: [1+] swap ! $
 
@@ -205,17 +205,18 @@ after0:
     [head 0 !=]
     iterate popd head
 
-vlength: 0 swap vlength_
-vlength_:
-  [] ap20
-    [[[1-] [popd] para] .]
-    [popr popr valid]
-    iterate popd head
-
-vifte: swap2 valid -swap2 ifte
-
 __ bad_deps: [dup] popr swap 1 swap dup swap [ap21] dip32 2 swap ap11
 
-ow_assert: True swap True otherwise !
-ow_assert2: True False | otherwise not !
-ow_not: False otherwise not
+__ vlength: 0 swap vlength_
+__ vlength_:
+__   [] ap20
+__     [[[1-] [popd] para] .]
+__     [popr popr valid]
+__     iterate popd head
+__
+__ vifte: swap2 valid -swap2 ifte
+__
+__ ow_assert: True swap True otherwise !
+__ ow_assert2: True False | otherwise not !
+__ ow_not: False otherwise not
+

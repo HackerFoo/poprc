@@ -77,7 +77,7 @@ cell_t *apply_list(cell_t *l, csize_t in, csize_t out) {
 // print a representation of a pattern for debugging
 void print_pattern(cell_t *pattern) {
   if(is_var(pattern)) {
-    printf(" ?%d", (int)(pattern->value.tc.index));
+    printf(" ?%d", (int)var_index(pattern->value.var));
   } else if(is_list(pattern)) {
     csize_t in = function_in(pattern);
     cell_t **p;
@@ -95,7 +95,7 @@ void print_pattern(cell_t *pattern) {
 // print the list of bindings for debugging
 void print_bindings(cell_t *vl) {
   FOLLOW(p, q, vl, tmp) {
-    csize_t x = p->value.tc.index;
+    csize_t x = var_index(p->value.var);
     printf("?%d = %d\n", x, (int)(q-cells));
   }
 }
@@ -236,7 +236,7 @@ cell_t *find_input_entry(cell_t *c) {
     cell_t *x = clear_ptr(*p);
     if(x) {
       if(is_var(x)) {
-        entry = x->value.tc.entry;
+        entry = var_entry(x->value.var);
         break;
       } else if((entry = find_input_entry(x))) {
         break;
@@ -409,7 +409,7 @@ void vars_in_entry(cell_t **p, cell_t *entry) {
   while(*p) {
     cell_t *v = *p;
     cell_t **next = &v->tmp;
-    if(v->value.tc.entry != entry) {
+    if(var_entry(v->value.var) != entry) {
       // remove from list
       *p = *next;
       v->tmp = 0;
@@ -433,9 +433,9 @@ void reassign_input_order(cell_t *entry) {
 
   int pos = 1;
   FOLLOW(p, vl, tmp) {
-    assert_error(p->value.tc.entry == entry);
-    cell_t *tn = trace_cell_ptr(p->value.tc);
-    assert_error(tn->pos, "%e[%d] (%C)", p->value.tc.entry, p->value.tc.index, p);
+    assert_error(var_entry(p->value.var) == entry);
+    cell_t *tn = p->value.var;
+    assert_error(tn->pos, "%T (%C)", p->value.var, p);
     if(tn->pos != pos) {
       tn->pos = pos;
       FLAG_SET(entry->entry, ENTRY_MOV_VARS);
@@ -463,17 +463,16 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
 
   int pos = 1;
   FOLLOW(p, vl, tmp) {
-    assert_error(p->value.tc.entry == entry);
-    cell_t *tn = trace_cell_ptr(p->value.tc);
+    assert_error(var_entry(p->value.var) == entry);
+    cell_t *tn = p->value.var;
     // Is it okay to update this from reassign_input_order?
     tn->pos = pos;
-    // assert_error(tn->pos == pos, "%e[%d] (%C)", p->value.tc.entry, p->value.tc.index, p);
+    // assert_error(tn->pos == pos, "%T (%C)", p->value.var, p);
     switch_entry(parent_entry, tn);
-    assert_error(tn->value.tc.entry == parent_entry);
-    cell_t *tp = trace_cell_ptr(tn->value.tc);
-    cell_t *v = var_create_nonlist(T_ANY, (trace_cell_t) {parent_entry, tp-parent_entry, 0});
+    assert_error(var_entry(tn->value.var) == parent_entry);
+    cell_t *v = var_create_nonlist(T_ANY, tn->value.var);
     nc->expr.arg[in - pos] = v;
-    LOG("arg[%d] -> %d", in - pos, tp - parent_entry);
+    LOG("arg[%d] -> %d", in - pos, tn->value.var - parent_entry);
     pos++;
   }
   clean_tmp(vl);
@@ -511,12 +510,12 @@ cell_t *unwrap(cell_t *c, csize_t out) {
 
 // [res dep_0 ... dep_out-1]
 cell_t *wrap_vars(cell_t *res, csize_t out) {
-  csize_t n = trace_cell_ptr(res->value.tc)->size;
+  csize_t n = res->value.var->size;
   cell_t *l = make_list(out);
   LOG("wrap_vars %d %C", out, l);
   COUNTUP(i, out - 1) {
     cell_t *d = closure_alloc(1);
-    store_dep(d, res->value.tc, n - i - 1, T_ANY, 0);
+    store_dep(d, res->value.var, n - i - 1, T_ANY, 0);
     l->value.ptr[i] = d;
   }
   l->value.ptr[out - 1] = res;
@@ -598,7 +597,7 @@ response func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) 
   // }
 
   csize_t n = closure_args(p);
-  trace_cell_t tc = res->value.tc;
+  cell_t *tc = res->value.var;
 
   // build list expected by caller
   if(treq.t == T_LIST) {
@@ -752,7 +751,7 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
       assert_error(d->expr.arg[0] == c);
       drop(c);
       type_t t = rtypes[i+1];
-      store_dep(d, res->value.tc, i + in + 1, t, alt_set);
+      store_dep(d, res->value.var, i + in + 1, t, alt_set);
     }
   }
 
