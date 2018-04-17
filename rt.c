@@ -222,6 +222,16 @@ reduce_t *op_func(op op) {
   return _func[op - 1];
 }
 
+cell_t *fill_incomplete(cell_t *c) {
+  if(!closure_is_ready(c)) {
+    LOG("fill_incomplete: closure not ready %C", c);
+    do {
+      c = arg_nd(c, &fail_cell, c);
+    } while(!closure_is_ready(c));
+  }
+  return c;
+}
+
 // Reduce *cp with type t
 response reduce(cell_t **cp, type_request_t treq) {
   bool marked = is_marked(*cp);
@@ -229,12 +239,7 @@ response reduce(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   while(c) {
     assert_error(is_closure(c));
-    if(!closure_is_ready(c)) {
-      LOG("reduce: closure not ready %C", c);
-      abort_op(FAIL, cp, treq);
-      c = *cp;
-      continue;
-    }
+    c = *cp = fill_incomplete(c);
     stats.reduce_cnt++;
     op op = c->op;
     response r = op_func(op)(cp, treq);
@@ -257,10 +262,11 @@ response reduce(cell_t **cp, type_request_t treq) {
 // Perform one reduction step on *cp
 response reduce_dep(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
-  if(!c || !closure_is_ready(c)) {
-    LOG("reduce_dep: closure not ready or null %C", c);
+  if(!c) {
+    LOG("reduce_dep: null closure %C", c);
     return abort_op(FAIL, cp, treq);
   } else {
+    c = *cp = fill_incomplete(c);
     assert_error(is_closure(c) &&
            closure_is_ready(c));
     stats.reduce_cnt++;
