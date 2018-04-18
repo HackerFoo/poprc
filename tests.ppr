@@ -199,3 +199,5 @@ __   [popr valid]
 __   iterate popd head
 
 vifte: swap2 valid -swap2 ifte
+
+__ bad_deps: [dup] popr swap 1 swap dup swap [ap21] dip32 2 swap ap11

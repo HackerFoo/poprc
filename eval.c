@@ -223,7 +223,10 @@ int main(int argc, char **argv) {
   if(!quit) run_eval(echo);
   free_modules();
   unload_files();
-  if(run_leak_test) leak_test();
+  if(run_leak_test &&
+     !leak_test()) {
+    make_graph_all("leaks.dot");
+  }
   return 0;
 }
 #else // EMSCRIPTEN

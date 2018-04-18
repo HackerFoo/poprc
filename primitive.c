@@ -575,8 +575,8 @@ WORD("swap", swap, 2, 2)
 OP(swap) {
   cell_t *c = *cp;
   PRE(c, swap);
-  cell_t *d = c->expr.arg[2];
-  store_lazy_dep(d, c->expr.arg[0], 0);
+  store_lazy_dep(c->expr.arg[2],
+                 c->expr.arg[0], 0);
   store_lazy(cp, c->expr.arg[1], 0);
   return RETRY;
 }
