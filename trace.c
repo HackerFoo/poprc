@@ -34,14 +34,16 @@
 #include "lex.h"
 #include "user_func.h"
 #include "list.h"
-#include "trace.h"
 #include "byte_compile.h"
 
 // storage for tracing
-static cell_t trace_cells[1 << 16] __attribute__((aligned(64)));
+#define ALIGN64 __attribute__((aligned(64)))
+static cell_t trace_cells[1 << 16] ALIGN64;
 static cell_t *trace_ptr = &trace_cells[0];
 static cell_t *active_entries[1 << 6];
 static int prev_entry_pos = 0;
+
+#include "trace-local.h"
 
 #define ENTRY_BLOCK_SIZE 64
 
@@ -291,15 +293,25 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
     cell_t **e = &tc->expr.arg[closure_in(tc)];
     *e = trace_encode(entry_number(*e));
   }
+
   // encode inputs
   TRAVERSE(tc, in) {
-    if(*p) {
-      assert_error(!is_marked(*p));
-      int x = trace_get_value(entry, *p);
+    cell_t *a = *p;
+    if(a) {
+      int x;
+      assert_error(!is_marked(a));
+      if(is_value(a) &&
+         !is_var(a) &&
+         !is_list(a)) {
+        x = trace_store_value(entry, a);
+      } else {
+        x = trace_get_value(entry, a);
+      }
       *p = trace_encode(x);
       if(x >= 0) entry[x].n++;
     }
   }
+
   // encode outputs
   TRAVERSE(tc, out) {
     int x = 0;
@@ -342,11 +354,12 @@ void trace_store_row_assert(cell_t *c, cell_t *r) {
 // for otherwise and assert
 cell_t *trace_partial(op op, int n, cell_t *p) {
   cell_t *entry = var_entry(p->value.var);
+  int a = is_var(p) ? var_index(p->value.var) : trace_store_value(entry, p);
   int x = trace_alloc(entry, 2);
   cell_t *tc = &entry[x];
   tc->op = op;
-  tc->expr.arg[n] = trace_encode(var_index(p->value.var));
-  p->value.var->n++;
+  tc->expr.arg[n] = trace_encode(a);
+  entry[a].n++;
   return tc;
 }
 
@@ -368,39 +381,11 @@ int trace_store_value(cell_t *entry, const cell_t *c) {
   }
 
   if(c->value.var) {
-    trace_apply_condition(c->value.var, &entry[x]);
+    concatenate_conditions(c->value.var, &entry[x]);
     x = var_index(c->value.var);
   }
 
   return x;
-}
-
-// feed a through tc
-void trace_apply_condition(cell_t *tc, cell_t *a) {
-  cell_t **p = NULL;
-  cell_t *entry = var_entry(tc);
-  assert_error(entry == var_entry(a));
-
-  // add a to the end of the chain starting at tc
-  do {
-    switch(tc->op) {
-    case OP_assert:
-      p = &tc->expr.arg[0];
-      break;
-    case OP_otherwise:
-      p = &tc->expr.arg[1];
-      break;
-    default:
-      assert_error(false, "value.var set for invalid op");
-    }
-    if(*p) tc = &entry[trace_decode(*p)];
-  } while(*p && tc != a);
-
-  if(tc != a) {
-    LOG("%T arg <- %T", tc, a);
-    *p = trace_encode(var_index(a));
-    a->n++;
-  }
 }
 
 // store c which reduces to r in the trace
@@ -559,18 +544,6 @@ void trace_reduction(cell_t *c, cell_t *r) {
 
   cell_t *entry = var_entry(r->value.var);
   if(!entry) entry = new_entry;
-
-  // make sure all input arguments are stored
-  TRAVERSE(c, in) {
-    cell_t *a = *p;
-    if(is_value(a) && !is_var(a)) {
-      if(is_list(a)) {
-        //trace_build_quote(a);
-      } else {
-        trace_store_value(entry, a);
-      }
-    }
-  }
 
   trace_store(c, r);
   if(is_var(r) && new_entry && new_entry != entry) {
@@ -751,7 +724,8 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
       if(is_value(*a) &&
          !is_list(*a) &&
          !is_var(*a)) { // TODO deps?
-        trace_store_value(entry, *a);
+        LOG(TODO " use return value of trace_store_valud");
+        trace_store_value(entry, *a); // TODO use return value
       }
     }
     int x = trace_return(entry, *p);
@@ -851,42 +825,74 @@ FORMAT(trace_cell, 'T') {
 
 /* condiitons */
 
-cell_t *compose_conditions(cell_t *a, cell_t *b) {
-  if(!a) return b;
-  if(b) trace_apply_condition(a, b);
+// assert & otherwise form lists that can be concatenated
+static
+cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
+  if(a == NULL) return b;
+  if(b == NULL) return a;
+  cell_t **arg = NULL;
+  cell_t *entry = var_entry(a);
+  assert_error(entry == var_entry(b));
+  cell_t *p = a;
+  cell_t *bi = trace_encode(var_index(b));
+
+  // find the end of a
+  do {
+    switch(p->op) {
+    case OP_assert:
+      arg = &p->expr.arg[0];
+      break;
+    case OP_otherwise:
+      arg = &p->expr.arg[1];
+      LOG_WHEN(p->expr.arg[0] == bi,
+               "same arg for otherwise: %T <- %T", p, b);
+      break;
+    default:
+      assert_error(false, "value.var set for invalid op: %T ... %T <- %T", a, p, b);
+    }
+    if(*arg) {
+      p = &entry[trace_decode(*arg)];
+      assert_error(p != a, "loop");
+    }
+  } while(*arg && p != b);
+
+  if(p != b) {
+    LOG("condition %T ... %T %O arg <- %T", a, p, p->op, b);
+    *arg = bi;
+    b->n++;
+  }
   return a;
 }
 
-void add_condition_var(cell_t **v, cell_t *a) {
-  *v = compose_conditions(a, *v);
-}
-
-void add_condition(cell_t **v, cell_t *a) {
-  if(a &&
-     is_value(a) &&
-     !is_var(a)) {
-    add_condition_var(v, a->value.var);
-  }
+cell_t *value_condition(cell_t *a) {
+  return a && is_value(a) && !is_var(a) ? a->value.var : NULL;
 }
 
 void add_conditions_2(cell_t *res, cell_t *a0) {
-  add_condition(&res->value.var, a0);
+  cell_t **v = &res->value.var;
+  if(!is_var(res)) {
+    *v = concatenate_conditions(*v, value_condition(a0));
+  }
 }
 
 void add_conditions_3(cell_t *res, cell_t *a0, cell_t *a1) {
   cell_t **v = &res->value.var;
-  add_condition(v, a0);
-  add_condition(v, a1);
+  if(!is_var(res)) {
+    *v = concatenate_conditions(*v,
+           concatenate_conditions(value_condition(a0),
+                                  value_condition(a1)));
+  }
 }
 
-void add_conditions_var_2(cell_t *res, cell_t *a0) {
-  add_condition_var(&res->value.var, a0);
-}
-
-void add_conditions_var_3(cell_t *res, cell_t *a0, cell_t *a1) {
+void add_conditions_var_2(cell_t *res, cell_t *t) {
   cell_t **v = &res->value.var;
-  add_condition(v, a0);
-  add_condition_var(v, a1);
+  *v = concatenate_conditions(t, *v);
+}
+
+void add_conditions_var_3(cell_t *res, cell_t *t, cell_t *a0) {
+  cell_t **v = &res->value.var;
+  *v = concatenate_conditions(t,
+         concatenate_conditions(value_condition(a0), *v));
 }
 
 #if INTERFACE

@@ -110,7 +110,6 @@ response func_op1(cell_t **cp, type_request_t treq, int arg_type, int res_type, 
 
   cell_t *p = c->expr.arg[0];
   res = _op1(c, res_type, op, p);
-  //if(!is_var(p)) otherwise(res, p->value.otherwise);
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   add_conditions(res, p);
@@ -455,7 +454,7 @@ OP(assert) {
   CHECK(!p_var &&
         p->value.integer != SYM_True, FAIL);
 
-  if(p_var) { // TODO clean this up
+  if(p_var) {
     CHECK(treq.delay_assert, DELAY_ARG);
     tc = trace_partial(OP_assert, 1, p);
   }
@@ -469,10 +468,11 @@ OP(assert) {
     res = var_create((*q)->value.type, tc, 0, 0);
     trace_arg(tc, 0, *q);
   } else {
+    // handle is_var(*q)?
     res = take(q);
     unique(&res);
     drop(res->alt);
-    add_conditions_var(res, p, tc);
+    add_conditions_var(res, tc, p);
   }
   res->value.alt_set = alt_set;
   res->alt = c->alt;
@@ -499,9 +499,11 @@ OP(otherwise) {
   cell_t *p = clear_ptr(c->expr.arg[0]);
   bool p_var = is_var(p);
 
-  CHECK(!p_var && rsp0 != FAIL, FAIL);
+  CHECK(!p_var &&
+        !p->value.var &&
+        rsp0 != FAIL, FAIL);
 
-  if(p_var) {
+  if(rsp0 != FAIL) {
     CHECK(treq.delay_assert, DELAY_ARG);
     tc = trace_partial(OP_otherwise, 0, p);
     // alt?
@@ -515,10 +517,11 @@ OP(otherwise) {
     res = var_create((*q)->value.type, tc, 0, 0);
     trace_arg(tc, 1, *q);
   } else {
+    // handle is_var(*q)?
     res = take(q);
     unique(&res);
     drop(res->alt);
-    add_conditions_var(res, p, tc);
+    add_conditions_var(res, tc);
   }
   res->value.alt_set = alt_set;
   res->alt = c->alt;

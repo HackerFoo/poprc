@@ -213,10 +213,16 @@ __   [] ap20
 __     [[[1-] [popd] para] .]
 __     [popr popr valid]
 __     iterate popd head
-__
+
 __ vifte: swap2 valid -swap2 ifte
-__
-__ ow_assert: True swap True otherwise !
-__ ow_assert2: True False | otherwise not !
+
+__ equivalent to `True otherwise`
+ow_assert: True swap True otherwise !
+
+__ both equivalent to `swap otherwise`
+ow_assert2: True False | otherwise not !
+ow_assert3: True otherwise !
+
 __ ow_not: False otherwise not
 
+assert_chain_fail: 1 swap ! swap 2 swap ! dup swap2 +

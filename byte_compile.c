@@ -139,7 +139,7 @@ void print_bytecode(cell_t *entry) {
     if(!is_value(c) && FLAG(c->expr, EXPR_TRACE)) {
       printf(" [TRACING]");
     }
-    if(t >= entry->entry.in &&
+    if(t > entry->entry.in &&
        c->n + 1 == 0) {
       printf(" <-- WARNING: zero refcount\n");
     } else if(is_dep(c) && !c->expr.arg[0]) {

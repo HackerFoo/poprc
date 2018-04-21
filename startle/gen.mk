@@ -23,6 +23,10 @@ SHELL := bash
 		echo "#define GIT_LOG \"$(LOG) [DIRTY]\"" > $@; \
 	fi
 
+.gen/%-local.h.new: %.c startle/bin/makeheaders
+	@mkdir -p $(dir $@)
+	startle/bin/makeheaders -local $<:$@
+
 .gen/%.h.new: %.c startle/bin/makeheaders
 	@mkdir -p $(dir $@)
 	startle/bin/makeheaders $<:$@
