@@ -533,6 +533,36 @@ abort:
   return abort_op(rsp, cp, treq);
 }
 
+// for internal use
+WORD("seq", seq, 2, 1)
+OP(seq) {
+  cell_t *c = *cp;
+  response rsp;
+  cell_t *res = 0;
+  PRE(c, seq);
+
+  alt_set_t alt_set = 0;
+  CHECK(AND0(reduce_arg(c, 0, &alt_set, treq),
+             reduce_arg(c, 1, &alt_set, REQ(any)),
+             fail_if(as_conflict(alt_set))));
+  clear_flags(c);
+
+  cell_t
+    **p = &c->expr.arg[0],
+    *q = c->expr.arg[1];
+
+  res = /* TODO is_var(*p) && */ is_var(q) ? var(treq.t, c) : take(p);
+  unique(&res);
+  res->alt = c->alt;
+  res->value.alt_set = alt_set;
+  add_conditions(res, q);
+  store_reduced(cp, res);
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, treq);
+}
+
 WORD("id", id, 1, 1)
 OP(id) {
   cell_t *c = *cp;

@@ -225,4 +225,4 @@ ow_assert3: True otherwise !
 
 __ ow_not: False otherwise not
 
-assert_chain_fail: 1 swap ! swap 2 swap ! dup swap2 +
+imbalanced_assert: 1 swap ! swap 2 swap ! dup swap2 +

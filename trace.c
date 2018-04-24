@@ -364,7 +364,7 @@ cell_t *trace_partial(op op, int n, cell_t *p) {
 }
 
 // store value c in the trace
-int trace_store_value(cell_t *entry, const cell_t *c) {
+int trace_store_value(cell_t *entry, cell_t *c) {
   if(!entry) return -1;
   assert_error(!is_list(c));
 
@@ -381,8 +381,9 @@ int trace_store_value(cell_t *entry, const cell_t *c) {
   }
 
   if(c->value.var) {
-    concatenate_conditions(c->value.var, &entry[x]);
-    x = var_index(c->value.var);
+    cell_t *t = concatenate_conditions(c->value.var, &entry[x]);
+    c->value.var = t;
+    x = var_index(t);
   }
 
   return x;
@@ -724,7 +725,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
       if(is_value(*a) &&
          !is_list(*a) &&
          !is_var(*a)) { // TODO deps?
-        LOG(TODO " use return value of trace_store_valud");
+        LOG(TODO " use return value of trace_store_value");
         trace_store_value(entry, *a); // TODO use return value
       }
     }
@@ -826,6 +827,7 @@ FORMAT(trace_cell, 'T') {
 /* condiitons */
 
 // assert & otherwise form lists that can be concatenated
+// TODO use refcounting to avoid destructive concatenation
 static
 cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
   if(a == NULL) return b;
@@ -840,15 +842,17 @@ cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
   do {
     switch(p->op) {
     case OP_assert:
+    case OP_seq:
       arg = &p->expr.arg[0];
       break;
     case OP_otherwise:
       arg = &p->expr.arg[1];
       LOG_WHEN(p->expr.arg[0] == bi,
-               "same arg for otherwise: %T <- %T", p, b);
+               "duplicate arg for otherwise: %T <- %T", p, b);
       break;
     default:
-      assert_error(false, "value.var set for invalid op: %T ... %T <- %T", a, p, b);
+      LOG("trace_seq: %T ... %T <- %T", a, p, b);
+      return trace_seq(b, a);
     }
     if(*arg) {
       p = &entry[trace_decode(*arg)];
@@ -862,6 +866,19 @@ cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
     b->n++;
   }
   return a;
+}
+
+cell_t *trace_seq(cell_t *a, cell_t *b) {
+  cell_t *entry = var_entry(a);
+  int x = trace_alloc(entry, 2);
+  cell_t *tc = &entry[x];
+  tc->op = OP_seq;
+  tc->pos = 0;
+  tc->expr.arg[0] = trace_encode(var_index(a));
+  a->n++;
+  tc->expr.arg[1] = trace_encode(var_index(b));
+  b->n++;
+  return tc;
 }
 
 cell_t *value_condition(cell_t *a) {
