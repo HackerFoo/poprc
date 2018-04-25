@@ -226,3 +226,4 @@ ow_assert3: True otherwise !
 __ ow_not: False otherwise not
 
 imbalanced_assert: 1 swap ! swap 2 swap ! dup swap2 +
+assert_seq: 1 swap ! seq

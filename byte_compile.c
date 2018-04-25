@@ -172,6 +172,7 @@ void condense(cell_t *entry) {
     if(tc->op) {
       if(tc->n < 0 && !(is_var(tc) && tc->pos)) {
         // drop args and ptrs
+        LOG("collapse/drop %T %O", tc, tc->op);
         cell_t **e = is_user_func(tc) ? &tc->expr.arg[closure_in(tc)] : NULL;
         TRAVERSE(tc, args, ptrs) {
           if(p != e) {
@@ -180,7 +181,6 @@ void condense(cell_t *entry) {
           }
         }
         tc->op = OP_null;
-        LOG("collapse/drop %d", tc - entry);
       } else {
         if(is_value(tc) && tc->value.type == T_RETURN) {
           if(ret) ret->alt = trace_encode(idx);
@@ -215,7 +215,7 @@ void condense(cell_t *entry) {
             int x = trace_decode(*p);
             if(x > 0) {
               *p = entry[x].alt;
-              assert_error(trace_decode(*p) > 0);
+              assert_error(trace_decode(*p) > 0, "at %T", tc);
             }
           }
         }

@@ -839,7 +839,7 @@ cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
   cell_t *bi = trace_encode(var_index(b));
 
   // find the end of a
-  do {
+  while(p != b) {
     switch(p->op) {
     case OP_assert:
     case OP_seq:
@@ -857,13 +857,12 @@ cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
     if(*arg) {
       p = &entry[trace_decode(*arg)];
       assert_error(p != a, "loop");
+    } else { // found empty arg
+      LOG("condition %T ... %T %O arg <- %T", a, p, p->op, b);
+      *arg = bi;
+      b->n++;
+      return a;
     }
-  } while(*arg && p != b);
-
-  if(p != b) {
-    LOG("condition %T ... %T %O arg <- %T", a, p, p->op, b);
-    *arg = bi;
-    b->n++;
   }
   return a;
 }

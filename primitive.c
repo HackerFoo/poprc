@@ -553,6 +553,7 @@ OP(seq) {
 
   res = /* TODO is_var(*p) && */ is_var(q) ? var(treq.t, c) : take(p);
   unique(&res);
+  drop(res->alt);
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   add_conditions(res, q);
@@ -561,6 +562,14 @@ OP(seq) {
 
  abort:
   return abort_op(rsp, cp, treq);
+}
+
+cell_t *seq(cell_t *a, cell_t *b) {
+  cell_t *c = closure_alloc(2);
+  c->op = OP_seq;
+  c->expr.arg[0] = a;
+  c->expr.arg[1] = b;
+  return c;
 }
 
 WORD("id", id, 1, 1)
@@ -667,7 +676,8 @@ response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
     placeholder_extend(&c->expr.arg[0], treq.in, function_compose_out(c->expr.arg[in], arg_in, treq.out + out));
     p = clear_ptr(c->expr.arg[0]);
   }
-  placeholder_extend(&c->expr.arg[in], function_compose_in(p, treq.in, arg_in, true /*_1_*/), treq.out + out);
+  cell_t **q = &c->expr.arg[in];
+  placeholder_extend(q, function_compose_in(p, treq.in, arg_in, true /*_1_*/), treq.out + out);
   // *** _1_ don't know if/why this works
 
   list_iterator_t it;
@@ -693,12 +703,22 @@ response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   it.index = 0;
   it.size = in - row;
   it.row = row;
-  cell_t *l = compose(it, ref(c->expr.arg[in])); // TODO prevent leaking outside variables
+  cell_t *l = compose(it, ref(*q)); // TODO prevent leaking outside variables
   reverse_ptrs((void **)c->expr.arg, in);
 
-  bool is_nil = c->expr.arg[in] == &nil_cell;
-  if(!is_nil) insert_root(&c->expr.arg[in]);
+  bool is_nil = *q == &nil_cell;
+  if(!is_nil) insert_root(q);
   it = list_begin(l);
+
+  list_iterator_t end = it;
+  LOOP(out) list_next(&end, false);
+  cell_t *res = list_rest(end);
+  unique(&res);
+  drop(res->alt);
+  res->alt = c->alt;
+  res->value.alt_set = alt_set;
+  add_conditions(res, p, *q);
+
   COUNTUP(i, out) {
     cell_t **x = list_next(&it, false);
     if(!x) {
@@ -707,14 +727,13 @@ response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
       ABORT(FAIL);
     }
     cell_t *d = c->expr.arg[n-1-i];
-    store_lazy_dep(d, ref(*x), alt_set);
+    store_lazy_dep(d, seq(ref(*x), ref(res)), alt_set);
     if(d) d->pos = pos; // ***
   }
-  if(!is_nil) remove_root(&c->expr.arg[in]);
+  if(!is_nil) remove_root(q);
 
-  cell_t *res = list_rest(it);
   drop(l);
-  store_reduced(cp, mod_alt(res, c->alt, alt_set));
+  store_reduced(cp, res);
   (*cp)->pos = pos; // ***
   ASSERT_REF();
   return SUCCESS;

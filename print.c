@@ -266,27 +266,30 @@ void graph_cell(FILE *f, cell_t const *c) {
         fprintf(f, "</td></tr>");
       }
       if(c->pos) {
-        fprintf(f, "<tr><td bgcolor=\"orange\">trace: %d</td></tr>",
+        fprintf(f, "<tr><td bgcolor=\"deepskyblue\">pos: %d</td></tr>",
                 entry_number(trace_expr_entry(c->pos)));
       }
-    } else if(is_fail(c)) {
+    }
+
+    if(is_fail(c)) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
-    } else if(is_value(c)) {
-      if(c->value.var) {
-        fprintf(f, "<tr><td bgcolor=\"orange\">trace: %d.%d",
-                entry_number(var_entry(c->value.var)),
-                (int)var_index(c->value.var));
-        if(FLAG(c->value, VALUE_DEP)) {
-          fprintf(f, "[%d]", (int)c->pos);
-        }
-        fprintf(f, "</td></tr>");
+    }
+
+    if(c->value.var) {
+      fprintf(f, "<tr><td bgcolor=\"orange\">trace: %d.%d",
+              entry_number(var_entry(c->value.var)),
+              (int)var_index(c->value.var));
+      if(FLAG(c->value, VALUE_DEP)) {
+        fprintf(f, "[%d]", (int)c->pos);
       }
-      if(!is_var(c)) {
-        if(ONEOF(c->value.type, T_INT, T_SYMBOL)) {
-          fprintf(f, "<tr><td bgcolor=\"yellow\">val: %" PRIdPTR "</td></tr>", c->value.integer);
-        } else if(c->value.type == T_FLOAT && !is_var(c)) {
-          fprintf(f, "<tr><td bgcolor=\"yellow\">val: %.15g</td></tr>", c->value.flt);
-        }
+      fprintf(f, "</td></tr>");
+    }
+
+    if(!is_var(c)) {
+      if(ONEOF(c->value.type, T_INT, T_SYMBOL)) {
+        fprintf(f, "<tr><td bgcolor=\"yellow\">val: %" PRIdPTR "</td></tr>", c->value.integer);
+      } else if(c->value.type == T_FLOAT && !is_var(c)) {
+        fprintf(f, "<tr><td bgcolor=\"yellow\">val: %.15g</td></tr>", c->value.flt);
       }
     }
   } else {
@@ -306,7 +309,7 @@ void graph_cell(FILE *f, cell_t const *c) {
               show_alt_set((alt_set_t)c->expr.arg[1]));
     }
     if(c->pos) {
-      fprintf(f, "<tr><td bgcolor=\"orange\">trace: %d</td></tr>",
+      fprintf(f, "<tr><td bgcolor=\"deepskyblue\">pos: %d</td></tr>",
               entry_number(trace_expr_entry(c->pos)));
     }
   }
