@@ -485,6 +485,50 @@ OP(assert) {
   return abort_op(rsp, cp, treq);
 }
 
+// for internal use
+// very similar to assert
+WORD("seq", seq, 2, 1)
+OP(seq) {
+  cell_t *c = *cp;
+  response rsp;
+  PRE(c, seq);
+
+  cell_t *res = NULL;
+  cell_t *tc = NULL;
+  alt_set_t alt_set = 0;
+  CHECK(reduce_arg(c, 1, &alt_set, REQ(any)));
+  cell_t *p = clear_ptr(c->expr.arg[1]);
+  bool p_var = is_var(p);
+
+  if(p_var) {
+    CHECK(treq.delay_assert, DELAY_ARG);
+    tc = trace_partial(OP_seq, 1, p);
+  }
+
+  CHECK(AND0(reduce_arg(c, 0, &alt_set, treq),
+             fail_if(as_conflict(alt_set))));
+  clear_flags(c);
+  cell_t **q = &c->expr.arg[0];
+
+  if(p_var && is_var(*q)) {
+    res = var_create((*q)->value.type, tc, 0, 0);
+    trace_arg(tc, 0, *q);
+  } else {
+    res = take(q);
+    unique(&res);
+    drop(res->alt);
+    add_conditions_var(res, tc, p);
+  }
+  res->value.alt_set = alt_set;
+  res->alt = c->alt;
+
+  store_reduced(cp, res);
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, treq);
+}
+
 // very similar to assert
 // TODO merge common code
 WORD("otherwise", otherwise, 2, 1)
@@ -531,37 +575,6 @@ OP(otherwise) {
   return SUCCESS;
 
 abort:
-  return abort_op(rsp, cp, treq);
-}
-
-// for internal use
-WORD("seq", seq, 2, 1)
-OP(seq) {
-  cell_t *c = *cp;
-  response rsp;
-  cell_t *res = 0;
-  PRE(c, seq);
-
-  alt_set_t alt_set = 0;
-  CHECK(AND0(reduce_arg(c, 0, &alt_set, treq),
-             reduce_arg(c, 1, &alt_set, REQ(any)),
-             fail_if(as_conflict(alt_set))));
-  clear_flags(c);
-
-  cell_t
-    **p = &c->expr.arg[0],
-    *q = c->expr.arg[1];
-
-  res = /* TODO is_var(*p) && */ is_var(q) ? var(treq.t, c) : take(p);
-  unique(&res);
-  drop(res->alt);
-  res->alt = c->alt;
-  res->value.alt_set = alt_set;
-  add_conditions(res, q);
-  store_reduced(cp, res);
-  return SUCCESS;
-
- abort:
   return abort_op(rsp, cp, treq);
 }
 
