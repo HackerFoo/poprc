@@ -226,6 +226,7 @@
 
 // define away WORD annotations
 #define WORD(...)
+#define WORD_ALIAS(...)
 #define OP(name) response func_##name(cell_t **cp, UNUSED type_request_t treq)
 
 #define AND0_1(a) (a)

@@ -874,3 +874,41 @@ void assert_alt(cell_t *c, cell_t *a) {
 response fail_if(bool x) {
   return x ? FAIL : SUCCESS;
 }
+
+cell_t *build01(op op) {
+  cell_t *c = closure_alloc(0);
+  c->op = op;
+  return c;
+}
+
+cell_t *build11(op op, cell_t *i0) {
+  cell_t *c = closure_alloc(1);
+  c->op = op;
+  c->expr.arg[0] = i0;
+  return c;
+}
+
+cell_t *build21(op op, cell_t *i0, cell_t *i1) {
+  cell_t *c = closure_alloc(2);
+  c->op = op;
+  c->expr.arg[0] = i0;
+  c->expr.arg[1] = i1;
+  return c;
+}
+
+cell_t *build12(op op, cell_t *i0, cell_t **o1) {
+  cell_t *c = closure_alloc(2);
+  c->op = op;
+  c->expr.arg[0] = i0;
+  c->expr.arg[1] = *o1 = dep(ref(c));
+  return c;
+}
+
+cell_t *build22(op op, cell_t *i0, cell_t *i1, cell_t **o1) {
+  cell_t *c = closure_alloc(3);
+  c->op = op;
+  c->expr.arg[0] = i0;
+  c->expr.arg[1] = i1;
+  c->expr.arg[2] = *o1 = dep(ref(c));
+  return c;
+}

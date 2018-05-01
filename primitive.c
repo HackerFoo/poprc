@@ -32,6 +32,7 @@
 #include "print.h"
 #include "trace.h"
 #include "list.h"
+#include "builders.h"
 
    /*-----------------------------------------------,
     |          VARIABLE NAME CONVENTIONS            |
@@ -564,14 +565,6 @@ OP(seq) {
   return abort_op(rsp, cp, treq);
 }
 
-cell_t *seq(cell_t *a, cell_t *b) {
-  cell_t *c = closure_alloc(2);
-  c->op = OP_seq;
-  c->expr.arg[0] = a;
-  c->expr.arg[1] = b;
-  return c;
-}
-
 WORD("id", id, 1, 1)
 OP(id) {
   cell_t *c = *cp;
@@ -615,9 +608,7 @@ OP(swap) {
 
 cell_t *id(cell_t *c, alt_set_t as) {
   if(!c) return NULL;
-  cell_t *i = closure_alloc(1);
-  i->op = OP_id;
-  i->expr.arg[0] = c;
+  cell_t *i = build_id(c);
   i->expr.alt_set = as;
   return i;
 }
@@ -727,7 +718,7 @@ response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
       ABORT(FAIL);
     }
     cell_t *d = c->expr.arg[n-1-i];
-    store_lazy_dep(d, seq(ref(*x), ref(res)), alt_set);
+    store_lazy_dep(d, build_seq(ref(*x), ref(res)), alt_set);
     if(d) d->pos = pos; // ***
   }
   if(!is_nil) remove_root(q);
@@ -742,8 +733,8 @@ response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   return abort_op(rsp, cp, treq);
 }
 
-WORD("pushl", ap, 2, 1)
-WORD("popr", ap, 1, 2)
+WORD_ALIAS("pushl", ap, 2, 1, pushl)
+WORD_ALIAS("popr", ap, 1, 2, popr)
 OP(ap) {
   return func_compose_ap(cp, treq, false);
 }

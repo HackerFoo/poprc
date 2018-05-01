@@ -312,10 +312,7 @@ OP(dep) {
 }
 
 cell_t *dep(cell_t *c) {
-  cell_t *n = closure_alloc(1);
-  n->op = OP_dep;
-  n->expr.arg[0] = c;
-  return n;
+  return build11(OP_dep, c);
 }
 
 bool is_dep(cell_t const *c) {
