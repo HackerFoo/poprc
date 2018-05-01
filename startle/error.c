@@ -161,6 +161,7 @@ void breakpoint_hook() {}
 
 /** Convenient place to set a breakpoint for debugger integration. */
 void breakpoint() {
+  print_context(5);
   printf(NOTE("BREAKPOINT") " ");
   print_last_log_msg();
   breakpoint_hook();

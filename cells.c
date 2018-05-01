@@ -277,6 +277,7 @@ cell_t **closure_next_arg(cell_t *c) {
 }
 
 cell_t *copy(cell_t const *c) {
+  CONTEXT("copying %C", c);
   csize_t size = closure_cells(c);
   cell_t *new_c = closure_alloc_cells(size);
   memcpy(new_c, c, size * sizeof(cell_t));
