@@ -905,6 +905,17 @@ void add_conditions_3(cell_t *res, cell_t *a0, cell_t *a1) {
   }
 }
 
+void add_conditions_from_array(cell_t *res, cell_t **a, unsigned int n) {
+  cell_t **v = &res->value.var;
+  if(!is_var(res) && n) {
+    cell_t *cs = value_condition(a[n-1]);
+    COUNTDOWN(i, n-1) {
+      cs = concatenate_conditions(value_condition(a[i]), cs);
+    }
+    *v = concatenate_conditions(*v, cs);
+  }
+}
+
 void add_conditions_var_2(cell_t *res, cell_t *t) {
   cell_t **v = &res->value.var;
   *v = concatenate_conditions(t, *v);

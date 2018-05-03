@@ -38,7 +38,7 @@ __ [dup pushl popr] dup pushl popr
 __ [dup pushl popr swap drop] dup pushl popr swap drop
 __ infinite [1]'s
 [dup pushl popr swap 1] dup pushl popr drop popr popr popr
-  [ 1 ] [ 1 ] [ 1 ] [ [ dup pushl popr swap 1 ] dup pushl popr swap ]
+  [ 1 [ 1 [ 1 [ [ dup pushl popr swap 1 ] dup pushl popr swap ] seq [ [ dup pushl popr swap 1 ] dup pushl popr swap ] ] seq [ 1 [ [ dup pushl popr swap 1 ] dup pushl popr swap ] seq [ [ dup pushl popr swap 1 ] dup pushl popr swap ] ] ] seq ] [ 1 [ 1 [ [ dup pushl popr swap 1 ] dup pushl popr swap ] seq [ [ dup pushl popr swap 1 ] dup pushl popr swap ] ] seq ] [ 1 [ [ dup pushl popr swap 1 ] dup pushl popr swap ] seq ] [ [ dup pushl popr swap 1 ] dup pushl popr swap ]
 __ [[] 1] [! drop dup 0 swap pushl pushl] [0 == ! drop 0 force [] pushl pushl] | . popr swap drop popr
 [1 2 | ] popr
   [] 1

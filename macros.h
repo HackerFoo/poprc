@@ -219,7 +219,7 @@
 
 #define CUT(c, field)                           \
     ({                                          \
-      cell_t *tmp = ref(c->field);              \
+      cell_t *tmp = ref((c)->field);            \
       drop(c);                                  \
       tmp;                                      \
     })

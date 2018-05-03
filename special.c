@@ -364,6 +364,7 @@ OP(placeholder) {
       LOG("dropped placeholder[%C] output", c);
     }
   }
+  add_conditions_from_array(res, c->expr.arg, in);
   store_reduced(cp, res);
   ASSERT_REF();
   return SUCCESS;

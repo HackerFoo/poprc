@@ -28,6 +28,7 @@
 #include "special.h"
 #include "user_func.h"
 #include "list.h"
+#include "builders.h"
 
 cell_t *empty_list() {
   cell_t *c = closure_alloc(LIST_OFFSET);
@@ -95,7 +96,7 @@ response func_list(cell_t **cp, type_request_t treq) {
       CHECK(AND0(reduce_ptr(c, i, &alt_set, req_pos(REQ(any), treq.pos)),
                  fail_if(as_conflict(alt_set))));
     } else {
-      LOG("skip delayed %C", a);
+      LOG("skip delayed %C #abort", a);
     }
   }
   COUNTUP(i, n) {
@@ -262,12 +263,15 @@ cell_t *list_rest(list_iterator_t it) {
 }
 
 void collapse_row(cell_t **cp) {
-  if(is_row_list(*cp) &&
-     list_size(*cp) == 1 &&
-     closure_is_ready((*cp)->value.ptr[0])) {
-    cell_t *x = *cp;
-    *cp = ref((*cp)->value.ptr[0]);
-    drop(x);
+  cell_t *l = *cp, *p;
+  if(is_row_list(l) &&
+     list_size(l) == 1 &&
+     closure_is_ready(p = l->value.ptr[0])) {
+    if(1 || l->value.var) {
+      *cp = build_seq(ref(p), l);
+    } else {
+      *cp = CUT(l, value.ptr[0]);
+    }
   }
 }
 

@@ -195,7 +195,7 @@ __ default_max: dup2 < ! swap default
 
 assert_nready: [1+] swap ! $
 
-comp_assert: [2] swap ! [1+] swap2 ! . head
+__ comp_assert: [2] swap ! [1+] swap2 ! . head
 empty_assert: [] swap ! ap22 drop swap drop
 
 __ times_noop: [id] 1 times
@@ -214,16 +214,17 @@ __     [[[1-] [popd] para] .]
 __     [popr popr valid]
 __     iterate popd head
 
-__ vifte: swap2 valid -swap2 ifte
+vifte: swap2 valid -swap2 ifte
 
 __ equivalent to `True otherwise`
 ow_assert: True swap True otherwise !
+ow_not: False otherwise not
 
 __ both equivalent to `swap otherwise`
 ow_assert2: True False | otherwise not !
 ow_assert3: True otherwise !
 
-__ ow_not: False otherwise not
-
 imbalanced_assert: 1 swap ! swap 2 swap ! dup swap2 +
 assert_seq: 1 swap ! seq
+
+pushl_swap_assert: pushl swap!

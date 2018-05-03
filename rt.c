@@ -150,7 +150,7 @@ response reduce_arg(cell_t *c,
   cell_t **ap = &c->expr.arg[n];
   response r = reduce(ap, treq);
   cell_t *a = clear_ptr(*ap);
-  *ctx |= a->value.alt_set;
+  if(r == SUCCESS) *ctx |= a->value.alt_set;
   if(r < DELAY) split_arg(c, n);
   return r;
 }
@@ -199,7 +199,7 @@ response reduce_ptr(cell_t *c,
   cell_t **ap = &c->value.ptr[n];
   response r = reduce(ap, treq);
   cell_t *a = clear_ptr(*ap);
-  *ctx |= a->value.alt_set;
+  if(r == SUCCESS) *ctx |= a->value.alt_set;
   if(r < DELAY) split_ptr(c, n);
   return r;
 }
@@ -247,11 +247,11 @@ response reduce(cell_t **cp, type_request_t treq) {
     // prevent infinite loops when debugging
     assert_counter(LENGTH(cells));
 
-    LOG_WHEN(!*cp, MARK("FAIL") ": %O %C", op, c);
+    LOG_WHEN(!*cp, MARK("FAIL") ": %O %C @abort", op, c);
     c = *cp;
     if(r == SUCCESS ||
        r >= DELAY) {
-      if(marked) *cp = mark_ptr(c);
+      if(marked) *cp = mark_ptr(c); // *** is the right pointer being marked?
       return r;
     }
   }

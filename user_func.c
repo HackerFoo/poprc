@@ -625,6 +625,7 @@ response func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) 
   }
 
   *cp = p;
+  add_conditions_from_array(res, p->expr.arg, in);
   store_reduced(cp, res);
   return SUCCESS;
 }
@@ -758,6 +759,7 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
   res->value.alt_set = alt_set;
   res->alt = c->alt;
 
+  add_conditions_from_array(res, c->expr.arg, in);
   store_reduced(cp, res);
   return SUCCESS;
 
@@ -783,9 +785,10 @@ OP(exec) {
   cell_t *parent_entry = find_input_entry(c);
 
   if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
-    if(NOT_FLAG(c->expr, EXPR_DELAYED)) {
+    if(NOT_FLAG(c->expr, EXPR_DELAYED) &&
+       TWEAK(1, "to disable exec delay")) {
       FLAG_SET(c->expr, EXPR_DELAYED);
-      LOG("delay exec %E %C", entry, c);
+      LOG("delay exec %E %C #abort", entry, c);
       return DELAY;
     }
     assert_error(parent_entry,
