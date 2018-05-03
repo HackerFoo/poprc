@@ -353,6 +353,7 @@ void trace_store_row_assert(cell_t *c, cell_t *r) {
 
 // for otherwise and assert
 cell_t *trace_partial(op op, int n, cell_t *p) {
+  CONTEXT_LOG("trace_partial %O, arg[%d] = %C", op, n, p);
   cell_t *entry = var_entry(p->value.var);
   int a = is_var(p) ? var_index(p->value.var) : trace_store_value(entry, p);
   int x = trace_alloc(entry, 2);
@@ -361,6 +362,15 @@ cell_t *trace_partial(op op, int n, cell_t *p) {
   tc->expr.arg[n] = trace_encode(a);
   entry[a].n++;
   return tc;
+}
+
+void apply_condition(cell_t *c, int *x) {
+  if(c->value.var) {
+    cell_t *entry = var_entry(c->value.var);
+    cell_t *t = concatenate_conditions(c->value.var, &entry[*x]);
+    c->value.var = t;
+    *x = var_index(t);
+  }
 }
 
 // store value c in the trace
@@ -380,12 +390,7 @@ int trace_store_value(cell_t *entry, cell_t *c) {
     tc->n = -1;
   }
 
-  if(c->value.var) {
-    cell_t *t = concatenate_conditions(c->value.var, &entry[x]);
-    c->value.var = t;
-    x = var_index(t);
-  }
-
+  apply_condition(c, &x);
   return x;
 }
 

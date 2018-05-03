@@ -804,7 +804,7 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
   cell_t **p;
   FORLIST(p, l, true) {
     LOG("arg %C %C", ph, *p);
-    arg(ph, ref(*p)); // *** destructive arg okay?
+    arg(ph, ref(*p));
   }
 
   mark_quote_barriers(e, ph);
@@ -835,6 +835,7 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
 
   //if(simplify_quote(e, parent_entry, q)) return NULL;
 
+  apply_condition(l, &x);
   return x;
 }
 
