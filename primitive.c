@@ -619,6 +619,21 @@ OP(swap) {
   return RETRY;
 }
 
+// for testing
+WORD("delay", delay, 1, 1)
+OP(delay) {
+  cell_t *c = *cp;
+  PRE(c, delay);
+  if(NOT_FLAG(c->expr, EXPR_DELAYED)) {
+    FLAG_SET(c->expr, EXPR_DELAYED);
+    LOG("delay %C", c);
+    return DELAY;
+  }
+
+  store_lazy(cp, c->expr.arg[0], 0);
+  return RETRY;
+}
+
 cell_t *id(cell_t *c, alt_set_t as) {
   if(!c) return NULL;
   cell_t *i = build_id(c);
