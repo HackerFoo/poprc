@@ -95,10 +95,9 @@ response func_list(cell_t **cp, type_request_t treq) {
       set_bit(reduced_args, i);
       CHECK(AND0(reduce_ptr(c, i, &alt_set, req_pos(REQ(any), treq.pos)),
                  fail_if(as_conflict(alt_set))));
-    } else {
-      LOG("skip delayed %C #abort", a);
     }
   }
+  log_ptrs(c, reduced_args);
   COUNTUP(i, n) {
     if(check_bit(reduced_args, i)) continue;
     CHECK(AND0(reduce_ptr(c, i, &alt_set, req_pos(REQ(any), treq.pos)),
@@ -117,6 +116,17 @@ response func_list(cell_t **cp, type_request_t treq) {
 
  abort:
   return abort_op(rsp, cp, treq);
+}
+
+void log_ptrs(cell_t *c, uint8_t *reduced_args) {
+  CONTEXT_LOG("log_ptrs for %C", c);
+  COUNTUP(i, list_size(c)) {
+    if(check_bit(reduced_args, i)) {
+      LOG("ptr[%d] = %C", i, c->value.ptr[i]);
+    } else {
+      LOG("ptr[%d] = %C (skip delayed) #abort", i, c->value.ptr[i]);
+    }
+  }
 }
 
 void reduce_list(cell_t **cp) {
