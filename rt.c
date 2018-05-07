@@ -512,6 +512,7 @@ response abort_op(response rsp, cell_t **cp, type_request_t treq) {
   } else if(rsp == DELAY) {
     FLAG_SET(c->expr, EXPR_DELAYED);
     cell_t **next = &c->alt;
+    assert_warn(c->n == 0 || *next == NULL, TODO " fix destructive alt rotation %C", c);
     while(*next) {
       if(FLAG((*next)->expr, EXPR_DELAYED)) {
         next = &(*next)->alt;
@@ -521,7 +522,7 @@ response abort_op(response rsp, cell_t **cp, type_request_t treq) {
       // rotate alts
       cell_t *a = *next;
       *next = NULL;
-      *cp = conc_alt(a, c);
+      *cp = conc_alt(a, c); // BUG this needs to be done non-destructively
 
       // TODO make sure delayed alts remain last
       LOG("rotate alts %C %C", a, c);

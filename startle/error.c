@@ -73,7 +73,7 @@ typedef struct {
   } while(0)
 
 /** Assert an assumption.
- * Throw an unexpect error if the condition is violated, logging the following arguments.
+ * Throw an unexpected error if the condition is violated, logging the following arguments.
  */
 #ifdef NDEBUG
 #define assert_error(...) ((void)0)
@@ -90,12 +90,37 @@ typedef struct {
     }                                                   \
   } while(0)
 
+/** Warn when an assumption doesn't hold.
+ * If the condition is violated, log the following arguments and print them.
+ */
+#ifdef NDEBUG
+#define assert_warn(...) ((void)0)
+#else
+#define assert_warn(...) _assert_warn(__VA_ARGS__)
+#endif
+
+#define _assert_warn(cond, ...)                 \
+  do {                                          \
+    if(!(cond)) {                               \
+      LOG(MARK("WARN") " "                      \
+          assert_msg(cond, ##__VA_ARGS__)       \
+          DROP(__VA_ARGS__));                   \
+      breakpoint();                             \
+    }                                           \
+  } while(0)
+
 /** Throw an unexpected error after being called `n` times.
  * A quick way to prevent unexpected infinite/long loops.
  * `n` should be some really large number, because this counter
  * cannot be reset.
  */
-#define assert_counter(n)                                               \
+#ifdef NDEBUG
+#define assert_counter(n) ((void)0)
+#else
+#define assert_counter(n) _assert_counter(n)
+#endif
+
+#define _assert_counter(n)                                               \
   do {                                                                  \
     static int counter = n;                                             \
     if(!counter--) {                                                    \
