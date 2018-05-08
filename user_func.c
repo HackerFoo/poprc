@@ -785,10 +785,9 @@ OP(exec) {
   cell_t *parent_entry = find_input_entry(c);
 
   if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
-    if(NOT_FLAG(c->expr, EXPR_DELAYED) &&
+    if(treq.priority < 1 &&
        TWEAK(1, "to disable exec delay")) {
-      FLAG_SET(c->expr, EXPR_DELAYED);
-      LOG("delay exec %E %C #abort", entry, c);
+      LOG("delay exec (priority %d) %E %C #abort", treq.priority, entry, c);
       return DELAY;
     }
     assert_error(parent_entry,

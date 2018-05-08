@@ -624,9 +624,8 @@ WORD("delay", delay, 1, 1)
 OP(delay) {
   cell_t *c = *cp;
   PRE(c, delay);
-  if(NOT_FLAG(c->expr, EXPR_DELAYED)) {
-    FLAG_SET(c->expr, EXPR_DELAYED);
-    LOG("delay %C", c);
+  if(treq.priority < 1) {
+    LOG("delay (priority %d) %C", treq.priority, c);
     return DELAY;
   }
 

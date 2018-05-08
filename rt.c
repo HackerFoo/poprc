@@ -94,7 +94,6 @@ cell_t *dup_alt(cell_t *c, csize_t n, cell_t *b) {
     args = closure_args(c);
   assert_error(n < in);
   cell_t *a = copy(c);
-  FLAG_CLEAR(a->expr, EXPR_DELAYED);
 
   // ref args
   COUNTUP(i, in) {
@@ -509,25 +508,6 @@ response abort_op(response rsp, cell_t **cp, type_request_t treq) {
     drop(c);
     *cp = alt;
     stats.fail_cnt++;
-  } else if(rsp == DELAY) {
-    FLAG_SET(c->expr, EXPR_DELAYED);
-    cell_t **next = &c->alt;
-    assert_warn(c->n == 0 || *next == NULL, TODO " fix destructive alt rotation %C", c);
-    while(*next) {
-      if(FLAG((*next)->expr, EXPR_DELAYED)) {
-        next = &(*next)->alt;
-        continue;
-      }
-
-      // rotate alts
-      cell_t *a = *next;
-      *next = NULL;
-      *cp = conc_alt(a, c); // BUG this needs to be done non-destructively
-
-      // TODO make sure delayed alts remain last
-      LOG("rotate alts %C %C", a, c);
-      return RETRY;
-    }
   }
   return rsp;
 }
@@ -820,15 +800,16 @@ uint8_t new_alt_id(unsigned int n) {
 }
 
 #if INTERFACE
+#define REQ_INHERIT .priority = treq.priority, .delay_assert = treq.delay_assert
 #define REQ(type, ...) CONCAT(REQ_, type)(__VA_ARGS__)
 #define REQ_list(_in, _out) \
-  ((type_request_t) { .t = T_LIST, .in = _in, .out = _out, .delay_assert = treq.delay_assert})
+  ((type_request_t) { .t = T_LIST, .in = _in, .out = _out, REQ_INHERIT})
 #define REQ_t_1(_t)                                                     \
-  ((type_request_t) { .t = _t, .delay_assert = treq.delay_assert, .expected = false })
+  ((type_request_t) { .t = _t, REQ_INHERIT, .expected = false })
 #define REQ_t_2(_t, _expected_val)                                          \
-  ((type_request_t) { .t = _t, .delay_assert = treq.delay_assert, .expected = true, .expected_value = _expected_val })
+  ((type_request_t) { .t = _t, REQ_INHERIT, .expected = true, .expected_value = _expected_val })
 #define REQ_t_3(_t, _expected, _expected_val)                            \
-  ((type_request_t) { .t = _t, .delay_assert = treq.delay_assert, .expected = _expected, .expected_value = _expected_val })
+  ((type_request_t) { .t = _t, REQ_INHERIT, .expected = _expected, .expected_value = _expected_val })
 #define REQ_t(...) DISPATCH(REQ_t, __VA_ARGS__)
 #define REQ_any(...) REQ_t(T_ANY, ##__VA_ARGS__)
 #define REQ_int(...) REQ_t(T_INT, ##__VA_ARGS__)

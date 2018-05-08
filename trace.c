@@ -287,7 +287,6 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
   tc->pos = 0;
   tc->n = n;
-  FLAG_CLEAR(tc->expr, EXPR_DELAYED);
   if(is_user_func(tc)) {
     // encode the entry
     cell_t **e = &tc->expr.arg[closure_in(tc)];

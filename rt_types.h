@@ -69,6 +69,7 @@ typedef struct type_request {
   csize_t in, out;
   type_t t;
   uint8_t pos;
+  int priority;
   bool delay_assert;
   bool expected;
   val_t expected_value;
@@ -86,7 +87,6 @@ typedef enum response {
 
 typedef response (reduce_t)(cell_t **cell, type_request_t treq);
 
-#define EXPR_DELAYED   0x01
 #define EXPR_NEEDS_ARG 0x02
 #define EXPR_RECURSIVE 0x04
 #define EXPR_TRACE     0x08
@@ -106,7 +106,6 @@ struct __attribute__((packed)) expr {
 };
 
 // value flags
-#define VALUE_DELAYED    0x01
 #define VALUE_DEP        0x04
 #define VALUE_CHANGES    0x08
 #define VALUE_ROW        0x10
