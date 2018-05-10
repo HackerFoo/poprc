@@ -77,12 +77,9 @@ typedef struct type_request {
 
 typedef enum response {
   SUCCESS = 0,
-  FAIL,
-  RETRY,
-
-  // delay types only
   DELAY,
-  DELAY_ARG
+  RETRY,
+  FAIL
 } response;
 
 typedef response (reduce_t)(cell_t **cell, type_request_t treq);

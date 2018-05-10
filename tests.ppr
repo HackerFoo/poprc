@@ -228,3 +228,6 @@ imbalanced_assert: 1 swap ! swap 2 swap ! dup swap2 +
 assert_seq: 1 swap ! seq
 
 pushl_swap_assert: pushl swap!
+
+alt_seq: dup [1] swap! swap [2 delay] swap not! | head
+del: 1 2 delay |

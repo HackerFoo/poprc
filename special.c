@@ -29,7 +29,7 @@
 
 OP(value) {
   cell_t *c = *cp;
-  response rsp;
+  response rsp = SUCCESS;
   PRE(c, value);
   stats.reduce_cnt--;
 
@@ -45,9 +45,9 @@ OP(value) {
   }
 
   // TODO move this check out - treq shouldn't cause a FAIL
-  CHECK(FLAG(c->value, VALUE_FAIL) ||
-        !type_match(treq.t, c),
-        FAIL);
+  CHECK_IF(FLAG(c->value, VALUE_FAIL) ||
+           !type_match(treq.t, c),
+           FAIL);
 
   if(treq.expected && !is_var(c) &&
      treq.expected_value != c->value.integer) {
@@ -277,7 +277,7 @@ bool is_dep_of(cell_t *d, cell_t *c) {
 /* todo: propagate types here */
 OP(dep) {
   cell_t *c = *cp;
-  response rsp;
+  response rsp = SUCCESS;
   PRE(c, dep);
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
@@ -286,6 +286,7 @@ OP(dep) {
   assert_error(is_dep_of(c, p));
   insert_root(&p);
   CHECK(reduce_dep(&p, REQ(any)));
+  CHECK_DELAY();
   trace_dep(c);
   remove_root(&p);
   drop(p);
@@ -309,9 +310,9 @@ bool is_dep(cell_t const *c) {
 WORD("??", placeholder, 0, 1)
 OP(placeholder) {
   cell_t *c = *cp;
-  response rsp;
+  response rsp = SUCCESS;
   PRE(c, placeholder);
-  CHECK(!check_type(treq.t, T_LIST), FAIL);
+  CHECK_IF(!check_type(treq.t, T_LIST), FAIL);
   csize_t in = closure_in(c), n = closure_args(c);
 
   if(n == 1) {
@@ -323,9 +324,10 @@ OP(placeholder) {
   assert_error(in >= 1);
   CHECK(reduce_arg(c, in - 1, &alt_set, REQ(list, 0, 0))); // *** should use treq
   COUNTUP(i, in - 1) {
-    CHECK(AND0(reduce_arg(c, i, &alt_set, REQ(any)),
-               fail_if(as_conflict(alt_set))));
+    CHECK(reduce_arg(c, i, &alt_set, REQ(any)));
+    CHECK_IF(as_conflict(alt_set), FAIL);
   }
+  CHECK_DELAY();
   clear_flags(c);
 
   // compose X [] --> X

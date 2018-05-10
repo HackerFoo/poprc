@@ -711,38 +711,50 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
   cell_t *c = *cp;
   cell_t *tc = NULL, **prev = &tc;
   unsigned int alts = 0;
+  type_request_t treq = req_pos(REQ(return), entry->pos);
 
   CONTEXT("trace_reduce %E %C", entry, c);
   insert_root(cp);
 
-  cell_t **p = cp;
-  while(*p) {
-    CONTEXT("branch %d: %C", alts, *p);
-    response rsp = func_list(p, req_pos(REQ(return), entry->pos));
-    // TODO handle rotating alts
-    if(rsp != SUCCESS) continue;
-    assert_alt(c, *p); // O(alts^2)
-    cell_t **a;
-    FORLIST(a, *p, true) {
-      collapse_row(a);
-      reduce(a, REQ(any)); // ***
-      if(is_value(*a) &&
-         !is_list(*a) &&
-         !is_var(*a)) { // TODO deps?
-        LOG(TODO " use return value of trace_store_value");
-        trace_store_value(entry, *a); // TODO use return value
+  COUNTUP(priority, 8) {
+    cell_t **p = cp;
+    bool delay = false;
+    treq.priority = priority;
+    CONTEXT("priority = %d", priority);
+    while(*p) {
+      CONTEXT("branch %d: %C", alts, *p);
+      response rsp = func_list(p, treq);
+      if(rsp == DELAY) {
+        delay = true;
+        p = &(*p)->alt;
+        continue;
       }
+      // TODO handle rotating alts
+      if(rsp != SUCCESS) continue;
+      assert_alt(c, *p); // O(alts^2)
+      cell_t **a;
+      FORLIST(a, *p, true) {
+        collapse_row(a);
+        reduce(a, REQ(any)); // ***
+        if(is_value(*a) &&
+           !is_list(*a) &&
+           !is_var(*a)) { // TODO deps?
+          LOG(TODO " use return value of trace_store_value");
+          trace_store_value(entry, *a); // TODO use return value
+        }
+      }
+      int x = trace_return(entry, *p);
+      cell_t *r = &entry[x];
+      COUNTUP(i, list_size(r)) {
+        tail_call_to_bottom(entry, trace_decode(r->value.ptr[i]));
+      }
+      r->n++;
+      *prev = trace_encode(x);
+      alts++;
+      p = &(*p)->alt;
+      prev = &r->alt;
     }
-    int x = trace_return(entry, *p);
-    cell_t *r = &entry[x];
-    COUNTUP(i, list_size(r)) {
-      tail_call_to_bottom(entry, trace_decode(r->value.ptr[i]));
-    }
-    r->n++;
-    *prev = trace_encode(x);
-    alts++;
-    p = &(*p)->alt;
-    prev = &r->alt;
+    if(!delay) break;
   }
 
   remove_root(cp);

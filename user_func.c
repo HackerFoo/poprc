@@ -666,7 +666,7 @@ response exec_list(cell_t **cp, type_request_t treq) {
 static
 response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
   cell_t *c = *cp;
-  response rsp;
+  response rsp = SUCCESS;
   size_t in = closure_in(c);
   cell_t *entry = c->expr.arg[in];
   PRE(c, exec_trace, " %E 0x%x", entry, c->expr.flags);
@@ -695,19 +695,20 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
         type_t t = p->value.type;
         if(t == T_LIST) t = T_ANY; // HACK, T_FUNCTION breaks things
         in_types[i] = t;
-        CHECK(reduce(&c->expr.arg[i], REQ(t, t)) == FAIL, FAIL);
+        CHECK_IF(reduce(&c->expr.arg[i], REQ(t, t)) == FAIL, FAIL);
         if(++n >= in) break;
       }
     }
 
     treq.delay_assert = false;
     COUNTUP(i, in) {
-      CHECK(AND0(reduce_arg(c, i, &alt_set, REQ(t, in_types[i])),
-                 fail_if(as_conflict(alt_set))));
+      CHECK(reduce_arg(c, i, &alt_set, REQ(t, in_types[i])));
+      CHECK_IF(as_conflict(alt_set), FAIL);
       cell_t *a = clear_ptr(c->expr.arg[i]);
       LOG_WHEN(a->alt, "split %C[%d] = %C #exec_split", c, i, a);
     }
   }
+  CHECK_DELAY();
   clear_flags(c);
 
   // HACK force lists on tail calls
@@ -726,6 +727,7 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
           }
         }
         CHECK(func_list(ap, REQ(return)));
+        CHECK_DELAY();
 
         // ensure quotes are stored first
         cell_t *l = *ap;
@@ -778,7 +780,7 @@ bool all_dynamic(cell_t *entry) {
 
 OP(exec) {
   cell_t *c = *cp;
-  response rsp;
+  response rsp = SUCCESS;
   cell_t *entry = c->expr.arg[closure_in(c)];
   PRE(c, exec, " %E", entry);
 
@@ -811,6 +813,7 @@ OP(exec) {
       TRAVERSE(c, in) {
         CHECK(reduce(p, REQ(any)));
       }
+      CHECK_DELAY();
     }
     cell_t *res = exec_expand(c, entry);
 

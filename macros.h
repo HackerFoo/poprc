@@ -240,19 +240,25 @@
 #define AND0_5(a, b, c, d, e) AND0_4(a, b, c, AND0_2(d, e))
 #define AND0(...) DISPATCH(AND0, __VA_ARGS__)
 
-#define CHECK_1(x)                              \
+#define CHECK(x)                                \
   do {                                          \
-    rsp = (x);                                  \
-    if(rsp) goto abort;                         \
+    response __rsp = (x);                       \
+    if(__rsp > rsp) rsp = __rsp;                \
+    if(__rsp > DELAY) goto abort;               \
   } while(0)
-#define CHECK_2(x, v)                           \
+
+#define CHECK_IF(x, v)                          \
   do {                                          \
     if(x) {                                     \
       rsp = (v);                                \
       goto abort;                               \
     }                                           \
   } while(0)
-#define CHECK(...) DISPATCH(CHECK, __VA_ARGS__)
+
+#define CHECK_DELAY()                           \
+  do {                                          \
+    if(rsp) goto abort;                         \
+  } while(0)
 
 #define ABORT(x)                                \
   do {                                          \

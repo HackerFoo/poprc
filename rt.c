@@ -248,8 +248,7 @@ response reduce(cell_t **cp, type_request_t treq) {
 
     LOG_WHEN(!*cp, MARK("FAIL") ": %O %C @abort", op, c);
     c = *cp;
-    if(r == SUCCESS ||
-       r >= DELAY) {
+    if(r <= DELAY) {
       if(marked) *cp = mark_ptr(c); // *** is the right pointer being marked?
       return r;
     }

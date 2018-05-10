@@ -76,26 +76,20 @@ bool is_function(cell_t const *c) {
 #define MAX_RETURN_VALUES 64
 response func_list(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
-  response rsp;
+  response rsp = SUCCESS;
   PRE(c, list);
   // if(treq.t == T_ANY && treq.t == T_LIST) return SUCCESS; // *** always fails
-  CHECK(!check_type(treq.t, T_RETURN), FAIL);
+  CHECK_IF(!check_type(treq.t, T_RETURN), FAIL);
   csize_t n = list_size(c);
   if(n == 0) return SUCCESS;
 
   alt_set_t alt_set = c->value.alt_set;
-  bool delay = false;
   COUNTUP(i, n) {
-    response rsp_a = AND0(reduce_ptr(c, i, &alt_set, req_pos(REQ(any), treq.pos)),
-                          fail_if(as_conflict(alt_set)));
-    if(rsp_a == DELAY) {
-      delay = true;
-    } else {
-      CHECK(rsp_a);
-    }
+    CHECK(reduce_ptr(c, i, &alt_set, req_pos(REQ(any), treq.pos)));
+    CHECK_IF(as_conflict(alt_set), FAIL);
   }
   log_ptrs(c);
-  CHECK(delay, DELAY);
+  CHECK_DELAY();
   TRAVERSE(c, ptrs) {
     *p = clear_ptr(*p);
   }
@@ -103,7 +97,7 @@ response func_list(cell_t **cp, type_request_t treq) {
     CHECK(func_list(&c->value.ptr[n-1], req_pos(REQ(any), treq.pos)));
   }
   alt_set |= c->value.ptr[n-1]->value.alt_set;
-  CHECK(as_conflict(alt_set), FAIL);
+  CHECK_IF(as_conflict(alt_set), FAIL);
   c->value.alt_set = alt_set;
   return SUCCESS;
 
@@ -114,7 +108,7 @@ response func_list(cell_t **cp, type_request_t treq) {
 void log_ptrs(cell_t *c) {
   CONTEXT_LOG("log_ptrs for %C", c);
   COUNTUP(i, list_size(c)) {
-    cell_t *a = c->value.ptr[i];
+    cell_t *a = clear_ptr(c->value.ptr[i]);
     if(is_value(a)) {
       LOG("ptr[%d] = %C", i, a);
     } else {
@@ -125,7 +119,7 @@ void log_ptrs(cell_t *c) {
 
 void reduce_list(cell_t **cp) {
   type_request_t treq = REQ(return);
-  response rsp;
+  response rsp = SUCCESS;
   COUNTUP(priority, 8) {
     cell_t **p = cp;
     bool delay = false;

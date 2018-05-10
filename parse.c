@@ -369,7 +369,7 @@ cell_t *parse_defs(cell_t **c, const char *module_name, cell_t **err) {
     cell_free(n);
     l->module_name = module_name;
     UNUSED cell_t *old = module_set(m, name, l);
-    assert_error(old == NULL); // TODO append defs?
+    assert_error(old == NULL, TODO " merge defs");
     if((*err = check_def(l))) break;
   }
   *c = p;
