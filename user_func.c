@@ -492,8 +492,8 @@ cell_t *unwrap(cell_t *c, csize_t out) {
 
   // N = out, ap0N swapN drop
   cell_t *l = make_list(out + offset);
-  LOG("unwrap %d %C", out, l);
   cell_t *ap = func(OP_ap, 1, out + 1);
+  LOG("unwrap %d %C [%C]", out, l, ap);
   COUNTUP(i, offset) {
     l->value.ptr[i] = ref(c->value.ptr[i]);
   }
@@ -659,6 +659,9 @@ response exec_list(cell_t **cp, type_request_t treq) {
     res->value.ptr[i] = d;
     c->expr.arg[j] = d;
   }
+
+  LOG(TODO " fix condition %C @condition", res);
+
   *cp = res;
   return RETRY;
 }

@@ -708,12 +708,11 @@ bool tail_call_to_bottom(cell_t *entry, int x) {
 
 // reduce for tracing & compilation
 unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
-  cell_t *c = *cp;
   cell_t *tc = NULL, **prev = &tc;
   unsigned int alts = 0;
   type_request_t treq = req_pos(REQ(return), entry->pos);
 
-  CONTEXT("trace_reduce %E %C", entry, c);
+  CONTEXT("trace_reduce %E %C", entry, *cp);
   insert_root(cp);
 
   COUNTUP(priority, 8) {
@@ -731,7 +730,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
       }
       // TODO handle rotating alts
       if(rsp != SUCCESS) continue;
-      assert_alt(c, *p); // O(alts^2)
+      assert_alt(*cp, *p); // O(alts^2)
       cell_t **a;
       FORLIST(a, *p, true) {
         collapse_row(a);
@@ -748,11 +747,15 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
       COUNTUP(i, list_size(r)) {
         tail_call_to_bottom(entry, trace_decode(r->value.ptr[i]));
       }
+
+      LOG("branch %d finished %C", alts, *p);
+
       r->n++;
-      *prev = trace_encode(x);
       alts++;
-      p = &(*p)->alt;
+
+      *prev = trace_encode(x);
       prev = &r->alt;
+      *p = CUT(*p, alt);
     }
     if(!delay) break;
   }
@@ -887,12 +890,21 @@ cell_t *trace_seq(cell_t *a, cell_t *b) {
   cell_t *entry = var_entry(a);
   int x = trace_alloc(entry, 2);
   cell_t *tc = &entry[x];
-  tc->op = OP_seq;
+  cell_t *p, *q;
+  if(b->op == OP_assert) {
+    p = a;
+    q = &entry[trace_decode(b->expr.arg[1])];
+    tc->op = OP_assert;
+  } else {
+    p = a;
+    q = b;
+    tc->op = OP_seq;
+  }
   tc->pos = 0;
-  tc->expr.arg[0] = trace_encode(var_index(a));
-  a->n++;
-  tc->expr.arg[1] = trace_encode(var_index(b));
-  b->n++;
+  tc->expr.arg[0] = trace_encode(var_index(p));
+  p->n++;
+  tc->expr.arg[1] = trace_encode(var_index(q));
+  q->n++;
   return tc;
 }
 

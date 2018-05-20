@@ -504,7 +504,7 @@ OP(seq) {
   cell_t *res = NULL;
   cell_t *tc = NULL;
   alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 1, &alt_set, REQ(any)));
+  CHECK(reduce_arg(c, 1, &alt_set, REQ(any))); // don't split arg here?
   CHECK_DELAY();
   cell_t *p = clear_ptr(c->expr.arg[1]);
   bool p_var = is_var(p);
@@ -759,7 +759,9 @@ response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
       ABORT(FAIL);
     }
     cell_t *d = c->expr.arg[n-1-i];
-    store_lazy_dep(d, build_seq(ref(*x), ref(res)), alt_set);
+    cell_t *seq_x = build_seq(ref(*x), ref(res));
+    store_lazy_dep(d, seq_x, alt_set);
+    LOG_WHEN(res->alt, MARK("WARN") " alt seq dep %C <- %C #condition", d, seq_x);
     if(d) d->pos = pos; // ***
   }
   if(!is_nil) remove_root(q);
