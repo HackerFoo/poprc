@@ -83,26 +83,19 @@ response func_list(cell_t **cp, type_request_t treq) {
   csize_t n = list_size(c);
   if(n == 0) return SUCCESS;
 
-  // this may not be necessary
-  assert_error(n < MAX_RETURN_VALUES);
-  BITSET(reduced_args, MAX_RETURN_VALUES);
-  zero(reduced_args);
-
   alt_set_t alt_set = c->value.alt_set;
-  COUNTUP(priority, 2) {
-    CONTEXT("priority = %d", priority);
-    COUNTUP(i, n) {
-      if(check_bit(reduced_args, i)) continue;
-      treq.priority = priority;
-      response rsp_a = AND0(reduce_ptr(c, i, &alt_set, req_pos(REQ(any), treq.pos)),
-                            fail_if(as_conflict(alt_set)));
-      if(rsp_a != DELAY) {
-        set_bit(reduced_args, i);
-        CHECK(rsp_a);
-      }
+  bool delay = false;
+  COUNTUP(i, n) {
+    response rsp_a = AND0(reduce_ptr(c, i, &alt_set, req_pos(REQ(any), treq.pos)),
+                          fail_if(as_conflict(alt_set)));
+    if(rsp_a == DELAY) {
+      delay = true;
+    } else {
+      CHECK(rsp_a);
     }
-    log_ptrs(c, reduced_args);
   }
+  log_ptrs(c);
+  CHECK(delay, DELAY);
   TRAVERSE(c, ptrs) {
     *p = clear_ptr(*p);
   }
@@ -118,23 +111,36 @@ response func_list(cell_t **cp, type_request_t treq) {
   return abort_op(rsp, cp, treq);
 }
 
-void log_ptrs(cell_t *c, uint8_t *reduced_args) {
+void log_ptrs(cell_t *c) {
   CONTEXT_LOG("log_ptrs for %C", c);
   COUNTUP(i, list_size(c)) {
-    if(check_bit(reduced_args, i)) {
-      LOG("ptr[%d] = %C", i, c->value.ptr[i]);
+    cell_t *a = c->value.ptr[i];
+    if(is_value(a)) {
+      LOG("ptr[%d] = %C", i, a);
     } else {
-      LOG("ptr[%d] = %C (skip delayed) #abort", i, c->value.ptr[i]);
+      LOG("ptr[%d] = %C (skip delayed) #abort", i, a);
     }
   }
 }
 
 void reduce_list(cell_t **cp) {
-  while(*cp) {
-    if(func_list(cp, REQ(return)) == SUCCESS) {
-      cp = &(*cp)->alt;
+  type_request_t treq = REQ(return);
+  response rsp;
+  COUNTUP(priority, 8) {
+    cell_t **p = cp;
+    bool delay = false;
+    treq.priority = priority;
+    CONTEXT("priority = %d", priority);
+    while(*p) {
+      rsp = func_list(p, treq);
+      if(ONEOF(rsp, SUCCESS, DELAY)) {
+        if(rsp == DELAY) delay = true;
+        p = &(*p)->alt;
+      }
     }
+    if(!delay) return;
   }
+  assert_error(0, "still delayed");
 }
 
 list_iterator_t list_begin(cell_t *l) {
