@@ -156,6 +156,9 @@ cell_t **bind_pattern(cell_t *c, cell_t *pattern, cell_t **tail) {
   } else if(pattern->op == OP_id &&
             pattern->expr.alt_set == 0) {
     return bind_pattern(c, pattern->expr.arg[0], tail);
+  } else if(pattern->op == OP_value && pattern->pos) { // HACK to move constants out
+    reduce(&pattern, treq);
+    return bind_pattern(c, pattern, tail);
   } else {
     // This can be caused by an operation before an infinite loop
     // This will prevent reducing the operation, and therefore fail to unify

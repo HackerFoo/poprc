@@ -298,11 +298,11 @@ __ acc x power -> acc' x^2 power/2
 power_step: in2 [acc_odd_power] dip31 ap02 swap2 drop reduce_power
 
 __ raise to integer power using binary exponentiation
-__ ^:
-__   1 -swap2 [] ap30
-__     [[power_step] .]
-__     [head 0 !=]
-__     iterate popd2 head
+^:
+  1 -swap2 [] ap30
+    [[power_step] .]
+    [head 0 !=]
+    iterate popd2 head
 
 __ sums numbers in a list
 __ [l] length -> sum

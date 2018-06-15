@@ -265,16 +265,10 @@ void graph_cell(FILE *f, cell_t const *c) {
         print_cell_pointer(f, c->value.ptr[n]);
         fprintf(f, "</td></tr>");
       }
-      if(c->pos) {
-        fprintf(f, "<tr><td bgcolor=\"deepskyblue\">pos: %d</td></tr>",
-                entry_number(trace_expr_entry(c->pos)));
-      }
     }
-
     if(is_fail(c)) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
     }
-
     if(c->value.var) {
       fprintf(f, "<tr><td bgcolor=\"orange\">trace: %d.%d",
               entry_number(var_entry(c->value.var)),
@@ -284,7 +278,6 @@ void graph_cell(FILE *f, cell_t const *c) {
       }
       fprintf(f, "</td></tr>");
     }
-
     if(!is_var(c)) {
       if(ONEOF(c->value.type, T_INT, T_SYMBOL)) {
         fprintf(f, "<tr><td bgcolor=\"yellow\">val: %" PRIdPTR "</td></tr>", c->value.integer);
@@ -308,10 +301,10 @@ void graph_cell(FILE *f, cell_t const *c) {
       fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
               show_alt_set((alt_set_t)c->expr.arg[1]));
     }
-    if(c->pos) {
-      fprintf(f, "<tr><td bgcolor=\"deepskyblue\">pos: %d</td></tr>",
-              entry_number(trace_expr_entry(c->pos)));
-    }
+  }
+  if(c->pos) {
+    fprintf(f, "<tr><td bgcolor=\"deepskyblue\">pos: %d</td></tr>",
+            entry_number(trace_expr_entry(c->pos)));
   }
   fprintf(f, "</table>>\nshape = \"none\"\n];\n");
 
