@@ -1987,11 +1987,44 @@ ___ tests.test_ap21 (3 -> 1) ___
 ___ tests.vifte (3 -> 1) x2 ___
 [1] var, type = ?a x1
 [2] var, type = ?a x1
-[3] var, type = ?a x1
-[4] __primitive.otherwise 3 1, type = a x2
+[3] var, type = ?a x2
+[4] __primitive.otherwise 3 1, type = a x1
 [5] return [ 4 ], type = r -> 9 x1
 [6] val False, type = s x1
-[7] __primitive.seq 6 4, type = a x1
+[7] __primitive.otherwise 3 6, type = a x1
 [8] __primitive.otherwise 7 2, type = a x1
 [9] return [ 8 ], type = r x1
+
+___ tests.vlength (1 -> 1) ___
+[1] var, type = ?a x1
+[2] tests.vlength__r0 3 1 -> X, type = a x1
+[3] val 0, type = i x1
+[4] return [ 2 ], type = r x1
+
+___ tests.vlength_ (2 -> 1) ___
+[1] var, type = ?l x1
+[2] var, type = ?i x1
+[3] tests.vlength__r0 2 1 -> X, type = a x1
+[4] return [ 3 ], type = r x1
+
+___ tests.vlength__r0 (2 -> 2) x2 rec ___
+[1] var, type = ?*l x4
+[2] var, type = ?*i x2
+[3] __primitive.ap 1 -> 4, type = l x1
+[4] __primitive.dep 3, type = a x1
+[5] __primitive.otherwise 4 6, type = a x2
+[6] val False, type = s x1
+[7] __primitive.otherwise 5 12, type = a x1
+[8] __primitive.add 2 9, type = i x1
+[9] val 1, type = i x1
+[10] __primitive.ap 1 -> X, type = l x1
+[11] tests.vlength__r0 8 10 -> 12, type = 0 x2
+[12] __primitive.dep 11, type = 0 x1
+[13] __primitive.otherwise 5 11, type = a x1
+[14] return [ 13 7 ], type = r -> 19 x1
+[15] __primitive.ap 1 -> 16, type = l x1
+[16] __primitive.dep 15, type = a x2
+[17] __primitive.otherwise 16 2, type = a x1
+[18] __primitive.otherwise 16 1, type = a x1
+[19] return [ 17 18 ], type = r x1
 

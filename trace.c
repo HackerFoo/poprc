@@ -895,6 +895,10 @@ cell_t *trace_seq(cell_t *a, cell_t *b) {
     p = a;
     q = &entry[trace_decode(b->expr.arg[1])];
     tc->op = OP_assert;
+  } else if(b->op == OP_otherwise) {
+    p = &entry[trace_decode(b->expr.arg[0])];
+    q = a;
+    tc->op = OP_otherwise;
   } else {
     p = a;
     q = b;

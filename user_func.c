@@ -428,7 +428,7 @@ void reassign_input_order(cell_t *entry) {
   cell_t *parent_entry = entry->entry.parent;
   CONTEXT("reassign input order %C (%e -> %e)", c,
           parent_entry, entry);
-  csize_t in = entry->entry.in;
+  UNUSED csize_t in = entry->entry.in;
   cell_t *vl = 0;
   input_var_list(c, &vl);
   vars_in_entry(&vl, entry);

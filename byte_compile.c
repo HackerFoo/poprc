@@ -161,35 +161,44 @@ void print_bytecode(cell_t *entry) {
   }
 }
 
+void drop_trace(cell_t *entry, cell_t *tc) {
+  if(tc->n <= 0) {
+    LOG("drop %T %O", tc, tc->op);
+    TRAVERSE(tc, in, ptrs) {
+      int x = trace_decode(*p);
+      if(x > 0) {
+        drop_trace(entry, &entry[x]);
+      }
+    }
+    tc->op = OP_null;
+  } else {
+    tc->n--;
+  }
+}
+
 static
 void condense(cell_t *entry) {
   if(entry->entry.len == 0) return;
   cell_t *ret = NULL;
   int idx = 1;
 
+  // drop unreferenced instructions
+  FOR_TRACE(tc, entry) {
+    if(tc->n < 0 && !(is_var(tc) && tc->pos)) {
+      drop_trace(entry, tc);
+    }
+  }
+
   // calculate mapping
   FOR_TRACE(tc, entry) {
     if(tc->op) {
-      if(tc->n < 0 && !(is_var(tc) && tc->pos)) {
-        // drop args and ptrs
-        LOG("collapse/drop %T %O", tc, tc->op);
-        cell_t **e = is_user_func(tc) ? &tc->expr.arg[closure_in(tc)] : NULL;
-        TRAVERSE(tc, args, ptrs) {
-          if(p != e) {
-            int x = trace_decode(*p);
-            if(x > 0) entry[x].n--;
-          }
-        }
-        tc->op = OP_null;
+      if(is_value(tc) && tc->value.type == T_RETURN) {
+        if(ret) ret->alt = trace_encode(idx);
+        ret = tc;
       } else {
-        if(is_value(tc) && tc->value.type == T_RETURN) {
-          if(ret) ret->alt = trace_encode(idx);
-          ret = tc;
-        } else {
-          tc->alt = trace_encode(idx);
-        }
-        idx += calculate_cells(tc->size);
+        tc->alt = trace_encode(idx);
       }
+      idx += calculate_cells(tc->size);
     } else {
       LOG("collapse %d", tc - entry);
     }

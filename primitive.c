@@ -689,6 +689,7 @@ response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
     out = closure_out(c);
 
   cell_t *p = NULL;
+  cell_t *res = NULL;
   int pos = c->pos ? c->pos : c->expr.arg[in]->pos;
 
   alt_set_t alt_set = 0;
@@ -744,7 +745,7 @@ response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
 
   list_iterator_t end = it;
   LOOP(out) list_next(&end, false);
-  cell_t *res = list_rest(end);
+  res = list_rest(end);
   unique(&res);
   drop(res->alt);
   res->alt = c->alt;
@@ -773,6 +774,7 @@ response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   return SUCCESS;
 
  abort:
+  drop(res);
   return abort_op(rsp, cp, treq);
 }
 
