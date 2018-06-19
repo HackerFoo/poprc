@@ -248,16 +248,13 @@ TEST(list_remaining_size) {
   return ret ? 0 : -1;
 }
 
-// finds the cell which contains a pointer
-cell_t *ptr_to_cell(void *p) {
-  volatile size_t i = ((cell_t *)p) - cells; // prevent optimizing this away
-  return (cell_t *)((char *)cells + i * sizeof(cell_t));
-}
-
 // returns a copy of the rest of the list
 cell_t *list_rest(list_iterator_t it) {
   if(!it.array) return NULL;
-  if(!it.index) return ref(ptr_to_cell(it.array));
+  if(!it.index) {
+    // just return the cell owning the array
+    return ref((cell_t *)((char *)it.array - offsetof(cell_t, value.ptr)));
+  }
   csize_t elems = it.size - it.index + it.row;
   cell_t *rest;
   if(elems == 1 && it.row && is_list(it.array[it.size])) {

@@ -25,37 +25,37 @@ module list:
 imports:
   module control
   module stack
+  module logic
 
 __ take rightmost value from quote
 head: popr swap drop
 
 __ return the length of a list
-__ length: function_t 0 swap length_
-__ length_:
-__   [] ap20
-__     [length_step]
-__     [head is_nil not]
-__     iterate popr drop head
-length_step: [[1+] [popr drop] para] .
+length: 0 swap length_
+length_:
+  [] ap20
+    [[[1+] [popd] para] .]
+    [popr popr valid]
+    iterate popd head
 
 __ right fold
 __ [... x] y [fn] foldr -> y'
 __ foldr: -swap2 foldr_
-__ foldr_:
-__   [] ap30 __ fn xs y
-__     [[foldr_step] .]
-__     [popr drop head is_nil not]
-__     iterate head
+foldr_:
+  [] ap30 __ fn xs y
+    [[foldr_step] .]
+    [popr drop head popr valid]
+    iterate head
 foldr_step: [popr] dip12 over3 ap21 swap drop
 
 __ left fold
 __ [... x] y [fn] foldl -> y'
 __ foldl: swap2 [] foldl_ ap11 swap drop
-__ foldl_:
-__   [] ap30 __ fn xs y
-__     [[foldl_step] .]
-__     [popr drop head is_nil not]
-__     iterate head
+foldl_:
+  [] ap30 __ fn xs y
+    [[foldl_step] .]
+    [popr drop head popr valid]
+    iterate head
 foldl_step: [popr over2 pushl] dip23 .
 
 dropl:
@@ -87,11 +87,11 @@ __ concat: [] [.] foldr
 
 mov_ap: dup -swap2 [. movr] dip32
 __ map: [] swap map_
-__ map_:
-__   [] ap30
-__     [[mov_ap] .]
-__     [popr drop popr drop head is_nil not]
-__     iterate popr drop head
+map_:
+  [] ap30
+    [[mov_ap] .]
+    [popr drop popr drop head popr valid]
+    iterate popr drop head
 
 __ a [b..] [p]
 pushif:
@@ -101,11 +101,11 @@ pushif:
 
 __ [l] [p] filter -> [..x..] such that for all x, x p == True
 __ filter: [] swap filter_
-__ filter_:
-__   [] ap30
-__     [[filter_step] .]
-__     [popr drop popr drop head is_nil not]
-__     iterate popr drop head
+filter_:
+  [] ap30
+    [[filter_step] .]
+    [popr drop popr drop popr valid]
+    iterate popr drop head
 
 __ [.. a] [b ..] [p] --> [..] [a b ..] if a p, otherwise [..] [b ..]
 filter_step: dup [[[popr] dip12] dip23 pushif] dip32

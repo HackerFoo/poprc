@@ -207,13 +207,6 @@ after0:
 
 __ bad_deps: [dup] popr swap 1 swap dup swap [ap21] dip32 2 swap ap11
 
-vlength: 0 swap vlength_
-vlength_:
-  [] ap20
-    [[[1+] [popd] para] .]
-    [popr popr valid]
-    iterate popd head
-
 vifte: swap2 valid -swap2 ifte
 
 __ equivalent to `True otherwise`
