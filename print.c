@@ -152,6 +152,9 @@ void make_graph(char const *path, cell_t const *c) {
              "label=\"%s\";\n"
              "labelloc=bottom\n"
              "labeljust=right\n"
+             "bgcolor=gray10\n"
+             "color=white\n"
+             "fontcolor=white\n"
              "graph [\n"
              "rankdir = \"RL\"\n"
              "];\n", path);
@@ -176,6 +179,9 @@ void make_graph_all(char const *path) {
              "label=\"%s %s\";\n"
              "labelloc=bottom\n"
              "labeljust=right\n"
+             "bgcolor=gray10\n"
+             "color=white\n"
+             "fontcolor=white\n"
              "graph [\n"
              "rankdir = \"RL\"\n"
              "];\n", path, label);
@@ -187,15 +193,16 @@ void make_graph_all(char const *path) {
   fclose(f);
 }
 
-void print_cell_pointer(FILE *f, cell_t *p) {
+void print_cell_pointer(FILE *f, const char *pre, cell_t *p) {
+  if(pre) fprintf(f, "<font color=\"white\">%s: </font>", pre);
   if(p == &fail_cell) {
     fprintf(f, "<font color=\"red\">&amp;fail_cell</font>");
   } else if(p == &nil_cell) {
-    fprintf(f, "<font color=\"gray70\">&amp;nil_cell</font>");
+    fprintf(f, "<font color=\"gray60\">&amp;nil_cell</font>");
   } else if(is_cell(p)) {
-    fprintf(f, "<font color=\"gray70\">&amp;cells[%d]</font>", CELL_INDEX(p));
+    fprintf(f, "<font color=\"gray60\">&amp;cells[%d]</font>", CELL_INDEX(p));
   } else {
-    fprintf(f, "<font color=\"gray70\">%p</font>", (void *)p);
+    fprintf(f, "<font color=\"gray60\">%p</font>", (void *)p);
   }
 }
 
@@ -217,12 +224,12 @@ void graph_cell(FILE *f, cell_t const *c) {
   if(c->n == PERSISTENT || is_map(c)) return; // HACK
 
   /* print node attributes */
-  fprintf(f, "node%d [\nlabel =<", node);
+  fprintf(f, "node%d [\ncolor=white\nlabel =<", node);
 
   const char *module_name, *word_name;
   get_name(c, &module_name, &word_name);
 
-  fprintf(f, "<table border=\"%d\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"black\"><font color=\"white\"><b>(%d) ",
+  fprintf(f, "<table border=\"%d\" bgcolor=\"gray20\" cellborder=\"1\" cellspacing=\"0\"><tr><td port=\"top\" bgcolor=\"gray40\"><font color=\"white\"><b>(%d) ",
           border,
           node);
   if(is_user_func(c)) {
@@ -243,26 +250,26 @@ void graph_cell(FILE *f, cell_t const *c) {
 
   fprintf(f, "</b></font></td></tr>");
   if(c->alt) {
-    fprintf(f, "<tr><td port=\"alt\">alt: ");
-    print_cell_pointer(f, c->alt);
+    fprintf(f, "<tr><td port=\"alt\">");
+    print_cell_pointer(f, "alt", c->alt);
     fprintf(f, "</td></tr>");
   }
   if(is_value(c)) {
     if(c->value.alt_set) {
-      fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
+      fprintf(f, "<tr><td><font color=\"white\">alt_set: X%s</font></td></tr>",
               show_alt_set(c->value.alt_set));
     }
     if(is_list(c)) {
       csize_t n = list_size(c);
       if(n && FLAG(c->value, VALUE_ROW)) {
         n--;
-        fprintf(f, "<tr><td port=\"ptr%u\" bgcolor=\"gray90\" >row: ", (unsigned int)n);
-        print_cell_pointer(f, c->value.ptr[n]);
+        fprintf(f, "<tr><td port=\"ptr%u\">", (unsigned int)n);
+        print_cell_pointer(f, "row", c->value.ptr[n]);
         fprintf(f, "</td></tr>");
       }
       while(n--) {
-        fprintf(f, "<tr><td port=\"ptr%u\">ptr: ", (unsigned int)n);
-        print_cell_pointer(f, c->value.ptr[n]);
+        fprintf(f, "<tr><td port=\"ptr%u\">", (unsigned int)n);
+        print_cell_pointer(f, "ptr", c->value.ptr[n]);
         fprintf(f, "</td></tr>");
       }
     }
@@ -288,17 +295,16 @@ void graph_cell(FILE *f, cell_t const *c) {
   } else {
     COUNTUP(i, closure_in(c)) {
       fprintf(f, "<tr><td port=\"arg%u\">", (unsigned int)i);
-      print_cell_pointer(f, c->expr.arg[i]);
+      print_cell_pointer(f, NULL, c->expr.arg[i]);
       fprintf(f, "</td></tr>");
     }
     RANGEUP(i, closure_args(c) - closure_out(c), closure_args(c)) {
       fprintf(f, "<tr><td port=\"arg%u\">", (unsigned int)i);
-      fprintf(f, "out: ");
-      print_cell_pointer(f, c->expr.arg[i]);
+      print_cell_pointer(f, "out", c->expr.arg[i]);
       fprintf(f, "</td></tr>");
     }
     if(c->op == OP_id && c->expr.arg[1]) {
-      fprintf(f, "<tr><td>alt_set: X%s</td></tr>",
+      fprintf(f, "<tr><td><font color=\"white\">alt_set: X%s</font></td></tr>",
               show_alt_set((alt_set_t)c->expr.arg[1]));
     }
   }
@@ -311,7 +317,7 @@ void graph_cell(FILE *f, cell_t const *c) {
   /* print edges */
   if(is_cell(c->alt)) {
     cell_t *alt = clear_ptr(c->alt);
-    fprintf(f, "node%d:alt -> node%d:top;\n",
+    fprintf(f, "node%d:alt -> node%d:top [color=white];\n",
             node, CELL_INDEX(alt));
     graph_cell(f, c->alt);
   }
@@ -320,7 +326,7 @@ void graph_cell(FILE *f, cell_t const *c) {
       csize_t n = list_size(c);
       while(n--) {
         if(is_cell(c->value.ptr[n])) {
-          fprintf(f, "node%d:ptr%u -> node%d:top;\n",
+          fprintf(f, "node%d:ptr%u -> node%d:top [color=white];\n",
                   node, (unsigned int)n, CELL_INDEX(c->value.ptr[n]));
           graph_cell(f, c->value.ptr[n]);
         }
@@ -331,7 +337,7 @@ void graph_cell(FILE *f, cell_t const *c) {
     COUNTUP(i, start_out) {
       cell_t *arg = clear_ptr(c->expr.arg[i]);
       if(is_cell(arg)) {
-        fprintf(f, "node%d:arg%d -> node%d:top;\n",
+        fprintf(f, "node%d:arg%d -> node%d:top [color=white];\n",
                 node, (unsigned int)i, CELL_INDEX(arg));
         graph_cell(f, arg);
       }
@@ -339,7 +345,7 @@ void graph_cell(FILE *f, cell_t const *c) {
     RANGEUP(i, start_out, n) {
       cell_t *arg = clear_ptr(c->expr.arg[i]);
       if(is_cell(arg)) {
-        fprintf(f, "node%d:arg%d -> node%d:top [color=lightgray];\n",
+        fprintf(f, "node%d:arg%d -> node%d:top [color=gray50];\n",
                 node, (unsigned int)i, CELL_INDEX(arg));
         graph_cell(f, arg);
       }
