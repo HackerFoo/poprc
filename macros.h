@@ -266,4 +266,11 @@
     goto abort;                                 \
   } while(0)
 
+#define NOT_NULL(x)                                     \
+  ({                                                    \
+    __typeof(x) __ptr = (x);                            \
+    assert_error(__ptr != NULL, "null pointer");        \
+    __ptr;                                              \
+  })
+
 #endif

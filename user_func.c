@@ -193,6 +193,7 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry) {
     *vl = 0,
     **tail = &vl;
   COUNTUP(i, in) {
+    reduce_one(&c->expr.arg[i], REQ(any)); // HACK
     tail = bind_pattern(c->expr.arg[i], pat->expr.arg[i], tail);
     if(!tail) {
       LOG("bind_pattern failed %C %C", c->expr.arg[i], pat->expr.arg[i]);
@@ -431,7 +432,7 @@ void reassign_input_order(cell_t *entry) {
   UNUSED csize_t in = entry->entry.in;
   cell_t *vl = 0;
   input_var_list(c, &vl);
-  vars_in_entry(&vl, entry);
+  vars_in_entry(&vl, entry); // ***
   assert_error(tmp_list_length(vl) == in, "%d != %d, %E %C @wrap", tmp_list_length(vl), in, entry, c);
 
   int pos = 1;
@@ -775,10 +776,22 @@ response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry)
   return abort_op(rsp, cp, treq);
 }
 
-bool all_dynamic(cell_t *entry) {
-  COUNTUP(i, entry->entry.in) {
+bool is_input(cell_t *v) {
+  return is_var(v) && is_var(v->value.var);
+}
+
+bool all_dynamic(cell_t *entry, cell_t *c) {
+  int in = entry->entry.in;
+  assert_error(in == closure_in(c));
+  if(!entry->entry.rec) return false;
+  COUNTUP(i, in) {
     if(NOT_FLAG(entry[i+1].value, VALUE_CHANGES)) {
-      return false;
+      int a = in - i - 1;
+      reduce(&c->expr.arg[a], REQ(any)); // HACK
+      if(!is_input(c->expr.arg[a])) {
+        LOG("not dynamic: %C %E arg[%d] = %C", c, entry, a, c->expr.arg[a]);
+        return false;
+      }
     }
   }
   return true;
@@ -808,7 +821,7 @@ OP(exec) {
     }
     return AND0(exec_list(cp, treq),
                 func_exec_trace(cp, treq, parent_entry));
-  } else if(parent_entry && all_dynamic(entry)) {
+  } else if(parent_entry && all_dynamic(entry, c)) {
     return func_exec_trace(cp, treq, parent_entry);
   } else if(parent_entry && entry->entry.rec) {
     return func_exec_wrap(cp, treq, parent_entry);

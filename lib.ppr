@@ -57,7 +57,7 @@ length_:
 
 __ right fold
 __ [... x] y [fn] foldr -> y'
-__ foldr: -swap2 foldr_
+foldr: -swap2 foldr_
 foldr_:
   [] ap30 __ fn xs y
     [[foldr_step] .]
@@ -67,7 +67,7 @@ foldr_step: [popr] dip12 over3 ap21 swap drop
 
 __ left fold
 __ [... x] y [fn] foldl -> y'
-__ foldl: swap2 [] foldl_ ap11 swap drop
+foldl: swap2 [] foldl_ ap11 swap drop
 foldl_:
   [] ap30 __ fn xs y
     [[foldl_step] .]
@@ -103,7 +103,7 @@ iteratel: [dup [peek] dip22 iteratel swap] ap20
 __ concat: [] [.] foldr
 
 mov_ap: dup -swap2 [. movr] dip32
-__ map: [] swap map_
+map: [] swap map_
 map_:
   [] ap30
     [[mov_ap] .]
@@ -117,7 +117,7 @@ pushif:
     ifte
 
 __ [l] [p] filter -> [..x..] such that for all x, x p == True
-__ filter: [] swap filter_
+filter: [] swap filter_
 filter_:
   [] ap30
     [[filter_step] .]

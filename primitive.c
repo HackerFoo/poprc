@@ -21,7 +21,6 @@
 #include "rt_types.h"
 
 #include "startle/error.h"
-#include "startle/test.h"
 #include "startle/support.h"
 #include "startle/log.h"
 
@@ -603,7 +602,7 @@ OP(id) {
     CHECK_DELAY();
     clear_flags(c);
 
-    store_reduced(cp, mod_alt(ref(c->expr.arg[0]), c->alt, alt_set));
+    store_reduced(cp, mod_alt(ref(c->expr.arg[0]), c->alt, alt_set)); // apply pos? ***
     return SUCCESS;
   } else {
     *cp = CUT(c, expr.arg[0]);

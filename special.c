@@ -285,7 +285,7 @@ OP(dep) {
   cell_t *p = ref(c->expr.arg[0]);
   assert_error(is_dep_of(c, p));
   insert_root(&p);
-  CHECK(reduce_dep(&p, REQ(any)));
+  CHECK(reduce_one(&p, REQ(any)));
   CHECK_DELAY();
   trace_dep(c);
   remove_root(&p);

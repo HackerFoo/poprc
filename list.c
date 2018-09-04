@@ -386,6 +386,7 @@ csize_t function_out(const cell_t *l, bool include_row_var) {
   return list_remaining_size(it, include_row_var);
 }
 
+// find the leftmost list
 cell_t **left_list(cell_t **l) {
   while(is_row_list(*l)) {
     cell_t **x = &(*l)->value.ptr[list_size(*l) - 1];
@@ -395,6 +396,7 @@ cell_t **left_list(cell_t **l) {
   return l;
 }
 
+// get the left element in a chunk
 cell_t **left_elem(cell_t *l) {
   csize_t n = list_size(l);
   return n ? &l->value.ptr[n-1] : NULL;
@@ -417,6 +419,7 @@ cell_t **leftmost_1(cell_t **lp) {
   return leftmost_2(lp, true);
 }
 
+// find the leftmost element
 #if INTERFACE
 #define leftmost(...) DISPATCH(leftmost, __VA_ARGS__)
 #endif

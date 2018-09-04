@@ -610,8 +610,9 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
 
 cell_t *trace_quote_var(cell_t *l) {
   if(l == &nil_cell) return l;
+  if(l->value.var) return ref(l);
   assert_error(l != NULL);
-  cell_t *f = *leftmost_row(&l);
+  cell_t *f = *NOT_NULL(leftmost_row(&l));
   while(is_placeholder(f)) f = f->expr.arg[closure_in(f) - 1];
   assert_error(is_var(f), "not a var: %O %C", f->op, f);
   cell_t *entry = var_entry(f->value.var);

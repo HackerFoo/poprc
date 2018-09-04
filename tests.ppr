@@ -113,6 +113,7 @@ it10b: [[1+] .] [head 10 <] iterate head
 ap_loop: dup [$] dip21 ap_loop
 ap_loop1: [1+] ap_loop
 ap_loop2: [[1+] .] ap_loop
+ap_loop3: [1+] swap swap ap_loop
 
 __ ERROR: user_func.c:185: unify_exec: Assertion `in == closure_in(pat)' failed.
 __ alt_ap_loop: [dup | 1+] ap_loop
@@ -152,6 +153,18 @@ drop_loop4:
     [[1-] .]
     [head 0 >]
     iterate popd pull3 drop
+
+__ drop_loop5:
+__   [] ap10
+__     [[1-] .] swap swap
+__     [head 0 >]
+__     iterate head
+
+__ drop_loop6:
+__   [-] pushl [.] pushl
+__     [7] swap
+__     [head 0 >]
+__     iterate head
 
 collatz_step:
   [dup 2/ swap even]

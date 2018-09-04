@@ -258,10 +258,10 @@ response reduce(cell_t **cp, type_request_t treq) {
 }
 
 // Perform one reduction step on *cp
-response reduce_dep(cell_t **cp, type_request_t treq) {
+response reduce_one(cell_t **cp, type_request_t treq) {
   cell_t *c = *cp;
   if(!c) {
-    LOG("reduce_dep: null closure %C", c);
+    LOG("reduce_one: null closure %C", c);
     return abort_op(FAIL, cp, treq);
   } else {
     c = *cp = fill_incomplete(c);
