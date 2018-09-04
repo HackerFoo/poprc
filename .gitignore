@@ -38,3 +38,4 @@ _darcs
 /tex/*.aux
 /tex/*.log
 /tex/*.pdf
+/make-eval.log

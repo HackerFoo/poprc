@@ -113,7 +113,8 @@ DIAGRAMS_FILE := diagrams.html
 SRC := $(wildcard *.c) $(wildcard startle/*.c)
 OBJS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SRC))
 DEPS := $(patsubst %.c, $(BUILD_DIR)/%.d, $(SRC))
-GEN := $(patsubst %.c, .gen/%.h, $(SRC)) .gen/word_table.h .gen/test_list.h
+LISTS := command format op test word
+GEN := $(patsubst %.c, .gen/%.h, $(SRC)) $(patsubst %, .gen/%_list.h, $(LISTS))
 DOT := $(wildcard *.dot)
 DOTSVG := $(patsubst %.dot, $(DIAGRAMS)/%.svg, $(DOT))
 
@@ -250,7 +251,7 @@ all_test_output:
 rtags: make-eval.log
 	-rc -c - < make-eval.log; true
 
-make-eval.log: $(SRC) Makefile Makefile.gen
+make-eval.log: $(SRC) Makefile
 	make clean
 	make eval | tee make-eval.log
 
