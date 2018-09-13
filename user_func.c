@@ -35,6 +35,7 @@
 #include "user_func.h"
 #include "print.h"
 #include "parse.h" // for string_printf
+#include "tags.h"
 
 bool is_user_func(const cell_t *c) {
   return c->op == OP_exec;
@@ -425,6 +426,7 @@ void vars_in_entry(cell_t **p, cell_t *entry) {
 void reassign_input_order(cell_t *entry) {
   if(!entry->entry.wrap) return;
   cell_t *c = entry->entry.wrap->expand;
+  set_ptr_tag(c, "wrap-&gt;expand");
   if(!c) return;
   cell_t *parent_entry = entry->entry.parent;
   CONTEXT("reassign input order %C (%e -> %e)", c,

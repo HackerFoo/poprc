@@ -33,6 +33,7 @@
 #include "trace.h"
 #include "list.h"
 #include "user_func.h"
+#include "tags.h"
 
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
@@ -84,6 +85,7 @@ int get_watch(cell_t *c) {
 void rt_init() {
   alt_cnt = 0;
   memset(rt_roots, 0, sizeof(rt_roots));
+  clear_ptr_tags();
 }
 
 // Duplicate c to c->alt and return it

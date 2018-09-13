@@ -40,6 +40,7 @@
 #include "user_func.h"
 #include "list.h"
 #include "lex.h"
+#include "tags.h"
 
 static BITSET_INDEX(visited, cells);
 static BITSET_INDEX(marked, cells);
@@ -311,6 +312,10 @@ void graph_cell(FILE *f, cell_t const *c) {
   if(c->pos) {
     fprintf(f, "<tr><td bgcolor=\"deepskyblue\">pos: %d</td></tr>",
             entry_number(trace_expr_entry(c->pos)));
+  }
+  const char *tag = get_ptr_tag(c);
+  if(tag) {
+    fprintf(f, "<tr><td><font color=\"white\">tag: %s</font></td></tr>", tag);
   }
   fprintf(f, "</table>>\nshape = \"none\"\n];\n");
 
