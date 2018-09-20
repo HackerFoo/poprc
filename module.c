@@ -32,6 +32,7 @@
 #include "module.h"
 #include "byte_compile.h"
 #include "list.h"
+#include "trace.h"
 
 #define WORD_ALIAS__ITEM(__name, __func, __in, __out, __builder) \
   WORD__ITEM(__name, __func, __in, __out)
@@ -510,6 +511,7 @@ COMMAND(import, "import given module(s), or all") {
 }
 
 void print_module_bytecode(cell_t *m) {
+  error_t error;
   assert_error(is_module(m));
   if(!*module_ref(m)) return;
   cell_t *map_copy = copy(*module_ref(m));
@@ -518,10 +520,18 @@ void print_module_bytecode(cell_t *m) {
   FORMAP(i, map) {
     char *name = (char *)map[i].first;
     if(strcmp("imports", name) == 0) continue;
-    cell_t *e = module_lookup_compiled(string_seg(name), &m);
-    if(e && !(e->entry.flags & ENTRY_QUOTE)) {
-      print_bytecode(e);
-      putchar('\n');
+    if(catch_error(&error)) {
+      printf(NOTE("ERROR") " ");
+      print_last_log_msg();
+      print_active_entries("  - while compiling ");
+      printf("\n");
+      log_soft_init();
+    } else {
+      cell_t *e = module_lookup_compiled(string_seg(name), &m);
+      if(e && !(e->entry.flags & ENTRY_QUOTE)) {
+        print_bytecode(e);
+        putchar('\n');
+      }
     }
   }
   closure_free(map_copy);
