@@ -71,6 +71,7 @@ typedef struct type_request {
   uint8_t pos;
   int priority;
   bool delay_assert;
+  bool delay_var;
   bool expected;
   val_t expected_value;
 } type_request_t;

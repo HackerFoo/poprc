@@ -33,6 +33,8 @@ OP(value) {
   PRE(c, value);
   stats.reduce_cnt--;
 
+  CHECK_IF(is_var(c) && treq.delay_var, DELAY);
+
   // promote integer constants to float constants
   if(treq.t == T_FLOAT &&
      NOT_FLAG(c->value, VALUE_VAR) &&
