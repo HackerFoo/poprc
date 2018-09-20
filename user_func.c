@@ -845,6 +845,10 @@ OP(exec) {
         show_one(*p);
       }
       printf("\n");
+      if(break_on_trace) {
+        LOG("break on trace: %C", c);
+        breakpoint();
+      }
     }
     store_lazy(cp, res, 0);
     return RETRY;

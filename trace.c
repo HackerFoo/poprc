@@ -537,6 +537,10 @@ void trace_reduction(cell_t *c, cell_t *r) {
       printf(" ->");
       show_one(r);
       printf("\n");
+      if(break_on_trace) {
+        LOG("break on trace: %C -> %C", c, r);
+        breakpoint();
+      }
     }
     if(c->op != OP_exec) { // is this still necessary?
       return;

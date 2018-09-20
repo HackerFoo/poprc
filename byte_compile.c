@@ -40,6 +40,8 @@
 #include "list.h"
 #include "trace.h"
 
+bool break_on_trace = false;
+
 static void print_value(const cell_t *c) {
   switch(c->value.type) {
   case T_INT:
@@ -961,4 +963,8 @@ COMMAND(trace, "trace an instruction") {
       printf("Entry not found\n");
     }
   }
+}
+
+COMMAND(bt, "break on trace") {
+  break_on_trace = true;
 }
