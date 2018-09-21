@@ -90,6 +90,35 @@ typedef struct {
     }                                                   \
   } while(0)
 
+/** Run following code and then throw if the condition is violated. */
+#ifdef NDEBUG
+#define on_assert_error(...) if(0)
+#else
+#define on_assert_error(...) _on_assert_error(__VA_ARGS__)
+#endif
+
+/* Some explanation:
+ *
+ * This:
+ * for(; !cond; throw_error()) {
+ *   ...
+ * }
+ *
+ * Is equivalent to this:
+ * if(!cond) {
+ *   ...
+ *   throw_error();
+ * }
+ *
+ * There will be no looping since throw_error() will longjmp out at the end.
+ */
+#define _on_assert_error(cond, ...)                     \
+  for(;!(cond);                                         \
+      ({throw_error(ERROR_TYPE_UNEXPECTED,              \
+                    assert_msg(cond, ##__VA_ARGS__),    \
+                    ##__VA_ARGS__);}))
+
+
 /** Warn when an assumption doesn't hold.
  * If the condition is violated, log the following arguments and print them.
  */
