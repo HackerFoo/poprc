@@ -418,8 +418,9 @@ void vars_in_entry(cell_t **p, cell_t *entry) {
       // remove from list
       *p = *next;
       v->tmp = 0;
+    } else {
+      p = next;
     }
-    p = next;
   }
 }
 
