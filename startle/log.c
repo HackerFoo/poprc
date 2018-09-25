@@ -741,13 +741,15 @@ void get_tag(tag_t tag) {
   ({                                                            \
     const char *__c;                                            \
     intptr_t __x;                                               \
-    if unlikely(log_do_tweak(&__x, fmt)) {                      \
-        __c = COLOR_blue;                                       \
-      } else {                                                  \
+    bool __t;                                                   \
+    if unlikely(__t = log_do_tweak(&__x, fmt)) {                \
+      __c = COLOR_blue;                                         \
+    } else {                                                    \
       __x = (default_value);                                    \
       __c = COLOR_normal;                                       \
     }                                                           \
     LOG(COLORs("TWEAK(%d)") " " fmt, __c, __x, ##__VA_ARGS__);  \
+    if(__t) breakpoint();                                       \
     __x;                                                        \
   })
 #endif
