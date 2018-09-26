@@ -112,9 +112,9 @@ void print_word_pattern(cell_t *word) {
 
 // build a binding list by applying the pattern to c
 // TODO add reduction back in
-cell_t **bind_pattern(cell_t *c, cell_t *pattern, cell_t **tail) {
+cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) {
   assert_error(c);
-  CONTEXT("bind_pattern %C %C @barrier", c, pattern);
+  CONTEXT("bind_pattern %E %C %C @barrier", entry, c, pattern);
   if(!pattern || !tail) return NULL;
   if(c->tmp || c == *tail) return tail;
   if(c == pattern) {
@@ -123,15 +123,25 @@ cell_t **bind_pattern(cell_t *c, cell_t *pattern, cell_t **tail) {
     FOLLOW(p, *t, tmp) {
       ref(p);
     }
+    if(entry && is_var(pattern)) switch_entry(entry, pattern);
   } else if(is_var(pattern)) {
     // found a binding
     assert_error(!pattern->alt);
+    if(entry) switch_entry(entry, pattern);
+    LOG("bound %T = %C", pattern->value.var, c);
     LIST_ADD(tmp, tail, ref(c));
   } else if(is_list(pattern)) {
+
+    // push entry in
+    if(pattern->pos) entry = trace_expr_entry(pattern->pos);
+
     if(is_list(c)) {
       assert_error(list_size(c) == list_size(pattern));
-      COUNTDOWN(i, list_size(pattern)) {
-        tail = bind_pattern(c->value.ptr[i],
+      COUNTUP(i, list_size(pattern)) {
+        cell_t **a = &c->value.ptr[i];
+        if(closure_is_ready(*a)) simplify(a, REQ(any));
+        tail = bind_pattern(entry,
+                            *a,
                             pattern->value.ptr[i],
                             tail);
       }
@@ -149,17 +159,22 @@ cell_t **bind_pattern(cell_t *c, cell_t *pattern, cell_t **tail) {
           cell_t **p = list_next(&it, false);
           assert_error(p);
           cell_t *d = l->expr.arg[in+1+i];
-          tail = bind_pattern(d, *p, tail);
+          tail = bind_pattern(entry, d, *p, tail);
           drop(d);
         }
       }
     }
   } else if(pattern->op == OP_id &&
             pattern->expr.alt_set == 0) {
-    return bind_pattern(c, pattern->expr.arg[0], tail);
-  } else if(pattern->op == OP_value && pattern->pos) { // HACK to move constants out
+    return bind_pattern(entry, c, pattern->expr.arg[0], tail);
+  } else if(pattern->op == OP_value && (pattern->pos || entry)) { // HACK to move constants out
+    assert_error(!is_list(pattern));
+    if(!pattern->pos) {
+      LOG(HACK " forcing pos for %C (%C) to %E", pattern, c, entry);
+      pattern->pos = entry->pos; // HACKity HACK
+    }
     reduce(&pattern, treq);
-    return bind_pattern(c, pattern, tail);
+    return bind_pattern(entry, c, pattern, tail);
   } else {
     // This can be caused by an operation before an infinite loop
     // This will prevent reducing the operation, and therefore fail to unify
@@ -194,8 +209,8 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry) {
     *vl = 0,
     **tail = &vl;
   COUNTUP(i, in) {
-    reduce_one(&c->expr.arg[i], REQ(any)); // HACK
-    tail = bind_pattern(c->expr.arg[i], pat->expr.arg[i], tail);
+    simplify(&c->expr.arg[i], REQ(any)); // FIX this can cause arg flips
+    tail = bind_pattern(NULL, c->expr.arg[i], pat->expr.arg[i], tail);
     if(!tail) {
       LOG("bind_pattern failed %C %C", c->expr.arg[i], pat->expr.arg[i]);
       break;
@@ -210,6 +225,8 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry) {
     n->expr.arg[in] = entry;
     FLAG_SET(n->expr, EXPR_RECURSIVE);
     int pos = 0;
+
+    // TODO this list should be sorted first by the parent variable pos's
     FOLLOW(p, vl, tmp) { // get arguments from the binding list
       n->expr.arg[in - 1 - pos] = p;
       pos++;
@@ -416,6 +433,7 @@ void vars_in_entry(cell_t **p, cell_t *entry) {
     cell_t **next = &v->tmp;
     if(var_entry(v->value.var) != entry) {
       // remove from list
+      LOG("remove var %C", v);
       *p = *next;
       v->tmp = 0;
     } else {
@@ -436,7 +454,13 @@ void reassign_input_order(cell_t *entry) {
   cell_t *vl = 0;
   input_var_list(c, &vl);
   vars_in_entry(&vl, entry); // ***
-  assert_error(tmp_list_length(vl) == in, "%d != %d, %E %C @wrap", tmp_list_length(vl), in, entry, c);
+  on_assert_error(tmp_list_length(vl) == in,
+                  "%d != %d, %E %C @wrap",
+                  tmp_list_length(vl), in, entry, c) {
+    FOLLOW(p, vl, tmp) {
+      LOG("input var %C", p);
+    }
+  }
 
   int pos = 1;
   FOLLOW(p, vl, tmp) {
@@ -560,6 +584,12 @@ response func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) 
   new_entry->module_name = parent_entry->module_name;
   new_entry->word_name = string_printf("%s_r%d", parent_entry->word_name, parent_entry->entry.sub_id++);
   LOG("created entry for %E", new_entry);
+
+  COUNTUP(i, in) {
+    if(c->expr.arg[i]->op != OP_ap ||
+       TWEAK(true, "to disable ap simplify %C", c->expr.arg[i]))
+    simplify(&c->expr.arg[i], REQ(any));
+  }
 
   wrap.initial = ref(c);
   insert_root(&wrap.initial);

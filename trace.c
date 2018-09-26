@@ -176,8 +176,21 @@ void switch_entry(cell_t *entry, cell_t *r) {
   CONTEXT("switch_entry %E %C", entry, r);
   assert_error(is_var(r));
   if(var_entry(r->value.var) != entry) {
+    WATCH(r, "switch_entry", " %E", entry);
     assert_error(is_ancestor_of(var_entry(r->value.var), entry));
     switch_entry_(entry, &r->value.var);
+  }
+}
+
+void mark_pos(cell_t *c, int pos) {
+  if(!pos || c->pos == pos) return;
+  assert_error(c->n != PERSISTENT);
+  cell_t *entry = trace_expr_entry(pos);
+  WATCH(c, "mark_pos", " %E", entry);
+  if(is_var(c)) {
+    switch_entry(entry, c);
+  } else {
+    c->pos = pos;
   }
 }
 
@@ -858,7 +871,7 @@ cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
   if(b == NULL) return a;
   cell_t **arg = NULL;
   cell_t *entry = var_entry(a);
-  assert_error(entry == var_entry(b));
+  assert_error(entry == var_entry(b), "%T %T", a, b);
   cell_t *p = a;
   cell_t *bi = trace_encode(var_index(b));
 

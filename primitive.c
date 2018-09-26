@@ -595,17 +595,20 @@ OP(id) {
   response rsp = SUCCESS;
   PRE(c, id);
   alt_set_t alt_set = c->expr.alt_set;
+  int pos = c->pos;
 
-  if(alt_set || c->alt || c->pos) {
+  if(alt_set || c->alt) {
     CHECK(reduce_arg(c, 0, &alt_set, treq));
     CHECK_IF(as_conflict(alt_set), FAIL);
     CHECK_DELAY();
     clear_flags(c);
-
-    store_reduced(cp, mod_alt(ref(c->expr.arg[0]), c->alt, alt_set)); // apply pos? ***
+    cell_t *res = mod_alt(ref(c->expr.arg[0]), c->alt, alt_set);
+    mark_pos(res, pos);
+    store_reduced(cp, res);
     return SUCCESS;
   } else {
     *cp = CUT(c, expr.arg[0]);
+    mark_pos(*cp, pos);
     return RETRY;
   }
 
@@ -625,9 +628,11 @@ WORD("swap", swap, 2, 2)
 OP(swap) {
   cell_t *c = *cp;
   PRE(c, swap);
+  int pos = c->pos;
   store_lazy_dep(c->expr.arg[2],
                  c->expr.arg[0], 0);
   store_lazy(cp, c->expr.arg[1], 0);
+  mark_pos(*cp, pos);
   return RETRY;
 }
 
@@ -713,28 +718,16 @@ response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   // *** _1_ don't know if/why this works
 
   list_iterator_t it;
-
-  // *** prevent leaking outside variables into lists
-  if(pos) {
-    int skip = TWEAK(-1, "to disable ap barrier %C -> %E", c, trace_expr_entry(pos));
-    cell_t *e = trace_expr_entry(pos);
-    RANGEUP(i, row, in) {
-      if(skip == (int)i) continue;
-      cell_t **pa = &c->expr.arg[i];
-      if(is_var(*pa)) {
-        // *pa = id(*pa, 0);
-        switch_entry(e, *pa); // ***
-      } else {
-        (*pa)->pos = pos;
-      }
-    }
-  }
-
   reverse_ptrs((void **)c->expr.arg, in);
   it.array = c->expr.arg;
   it.index = 0;
   it.size = in - row;
   it.row = row;
+
+  // *** prevent leaking outside variables into lists
+  if(row && !pos) pos = p->pos;
+  if(!pos) pos = (*q)->pos;
+
   cell_t *l = compose(it, ref(*q)); // TODO prevent leaking outside variables
   reverse_ptrs((void **)c->expr.arg, in);
 
@@ -749,6 +742,7 @@ response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   drop(res->alt);
   res->alt = c->alt;
   res->value.alt_set = alt_set;
+  res->pos = pos; // ***
   add_conditions(res, p, *q);
 
   COUNTUP(i, out) {
@@ -759,6 +753,7 @@ response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
       ABORT(FAIL);
     }
     cell_t *d = c->expr.arg[n-1-i];
+    mark_pos(*x, pos);
     cell_t *seq_x = build_seq(ref(*x), ref(res));
     store_lazy_dep(d, seq_x, alt_set);
     LOG_WHEN(res->alt, MARK("WARN") " alt seq dep %C <- %C #condition", d, seq_x);
@@ -768,7 +763,6 @@ response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
 
   drop(l);
   store_reduced(cp, res);
-  (*cp)->pos = pos; // ***
   ASSERT_REF();
   return SUCCESS;
 

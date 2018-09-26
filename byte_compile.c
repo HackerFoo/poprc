@@ -854,7 +854,7 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
 static
 cell_t *tref(cell_t *entry, cell_t *c) {
   int i = trace_decode(c);
-  return i <= 0 ? NULL : &entry[i];
+  return i <= 0 ? (i == NIL_INDEX ? &nil_cell : NULL) : &entry[i];
 }
 
 // get the return type

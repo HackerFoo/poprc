@@ -154,17 +154,17 @@ drop_loop4:
     [head 0 >]
     iterate popd pull3 drop
 
-__ drop_loop5:
-__   [] ap10
-__     [[1-] .] swap swap
-__     [head 0 >]
-__     iterate head
+drop_loop5:
+  [] ap10
+    [[1-] .] swap swap
+    [head 0 >]
+    iterate head
 
-__ drop_loop6:
-__   [-] pushl [.] pushl
-__     [7] swap
-__     [head 0 >]
-__     iterate head
+drop_loop6:
+  [-] pushl [.] pushl
+    [7] swap
+    [head 0 >]
+    iterate head
 
 collatz_step:
   [dup 2/ swap even]

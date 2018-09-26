@@ -71,17 +71,23 @@ OP(value) {
     }
   } else if(is_row_list(c)) {
     placeholder_extend(cp, treq.in, treq.out);
-  } else if(c->pos && !is_list(c)) {
-    // *** probably shouldn't be calling trace functions directly here
-    cell_t *entry = trace_expr_entry(c->pos);
-    cell_t *parent = entry->entry.parent;
-    if(parent) {
-      int v = trace_store_value(entry->entry.parent, c);
-      cell_t *tc = trace_alloc_var(entry);
-      LOG("move value %C %T -> %T", c, tc, &parent[v]);
-      c->value.var = tc;
-      c->value.flags = VALUE_VAR;
-      tc->value.var = &parent[v];
+  } else if(c->pos) {
+    if(is_list(c)) {
+      TRAVERSE(c, ptrs) {
+        mark_pos(*p, c->pos);
+      }
+    } else {
+      // *** probably shouldn't be calling trace functions directly here
+      cell_t *entry = trace_expr_entry(c->pos);
+      cell_t *parent = entry->entry.parent;
+      if(parent) {
+        int v = trace_store_value(entry->entry.parent, c);
+        cell_t *tc = trace_alloc_var(entry);
+        LOG("move value %C %T -> %T", c, tc, &parent[v]);
+        c->value.var = tc;
+        c->value.flags = VALUE_VAR;
+        tc->value.var = &parent[v];
+      }
     }
   }
 
@@ -281,6 +287,7 @@ OP(dep) {
   cell_t *c = *cp;
   response rsp = SUCCESS;
   PRE(c, dep);
+  int pos = c->pos;
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
   /* must temporarily reference to avoid replacement of p which is referenced elsewhere */
@@ -292,6 +299,7 @@ OP(dep) {
   trace_dep(c);
   remove_root(&p);
   drop(p);
+  if(pos) (*cp)->pos = pos; // ***
   return RETRY;
 
  abort:

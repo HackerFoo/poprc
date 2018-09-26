@@ -45,7 +45,7 @@ static cell_t *watched_cells[4] = {0};
 static bool watch_enabled = false;
 
 #if INTERFACE
-#define ASSERT_REF() assert_error(assert_ref(rt_roots, rt_roots_n))
+#define ASSERT_REF() if(!treq.delay_var) assert_error(assert_ref(rt_roots, rt_roots_n))
 #endif
 
 bool insert_root(cell_t **r) {

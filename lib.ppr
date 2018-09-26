@@ -48,18 +48,16 @@ __ take rightmost value from quote
 head: popr swap drop
 
 __ return the length of a list
-length: 0 swap length_
-length_:
-  [] ap20
+length:
+  0 swap [] ap20
     [[[1+] [popd] para] .]
     [popr popr valid]
     iterate popd head
 
 __ right fold
 __ [... x] y [fn] foldr -> y'
-foldr: -swap2 foldr_
-foldr_:
-  [] ap30 __ fn xs y
+foldr:
+  -swap2 [] ap30 __ fn xs y
     [[foldr_step] .]
     [popr drop head popr valid]
     iterate head
