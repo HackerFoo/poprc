@@ -85,8 +85,7 @@ movr: [popr] dip12 pushl
 __ not working
 __ split_at: [[[]] pushl] dip11 [[movr] .] swap times ap02 swap2 drop
 split_at:
-  __ [] swap
-  [] ap30
+  [] swap [] ap30
     [[[movr] dip22 1-] .]
     [head 0 >]
     iterate popr drop pull2 drop swap
@@ -101,9 +100,8 @@ iteratel: [dup [peek] dip22 iteratel swap] ap20
 __ concat: [] [.] foldr
 
 mov_ap: dup -swap2 [. movr] dip32
-map: [] swap map_
-map_:
-  [] ap30
+map:
+  [] swap [] ap30
     [[mov_ap] .]
     [popr drop popr drop head popr valid]
     iterate popr drop head
@@ -115,9 +113,8 @@ pushif:
     ifte
 
 __ [l] [p] filter -> [..x..] such that for all x, x p == True
-filter: [] swap filter_
-filter_:
-  [] ap30
+filter:
+  [] swap [] ap30
     [[filter_step] .]
     [popr drop popr drop popr valid]
     iterate popr drop head

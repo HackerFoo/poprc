@@ -452,7 +452,6 @@ bool is_uppercase(char c) {
 }
 
 cell_t *array_to_list(cell_t **a, csize_t n) {
-  if(n == 0) return &nil_cell;
   cell_t *l = make_list(n);
   COUNTUP(i, n) {
     l->value.ptr[i] = a[--n];
@@ -493,10 +492,10 @@ cell_t *parse_expr(const cell_t **l, cell_t *module, cell_t *entry) {
         if(n == 1) {
           if(closure_is_ready(arg_stack[0])) {
             arg_stack[1] = arg_stack[0];
-            arg_stack[0] = &nil_cell;
+            arg_stack[0] = empty_list();
             n = 2;
           } else {
-            arg(arg_stack[0], &nil_cell);
+            arg(arg_stack[0], empty_list());
           }
         }
 

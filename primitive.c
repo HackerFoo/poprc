@@ -426,7 +426,7 @@ OP(pushr) {
 
   // lower to compose
   c = expand(c, 1);
-  c->expr.arg[2] = &nil_cell;
+  c->expr.arg[2] = empty_list();
   c->op = OP_compose;
   *cp = c;
   return RETRY;
@@ -724,6 +724,7 @@ response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   it.size = in - row;
   it.row = row;
 
+  // Maybe remove these?
   // *** prevent leaking outside variables into lists
   if(row && !pos) pos = p->pos;
   if(!pos) pos = (*q)->pos;
@@ -731,8 +732,7 @@ response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   cell_t *l = compose(it, ref(*q)); // TODO prevent leaking outside variables
   reverse_ptrs((void **)c->expr.arg, in);
 
-  bool is_nil = *q == &nil_cell;
-  if(!is_nil) insert_root(q);
+  insert_root(q);
   it = list_begin(l);
 
   list_iterator_t end = it;
@@ -742,7 +742,7 @@ response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
   drop(res->alt);
   res->alt = c->alt;
   res->value.alt_set = alt_set;
-  res->pos = pos; // ***
+  //res->pos = pos; // ***
   add_conditions(res, p, *q);
 
   COUNTUP(i, out) {
@@ -759,7 +759,7 @@ response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
     LOG_WHEN(res->alt, MARK("WARN") " alt seq dep %C <- %C #condition", d, seq_x);
     if(d) d->pos = pos; // ***
   }
-  if(!is_nil) remove_root(q);
+  remove_root(q);
 
   drop(l);
   store_reduced(cp, res);

@@ -52,9 +52,6 @@ typedef intptr_t trace_index_t;
 #endif
 
 #if INTERFACE
-// use NIL_INDEX < -256
-// so that is_offset() is false, otherwise problems with traverse/closure_next_child
-#define NIL_INDEX (-4096)
 
 // cell_t *c ranges from start to end
 #define FOR_TRACE_3(c, e, n)                                  \
@@ -121,6 +118,9 @@ bool equal_value(const cell_t *a, const cell_t *b) {
     return a->value.integer == b->value.integer;
   case T_FLOAT:
     return a->value.flt == b->value.flt;
+  case T_LIST:
+    // only handle nil
+    return is_empty_list(a) && is_empty_list(b);
   default:
     return false;
   }
@@ -176,7 +176,7 @@ void switch_entry(cell_t *entry, cell_t *r) {
   CONTEXT("switch_entry %E %C", entry, r);
   assert_error(is_var(r));
   if(var_entry(r->value.var) != entry) {
-    WATCH(r, "switch_entry", " %E", entry);
+    WATCH(r, "switch_entry", "%E", entry);
     assert_error(is_ancestor_of(var_entry(r->value.var), entry));
     switch_entry_(entry, &r->value.var);
   }
@@ -186,7 +186,7 @@ void mark_pos(cell_t *c, int pos) {
   if(!pos || c->pos == pos) return;
   assert_error(c->n != PERSISTENT);
   cell_t *entry = trace_expr_entry(pos);
-  WATCH(c, "mark_pos", " %E", entry);
+  WATCH(c, "mark_pos", "%E", entry);
   if(is_var(c)) {
     switch_entry(entry, c);
   } else {
@@ -356,7 +356,7 @@ void trace_store_row_assert(cell_t *c, cell_t *r) {
   t->op = OP_assert;
   t->expr.arg[0] = trace_encode(is_row_list(p) ?
                                 trace_get_value(entry, *left_elem(p)) :
-                                NIL_INDEX);
+                                trace_store_value(entry, &nil_cell));
   int tq = trace_get_value(entry, q);
   entry[tq].n++;
   t->expr.arg[1] = trace_encode(tq);
@@ -388,7 +388,6 @@ void apply_condition(cell_t *c, int *x) {
 // store value c in the trace
 int trace_store_value(cell_t *entry, cell_t *c) {
   if(!entry) return -1;
-  assert_error(!is_list(c));
 
   // look to see if the value already is in the trace
   int x = trace_lookup_value_linear(entry, c);
@@ -607,8 +606,7 @@ void trace_set_type(cell_t *tc, type_t t) {
 // store captured variables to be compiled into a quote
 int trace_build_quote(cell_t *entry, cell_t *l) {
   assert_error(is_list(l));
-  if(is_empty_list(l)) return NIL_INDEX;
-
+  if(is_empty_list(l)) return trace_store_value(entry, l);
   if(is_row_list(l) && // ***
      list_size(l) == 1) {
     cell_t *p = l->value.ptr[0];
@@ -626,7 +624,7 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
 }
 
 cell_t *trace_quote_var(cell_t *l) {
-  if(l == &nil_cell) return l;
+  if(is_empty_list(l)) return l;
   if(l->value.var) return ref(l);
   assert_error(l != NULL);
   cell_t *f = *NOT_NULL(leftmost_row(&l));
@@ -634,7 +632,7 @@ cell_t *trace_quote_var(cell_t *l) {
   assert_error(is_var(f), "not a var: %O %C", f->op, f);
   cell_t *entry = var_entry(f->value.var);
   int x = trace_build_quote(entry, l);
-  return x == NIL_INDEX ? &nil_cell : var_create_nonlist(T_LIST, &entry[x]);
+  return var_create_nonlist(T_LIST, &entry[x]);
 }
 
 // store a return

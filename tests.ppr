@@ -118,8 +118,7 @@ ap_loop3: [1+] swap swap ap_loop
 __ ERROR: user_func.c:185: unify_exec: Assertion `in == closure_in(pat)' failed.
 __ alt_ap_loop: [dup | 1+] ap_loop
 
-__ ERROR: user_func.c:160: bind_pattern: Assertion `0' failed: binding error
-__ ap_loop3: [] pushl [] ap_loop head
+ap_loop4: [] pushl [] ap_loop head
 
 __ dup_ap_alt: [2 |] dup 1 swap $
 
@@ -221,7 +220,7 @@ pushl_assert: [] pushl swap !
 
 alt_list: | [dup] pushl
 
-__ default_max: dup2 < ! swap default
+default_max: dup2 < ! swap default
 
 assert_nready: [1+] swap ! $
 

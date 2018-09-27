@@ -90,9 +90,7 @@ void print_bytecode(cell_t *entry) {
       continue;
     }
     if(is_value(c)) {
-      bool can_have_alt = false;
       if(is_list(c) || c->value.type == T_RETURN) { // return
-        can_have_alt = true;
         if(c->value.type == T_RETURN) printf(" return");
         printf(" [");
         COUNTDOWN(i, list_size(c)) {
@@ -105,7 +103,9 @@ void print_bytecode(cell_t *entry) {
         print_value(c);
       }
       printf(", type = %s", show_type_all_short(c));
-      if(can_have_alt && c->alt) printf(" -> %d", trace_decode(c->alt));
+      if(c->value.type == T_RETURN && c->alt) {
+        printf(" -> %d", trace_decode(c->alt));
+      }
     } else { // print a call
       const char *module_name = NULL, *word_name = NULL;
       if(NOT_FLAG(c->trace, TRACE_INCOMPLETE)) {
@@ -118,8 +118,6 @@ void print_bytecode(cell_t *entry) {
         int x = trace_decode(*p);
         if(x == 0) {
           printf(" X");
-        } else if(x == NIL_INDEX) {
-          printf(" []");
         } else {
           printf(" %d", x);
         }
@@ -811,7 +809,7 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
   // conversion
   csize_t len = function_out(l, true);
   cell_t *ph = func(OP_placeholder, len + 1, 1);
-  arg(ph, &nil_cell);
+  arg(ph, empty_list());
   cell_t **p;
   FORLIST(p, l, true) {
     LOG("arg %C %C", ph, *p);
@@ -854,7 +852,7 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
 static
 cell_t *tref(cell_t *entry, cell_t *c) {
   int i = trace_decode(c);
-  return i <= 0 ? (i == NIL_INDEX ? &nil_cell : NULL) : &entry[i];
+  return i <= 0 ? NULL : &entry[i];
 }
 
 // get the return type

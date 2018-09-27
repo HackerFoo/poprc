@@ -72,7 +72,7 @@ OP(value) {
   } else if(is_row_list(c)) {
     placeholder_extend(cp, treq.in, treq.out);
   } else if(c->pos) {
-    if(is_list(c)) {
+    if(is_list(c) && !is_empty_list(c)) {
       TRAVERSE(c, ptrs) {
         mark_pos(*p, c->pos);
       }
@@ -81,12 +81,14 @@ OP(value) {
       cell_t *entry = trace_expr_entry(c->pos);
       cell_t *parent = entry->entry.parent;
       if(parent) {
+        LOG_WHEN(is_list(c), "nil %C", c);
         int v = trace_store_value(entry->entry.parent, c);
         cell_t *tc = trace_alloc_var(entry);
         LOG("move value %C %T -> %T", c, tc, &parent[v]);
         c->value.var = tc;
         c->value.flags = VALUE_VAR;
         tc->value.var = &parent[v];
+        c->pos = 0;
       }
     }
   }

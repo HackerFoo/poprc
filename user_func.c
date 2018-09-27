@@ -43,19 +43,15 @@ bool is_user_func(const cell_t *c) {
 
 static
 cell_t *map_cell(cell_t *entry, intptr_t x) {
-  return
-    x == NIL_INDEX ? &nil_cell :
-    x <= 0 ? NULL :
-    entry[x].alt;
+  return x <= 0 ? NULL : entry[x].alt;
 }
 
 static
 cell_t *get_return_arg(cell_t *entry, cell_t *returns, intptr_t x) {
-  trace_index_t i = trace_decode(returns->value.ptr[x]);
   assert_error(x < entry->entry.out);
-  assert_error(i == NIL_INDEX || i > 0);
-  return // can't use map_cell, returns empty_list() instead of &nil_cell
-    i == NIL_INDEX ? empty_list() : entry[i].alt;
+  trace_index_t i = trace_decode(returns->value.ptr[x]);
+  assert_error(i > 0);
+  return map_cell(entry, i);
 }
 
 // given a list l with arity in -> out, produce an application of the list
@@ -130,7 +126,7 @@ cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) 
     if(entry) switch_entry(entry, pattern);
     LOG("bound %T = %C", pattern->value.var, c);
     LIST_ADD(tmp, tail, ref(c));
-  } else if(is_list(pattern)) {
+  } else if(is_list(pattern) && !is_empty_list(pattern)) {
 
     // push entry in
     if(pattern->pos) entry = trace_expr_entry(pattern->pos);
@@ -168,7 +164,7 @@ cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) 
             pattern->expr.alt_set == 0) {
     return bind_pattern(entry, c, pattern->expr.arg[0], tail);
   } else if(pattern->op == OP_value && (pattern->pos || entry)) { // HACK to move constants out
-    assert_error(!is_list(pattern));
+    assert_error(!is_list(pattern) || is_empty_list(pattern));
     if(!pattern->pos) {
       LOG(HACK " forcing pos for %C (%C) to %E", pattern, c, entry);
       pattern->pos = entry->pos; // HACKity HACK

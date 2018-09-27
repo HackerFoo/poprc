@@ -246,11 +246,7 @@ void gen_call(cell_t *e, cell_t *c) {
 
     COUNTUP(i, in) {
       int a = trace_decode(c->expr.arg[i]);
-      if(a == NIL_INDEX) {
-        printf("%snil", sep);
-      } else {
-        printf("%s%s%d", sep, cname(trace_type(&e[a])), a);
-      }
+      printf("%s%s%d", sep, cname(trace_type(&e[a])), a);
       sep = ", ";
     };
 

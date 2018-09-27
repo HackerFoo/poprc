@@ -112,8 +112,9 @@ ___ algorithm.iota2_r0_q0 (3 -> 1) ___
 [1] var, type = ?l x1
 [2] var, type = ?i x1
 [3] var, type = ?i x1
-[4] __primitive.compose 1 2 3 [], type = l x1
-[5] return [ 4 ], type = r x1
+[4] __primitive.compose 1 2 3 5, type = l x1
+[5] [ ], type = l x1
+[6] return [ 4 ], type = r x1
 
 ___ algorithm.power_step (3 -> 3) x2 ___
 [1] var, type = ?i x3
@@ -558,8 +559,9 @@ ___ control.in2 (2 -> 3) ___
 ___ control.in2_q0 (2 -> 1) ___
 [1] var, type = ?a x1
 [2] var, type = ?a x1
-[3] __primitive.ap 1 2 [], type = l x1
-[4] return [ 3 ], type = r x1
+[3] __primitive.ap 1 2 4, type = l x1
+[4] [ ], type = l x1
+[5] return [ 3 ], type = r x1
 
 ___ control.iterate (3 -> 1) x2 rec ___
 [1] var, type = ?l x3
@@ -700,21 +702,15 @@ ___ list.dropl_r0 (2 -> 2) x2 rec ___
 [17] return [ 15 16 ], type = r x1
 
 ___ list.filter (2 -> 1) ___
-[1] var, type = ?a x1
-[2] var, type = ?a x1
-[3] list.filter__r0 2 [] 1 -> X, type = a x1
-[5] return [ 3 ], type = r x1
-
-___ list.filter_ (3 -> 1) ___
 [1] var, type = ?l x1
 [2] var, type = ?l x1
-[3] var, type = ?l x1
-[4] list.filter__r0 3 2 1 -> X, type = a x1
+[3] [ ], type = l x1
+[4] list.filter_r0 2 3 1 -> X, type = a x1
 [6] return [ 4 ], type = r x1
 
-___ list.filter__r0 (3 -> 2) x3 rec ___
+___ list.filter_r0 (3 -> 2) x3 rec ___
 [1] var, type = ?l x4
-[2] var, type = ?*l x3
+[2] var, type = ?*a x3
 [3] var, type = ?*l x4
 [4] __primitive.otherwise 3 5, type = a x4
 [5] val False, type = s x1
@@ -725,12 +721,12 @@ ___ list.filter__r0 (3 -> 2) x3 rec ___
 [10] __primitive.dep 9, type = s x1
 [11] __primitive.not 10, type = s x1
 [12] __primitive.assert 2 11, type = l x1
-[13] list.filter__r0 7 12 1 -> 15, type = 0 x2
+[13] list.filter_r0 7 12 1 -> 15, type = 0 x2
 [15] __primitive.dep 13, type = 0 x1
 [16] __primitive.otherwise 4 13, type = a x1
 [17] return [ 16 6 ], type = r -> 26 x1
 [18] __primitive.ap 8 2, type = l x1
-[19] list.filter__r0 7 18 1 -> 23, type = a x2
+[19] list.filter_r0 7 18 1 -> 23, type = a x2
 [21] __primitive.otherwise 4 19, type = a x1
 [22] __primitive.otherwise 3 2, type = a x1
 [23] __primitive.dep 19, type = a x1
@@ -758,10 +754,11 @@ ___ list.foldl (3 -> 1) ___
 [1] var, type = ?a x1
 [2] var, type = ?a x1
 [3] var, type = ?a x1
-[4] list.foldl__r0 1 3 [], type = l x1
-[5] __primitive.ap 2 4 -> 6, type = l x1
-[6] __primitive.dep 5, type = a x1
-[7] return [ 6 ], type = r x1
+[4] list.foldl__r0 1 3 5, type = l x1
+[5] [ ], type = l x1
+[6] __primitive.ap 2 4 -> 7, type = l x1
+[7] __primitive.dep 6, type = a x1
+[8] return [ 7 ], type = r x1
 
 ___ list.foldl_ (3 -> 1) ___
 [1] var, type = ?l x1
@@ -855,8 +852,9 @@ ___ list.iteratel (2 -> 1) rec ___
 ___ list.iteratel_q0 (2 -> 1) ___
 [1] var, type = ?0 x1
 [2] var, type = ?a x1
-[3] __primitive.ap 1 2 [], type = l x1
-[4] return [ 3 ], type = r x1
+[3] __primitive.ap 1 2 4, type = l x1
+[4] [ ], type = l x1
+[5] return [ 3 ], type = r x1
 
 ___ list.length (1 -> 1) ___
 [1] var, type = ?l x1
@@ -886,21 +884,15 @@ ___ list.length_r0 (2 -> 2) x2 rec ___
 [19] return [ 17 18 ], type = r x1
 
 ___ list.map (2 -> 1) ___
-[1] var, type = ?a x1
-[2] var, type = ?a x1
-[3] list.map__r0 2 [] 1 -> X, type = a x1
-[5] return [ 3 ], type = r x1
-
-___ list.map_ (3 -> 1) ___
 [1] var, type = ?l x1
 [2] var, type = ?l x1
-[3] var, type = ?l x1
-[4] list.map__r0 3 2 1 -> X, type = a x1
+[3] [ ], type = l x1
+[4] list.map_r0 2 3 1 -> X, type = a x1
 [6] return [ 4 ], type = r x1
 
-___ list.map__r0 (3 -> 2) x2 rec ___
+___ list.map_r0 (3 -> 2) x2 rec ___
 [1] var, type = ?l x3
-[2] var, type = ?*l x2
+[2] var, type = ?*a x2
 [3] var, type = ?*l x3
 [4] __primitive.ap 3 -> 5, type = l x1
 [5] __primitive.dep 4, type = a x1
@@ -911,7 +903,7 @@ ___ list.map__r0 (3 -> 2) x2 rec ___
 [10] __primitive.dep 9, type = a x1
 [11] __primitive.ap 10 1, type = l x1
 [12] __primitive.compose 11 2, type = l x1
-[13] list.map__r0 9 12 1 -> 15, type = 0 x2
+[13] list.map_r0 9 12 1 -> 15, type = 0 x2
 [15] __primitive.dep 13, type = 0 x1
 [16] __primitive.otherwise 6 13, type = a x1
 [17] return [ 16 8 ], type = r -> 22 x1
@@ -952,17 +944,17 @@ ___ list.pushif (3 -> 1) x2 ___
 [10] __primitive.ap 3 2, type = l x1
 [11] return [ 9 ], type = r x1
 
-___ list.split_at (3 -> 2) ___
+___ list.split_at (2 -> 2) ___
 [1] var, type = ?i x1
 [2] var, type = ?l x1
-[3] var, type = ?l x1
-[4] list.split_at_r0 3 2 1 -> 6 X, type = l x2
+[3] [ ], type = l x1
+[4] list.split_at_r0 2 3 1 -> 6 X, type = l x2
 [6] __primitive.dep 4, type = a x1
 [7] return [ 4 6 ], type = r x1
 
 ___ list.split_at_r0 (3 -> 3) x2 rec ___
 [1] var, type = ?*i x4
-[2] var, type = ?*l x2
+[2] var, type = ?*a x2
 [3] var, type = ?*l x2
 [4] __primitive.gt 1 5, type = s x3
 [5] val 0, type = i x2
@@ -981,7 +973,7 @@ ___ list.split_at_r0 (3 -> 3) x2 rec ___
 [20] __primitive.gt 1 5, type = s x1
 [21] __primitive.not 20, type = s x3
 [22] __primitive.assert 3 21, type = l x1
-[23] __primitive.assert 2 21, type = l x1
+[23] __primitive.assert 2 21, type = a x1
 [24] __primitive.assert 1 21, type = i x1
 [25] return [ 22 23 24 ], type = r x1
 
@@ -1304,10 +1296,11 @@ ___ tests.alt_list (2 -> 1) ___
 ___ tests.alt_list_q0 (2 -> 1) x2 ___
 [1] var, type = ?a x2
 [2] var, type = ?a x2
-[3] __primitive.ap 1 1 [], type = l x1
-[4] return [ 3 ], type = r -> 6 x1
-[5] __primitive.ap 2 2 [], type = l x1
-[6] return [ 5 ], type = r x1
+[3] __primitive.ap 1 1 4, type = l x1
+[4] [ ], type = l x2
+[5] return [ 3 ], type = r -> 7 x1
+[6] __primitive.ap 2 2 4, type = l x1
+[7] return [ 6 ], type = r x1
 
 ___ tests.alt_seq (1 -> 1) x2 ___
 [1] var, type = ?s x2
@@ -1386,8 +1379,9 @@ ___ tests.ap_loop2_r0 (1 -> 1) rec ___
 ___ tests.ap_loop2_r0_q0 (2 -> 1) ___
 [1] var, type = ?l x1
 [2] var, type = ?i x1
-[3] __primitive.compose 1 2 [], type = l x1
-[4] return [ 3 ], type = r x1
+[3] __primitive.compose 1 2 4, type = l x1
+[4] [ ], type = l x1
+[5] return [ 3 ], type = r x1
 
 ___ tests.ap_loop3 (1 -> 1) ___
 [1] var, type = ?i x1
@@ -1400,6 +1394,29 @@ ___ tests.ap_loop3_r0 (1 -> 1) rec ___
 [3] val 1, type = i x1
 [4] tests.ap_loop3_r0 2, type = 0 x1
 [5] return [ 4 ], type = r x1
+
+___ tests.ap_loop4 (1 -> 1) ___
+[1] var, type = ?a x1
+[2] [ ], type = l x1
+[3] tests.ap_loop4_r0 2 1, type = 0 x1
+[4] return [ 3 ], type = r x1
+
+___ tests.ap_loop4_r0 (2 -> 1) rec ___
+[1] var, type = ?*a x1
+[2] var, type = ?a x2
+[3] __primitive.ap 4 2 -> 5, type = l x1
+[4] tests.ap_loop4_r0_q0 1, type = a x1
+[5] __primitive.dep 3, type = l x1
+[6] __primitive.ap 5 -> 7, type = l x1
+[7] __primitive.dep 6, type = a x1
+[8] tests.ap_loop4_r0 2 7, type = 0 x1
+[9] return [ 8 ], type = r x1
+
+___ tests.ap_loop4_r0_q0 (1 -> 1) ___
+[1] var, type = ?a x1
+[2] __primitive.ap 1 3, type = l x1
+[3] [ ], type = l x1
+[4] return [ 2 ], type = r x1
 
 ___ tests.assert_nready (2 -> 1) ___
 [1] var, type = ?s x1
@@ -1588,6 +1605,15 @@ ___ tests.decel_step (1 -> 1) x2 ___
 [10] __primitive.assert 8 9, type = i x1
 [11] return [ 10 ], type = r x1
 
+___ tests.default_max (2 -> 1) x2 ___
+[1] var, type = ?i x2
+[2] var, type = ?i x2
+[3] __primitive.lt 2 1, type = s x1
+[4] __primitive.assert 1 3, type = i x2
+[5] return [ 4 ], type = r -> 7 x1
+[6] __primitive.otherwise 4 2, type = i x1
+[7] return [ 6 ], type = r x1
+
 ___ tests.del (0 -> 1) x2 ___
 [1] val 1, type = i x1
 [2] return [ 1 ], type = r -> 4 x1
@@ -1662,8 +1688,9 @@ ___ tests.drop_loop2_r0 (2 -> 1) x2 rec ___
 ___ tests.drop_loop2_r0_q0 (2 -> 1) ___
 [1] var, type = ?a x1
 [2] var, type = ?i x1
-[3] __primitive.ap 1 2 [], type = l x1
-[4] return [ 3 ], type = r x1
+[3] __primitive.ap 1 2 4, type = l x1
+[4] [ ], type = l x1
+[5] return [ 3 ], type = r x1
 
 ___ tests.drop_loop3 (3 -> 2) ___
 [1] var, type = ?i x1
@@ -1843,8 +1870,9 @@ ___ tests.id_quote_compose (1 -> 1) ___
 ___ tests.id_quote_compose_q0 (2 -> 1) ___
 [1] var, type = ?l x1
 [2] var, type = ?a x1
-[3] __primitive.compose 1 2 [], type = l x1
-[4] return [ 3 ], type = r x1
+[3] __primitive.compose 1 2 4, type = l x1
+[4] [ ], type = l x1
+[5] return [ 3 ], type = r x1
 
 ___ tests.imbalanced_assert (2 -> 2) ___
 [1] var, type = ?s x1
@@ -1990,8 +2018,9 @@ ___ tests.it10b_r0 (1 -> 1) x2 rec ___
 ___ tests.it10b_r0_q0 (2 -> 1) ___
 [1] var, type = ?l x1
 [2] var, type = ?i x1
-[3] __primitive.compose 1 2 [], type = l x1
-[4] return [ 3 ], type = r x1
+[3] __primitive.compose 1 2 4, type = l x1
+[4] [ ], type = l x1
+[5] return [ 3 ], type = r x1
 
 ___ tests.leak (1 -> 1) ___
 [1] var, type = ?i x1
@@ -2065,8 +2094,9 @@ ___ tests.popr_quote_compose_q0 (3 -> 1) ___
 [1] var, type = ?l x1
 [2] var, type = ?l x1
 [3] var, type = ?a x1
-[4] __primitive.compose 1 2 3 [], type = l x1
-[5] return [ 4 ], type = r x1
+[4] __primitive.compose 1 2 3 5, type = l x1
+[5] [ ], type = l x1
+[6] return [ 4 ], type = r x1
 
 ___ tests.pushl2 (3 -> 1) ___
 [1] var, type = ?l x1
@@ -2084,8 +2114,9 @@ ___ tests.pushl_assert (2 -> 1) ___
 
 ___ tests.pushl_assert_q0 (1 -> 1) ___
 [1] var, type = ?a x1
-[2] __primitive.ap 1 [], type = l x1
-[3] return [ 2 ], type = r x1
+[2] __primitive.ap 1 3, type = l x1
+[3] [ ], type = l x1
+[4] return [ 2 ], type = r x1
 
 ___ tests.pushl_swap_assert (3 -> 1) ___
 [1] var, type = ?l x1
@@ -2118,8 +2149,9 @@ ___ tests.qdec (1 -> 1) x2 rec ___
 ___ tests.qdec_q0 (2 -> 1) ___
 [1] var, type = ?l x1
 [2] var, type = ?i x1
-[3] __primitive.compose 1 2 [], type = l x1
-[4] return [ 3 ], type = r x1
+[3] __primitive.compose 1 2 4, type = l x1
+[4] [ ], type = l x1
+[5] return [ 3 ], type = r x1
 
 ___ tests.qtest (1 -> 1) rec ___
 [1] var, type = ?*l x1
@@ -2134,8 +2166,9 @@ ___ tests.qtest (1 -> 1) rec ___
 ___ tests.qtest_q0 (2 -> 1) ___
 [1] var, type = ?l x1
 [2] var, type = ?i x1
-[3] __primitive.compose 1 2 [], type = l x1
-[4] return [ 3 ], type = r x1
+[3] __primitive.compose 1 2 4, type = l x1
+[4] [ ], type = l x1
+[5] return [ 3 ], type = r x1
 
 ___ tests.test_ap11 (2 -> 1) ___
 [1] var, type = ?l x1

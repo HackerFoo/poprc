@@ -31,14 +31,10 @@
 #include "builders.h"
 
 cell_t *empty_list() {
-  cell_t *c = closure_alloc(LIST_OFFSET);
-  c->op = OP_value;
-  c->value.type = T_LIST;
-  return c;
+  return make_list(0);
 }
 
 cell_t *make_list(csize_t n) {
-  if(n == 0) return &nil_cell;
   cell_t *c = closure_alloc(n + LIST_OFFSET);
   c->op = OP_value;
   c->value.type = T_LIST;
@@ -138,7 +134,7 @@ void reduce_list(cell_t **cp) {
 }
 
 list_iterator_t list_begin(cell_t *l) {
-  assert_error(is_list(l));
+  assert_error(is_list(l), "%C", l);
   bool row = is_row_list(l);
   list_iterator_t it = {
     .array = l->value.ptr,
@@ -285,7 +281,6 @@ void collapse_row(cell_t **cp) {
 cell_t *flat_copy(cell_t *l) {
   assert_error(is_list(l));
   csize_t n = function_out(l, true);
-  if(!n) return &nil_cell;
   cell_t *res = make_list(n);
   res->value.type = l->value.type;
   FLAG_CLEAR(res->value, VALUE_ROW);
