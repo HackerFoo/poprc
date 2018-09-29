@@ -50,6 +50,7 @@
 #include "list.h"
 #include "trace.h"
 #include "git_log.h"
+#include "log_tree.h"
 
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
@@ -162,6 +163,7 @@ int main(int argc, char **argv) {
   sigaction(SIGSEGV, &sa, NULL);
 
   log_init();
+  log_tree_open();
 
   error_t error;
   bool exit_on_error = false;
@@ -227,6 +229,7 @@ int main(int argc, char **argv) {
      !leak_test()) {
     make_graph_all("leaks.dot");
   }
+  log_tree_close();
   return 0;
 }
 #else // EMSCRIPTEN
@@ -746,4 +749,10 @@ COMMAND(tweak, "tweak a value") {
     printf("tweak unset\n");
     log_unset_tweak();
   }
+}
+
+void breakpoint_hook() {
+  print_active_entries("  - while compiling ");
+  make_graph_all(NULL);
+  log_trees();
 }

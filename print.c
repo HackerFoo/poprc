@@ -594,11 +594,6 @@ FORMAT(function, 'O') {
   printf("%s", op_name(i));
 }
 
-void breakpoint_hook() {
-  print_active_entries("  - while compiling ");
-  make_graph_all(NULL);
-}
-
 static char *show_base[] = {
   [BASE_DEC] = "decimal",
   [BASE_HEX] = "hexadecimal"

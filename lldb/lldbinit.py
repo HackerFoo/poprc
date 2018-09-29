@@ -10,6 +10,7 @@ def __lldb_init_module(debugger, internal_dict):
     dbgcall("command script add -f lldbinit.plog plog")
     dbgcall("command script add -f lldbinit.bc bc")
     dbgcall("command script add -f lldbinit.ac ac")
+    dbgcall("command script add -f lldbinit.pt pt")
     dbgcall("breakpoint set --name breakpoint");
     dbgcall("breakpoint command add 1 --python-function lldbinit.breakpoint_hit");
     return
@@ -46,8 +47,12 @@ def bc(debugger, command, result, dict):
     if len(args) > 0:
         dbgcall("p print_bytecode(&trace_cells[{}])".format(args[0]))
 
+def pt(debugger, command, result, dict):
+    args = shlex.split(command)
+    if len(args) > 0:
+        dbgcall("p print_tree(&cells[{}])".format(args[0]))
+
 def ac(debugger, command, result, dict):
     args = shlex.split(command)
     if len(args) > 0:
         dbgcall('breakpoint set --file cells.c --line 179 --condition "c-cells==({})"'.format(args[0]))
-
