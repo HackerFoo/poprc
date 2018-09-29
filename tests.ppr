@@ -29,32 +29,33 @@ __ f2b: | popr ! cut popr swap drop
 __ f5: [] pushl swap2 swap2 | swap pushl popr swap popr swap drop dup swap2 > ! cut
 
 __ x y [z+] should be x + y + z + 1
-f2: pushl pushl popr 1 + swap pushl popr swap popr swap drop +
+__ FIX: for some reason: pull2 != pull pull
+f2: pushl pushl popr 1 + swap pushl pull pull drop +
 
 __ f1: [] [] ifte pushl
 
 f6: swap2
 
 __ apply a quote to a single input yielding a single output
-test_ap11: pushl popr swap drop
+test_ap11: pushl head
 
 __ apply a quote to two inputs yielding a single output
-test_ap21: pushl pushl popr swap drop
+test_ap21: pushl pushl head
 
 __ apply a quote to a single input yielding two outputs
-test_ap12: pushl popr swap popr swap drop swap
+test_ap12: pushl pull2 drop swap
 
 __ this expands forever because laziness expands backwards; assert must be *later* than recursive call
 __ dec: [dup 5 <= !] [dup 5 > ! 1- dec] | pushl popr swap drop
-dec: [dup 5 <= !] [dup 1- dec swap 5 > !] | pushl popr swap drop
+dec: [dup 5 <= !] [dup 1- dec swap 5 > !] | pushl head
 
-fib: [dup 1 <= !] [dup 1- dup 1- fib swap fib + swap 1 > !] | pushl popr swap drop
+fib: [dup 1 <= !] [dup 1- dup 1- fib swap fib + swap 1 > !] | pushl head
 
-fact: [1 == 1 swap !] [dup dup 1- fact * swap 1 > !] | pushl popr swap drop
+fact: [1 == 1 swap !] [dup dup 1- fact * swap 1 > !] | pushl head
 
-count: [0 == 0 swap !] [dup 1- count 1+ swap 0 > !] | pushl popr swap drop
+count: [0 == 0 swap !] [dup 1- count 1+ swap 0 > !] | pushl head
 
-qdec: [dup head 5 <= !] [dup [1-] . qdec swap head 5 > !] | pushl popr swap drop
+qdec: [dup head 5 <= !] [dup [1-] . qdec swap head 5 > !] | pushl head
 
 qtest: [1+] . qtest
 __ qtest2: [1+] swap . qtest2
@@ -63,7 +64,7 @@ ___ these need fixed
 ___ from here
 
 __ fact2: [1 == 1 swap !] [dup 1- swap [*] pushl swap pushr pushl get2 fact2] | pushl pushl get2
-get2: popr swap popr swap drop swap
+get2: pull2 drop swap
 
 ___ to here
 
@@ -100,7 +101,7 @@ popr_quote_compose: [popr] .
 id_quote_compose: [id] .
 
 __ test, should return x2
-compose_alt: [1+] [] | . popr swap drop
+compose_alt: [1+] [] | . head
 
 __ initial step test base -> result
 binrec: [iterate] dip31 $
@@ -127,7 +128,7 @@ drop_loop:
   [] ap20
     [[1-] .]
     [head 0 >]
-    iterate popd head
+    iterate tail head
 
 drop_loop1:
   [] ap10
@@ -145,13 +146,13 @@ drop_loop3:
   [] ap30
     [[1-] .]
     [head 0 >]
-    iterate popd pull2 drop swap
+    iterate tail pull2 drop swap
 
 drop_loop4:
   [] ap40
     [[1-] .]
     [head 0 >]
-    iterate popd pull3 drop
+    iterate tail pull3 drop
 
 drop_loop5:
   [] ap10
@@ -174,7 +175,7 @@ collatz:
   0 swap [] ap20
     [[swap 1+ swap collatz_step] .]
     [head 1 >]
-    iterate popd head
+    iterate tail head
 
 decel_step:
   [dup 1- swap 5<=]
@@ -185,26 +186,26 @@ decel:
   0 swap [] ap20
     [[swap 1+ swap decel_step] .]
     [head 1 >]
-    iterate popd head
+    iterate tail head
 
 leak:
   0 swap [] ap20
     [[swap 3+ swap] .]
     [head 1 >]
-    iterate popd head
+    iterate tail head
 
 altf_loop:
   [] ap20
     [[dup | 1-] .]
     [head 1 >]
-    iterate popd head
+    iterate tail head
 
 __ ERROR: user_func.c:702: func_exec: Assertion `parent_entry' failed: incomplete entry can't be unified without a parent entry
 __ altf_loop2:
 __   [] ap10
 __     [[0 |] .]
 __     [head 1 >]
-__     iterate popd head
+__     iterate tail head
 
 __ ERROR: trace.c:179: switch_entry: Assertion `is_ancestor_of(r->value.tc.entry, entry)' failed.
 __ alt_ap_f: [dup 1+] [dup 2+] | pushl
@@ -230,9 +231,9 @@ empty_assert: [] swap ! ap22 drop swap drop
 __ times_noop: [id] 1 times
 
 after0:
-  [popd]
+  [tail]
     [head 0 !=]
-    iterate popd head
+    iterate tail head
 
 __ bad_deps: [dup] popr swap 1 swap dup swap [ap21] dip32 2 swap ap11
 

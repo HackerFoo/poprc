@@ -26,11 +26,14 @@ imports:
 
 module num:
 
+imports:
+  module stack
+
 __ max of two values
-max: [] pushl pushl dup . dup popr drop | [<= !] . popr swap drop
+max: [] ap20 dup . dup tail | [<= !] . popr nip
 
 __ min of two values
-min: [] pushl pushl dup . dup popr drop | [> !] . popr swap drop
+min: [] ap20 dup . dup tail | [> !] . popr nip
 
 __ is argument odd?
 odd: 1 &b 1 ==
@@ -45,39 +48,38 @@ imports:
   module logic
 
 __ take rightmost value from quote
-head: popr swap drop
+head: popr nip
 
 __ return the length of a list
 length:
-  0 swap [] ap20
-    [[[1+] [popd] para] .]
+  [0 swap] pushl
+    [[[1+] [tail] para] .]
     [popr popr valid]
-    iterate popd head
+    iterate tail head
 
 __ right fold
 __ [... x] y [fn] foldr -> y'
 foldr:
-  -swap2 [] ap30 __ fn xs y
+  [-swap2] ap30 __ fn xs y
     [[foldr_step] .]
-    [popr drop head popr valid]
+    [tail head popr valid]
     iterate head
-foldr_step: [popr] dip12 over3 ap21 swap drop
+foldr_step: [popr] dip12 over3 ap21 nip
 
 __ left fold
 __ [... x] y [fn] foldl -> y'
-foldl: swap2 [] foldl_ ap11 swap drop
-foldl_:
-  [] ap30 __ fn xs y
+foldl:
+  swap2 [[]] ap20 __ fn xs y
     [[foldl_step] .]
     [popr drop head popr valid]
-    iterate head
+    iterate head ap11 nip
 foldl_step: [popr over2 pushl] dip23 .
 
 dropl:
   [] ap20
-    [[[popr drop] [1-] para] .]
+    [[[tail] [1-] para] .]
     [head 0 >]
-    iterate popr drop head
+    iterate tail head
 
 __ [a.. x] [b..] -> [a..] [x b..]
 movr: [popr] dip12 pushl
@@ -85,10 +87,10 @@ movr: [popr] dip12 pushl
 __ not working
 __ split_at: [[[]] pushl] dip11 [[movr] .] swap times ap02 swap2 drop
 split_at:
-  [] swap [] ap30
+  [[] swap] ap20
     [[[movr] dip22 1-] .]
     [head 0 >]
-    iterate popr drop pull2 drop swap
+    iterate tail pull2 drop swap
 
 __ index operator
 __ [f] index -> x
@@ -101,10 +103,10 @@ __ concat: [] [.] foldr
 
 mov_ap: dup -swap2 [. movr] dip32
 map:
-  [] swap [] ap30
+  [[] swap] ap20
     [[mov_ap] .]
-    [popr drop popr drop head popr valid]
-    iterate popr drop head
+    [tail2 head popr valid]
+    iterate tail head
 
 __ a [b..] [p]
 pushif:
@@ -114,10 +116,10 @@ pushif:
 
 __ [l] [p] filter -> [..x..] such that for all x, x p == True
 filter:
-  [] swap [] ap30
+  [[] swap] ap20
     [[filter_step] .]
-    [popr drop popr drop popr valid]
-    iterate popr drop head
+    [tail2 popr valid]
+    iterate tail head
 
 __ [.. a] [b ..] [p] --> [..] [a b ..] if a p, otherwise [..] [b ..]
 filter_step: dup [[[popr] dip12] dip23 pushif] dip32
@@ -136,8 +138,8 @@ pull5: pull4 pull
 pull6: pull5 pull
 pull7: pull6 pull
 
-popd: popr drop
-popd2: popd popd
+tail: popr drop
+tail2: tail tail
 
 rev3: [] ap30 pull3 drop
 
@@ -177,7 +179,7 @@ imports:
   module list
 
 __ if then else
-ifte: [] ap20 swap pushr [not!] [swap drop!] | . pull drop
+ifte: [] ap20 swap pushr [not!] [nip!] | . head
 
 __ ifte2: rot [swap drop 0 != !] [0 == !] | pushl pushl pushl popr swap drop cut
 
@@ -213,8 +215,8 @@ dip54: swap pushr ap55 swap5 drop
 dip55: swap pushr ap56 swap6 drop
 
 __ a [f] -> fa
-$: ap11 swap drop
-$$: ap21 swap drop
+$: ap11 nip
+$$: ap21 nip
 
 __ a [f] -> fa [f]
 $keep: dup [$] dip21
@@ -255,7 +257,7 @@ times: __ a [f] n
   [] ap30
     [[times_step] .]
     [head 0 >]
-    iterate popd2 head
+    iterate tail2 head
 times_step: [$keep] dip22 1-
 
 __ m [f] a -> a
@@ -276,8 +278,8 @@ imports:
   module stack
   module control
 
-or: [not!] [True swap!] | ap21 swap drop
-and: [!] [False swap not!] | ap21 swap drop
+or: [not!] [True swap!] | ap21 nip
+and: [!] [False swap not!] | ap21 nip
 implies: swap not or
 
 __ A B default -> A, or B if A fails
@@ -298,7 +300,7 @@ gcd:
   [] ap20 __ quote arguments [a b]
     [[tuck %] .] __ step: [a b] -> [b (a % b)]
     [head 0 !=] __ while: b != 0
-    iterate popd head __ return: a
+    iterate tail head __ return: a
 
 __ acc x power -> if odd power, acc*x, otherwise acc
 acc_odd_power: [[*] dip21 odd] ap20 ifdo
@@ -311,10 +313,10 @@ power_step: in2 [acc_odd_power] dip31 ap02 swap2 drop reduce_power
 
 __ raise to integer power using binary exponentiation
 ^:
-  1 -swap2 [] ap30
+  [1 -swap2] ap20
     [[power_step] .]
     [head 0 !=]
-    iterate popd2 head
+    iterate tail2 head
 
 __ sums numbers in a list
 __ [l] length -> sum
@@ -326,7 +328,7 @@ __ sum:
 __   pushr
 __     [[[+] dip21 1-] .]
 __     [head 0 !=]
-__     iterate popd head
+__     iterate tail head
 
 __ decreasing list from initial element
 __ ERROR: user_func.c:424: flat_call: Assertion `tn->pos' failed
