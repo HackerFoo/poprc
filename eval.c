@@ -163,7 +163,6 @@ int main(int argc, char **argv) {
   sigaction(SIGSEGV, &sa, NULL);
 
   log_init();
-  log_tree_open();
 
   error_t error;
   bool exit_on_error = false;
@@ -229,7 +228,6 @@ int main(int argc, char **argv) {
      !leak_test()) {
     make_graph_all("leaks.dot");
   }
-  log_tree_close();
   return 0;
 }
 #else // EMSCRIPTEN

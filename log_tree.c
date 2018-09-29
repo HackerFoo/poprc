@@ -29,7 +29,6 @@
 #include "special.h"
 #include "log_tree.h"
 
-static FILE *trees_log_file = NULL;
 static MAP(map, 255);
 
 static
@@ -108,17 +107,9 @@ void print_tree(cell_t *c) {
   }
 }
 
-void log_tree_open() {
-  trees_log_file = fopen("trees.log", "w");
-}
-
-void log_tree_close() {
-  fclose(trees_log_file);
-}
-
 void log_trees() {
-  FILE *f = trees_log_file;
-  if(!f) return;
+  static FILE *f = NULL;
+  if(!f) f = fopen("trees.log", "w");
   tag_t tag;
   get_tag(tag);
   fprintf(f, "# TAG: " FORMAT_TAG "\n", tag);
