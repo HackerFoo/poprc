@@ -11,6 +11,8 @@ def __lldb_init_module(debugger, internal_dict):
     dbgcall("command script add -f lldbinit.bc bc")
     dbgcall("command script add -f lldbinit.ac ac")
     dbgcall("command script add -f lldbinit.pt pt")
+    dbgcall("command script add -f lldbinit.save_trees save-trees")
+    dbgcall("command script add -f lldbinit.diff_trees diff-trees")
     dbgcall("breakpoint set --name breakpoint");
     dbgcall("breakpoint command add 1 --python-function lldbinit.breakpoint_hit");
     return
@@ -56,3 +58,9 @@ def ac(debugger, command, result, dict):
     args = shlex.split(command)
     if len(args) > 0:
         dbgcall('breakpoint set --file cells.c --line 179 --condition "c-cells==({})"'.format(args[0]))
+
+def save_trees(debugger, command, result, dict):
+    os.system("cp trees.log trees-saved.log")
+
+def diff_trees(debugger, command, result, dict):
+    os.system("colordiff -I^# trees-saved.log trees.log | less -r")

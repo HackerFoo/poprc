@@ -40,3 +40,4 @@ _darcs
 /tex/*.pdf
 /make-eval.log
 /trees.log
+/trees-saved.log
