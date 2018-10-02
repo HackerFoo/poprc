@@ -112,6 +112,7 @@ DIAGRAMS_FILE := diagrams.html
 
 SRC := $(wildcard *.c) $(wildcard startle/*.c)
 OBJS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SRC))
+EMCC_OBJS := $(patsubst %.c, build/emcc/$(BUILD)/%.o, $(SRC))
 DEPS := $(patsubst %.c, $(BUILD_DIR)/%.d, $(SRC))
 LISTS := command format op test word
 GEN := $(patsubst %.c, .gen/%.h, $(SRC)) $(patsubst %, .gen/%_list.h, $(LISTS))
@@ -181,11 +182,13 @@ eval: $(BUILD_DIR)/eval
 $(BUILD_DIR)/eval: $(OBJS)
 	$(CC) $(OBJS) $(LDFLAGS) $(LIBS) -o $@
 
-js/eval.js: EMCC_OBJS := $(patsubst %.c, build/emcc/$(BUILD)/%.o, $(SRC))
-js/eval.js:
+# Emscripten
+js/eval.js js/eval.wasm:
 	@mkdir -p js
 	make CC=emcc $(EMCC_OBJS)
 	emcc $(EMCC_OBJS) -o js/eval.js \
+		-Os \
+		-s WASM=1 \
 		-s EXPORTED_FUNCTIONS="['_main', '_emscripten_eval']" \
 		-s EXTRA_EXPORTED_RUNTIME_METHODS="['ccall']" \
 		--embed-file lib.ppr --embed-file tests.ppr
@@ -299,7 +302,7 @@ gen: $(GEN)
 # remove compilation products
 .PHONY: clean
 clean:
-	rm -f eval js/eval.js
+	rm -f eval js/eval.js js/eval.wasm
 	rm -rf build .gen diagrams
 	rm -f make-eval.log compile_commands.json
 	rm -f $(DIAGRAMS_FILE)

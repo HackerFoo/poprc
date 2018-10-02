@@ -22,6 +22,8 @@
     'printErr' : term_echo,
   };
 
+  Module.locateFile = function(url) { return 'js/' + url; };
+
   var is_ready = false;
 
   function eval_popr(str) {
