@@ -713,19 +713,7 @@ void mark_barriers(cell_t *entry, cell_t *c) {
     cell_t *x = *p;
     if(x) {
       LOG("barrier %E %C[%d]: %C #barrier", entry, c, p-c->expr.arg, x);
-      if(is_var(x)) {
-        cell_t *v = x->value.var;
-        drop(x);
-        *p = var_create_nonlist(x->value.type,
-                                trace_alloc_var(entry));
-        (*p)->value.var->value.var = v;
-      //} else if(x->op == OP_ap) {
-      //  LOG(HACK " marking barrier through ap %C", x);
-      //  mark_barriers(entry, x);
-      } else {
-        LOG("set pos: cells[%C].pos = %d (%e)", x, entry->pos, entry);
-        x->pos = entry->pos;
-      }
+      mark_pos(x, entry->pos);
     }
   }
 }

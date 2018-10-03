@@ -32,6 +32,20 @@
 static MAP(map, 255);
 
 static
+void fprint_arg(FILE *f, map_t map, cell_t *c) {
+  if(c) {
+    pair_t *x = map_find(map, (uintptr_t)clear_ptr(c));
+    if(x) {
+      fprintf(f, " %d", (int)x->second);
+    } else {
+      fprintf(f, " ?");
+    }
+  } else {
+    fprintf(f, " X");
+  }
+}
+
+static
 void fprint_tree(cell_t *c, map_t map, FILE *f) {
   c = clear_ptr(c);
   if(!is_closure(c) || map_find(map, (uintptr_t)c)) return;
@@ -66,13 +80,7 @@ void fprint_tree(cell_t *c, map_t map, FILE *f) {
       fprintf(f, " <- %s", word_name);
     }
     TRAVERSE(c, in) {
-      if(*p) {
-        pair_t *x = map_find(map, (uintptr_t)clear_ptr(*p));
-        assert_error(x);
-        fprintf(f, " %d", (int)x->second);
-      } else {
-        fprintf(f, " X");
-      }
+      fprint_arg(f, map, *p);
     }
   } else {
     fprintf(f, " <- %s:", show_type_all(c));
@@ -86,12 +94,7 @@ void fprint_tree(cell_t *c, map_t map, FILE *f) {
               index);
     } else if(is_list(c)) {
       TRAVERSE(c, ptrs) {
-        if(*p) {
-          pair_t *x = map_find(map, (uintptr_t)clear_ptr(*p));
-          fprintf(f, " %d", (int)x->second);
-        } else {
-          fprintf(f, " X");
-        }
+        fprint_arg(f, map, *p);
       }
     } else {
       fprintf(f, " %d", (int)c->value.integer);
