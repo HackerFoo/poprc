@@ -212,15 +212,17 @@ void clear_flags(cell_t *c) {
   }
 }
 
-static reduce_t *_func[] = {
-#define OP__ITEM(name) func_##name,
+static
+response op_call(op op, cell_t **cp, type_request_t treq) {
+  switch(op) {
+#define OP__ITEM(name)                          \
+    case OP_##name: return func_##name(cp, treq);
 #include "op_list.h"
 #undef OP__ITEM
-};
-
-reduce_t *op_func(op op) {
-  assert_error(op > 0 && op < OP_COUNT);
-  return _func[op - 1];
+    default:
+      assert_error(false, "unknown op %d", op);
+      return FAIL;
+  }
 }
 
 cell_t *fill_incomplete(cell_t *c) {
@@ -243,7 +245,7 @@ response reduce(cell_t **cp, type_request_t treq) {
     c = *cp = fill_incomplete(c);
     stats.reduce_cnt++;
     op op = c->op;
-    response r = op_func(op)(cp, treq);
+    response r = op_call(op, cp, treq);
 
     // prevent infinite loops when debugging
     assert_counter(LENGTH(cells));
@@ -276,7 +278,7 @@ response reduce_one(cell_t **cp, type_request_t treq) {
     assert_error(is_closure(c) &&
            closure_is_ready(c));
     stats.reduce_cnt++;
-    return op_func(c->op)(cp, treq);
+    return op_call(c->op, cp, treq);
   }
 }
 
