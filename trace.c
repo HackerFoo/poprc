@@ -726,7 +726,7 @@ bool tail_call_to_bottom(cell_t *entry, int x) {
 unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
   cell_t *tc = NULL, **prev = &tc;
   unsigned int alts = 0;
-  type_request_t treq = req_pos(REQ(return), entry->pos);
+  type_request_t *treq = req_pos(&REQ(return), entry->pos);
 
   CONTEXT("trace_reduce %E %C", entry, *cp);
   insert_root(cp);
@@ -734,7 +734,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
   COUNTUP(priority, 8) {
     cell_t **p = cp;
     bool delay = false;
-    treq.priority = priority;
+    treq->priority = priority;
     CONTEXT("priority = %d", priority);
     while(*p) {
       CONTEXT("branch %d: %C", alts, *p);
@@ -750,7 +750,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
       cell_t **a;
       FORLIST(a, *p, true) {
         collapse_row(a);
-        reduce(a, REQ(any)); // ***
+        reduce(a, &REQ(any)); // ***
         if(is_value(*a) &&
            !is_list(*a) &&
            !is_var(*a)) { // TODO deps?

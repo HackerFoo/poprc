@@ -67,16 +67,15 @@ cell_t *_op1(cell_t *c, uint8_t t, val_t (*op)(val_t), cell_t *x) {
   }
 }
 
-response func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t, val_t), bool nonzero) {
+response func_op2(cell_t **cp, type_request_t *treq, int arg_type, int res_type, val_t (*op)(val_t, val_t), bool nonzero) {
   cell_t *res = 0;
   PRE(op2);
 
-  CHECK_IF(!check_type(treq.t, res_type), FAIL);
+  CHECK_IF(!check_type(treq->t, res_type), FAIL);
 
   alt_set_t alt_set = 0;
-  type_request_t atr = REQ(t, arg_type);
-  CHECK(reduce_arg(c, 0, &alt_set, atr));
-  CHECK(reduce_arg(c, 1, &alt_set, atr));
+  CHECK(reduce_arg(c, 0, &alt_set, &REQ(t, arg_type)));
+  CHECK(reduce_arg(c, 1, &alt_set, &REQ(t, arg_type)));
   CHECK_IF(as_conflict(alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
@@ -94,15 +93,14 @@ response func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, 
   return abort_op(rsp, cp, treq);
 }
 
-response func_op1(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t), val_t (*inv_op)(val_t)) {
+response func_op1(cell_t **cp, type_request_t *treq, int arg_type, int res_type, val_t (*op)(val_t), val_t (*inv_op)(val_t)) {
   cell_t *res = 0;
   PRE(op1);
 
-  CHECK_IF(!check_type(treq.t, res_type), FAIL);
+  CHECK_IF(!check_type(treq->t, res_type), FAIL);
 
   alt_set_t alt_set = 0;
-  type_request_t atr = REQ(t, arg_type, REQ_INV(inv_op));
-  CHECK(reduce_arg(c, 0, &alt_set, atr));
+  CHECK(reduce_arg(c, 0, &alt_set, &REQ(t, arg_type, REQ_INV(inv_op))));
   CHECK_DELAY();
   clear_flags(c);
 
@@ -127,23 +125,22 @@ cell_t *_op1_float(double (*op)(double), cell_t *x) {
   return float_val(op(x->value.flt));
 }
 
-response func_op2_float(cell_t **cp, type_request_t treq, double (*op)(double, double), bool nonzero) {
+response func_op2_float(cell_t **cp, type_request_t *treq, double (*op)(double, double), bool nonzero) {
   cell_t *res = 0;
   PRE(op2_float);
 
-  CHECK_IF(!check_type(treq.t, T_FLOAT), FAIL);
+  CHECK_IF(!check_type(treq->t, T_FLOAT), FAIL);
 
   alt_set_t alt_set = 0;
-  type_request_t atr = REQ(float);
-  CHECK(reduce_arg(c, 0, &alt_set, atr));
-  CHECK(reduce_arg(c, 1, &alt_set, atr));
+  CHECK(reduce_arg(c, 0, &alt_set, &REQ(float)));
+  CHECK(reduce_arg(c, 1, &alt_set, &REQ(float)));
   CHECK_IF(as_conflict(alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   CHECK_IF(nonzero && !is_var(q) && q->value.flt == 0.0, FAIL); // TODO assert this for variables
-  res = is_var(p) || is_var(q) ? var(treq.t, c) : _op2_float(op, p, q);
+  res = is_var(p) || is_var(q) ? var(treq->t, c) : _op2_float(op, p, q);
   res->value.type = T_FLOAT;
   res->alt = c->alt;
   res->value.alt_set = alt_set;
@@ -155,20 +152,19 @@ response func_op2_float(cell_t **cp, type_request_t treq, double (*op)(double, d
   return abort_op(rsp, cp, treq);
 }
 
-response func_op1_float(cell_t **cp, type_request_t treq, double (*op)(double)) {
+response func_op1_float(cell_t **cp, type_request_t *treq, double (*op)(double)) {
   cell_t *res = 0;
   PRE(op1_float);
 
-  CHECK_IF(!check_type(treq.t, T_FLOAT), FAIL);
+  CHECK_IF(!check_type(treq->t, T_FLOAT), FAIL);
 
   alt_set_t alt_set = 0;
-  type_request_t atr = REQ(float);
-  CHECK(reduce_arg(c, 0, &alt_set, atr));
+  CHECK(reduce_arg(c, 0, &alt_set, &REQ(float)));
   CHECK_DELAY();
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
-  res = is_var(p) ? var(treq.t, c) : _op1_float(op, p);
+  res = is_var(p) ? var(treq->t, c) : _op1_float(op, p);
   res->value.type = T_FLOAT;
   res->alt = c->alt;
   res->value.alt_set = alt_set;
@@ -355,10 +351,10 @@ OP(to_float) {
   cell_t *res = 0;
   PRE(to_float);
 
-  CHECK_IF(!check_type(treq.t, T_FLOAT), FAIL);
+  CHECK_IF(!check_type(treq->t, T_FLOAT), FAIL);
 
   alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, REQ(int)));
+  CHECK(reduce_arg(c, 0, &alt_set, &REQ(int)));
   CHECK_DELAY();
   clear_flags(c);
 
@@ -384,10 +380,10 @@ OP(trunc) {
   cell_t *res = 0;
   PRE(to_float);
 
-  CHECK_IF(!check_type(treq.t, T_INT), FAIL);
+  CHECK_IF(!check_type(treq->t, T_INT), FAIL);
 
   alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, REQ(float)));
+  CHECK(reduce_arg(c, 0, &alt_set, &REQ(float)));
   CHECK_DELAY();
   clear_flags(c);
 
@@ -438,7 +434,7 @@ OP(assert) {
   cell_t *res = NULL;
   cell_t *tc = NULL;
   alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 1, &alt_set, REQ(symbol, SYM_True)));
+  CHECK(reduce_arg(c, 1, &alt_set, &REQ(symbol, SYM_True)));
   CHECK_DELAY();
   cell_t *p = clear_ptr(c->expr.arg[1]);
   bool p_var = is_var(p);
@@ -447,7 +443,7 @@ OP(assert) {
            p->value.integer != SYM_True, FAIL);
 
   if(p_var) {
-    CHECK_IF(treq.delay_assert, DELAY);
+    CHECK_IF(treq->delay_assert, DELAY);
     tc = trace_partial(OP_assert, 1, p);
   }
 
@@ -486,13 +482,13 @@ OP(seq) {
   cell_t *res = NULL;
   cell_t *tc = NULL;
   alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 1, &alt_set, REQ(any))); // don't split arg here?
+  CHECK(reduce_arg(c, 1, &alt_set, &REQ(any))); // don't split arg here?
   CHECK_DELAY();
   cell_t *p = clear_ptr(c->expr.arg[1]);
   bool p_var = is_var(p);
 
   if(p_var) {
-    CHECK_IF(treq.delay_assert, DELAY);
+    CHECK_IF(treq->delay_assert, DELAY);
     tc = trace_partial(OP_seq, 1, p);
   }
 
@@ -530,7 +526,7 @@ OP(otherwise) {
   cell_t *res = NULL;
   cell_t *tc = NULL;
   alt_set_t alt_set = 0;
-  response rsp0 = reduce(&c->expr.arg[0], REQ(any));
+  response rsp0 = reduce(&c->expr.arg[0], &REQ(any));
   CHECK_IF(rsp0 == DELAY, DELAY);
   cell_t *p = clear_ptr(c->expr.arg[0]);
   bool p_var = is_var(p);
@@ -540,7 +536,7 @@ OP(otherwise) {
            rsp0 != FAIL, FAIL);
 
   if(rsp0 != FAIL) {
-    CHECK_IF(treq.delay_assert, DELAY);
+    CHECK_IF(treq->delay_assert, DELAY);
     tc = trace_partial(OP_otherwise, 0, p);
     // alt?
   }
@@ -617,8 +613,8 @@ OP(swap) {
 WORD("delay", delay, 1, 1)
 OP(delay) {
   PRE(delay);
-  if(treq.priority < 1) {
-    LOG("delay (priority %d) %C", treq.priority, c);
+  if(treq->priority < 1) {
+    LOG("delay (priority %d) %C", treq->priority, c);
     return DELAY;
   }
 
@@ -655,7 +651,7 @@ csize_t function_compose_in(cell_t *c, csize_t req_in, csize_t arg_in, bool row)
 }
 
 static
-response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
+response func_compose_ap(cell_t **cp, type_request_t *treq, bool row) {
   CONTEXT("%s: %C", row ? "compose" : "ap", *cp);
   PRE_NO_CONTEXT(compose_ap);
 
@@ -671,23 +667,23 @@ response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
 
   alt_set_t alt_set = 0;
   if(row) {
-    CHECK(reduce_arg(c, 0, &alt_set, REQ(list, treq.in, 0)));
+    CHECK(reduce_arg(c, 0, &alt_set, &REQ(list, treq->in, 0)));
     CHECK_DELAY();
     p = clear_ptr(c->expr.arg[0]);
   }
   CHECK(reduce_arg(c, in, &alt_set,
-                   REQ(list,
-                       function_compose_in(p, out ? 0 : treq.in, arg_in, false /*_1_*/),
-                       treq.out + out)));
+                   &REQ(list,
+                        function_compose_in(p, out ? 0 : treq->in, arg_in, false /*_1_*/),
+                        treq->out + out)));
   CHECK_IF(as_conflict(alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
   if(row) {
-    placeholder_extend(&c->expr.arg[0], treq.in, function_compose_out(c->expr.arg[in], arg_in, treq.out + out));
+    placeholder_extend(&c->expr.arg[0], treq->in, function_compose_out(c->expr.arg[in], arg_in, treq->out + out));
     p = clear_ptr(c->expr.arg[0]);
   }
   cell_t **q = &c->expr.arg[in];
-  placeholder_extend(q, function_compose_in(p, treq.in, arg_in, true /*_1_*/), treq.out + out);
+  placeholder_extend(q, function_compose_in(p, treq->in, arg_in, true /*_1_*/), treq->out + out);
   // *** _1_ don't know if/why this works
 
   list_iterator_t it;
@@ -760,11 +756,11 @@ OP(print) {
   cell_t *res = 0;
   PRE(print);
 
-  CHECK_IF(!check_type(treq.t, T_SYMBOL), FAIL);
+  CHECK_IF(!check_type(treq->t, T_SYMBOL), FAIL);
 
   alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, REQ(symbol)));
-  CHECK(reduce_arg(c, 1, &alt_set, REQ(any)));
+  CHECK(reduce_arg(c, 0, &alt_set, &REQ(symbol)));
+  CHECK(reduce_arg(c, 1, &alt_set, &REQ(any)));
   CHECK_IF(as_conflict(alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
@@ -795,14 +791,13 @@ bool is_list_var(cell_t *c) {
   return is_row_list(c) && is_placeholder(c->value.ptr[0]);
 }
 
-response func_type(cell_t **cp, type_request_t treq, uint8_t type) {
+response func_type(cell_t **cp, type_request_t *treq, uint8_t type) {
   PRE(type);
 
-  CHECK_IF(!check_type(treq.t, type), FAIL);
+  CHECK_IF(!check_type(treq->t, type), FAIL);
 
   alt_set_t alt_set = 0;
-  type_request_t atr = REQ(t, type);
-  CHECK(reduce_arg(c, 0, &alt_set, atr));
+  CHECK(reduce_arg(c, 0, &alt_set, &REQ(t, type)));
   CHECK_DELAY();
   clear_flags(c);
 

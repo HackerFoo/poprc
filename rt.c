@@ -45,7 +45,7 @@ static cell_t *watched_cells[4] = {0};
 static bool watch_enabled = false;
 
 #if INTERFACE
-#define ASSERT_REF() if(!treq.delay_var) assert_error(assert_ref(rt_roots, rt_roots_n))
+#define ASSERT_REF() if(!treq->delay_var) assert_error(assert_ref(rt_roots, rt_roots_n))
 #endif
 
 bool insert_root(cell_t **r) {
@@ -147,7 +147,7 @@ void split_expr(cell_t *c) {
 response reduce_arg(cell_t *c,
                 csize_t n,
                 alt_set_t *ctx,
-                type_request_t treq) {
+                type_request_t *treq) {
   cell_t **ap = &c->expr.arg[n];
   response r = reduce(ap, treq);
   cell_t *a = clear_ptr(*ap);
@@ -195,7 +195,7 @@ void split_ptr(cell_t *c, csize_t n) {
 response reduce_ptr(cell_t *c,
                     csize_t n,
                     alt_set_t *ctx,
-                    type_request_t treq) {
+                    type_request_t *treq) {
   assert_error(is_list(c));
   cell_t **ap = &c->value.ptr[n];
   response r = reduce(ap, treq);
@@ -213,9 +213,9 @@ void clear_flags(cell_t *c) {
 }
 
 static
-response op_call(op op, cell_t **cp, type_request_t treq) {
+response op_call(op op, cell_t **cp, type_request_t *treq) {
   switch(op) {
-#define OP__ITEM(name)                          \
+#define OP__ITEM(name) \
     case OP_##name: return func_##name(cp, treq);
 #include "op_list.h"
 #undef OP__ITEM
@@ -236,7 +236,7 @@ cell_t *fill_incomplete(cell_t *c) {
 }
 
 // Reduce *cp with type t
-response reduce(cell_t **cp, type_request_t treq) {
+response reduce(cell_t **cp, type_request_t *treq) {
   bool marked = is_marked(*cp);
   *cp = clear_ptr(*cp);
   cell_t *c = *cp;
@@ -252,7 +252,8 @@ response reduce(cell_t **cp, type_request_t treq) {
 
     LOG_WHEN(!*cp, MARK("FAIL") ": %O %C @abort", op, c);
     c = *cp;
-    if(r <= DELAY) {
+    if(r <= DELAY || (r == RETRY && treq->retry)) {
+      treq->retry = false;
       if(marked) *cp = mark_ptr(c); // *** is the right pointer being marked?
       return r;
     }
@@ -261,14 +262,14 @@ response reduce(cell_t **cp, type_request_t treq) {
   return FAIL;
 }
 
-response simplify(cell_t **cp, type_request_t treq) {
-  treq.delay_var = true;
+response simplify(cell_t **cp, type_request_t *treq) {
+  treq->delay_var = true;
   CONTEXT("simplify %C", *cp);
   return reduce(cp, treq);
 }
 
 // Perform one reduction step on *cp
-response reduce_one(cell_t **cp, type_request_t treq) {
+response reduce_one(cell_t **cp, type_request_t *treq) {
   cell_t *c = *cp;
   if(!c) {
     LOG("reduce_one: null closure %C", c);
@@ -489,7 +490,7 @@ void store_dep(cell_t *c, cell_t *tc, csize_t pos, type_t t, alt_set_t alt_set) 
   *c = v;
 }
 
-response abort_op(response rsp, cell_t **cp, type_request_t treq) {
+response abort_op(response rsp, cell_t **cp, type_request_t *treq) {
   cell_t *c = *cp;
   if(rsp == FAIL) {
     if(!is_cell(c)) {
@@ -498,7 +499,7 @@ response abort_op(response rsp, cell_t **cp, type_request_t treq) {
     }
     assert_error(!is_marked(c));
     cell_t *alt = ref(c->alt);
-    if(c->n && treq.t == T_ANY && !treq.expected) { // HACK this should be more sophisticated
+    if(c->n && treq->t == T_ANY && !treq->expected) { // HACK this should be more sophisticated
       TRAVERSE(c, in) {
         drop(*p);
       }
@@ -810,10 +811,10 @@ uint8_t new_alt_id(unsigned int n) {
 
 #if INTERFACE
 #define REQ_INHERIT                             \
-  .priority = treq.priority,                    \
-  .delay_assert = treq.delay_assert,            \
-  .delay_var = treq.delay_var,                  \
-  .up = &treq
+  .priority = treq->priority,                   \
+  .delay_assert = treq->delay_assert,           \
+  .delay_var = treq->delay_var,                 \
+  .up = treq
 #define REQ(type, ...) CONCAT(REQ_, type)(__VA_ARGS__)
 #define REQ_list(_in, _out) \
   ((type_request_t) { .t = T_LIST, .in = _in, .out = _out, REQ_INHERIT})
@@ -830,14 +831,14 @@ uint8_t new_alt_id(unsigned int n) {
 #define REQ_symbol(...) REQ_t(T_SYMBOL, ##__VA_ARGS__)
 #define REQ_return() \
   ((type_request_t) { .t = T_RETURN })
-#define REQ_INV(invert) treq.expected, (treq.expected ? invert(treq.expected_value) : 0)
+#define REQ_INV(invert) treq->expected, (treq->expected ? invert(treq->expected_value) : 0)
 #endif
 
 // default 'treq' for REQ(...) to inherit
-const type_request_t treq = { .t = T_ANY };
+const type_request_t * const treq = &(type_request_t) { .t = T_ANY };
 
-type_request_t req_pos(type_request_t treq, uint8_t pos) {
-  treq.pos = pos;
+type_request_t *req_pos(type_request_t *treq, uint8_t pos) {
+  treq->pos = pos;
   return treq;
 }
 
