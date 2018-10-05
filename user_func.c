@@ -182,9 +182,8 @@ cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) 
 }
 
 // unify c with pattern pat if possible, returning the unified result
-bool unify_exec(cell_t **cp, cell_t *parent_entry) {
-  cell_t *c = *cp;
-  PRE(c, unify_exec, " #wrap");
+bool unify_exec(cell_t **cp, cell_t *parent_entry, type_request_t treq) {
+  PRE(unify_exec, " #wrap");
 
   csize_t
     in = closure_in(c),
@@ -566,13 +565,12 @@ cell_t *expand_list(cell_t *entry, cell_t *c) {
 
 static
 response func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
-  cell_t *c = *cp;
-  size_t
-    in = closure_in(c),
-    out = closure_out(c);
-  cell_t *entry = c->expr.arg[in];
+  csize_t
+    in = closure_in(*cp),
+    out = closure_out(*cp);
+  cell_t *entry = (*cp)->expr.arg[in];
   wrap_data wrap;
-  PRE(c, exec_wrap, " %E 0x%x #wrap", entry, c->expr.flags);
+  PRE(exec_wrap, " %E 0x%x #wrap", entry, (*cp)->expr.flags);
   LOG_UNLESS(entry->entry.out == 1, "out = %d #unify-multiout", entry->entry.out);
 
   cell_t *new_entry = trace_start_entry(parent_entry, entry->entry.out);
@@ -665,8 +663,7 @@ response func_exec_wrap(cell_t **cp, type_request_t treq, cell_t *parent_entry) 
 
 static
 response exec_list(cell_t **cp, type_request_t treq) {
-  cell_t *c = *cp;
-  PRE_NO_CONTEXT(c, exec_list);
+  PRE_NO_CONTEXT(exec_list);
 
   if(treq.t != T_LIST || closure_out(c) != 0) {
     return SUCCESS;
@@ -701,11 +698,9 @@ response exec_list(cell_t **cp, type_request_t treq) {
 
 static
 response func_exec_trace(cell_t **cp, type_request_t treq, cell_t *parent_entry) {
-  cell_t *c = *cp;
-  response rsp = SUCCESS;
-  size_t in = closure_in(c);
-  cell_t *entry = c->expr.arg[in];
-  PRE(c, exec_trace, " %E 0x%x", entry, c->expr.flags);
+  size_t in = closure_in(*cp);
+  cell_t *entry = (*cp)->expr.arg[in];
+  PRE(exec_trace, " %E 0x%x", entry, (*cp)->expr.flags);
 
   assert_error(parent_entry);
 
@@ -827,10 +822,8 @@ bool all_dynamic(cell_t *entry, cell_t *c) {
 }
 
 OP(exec) {
-  cell_t *c = *cp;
-  response rsp = SUCCESS;
-  cell_t *entry = c->expr.arg[closure_in(c)];
-  PRE(c, exec, " %E", entry);
+  cell_t *entry = (*cp)->expr.arg[closure_in(*cp)];
+  PRE(exec, " %E", entry);
 
   cell_t *parent_entry = find_input_entry(c);
 
@@ -843,7 +836,7 @@ OP(exec) {
     assert_error(parent_entry,
                  "incomplete entry can't be unified without "
                  "a parent entry %C @exec_split", c);
-    if(entry->entry.wrap && !unify_exec(cp, parent_entry)) {
+    if(entry->entry.wrap && !unify_exec(cp, parent_entry, treq)) {
       LOG(MARK("WARN") " unify failed: %C %C",
           *cp, entry->entry.wrap->initial);
       ABORT(FAIL);

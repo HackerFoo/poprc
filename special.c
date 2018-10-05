@@ -28,9 +28,7 @@
 #include "list.h"
 
 OP(value) {
-  cell_t *c = *cp;
-  response rsp = SUCCESS;
-  PRE(c, value);
+  PRE(value);
   stats.reduce_cnt--;
 
   CHECK_IF(is_var(c) && treq.delay_var, DELAY);
@@ -286,9 +284,7 @@ bool is_dep_of(cell_t *d, cell_t *c) {
 
 /* todo: propagate types here */
 OP(dep) {
-  cell_t *c = *cp;
-  response rsp = SUCCESS;
-  PRE(c, dep);
+  PRE(dep);
   int pos = c->pos;
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
@@ -321,9 +317,7 @@ bool is_dep(cell_t const *c) {
 // this shouldn't reduced directly, but is called through reduce_partial from func_dep
 WORD("??", placeholder, 0, 1)
 OP(placeholder) {
-  cell_t *c = *cp;
-  response rsp = SUCCESS;
-  PRE(c, placeholder);
+  PRE(placeholder);
   CHECK_IF(!check_type(treq.t, T_LIST), FAIL);
   csize_t in = closure_in(c), n = closure_args(c);
 
@@ -378,8 +372,7 @@ bool is_placeholder(cell_t const *c) {
 }
 
 OP(fail) {
-  cell_t *c = *cp;
-  PRE(c, fail);
+  PRE(fail);
   stats.reduce_cnt--;
   return abort_op(FAIL, cp, treq);
 }

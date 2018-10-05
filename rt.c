@@ -809,10 +809,11 @@ uint8_t new_alt_id(unsigned int n) {
 }
 
 #if INTERFACE
-#define REQ_INHERIT \
-  .priority = treq.priority, \
-  .delay_assert = treq.delay_assert, \
-  .delay_var = treq.delay_var
+#define REQ_INHERIT                             \
+  .priority = treq.priority,                    \
+  .delay_assert = treq.delay_assert,            \
+  .delay_var = treq.delay_var,                  \
+  .up = &treq
 #define REQ(type, ...) CONCAT(REQ_, type)(__VA_ARGS__)
 #define REQ_list(_in, _out) \
   ((type_request_t) { .t = T_LIST, .in = _in, .out = _out, REQ_INHERIT})

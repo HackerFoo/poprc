@@ -50,6 +50,7 @@ typedef struct value value_t;
 typedef struct tok_list tok_list_t;
 typedef struct entry entry_t;
 typedef struct mem mem_t;
+typedef struct type_request type_request_t;
 
 typedef uintptr_t alt_set_t;
 typedef int16_t refcount_t;
@@ -65,7 +66,7 @@ typedef intptr_t val_t;
 #pragma clang diagnostic ignored "-Wextended-offsetof"
 #endif
 
-typedef struct type_request {
+struct type_request {
   csize_t in, out;
   type_t t;
   uint8_t pos;
@@ -74,7 +75,9 @@ typedef struct type_request {
   bool delay_var;
   bool expected;
   val_t expected_value;
-} type_request_t;
+  const type_request_t *up;
+  cell_t **src;
+};
 
 typedef enum response {
   SUCCESS = 0,
@@ -82,8 +85,6 @@ typedef enum response {
   RETRY,
   FAIL
 } response;
-
-typedef response (reduce_t)(cell_t **cell, type_request_t treq);
 
 #define EXPR_NEEDS_ARG 0x02
 #define EXPR_RECURSIVE 0x04

@@ -68,10 +68,8 @@ cell_t *_op1(cell_t *c, uint8_t t, val_t (*op)(val_t), cell_t *x) {
 }
 
 response func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t, val_t), bool nonzero) {
-  cell_t *c = *cp;
-  response rsp = SUCCESS;
   cell_t *res = 0;
-  PRE(c, op2);
+  PRE(op2);
 
   CHECK_IF(!check_type(treq.t, res_type), FAIL);
 
@@ -97,10 +95,8 @@ response func_op2(cell_t **cp, type_request_t treq, int arg_type, int res_type, 
 }
 
 response func_op1(cell_t **cp, type_request_t treq, int arg_type, int res_type, val_t (*op)(val_t), val_t (*inv_op)(val_t)) {
-  cell_t *c = *cp;
-  response rsp = SUCCESS;
   cell_t *res = 0;
-  PRE(c, op1);
+  PRE(op1);
 
   CHECK_IF(!check_type(treq.t, res_type), FAIL);
 
@@ -132,10 +128,8 @@ cell_t *_op1_float(double (*op)(double), cell_t *x) {
 }
 
 response func_op2_float(cell_t **cp, type_request_t treq, double (*op)(double, double), bool nonzero) {
-  cell_t *c = *cp;
-  response rsp = SUCCESS;
   cell_t *res = 0;
-  PRE(c, op2_float);
+  PRE(op2_float);
 
   CHECK_IF(!check_type(treq.t, T_FLOAT), FAIL);
 
@@ -162,10 +156,8 @@ response func_op2_float(cell_t **cp, type_request_t treq, double (*op)(double, d
 }
 
 response func_op1_float(cell_t **cp, type_request_t treq, double (*op)(double)) {
-  cell_t *c = *cp;
-  response rsp = SUCCESS;
   cell_t *res = 0;
-  PRE(c, op1_float);
+  PRE(op1_float);
 
   CHECK_IF(!check_type(treq.t, T_FLOAT), FAIL);
 
@@ -360,10 +352,8 @@ OP(neq_s) {
 
 WORD("->f", to_float, 1, 1)
 OP(to_float) {
-  cell_t *c = *cp;
-  response rsp = SUCCESS;
   cell_t *res = 0;
-  PRE(c, to_float);
+  PRE(to_float);
 
   CHECK_IF(!check_type(treq.t, T_FLOAT), FAIL);
 
@@ -391,10 +381,8 @@ OP(to_float) {
 
 WORD("trunc", trunc, 1, 1)
 OP(trunc) {
-  cell_t *c = *cp;
-  response rsp = SUCCESS;
   cell_t *res = 0;
-  PRE(c, to_float);
+  PRE(to_float);
 
   CHECK_IF(!check_type(treq.t, T_INT), FAIL);
 
@@ -434,8 +422,7 @@ OP(pushr) {
 
 WORD("|", alt, 2, 1)
 OP(alt) {
-  cell_t *c = *cp;
-  PRE(c, alt);
+  PRE(alt);
   uint8_t a = new_alt_id(1);
   cell_t *r0 = id(c->expr.arg[0], as_single(a, 0));
   cell_t *r1 = id(c->expr.arg[1], as_single(a, 1));
@@ -446,9 +433,7 @@ OP(alt) {
 
 WORD("!", assert, 2, 1)
 OP(assert) {
-  cell_t *c = *cp;
-  response rsp = SUCCESS;
-  PRE(c, assert);
+  PRE(assert);
 
   cell_t *res = NULL;
   cell_t *tc = NULL;
@@ -496,9 +481,7 @@ OP(assert) {
 // very similar to assert
 WORD("seq", seq, 2, 1)
 OP(seq) {
-  cell_t *c = *cp;
-  response rsp = SUCCESS;
-  PRE(c, seq);
+  PRE(seq);
 
   cell_t *res = NULL;
   cell_t *tc = NULL;
@@ -542,9 +525,7 @@ OP(seq) {
 // TODO merge common code
 WORD("otherwise", otherwise, 2, 1)
 OP(otherwise) {
-  cell_t *c = *cp;
-  response rsp = SUCCESS;
-  PRE(c, otherwise);
+  PRE(otherwise);
 
   cell_t *res = NULL;
   cell_t *tc = NULL;
@@ -591,9 +572,7 @@ abort:
 
 WORD("id", id, 1, 1)
 OP(id) {
-  cell_t *c = *cp;
-  response rsp = SUCCESS;
-  PRE(c, id);
+  PRE(id);
   alt_set_t alt_set = c->expr.alt_set;
   int pos = c->pos;
 
@@ -618,16 +597,14 @@ OP(id) {
 
 WORD("drop", drop, 2, 1)
 OP(drop) {
-  cell_t *c = *cp;
-  PRE(c, drop);
+  PRE(drop);
   *cp = CUT(c, expr.arg[0]);
   return RETRY;
 }
 
 WORD("swap", swap, 2, 2)
 OP(swap) {
-  cell_t *c = *cp;
-  PRE(c, swap);
+  PRE(swap);
   int pos = c->pos;
   store_lazy_dep(c->expr.arg[2],
                  c->expr.arg[0], 0);
@@ -639,8 +616,7 @@ OP(swap) {
 // for testing
 WORD("delay", delay, 1, 1)
 OP(delay) {
-  cell_t *c = *cp;
-  PRE(c, delay);
+  PRE(delay);
   if(treq.priority < 1) {
     LOG("delay (priority %d) %C", treq.priority, c);
     return DELAY;
@@ -659,8 +635,7 @@ cell_t *id(cell_t *c, alt_set_t as) {
 
 WORD("dup", dup, 1, 2)
 OP(dup) {
-  cell_t *c = *cp;
-  PRE(c, dup);
+  PRE(dup);
   cell_t *d = c->expr.arg[1];
   store_lazy_dep(d, ref(c->expr.arg[0]), 0);
   store_lazy(cp, c->expr.arg[0], 0);
@@ -681,10 +656,8 @@ csize_t function_compose_in(cell_t *c, csize_t req_in, csize_t arg_in, bool row)
 
 static
 response func_compose_ap(cell_t **cp, type_request_t treq, bool row) {
-  cell_t *c = *cp;
-  response rsp = SUCCESS;
-  CONTEXT("%s: %C", row ? "compose" : "ap", c);
-  PRE_NO_CONTEXT(c, compose_ap);
+  CONTEXT("%s: %C", row ? "compose" : "ap", *cp);
+  PRE_NO_CONTEXT(compose_ap);
 
   const csize_t
     in = closure_in(c) - 1,
@@ -784,10 +757,8 @@ OP(compose) {
 
 WORD("print", print, 2, 1)
 OP(print) {
-  cell_t *c = *cp;
-  response rsp = SUCCESS;
   cell_t *res = 0;
-  PRE(c, print);
+  PRE(print);
 
   CHECK_IF(!check_type(treq.t, T_SYMBOL), FAIL);
 
@@ -825,9 +796,7 @@ bool is_list_var(cell_t *c) {
 }
 
 response func_type(cell_t **cp, type_request_t treq, uint8_t type) {
-  cell_t *c = *cp;
-  response rsp = SUCCESS;
-  PRE(c, type);
+  PRE(type);
 
   CHECK_IF(!check_type(treq.t, type), FAIL);
 

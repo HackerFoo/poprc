@@ -171,29 +171,32 @@
 #define TRACE_INDEX(x) (int)((x) - trace_cells)
 #define TRACE_VAR_INDEX(x) (int)((x) - trace_cur)
 
-#define PRE_NO_CONTEXT(c, func)                 \
+#define PRE_NO_CONTEXT(func)                    \
+  UNUSED response rsp = SUCCESS;                \
+  treq.src = cp;                                \
+  cell_t *c = *cp;                              \
   assert_error(!is_marked(c));                  \
   WATCH(c, #func)
 
-#define PRE_2(c, func)                          \
-  CONTEXT(#func ": %C", c);                     \
-  PRE_NO_CONTEXT(c, func)
+#define PRE_1(func)                             \
+  CONTEXT(#func ": %C", *cp);                   \
+  PRE_NO_CONTEXT(func)
 
-#define PRE_3(c, func, fmt)                     \
-  CONTEXT(#func ": %C" fmt, c);                 \
-  PRE_NO_CONTEXT(c, func)
+#define PRE_2(func, fmt)                        \
+  CONTEXT(#func ": %C" fmt, *cp);               \
+  PRE_NO_CONTEXT(func)
 
-#define PRE_4(c, func, fmt, x)                  \
-  CONTEXT(#func ": %C" fmt, c, x);              \
-  PRE_NO_CONTEXT(c, func)
+#define PRE_3(func, fmt, x)                     \
+  CONTEXT(#func ": %C" fmt, *cp, x);            \
+  PRE_NO_CONTEXT(func)
 
-#define PRE_5(c, func, fmt, x, y)               \
-  CONTEXT(#func ": %C" fmt, c, x, y);           \
-  PRE_NO_CONTEXT(c, func)
+#define PRE_4(func, fmt, x, y)                  \
+  CONTEXT(#func ": %C" fmt, *cp, x, y);         \
+  PRE_NO_CONTEXT(func)
 
-#define PRE_6(c, func, fmt, x, y, z)            \
-  CONTEXT(#func ": %C" fmt, c, x, y, z);        \
-  PRE_NO_CONTEXT(c, func)
+#define PRE_5(func, fmt, x, y, z)               \
+  CONTEXT(#func ": %C" fmt, *cp, x, y, z);      \
+  PRE_NO_CONTEXT(func)
 
 #define PRE(...) DISPATCH2(PRE, ##__VA_ARGS__)
 
