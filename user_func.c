@@ -286,7 +286,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
 
   COUNTUP(i, in) {
     cell_t *p = &entry[i + 1];
-    cell_t *a = c->expr.arg[in - 1 - i];
+    cell_t *a = c->expr.arg[REVI(i)];
     assert_error(is_var(p));
     if(p->n + 1 == 0) {
       drop(a);
@@ -810,7 +810,7 @@ bool all_dynamic(cell_t *entry, cell_t *c) {
   if(!entry->entry.rec) return false;
   COUNTUP(i, in) {
     if(NOT_FLAG(entry[i+1].value, VALUE_CHANGES)) {
-      int a = in - i - 1;
+      int a = REVI(i);
       reduce(&c->expr.arg[a], &REQ(any)); // HACK
       if(!is_input(c->expr.arg[a])) {
         LOG("not dynamic: %C %E arg[%d] = %C", c, entry, a, c->expr.arg[a]);

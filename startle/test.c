@@ -91,6 +91,13 @@ TEST(loops) {
     }
     putchar('\n');
   }
+
+  RANGEUP(i, 3, 7) {
+    printf("range up: i = %d, REVI(i) = %d\n", (int)i, (int)REVI(i));
+  }
+  RANGEDOWN(i, 3, 7) {
+    printf("range down: i = %d, REVI(i) = %d\n", (int)i, (int)REVI(i));
+  }
   /** [loops] */
   return 0;
 }

@@ -93,6 +93,14 @@ arr[2] = 9
 xxx
 xxx
 xxx
+range up: i = 3, REVI(i) = 6
+range up: i = 4, REVI(i) = 5
+range up: i = 5, REVI(i) = 4
+range up: i = 6, REVI(i) = 3
+range down: i = 6, REVI(i) = 3
+range down: i = 5, REVI(i) = 4
+range down: i = 4, REVI(i) = 5
+range down: i = 3, REVI(i) = 6
 loops => 0
 @ macro_dispatch
 TEST_0()

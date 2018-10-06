@@ -71,10 +71,13 @@
 // ITERATION MACROS ________________________________________
 
 /** Iterate `i` from `lower` up to `upper-1`. */
-#define RANGEUP(i, lower, upper) for(size_t i = (lower), __upper = (upper); i < __upper; i++)
+#define RANGEUP(i, lower, upper) for(size_t i = (lower), __lower = (lower), __upper = ((void) __lower, (upper)); i < __upper; i++)
 
 /** Iterate `i` from `upper-1` down to `lower`. */
-#define RANGEDOWN(i, lower, upper) for(size_t i = (upper), __lower = (lower); i-- > __lower; )
+#define RANGEDOWN(i, lower, upper) for(size_t i = (upper), __upper = (upper), __lower = ((void) __upper, (lower)); i-- > __lower; )
+
+/** Iterator over the same range in reverse order. */
+#define REVI(i) (__upper - 1 - (i) + __lower)
 
 /** Iterate `i` from `n-1` to `0`.
  * @snippet test.c loops
