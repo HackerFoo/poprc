@@ -85,10 +85,16 @@ cell_t **module_ref(cell_t *m) {
 }
 
 static
+map_t value_map(cell_t *c) {
+  assert_error(is_value(c), "%C", c);
+  return c->value.map;
+}
+
+static
 map_t module_map(cell_t *m) {
-  assert_error(is_module(m));
+  assert_error(is_module(m), "%C", m);
   cell_t *c = *module_ref(m);
-  return c ? c->value.map : NULL;
+  return c ? value_map(c) : NULL;
 }
 
 void module_init() {
@@ -102,7 +108,7 @@ cell_t *module_set(cell_t *m, seg_t key, cell_t *val) {
 
   // check if already in the map
   if(c != NULL) {
-    map = c->value.map;
+    map = value_map(c);
     pair_t *x = seg_map_find(map, key);
     if(x) {
       cell_t *old = (cell_t *)x->second;
@@ -113,7 +119,7 @@ cell_t *module_set(cell_t *m, seg_t key, cell_t *val) {
 
   // add to map
   c = expand_map(c, 1);
-  map = c->value.map;
+  map = value_map(c);
   const char *s = seg_string(key);
   pair_t p = {(uintptr_t)s, (uintptr_t)val};
   string_map_insert(map, p);
@@ -127,7 +133,7 @@ cell_t *module_get(cell_t *m, seg_t key) {
   if(c == NULL) {
     return NULL;
   } else {
-    pair_t *x = seg_map_find(c->value.map, key);
+    pair_t *x = seg_map_find(value_map(c), key);
     return x ? (cell_t *)x->second : NULL;
   }
 }
@@ -140,7 +146,7 @@ cell_t *module_get_or_create(cell_t *m, seg_t key) {
   // add to map
   cell_t *c = *module_ref(m);
   c = expand_map(c, 1);
-  map_t map = c->value.map;
+  map_t map = value_map(c);
   const char *s = seg_string(key);
   r = make_module();
   pair_t p = {(uintptr_t)s, (uintptr_t)r};
@@ -242,13 +248,14 @@ void free_modules() {
 
 cell_t *expand_map(cell_t *c, csize_t n) {
   if(c == NULL) return make_map(n);
-  map_t m = c->value.map;
+  map_t c_map = value_map(c);
   uintptr_t
-    size = map_size(m),
-    cnt = *map_cnt(m);
+    size = map_size(c_map),
+    cnt = *map_cnt(c_map);
   if(cnt + n > size) {
     cell_t *nc = make_map(size + n);
-    memcpy(&nc->value.map[0].second, &c->value.map[0].second, sizeof_field(pair_t, second) + size * sizeof(pair_t));
+    map_t nc_map = value_map(nc);
+    memcpy(&nc_map[0].second, &c_map[0].second, sizeof_field(pair_t, second) + size * sizeof(pair_t));
     closure_free(c);
     return nc;
   } else {
@@ -307,14 +314,14 @@ cell_t *build_module(cell_t *c) {
   }
 
   if(n == 1) {
-    m = c->value.ptr[0];
+    m = persistent(copy(c->value.ptr[0]));
   } else {
     m = make_map(ms);
     m->n = PERSISTENT;
     COUNTUP(i, n) {
       cell_t *p = c->value.ptr[i];
       if(p) {
-        string_map_union(m->value.map, p->value.map);
+        string_map_union(value_map(m), value_map(p));
       }
     }
   }
@@ -340,8 +347,8 @@ void merge_into_module(cell_t *ma, cell_t *mb) {
     *module_ref(ma) = persistent(copy(b));
   } else {
     assert_error(is_map(a));
-    a = expand_map(a, *map_cnt(b->value.map));
-    string_map_union(a->value.map, b->value.map);
+    a = expand_map(a, *map_cnt(value_map(b)));
+    string_map_union(value_map(a), value_map(b));
     *module_ref(ma) = persistent(a);
   }
 }
@@ -515,7 +522,7 @@ void print_module_bytecode(cell_t *m) {
   assert_error(is_module(m));
   if(!*module_ref(m)) return;
   cell_t *map_copy = copy(*module_ref(m));
-  map_t map = map_copy->value.map;
+  map_t map = value_map(map_copy);
   string_map_sort_full(map);
   FORMAP(i, map) {
     char *name = (char *)map[i].first;
