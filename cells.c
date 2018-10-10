@@ -617,3 +617,30 @@ void unique(cell_t **cp) {
     *cp = n;
   }
 }
+
+bool out_used(const cell_t *c, int ix) {
+  int n = closure_args(c);
+  int out = closure_out(c);
+  assert_error(ix <= out);
+  cell_t *const *out_arg = &c->expr.arg[n - out];
+  if(ix) {
+    return out_arg[ix - 1] != NULL;
+  } else {
+    int ref = c->n;
+    COUNTUP(i, out) {
+      if(out_arg[i]) ref--;
+    }
+    return ref >= 0;
+  }
+}
+
+int count_out_used(const cell_t *c) {
+  int n = closure_args(c);
+  int out = closure_out(c);
+  cell_t *const *out_arg = &c->expr.arg[n - out];
+  int ref = c->n;
+  COUNTUP(i, out) {
+    if(out_arg[i]) ref--;
+  }
+  return (ref >= 0) + c->n - ref;
+}

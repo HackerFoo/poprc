@@ -324,6 +324,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
       nc = row_quote(nc);
     } else {
       nc = copy(p);
+      nc->expr.flags = 0;
       nc->n = p->n;
     }
     nc->tmp = 0;
@@ -510,42 +511,60 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
 
 // [[...] ...] -> [...]
 static
-cell_t *unwrap(cell_t *c, csize_t out) {
+cell_t *unwrap(cell_t *c, uintptr_t dep_mask, int out, int dropped) {
   int offset = list_size(c) - 1;
 
   // head
   //assert_error(is_list(c) && list_size(c) == 1, TODO " size = %d, %C", list_size(c), c);
 
   // N = out, ap0N swapN drop
-  cell_t *l = make_list(out + offset);
-  cell_t *ap = func(OP_ap, 1, out + 1);
+  cell_t *l = make_list(out + offset - dropped);
+  cell_t *ap = ready_func(OP_ap, 1, out + 1);
   LOG("unwrap %d %C [%C]", out, l, ap);
   COUNTUP(i, offset) {
     l->value.ptr[i] = ref(c->value.ptr[i]);
   }
-  COUNTUP(i, out) {
-    cell_t **p = &l->value.ptr[i + offset];
-    *p = dep(ref(ap));
-    arg(ap, *p);
+  cell_t **p = &l->value.ptr[offset];
+  COUNTDOWN(i, out) {
+    cell_t **a = &ap->expr.arg[i + 1];
+    if(dep_mask & (1 << i)) {
+      *p++ = *a = dep(ref(ap));
+    } else {
+      *a = NULL;
+    }
   }
-  arg(ap, ref(c->value.ptr[offset]));
+  ap->expr.arg[0] = ref(c->value.ptr[offset]);
   drop(ap);
   drop(c);
   return l;
 }
 
 // [res dep_0 ... dep_out-1]
-cell_t *wrap_vars(cell_t *res, csize_t out) {
-  csize_t n = res->value.var->size;
+cell_t *wrap_vars(cell_t **res, cell_t *p, uintptr_t dep_mask, csize_t out) {
   cell_t *l = make_list(out);
+  int offset = closure_args(p) - closure_out(p);
+  cell_t **out_arg = &p->expr.arg[offset];
+  cell_t *out_arg0 = NULL;
   LOG("wrap_vars %d %C", out, l);
-  COUNTUP(i, out - 1) {
-    cell_t *d = closure_alloc(1);
-    store_dep(d, res->value.var, n - i - 1, T_ANY, 0);
-    l->value.ptr[i] = d;
+  int dpos = offset;
+  COUNTUP(i, out) {
+    cell_t *d;
+    if(dep_mask & (1 << i)) {
+      if(out_arg0) {
+        d = closure_alloc(1);
+        store_dep(d, (*res)->value.var, dpos++, T_ANY, 0);
+        *out_arg++ = d;
+      } else {
+        d = out_arg0 = *res;
+      }
+    } else {
+      d = &fail_cell;
+    }
+    l->value.ptr[REVI(i)] = d;
   }
-  l->value.ptr[out - 1] = res;
-  return l;
+  assert_error(out_arg0);
+  *res = l;
+  return out_arg0;
 }
 
 // expand a user function into a list of outputs
@@ -564,6 +583,25 @@ cell_t *expand_list(cell_t *entry, cell_t *c) {
 }
 
 static
+type_request_t *collect_ap_deps(type_request_t *treq, cell_t **deps, int n) {
+  while(n > 0) {
+    cell_t **cp = treq->src;
+    const cell_t *c = *cp;
+    if(c->op != OP_ap ||
+       closure_in(c) != 1 ||
+       c->n > count_out_used(c)) return NULL;
+    int out = closure_out(c);
+    int out_n = min(out, n);
+    n -= out_n;
+    memcpy(&deps[n],
+           &c->expr.arg[closure_args(c) - out],
+           out_n * sizeof(cell_t *));
+    if(n > 0) treq = treq->up;
+  }
+  return treq;
+}
+
+static
 response func_exec_wrap(cell_t **cp, type_request_t *treq, cell_t *parent_entry) {
   csize_t
     in = closure_in(*cp),
@@ -572,6 +610,25 @@ response func_exec_wrap(cell_t **cp, type_request_t *treq, cell_t *parent_entry)
   wrap_data wrap;
   PRE(exec_wrap, " %E 0x%x #wrap", entry, (*cp)->expr.flags);
   LOG_UNLESS(entry->entry.out == 1, "out = %d #unify-multiout", entry->entry.out);
+
+  assert_error(treq->out < sizeof(wrap.dep_mask) * 8);
+  wrap.dep_mask = (1 << treq->out) - 1;
+  int dropped = 0;
+  type_request_t *top = NULL;
+  if(treq->t == T_LIST) {
+    cell_t *deps[treq->out];
+    top = collect_ap_deps(treq->up, deps, treq->out);
+    if(top) {
+      COUNTUP(i, treq->out) {
+        if(!deps[i]) {
+          wrap.dep_mask &= ~(1 << i);
+          dropped++;
+          LOG("dropped ap %C, out = %d", c, i);
+        }
+      }
+      LOG("dep_mask %x", wrap.dep_mask);
+    }
+  }
 
   cell_t *new_entry = trace_start_entry(parent_entry, entry->entry.out);
   new_entry->entry.wrap = &wrap;
@@ -598,8 +655,8 @@ response func_exec_wrap(cell_t **cp, type_request_t *treq, cell_t *parent_entry)
 
   // eliminate intermediate list
   if(treq->t == T_LIST) {
-    l = unwrap(l, treq->out);
-    new_entry->entry.out += treq->out - 1;
+    l = unwrap(l, wrap.dep_mask, treq->out, dropped);
+    new_entry->entry.out += treq->out - 1 - dropped;
   }
 
   // IDEA break here?
@@ -616,6 +673,9 @@ response func_exec_wrap(cell_t **cp, type_request_t *treq, cell_t *parent_entry)
   drop(nc);
   drop(c);
 
+  if(top) {
+    trace_drop_return(new_entry, treq->out, wrap.dep_mask);
+  }
   trace_final_pass(new_entry);
   trace_end_entry(new_entry);
   remove_root(&wrap.initial);
@@ -627,16 +687,11 @@ response func_exec_wrap(cell_t **cp, type_request_t *treq, cell_t *parent_entry)
   cell_t *res = var_create_with_entry(rtypes[0], parent_entry, p->size);
   // }
 
-  csize_t n = closure_args(p);
   cell_t *tc = res->value.var;
 
   // build list expected by caller
   if(treq->t == T_LIST) {
-    res = wrap_vars(res, treq->out);
-    COUNTUP(i, treq->out - 1) {
-      p->expr.arg[n - i - 1] = res->value.ptr[i];
-    }
-    trace_reduction(p, res->value.ptr[treq->out - 1]);
+    trace_reduction(p, wrap_vars(&res, p, wrap.dep_mask, treq->out));
   }
 
   // handle deps
@@ -705,10 +760,11 @@ response func_exec_trace(cell_t **cp, type_request_t *treq, cell_t *parent_entry
   assert_error(parent_entry);
 
   cell_t *res;
+  const size_t out = closure_out(c) + 1;
   const size_t entry_out = entry->entry.out;
-  type_t rtypes[entry_out];
+  type_t rtypes[out];
   assert_error(in, "recursive functions must have at least one input");
-  assert_error(closure_out(c) + 1 == entry_out, "%d %d", closure_out(c), entry_out);
+  assert_error(out >= entry_out, "%d %d", out, entry_out);
 
   alt_set_t alt_set = 0;
 
@@ -769,8 +825,13 @@ response func_exec_trace(cell_t **cp, type_request_t *treq, cell_t *parent_entry
   }
 
   resolve_types(entry, rtypes);
+  wrap_data *wrap = entry->entry.wrap;
+  uintptr_t mask = wrap ? wrap->dep_mask : 0;
+  if(mask == 0) mask = (1 << entry_out) - 1;
   {
-    type_t t = rtypes[0];
+    int j = next_bit(&mask);
+    assert_error(j >= 0);
+    type_t t = rtypes[j];
     if(t == T_ANY) {
       t = treq->t;
     }
@@ -779,12 +840,14 @@ response func_exec_trace(cell_t **cp, type_request_t *treq, cell_t *parent_entry
 
   // replace outputs with variables
   cell_t **c_out = &c->expr.arg[in + 1];
-  COUNTUP(i, entry_out-1) {
+  COUNTUP(i, out-1) {
     cell_t *d = c_out[i];
     if(d && is_dep(d)) {
       assert_error(d->expr.arg[0] == c);
       drop(c);
-      type_t t = rtypes[i+1];
+      int j = next_bit(&mask);
+      assert_error(j >= 0);
+      type_t t = rtypes[j];
       store_dep(d, res->value.var, i + in + 1, t, alt_set);
     }
   }

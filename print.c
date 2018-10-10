@@ -309,7 +309,7 @@ void graph_cell(FILE *f, cell_t const *c) {
               show_alt_set((alt_set_t)c->expr.arg[1]));
     }
   }
-  if(c->pos) {
+  if(c->pos && !(is_var(c) && FLAG(c->value, VALUE_DEP))) {
     fprintf(f, "<tr><td bgcolor=\"deepskyblue\">pos: %d</td></tr>",
             entry_number(trace_expr_entry(c->pos)));
   }

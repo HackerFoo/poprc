@@ -318,17 +318,7 @@ __ raise to integer power using binary exponentiation
     [head 0 !=]
     iterate tail2 head
 
-__ sums numbers in a list
-__ [l] length -> sum
-__ sum: 1- [[+] .] swap times head
-__ sum1: [] pushl [[+] .] 0 times head
-
-__ iterate version
-__ sum:
-__   pushr
-__     [[[+] dip21 1-] .]
-__     [head 0 !=]
-__     iterate tail head
+sum: 0 [+] foldr
 
 __ decreasing list from initial element
 __ ERROR: user_func.c:424: flat_call: Assertion `tn->pos' failed

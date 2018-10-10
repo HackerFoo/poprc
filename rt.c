@@ -333,7 +333,7 @@ cell_t *expand_deps(cell_t *c, csize_t s) {
   csize_t deps = count_deps(c);
   c->n -= deps;
   assert_error(!c->n);
-  csize_t in = closure_in(c);
+  csize_t in = closure_args(c) - closure_out(c);
   c = expand(c, s);
 
   // shift and update deps
@@ -377,6 +377,16 @@ cell_t *compose(list_iterator_t it, cell_t *b) {
   }
 
   return b;
+}
+
+cell_t *ready_func(op op, csize_t in, csize_t out) {
+  assert_error(out > 0);
+  csize_t args = in + out - 1;
+  cell_t *c = closure_alloc(args);
+  c->expr.out = out - 1;
+  c->expr.flags = 0;
+  c->op = op;
+  return c;
 }
 
 cell_t *func(op op, csize_t in, csize_t out) {
@@ -835,7 +845,7 @@ uint8_t new_alt_id(unsigned int n) {
 #endif
 
 // default 'treq' for REQ(...) to inherit
-const type_request_t * const treq = &(type_request_t) { .t = T_ANY };
+type_request_t * const treq = &(type_request_t) { .t = T_ANY };
 
 type_request_t *req_pos(type_request_t *treq, uint8_t pos) {
   treq->pos = pos;

@@ -357,6 +357,39 @@ void trace_replace_arg(cell_t *entry, cell_t *old, cell_t *new) {
   }
 }
 
+static
+void shift_out(cell_t *c, uintptr_t dep_mask) {
+  int out = closure_out(c);
+  int n = closure_args(c);
+  int j = 0;
+  cell_t **out_arg = &c->expr.arg[n - out];
+  COUNTUP(i, out) {
+    cell_t *t = out_arg[i];
+    if(dep_mask & (1 << (i + 1))) {
+      out_arg[j++] = t;
+    }
+  }
+  while(j < out) {
+    out_arg[j++] = 0;
+    c->size--;
+    c->expr.out--;
+  }
+}
+
+void trace_drop_return(cell_t *entry, int out, uintptr_t dep_mask) {
+  int used = 0;
+  FORMASK(i, j, dep_mask) {
+    used++;
+  }
+  if(used == out) return;
+  FOR_TRACE(p, entry) {
+    if(p->op == OP_exec && get_entry(p) == entry) {
+      shift_out(p, dep_mask);
+    }
+  }
+  entry->entry.out = used;
+}
+
 // runs after reduction to finish functions marked incomplete
 void trace_final_pass(cell_t *entry) {
   // replace alts with trace cells
@@ -466,7 +499,9 @@ cell_t *module_lookup_compiled(seg_t path, cell_t **context) {
   }
   FLAG_SET(p->value, VALUE_TRACED);
   seg_t name = path_name(path);
-  return compile_entry(name, *context);
+  cell_t *res = compile_entry(name, *context);
+  if(!res) FLAG_CLEAR(p->value, VALUE_TRACED);
+  return res;
 }
 
 // compile lexed source (rest) with given name and store in the eval module
@@ -845,6 +880,7 @@ cell_t *tref(cell_t *entry, cell_t *c) {
 
 // get the return type
 type_t trace_type(cell_t *c) {
+  assert_error(c);
   return is_value(c) ? c->value.type : c->trace.type;
 }
 

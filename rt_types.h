@@ -67,7 +67,7 @@ typedef intptr_t val_t;
 #endif
 
 struct type_request {
-  const type_request_t *up;
+  type_request_t *up;
   cell_t **src;
   type_t t;
   csize_t in, out;
@@ -160,6 +160,7 @@ struct __attribute__((packed)) mem {
 typedef struct wrap_data {
   cell_t *initial;
   cell_t *expand;
+  uintptr_t dep_mask;
 } wrap_data;
 
 /* word entry */

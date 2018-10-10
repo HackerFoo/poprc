@@ -456,8 +456,8 @@ cell_t *get_trace_ptr(size_t size) {
 
 // setup for tracing
 cell_t *trace_start_entry(cell_t *parent, csize_t out) {
-  cell_t *e = get_trace_ptr(64);
-  trace_ptr += 64; // TODO
+  cell_t *e = get_trace_ptr(ENTRY_BLOCK_SIZE);
+  trace_ptr += ENTRY_BLOCK_SIZE; // TODO
   e->n = PERSISTENT;
   e->entry = (struct entry) {
     .in = 0,

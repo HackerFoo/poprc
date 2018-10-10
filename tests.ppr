@@ -254,3 +254,10 @@ pushl_swap_assert: pushl swap!
 
 alt_seq: dup [1] swap! swap [2 delay] swap not! | head
 del: 1 2 delay |
+
+__ f7a: [0>] iterate
+__ f7b: [1+] . f7a
+f7c: [1+] swap times
+
+__ should `not` stay in the quote?
+__ f7d: [not] .
