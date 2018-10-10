@@ -102,6 +102,28 @@ TEST(loops) {
   return 0;
 }
 
+TEST(formask) {
+  unsigned int mask = 0x11af;
+  unsigned int prev_mask = (mask << 1) + 1;
+  FORMASK(i, j, 0x11af) {
+    printf("%d, %d\n", (int)i, (int)j);
+    if((prev_mask - (__mask << (__z + 1))) != 1) return -1;
+    prev_mask = __mask;
+  }
+  return 0;
+}
+
+TEST(next_bit) {
+  uintptr_t mask = 0x11af, m = mask;
+  while(m) {
+    int x = next_bit(&m);
+    if(x < 0) return -1;
+    mask &= ~(1 << x);
+    printf("bit = %d\n", x);
+  }
+  return mask ? -2 : 0;
+}
+
 /** [macro_dispatch] */
 #define TEST_0() printf("TEST_0()\n")
 #define TEST_1(x0) printf("TEST_1(" x0 ")\n")

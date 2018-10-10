@@ -96,6 +96,11 @@
 /** Iterate `i` over each index of map `m`. */
 #define FORMAP(i, m) for(size_t i = 1; i <= *map_cnt(m); i++)
 
+#define FORMASK(i, j, mask)                                     \
+  for(uintptr_t i = 0, j = 0, __z = 0, __mask = (mask); __mask; \
+      __mask >>= 1,                                             \
+        __z = ctz(__mask), j += __z + 1, i++, __mask >>= __z)
+
 // DATA STRUCTURES ________________________________________
 
 /** Declare a bit set named `name` to store `size` bits. */

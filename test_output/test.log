@@ -52,6 +52,16 @@ _check_flat_copy: 1 + 0 = 1
 flat_copy_list => 0
 @ flattened_list_copy
 flattened_list_copy => 0
+@ formask
+0, 0
+1, 1
+2, 2
+3, 3
+4, 5
+5, 7
+6, 8
+7, 12
+formask => 0
 @ function_in
 function_in => 0
 @ inrange
@@ -169,6 +179,16 @@ a.cd.f6:
 f7:
   6 5 -
 module_lookup => 0
+@ next_bit
+bit = 0
+bit = 1
+bit = 2
+bit = 3
+bit = 5
+bit = 7
+bit = 8
+bit = 12
+next_bit => 0
 @ oneof
 oneof => 0
 @ parse_def

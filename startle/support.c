@@ -636,3 +636,17 @@ uintptr_t nonzero_hash(const char *str, size_t len)
   }
   return hash ? hash : -1;
 }
+
+int ctz(uintptr_t x) {
+  return x ? __builtin_ctzll(x) : 0;
+}
+
+int next_bit(uintptr_t *mask) {
+  if(*mask) {
+    int res = __builtin_ctzll(*mask);
+    *mask &= ~(1 << res);
+    return res;
+  } else {
+    return -1;
+  }
+}
