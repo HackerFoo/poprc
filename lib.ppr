@@ -124,6 +124,9 @@ filter:
 __ [.. a] [b ..] [p] --> [..] [a b ..] if a p, otherwise [..] [b ..]
 filter_step: dup [[[popr] dip12] dip23 pushif] dip32
 
+__ a n listdup --> [a... x n]
+listdup: [] -swap2 [swap pushl] pushl swap times
+
 module stack:
 
 imports:

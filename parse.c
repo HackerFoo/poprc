@@ -520,7 +520,7 @@ cell_t *parse_expr(const cell_t **l, cell_t *module, cell_t *entry) {
       } else {
         cell_t *c = parse_word(seg, module, n, entry);
         if(!c) {
-          LOG("parse failure");
+          LOG("parse failure: %.*s", seg.n, seg.s);
           goto fail;
         }
         bool f = !is_value(c);

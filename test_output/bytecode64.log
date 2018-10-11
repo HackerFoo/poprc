@@ -884,6 +884,35 @@ ___ list.length_r0 (2 -> 1) x2 rec ___
 [15] __primitive.otherwise 14 2, type = a x1
 [16] return [ 15 ], type = r x1
 
+___ list.listdup (2 -> 1) ___
+[1] var, type = ?i x1
+[2] var, type = ?i x1
+[3] [ ], type = l x1
+[4] list.listdup_r0 2 1 3, type = l x1
+[5] return [ 4 ], type = r x1
+
+___ list.listdup_r0 (3 -> 1) x2 rec ___
+[1] var, type = ?*a x2
+[2] var, type = ?i x2
+[3] var, type = ?*i x3
+[4] __primitive.gt 3 5, type = s x1
+[5] val 0, type = i x2
+[6] __primitive.assert 9 4, type = 0 x1
+[7] __primitive.sub 3 8, type = i x1
+[8] val 1, type = i x1
+[9] list.listdup_r0 7 2 11, type = 0 x1
+[10] __primitive.ap 2 1, type = l x1
+[11] list.listdup_r0_q0 10, type = a x1
+[12] return [ 6 ], type = r -> 16 x1
+[13] __primitive.gt 3 5, type = s x1
+[14] __primitive.not 13, type = s x1
+[15] __primitive.assert 1 14, type = l x1
+[16] return [ 15 ], type = r x1
+
+___ list.listdup_r0_q0 (1 -> 1) ___
+[1] var, type = ?l x1
+[2] return [ 1 ], type = r x1
+
 ___ list.map (2 -> 1) ___
 [1] var, type = ?l x1
 [2] var, type = ?l x1
@@ -1843,6 +1872,14 @@ ___ tests.f7c_r0 (2 -> 1) x2 rec ___
 [13] __primitive.assert 1 12, type = i x1
 [14] return [ 13 ], type = r x1
 
+___ tests.f8 (3 -> 1) ___
+[1] var, type = ?l x1
+[2] var, type = ?l x0
+[3] var, type = ?a x0
+[4] __primitive.ap 1 -> 5, type = l x1
+[5] __primitive.dep 4, type = a x1
+[6] return [ 5 ], type = r x1
+
 ___ tests.fact (1 -> 1) x2 rec ___
 [1] var, type = ?*i x4
 [2] __primitive.eq 1 3, type = s x1
@@ -2039,6 +2076,15 @@ ___ tests.it10b_r0_q0 (2 -> 1) ___
 [3] __primitive.compose 1 2 4, type = l x1
 [4] [ ], type = l x1
 [5] return [ 3 ], type = r x1
+
+___ tests.ldmult (2 -> 1) ___
+[1] var, type = ?i x1
+[2] var, type = ?i x1
+[3] list.listdup_r0 2 1 4, type = l x1
+[4] [ ], type = l x1
+[5] algorithm.sum_r0 6 3, type = a x1
+[6] val 0, type = i x1
+[7] return [ 5 ], type = r x1
 
 ___ tests.leak (1 -> 1) ___
 [1] var, type = ?i x1
