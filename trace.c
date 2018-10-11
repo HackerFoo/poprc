@@ -41,7 +41,7 @@
 static cell_t trace_cells[1 << 16] ALIGN64;
 static cell_t *trace_ptr = &trace_cells[0];
 static cell_t *active_entries[1 << 4];
-static int prev_entry_pos = 0;
+static unsigned int prev_entry_pos = 0;
 
 #include "trace-local.h"
 
@@ -220,8 +220,9 @@ int trace_alloc(cell_t *entry, csize_t args) {
   }
   int index = entry->entry.len + 1;
   size_t size = calculate_cells(args);
-  cell_t *tc = &entry[index];
   entry->entry.len += size;
+  assert_error(entry->entry.len <= ENTRY_BLOCK_SIZE - 1);
+  cell_t *tc = &entry[index];
   tc->n = -1;
   tc->size = args;
   LOG("trace_alloc %T size = %d", tc, args);
@@ -467,6 +468,7 @@ cell_t *trace_start_entry(cell_t *parent, csize_t out) {
   e->entry.wrap = NULL;
 
   // active_entries[e->pos-1] = e
+  assert_error(prev_entry_pos < LENGTH(active_entries));
   active_entries[prev_entry_pos++] = e;
   e->pos = prev_entry_pos;
 
@@ -476,7 +478,7 @@ cell_t *trace_start_entry(cell_t *parent, csize_t out) {
 // finish tracing
 void trace_end_entry(cell_t *e) {
   e->entry.wrap = NULL;
-  assert_error(e->pos == prev_entry_pos, "out of order start/end entry");
+  assert_error(prev_entry_pos && e->pos == prev_entry_pos, "out of order start/end entry");
   active_entries[--prev_entry_pos] = NULL;
   e->pos = 0;
   FLAG_SET(e->entry, ENTRY_COMPLETE);
