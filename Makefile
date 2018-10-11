@@ -222,6 +222,7 @@ scan: clean
 test: eval
 	./eval -test | $(DIFF_TEST) test_output/test.log -
 	./eval -echo < tests.txt | $(DIFF_TEST) test_output/tests.txt.log -
+	./eval -lo lib.ppr -im -echo < lib_tests.txt | $(DIFF_TEST) test_output/lib_tests.txt.log -
 	./eval -lo lib.ppr tests.ppr -bc | $(DIFF_TEST) test_output/bytecode`./eval -bits -q`.log -
 
 test_output/test.log: eval
@@ -232,6 +233,10 @@ test_output/tests.txt.log: eval tests.txt
 	@mkdir -p test_output
 	./eval -echo < tests.txt > $@
 
+test_output/lib_tests.txt.log: eval lib_tests.txt
+	@mkdir -p test_output
+	./eval -lo lib.ppr -im -echo < lib_tests.txt > $@
+
 test_output/bytecode32.log: eval lib.ppr tests.ppr
 	@mkdir -p test_output
 	if [[ `./eval -bits` = 32 ]]; then ./eval -lo lib.ppr tests.ppr -bc > $@; fi
@@ -241,7 +246,7 @@ test_output/bytecode64.log: eval lib.ppr tests.ppr
 	if [[ `./eval -bits` = 64 ]]; then ./eval -lo lib.ppr tests.ppr -bc > $@; fi
 
 .PHONY: test_output
-test_output: test_output/test.log test_output/tests.txt.log test_output/bytecode32.log test_output/bytecode64.log
+test_output: test_output/test.log test_output/tests.txt.log test_output/lib_tests.txt.log test_output/bytecode32.log test_output/bytecode64.log
 
 .PHONY: all_test_output
 all_test_output:

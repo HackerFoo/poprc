@@ -1,0 +1,113 @@
+__ num
+3 4 max
+3 4 min
+3 odd
+2 odd
+3 even
+2 even
+
+__ list
+[1 2] head
+[1 2 3] length
+[1 2 3] 0 [+] foldr
+[1 2 3] 0 [+] foldl
+[1 2 3] 2 dropl
+[1 2 3] 1 split_at
+[4 5 6] 1!!
+[4 5 6] [3-] map
+[4 5 6] [odd] filter
+3 4 listdup
+
+__ stack
+[1] pull
+[1 2] pull2
+[1 2 3] pull3
+[1 2 3 4] pull4
+[1 2 3 4 5] pull5
+[1 2 3 4 5 6] pull6
+[1 2 3 4 5 6 7] pull7
+[1 2] tail
+[1 2 3] tail2
+1 2 3 rev3
+1 2 nip
+1 2 tuck
+1 2 over
+1 2 3 over2
+1 2 3 4 over3
+1 2 3 4 5 over4
+1 2 dup2
+1 2 3 4 5 6 7 swap2
+1 2 3 4 5 6 7 swap3
+1 2 3 4 5 6 7 swap4
+1 2 3 4 5 6 7 swap5
+1 2 3 4 5 6 7 swap6
+
+__ control
+True A B ifte
+False A B ifte
+1 A [1+] dip11
+1 A [1+ dup] dip12
+1 A [1+ dup dup] dip13
+1 A [1+ dup dup dup] dip14
+1 A [1+ dup dup dup dup] dip15
+1 2 A [+] dip21
+1 2 A [+ dup] dip22
+1 2 A [+ dup dup] dip23
+1 2 A [+ dup dup dup] dip24
+1 2 A [+ dup dup dup dup] dip25
+1 2 3 A [+ +] dip31
+1 2 3 A [+ + dup] dip32
+1 2 3 A [+ + dup dup] dip33
+1 2 3 A [+ + dup dup dup] dip34
+1 2 3 A [+ + dup dup dup dup] dip35
+1 2 3 4 A [+ + +] dip41
+1 2 3 4 A [+ + + dup] dip42
+1 2 3 4 A [+ + + dup dup] dip43
+1 2 3 4 A [+ + + dup dup dup] dip44
+1 2 3 4 A [+ + + dup dup dup dup] dip45
+1 2 3 4 5 A [+ + + +] dip51
+1 2 3 4 5 A [+ + + + dup] dip52
+1 2 3 4 5 A [+ + + + dup dup] dip53
+1 2 3 4 5 A [+ + + + dup dup dup] dip54
+1 2 3 4 5 A [+ + + + dup dup dup dup] dip55
+1 [2+] $
+1 [2+] $keep
+1 [2+] peek
+1 [2+] ->
+1 [2+] [10*] fork
+1 2 [2+] [10*] para
+1 2 [10*] both
+1 [odd] [2+] if
+1 [even] [2+] if
+1 [dup 2+ swap odd] ifdo
+1 [dup 2+ swap even] ifdo
+1 2 in2
+0 [3+] [10<] iterate
+0 [3+] 4 times
+[Nothing] [3+] 0 maybe
+[2 Just] [3+] 0 maybe
+[1 Left] [10*] [2+] either
+[1 Right] [10*] [2+] either
+
+__ logic
+False False or
+False True or
+True False or
+True True or
+False False and
+False True and
+True False and
+True True and
+False False implies
+False True implies
+True False implies
+True True implies
+1 2 default
+1 0/ 2 default
+1 valid
+1 0/ valid
+
+__ algorithm
+49 21 gcd
+2 5^
+[1 2 3] sum

@@ -1,0 +1,209 @@
+Importing all modules (algorithm, control, lib, list, logic, num, stack)
+__ num
+3 4 max
+  4
+3 4 min
+  3
+3 odd
+  True
+2 odd
+  False
+3 even
+  False
+2 even
+  True
+__ list
+[1 2] head
+  2
+[1 2 3] length
+  3
+[1 2 3] 0 [+] foldr
+  6
+[1 2 3] 0 [+] foldl
+  6
+[1 2 3] 2 dropl
+  [ 1 ]
+[1 2 3] 1 split_at
+  [ 1 2 ] [ 3 [ 1 2 ] seq ]
+[4 5 6] 1!!
+  5
+[4 5 6] [3-] map
+  [ 4 [] seq 3 - 5 [ 4 ] seq 3 - 6 [ 4 5 ] seq 3 - ]
+[4 5 6] [odd] filter
+3 4 listdup
+  [ 4 4 4 ]
+__ stack
+[1] pull
+  1 []
+[1 2] pull2
+  2 1 []
+[1 2 3] pull3
+  3 2 1 []
+[1 2 3 4] pull4
+  4 3 2 1 []
+[1 2 3 4 5] pull5
+  5 4 3 2 1 []
+[1 2 3 4 5 6] pull6
+  6 5 4 3 2 1 []
+[1 2 3 4 5 6 7] pull7
+  7 6 5 4 3 2 1 []
+[1 2] tail
+  [ 1 ]
+[1 2 3] tail2
+  [ 1 ]
+1 2 3 rev3
+  3 2 1
+1 2 nip
+  2
+1 2 tuck
+  2 1 2
+1 2 over
+  1 2 1
+1 2 3 over2
+  1 2 3 1
+1 2 3 4 over3
+  1 2 3 4 1
+1 2 3 4 5 over4
+  1 2 3 4 5 1
+1 2 dup2
+  1 2 1 2
+1 2 3 4 5 6 7 swap2
+  1 2 3 4 6 7 5
+1 2 3 4 5 6 7 swap3
+  1 2 3 5 6 7 4
+1 2 3 4 5 6 7 swap4
+  1 2 4 5 6 7 3
+1 2 3 4 5 6 7 swap5
+  1 3 4 5 6 7 2
+1 2 3 4 5 6 7 swap6
+  2 3 4 5 6 7 1
+__ control
+True A B ifte
+  A
+False A B ifte
+  B
+1 A [1+] dip11
+  2 A
+1 A [1+ dup] dip12
+  2 2 A
+1 A [1+ dup dup] dip13
+  2 2 2 A
+1 A [1+ dup dup dup] dip14
+  2 2 2 2 A
+1 A [1+ dup dup dup dup] dip15
+  2 2 2 2 2 A
+1 2 A [+] dip21
+  3 A
+1 2 A [+ dup] dip22
+  3 3 A
+1 2 A [+ dup dup] dip23
+  3 3 3 A
+1 2 A [+ dup dup dup] dip24
+  3 3 3 3 A
+1 2 A [+ dup dup dup dup] dip25
+  3 3 3 3 3 A
+1 2 3 A [+ +] dip31
+  6 A
+1 2 3 A [+ + dup] dip32
+  6 6 A
+1 2 3 A [+ + dup dup] dip33
+  6 6 6 A
+1 2 3 A [+ + dup dup dup] dip34
+  6 6 6 6 A
+1 2 3 A [+ + dup dup dup dup] dip35
+  6 6 6 6 6 A
+1 2 3 4 A [+ + +] dip41
+  10 A
+1 2 3 4 A [+ + + dup] dip42
+  10 10 A
+1 2 3 4 A [+ + + dup dup] dip43
+  10 10 10 A
+1 2 3 4 A [+ + + dup dup dup] dip44
+  10 10 10 10 A
+1 2 3 4 A [+ + + dup dup dup dup] dip45
+  10 10 10 10 10 A
+1 2 3 4 5 A [+ + + +] dip51
+  15 A
+1 2 3 4 5 A [+ + + + dup] dip52
+  15 15 A
+1 2 3 4 5 A [+ + + + dup dup] dip53
+  15 15 15 A
+1 2 3 4 5 A [+ + + + dup dup dup] dip54
+  15 15 15 15 A
+1 2 3 4 5 A [+ + + + dup dup dup dup] dip55
+  15 15 15 15 15 A
+1 [2+] $
+  3
+1 [2+] $keep
+  3 [ 2 + ]
+1 [2+] peek
+  1 3
+1 [2+] ->
+  3 1
+1 [2+] [10*] fork
+  3 10
+1 2 [2+] [10*] para
+  3 20
+1 2 [10*] both
+  10 20
+1 [odd] [2+] if
+  3
+1 [even] [2+] if
+1 [dup 2+ swap odd] ifdo
+  3
+1 [dup 2+ swap even] ifdo
+  1
+1 2 in2
+  1 2 [ 1 2 ]
+0 [3+] [10<] iterate
+  12
+0 [3+] 4 times
+  12
+[Nothing] [3+] 0 maybe
+  0
+[2 Just] [3+] 0 maybe
+  5
+[1 Left] [10*] [2+] either
+  10
+[1 Right] [10*] [2+] either
+  3
+__ logic
+False False or
+  False
+False True or
+  True
+True False or
+  True
+True True or
+  True
+False False and
+  False
+False True and
+  False
+True False and
+  False
+True True and
+  True
+False False implies
+  True
+False True implies
+  True
+True False implies
+  False
+True True implies
+  True
+1 2 default
+  1
+1 0/ 2 default
+  2
+1 valid
+  True
+1 0/ valid
+  False
+__ algorithm
+49 21 gcd
+  7
+2 5^
+  32
+[1 2 3] sum
+  6
