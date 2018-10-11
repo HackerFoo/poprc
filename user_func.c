@@ -247,23 +247,6 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry, type_request_t *treq) {
 }
 
 static
-cell_t *find_input_entry(cell_t *c) {
-  cell_t *entry = NULL;
-  TRAVERSE(c, in, ptrs) {
-    cell_t *x = clear_ptr(*p);
-    if(x) {
-      if(is_var(x)) {
-        entry = var_entry(x->value.var);
-        break;
-      } else if((entry = find_input_entry(x))) {
-        break;
-      }
-    }
-  }
-  return entry;
-}
-
-static
 cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
   size_t
     in = closure_in(c),
@@ -888,7 +871,7 @@ OP(exec) {
   cell_t *entry = (*cp)->expr.arg[closure_in(*cp)];
   PRE(exec, " %E", entry);
 
-  cell_t *parent_entry = find_input_entry(c);
+  cell_t *parent_entry = trace_current_entry();
 
   if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
     if(treq->priority < 1 &&

@@ -69,15 +69,15 @@ typedef intptr_t val_t;
 struct type_request {
   type_request_t *up;
   cell_t **src;
-  type_t t;
-  csize_t in, out;
-  uint8_t pos;
+  val_t expected_value;
   int priority;
+  csize_t in, out;
+  type_t t;
+  uint8_t pos;
   bool retry;
   bool delay_assert;
   bool delay_var;
   bool expected;
-  val_t expected_value;
 };
 
 typedef enum response {

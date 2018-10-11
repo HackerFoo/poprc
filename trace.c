@@ -40,7 +40,7 @@
 #define ALIGN64 __attribute__((aligned(64)))
 static cell_t trace_cells[1 << 16] ALIGN64;
 static cell_t *trace_ptr = &trace_cells[0];
-static cell_t *active_entries[1 << 6];
+static cell_t *active_entries[1 << 4];
 static int prev_entry_pos = 0;
 
 #include "trace-local.h"
@@ -476,8 +476,19 @@ cell_t *trace_start_entry(cell_t *parent, csize_t out) {
 // finish tracing
 void trace_end_entry(cell_t *e) {
   e->entry.wrap = NULL;
+  assert_error(e->pos == prev_entry_pos, "out of order start/end entry");
+  active_entries[--prev_entry_pos] = NULL;
+  e->pos = 0;
   FLAG_SET(e->entry, ENTRY_COMPLETE);
   e->entry.rec = trace_recursive_changes(e);
+}
+
+cell_t *trace_current_entry() {
+  if(prev_entry_pos) {
+    return active_entries[prev_entry_pos - 1];
+  } else {
+    return NULL;
+  }
 }
 
 void trace_clear_alt(cell_t *entry) {
