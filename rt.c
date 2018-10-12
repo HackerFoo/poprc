@@ -816,6 +816,7 @@ void store_lazy_dep(cell_t *d, cell_t *r, alt_set_t alt_set) {
 uint8_t new_alt_id(unsigned int n) {
   uint8_t r = alt_cnt;
   alt_cnt += n;
+  LOG("allocated alt ids %d...%d", r, alt_cnt-1);
   return r;
 }
 
@@ -917,4 +918,13 @@ cell_t *build22(op op, cell_t *i0, cell_t *i1, cell_t **o1) {
   c->expr.arg[1] = i1;
   c->expr.arg[2] = *o1 = dep(ref(c));
   return c;
+}
+
+// cache value in context on the way up?
+bool is_linear(context_t *ctx) {
+  while(ctx) {
+    if(ctx->src && ctx->src->n) return false;
+    ctx = ctx->up;
+  }
+  return true;
 }

@@ -173,8 +173,7 @@
 
 #define PRE_NO_CONTEXT(func)                    \
   UNUSED response rsp = SUCCESS;                \
-  ctx->src = cp;                                \
-  cell_t *c = *cp;                              \
+  cell_t *c = ctx->src = *cp;                   \
   assert_error(!is_marked(c));                  \
   WATCH(c, #func)
 

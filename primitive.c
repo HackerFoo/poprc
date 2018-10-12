@@ -419,9 +419,14 @@ OP(pushr) {
 WORD("|", alt, 2, 1)
 OP(alt) {
   PRE(alt);
-  uint8_t a = new_alt_id(1);
-  cell_t *r0 = id(c->expr.arg[0], as_single(a, 0));
-  cell_t *r1 = id(c->expr.arg[1], as_single(a, 1));
+  alt_set_t as0 = 0, as1 = 0;
+  if(!is_linear(ctx)) {
+    uint8_t a = new_alt_id(1);
+    as0 = as_single(a, 0);
+    as1 = as_single(a, 1);
+  }
+  cell_t *r0 = id(c->expr.arg[0], as0);
+  cell_t *r1 = id(c->expr.arg[1], as1);
   r0->alt = r1;
   store_lazy(cp, r0, 0);
   return RETRY;
@@ -573,7 +578,10 @@ OP(id) {
   int pos = c->pos;
 
   if(alt_set || c->alt) {
-    CHECK(reduce_arg(c, 0, &alt_set, ctx));
+    context_t id_ctx = *ctx;
+    id_ctx.src = c;
+    id_ctx.up = ctx;
+    CHECK(reduce_arg(c, 0, &alt_set, &id_ctx));
     CHECK_IF(as_conflict(alt_set), FAIL);
     CHECK_DELAY();
     clear_flags(c);

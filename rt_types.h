@@ -68,8 +68,9 @@ typedef intptr_t val_t;
 
 struct context {
   context_t *up;
-  cell_t **src;
+  cell_t *src;
   val_t expected_value;
+  // TODO alt_set_t alt_set;
   int priority;
   csize_t in, out;
   type_t t;
