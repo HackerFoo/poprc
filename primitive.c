@@ -67,15 +67,15 @@ cell_t *_op1(cell_t *c, uint8_t t, val_t (*op)(val_t), cell_t *x) {
   }
 }
 
-response func_op2(cell_t **cp, type_request_t *treq, int arg_type, int res_type, val_t (*op)(val_t, val_t), bool nonzero) {
+response func_op2(cell_t **cp, context_t *ctx, int arg_type, int res_type, val_t (*op)(val_t, val_t), bool nonzero) {
   cell_t *res = 0;
   PRE(op2);
 
-  CHECK_IF(!check_type(treq->t, res_type), FAIL);
+  CHECK_IF(!check_type(ctx->t, res_type), FAIL);
 
   alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, &REQ(t, arg_type)));
-  CHECK(reduce_arg(c, 1, &alt_set, &REQ(t, arg_type)));
+  CHECK(reduce_arg(c, 0, &alt_set, &CTX(t, arg_type)));
+  CHECK(reduce_arg(c, 1, &alt_set, &CTX(t, arg_type)));
   CHECK_IF(as_conflict(alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
@@ -90,17 +90,17 @@ response func_op2(cell_t **cp, type_request_t *treq, int arg_type, int res_type,
   return SUCCESS;
 
  abort:
-  return abort_op(rsp, cp, treq);
+  return abort_op(rsp, cp, ctx);
 }
 
-response func_op1(cell_t **cp, type_request_t *treq, int arg_type, int res_type, val_t (*op)(val_t), val_t (*inv_op)(val_t)) {
+response func_op1(cell_t **cp, context_t *ctx, int arg_type, int res_type, val_t (*op)(val_t), val_t (*inv_op)(val_t)) {
   cell_t *res = 0;
   PRE(op1);
 
-  CHECK_IF(!check_type(treq->t, res_type), FAIL);
+  CHECK_IF(!check_type(ctx->t, res_type), FAIL);
 
   alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, &REQ(t, arg_type, REQ_INV(inv_op))));
+  CHECK(reduce_arg(c, 0, &alt_set, &CTX(t, arg_type, CTX_INV(inv_op))));
   CHECK_DELAY();
   clear_flags(c);
 
@@ -113,7 +113,7 @@ response func_op1(cell_t **cp, type_request_t *treq, int arg_type, int res_type,
   return SUCCESS;
 
  abort:
-  return abort_op(rsp, cp, treq);
+  return abort_op(rsp, cp, ctx);
 }
 
 cell_t *_op2_float(double (*op)(double, double), cell_t *x, cell_t *y) {
@@ -125,22 +125,22 @@ cell_t *_op1_float(double (*op)(double), cell_t *x) {
   return float_val(op(x->value.flt));
 }
 
-response func_op2_float(cell_t **cp, type_request_t *treq, double (*op)(double, double), bool nonzero) {
+response func_op2_float(cell_t **cp, context_t *ctx, double (*op)(double, double), bool nonzero) {
   cell_t *res = 0;
   PRE(op2_float);
 
-  CHECK_IF(!check_type(treq->t, T_FLOAT), FAIL);
+  CHECK_IF(!check_type(ctx->t, T_FLOAT), FAIL);
 
   alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, &REQ(float)));
-  CHECK(reduce_arg(c, 1, &alt_set, &REQ(float)));
+  CHECK(reduce_arg(c, 0, &alt_set, &CTX(float)));
+  CHECK(reduce_arg(c, 1, &alt_set, &CTX(float)));
   CHECK_IF(as_conflict(alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   CHECK_IF(nonzero && !is_var(q) && q->value.flt == 0.0, FAIL); // TODO assert this for variables
-  res = is_var(p) || is_var(q) ? var(treq->t, c) : _op2_float(op, p, q);
+  res = is_var(p) || is_var(q) ? var(ctx->t, c) : _op2_float(op, p, q);
   res->value.type = T_FLOAT;
   res->alt = c->alt;
   res->value.alt_set = alt_set;
@@ -149,22 +149,22 @@ response func_op2_float(cell_t **cp, type_request_t *treq, double (*op)(double, 
   return SUCCESS;
 
  abort:
-  return abort_op(rsp, cp, treq);
+  return abort_op(rsp, cp, ctx);
 }
 
-response func_op1_float(cell_t **cp, type_request_t *treq, double (*op)(double)) {
+response func_op1_float(cell_t **cp, context_t *ctx, double (*op)(double)) {
   cell_t *res = 0;
   PRE(op1_float);
 
-  CHECK_IF(!check_type(treq->t, T_FLOAT), FAIL);
+  CHECK_IF(!check_type(ctx->t, T_FLOAT), FAIL);
 
   alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, &REQ(float)));
+  CHECK(reduce_arg(c, 0, &alt_set, &CTX(float)));
   CHECK_DELAY();
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
-  res = is_var(p) ? var(treq->t, c) : _op1_float(op, p);
+  res = is_var(p) ? var(ctx->t, c) : _op1_float(op, p);
   res->value.type = T_FLOAT;
   res->alt = c->alt;
   res->value.alt_set = alt_set;
@@ -173,177 +173,177 @@ response func_op1_float(cell_t **cp, type_request_t *treq, double (*op)(double))
   return SUCCESS;
 
  abort:
-  return abort_op(rsp, cp, treq);
+  return abort_op(rsp, cp, ctx);
 }
 
 WORD("+", add, 2, 1)
 val_t add_op(val_t x, val_t y) { return x + y; }
 OP(add) {
-  return func_op2(cp, treq, T_INT, T_INT, add_op, false);
+  return func_op2(cp, ctx, T_INT, T_INT, add_op, false);
 }
 
 WORD("*", mul, 2, 1)
 val_t mul_op(val_t x, val_t y) { return x * y; }
 OP(mul) {
-  return func_op2(cp, treq, T_INT, T_INT, mul_op, false);
+  return func_op2(cp, ctx, T_INT, T_INT, mul_op, false);
 }
 
 WORD("-", sub, 2, 1)
 val_t sub_op(val_t x, val_t y) { return x - y; }
 OP(sub) {
-  return func_op2(cp, treq, T_INT, T_INT, sub_op, false);
+  return func_op2(cp, ctx, T_INT, T_INT, sub_op, false);
 }
 
 WORD("/", div, 2, 1)
 val_t div_op(val_t x, val_t y) { return x / y; }
 OP(div) {
-  return func_op2(cp, treq, T_INT, T_INT, div_op, true);
+  return func_op2(cp, ctx, T_INT, T_INT, div_op, true);
 }
 
 WORD("%", mod, 2, 1)
 val_t mod_op(val_t x, val_t y) { return x % y; }
 OP(mod) {
-  return func_op2(cp, treq, T_INT, T_INT, mod_op, true);
+  return func_op2(cp, ctx, T_INT, T_INT, mod_op, true);
 }
 
 WORD("+f", add_float, 2, 1)
 double add_float_op(double x, double y) { return x + y; }
 OP(add_float) {
-  return func_op2_float(cp, treq, add_float_op, false);
+  return func_op2_float(cp, ctx, add_float_op, false);
 }
 
 WORD("*f", mul_float, 2, 1)
 double mul_float_op(double x, double y) { return x * y; }
 OP(mul_float) {
-  return func_op2_float(cp, treq, mul_float_op, false);
+  return func_op2_float(cp, ctx, mul_float_op, false);
 }
 
 WORD("-f", sub_float, 2, 1)
 double sub_float_op(double x, double y) { return x - y; }
 OP(sub_float) {
-  return func_op2_float(cp, treq, sub_float_op, false);
+  return func_op2_float(cp, ctx, sub_float_op, false);
 }
 
 WORD("/f", div_float, 2, 1)
 double div_float_op(double x, double y) { return x / y; }
 OP(div_float) {
-  return func_op2_float(cp, treq, div_float_op, true);
+  return func_op2_float(cp, ctx, div_float_op, true);
 }
 
 WORD("log", log, 1, 1)
 OP(log) {
-  return func_op1_float(cp, treq, log);
+  return func_op1_float(cp, ctx, log);
 }
 
 WORD("exp", exp, 1, 1)
 OP(exp) {
-  return func_op1_float(cp, treq, exp);
+  return func_op1_float(cp, ctx, exp);
 }
 
 WORD("cos", cos, 1, 1)
 OP(cos) {
-  return func_op1_float(cp, treq, cos);
+  return func_op1_float(cp, ctx, cos);
 }
 
 WORD("sin", sin, 1, 1)
 OP(sin) {
-  return func_op1_float(cp, treq, sin);
+  return func_op1_float(cp, ctx, sin);
 }
 
 WORD("tan", tan, 1, 1)
 OP(tan) {
-  return func_op1_float(cp, treq, tan);
+  return func_op1_float(cp, ctx, tan);
 }
 
 WORD("atan2", atan2, 2, 1)
 OP(atan2) {
-  return func_op2_float(cp, treq, atan2, false);
+  return func_op2_float(cp, ctx, atan2, false);
 }
 
 WORD("&b", bitand, 2, 1)
 val_t bitand_op(val_t x, val_t y) { return x & y; }
 OP(bitand) {
-  return func_op2(cp, treq, T_INT, T_INT, bitand_op, false);
+  return func_op2(cp, ctx, T_INT, T_INT, bitand_op, false);
 }
 
 WORD("|b", bitor, 2, 1)
 val_t bitor_op(val_t x, val_t y) { return x | y; }
 OP(bitor) {
-  return func_op2(cp, treq, T_INT, T_INT, bitor_op, false);
+  return func_op2(cp, ctx, T_INT, T_INT, bitor_op, false);
 }
 
 WORD("^b", bitxor, 2, 1)
 val_t bitxor_op(val_t x, val_t y) { return x ^ y; }
 OP(bitxor) {
-  return func_op2(cp, treq, T_INT, T_INT, bitxor_op, false);
+  return func_op2(cp, ctx, T_INT, T_INT, bitxor_op, false);
 }
 
 WORD("<<b", shiftl, 2, 1)
 val_t shiftl_op(val_t x, val_t y) { return x << y; }
 OP(shiftl) {
-  return func_op2(cp, treq, T_INT, T_INT, shiftl_op, false);
+  return func_op2(cp, ctx, T_INT, T_INT, shiftl_op, false);
 }
 
 WORD(">>b", shiftr, 2, 1)
 val_t shiftr_op(val_t x, val_t y) { return x >> y; }
 OP(shiftr) {
-  return func_op2(cp, treq, T_INT, T_INT, shiftr_op, false);
+  return func_op2(cp, ctx, T_INT, T_INT, shiftr_op, false);
 }
 
 WORD("~b", complement, 1, 1)
 val_t complement_op(val_t x) { return ~x; }
 OP(complement) {
-  return func_op1(cp, treq, T_INT, T_INT, complement_op, complement_op);
+  return func_op1(cp, ctx, T_INT, T_INT, complement_op, complement_op);
 }
 
 WORD("not", not, 1, 1)
 val_t not_op(val_t x) { return !x; }
 OP(not) {
-  return func_op1(cp, treq, T_SYMBOL, T_SYMBOL, not_op, not_op);
+  return func_op1(cp, ctx, T_SYMBOL, T_SYMBOL, not_op, not_op);
 }
 
 WORD(">", gt, 2, 1)
 val_t gt_op(val_t x, val_t y) { return x > y; }
 OP(gt) {
-  return func_op2(cp, treq, T_INT, T_SYMBOL, gt_op, false);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, gt_op, false);
 }
 
 WORD(">=", gte, 2, 1)
 val_t gte_op(val_t x, val_t y) { return x >= y; }
 OP(gte) {
-  return func_op2(cp, treq, T_INT, T_SYMBOL, gte_op, false);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, gte_op, false);
 }
 
 WORD("<", lt, 2, 1)
 val_t lt_op(val_t x, val_t y) { return x < y; }
 OP(lt) {
-  return func_op2(cp, treq, T_INT, T_SYMBOL, lt_op, false);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, lt_op, false);
 }
 
 WORD("<=", lte, 2, 1)
 val_t lte_op(val_t x, val_t y) { return x <= y; }
 OP(lte) {
-  return func_op2(cp, treq, T_INT, T_SYMBOL, lte_op, false);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, lte_op, false);
 }
 
 WORD("==", eq, 2, 1)
 WORD("=:=", eq_s, 2, 1)
 val_t eq_op(val_t x, val_t y) { return x == y; }
 OP(eq) {
-  return func_op2(cp, treq, T_INT, T_SYMBOL, eq_op, false);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, eq_op, false);
 }
 OP(eq_s) {
-  return func_op2(cp, treq, T_SYMBOL, T_SYMBOL, eq_op, false);
+  return func_op2(cp, ctx, T_SYMBOL, T_SYMBOL, eq_op, false);
 }
 
 WORD("!=", neq, 2, 1)
 WORD("!:=", neq_s, 2, 1)
 val_t neq_op(val_t x, val_t y) { return x != y; }
 OP(neq) {
-  return func_op2(cp, treq, T_INT, T_SYMBOL, neq_op, false);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, neq_op, false);
 }
 OP(neq_s) {
-  return func_op2(cp, treq, T_SYMBOL, T_SYMBOL, neq_op, false);
+  return func_op2(cp, ctx, T_SYMBOL, T_SYMBOL, neq_op, false);
 }
 
 WORD("->f", to_float, 1, 1)
@@ -351,10 +351,10 @@ OP(to_float) {
   cell_t *res = 0;
   PRE(to_float);
 
-  CHECK_IF(!check_type(treq->t, T_FLOAT), FAIL);
+  CHECK_IF(!check_type(ctx->t, T_FLOAT), FAIL);
 
   alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, &REQ(int)));
+  CHECK(reduce_arg(c, 0, &alt_set, &CTX(int)));
   CHECK_DELAY();
   clear_flags(c);
 
@@ -372,7 +372,7 @@ OP(to_float) {
   return SUCCESS;
 
  abort:
-  return abort_op(rsp, cp, treq);
+  return abort_op(rsp, cp, ctx);
 }
 
 WORD("trunc", trunc, 1, 1)
@@ -380,10 +380,10 @@ OP(trunc) {
   cell_t *res = 0;
   PRE(to_float);
 
-  CHECK_IF(!check_type(treq->t, T_INT), FAIL);
+  CHECK_IF(!check_type(ctx->t, T_INT), FAIL);
 
   alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, &REQ(float)));
+  CHECK(reduce_arg(c, 0, &alt_set, &CTX(float)));
   CHECK_DELAY();
   clear_flags(c);
 
@@ -401,7 +401,7 @@ OP(trunc) {
   return SUCCESS;
 
  abort:
-  return abort_op(rsp, cp, treq);
+  return abort_op(rsp, cp, ctx);
 }
 
 WORD("pushr", pushr, 2, 1)
@@ -434,7 +434,7 @@ OP(assert) {
   cell_t *res = NULL;
   cell_t *tc = NULL;
   alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 1, &alt_set, &REQ(symbol, SYM_True)));
+  CHECK(reduce_arg(c, 1, &alt_set, &CTX(symbol, SYM_True)));
   CHECK_DELAY();
   cell_t *p = clear_ptr(c->expr.arg[1]);
   bool p_var = is_var(p);
@@ -443,11 +443,11 @@ OP(assert) {
            p->value.integer != SYM_True, FAIL);
 
   if(p_var) {
-    CHECK_IF(treq->delay_assert, DELAY);
+    CHECK_IF(ctx->delay_assert, DELAY);
     tc = trace_partial(OP_assert, 1, p);
   }
 
-  CHECK(reduce_arg(c, 0, &alt_set, treq));
+  CHECK(reduce_arg(c, 0, &alt_set, ctx));
   CHECK_IF(as_conflict(alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
@@ -470,7 +470,7 @@ OP(assert) {
   return SUCCESS;
 
  abort:
-  return abort_op(rsp, cp, treq);
+  return abort_op(rsp, cp, ctx);
 }
 
 // for internal use
@@ -482,17 +482,17 @@ OP(seq) {
   cell_t *res = NULL;
   cell_t *tc = NULL;
   alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 1, &alt_set, &REQ(any))); // don't split arg here?
+  CHECK(reduce_arg(c, 1, &alt_set, &CTX(any))); // don't split arg here?
   CHECK_DELAY();
   cell_t *p = clear_ptr(c->expr.arg[1]);
   bool p_var = is_var(p);
 
   if(p_var) {
-    CHECK_IF(treq->delay_assert, DELAY);
+    CHECK_IF(ctx->delay_assert, DELAY);
     tc = trace_partial(OP_seq, 1, p);
   }
 
-  CHECK(reduce_arg(c, 0, &alt_set, treq));
+  CHECK(reduce_arg(c, 0, &alt_set, ctx));
   CHECK_IF(as_conflict(alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
@@ -514,7 +514,7 @@ OP(seq) {
   return SUCCESS;
 
  abort:
-  return abort_op(rsp, cp, treq);
+  return abort_op(rsp, cp, ctx);
 }
 
 // very similar to assert
@@ -526,7 +526,7 @@ OP(otherwise) {
   cell_t *res = NULL;
   cell_t *tc = NULL;
   alt_set_t alt_set = 0;
-  response rsp0 = reduce(&c->expr.arg[0], &REQ(any));
+  response rsp0 = reduce(&c->expr.arg[0], &CTX(any));
   CHECK_IF(rsp0 == DELAY, DELAY);
   cell_t *p = clear_ptr(c->expr.arg[0]);
   bool p_var = is_var(p);
@@ -536,12 +536,12 @@ OP(otherwise) {
            rsp0 != FAIL, FAIL);
 
   if(rsp0 != FAIL) {
-    CHECK_IF(treq->delay_assert, DELAY);
+    CHECK_IF(ctx->delay_assert, DELAY);
     tc = trace_partial(OP_otherwise, 0, p);
     // alt?
   }
 
-  CHECK(reduce_arg(c, 1, &alt_set, treq));
+  CHECK(reduce_arg(c, 1, &alt_set, ctx));
   CHECK_DELAY();
   clear_flags(c);
   cell_t **q = &c->expr.arg[1];
@@ -563,7 +563,7 @@ OP(otherwise) {
   return SUCCESS;
 
 abort:
-  return abort_op(rsp, cp, treq);
+  return abort_op(rsp, cp, ctx);
 }
 
 WORD("id", id, 1, 1)
@@ -573,7 +573,7 @@ OP(id) {
   int pos = c->pos;
 
   if(alt_set || c->alt) {
-    CHECK(reduce_arg(c, 0, &alt_set, treq));
+    CHECK(reduce_arg(c, 0, &alt_set, ctx));
     CHECK_IF(as_conflict(alt_set), FAIL);
     CHECK_DELAY();
     clear_flags(c);
@@ -588,7 +588,7 @@ OP(id) {
   }
 
  abort:
-  return abort_op(rsp, cp, treq);
+  return abort_op(rsp, cp, ctx);
 }
 
 WORD("drop", drop, 2, 1)
@@ -613,8 +613,8 @@ OP(swap) {
 WORD("delay", delay, 1, 1)
 OP(delay) {
   PRE(delay);
-  if(treq->priority < 1) {
-    LOG("delay (priority %d) %C", treq->priority, c);
+  if(ctx->priority < 1) {
+    LOG("delay (priority %d) %C", ctx->priority, c);
     return DELAY;
   }
 
@@ -651,7 +651,7 @@ csize_t function_compose_in(cell_t *c, csize_t req_in, csize_t arg_in, bool row)
 }
 
 static
-response func_compose_ap(cell_t **cp, type_request_t *treq, bool row) {
+response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   CONTEXT("%s: %C", row ? "compose" : "ap", *cp);
   PRE_NO_CONTEXT(compose_ap);
 
@@ -667,23 +667,23 @@ response func_compose_ap(cell_t **cp, type_request_t *treq, bool row) {
 
   alt_set_t alt_set = 0;
   if(row) {
-    CHECK(reduce_arg(c, 0, &alt_set, &REQ(list, treq->in, 0)));
+    CHECK(reduce_arg(c, 0, &alt_set, &CTX(list, ctx->in, 0)));
     CHECK_DELAY();
     p = clear_ptr(c->expr.arg[0]);
   }
   CHECK(reduce_arg(c, in, &alt_set,
-                   &REQ(list,
-                        function_compose_in(p, out ? 0 : treq->in, arg_in, false /*_1_*/),
-                        treq->out + out)));
+                   &CTX(list,
+                        function_compose_in(p, out ? 0 : ctx->in, arg_in, false /*_1_*/),
+                        ctx->out + out)));
   CHECK_IF(as_conflict(alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
   if(row) {
-    placeholder_extend(&c->expr.arg[0], treq->in, function_compose_out(c->expr.arg[in], arg_in, treq->out + out));
+    placeholder_extend(&c->expr.arg[0], ctx->in, function_compose_out(c->expr.arg[in], arg_in, ctx->out + out));
     p = clear_ptr(c->expr.arg[0]);
   }
   cell_t **q = &c->expr.arg[in];
-  placeholder_extend(q, function_compose_in(p, treq->in, arg_in, true /*_1_*/), treq->out + out);
+  placeholder_extend(q, function_compose_in(p, ctx->in, arg_in, true /*_1_*/), ctx->out + out);
   // *** _1_ don't know if/why this works
 
   list_iterator_t it;
@@ -737,18 +737,18 @@ response func_compose_ap(cell_t **cp, type_request_t *treq, bool row) {
 
  abort:
   drop(res);
-  return abort_op(rsp, cp, treq);
+  return abort_op(rsp, cp, ctx);
 }
 
 WORD_ALIAS("pushl", ap, 2, 1, pushl)
 WORD_ALIAS("popr", ap, 1, 2, popr)
 OP(ap) {
-  return func_compose_ap(cp, treq, false);
+  return func_compose_ap(cp, ctx, false);
 }
 
 WORD(".", compose, 2, 1)
 OP(compose) {
-  return func_compose_ap(cp, treq, true);
+  return func_compose_ap(cp, ctx, true);
 }
 
 WORD("print", print, 2, 1)
@@ -756,11 +756,11 @@ OP(print) {
   cell_t *res = 0;
   PRE(print);
 
-  CHECK_IF(!check_type(treq->t, T_SYMBOL), FAIL);
+  CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
 
   alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, &REQ(symbol)));
-  CHECK(reduce_arg(c, 1, &alt_set, &REQ(any)));
+  CHECK(reduce_arg(c, 0, &alt_set, &CTX(symbol)));
+  CHECK(reduce_arg(c, 1, &alt_set, &CTX(any)));
   CHECK_IF(as_conflict(alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
@@ -784,20 +784,20 @@ OP(print) {
 
  abort:
   drop(res);
-  return abort_op(rsp, cp, treq);
+  return abort_op(rsp, cp, ctx);
 }
 
 bool is_list_var(cell_t *c) {
   return is_row_list(c) && is_placeholder(c->value.ptr[0]);
 }
 
-response func_type(cell_t **cp, type_request_t *treq, uint8_t type) {
+response func_type(cell_t **cp, context_t *ctx, uint8_t type) {
   PRE(type);
 
-  CHECK_IF(!check_type(treq->t, type), FAIL);
+  CHECK_IF(!check_type(ctx->t, type), FAIL);
 
   alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, &REQ(t, type)));
+  CHECK(reduce_arg(c, 0, &alt_set, &CTX(t, type)));
   CHECK_DELAY();
   clear_flags(c);
 
@@ -806,17 +806,17 @@ response func_type(cell_t **cp, type_request_t *treq, uint8_t type) {
   return SUCCESS;
 
  abort:
-  return abort_op(rsp, cp, treq);
+  return abort_op(rsp, cp, ctx);
 }
 
 // annotations to work around inference failures
 
 WORD("int_t", int_t, 1, 1)
 OP(int_t) {
-  return func_type(cp, treq, T_INT);
+  return func_type(cp, ctx, T_INT);
 }
 
 WORD("symbol_t", symbol_t, 1, 1)
 OP(symbol_t) {
-  return func_type(cp, treq, T_SYMBOL);
+  return func_type(cp, ctx, T_SYMBOL);
 }

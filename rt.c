@@ -45,7 +45,7 @@ static cell_t *watched_cells[4] = {0};
 static bool watch_enabled = false;
 
 #if INTERFACE
-#define ASSERT_REF() if(!treq->delay_var) assert_error(assert_ref(rt_roots, rt_roots_n))
+#define ASSERT_REF() if(!ctx->delay_var) assert_error(assert_ref(rt_roots, rt_roots_n))
 #endif
 
 bool insert_root(cell_t **r) {
@@ -146,12 +146,12 @@ void split_expr(cell_t *c) {
 // Reduce then split c->arg[n]
 response reduce_arg(cell_t *c,
                 csize_t n,
-                alt_set_t *ctx,
-                type_request_t *treq) {
+                alt_set_t *as,
+                context_t *ctx) {
   cell_t **ap = &c->expr.arg[n];
-  response r = reduce(ap, treq);
+  response r = reduce(ap, ctx);
   cell_t *a = clear_ptr(*ap);
-  if(r == SUCCESS) *ctx |= a->value.alt_set;
+  if(r == SUCCESS) *as |= a->value.alt_set;
   if(r < DELAY) split_arg(c, n);
   return r;
 }
@@ -194,13 +194,13 @@ void split_ptr(cell_t *c, csize_t n) {
 // NOTE: c should never have a row
 response reduce_ptr(cell_t *c,
                     csize_t n,
-                    alt_set_t *ctx,
-                    type_request_t *treq) {
+                    alt_set_t *as,
+                    context_t *ctx) {
   assert_error(is_list(c));
   cell_t **ap = &c->value.ptr[n];
-  response r = reduce(ap, treq);
+  response r = reduce(ap, ctx);
   cell_t *a = clear_ptr(*ap);
-  if(r == SUCCESS) *ctx |= a->value.alt_set;
+  if(r == SUCCESS) *as |= a->value.alt_set;
   if(r < DELAY) split_ptr(c, n);
   return r;
 }
@@ -213,10 +213,10 @@ void clear_flags(cell_t *c) {
 }
 
 static
-response op_call(op op, cell_t **cp, type_request_t *treq) {
+response op_call(op op, cell_t **cp, context_t *ctx) {
   switch(op) {
 #define OP__ITEM(name) \
-    case OP_##name: return func_##name(cp, treq);
+    case OP_##name: return func_##name(cp, ctx);
 #include "op_list.h"
 #undef OP__ITEM
     default:
@@ -236,7 +236,7 @@ cell_t *fill_incomplete(cell_t *c) {
 }
 
 // Reduce *cp with type t
-response reduce(cell_t **cp, type_request_t *treq) {
+response reduce(cell_t **cp, context_t *ctx) {
   bool marked = is_marked(*cp);
   *cp = clear_ptr(*cp);
   cell_t *c = *cp;
@@ -245,15 +245,15 @@ response reduce(cell_t **cp, type_request_t *treq) {
     c = *cp = fill_incomplete(c);
     stats.reduce_cnt++;
     op op = c->op;
-    response r = op_call(op, cp, treq);
+    response r = op_call(op, cp, ctx);
 
     // prevent infinite loops when debugging
     assert_counter(LENGTH(cells));
 
     LOG_WHEN(!*cp, MARK("FAIL") ": %O %C @abort", op, c);
     c = *cp;
-    if(r <= DELAY || (r == RETRY && treq->retry)) {
-      treq->retry = false;
+    if(r <= DELAY || (r == RETRY && ctx->retry)) {
+      ctx->retry = false;
       if(marked) *cp = mark_ptr(c); // *** is the right pointer being marked?
       return r;
     }
@@ -262,24 +262,24 @@ response reduce(cell_t **cp, type_request_t *treq) {
   return FAIL;
 }
 
-response simplify(cell_t **cp, type_request_t *treq) {
-  treq->delay_var = true;
+response simplify(cell_t **cp, context_t *ctx) {
+  ctx->delay_var = true;
   CONTEXT("simplify %C", *cp);
-  return reduce(cp, treq);
+  return reduce(cp, ctx);
 }
 
 // Perform one reduction step on *cp
-response reduce_one(cell_t **cp, type_request_t *treq) {
+response reduce_one(cell_t **cp, context_t *ctx) {
   cell_t *c = *cp;
   if(!c) {
     LOG("reduce_one: null closure %C", c);
-    return abort_op(FAIL, cp, treq);
+    return abort_op(FAIL, cp, ctx);
   } else {
     c = *cp = fill_incomplete(c);
     assert_error(is_closure(c) &&
            closure_is_ready(c));
     stats.reduce_cnt++;
-    return op_call(c->op, cp, treq);
+    return op_call(c->op, cp, ctx);
   }
 }
 
@@ -500,7 +500,7 @@ void store_dep(cell_t *c, cell_t *tc, csize_t pos, type_t t, alt_set_t alt_set) 
   *c = v;
 }
 
-response abort_op(response rsp, cell_t **cp, type_request_t *treq) {
+response abort_op(response rsp, cell_t **cp, context_t *ctx) {
   cell_t *c = *cp;
   if(rsp == FAIL) {
     if(!is_cell(c)) {
@@ -509,7 +509,7 @@ response abort_op(response rsp, cell_t **cp, type_request_t *treq) {
     }
     assert_error(!is_marked(c));
     cell_t *alt = ref(c->alt);
-    if(c->n && treq->t == T_ANY && !treq->expected) { // HACK this should be more sophisticated
+    if(c->n && ctx->t == T_ANY && !ctx->expected) { // HACK this should be more sophisticated
       TRAVERSE(c, in) {
         drop(*p);
       }
@@ -820,36 +820,36 @@ uint8_t new_alt_id(unsigned int n) {
 }
 
 #if INTERFACE
-#define REQ_INHERIT                             \
-  .priority = treq->priority,                   \
-  .delay_assert = treq->delay_assert,           \
-  .delay_var = treq->delay_var,                 \
-  .up = treq
-#define REQ(type, ...) CONCAT(REQ_, type)(__VA_ARGS__)
-#define REQ_list(_in, _out) \
-  ((type_request_t) { .t = T_LIST, .in = _in, .out = _out, REQ_INHERIT})
-#define REQ_t_1(_t)                                                     \
-  ((type_request_t) { .t = _t, REQ_INHERIT, .expected = false })
-#define REQ_t_2(_t, _expected_val)                                          \
-  ((type_request_t) { .t = _t, REQ_INHERIT, .expected = true, .expected_value = _expected_val })
-#define REQ_t_3(_t, _expected, _expected_val)                            \
-  ((type_request_t) { .t = _t, REQ_INHERIT, .expected = _expected, .expected_value = _expected_val })
-#define REQ_t(...) DISPATCH(REQ_t, __VA_ARGS__)
-#define REQ_any(...) REQ_t(T_ANY, ##__VA_ARGS__)
-#define REQ_int(...) REQ_t(T_INT, ##__VA_ARGS__)
-#define REQ_float(...) REQ_t(T_FLOAT, ##__VA_ARGS__)
-#define REQ_symbol(...) REQ_t(T_SYMBOL, ##__VA_ARGS__)
-#define REQ_return() \
-  ((type_request_t) { .t = T_RETURN })
-#define REQ_INV(invert) treq->expected, (treq->expected ? invert(treq->expected_value) : 0)
+#define CTX_INHERIT                             \
+  .priority = ctx->priority,                    \
+  .delay_assert = ctx->delay_assert,            \
+  .delay_var = ctx->delay_var,                  \
+  .up = ctx
+#define CTX(type, ...) CONCAT(CTX_, type)(__VA_ARGS__)
+#define CTX_list(_in, _out) \
+  ((context_t) { .t = T_LIST, .in = _in, .out = _out, CTX_INHERIT})
+#define CTX_t_1(_t)                                                     \
+  ((context_t) { .t = _t, CTX_INHERIT, .expected = false })
+#define CTX_t_2(_t, _expected_val)                                          \
+  ((context_t) { .t = _t, CTX_INHERIT, .expected = true, .expected_value = _expected_val })
+#define CTX_t_3(_t, _expected, _expected_val)                            \
+  ((context_t) { .t = _t, CTX_INHERIT, .expected = _expected, .expected_value = _expected_val })
+#define CTX_t(...) DISPATCH(CTX_t, __VA_ARGS__)
+#define CTX_any(...) CTX_t(T_ANY, ##__VA_ARGS__)
+#define CTX_int(...) CTX_t(T_INT, ##__VA_ARGS__)
+#define CTX_float(...) CTX_t(T_FLOAT, ##__VA_ARGS__)
+#define CTX_symbol(...) CTX_t(T_SYMBOL, ##__VA_ARGS__)
+#define CTX_return() \
+  ((context_t) { .t = T_RETURN })
+#define CTX_INV(invert) ctx->expected, (ctx->expected ? invert(ctx->expected_value) : 0)
 #endif
 
-// default 'treq' for REQ(...) to inherit
-type_request_t * const treq = &(type_request_t) { .t = T_ANY };
+// default 'ctx' for CTX(...) to inherit
+context_t * const ctx = &(context_t) { .t = T_ANY };
 
-type_request_t *req_pos(type_request_t *treq, uint8_t pos) {
-  treq->pos = pos;
-  return treq;
+context_t *ctx_pos(context_t *ctx, uint8_t pos) {
+  ctx->pos = pos;
+  return ctx;
 }
 
 bool check_type(uint8_t requested, uint8_t expected) {

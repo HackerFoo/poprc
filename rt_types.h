@@ -50,7 +50,7 @@ typedef struct value value_t;
 typedef struct tok_list tok_list_t;
 typedef struct entry entry_t;
 typedef struct mem mem_t;
-typedef struct type_request type_request_t;
+typedef struct context context_t;
 
 typedef uintptr_t alt_set_t;
 typedef int16_t refcount_t;
@@ -66,8 +66,8 @@ typedef intptr_t val_t;
 #pragma clang diagnostic ignored "-Wextended-offsetof"
 #endif
 
-struct type_request {
-  type_request_t *up;
+struct context {
+  context_t *up;
   cell_t **src;
   val_t expected_value;
   int priority;

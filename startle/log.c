@@ -60,7 +60,7 @@ static intptr_t tweak_value = 0;
 
 static uintptr_t hash_tag_set[63];
 
-context_t *__log_context = NULL;
+log_context_t *__log_context = NULL;
 
 /** Call this first to initialize the log. */
 void log_init() {
@@ -487,9 +487,9 @@ TEST(log) {
 }
 
 #if INTERFACE
-typedef struct context_s context_t;
-struct context_s {
-  struct context_s *next;
+typedef struct log_context log_context_t;
+struct log_context {
+  struct log_context *next;
   char const *fmt;
   intptr_t arg[0];
 };
@@ -503,7 +503,7 @@ struct context_s {
 #define CONTEXT_last(x) (intptr_t)(x)};
 #define CONTEXT_only(s, fmt) (intptr_t)(s fmt) + 1};
 #define CONTEXT_post                            \
-  __log_context = (context_t *)__context;
+  __log_context = (log_context_t *)__context;
 #define CONTEXT_args ("\xff\xc0", "\xff\xc1", "\xff\xc2", "\xff\xc3", "\xff\xc4", "\xff\xc5", "\xff\xc6", "\xff\xc7", "\xff\xc8")
 
 /** Store log context.
@@ -540,7 +540,7 @@ struct context_s {
 #endif
 
 void log_cleanup_context(void *p) {
-  context_t *ctx = p;
+  log_context_t *ctx = p;
   if(ctx->fmt[0] == END_CONTEXT) {
     // add end marker
     log_add((intptr_t)ctx->fmt);
@@ -553,7 +553,7 @@ void log_cleanup_context_log(const char **fmt) {
 }
 
 void log_add_context() {
-  context_t *p = __log_context;
+  log_context_t *p = __log_context;
   while(p &&
         p->fmt[0] != END_CONTEXT) {
     log_add((intptr_t)p->fmt);
@@ -566,7 +566,7 @@ void log_add_context() {
   }
 }
 
-/** [context] */
+/** [log_context] */
 static
 void __test_context_c(int x) {
   CONTEXT_LOG("C %d", x);
@@ -607,7 +607,7 @@ void __test_context_d(int x) {
   LOG("exiting d");
 }
 
-TEST(context) {
+TEST(log_context) {
   log_init();
   __test_context_a(2);
   __test_context_a(1);
@@ -617,7 +617,7 @@ TEST(context) {
   log_print_all();
   return 0;
 }
-/** [context] */
+/** [log_context] */
 
 #if INTERFACE
 typedef char tag_t[4];

@@ -173,7 +173,7 @@
 
 #define PRE_NO_CONTEXT(func)                    \
   UNUSED response rsp = SUCCESS;                \
-  treq->src = cp;                               \
+  ctx->src = cp;                                \
   cell_t *c = *cp;                              \
   assert_error(!is_marked(c));                  \
   WATCH(c, #func)
@@ -230,7 +230,7 @@
 // define away WORD annotations
 #define WORD(...)
 #define WORD_ALIAS(...)
-#define OP(name) response func_##name(cell_t **cp, UNUSED type_request_t *treq)
+#define OP(name) response func_##name(cell_t **cp, UNUSED context_t *ctx)
 
 #define AND0_1(a) (a)
 #define AND0_2(a, b)                            \

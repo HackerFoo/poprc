@@ -13,34 +13,12 @@ alt_sets => 0
 M:three
 ################
 comments => 0
-@ context
-__ print_context() __
-startle/log.c:589: A 1
-  startle/log.c:577: B 0
-__ end print_context() __
-__ print_context() __
-startle/log.c:605: D 42
-  startle/log.c:596: E 42
-__ end print_context() __
-startle/log.c:589: A 2
-  startle/log.c:591: (a) nonzero x [38;5;8mowxf[0m
-startle/log.c:589: A 1
-  startle/log.c:577: B 0
-    startle/log.c:578: (b) zero x [38;5;8mmefp[0m
-    startle/log.c:580: printing context [38;5;8mlwng[0m
-  startle/log.c:591: (a) nonzero x [38;5;8mk46u[0m
-startle/log.c:572: C 3 [38;5;8mj9mc[0m
-startle/log.c:605: D 42 [38;5;8miwdh[0m
-  startle/log.c:596: E 42 [38;5;8mh4sv[0m
-    startle/log.c:597: printing context [38;5;8mg9cd[0m
-  startle/log.c:607: exiting d [38;5;8mgdrr[0m
-context => 0
 @ error
 i = 0
 i = 1
 i = 2
-[37;44mBREAKPOINT[0m [37;41m!!![0m startle/error.c:203: test_error: Assertion `i < 3' failed: Don't worry, it's okay. [38;5;8mfia9[0m
-[37;44mTEST[0m [37;41m!!![0m startle/error.c:203: test_error: Assertion `i < 3' failed: Don't worry, it's okay. [38;5;8mfia9[0m
+[37;44mBREAKPOINT[0m [37;41m!!![0m startle/error.c:203: test_error: Assertion `i < 3' failed: Don't worry, it's okay. [38;5;8mpshx[0m
+[37;44mTEST[0m [37;41m!!![0m startle/error.c:203: test_error: Assertion `i < 3' failed: Don't worry, it's okay. [38;5;8mpshx[0m
 error => 0
 @ expand_map
 map[10] = {{eight, 7}, {five, 4}, {four, 3}, {one, 0}, {seven, 6}, {six, 5}, {three, 2}, {two, 1}, {nine, 8}, {ten, 9}}
@@ -87,6 +65,28 @@ startle/log.c:481: test 1 + 2 = 3 [38;5;8mpshx[0m
 startle/log.c:482: WAZZUP d00d [38;5;8mn5gt[0m
 startle/log.c:483: [123] [38;5;8mm9wb[0m
 log => 0
+@ log_context
+__ print_context() __
+startle/log.c:589: A 1
+  startle/log.c:577: B 0
+__ end print_context() __
+__ print_context() __
+startle/log.c:605: D 42
+  startle/log.c:596: E 42
+__ end print_context() __
+startle/log.c:589: A 2
+  startle/log.c:591: (a) nonzero x [38;5;8mowxf[0m
+startle/log.c:589: A 1
+  startle/log.c:577: B 0
+    startle/log.c:578: (b) zero x [38;5;8mmefp[0m
+    startle/log.c:580: printing context [38;5;8mlwng[0m
+  startle/log.c:591: (a) nonzero x [38;5;8mk46u[0m
+startle/log.c:572: C 3 [38;5;8mj9mc[0m
+startle/log.c:605: D 42 [38;5;8miwdh[0m
+  startle/log.c:596: E 42 [38;5;8mh4sv[0m
+    startle/log.c:597: printing context [38;5;8mg9cd[0m
+  startle/log.c:607: exiting d [38;5;8mgdrr[0m
+log_context => 0
 @ lookup
 The total for 5 grapes at $0.50 each is $2.50.
 lookup => 0

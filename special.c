@@ -31,10 +31,10 @@ OP(value) {
   PRE(value);
   stats.reduce_cnt--;
 
-  CHECK_IF(is_var(c) && treq->delay_var, DELAY);
+  CHECK_IF(is_var(c) && ctx->delay_var, DELAY);
 
   // promote integer constants to float constants
-  if(treq->t == T_FLOAT &&
+  if(ctx->t == T_FLOAT &&
      NOT_FLAG(c->value, VALUE_VAR) &&
      c->value.type == T_INT) {
     val_t x = c->value.integer;
@@ -44,31 +44,31 @@ OP(value) {
     return RETRY;
   }
 
-  // TODO move this check out - treq shouldn't cause a FAIL
+  // TODO move this check out - ctx shouldn't cause a FAIL
   CHECK_IF(FLAG(c->value, VALUE_FAIL) ||
-           !type_match(treq->t, c),
+           !type_match(ctx->t, c),
            FAIL);
 
-  if(treq->expected && !is_var(c) &&
-     treq->expected_value != c->value.integer) {
+  if(ctx->expected && !is_var(c) &&
+     ctx->expected_value != c->value.integer) {
     LOG("expected %C to be %d, but got %d",
-        c, treq->expected_value, c->value.integer);
+        c, ctx->expected_value, c->value.integer);
   }
 
   // NOTE: may create multiple placeholder
   // TODO use rows to work around this
   if(is_var(c)) {
     trace_dep(c);
-    if(is_any(c) && treq->t != T_ANY) {
-      c->value.type = treq->t;
+    if(is_any(c) && ctx->t != T_ANY) {
+      c->value.type = ctx->t;
       trace_update(c, c);
     }
-    if(treq->t == T_LIST &&
+    if(ctx->t == T_LIST &&
        is_function(c)) {
-      placeholder_extend(cp, treq->in, treq->out);
+      placeholder_extend(cp, ctx->in, ctx->out);
     }
   } else if(is_row_list(c)) {
-    placeholder_extend(cp, treq->in, treq->out);
+    placeholder_extend(cp, ctx->in, ctx->out);
   } else if(c->pos) {
     if(is_list(c) && !is_empty_list(c)) {
       TRAVERSE(c, ptrs) {
@@ -94,7 +94,7 @@ OP(value) {
   return SUCCESS;
 
  abort:
-  return abort_op(rsp, cp, treq);
+  return abort_op(rsp, cp, ctx);
 }
 
 cell_t *make_val(uint8_t t) {
@@ -146,7 +146,7 @@ void placeholder_extend(cell_t **lp, int in, int out) {
   cell_t **left = leftmost_row(&l);
   if(!left) return;
   // HACK need to map_assert after extending
-  if((*left)->op == OP_assert) reduce(left, &REQ(any));
+  if((*left)->op == OP_assert) reduce(left, &CTX(any));
   cell_t *f = *left;
   if(!(is_function(f) || is_placeholder(f))) return;
   cell_t *ph = func(OP_placeholder, d_in + 1, d_out + 1);
@@ -292,7 +292,7 @@ OP(dep) {
   cell_t *p = ref(c->expr.arg[0]);
   assert_error(is_dep_of(c, p));
   insert_root(&p);
-  CHECK(reduce_one(&p, &REQ(any)));
+  CHECK(reduce_one(&p, &CTX(any)));
   CHECK_DELAY();
   trace_dep(c);
   remove_root(&p);
@@ -303,7 +303,7 @@ OP(dep) {
  abort:
   remove_root(&p);
   drop(p);
-  return abort_op(rsp, cp, treq);
+  return abort_op(rsp, cp, ctx);
 }
 
 cell_t *dep(cell_t *c) {
@@ -318,7 +318,7 @@ bool is_dep(cell_t const *c) {
 WORD("??", placeholder, 0, 1)
 OP(placeholder) {
   PRE(placeholder);
-  CHECK_IF(!check_type(treq->t, T_LIST), FAIL);
+  CHECK_IF(!check_type(ctx->t, T_LIST), FAIL);
   csize_t in = closure_in(c), n = closure_args(c);
 
   if(n == 1) {
@@ -328,9 +328,9 @@ OP(placeholder) {
 
   alt_set_t alt_set = 0;
   assert_error(in >= 1);
-  CHECK(reduce_arg(c, in - 1, &alt_set, &REQ(list, 0, 0))); // *** should use treq
+  CHECK(reduce_arg(c, in - 1, &alt_set, &CTX(list, 0, 0))); // *** should use ctx
   COUNTUP(i, in - 1) {
-    CHECK(reduce_arg(c, i, &alt_set, &REQ(any)));
+    CHECK(reduce_arg(c, i, &alt_set, &CTX(any)));
     CHECK_IF(as_conflict(alt_set), FAIL);
   }
   CHECK_DELAY();
@@ -345,7 +345,7 @@ OP(placeholder) {
     return SUCCESS;
   }
 
-  cell_t *res = var(T_LIST, c, treq->pos);
+  cell_t *res = var(T_LIST, c, ctx->pos);
   res->alt = c->alt;
   res->value.alt_set = alt_set;
   RANGEUP(i, in, n) {
@@ -364,7 +364,7 @@ OP(placeholder) {
   return SUCCESS;
 
  abort:
-  return abort_op(rsp, cp, treq);
+  return abort_op(rsp, cp, ctx);
 }
 
 bool is_placeholder(cell_t const *c) {
@@ -374,5 +374,5 @@ bool is_placeholder(cell_t const *c) {
 OP(fail) {
   PRE(fail);
   stats.reduce_cnt--;
-  return abort_op(FAIL, cp, treq);
+  return abort_op(FAIL, cp, ctx);
 }

@@ -135,7 +135,7 @@ cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) 
       assert_error(list_size(c) == list_size(pattern));
       COUNTUP(i, list_size(pattern)) {
         cell_t **a = &c->value.ptr[i];
-        if(closure_is_ready(*a)) simplify(a, &REQ(any));
+        if(closure_is_ready(*a)) simplify(a, &CTX(any));
         tail = bind_pattern(entry,
                             *a,
                             pattern->value.ptr[i],
@@ -169,7 +169,7 @@ cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) 
       LOG(HACK " forcing pos for %C (%C) to %E", pattern, c, entry);
       pattern->pos = entry->pos; // HACKity HACK
     }
-    reduce(&pattern, &REQ(any));
+    reduce(&pattern, &CTX(any));
     return bind_pattern(entry, c, pattern, tail);
   } else {
     // This can be caused by an operation before an infinite loop
@@ -182,7 +182,7 @@ cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) 
 }
 
 // unify c with pattern pat if possible, returning the unified result
-bool unify_exec(cell_t **cp, cell_t *parent_entry, type_request_t *treq) {
+bool unify_exec(cell_t **cp, cell_t *parent_entry, context_t *ctx) {
   PRE(unify_exec, " #wrap");
 
   csize_t
@@ -204,7 +204,7 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry, type_request_t *treq) {
     *vl = 0,
     **tail = &vl;
   COUNTUP(i, in) {
-    simplify(&c->expr.arg[i], &REQ(any)); // FIX this can cause arg flips
+    simplify(&c->expr.arg[i], &CTX(any)); // FIX this can cause arg flips
     tail = bind_pattern(NULL, c->expr.arg[i], pat->expr.arg[i], tail);
     if(!tail) {
       LOG("bind_pattern failed %C %C", c->expr.arg[i], pat->expr.arg[i]);
@@ -566,9 +566,9 @@ cell_t *expand_list(cell_t *entry, cell_t *c) {
 }
 
 static
-type_request_t *collect_ap_deps(type_request_t *treq, cell_t **deps, int n) {
+context_t *collect_ap_deps(context_t *ctx, cell_t **deps, int n) {
   while(n > 0) {
-    cell_t **cp = treq->src;
+    cell_t **cp = ctx->src;
     const cell_t *c = *cp;
     if(c->op != OP_ap ||
        closure_in(c) != 1 ||
@@ -579,13 +579,13 @@ type_request_t *collect_ap_deps(type_request_t *treq, cell_t **deps, int n) {
     memcpy(&deps[n],
            &c->expr.arg[closure_args(c) - out],
            out_n * sizeof(cell_t *));
-    if(n > 0) treq = treq->up;
+    if(n > 0) ctx = ctx->up;
   }
-  return treq;
+  return ctx;
 }
 
 static
-response func_exec_wrap(cell_t **cp, type_request_t *treq, cell_t *parent_entry) {
+response func_exec_wrap(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
   csize_t
     in = closure_in(*cp),
     out = closure_out(*cp);
@@ -594,15 +594,15 @@ response func_exec_wrap(cell_t **cp, type_request_t *treq, cell_t *parent_entry)
   PRE(exec_wrap, " %E 0x%x #wrap", entry, (*cp)->expr.flags);
   LOG_UNLESS(entry->entry.out == 1, "out = %d #unify-multiout", entry->entry.out);
 
-  assert_error(treq->out < sizeof(wrap.dep_mask) * 8);
-  wrap.dep_mask = (1 << treq->out) - 1;
+  assert_error(ctx->out < sizeof(wrap.dep_mask) * 8);
+  wrap.dep_mask = (1 << ctx->out) - 1;
   int dropped = 0;
-  type_request_t *top = NULL;
-  if(treq->t == T_LIST) {
-    cell_t *deps[treq->out];
-    top = collect_ap_deps(treq->up, deps, treq->out);
+  context_t *top = NULL;
+  if(ctx->t == T_LIST) {
+    cell_t *deps[ctx->out];
+    top = collect_ap_deps(ctx->up, deps, ctx->out);
     if(top) {
-      COUNTUP(i, treq->out) {
+      COUNTUP(i, ctx->out) {
         if(!deps[i]) {
           wrap.dep_mask &= ~(1 << i);
           dropped++;
@@ -622,7 +622,7 @@ response func_exec_wrap(cell_t **cp, type_request_t *treq, cell_t *parent_entry)
   COUNTUP(i, in) {
     if(c->expr.arg[i]->op != OP_ap ||
        TWEAK(true, "to disable ap simplify %C", c->expr.arg[i]))
-    simplify(&c->expr.arg[i], &REQ(any));
+    simplify(&c->expr.arg[i], &CTX(any));
   }
 
   wrap.initial = ref(c);
@@ -637,9 +637,9 @@ response func_exec_wrap(cell_t **cp, type_request_t *treq, cell_t *parent_entry)
   cell_t *l = expand_list(new_entry, nc);
 
   // eliminate intermediate list
-  if(treq->t == T_LIST) {
-    l = unwrap(l, wrap.dep_mask, treq->out, dropped);
-    new_entry->entry.out += treq->out - 1 - dropped;
+  if(ctx->t == T_LIST) {
+    l = unwrap(l, wrap.dep_mask, ctx->out, dropped);
+    new_entry->entry.out += ctx->out - 1 - dropped;
   }
 
   // IDEA break here?
@@ -657,7 +657,7 @@ response func_exec_wrap(cell_t **cp, type_request_t *treq, cell_t *parent_entry)
   drop(c);
 
   if(top) {
-    trace_drop_return(new_entry, treq->out, wrap.dep_mask);
+    trace_drop_return(new_entry, ctx->out, wrap.dep_mask);
   }
   trace_final_pass(new_entry);
   trace_end_entry(new_entry);
@@ -673,8 +673,8 @@ response func_exec_wrap(cell_t **cp, type_request_t *treq, cell_t *parent_entry)
   cell_t *tc = res->value.var;
 
   // build list expected by caller
-  if(treq->t == T_LIST) {
-    trace_reduction(p, wrap_vars(&res, p, wrap.dep_mask, treq->out));
+  if(ctx->t == T_LIST) {
+    trace_reduction(p, wrap_vars(&res, p, wrap.dep_mask, ctx->out));
   }
 
   // handle deps
@@ -700,10 +700,10 @@ response func_exec_wrap(cell_t **cp, type_request_t *treq, cell_t *parent_entry)
 }
 
 static
-response exec_list(cell_t **cp, type_request_t *treq) {
+response exec_list(cell_t **cp, context_t *ctx) {
   PRE_NO_CONTEXT(exec_list);
 
-  if(treq->t != T_LIST || closure_out(c) != 0) {
+  if(ctx->t != T_LIST || closure_out(c) != 0) {
     return SUCCESS;
   }
 
@@ -711,15 +711,15 @@ response exec_list(cell_t **cp, type_request_t *treq) {
   cell_t *res;
   csize_t
     in = closure_in(c),
-    out = treq->out - 1,
+    out = ctx->out - 1,
     n = in + out;
 
-  // if treq->t == T_LIST, need to wrap here
+  // if ctx->t == T_LIST, need to wrap here
   // move to func_exec; expand, wrap, and return the original function
   c = expand(c, out);
   FLAG_SET(c->expr, EXPR_NO_UNIFY);
   c->expr.out = out;
-  res = make_list(treq->out);
+  res = make_list(ctx->out);
   res->value.ptr[out] = c;
   COUNTUP(i, out) {
     cell_t *d = dep(ref(c));
@@ -735,7 +735,7 @@ response exec_list(cell_t **cp, type_request_t *treq) {
 }
 
 static
-response func_exec_trace(cell_t **cp, type_request_t *treq, cell_t *parent_entry) {
+response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
   size_t in = closure_in(*cp);
   cell_t *entry = (*cp)->expr.arg[in];
   PRE(exec_trace, " %E 0x%x", entry, (*cp)->expr.flags);
@@ -764,7 +764,7 @@ response func_exec_trace(cell_t **cp, type_request_t *treq, cell_t *parent_entry
         type_t t = p->value.type;
         if(t == T_LIST) t = T_ANY; // HACK, T_FUNCTION breaks things
         in_types[i] = t;
-        type_request_t tr = REQ(t, t);
+        context_t tr = CTX(t, t);
         tr.delay_assert = true;
         CHECK_IF(reduce(&c->expr.arg[i], &tr) == FAIL, FAIL);
         if(++n >= in) break;
@@ -772,7 +772,7 @@ response func_exec_trace(cell_t **cp, type_request_t *treq, cell_t *parent_entry
     }
 
     COUNTUP(i, in) {
-      CHECK(reduce_arg(c, i, &alt_set, &REQ(t, in_types[i])));
+      CHECK(reduce_arg(c, i, &alt_set, &CTX(t, in_types[i])));
       CHECK_IF(as_conflict(alt_set), FAIL);
       cell_t *a = clear_ptr(c->expr.arg[i]);
       LOG_WHEN(a->alt, "split %C[%d] = %C #exec_split", c, i, a);
@@ -796,7 +796,7 @@ response func_exec_trace(cell_t **cp, type_request_t *treq, cell_t *parent_entry
             switch_entry(entry, f);
           }
         }
-        CHECK(func_list(ap, &REQ(return)));
+        CHECK(func_list(ap, &CTX(return)));
         CHECK_DELAY();
 
         // ensure quotes are stored first
@@ -816,7 +816,7 @@ response func_exec_trace(cell_t **cp, type_request_t *treq, cell_t *parent_entry
     assert_error(j >= 0);
     type_t t = rtypes[j];
     if(t == T_ANY) {
-      t = treq->t;
+      t = ctx->t;
     }
     res = var(t, c, parent_entry->pos);
   }
@@ -843,7 +843,7 @@ response func_exec_trace(cell_t **cp, type_request_t *treq, cell_t *parent_entry
   return SUCCESS;
 
  abort:
-  return abort_op(rsp, cp, treq);
+  return abort_op(rsp, cp, ctx);
 }
 
 bool is_input(cell_t *v) {
@@ -857,7 +857,7 @@ bool all_dynamic(cell_t *entry, cell_t *c) {
   COUNTUP(i, in) {
     if(NOT_FLAG(entry[i+1].value, VALUE_CHANGES)) {
       int a = REVI(i);
-      reduce(&c->expr.arg[a], &REQ(any)); // HACK
+      reduce(&c->expr.arg[a], &CTX(any)); // HACK
       if(!is_input(c->expr.arg[a])) {
         LOG("not dynamic: %C %E arg[%d] = %C", c, entry, a, c->expr.arg[a]);
         return false;
@@ -874,31 +874,31 @@ OP(exec) {
   cell_t *parent_entry = trace_current_entry();
 
   if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
-    if(treq->priority < 1 &&
+    if(ctx->priority < 1 &&
        TWEAK(1, "to disable exec delay")) {
-      LOG("delay exec (priority %d) %E %C #abort", treq->priority, entry, c);
+      LOG("delay exec (priority %d) %E %C #abort", ctx->priority, entry, c);
       return DELAY;
     }
     assert_error(parent_entry,
                  "incomplete entry can't be unified without "
                  "a parent entry %C @exec_split", c);
-    if(entry->entry.wrap && !unify_exec(cp, parent_entry, treq)) {
+    if(entry->entry.wrap && !unify_exec(cp, parent_entry, ctx)) {
       LOG(MARK("WARN") " unify failed: %C %C",
           *cp, entry->entry.wrap->initial);
       ABORT(FAIL);
     }
-    return AND0(exec_list(cp, treq),
-                func_exec_trace(cp, treq, parent_entry));
+    return AND0(exec_list(cp, ctx),
+                func_exec_trace(cp, ctx, parent_entry));
   } else if(parent_entry && all_dynamic(entry, c)) {
-    return func_exec_trace(cp, treq, parent_entry);
+    return func_exec_trace(cp, ctx, parent_entry);
   } else if(parent_entry && entry->entry.rec) {
-    return func_exec_wrap(cp, treq, parent_entry);
+    return func_exec_wrap(cp, ctx, parent_entry);
   } else {
     assert_counter(1000);
 
     if(FLAG(c->expr, EXPR_RECURSIVE)) {
       TRAVERSE(c, in) {
-        CHECK(reduce(p, &REQ(any)));
+        CHECK(reduce(p, &CTX(any)));
       }
       CHECK_DELAY();
     }
@@ -921,14 +921,14 @@ OP(exec) {
   }
 
  abort:
-  return abort_op(rsp, cp, treq);
+  return abort_op(rsp, cp, ctx);
 }
 
 void reduce_quote(cell_t **cp) {
   if(is_user_func(*cp) && closure_is_ready(*cp)) { // HACKy
     LOG("HACK reduce_quote[%C]", *cp);
     insert_root(cp);
-    reduce(cp, &REQ(any));
+    reduce(cp, &CTX(any));
     remove_root(cp);
   }
 }
