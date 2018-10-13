@@ -174,6 +174,7 @@
 #define PRE_NO_CONTEXT(func)                    \
   UNUSED response rsp = SUCCESS;                \
   cell_t *c = ctx->src = *cp;                   \
+  ctx->alt_set = 0;                             \
   assert_error(!is_marked(c));                  \
   WATCH(c, #func)
 

@@ -73,10 +73,9 @@ response func_op2(cell_t **cp, context_t *ctx, int arg_type, int res_type, val_t
 
   CHECK_IF(!check_type(ctx->t, res_type), FAIL);
 
-  alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, &CTX(t, arg_type)));
-  CHECK(reduce_arg(c, 1, &alt_set, &CTX(t, arg_type)));
-  CHECK_IF(as_conflict(alt_set), FAIL);
+  CHECK(reduce_arg(c, 0, &CTX(t, arg_type)));
+  CHECK(reduce_arg(c, 1, &CTX(t, arg_type)));
+  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
 
@@ -84,7 +83,7 @@ response func_op2(cell_t **cp, context_t *ctx, int arg_type, int res_type, val_t
   CHECK_IF(nonzero && !is_var(q) && q->value.integer == 0, FAIL); // TODO assert this for variables
   res = _op2(c, res_type, op, p, q);
   res->alt = c->alt;
-  res->value.alt_set = alt_set;
+  res->value.alt_set = ctx->alt_set;
   add_conditions(res, p, q);
   store_reduced(cp, res);
   return SUCCESS;
@@ -99,15 +98,14 @@ response func_op1(cell_t **cp, context_t *ctx, int arg_type, int res_type, val_t
 
   CHECK_IF(!check_type(ctx->t, res_type), FAIL);
 
-  alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, &CTX(t, arg_type, CTX_INV(inv_op))));
+  CHECK(reduce_arg(c, 0, &CTX(t, arg_type, CTX_INV(inv_op))));
   CHECK_DELAY();
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
   res = _op1(c, res_type, op, p);
   res->alt = c->alt;
-  res->value.alt_set = alt_set;
+  res->value.alt_set = ctx->alt_set;
   add_conditions(res, p);
   store_reduced(cp, res);
   return SUCCESS;
@@ -131,10 +129,9 @@ response func_op2_float(cell_t **cp, context_t *ctx, double (*op)(double, double
 
   CHECK_IF(!check_type(ctx->t, T_FLOAT), FAIL);
 
-  alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, &CTX(float)));
-  CHECK(reduce_arg(c, 1, &alt_set, &CTX(float)));
-  CHECK_IF(as_conflict(alt_set), FAIL);
+  CHECK(reduce_arg(c, 0, &CTX(float)));
+  CHECK(reduce_arg(c, 1, &CTX(float)));
+  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
 
@@ -143,7 +140,7 @@ response func_op2_float(cell_t **cp, context_t *ctx, double (*op)(double, double
   res = is_var(p) || is_var(q) ? var(ctx->t, c) : _op2_float(op, p, q);
   res->value.type = T_FLOAT;
   res->alt = c->alt;
-  res->value.alt_set = alt_set;
+  res->value.alt_set = ctx->alt_set;
   add_conditions(res, p, q);
   store_reduced(cp, res);
   return SUCCESS;
@@ -158,8 +155,7 @@ response func_op1_float(cell_t **cp, context_t *ctx, double (*op)(double)) {
 
   CHECK_IF(!check_type(ctx->t, T_FLOAT), FAIL);
 
-  alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, &CTX(float)));
+  CHECK(reduce_arg(c, 0, &CTX(float)));
   CHECK_DELAY();
   clear_flags(c);
 
@@ -167,7 +163,7 @@ response func_op1_float(cell_t **cp, context_t *ctx, double (*op)(double)) {
   res = is_var(p) ? var(ctx->t, c) : _op1_float(op, p);
   res->value.type = T_FLOAT;
   res->alt = c->alt;
-  res->value.alt_set = alt_set;
+  res->value.alt_set = ctx->alt_set;
   add_conditions(res, p);
   store_reduced(cp, res);
   return SUCCESS;
@@ -353,8 +349,7 @@ OP(to_float) {
 
   CHECK_IF(!check_type(ctx->t, T_FLOAT), FAIL);
 
-  alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, &CTX(int)));
+  CHECK(reduce_arg(c, 0, &CTX(int)));
   CHECK_DELAY();
   clear_flags(c);
 
@@ -366,7 +361,7 @@ OP(to_float) {
   }
   res->value.type = T_FLOAT;
   res->alt = c->alt;
-  res->value.alt_set = alt_set;
+  res->value.alt_set = ctx->alt_set;
   add_conditions(res, p);
   store_reduced(cp, res);
   return SUCCESS;
@@ -382,8 +377,7 @@ OP(trunc) {
 
   CHECK_IF(!check_type(ctx->t, T_INT), FAIL);
 
-  alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, &CTX(float)));
+  CHECK(reduce_arg(c, 0, &CTX(float)));
   CHECK_DELAY();
   clear_flags(c);
 
@@ -395,7 +389,7 @@ OP(trunc) {
   }
   res->value.type = T_INT;
   res->alt = c->alt;
-  res->value.alt_set = alt_set;
+  res->value.alt_set = ctx->alt_set;
   add_conditions(res, p);
   store_reduced(cp, res);
   return SUCCESS;
@@ -438,8 +432,7 @@ OP(assert) {
 
   cell_t *res = NULL;
   cell_t *tc = NULL;
-  alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 1, &alt_set, &CTX(symbol, SYM_True)));
+  CHECK(reduce_arg(c, 1, &CTX(symbol, SYM_True)));
   CHECK_DELAY();
   cell_t *p = clear_ptr(c->expr.arg[1]);
   bool p_var = is_var(p);
@@ -452,8 +445,8 @@ OP(assert) {
     tc = trace_partial(OP_assert, 1, p);
   }
 
-  CHECK(reduce_arg(c, 0, &alt_set, ctx));
-  CHECK_IF(as_conflict(alt_set), FAIL);
+  CHECK(reduce_arg(c, 0, &CTX_UP));
+  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
   cell_t **q = &c->expr.arg[0];
@@ -468,7 +461,7 @@ OP(assert) {
     drop(res->alt);
     add_conditions_var(res, tc, p);
   }
-  res->value.alt_set = alt_set;
+  res->value.alt_set = ctx->alt_set;
   res->alt = c->alt;
 
   store_reduced(cp, res);
@@ -486,8 +479,7 @@ OP(seq) {
 
   cell_t *res = NULL;
   cell_t *tc = NULL;
-  alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 1, &alt_set, &CTX(any))); // don't split arg here?
+  CHECK(reduce_arg(c, 1, &CTX(any))); // don't split arg here?
   CHECK_DELAY();
   cell_t *p = clear_ptr(c->expr.arg[1]);
   bool p_var = is_var(p);
@@ -497,8 +489,8 @@ OP(seq) {
     tc = trace_partial(OP_seq, 1, p);
   }
 
-  CHECK(reduce_arg(c, 0, &alt_set, ctx));
-  CHECK_IF(as_conflict(alt_set), FAIL);
+  CHECK(reduce_arg(c, 0, &CTX_UP));
+  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
   cell_t **q = &c->expr.arg[0];
@@ -512,7 +504,7 @@ OP(seq) {
     drop(res->alt);
     add_conditions_var(res, tc, p);
   }
-  res->value.alt_set = alt_set;
+  res->value.alt_set = ctx->alt_set;
   res->alt = c->alt;
 
   store_reduced(cp, res);
@@ -530,7 +522,6 @@ OP(otherwise) {
 
   cell_t *res = NULL;
   cell_t *tc = NULL;
-  alt_set_t alt_set = 0;
   response rsp0 = reduce(&c->expr.arg[0], &CTX(any));
   CHECK_IF(rsp0 == DELAY, DELAY);
   cell_t *p = clear_ptr(c->expr.arg[0]);
@@ -546,7 +537,7 @@ OP(otherwise) {
     // alt?
   }
 
-  CHECK(reduce_arg(c, 1, &alt_set, ctx));
+  CHECK(reduce_arg(c, 1, &CTX_UP));
   CHECK_DELAY();
   clear_flags(c);
   cell_t **q = &c->expr.arg[1];
@@ -561,7 +552,7 @@ OP(otherwise) {
     drop(res->alt);
     add_conditions_var(res, tc);
   }
-  res->value.alt_set = alt_set;
+  res->value.alt_set = ctx->alt_set;
   res->alt = c->alt;
 
   store_reduced(cp, res);
@@ -574,18 +565,15 @@ abort:
 WORD("id", id, 1, 1)
 OP(id) {
   PRE(id);
-  alt_set_t alt_set = c->expr.alt_set;
+  ctx->alt_set = c->expr.alt_set;
   int pos = c->pos;
 
-  if(alt_set || c->alt) {
-    context_t id_ctx = *ctx;
-    id_ctx.src = c;
-    id_ctx.up = ctx;
-    CHECK(reduce_arg(c, 0, &alt_set, &id_ctx));
-    CHECK_IF(as_conflict(alt_set), FAIL);
+  if(ctx->alt_set || c->alt) {
+    CHECK(reduce_arg(c, 0, &CTX_UP));
+    CHECK_IF(as_conflict(ctx->alt_set), FAIL);
     CHECK_DELAY();
     clear_flags(c);
-    cell_t *res = mod_alt(ref(c->expr.arg[0]), c->alt, alt_set);
+    cell_t *res = mod_alt(ref(c->expr.arg[0]), c->alt, ctx->alt_set);
     mark_pos(res, pos);
     store_reduced(cp, res);
     return SUCCESS;
@@ -673,17 +661,16 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   cell_t *res = NULL;
   int pos = c->pos ? c->pos : c->expr.arg[in]->pos;
 
-  alt_set_t alt_set = 0;
   if(row) {
-    CHECK(reduce_arg(c, 0, &alt_set, &CTX(list, ctx->in, 0)));
+    CHECK(reduce_arg(c, 0, &CTX(list, ctx->in, 0)));
     CHECK_DELAY();
     p = clear_ptr(c->expr.arg[0]);
   }
-  CHECK(reduce_arg(c, in, &alt_set,
+  CHECK(reduce_arg(c, in,
                    &CTX(list,
                         function_compose_in(p, out ? 0 : ctx->in, arg_in, false /*_1_*/),
                         ctx->out + out)));
-  CHECK_IF(as_conflict(alt_set), FAIL);
+  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
   if(row) {
@@ -718,7 +705,7 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   unique(&res);
   drop(res->alt);
   res->alt = c->alt;
-  res->value.alt_set = alt_set;
+  res->value.alt_set = ctx->alt_set;
   //res->pos = pos; // ***
   add_conditions(res, p, *q);
 
@@ -732,7 +719,7 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
     cell_t *d = c->expr.arg[n-1-i];
     mark_pos(*x, pos);
     cell_t *seq_x = build_seq(ref(*x), ref(res));
-    store_lazy_dep(d, seq_x, alt_set);
+    store_lazy_dep(d, seq_x, ctx->alt_set);
     LOG_WHEN(res->alt, MARK("WARN") " alt seq dep %C <- %C #condition", d, seq_x);
     if(d) d->pos = pos; // ***
   }
@@ -766,10 +753,9 @@ OP(print) {
 
   CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
 
-  alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, &CTX(symbol)));
-  CHECK(reduce_arg(c, 1, &alt_set, &CTX(any)));
-  CHECK_IF(as_conflict(alt_set), FAIL);
+  CHECK(reduce_arg(c, 0, &CTX(symbol)));
+  CHECK(reduce_arg(c, 1, &CTX(any)));
+  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
 
@@ -804,8 +790,7 @@ response func_type(cell_t **cp, context_t *ctx, uint8_t type) {
 
   CHECK_IF(!check_type(ctx->t, type), FAIL);
 
-  alt_set_t alt_set = 0;
-  CHECK(reduce_arg(c, 0, &alt_set, &CTX(t, type)));
+  CHECK(reduce_arg(c, 0, &CTX(t, type)));
   CHECK_DELAY();
   clear_flags(c);
 

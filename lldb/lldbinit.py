@@ -63,4 +63,4 @@ def save_trees(debugger, command, result, dict):
     os.system("cp trees.log trees-saved.log")
 
 def diff_trees(debugger, command, result, dict):
-    os.system("colordiff -I^# trees-saved.log trees.log | less -r")
+    os.system("colordiff -u -I^# trees-saved.log trees.log | less -r")

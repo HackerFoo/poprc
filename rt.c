@@ -146,12 +146,11 @@ void split_expr(cell_t *c) {
 // Reduce then split c->arg[n]
 response reduce_arg(cell_t *c,
                 csize_t n,
-                alt_set_t *as,
                 context_t *ctx) {
   cell_t **ap = &c->expr.arg[n];
   response r = reduce(ap, ctx);
   cell_t *a = clear_ptr(*ap);
-  if(r == SUCCESS) *as |= a->value.alt_set;
+  if(r == SUCCESS) ctx->up->alt_set |= a->value.alt_set;
   if(r < DELAY) split_arg(c, n);
   return r;
 }
@@ -194,13 +193,12 @@ void split_ptr(cell_t *c, csize_t n) {
 // NOTE: c should never have a row
 response reduce_ptr(cell_t *c,
                     csize_t n,
-                    alt_set_t *as,
                     context_t *ctx) {
   assert_error(is_list(c));
   cell_t **ap = &c->value.ptr[n];
   response r = reduce(ap, ctx);
   cell_t *a = clear_ptr(*ap);
-  if(r == SUCCESS) *as |= a->value.alt_set;
+  if(r == SUCCESS) ctx->up->alt_set |= a->value.alt_set;
   if(r < DELAY) split_ptr(c, n);
   return r;
 }
@@ -843,6 +841,7 @@ uint8_t new_alt_id(unsigned int n) {
 #define CTX_return() \
   ((context_t) { .t = T_RETURN })
 #define CTX_INV(invert) ctx->expected, (ctx->expected ? invert(ctx->expected_value) : 0)
+#define CTX_UP ((context_t) { .t = ctx->t, .in = ctx->in, .out = ctx->out, CTX_INHERIT})
 #endif
 
 // default 'ctx' for CTX(...) to inherit

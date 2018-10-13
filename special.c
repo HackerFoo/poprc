@@ -326,12 +326,11 @@ OP(placeholder) {
     return RETRY;
   }
 
-  alt_set_t alt_set = 0;
   assert_error(in >= 1);
-  CHECK(reduce_arg(c, in - 1, &alt_set, &CTX(list, 0, 0))); // *** should use ctx
+  CHECK(reduce_arg(c, in - 1, &CTX(list, 0, 0))); // *** should use ctx
   COUNTUP(i, in - 1) {
-    CHECK(reduce_arg(c, i, &alt_set, &CTX(any)));
-    CHECK_IF(as_conflict(alt_set), FAIL);
+    CHECK(reduce_arg(c, i, &CTX(any)));
+    CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   }
   CHECK_DELAY();
   clear_flags(c);
@@ -341,19 +340,19 @@ OP(placeholder) {
      is_list(c->expr.arg[1]) &&
      list_size(c->expr.arg[1]) == 0 &&
      is_function(c->expr.arg[0])) {
-    store_reduced(cp, mod_alt(ref(c->expr.arg[0]), c->alt, alt_set));
+    store_reduced(cp, mod_alt(ref(c->expr.arg[0]), c->alt, ctx->alt_set));
     return SUCCESS;
   }
 
   cell_t *res = var(T_LIST, c, ctx->pos);
   res->alt = c->alt;
-  res->value.alt_set = alt_set;
+  res->value.alt_set = ctx->alt_set;
   RANGEUP(i, in, n) {
     cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {
       drop(c);
       d->expr.arg[0] = res;
-      store_dep(d, res->value.var, i, T_ANY, alt_set);
+      store_dep(d, res->value.var, i, T_ANY, ctx->alt_set);
     } else {
       LOG("dropped placeholder[%C] output", c);
     }

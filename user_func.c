@@ -748,8 +748,6 @@ response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
   assert_error(in, "recursive functions must have at least one input");
   assert_error(out >= entry_out, "%d %d", out, entry_out);
 
-  alt_set_t alt_set = 0;
-
   // reduce all inputs
   {
     csize_t n = 0;
@@ -771,8 +769,8 @@ response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
     }
 
     COUNTUP(i, in) {
-      CHECK(reduce_arg(c, i, &alt_set, &CTX(t, in_types[i])));
-      CHECK_IF(as_conflict(alt_set), FAIL);
+      CHECK(reduce_arg(c, i, &CTX(t, in_types[i])));
+      CHECK_IF(as_conflict(ctx->alt_set), FAIL);
       cell_t *a = clear_ptr(c->expr.arg[i]);
       LOG_WHEN(a->alt, "split %C[%d] = %C #exec_split", c, i, a);
     }
@@ -830,11 +828,11 @@ response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
       int j = next_bit(&mask);
       assert_error(j >= 0);
       type_t t = rtypes[j];
-      store_dep(d, res->value.var, i + in + 1, t, alt_set);
+      store_dep(d, res->value.var, i + in + 1, t, ctx->alt_set);
     }
   }
 
-  res->value.alt_set = alt_set;
+  res->value.alt_set = ctx->alt_set;
   res->alt = c->alt;
 
   add_conditions_from_array(res, c->expr.arg, in);
