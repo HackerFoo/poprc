@@ -131,6 +131,10 @@ void split_arg(cell_t *c, csize_t n) {
       *pa = mark_ptr(a);
     } else p = p->alt;
   } while(p);
+  if(!a->n) {
+    drop(a->alt);
+    a->alt = NULL;
+  }
 }
 
 void split_expr(cell_t *c) {
@@ -187,6 +191,10 @@ void split_ptr(cell_t *c, csize_t n) {
       *pa = mark_ptr(*pa);
     } else p = p->alt;
   } while(p);
+  if(!a->n) {
+    drop(a->alt);
+    a->alt = NULL;
+  }
 }
 
 // Reduce then split c->arg[n]
@@ -814,7 +822,7 @@ void store_lazy_dep(cell_t *d, cell_t *r, alt_set_t alt_set) {
 uint8_t new_alt_id(unsigned int n) {
   uint8_t r = alt_cnt;
   alt_cnt += n;
-  LOG("allocated alt ids %d...%d", r, alt_cnt-1);
+  LOG_WHEN(n > 0, "allocated alt ids %d...%d", r, alt_cnt-1);
   return r;
 }
 

@@ -119,7 +119,7 @@ GEN := $(patsubst %.c, .gen/%.h, $(SRC)) $(patsubst %, .gen/%_list.h, $(LISTS))
 DOT := $(wildcard *.dot)
 DOTSVG := $(patsubst %.dot, $(DIAGRAMS)/%.svg, $(DOT))
 
-PROFILE_EXPRESSION := '32 [0 1] [[dup2 +] .] swap2 1- times head'
+PROFILE_EXPRESSION := '426 [0 1] [[dup2 + 0xffff &b] .] swap2 1- times head'
 PPROF := ~/go/bin/pprof
 
 .PHONY: fast
@@ -283,8 +283,8 @@ graph: eval
 .PHONY: profile
 profile:
 	make BUILD=profile test
-	CPUPROFILE=eval_prof.out ./eval -lo lib.ppr -im -ev $(PROFILE_EXPRESSION) -q
-	$(PPROF) --web eval eval_prof.out
+	CPUPROFILE=eval_prof.out CPUPROFILE_FREQUENCY=10000 ./eval -lo lib.ppr tests.ppr -im -ev $(PROFILE_EXPRESSION) -st -q
+	$(PPROF) --pdf eval eval_prof.out > eval_prof.pdf
 
 .PHONY: dbg
 dbg:

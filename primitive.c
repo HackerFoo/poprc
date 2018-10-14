@@ -410,6 +410,25 @@ OP(pushr) {
   return RETRY;
 }
 
+cell_t *set_alt(cell_t *c, alt_set_t as, cell_t *alt) {
+  if(!c) return NULL;
+  if(!as && !alt) return c;
+  if(!c->n) {
+    if(!as) {
+      c->alt = conc_alt(alt, c->alt);
+      return c;
+    } else if(is_value(c)) {
+      c->alt = conc_alt(alt, c->alt);
+      c->value.alt_set = as;
+      return c;
+    }
+  }
+  cell_t *i = build_id(c);
+  i->expr.alt_set = as;
+  i->alt = alt;
+  return i;
+}
+
 WORD("|", alt, 2, 1)
 OP(alt) {
   PRE(alt);
@@ -419,9 +438,8 @@ OP(alt) {
     as0 = as_single(a, 0);
     as1 = as_single(a, 1);
   }
-  cell_t *r0 = id(c->expr.arg[0], as0);
-  cell_t *r1 = id(c->expr.arg[1], as1);
-  r0->alt = r1;
+  cell_t *r1 = set_alt(c->expr.arg[1], as1, c->alt);
+  cell_t *r0 = set_alt(c->expr.arg[0], as0, r1);
   store_lazy(cp, r0, 0);
   return RETRY;
 }
