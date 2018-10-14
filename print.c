@@ -362,11 +362,11 @@ static
 void print_int(val_t x) {
   switch(display_base) {
   case BASE_HEX:
-    printf(" 0x%" PRIxPTR, x);
+    printf("0x%" PRIxPTR, x);
     break;
   case BASE_DEC:
   default:
-    printf(" %" PRIdPTR, x);
+    printf("%" PRIdPTR, x);
     break;
   }
 }
@@ -378,7 +378,7 @@ void show_int(cell_t const *c) {
 
 void show_float(cell_t const *c) {
   assert_error(c && type_match(T_FLOAT, c));
-  printf(" %.15g", c->value.flt);
+  printf("%.15g", c->value.flt);
 }
 
 bool any_alt_overlap(cell_t const * const *p, csize_t size) {
@@ -411,40 +411,57 @@ csize_t any_conflicts(cell_t const * const *p, csize_t size) {
 void show_list_elements(cell_t const *c) {
   csize_t n = list_size(c);
   if(!n) return;
+  if(!list_is_printable(c)) {
+    printf("...");
+    return;
+  }
   if(is_row_list(c)) {
     show_list_elements(c->value.ptr[--n]);
   }
-  COUNTDOWN(i, n) {
+  show_one(c->value.ptr[n-1]);
+  COUNTDOWN(i, n-1) {
+    putchar(' ');
     show_one(c->value.ptr[i]);
   }
 }
 
 void show_list(cell_t const *c) {
   assert_error(c && is_list(c));
-  csize_t n = list_size(c);
-  if(!n) {
-    printf(" []");
-  } else {
-    printf(" [");
-    show_list_elements(c);
-    printf(" ]");
+  printf("[");
+  show_list_elements(c);
+  printf("]");
+}
+
+bool list_is_printable(cell_t const *l) {
+  cell_t **p;
+  FORLIST(p, (cell_t *)l) {
+    if(!is_printable(*p)) return false;
   }
+  return true;
+}
+
+bool is_printable(cell_t const *c) {
+  if(!c || is_value(c)) return true;
+  if(is_dep(c) || closure_out(c)) return false;
+  TRAVERSE(c, const_in) {
+    if(*p && !is_printable(*p)) return false;
+  }
+  return true;
 }
 
 void show_func(cell_t const *c) {
-  int n = closure_args(c);
   char const *s = function_token(c);
-  if(!s) return;
-  if(is_placeholder(c)) printf(" ?%d =", CELL_INDEX(c));
-  COUNTUP(i, n) {
-    cell_t *arg = c->expr.arg[i];
-    if(is_closure(arg)) {
-      show_one(arg);
+  assert_error(!is_dep(c) && !closure_out(c) && s);
+  bool first = true;
+  TRAVERSE(c, const_in) {
+    if(*p) {
+      if(!first) putchar(' ');
+      first = false;
+      show_one(*p);
     }
   }
-  if(c->op != OP_id) { // to reduce noise and allow diff'ing test output
-    printf(" %s", s);
-  }
+  if(!first) putchar(' ');
+  printf("%s", s);
 }
 
 void show_var(cell_t const *c) {
@@ -452,19 +469,20 @@ void show_var(cell_t const *c) {
   if(is_list(c)) {
     show_list(c);
   } else {
-    printf(" ?%c%d", type_char(c->value.type), CELL_INDEX(c));
+    printf("?%c%d", type_char(c->value.type), CELL_INDEX(c));
   }
 }
 
 void show_one(cell_t const *c) {
+  while(c && c->op == OP_id) c = c->expr.arg[0];
   if(!c) {
-    printf(" []");
+    printf("[]");
   } else if(!is_closure(c)) {
-    printf(" ?");
+    printf("?");
   } else if(!is_value(c)) {
     show_func(c);
   } else if(is_fail(c)) {
-    printf(" {}");
+    printf("{}");
   } else if(is_var(c)) {
     show_var(c);
   } else if(type_match(T_INT, c)) {
@@ -477,19 +495,19 @@ void show_one(cell_t const *c) {
     val_t x = c->value.integer;
     const char *str = symbol_string(x);
     if(str) {
-      printf(" %s", str);
+      printf("%s", str);
     } else {
-      printf(" UnknownSymbol");
+      printf("UnknownSymbol");
     }
   } else {
-    printf(" ?");
+    printf("?");
   }
 }
 
-void show_alts(cell_t const *c) {
+void show_alts(const char *prefix, cell_t const *c) {
   cell_t const *p = c;
   while(p) {
-    putchar(' ');
+    printf("%s", prefix);
     show_list_elements(p);
     putchar('\n');
     p = p->alt;

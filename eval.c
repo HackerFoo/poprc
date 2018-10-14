@@ -66,6 +66,14 @@ static bool quiet = false;
 static bool will_eval_commands = true;
 static bool eval_commands = true;
 
+static
+struct {
+  bool enabled;
+  seg_t channel;
+  seg_t nick;
+  seg_t password;
+} irc;
+
 COMMAND(git, "git commit for this build") {
   puts(GIT_LOG);
   if(command_line) quit = true;
@@ -143,7 +151,7 @@ COMMAND(eval, "evaluate the argument") {
       printf("^--- Parse error\n");
     } else {
       stats_start();
-      eval(p);
+      eval("  ", p);
       stats_stop();
     }
   }
@@ -531,18 +539,23 @@ cell_t *eval_module() {
   return modules ? get_module(string_seg("eval")) : NULL;
 }
 
-void eval(const cell_t *p) {
+bool eval(const char *prefix, const cell_t *p) {
+  bool success = false;
   cell_t *c = parse_expr(&p, eval_module(), NULL);
-  if(!c) return;
+  if(!c) return false;
   cell_t *left = *leftmost(&c);
   if(left && !closure_is_ready(left)) {
-    printf("incomplete expression\n");
+    if(!quiet) printf("incomplete expression\n");
   } else {
     reduce_root(&c);
-    if(c) ASSERT_REF();
-    show_alts(c);
+    if(c) {
+      ASSERT_REF();
+      success = true;
+      show_alts(prefix, c);
+    }
   }
   drop(c);
+  return success;
 }
 
 bool get_arity(const cell_t *p, csize_t *in, csize_t *out, cell_t *module) {
@@ -644,7 +657,7 @@ COMMAND(parse, "parse and print input lines") {
     cell_t *c = parse_expr((const cell_t **)&l, eval_module(), NULL);
     free_toks(l0);
     if(c) {
-      show_list(c);
+      show_list_elements(c);
       drop(c);
       putchar('\n');
     }
@@ -753,4 +766,113 @@ void breakpoint_hook() {
   print_active_entries("  - while compiling ");
   make_graph_all(NULL);
   log_trees();
+}
+
+COMMAND(ircpass, "IRC password") {
+  if(rest) {
+    irc.password = tok_seg(rest);
+  }
+}
+
+COMMAND(irc, "IRC bot mode") {
+  if(rest) {
+    irc.enabled = true;
+    irc.channel = tok_seg(rest);
+    if(rest->tok_list.next) {
+      irc.nick = tok_seg(rest->tok_list.next);
+    } else {
+      irc.nick = string_seg("poprbot");
+    }
+    irc_connect();
+    irc_join();
+    run_eval_irc();
+  }
+}
+
+void irc_connect() {
+  char username[64];
+  getlogin_r(username, sizeof(username));
+  if(irc.password.n) {
+    printf("PASS %.*s\n", (int)irc.password.n, irc.password.s);
+  }
+  printf("NICK %.*s\n", (int)irc.nick.n, irc.nick.s);
+  fflush(stdout);
+  printf("USER %s 0 * :Popr Bot\n", username);
+  fflush(stdout);
+}
+
+void irc_join() {
+  printf("JOIN :%.*s\n", (int)irc.channel.n, irc.channel.s);
+  fflush(stdout);
+}
+
+void irc_pong(const char *msg) {
+  printf("PONG :%s\n", msg);
+  fflush(stdout);
+}
+
+#define MOVE_TO(p, c) while(*(p) && *(p) != (c)) (p)++
+#define SKIP(p, c)    while(*(p) && *(p) == (c)) (p)++
+#define SKIP_PAST(p, c) MOVE_TO(p, c); SKIP(p, c)
+#define SKIP_ONE(p, c) if(*(p) == (c)) (p)++
+#define STRING_IS(p, s)                         \
+  (strncmp((p), (s), sizeof(s)-1) == 0 &&       \
+   (line += sizeof(s) - 1, true))
+#define SEG_IS(p, sg)                           \
+  (strncmp((p), (sg).s, (sg).n) == 0 &&         \
+   (line += (sg).n, true))
+
+void run_eval_irc() {
+  char prefix[64];
+  char *line_raw, *line;
+  char buf[1024];
+
+  snprintf(prefix, sizeof(prefix), ":%.*s PRIVMSG %.*s :",
+           (int)irc.nick.n, irc.nick.s,
+           (int)irc.channel.n, irc.channel.s);
+
+  while((line_raw = fgets(buf, sizeof(buf), stdin)))
+  {
+    char *p = line_raw;
+    while(*p && *p != '\n') ++p;
+    *p = 0;
+    if(line_raw[0] == '\0') {
+      continue;
+    }
+    line = line_raw;
+
+    error_t error;
+    if(catch_error(&error, true)) {
+      printf("%s\x01" "ACTION scowls" "\x01\n", prefix);
+      fflush(stdout);
+      continue;
+    }
+
+    if(*line == ':') {
+      SKIP_PAST(line, ' ');
+    }
+
+    if(STRING_IS(line, "PRIVMSG")) {
+      SKIP(line, ' ');
+      if(SEG_IS(line, irc.channel)) {
+        MOVE_TO(line, ':');
+        if(STRING_IS(line, ":")) {
+          SKIP(line, ' ');
+          if(SEG_IS(line, irc.nick)) {
+            SKIP_ONE(line, ':');
+            if(!eval(prefix, lex(line, 0))) {
+              printf("%s\x01" "ACTION overlooks this" "\x01\n", prefix);
+              fflush(stdout);
+            }
+          }
+        }
+      }
+    } else if(STRING_IS(line, "PING")) {
+      MOVE_TO(line, ':');
+      if(*line == ':') line++;
+      printf("PONG :%s\n", line);
+    }
+
+    fflush(stdout);
+  }
 }

@@ -282,6 +282,10 @@ cell_t **closure_next_arg(cell_t *c) {
   return &c->expr.arg[closure_next_child(c)];
 }
 
+cell_t *const *closure_next_arg_const(const cell_t *c) {
+  return &c->expr.arg[closure_next_child(c)];
+}
+
 cell_t *copy(cell_t const *c) {
   CONTEXT("copying %C", c);
   csize_t size = closure_cells(c);

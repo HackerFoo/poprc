@@ -274,7 +274,7 @@ void gen_value_rhs(cell_t *c) {
     break;
   case T_STRING: {
     seg_t s = c->value.str;
-    printf("{ .s = \"%*.s\", .n = %d };\n", (int)s.n, s.s, (int)s.n);
+    printf("{ .s = \"%.*s\", .n = %d };\n", (int)s.n, s.s, (int)s.n);
     break;
   }
   default:

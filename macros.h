@@ -95,6 +95,13 @@
         p < _end;                               \
         p++)
 
+#define TRAVERSE_const_in(c)                            \
+  if(!is_value(c))                                      \
+    for(cell_t *const *p = closure_next_arg_const(c),   \
+          *const *_end = &c->expr.arg[closure_in(c)];   \
+        p < _end;                                       \
+        p++)
+
 #define TRAVERSE_out(c)                                                 \
   if(!is_value(c))                                                      \
     for(cell_t **p = &c->expr.arg[closure_args(c) - closure_out(c)],    \

@@ -787,6 +787,7 @@ OP(print) {
     res = var(T_SYMBOL, c);
   } else if(p->value.integer == SYM_IO) {
     show_one(q);
+    printf("\n");
     res = ref(p);
   } else {
     ABORT(FAIL);

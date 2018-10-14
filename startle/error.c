@@ -46,6 +46,7 @@ typedef enum error_type_e {
 typedef struct {
   jmp_buf env;
   error_type_t type;
+  bool quiet;
 } error_t;
 
 #define assert_msg(...) DISPATCH(assert_msg, ##__VA_ARGS__)
@@ -163,7 +164,9 @@ typedef struct {
  * `e` is a pointer to an `error_t` that will be set after an error.
  * @snippet error.c error
  */
-#define catch_error(e) (current_error = (e), !!setjmp((e)->env))
+#define catch_error_1(e) catch_error_2(e, false)
+#define catch_error_2(e, q) (current_error = (e), current_error->quiet = (q), !!setjmp((e)->env))
+#define catch_error(...) DISPATCH(catch_error, __VA_ARGS__)
 
 /** Throw an error of a particular type.
  * Returns the error type and logs the following arguments.
@@ -215,8 +218,10 @@ void breakpoint_hook() {}
 
 /** Convenient place to set a breakpoint for debugger integration. */
 void breakpoint() {
-  print_context(5);
-  printf(NOTE("BREAKPOINT") " ");
-  print_last_log_msg();
+  if(!current_error || !current_error->quiet) {
+    print_context(5);
+    printf(NOTE("BREAKPOINT") " ");
+    print_last_log_msg();
+  }
   breakpoint_hook();
 }

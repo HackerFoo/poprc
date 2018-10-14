@@ -557,9 +557,10 @@ void trace_reduction(cell_t *c, cell_t *r) {
     if(FLAG(c->expr, EXPR_TRACE)) {
       printf("TRACE: %s", op_name(c->op));
       TRAVERSE(c, in) {
+        putchar(' ');
         show_one(*p);
       }
-      printf(" ->");
+      printf(" -> ");
       show_one(r);
       printf("\n");
       if(break_on_trace) {

@@ -907,6 +907,7 @@ OP(exec) {
       // HACK forces inputs
       printf("TRACE: %s.%s", entry->module_name, entry->word_name);
       TRAVERSE(c, in) {
+        putchar(' ');
         show_one(*p);
       }
       printf("\n");
