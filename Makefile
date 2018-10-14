@@ -31,7 +31,7 @@ ifeq ($(findstring gcc, $(CC)),gcc)
 	SANITIZE := -fsanitize=undefined
 	CFLAGS = -falign-functions=4 -Wall -std=gnu99
 	CXXFLAGS = -xc++ -falign-functions=4 -Wall -std=c++98
-	OPT_FLAG=-O3
+	OPT_FLAG = -O3
 	LDFLAGS += -rdynamic
 endif
 ifeq ($(findstring clang, $(CC)),clang)
@@ -42,8 +42,8 @@ endif
                  -Wno-gnu-zero-variadic-macro-arguments -Wno-address-of-packed-member \
                  -Wno-unknown-warning-option -Wno-zero-length-array -Wno-array-bounds \
                  -Werror=implicit-function-declaration -Werror=int-conversion
-	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -std=c++98 -m32
-	OPT_FLAG=-O3
+	CXXFLAGS = -xc++ -Wall -Wextra -pedantic -std=c++98
+	OPT_FLAG = -O3
 	LDFLAGS += -rdynamic
 endif
 
@@ -60,6 +60,7 @@ endif
 
 ifeq ($(FORCE_32_BIT),y)
 	CFLAGS += -m32
+	CXXFLAGS += -m32
 	LDFLAGS += -m32
 endif
 
