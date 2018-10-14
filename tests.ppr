@@ -270,4 +270,5 @@ __ stream: [dup [stream] pushl swap] pushl
 __ should't just drop an arg
 f8: . $
 
-__ fibl: [0 1] [[dup2 +] .] swap2 1- times head
+__ linear time version of `fib`
+fibl: [0 1] [[tuck +] .] swap2 1- times head
