@@ -349,12 +349,14 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
   }
 
   // handle returns
-  uint8_t alt_n = int_log2(entry->entry.alts);
+  // HACK: only allocate alt ids when compiling
+  bool tracing = trace_current_entry() != NULL;
+  uint8_t alt_n = tracing ? int_log2(entry->entry.alts) : 0;
   uint8_t alt_id = new_alt_id(alt_n);
   unsigned int branch = 0;
 
   // first one
-  alt_set_t alt_set = as_multi(alt_id, alt_n, branch++);
+  alt_set_t alt_set = tracing ? as_multi(alt_id, alt_n, branch++) : 0;
   *results[out] = id(get_return_arg(entry, returns, out), alt_set);
   COUNTUP(i, out) {
     store_lazy_dep(*results[i], get_return_arg(entry, returns, i), alt_set);
@@ -363,7 +365,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
   // rest
   trace_index_t next = trace_decode(returns->alt);
   while(next >= 0) {
-    alt_set_t as = as_multi(alt_id, alt_n, branch++);
+    alt_set_t as = tracing ? as_multi(alt_id, alt_n, branch++) : 0;
     returns = &entry[next];
     FOREACH(i, results) {
       cell_t *a = get_return_arg(entry, returns, i);
