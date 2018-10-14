@@ -72,6 +72,7 @@ cell_t nil_cell = {
 };
 
 // Structs for storing statistics
+int current_alloc_cnt = 0;
 stats_t stats, saved_stats;
 
 // Is `p` a pointer?
@@ -121,11 +122,12 @@ void cells_init() {
   cells_ptr = &cells[0];
   uninitialized_cells = &cells[2];
   uninitialized_cells_end = &cells[LENGTH(cells)];
+  current_alloc_cnt = 0;
 }
 
+static
 void cell_alloc(cell_t *c) {
   assert_error(is_cell(c) && !is_closure(c));
-  assert_throw(stats.current_alloc_cnt < MAX_ALLOC);
   cell_t *prev = c->mem.prev;
   assert_error(is_cell(prev) && !is_closure(prev));
   cell_t *next = c->mem.next;
@@ -134,9 +136,6 @@ void cell_alloc(cell_t *c) {
   assert_throw(c != prev && c != next, "can't alloc the last cell");
   prev->mem.next = next;
   next->mem.prev = prev;
-  stats.alloc_cnt++;
-  if(++stats.current_alloc_cnt > stats.max_alloc_cnt)
-    stats.max_alloc_cnt = stats.current_alloc_cnt;
 }
 
 cell_t *closure_alloc(csize_t args) {
@@ -146,7 +145,8 @@ cell_t *closure_alloc(csize_t args) {
 }
 
 cell_t *closure_alloc_cells(csize_t size) {
-  assert_throw(size < MAX_ALLOC_SIZE);
+  assert_throw(size <= MAX_ALLOC_SIZE);
+  assert_throw(current_alloc_cnt + size <= MAX_ALLOC, "%d bytes allocated", current_alloc_cnt);
   cell_t *c;
 
   if(uninitialized_cells &&
@@ -182,6 +182,12 @@ cell_t *closure_alloc_cells(csize_t size) {
       cell_alloc(&c[i]);
     }
   }
+
+  // update stats
+  stats.alloc_cnt += size;
+  current_alloc_cnt += size;
+  if(current_alloc_cnt > stats.max_alloc_cnt)
+    stats.max_alloc_cnt = current_alloc_cnt;
 
   memset(c, 0, sizeof(cell_t)*size);
   WATCH(c, "cell_alloc");
@@ -233,7 +239,7 @@ void closure_shrink(cell_t *c, csize_t s) {
     }
     cells_ptr->mem.prev = prev;
     prev->mem.next = cells_ptr;
-    stats.current_alloc_cnt -= size - s;
+    current_alloc_cnt -= size - s;
   }
 }
 
