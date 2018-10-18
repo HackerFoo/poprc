@@ -18,6 +18,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdlib.h>
 #include "rt_types.h"
 
 #include "startle/error.h"
@@ -856,6 +857,104 @@ OP(strcat) {
   res->alt = c->alt;
   res->value.alt_set = ctx->alt_set;
   add_conditions(res, p, q);
+  store_reduced(cp, res);
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, ctx);
+}
+
+WORD("=s", eq_str, 2, 1)
+OP(eq_str) {
+  cell_t *res = 0;
+  PRE(eq_str);
+
+  CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
+
+  CHECK(reduce_arg(c, 0, &CTX(string)));
+  CHECK(reduce_arg(c, 1, &CTX(string)));
+  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+  CHECK_DELAY();
+  clear_flags(c);
+
+  cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
+  if(is_var(p) || is_var(q)) {
+    res = var(T_SYMBOL, c);
+  } else {
+    res = val(T_SYMBOL,
+              strcmp(p->value.str,
+                     q->value.str) == 0);
+  }
+  res->alt = c->alt;
+  res->value.alt_set = ctx->alt_set;
+  add_conditions(res, p, q);
+  store_reduced(cp, res);
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, ctx);
+}
+
+static char tmp_string_buf[1024];
+
+seg_t int_to_string(uintptr_t x) {
+  int n = snprintf(tmp_string_buf, sizeof(tmp_string_buf), "%lld", (long long)x);
+  assert_error(n < (int)sizeof(tmp_string_buf));
+  return (seg_t) { .s = tmp_string_buf, .n = n };
+}
+
+WORD("->str", to_string, 1, 1)
+OP(to_string) {
+  cell_t *res = 0;
+  PRE(to_string);
+
+  CHECK_IF(!check_type(ctx->t, T_STRING), FAIL);
+
+  CHECK(reduce_arg(c, 0, &CTX(int)));
+  CHECK_DELAY();
+  clear_flags(c);
+
+  cell_t *p = c->expr.arg[0];
+  if(is_var(p)) {
+    res = var(T_STRING, c);
+  } else {
+    res = make_string(int_to_string(p->value.integer));
+  }
+  res->value.type = T_STRING;
+  res->alt = c->alt;
+  res->value.alt_set = ctx->alt_set;
+  add_conditions(res, p);
+  store_reduced(cp, res);
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, ctx);
+}
+
+WORD("<-str", from_string, 1, 1)
+OP(from_string) {
+  cell_t *res = 0;
+  PRE(to_string);
+
+  CHECK_IF(!check_type(ctx->t, T_INT), FAIL);
+
+  CHECK(reduce_arg(c, 0, &CTX(string)));
+  CHECK_DELAY();
+  clear_flags(c);
+
+  cell_t *p = c->expr.arg[0];
+  if(is_var(p)) {
+    res = var(T_INT, c);
+  } else {
+    char *end = NULL;
+    val_t x = strtoll(p->value.str, &end, 0);
+    CHECK_IF(!end || *end != '\0', FAIL);
+    res = val(T_INT, x);
+  }
+  res->value.type = T_INT;
+  res->alt = c->alt;
+  res->value.alt_set = ctx->alt_set;
+  add_conditions(res, p);
   store_reduced(cp, res);
   return SUCCESS;
 
