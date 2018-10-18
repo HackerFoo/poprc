@@ -832,3 +832,33 @@ WORD("symbol_t", symbol_t, 1, 1)
 OP(symbol_t) {
   return func_type(cp, ctx, T_SYMBOL);
 }
+
+WORD("++", strcat, 2, 1)
+OP(strcat) {
+  cell_t *res = 0;
+  PRE(strcat);
+
+  CHECK_IF(!check_type(ctx->t, T_STRING), FAIL);
+
+  CHECK(reduce_arg(c, 0, &CTX(string)));
+  CHECK(reduce_arg(c, 1, &CTX(string)));
+  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+  CHECK_DELAY();
+  clear_flags(c);
+
+  cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
+  if(is_var(p) || is_var(q)) {
+    res = var(T_STRING, c);
+  } else {
+    res = make_strcat(string_seg(p->value.str),
+                      string_seg(q->value.str));
+  }
+  res->alt = c->alt;
+  res->value.alt_set = ctx->alt_set;
+  add_conditions(res, p, q);
+  store_reduced(cp, res);
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, ctx);
+}

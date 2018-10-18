@@ -273,6 +273,18 @@ cell_t *make_string(seg_t s) {
   return c;
 }
 
+cell_t *make_strcat(seg_t s1, seg_t s2) {
+  int n = s1.n + s2.n;
+  int len = (sizeof(cell_t *) + n) / sizeof(cell_t *);
+  cell_t *c = closure_alloc(len + 1);
+  c->op = OP_value;
+  c->value.type = T_STRING;
+  memcpy(c->value.str, s1.s, s1.n);
+  memcpy(c->value.str + s1.n, s2.s, s2.n);
+  c->value.str[n] = '\0';
+  return c;
+}
+
 bool is_string(cell_t const *c) {
   return c && is_value(c) && c->value.type == T_STRING;
 }
