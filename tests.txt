@@ -87,3 +87,10 @@ __ otherwise
 1 0 / 2 3 | otherwise
 1 2 | 3 otherwise
 1 2 otherwise 3 otherwise
+
+__ strings
+"a" "b" ++
+"a" "a" =s
+"a" "b" =s
+42 ->str
+"42" <-str

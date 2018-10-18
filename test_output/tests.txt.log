@@ -114,3 +114,14 @@ __ otherwise
 1 2 | 3 otherwise
 1 2 otherwise 3 otherwise
   3
+__ strings
+"a" "b" ++
+  "ab"
+"a" "a" =s
+  True
+"a" "b" =s
+  False
+42 ->str
+  "42"
+"42" <-str
+  42
