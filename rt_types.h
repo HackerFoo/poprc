@@ -129,7 +129,7 @@ struct __attribute__((packed)) value {
       union {
         val_t integer;  /* integer */
         double flt;     /* float */
-        seg_t str;      /* string */
+        char str[0];    /* string */
         cell_t *ptr[2]; /* list */
       };
     };
@@ -181,7 +181,8 @@ typedef enum char_class_t {
   CC_BRACKET,
   CC_VAR,
   CC_COMMENT,
-  CC_DOT
+  CC_DOT,
+  CC_STRING
 } char_class_t;
 
 

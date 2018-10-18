@@ -37,6 +37,7 @@ char_class_t char_class(char c) {
   if(c == '?') return CC_VAR;
   if(c == '.') return CC_DOT;
   if(c == '_') return CC_COMMENT;
+  if(c == '\"') return CC_STRING;
   if(ONEOF(c, '[', ']', '(', ')', '{', '}'))
     return CC_BRACKET;
   return CC_SYMBOL;
@@ -131,6 +132,24 @@ TEST(comments) {
   return 0;
 }
 
+const char *string_literal_end(const char *s, const char *e) {
+  assert_throw(s + 1 < e && *s++ == '\"');
+  while(s < e && *s != '\"') {
+    if(*s == '\\' && ++s == e) break;
+    s++;
+  }
+  assert_throw(*s == '\"');
+  return s + 1;
+}
+
+TEST(string_literal) {
+  const char s[] = "\"test (\\\") string\"end";
+  const char *e = s + sizeof(s) - 1;
+  const char *a = string_literal_end(s, e);
+  printf("end = \"%s\"\n", a);
+  return strcmp(a, "end") ? -1 : 0;
+}
+
 seg_t tok(const char *s, const char* e, char_class_t *class) {
   seg_t seg = {NULL, 0};
   char_class_t cc = CC_NONE;
@@ -150,6 +169,13 @@ seg_t tok(const char *s, const char* e, char_class_t *class) {
 
   /* at start of token */
   seg.s = s;
+
+  /* string literals */
+  if(cc == CC_STRING) {
+    s = string_literal_end(s, e);
+    seg.n = s - seg.s;
+    goto done;
+  }
 
   /* allow adjacent brackets to be separately tokenized */
   if(ONEOF(cc, CC_BRACKET, CC_COMMENT)) {

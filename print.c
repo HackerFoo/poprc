@@ -381,6 +381,11 @@ void show_float(cell_t const *c) {
   printf("%.15g", c->value.flt);
 }
 
+void show_string(cell_t const *c) {
+  assert_error(c && type_match(T_STRING, c));
+  printf("\"%s\"",  c->value.str);
+}
+
 bool any_alt_overlap(cell_t const * const *p, csize_t size) {
   uintptr_t  mask = 0;
   while(size--) {
@@ -494,6 +499,8 @@ void show_one(cell_t const *c) {
     show_int(c);
   } else if(type_match(T_FLOAT, c)) {
     show_float(c);
+  } else if(type_match(T_STRING, c)) {
+    show_string(c);
   } else if(type_match(T_LIST, c)) {
     show_list(c);
   } else if(type_match(T_SYMBOL, c)) {

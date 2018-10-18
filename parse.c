@@ -486,6 +486,14 @@ cell_t *parse_expr(const cell_t **l, cell_t *module, cell_t *entry) {
         arg_stack[n++] = float_val(x);
       }
     } break;
+    case CC_STRING:
+    {
+      assert_throw(n < MAX_ARGS);
+      // TODO convert escape sequences
+      arg_stack[n++] =
+        make_string((seg_t) { .s = seg.s + 1,
+                              .n = seg.n - 2 });
+    } break;
 
     case CC_SYMBOL:
       if(seg.n == 1 && *seg.s == ',') {

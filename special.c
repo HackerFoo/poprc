@@ -16,6 +16,7 @@
 */
 
 #include "rt_types.h"
+#include <string.h>
 
 #include "startle/error.h"
 #include "startle/test.h"
@@ -263,10 +264,12 @@ bool is_map(cell_t const *c) {
 }
 
 cell_t *make_string(seg_t s) {
-  cell_t *c = closure_alloc(1);
+  int len = (sizeof(cell_t *) + s.n) / sizeof(cell_t *);
+  cell_t *c = closure_alloc(len + 1);
   c->op = OP_value;
   c->value.type = T_STRING;
-  c->value.str = s;
+  memcpy(c->value.str, s.s, s.n);
+  c->value.str[s.n] = '\0';
   return c;
 }
 
