@@ -450,8 +450,7 @@ bool is_printable(cell_t const *c) {
 }
 
 void show_func(cell_t const *c) {
-  char const *s = function_token(c);
-  assert_error(!is_dep(c) && !closure_out(c) && s);
+  assert_error(!is_dep(c) && !closure_out(c));
   bool first = true;
   TRAVERSE(c, const_in) {
     if(*p) {
@@ -461,7 +460,13 @@ void show_func(cell_t const *c) {
     }
   }
   if(!first) putchar(' ');
-  printf("%s", s);
+  if(c->op == OP_exec) {
+    const char *module_name = NULL, *word_name = NULL;
+    get_name(c, &module_name, &word_name);
+    printf("%s.%s", module_name, word_name);
+  } else {
+    printf("%s", function_token(c));
+  }
 }
 
 void show_var(cell_t const *c) {
