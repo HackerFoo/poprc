@@ -94,6 +94,7 @@ __ strings
 "a" "b" =s
 42 ->str
 "42" <-str
+"a, b" ", " strsplit
 
 __ IO
 IO input "Hello " swap ++ print

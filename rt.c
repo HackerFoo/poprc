@@ -506,6 +506,15 @@ void store_dep(cell_t *c, cell_t *tc, csize_t pos, type_t t, alt_set_t alt_set) 
   *c = v;
 }
 
+void store_dep_var(cell_t *c, cell_t *res, csize_t pos, type_t t, alt_set_t alt_set) {
+  cell_t *d = c->expr.arg[pos];
+  if(d && is_dep(d)) {
+    drop(c);
+    d->expr.arg[0] = res;
+    store_dep(d, res->value.var, pos, t, alt_set);
+  }
+}
+
 response abort_op(response rsp, cell_t **cp, context_t *ctx) {
   cell_t *c = *cp;
   if(rsp == FAIL) {

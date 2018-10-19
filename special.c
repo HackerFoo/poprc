@@ -365,9 +365,7 @@ OP(placeholder) {
   RANGEUP(i, in, n) {
     cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {
-      drop(c);
-      d->expr.arg[0] = res;
-      store_dep(d, res->value.var, i, T_ANY, ctx->alt_set);
+      store_dep_var(c, res, i, T_ANY, ctx->alt_set);
     } else {
       LOG("dropped placeholder[%C] output", c);
     }

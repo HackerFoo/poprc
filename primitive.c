@@ -821,6 +821,7 @@ OP(input) {
   cell_t *p = c->expr.arg[0];
   if(is_var(p)) {
     res = var(T_SYMBOL, c);
+    store_dep_var(c, res, 1, T_STRING, ctx->alt_set);
   } else if(p->value.integer == SYM_IO) {
     seg_t s = string_seg(fgets(input_buf, sizeof(input_buf), stdin));
     if(s.n > 0 && s.s[s.n - 1] == '\n') s.n--;
@@ -969,7 +970,7 @@ OP(to_string) {
 WORD("<-str", from_string, 1, 1)
 OP(from_string) {
   cell_t *res = 0;
-  PRE(to_string);
+  PRE(from_string);
 
   CHECK_IF(!check_type(ctx->t, T_INT), FAIL);
 
@@ -987,6 +988,44 @@ OP(from_string) {
     res = val(T_INT, x);
   }
   res->value.type = T_INT;
+  res->alt = c->alt;
+  res->value.alt_set = ctx->alt_set;
+  add_conditions(res, p);
+  store_reduced(cp, res);
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, ctx);
+}
+
+WORD("strsplit", strsplit, 2, 2)
+OP(strsplit) {
+  cell_t *res = 0;
+  PRE(strsplit);
+
+  CHECK_IF(!check_type(ctx->t, T_STRING), FAIL);
+
+  CHECK(reduce_arg(c, 0, &CTX(string)));
+  CHECK(reduce_arg(c, 1, &CTX(string)));
+  CHECK_DELAY();
+  clear_flags(c);
+
+  cell_t *p = c->expr.arg[0];
+  cell_t *q = c->expr.arg[1];
+  if(is_var(p)) {
+    res = var(T_STRING, c);
+    store_dep_var(c, res, 2, T_STRING, ctx->alt_set);
+  } else {
+    char *s = strstr(p->value.str, q->value.str);
+    CHECK_IF(!s, FAIL);
+    int needle_len = strlen(q->value.str);
+    res = make_string((seg_t) {.s = p->value.str, .n = s - p->value.str});
+    store_lazy_dep(c->expr.arg[2],
+                   make_string((seg_t) {.s = s + needle_len,
+                                        .n = strlen(s + needle_len)}),
+                   0);
+  }
+  res->value.type = T_STRING;
   res->alt = c->alt;
   res->value.alt_set = ctx->alt_set;
   add_conditions(res, p);
