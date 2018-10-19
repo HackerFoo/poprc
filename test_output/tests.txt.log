@@ -125,3 +125,7 @@ __ strings
   "42"
 "42" <-str
   42
+__ IO
+IO input "Hello " swap ++ print
+Hello World
+  IO

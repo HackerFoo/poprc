@@ -773,7 +773,7 @@ OP(print) {
   CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
 
   CHECK(reduce_arg(c, 0, &CTX(symbol)));
-  CHECK(reduce_arg(c, 1, &CTX(any)));
+  CHECK(reduce_arg(c, 1, &CTX(string)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
@@ -787,8 +787,7 @@ OP(print) {
   if(is_var(p) || is_var(q)) {
     res = var(T_SYMBOL, c);
   } else if(p->value.integer == SYM_IO) {
-    show_one(q);
-    printf("\n");
+    printf("%s\n", q->value.str);
     res = ref(p);
   } else {
     ABORT(FAIL);
@@ -797,7 +796,43 @@ OP(print) {
   return SUCCESS;
 
  abort:
-  drop(res);
+  return abort_op(rsp, cp, ctx);
+}
+
+static char input_buf[1024];
+
+WORD("input", input, 1, 2)
+OP(input) {
+  cell_t *res = 0;
+  PRE(input);
+
+  CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
+
+  CHECK(reduce_arg(c, 0, &CTX(symbol)));
+  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+  CHECK_DELAY();
+  clear_flags(c);
+
+  if(c->alt) {
+    drop(c->alt);
+    c->alt = 0;
+  }
+
+  cell_t *p = c->expr.arg[0];
+  if(is_var(p)) {
+    res = var(T_SYMBOL, c);
+  } else if(p->value.integer == SYM_IO) {
+    seg_t s = string_seg(fgets(input_buf, sizeof(input_buf), stdin));
+    if(s.n > 0 && s.s[s.n - 1] == '\n') s.n--;
+    store_lazy_dep(c->expr.arg[1], make_string(s), 0);
+    res = ref(p);
+  } else {
+    ABORT(FAIL);
+  }
+  store_reduced(cp, res);
+  return SUCCESS;
+
+ abort:
   return abort_op(rsp, cp, ctx);
 }
 

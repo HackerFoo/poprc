@@ -285,8 +285,7 @@ seg_t seg_after(seg_t s, char c) {
 
 /** Create a string segment from a C string. */
 seg_t string_seg(const char *str) {
-  seg_t seg = {str, strlen(str)};
-  return seg;
+  return (seg_t) {str, str ? strlen(str) : 0};
 }
 
 /** Look up the string segment key in a sorted table.
