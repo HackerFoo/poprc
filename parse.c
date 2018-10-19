@@ -333,6 +333,16 @@ fail:
   return p;
 }
 
+bool has_IO(const cell_t *p) {
+  UNUSED const cell_t *keep;
+  while(p) {
+    MATCH_IF(segcmp("IO", tok_seg(p)) != 0, keep);
+  }
+  return false;
+fail:
+  return true;
+}
+
 cell_t *check_def(cell_t *l) {
   // check expression types
   cell_t *p = NULL;

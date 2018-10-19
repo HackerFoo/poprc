@@ -65,6 +65,7 @@ static bool run_leak_test = true;
 static bool quiet = false;
 static bool will_eval_commands = true;
 static bool eval_commands = true;
+static bool allow_io = true;
 
 static
 struct {
@@ -541,20 +542,24 @@ cell_t *eval_module() {
 
 bool eval(const char *prefix, const cell_t *p) {
   bool success = false;
-  cell_t *c = parse_expr(&p, eval_module(), NULL);
-  if(!c) return false;
-  cell_t *left = *leftmost(&c);
-  if(left && !closure_is_ready(left)) {
-    if(!quiet) printf("incomplete expression\n");
+  if(!allow_io && has_IO(p)) {
+    if(!quiet) printf("IO not allowed.\n");
   } else {
-    reduce_root(&c);
-    if(c) {
-      ASSERT_REF();
-      success = true;
-      show_alts(prefix, c);
+    cell_t *c = parse_expr(&p, eval_module(), NULL);
+    if(!c) return false;
+    cell_t *left = *leftmost(&c);
+    if(left && !closure_is_ready(left)) {
+      if(!quiet) printf("incomplete expression\n");
+    } else {
+      reduce_root(&c);
+      if(c) {
+        ASSERT_REF();
+        success = true;
+        show_alts(prefix, c);
+      }
     }
+    drop(c);
   }
-  drop(c);
   return success;
 }
 
@@ -783,6 +788,7 @@ COMMAND(irc, "IRC bot mode") {
     } else {
       irc.nick = string_seg("poprbot");
     }
+    allow_io = false;
     irc_connect();
     irc_join();
     run_eval_irc();
@@ -875,4 +881,8 @@ void run_eval_irc() {
 
     fflush(stdout);
   }
+}
+
+COMMAND(noio, "prevent IO") {
+  allow_io = false;
 }
