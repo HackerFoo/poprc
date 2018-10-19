@@ -16,7 +16,6 @@
 */
 
 #include <string.h>
-#include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
 #include "rt_types.h"
@@ -787,7 +786,7 @@ OP(print) {
   if(is_var(p) || is_var(q)) {
     res = var(T_SYMBOL, c);
   } else if(p->value.integer == SYM_IO) {
-    printf("%s\n", q->value.str);
+    io->write(string_seg(q->value.str));
     res = ref(p);
   } else {
     ABORT(FAIL);
@@ -798,8 +797,6 @@ OP(print) {
  abort:
   return abort_op(rsp, cp, ctx);
 }
-
-static char input_buf[1024];
 
 WORD("input", input, 1, 2)
 OP(input) {
@@ -823,8 +820,7 @@ OP(input) {
     res = var(T_SYMBOL, c);
     store_dep_var(c, res, 1, T_STRING, ctx->alt_set);
   } else if(p->value.integer == SYM_IO) {
-    seg_t s = string_seg(fgets(input_buf, sizeof(input_buf), stdin));
-    if(s.n > 0 && s.s[s.n - 1] == '\n') s.n--;
+    seg_t s = io->read();
     store_lazy_dep(c->expr.arg[1], make_string(s), 0);
     res = ref(p);
   } else {

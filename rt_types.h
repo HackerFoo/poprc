@@ -279,4 +279,9 @@ void breakpoint();
 
 #define COMMAND(name, desc) void command_##name(UNUSED cell_t *rest)
 
+typedef struct {
+  seg_t (*read)();
+  void (*write)(seg_t);
+} io_t;
+
 #endif

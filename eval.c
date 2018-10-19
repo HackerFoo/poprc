@@ -75,6 +75,8 @@ struct {
   seg_t password;
 } irc;
 
+static char line_buffer[1024];
+
 COMMAND(git, "git commit for this build") {
   puts(GIT_LOG);
   if(command_line) quit = true;
@@ -362,15 +364,12 @@ void run_eval(bool echo) {
   initialize_readline();
   while((line_raw = readline(": ")))
 #else
-  char buf[1024];
   while(tty && printf(": "),
-        (line_raw = fgets(buf, sizeof(buf), stdin)))
+        (line_raw = fgets(line_buffer, sizeof(line_buffer), stdin)))
 #endif
   {
 #ifdef RAW_LINE
-    char *p = line_raw;
-    while(*p && *p != '\n') ++p;
-    *p = 0;
+    replace_char(line_raw, '\n', '\0');
 #endif
     if(line_raw[0] == '\0') {
 #ifndef RAW_LINE
@@ -627,8 +626,7 @@ COMMAND(bits, "number of bits in a pointer") {
 
 COMMAND(lex, "lex and print the arguments") {
   char *line_raw, *line;
-  char buf[1024];
-  while((line_raw = fgets(buf, sizeof(buf), stdin)))
+  while((line_raw = fgets(line_buffer, sizeof(line_buffer), stdin)))
   {
     char *p = line_raw;
     while(*p && *p != '\n') ++p;
@@ -647,8 +645,7 @@ COMMAND(lex, "lex and print the arguments") {
 
 COMMAND(parse, "parse and print input lines") {
   char *line_raw, *line;
-  char buf[1024];
-  while((line_raw = fgets(buf, sizeof(buf), stdin)))
+  while((line_raw = fgets(line_buffer, sizeof(line_buffer), stdin)))
   {
     char *p = line_raw;
     while(*p && *p != '\n') ++p;
@@ -672,10 +669,9 @@ COMMAND(parse, "parse and print input lines") {
 
 COMMAND(bc_in, "print bytecode for each line") {
   char *line_raw, *line;
-  char buf[1024];
   char name_buf[128];
   unsigned int n = 0;
-  while((line_raw = fgets(buf, sizeof(buf), stdin)))
+  while((line_raw = fgets(line_buffer, sizeof(line_buffer), stdin)))
   {
     char *p = line_raw;
     while(*p && *p != '\n') ++p;
@@ -788,7 +784,8 @@ COMMAND(irc, "IRC bot mode") {
     } else {
       irc.nick = string_seg("poprbot");
     }
-    allow_io = false;
+    io = &irc_io;
+    irc_update_prefix();
     irc_connect();
     irc_join();
     run_eval_irc();
@@ -828,36 +825,20 @@ void irc_pong(const char *msg) {
   (strncmp((p), (sg).s, (sg).n) == 0 &&         \
    (line += (sg).n, true))
 
-void run_eval_irc() {
-  char prefix[64];
-  char *line_raw, *line;
-  char buf[1024];
-
-  snprintf(prefix, sizeof(prefix), ":%.*s PRIVMSG %.*s :",
+char irc_prefix[64];
+void irc_update_prefix() {
+  snprintf(irc_prefix, sizeof(irc_prefix), ":%.*s PRIVMSG %.*s :",
            (int)irc.nick.n, irc.nick.s,
            (int)irc.channel.n, irc.channel.s);
+}
 
-  while((line_raw = fgets(buf, sizeof(buf), stdin)))
+void run_eval_irc() {
+  char *line;
+
+  while((line = fgets(line_buffer, sizeof(line_buffer), stdin)))
   {
-    char *p = line_raw;
-    while(*p && *p != '\n') ++p;
-    *p = 0;
-    if(line_raw[0] == '\0') {
-      continue;
-    }
-    line = line_raw;
-
-    error_t error;
-    if(catch_error(&error, true)) {
-      printf("%s\x01" "ACTION scowls" "\x01\n", prefix);
-      fflush(stdout);
-      continue;
-    }
-
-    if(*line == ':') {
-      SKIP_PAST(line, ' ');
-    }
-
+    if(!replace_char(line, '\n', '\0')) continue;
+    if(*line == ':') SKIP_PAST(line, ' ');
     if(STRING_IS(line, "PRIVMSG")) {
       SKIP(line, ' ');
       if(SEG_IS(line, irc.channel)) {
@@ -866,10 +847,11 @@ void run_eval_irc() {
           SKIP(line, ' ');
           if(SEG_IS(line, irc.nick)) {
             SKIP_ONE(line, ':');
-            if(!eval(prefix, lex(line, 0))) {
-              printf("%s\x01" "ACTION overlooks this" "\x01\n", prefix);
-              fflush(stdout);
+            SKIP(line, ' ');
+            if(!eval(irc_prefix, lex(line, 0))) {
+              printf("%s\x01" "ACTION overlooks this" "\x01\n", irc_prefix);
             }
+            fflush(stdout);
           }
         }
       }
@@ -877,12 +859,51 @@ void run_eval_irc() {
       MOVE_TO(line, ':');
       if(*line == ':') line++;
       printf("PONG :%s\n", line);
+      fflush(stdout);
     }
-
-    fflush(stdout);
   }
 }
 
 COMMAND(noio, "prevent IO") {
   allow_io = false;
 }
+
+seg_t irc_io_read() {
+  char *line;
+  printf("%s\x01" "ACTION is waiting" "\x01\n", irc_prefix);
+  fflush(stdout);
+  while((line = fgets(line_buffer, sizeof(line_buffer), stdin))) {
+    if(!replace_char(line, '\n', '\0')) continue;
+    if(*line == ':') SKIP_PAST(line, ' ');
+    if(STRING_IS(line, "PRIVMSG")) {
+      SKIP(line, ' ');
+      if(SEG_IS(line, irc.channel)) {
+        MOVE_TO(line, ':');
+        if(STRING_IS(line, ":")) {
+          SKIP(line, ' ');
+          if(SEG_IS(line, irc.nick)) {
+            SKIP_ONE(line, ':');
+            SKIP(line, ' ');
+            return string_seg(line);
+          }
+        }
+      }
+    } else if(STRING_IS(line, "PING")) {
+      MOVE_TO(line, ':');
+      if(*line == ':') line++;
+      printf("PONG :%s\n", line);
+      fflush(stdout);
+    }
+  }
+  return (seg_t) {.s = NULL, .n = 0};
+}
+
+void irc_io_write(seg_t s) {
+  printf("%s%.*s\n", irc_prefix, (int)s.n, s.s);
+  fflush(stdout);
+}
+
+const io_t irc_io = {
+  .read = irc_io_read,
+  .write = irc_io_write
+};

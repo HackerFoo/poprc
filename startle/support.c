@@ -649,3 +649,9 @@ int next_bit(uintptr_t *mask) {
     return -1;
   }
 }
+
+char *replace_char(char *s, char c_old, char c_new) {
+  char *r = strchr(s, c_old);
+  if(r) *r = c_new;
+  return r;
+}

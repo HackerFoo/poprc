@@ -945,3 +945,23 @@ bool is_linear(context_t *ctx) {
   }
   return true;
 }
+
+static char input_buf[1024];
+
+seg_t default_io_read() {
+  seg_t s = string_seg(fgets(input_buf, sizeof(input_buf), stdin));
+  if(s.n > 0 && s.s[s.n - 1] == '\n') s.n--;
+  return s;
+}
+
+void default_io_write(seg_t s) {
+  printf("%.*s\n", (int)s.n, s.s);
+  fflush(stdout);
+}
+
+const io_t default_io = {
+  .read = default_io_read,
+  .write = default_io_write
+};
+
+const io_t *io = &default_io;
