@@ -832,35 +832,23 @@ void irc_update_prefix() {
            (int)irc.channel.n, irc.channel.s);
 }
 
-void run_eval_irc() {
-  char *line;
+void irc_action(const char *msg) {
+  printf("%s\x01" "ACTION %s" "\x01\n", irc_prefix, msg);
+  fflush(stdout);
+}
 
-  while((line = fgets(line_buffer, sizeof(line_buffer), stdin)))
-  {
-    if(!replace_char(line, '\n', '\0')) continue;
-    if(*line == ':') SKIP_PAST(line, ' ');
-    if(STRING_IS(line, "PRIVMSG")) {
-      SKIP(line, ' ');
-      if(SEG_IS(line, irc.channel)) {
-        MOVE_TO(line, ':');
-        if(STRING_IS(line, ":")) {
-          SKIP(line, ' ');
-          if(SEG_IS(line, irc.nick)) {
-            SKIP_ONE(line, ':');
-            SKIP(line, ' ');
-            if(!eval(irc_prefix, lex(line, 0))) {
-              printf("%s\x01" "ACTION overlooks this" "\x01\n", irc_prefix);
-            }
-            fflush(stdout);
-          }
-        }
-      }
-    } else if(STRING_IS(line, "PING")) {
-      MOVE_TO(line, ':');
-      if(*line == ':') line++;
-      printf("PONG :%s\n", line);
+void run_eval_irc() {
+  error_t error;
+  seg_t s = irc_io_read();
+  while(s.s) {
+    if(catch_error(&error, true)) {
+      irc_action("scowls");
+    } else if(eval(irc_prefix, lex(s.s, seg_end(s)))) {
       fflush(stdout);
+    } else {
+      irc_action("overlooks this");
     }
+    s = irc_io_read();
   }
 }
 
@@ -868,10 +856,13 @@ COMMAND(noio, "prevent IO") {
   allow_io = false;
 }
 
+seg_t irc_io_read_with_prompt() {
+  irc_action("is waiting");
+  return irc_io_read();
+}
+
 seg_t irc_io_read() {
   char *line;
-  printf("%s\x01" "ACTION is waiting" "\x01\n", irc_prefix);
-  fflush(stdout);
   while((line = fgets(line_buffer, sizeof(line_buffer), stdin))) {
     if(!replace_char(line, '\n', '\0')) continue;
     if(*line == ':') SKIP_PAST(line, ' ');
@@ -904,6 +895,6 @@ void irc_io_write(seg_t s) {
 }
 
 const io_t irc_io = {
-  .read = irc_io_read,
+  .read = irc_io_read_with_prompt,
   .write = irc_io_write
 };
