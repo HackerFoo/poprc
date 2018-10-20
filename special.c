@@ -263,25 +263,28 @@ bool is_map(cell_t const *c) {
   return c && is_value(c) && c->value.type == T_MAP;
 }
 
-cell_t *make_string(seg_t s) {
-  int len = (sizeof(cell_t *) + s.n) / sizeof(cell_t *);
-  cell_t *c = closure_alloc(len + 1);
+// allocate space for n chars + '\0'
+cell_t *closure_alloc_string(size_t n) {
+  int args = DIV_UP(n + 1, sizeof_field(cell_t, expr.arg[0]));
+  cell_t *c = closure_alloc(args + VALUE_OFFSET(str));
   c->op = OP_value;
   c->value.type = T_STRING;
+  c->value.str[n] = '\0';
+  return c;
+}
+
+cell_t *make_string(seg_t s) {
+  cell_t *c = closure_alloc_string(s.n);
   memcpy(c->value.str, s.s, s.n);
-  c->value.str[s.n] = '\0';
   return c;
 }
 
 cell_t *make_strcat(seg_t s1, seg_t s2) {
-  int n = s1.n + s2.n;
-  int len = (sizeof(cell_t *) + n) / sizeof(cell_t *);
-  cell_t *c = closure_alloc(len + 1);
+  cell_t *c = closure_alloc_string(s1.n + s2.n);
   c->op = OP_value;
   c->value.type = T_STRING;
   memcpy(c->value.str, s1.s, s1.n);
   memcpy(c->value.str + s1.n, s2.s, s2.n);
-  c->value.str[n] = '\0';
   return c;
 }
 

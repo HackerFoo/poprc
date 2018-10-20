@@ -235,7 +235,7 @@ struct __attribute__((packed, aligned(4))) cell {
   };
 };
 
-#define LIST_OFFSET ((offsetof(cell_t, value.ptr) - offsetof(cell_t, expr.arg)) / sizeof(cell_t *))
+#define VALUE_OFFSET(f) ((offsetof(cell_t, value.f) - offsetof(cell_t, expr.arg)) / sizeof(cell_t *))
 
 #ifndef EMSCRIPTEN
 static_assert(sizeof(cell_t) == sizeof_field(cell_t, raw), "cell_t wrong size");

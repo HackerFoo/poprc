@@ -127,6 +127,8 @@ __ strings
   42
 "a, b" ", " strsplit
   "a" "b"
+"========>" "---------------good" ++
+  "========>---------------good"
 __ IO
 IO input "Hello " swap ++ print
 Hello World

@@ -66,7 +66,7 @@ cell_t fail_cell = {
 
 cell_t nil_cell = {
   .op = OP_value,
-  .size = LIST_OFFSET,
+  .size = VALUE_OFFSET(ptr),
   .n = PERSISTENT,
   .value.type = T_LIST
 };
@@ -253,7 +253,7 @@ bool is_offset(cell_t const *c) {
 }
 
 csize_t list_size(cell_t const *c) {
-  return c->size > LIST_OFFSET ? c->size - LIST_OFFSET : 0;
+  return c->size > VALUE_OFFSET(ptr) ? c->size - VALUE_OFFSET(ptr) : 0;
 }
 
 csize_t closure_args(cell_t const *c) {

@@ -182,6 +182,13 @@
     _b > _a ? 0 : _a - _b;                      \
   })
 
+/** Integer division rounding up. */
+#define DIV_UP(n, d)                            \
+  ({                                            \
+    __typeof__(d) _d = (d);                     \
+    (_d - 1 + (n)) / _d;                        \
+  })
+
 #define INRANGE_3(x, lo0, hi0)                  \
   ({                                            \
     __typeof__(x) _x = (x);                     \

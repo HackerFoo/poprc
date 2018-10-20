@@ -35,14 +35,14 @@ cell_t *empty_list() {
 }
 
 cell_t *make_list(csize_t n) {
-  cell_t *c = closure_alloc(n + LIST_OFFSET);
+  cell_t *c = closure_alloc(n + VALUE_OFFSET(ptr));
   c->op = OP_value;
   c->value.type = T_LIST;
   return c;
 }
 
 cell_t *quote(cell_t *x) {
-  cell_t *c = closure_alloc(1 + LIST_OFFSET);
+  cell_t *c = closure_alloc(1 + VALUE_OFFSET(ptr));
   c->op = OP_value;
   c->value.type = T_LIST;
   c->value.ptr[0] = x;
