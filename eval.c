@@ -864,7 +864,8 @@ seg_t irc_io_read_with_prompt() {
 seg_t irc_io_read() {
   char *line;
   while((line = fgets(line_buffer, sizeof(line_buffer), stdin))) {
-    if(!replace_char(line, '\n', '\0')) continue;
+    if(!(replace_char(line, '\r', '\0') ||
+         replace_char(line, '\n', '\0'))) continue;
     if(*line == ':') SKIP_PAST(line, ' ');
     if(STRING_IS(line, "PRIVMSG")) {
       SKIP(line, ' ');
