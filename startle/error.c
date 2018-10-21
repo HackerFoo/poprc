@@ -161,6 +161,28 @@ typedef struct {
     (*counter)++;                                                        \
   } while(0)
 
+#ifdef NDEBUG
+#define assert_op(op, x, y) ((void)0)
+#else
+#define assert_op(op, x, y)                                     \
+  do {                                                          \
+    __typeof__(x) _x = (x);                                     \
+    __typeof__(y) _y = (y);                                     \
+    if(!(_x op _y)) {                                           \
+      throw_error(ERROR_TYPE_UNEXPECTED,                        \
+                  "Assertion `" #x " " #op " " #y               \
+                  "' failed: %d, %d", X, (int)_x, (int)_y);     \
+    }                                                           \
+  } while(0)
+#endif
+
+#define assert_eq(x, y)  assert_op(==, x, y)
+#define assert_neq(x, y) assert_op(!=, x, y)
+#define assert_lt(x, y)  assert_op(<,  x, y)
+#define assert_le(x, y)  assert_op(<=, x, y)
+#define assert_gt(x, y)  assert_op(>,  x, y)
+#define assert_ge(x, y)  assert_op(>=, x, y)
+
 /** Catch errors.
  * `e` is a pointer to an `error_t` that will be set after an error.
  * @snippet error.c error
