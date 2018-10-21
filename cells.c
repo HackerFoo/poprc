@@ -654,3 +654,16 @@ int count_out_used(const cell_t *c) {
   }
   return (ref >= 0) + c->n - ref;
 }
+
+void cleanup_cells() {
+  FOREACH(i, cells) {
+    cell_t *c = &cells[i];
+    if(is_closure(c)) {
+      int s = closure_cells(c) - 1;
+      if(c->n != PERSISTENT) {
+        closure_free(c);
+      }
+      i += s;
+    }
+  }
+}

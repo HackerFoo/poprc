@@ -151,13 +151,14 @@ typedef struct {
 #endif
 
 #define _assert_counter(n)                                               \
-  do {                                                                  \
-    static int counter = n;                                             \
-    if(!counter--) {                                                    \
-      counter = n;                                                      \
-      throw_error(ERROR_TYPE_UNEXPECTED,                                \
-                  "Assertion counter exhausted.");                      \
-    }                                                                   \
+  do {                                                                   \
+    static unsigned int *counter = NULL;                                 \
+    if(!counter) counter = alloc_counter();                              \
+    if(*counter >= (n)) {                                                \
+      throw_error(ERROR_TYPE_UNEXPECTED,                                 \
+                  "Assertion counter exhausted: %d > " #n, X, *counter); \
+    }                                                                    \
+    (*counter)++;                                                        \
   } while(0)
 
 /** Catch errors.
@@ -224,4 +225,15 @@ void breakpoint() {
     print_last_log_msg();
   }
   breakpoint_hook();
+}
+
+static unsigned int counters[8] = {0};
+static unsigned int counters_n = 0;
+
+unsigned int *alloc_counter() {
+  assert_error(counters_n < LENGTH(counters));
+  return &counters[counters_n++];
+}
+void reset_counters() {
+  zero(counters);
 }

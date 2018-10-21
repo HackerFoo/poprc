@@ -189,9 +189,11 @@ int main(int argc, char **argv) {
       return -error.type;
     }
     exit_on_error = true;
+    cleanup_cells();
   }
 
   log_soft_init();
+  reset_counters();
   cells_init();
   parse_init();
   module_init();
