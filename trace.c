@@ -45,7 +45,7 @@ static unsigned int prev_entry_pos = 0;
 
 #include "trace-local.h"
 
-#define ENTRY_BLOCK_SIZE 64
+#define ENTRY_BLOCK_SIZE 128
 
 #if INTERFACE
 typedef intptr_t trace_index_t;

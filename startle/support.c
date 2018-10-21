@@ -655,3 +655,27 @@ char *replace_char(char *s, char c_old, char c_new) {
   if(r) *r = c_new;
   return r;
 }
+
+bool is_whitespace(char c) {
+  return ONEOF(c, ' ', '\n', '\r', '\t');
+}
+
+seg_t seg_trim(seg_t s) {
+  while(s.n && is_whitespace(*s.s)) {
+    s.n--;
+    s.s++;
+  }
+  const char *e = seg_end(s) - 1;
+  while(s.n && is_whitespace(*e)) {
+    e--;
+    s.n--;
+  }
+  return s;
+}
+
+TEST(seg_trim) {
+  seg_t s = string_seg(" \t  hi    \n");
+  s = seg_trim(s);
+  printf("trimmed: \"%.*s\"\n", (int)s.n, s.s);
+  return strncmp("hi", s.s, s.n) == 0 ? 0 : -1;
+}

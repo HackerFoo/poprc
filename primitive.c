@@ -31,6 +31,7 @@
 #include "print.h"
 #include "trace.h"
 #include "list.h"
+#include "parse.h"
 #include "builders.h"
 
    /*-----------------------------------------------,
@@ -791,6 +792,7 @@ OP(print) {
   } else {
     ABORT(FAIL);
   }
+  add_conditions(res, p, q);
   store_reduced(cp, res);
   return SUCCESS;
 
@@ -826,6 +828,7 @@ OP(input) {
   } else {
     ABORT(FAIL);
   }
+  add_conditions(res, p);
   store_reduced(cp, res);
   return SUCCESS;
 
@@ -942,15 +945,19 @@ OP(to_string) {
 
   CHECK_IF(!check_type(ctx->t, T_STRING), FAIL);
 
-  CHECK(reduce_arg(c, 0, &CTX(int)));
+  CHECK(reduce_arg(c, 0, &CTX(any)));
   CHECK_DELAY();
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
   if(is_var(p)) {
     res = var(T_STRING, c);
-  } else {
+  } else if(p->value.type == T_INT) {
     res = make_string(int_to_string(p->value.integer));
+  } else if(p->value.type == T_SYMBOL) {
+    res = make_string(string_seg(symbol_string(p->value.integer)));
+  } else {
+    ABORT(FAIL);
   }
   res->value.type = T_STRING;
   res->alt = c->alt;
@@ -1020,6 +1027,34 @@ OP(strsplit) {
                    make_string((seg_t) {.s = s + needle_len,
                                         .n = strlen(s + needle_len)}),
                    0);
+  }
+  res->value.type = T_STRING;
+  res->alt = c->alt;
+  res->value.alt_set = ctx->alt_set;
+  add_conditions(res, p, q);
+  store_reduced(cp, res);
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, ctx);
+}
+
+WORD("strtrim", strtrim, 1, 1)
+OP(strtrim) {
+  cell_t *res = 0;
+  PRE(strtrim);
+
+  CHECK_IF(!check_type(ctx->t, T_STRING), FAIL);
+
+  CHECK(reduce_arg(c, 0, &CTX(string)));
+  CHECK_DELAY();
+  clear_flags(c);
+
+  cell_t *p = c->expr.arg[0];
+  if(is_var(p)) {
+    res = var(T_STRING, c);
+  } else {
+    res = make_string(seg_trim(string_seg(p->value.str)));
   }
   res->value.type = T_STRING;
   res->alt = c->alt;

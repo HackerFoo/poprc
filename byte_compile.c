@@ -57,6 +57,9 @@ static void print_value(const cell_t *c) {
   case T_FLOAT:
     printf(" val %g", c->value.flt);
     break;
+  case T_STRING:
+    printf(" val \"%s\"", c->value.str);
+    break;
   default:
     printf(" val ??");
     break;
