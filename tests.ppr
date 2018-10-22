@@ -265,10 +265,60 @@ __ f7d: [not] .
 
 ldmult: listdup sum
 
-__ stream: [dup [stream] pushl swap] pushl
+stream: dup [stream] pushl swap
+box: [box]
+__ cycle: cycle [1] .
 
 __ should't just drop an arg
 f8: . $
 
 __ linear time version of `fib`
 fibl: [0 1] [[tuck +] .] swap2 1- times head
+
+push_input: [input] dip12 pushl
+
+input_times: [] ap31 [[push_input] .] swap times
+
+__ sum_times: [] swap input_times [<-str] map sum
+
+__ maptest: [1] [] map head
+
+quote_str: "'" swap ++ "'" ++
+sum_times2: swap [0] pushl [[[input <-str] dip12 +] .] swap2 times head
+sum_times2v: swap [0] pushl [[[input dup [quote_str print] dip21 <-str] dip12 +] .] swap2 times head
+
+spaces: [" " strsplit swap "" =s !] ["" =s not] iterate True swap "" =s ! False default
+
+__ TODO simplify each case
+__ calc_func: [=s] dip21 [.] pushl dip11!
+calc_step:
+  strtrim
+    [<-str int_t pushr]
+    ["+"    =s [[+]    .] dip11 !] |
+    ["-"    =s [[-]    .] dip11 !] |
+    ["*"    =s [[*]    .] dip11 !] |
+    ["/"    =s [[/]    .] dip11 !] |
+    ["swap" =s [[swap] .] dip11 !] |
+    ["dup"  =s [[dup]  .] dip11 !] |
+    ["drop" =s [[drop] .] dip11 !] | ap21 nip
+
+__ simplified versions of calc_step
+
+calc_step_dummy: strtrim <-str int_t [+] pushl .
+
+calc_step_simple:
+  strtrim
+    [<-str int_t pushr]
+    ["+"    =s [[+]    .] dip11 !] | ap21 nip
+
+calc_step_push:
+  strtrim
+    ["1"    =s [[1]    .] dip11 !]
+    ["+"    =s [[+]    .] dip11 !] | ap21 nip
+
+__ calc: [[0]] ap10 [[dup [head ->str print input] dip22 swap calc_step_push] .] [head valid] iterate
+
+calc_loop: dup [head ->str print input] dip22 swap calc_step calc_loop
+calc: [0] calc_loop Done default
+
+__ compq: [.]
