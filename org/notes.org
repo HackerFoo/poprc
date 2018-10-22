@@ -1,5 +1,6 @@
 #+TITLE: PoprC Notes
 
+* use context to identify dep and pass types
 * pos's are barriers that should only be moved down for transparent ops and lists
 * monopath and recursion
 - monopath only required on exit, but required for TCO

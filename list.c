@@ -444,7 +444,7 @@ csize_t function_in(cell_t *l) {
   if(!l || !is_list(l) || is_empty_list(l)) return 0;
   csize_t in = 0;
   cell_t **x;
-  FORLIST(x, l, true) {
+  FORLIST(x, l, true) { // *** is this loop necessary?
     in += args_required(*x);
   }
   return in;

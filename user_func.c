@@ -109,6 +109,7 @@ void print_word_pattern(cell_t *word) {
 // build a binding list by applying the pattern to c
 // TODO add reduction back in
 cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) {
+  c = clear_ptr(c);
   assert_error(c);
   CONTEXT("bind_pattern %E %C %C @barrier", entry, c, pattern);
   if(!pattern || !tail) return NULL;
@@ -196,7 +197,7 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry, context_t *ctx) {
   if(!is_value(c) &&
      FLAG(c->expr, EXPR_NO_UNIFY)) return true;
 
-  assert_error(in == closure_in(pat));
+  assert_eq(in, closure_in(pat));
 
   LOG_WHEN(out != 0, TODO " unify_convert %d: out(%d) != 0 @unify-multiout", c-cells, out);
 
@@ -747,7 +748,6 @@ response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
   const size_t out = closure_out(c) + 1;
   const size_t entry_out = entry->entry.out;
   type_t rtypes[out];
-  assert_error(in, "recursive functions must have at least one input");
   assert_error(out >= entry_out, "%d %d", out, entry_out);
 
   // reduce all inputs

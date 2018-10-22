@@ -86,6 +86,7 @@ void rt_init() {
   alt_cnt = 0;
   memset(rt_roots, 0, sizeof(rt_roots));
   clear_ptr_tags();
+  reset_counters();
 }
 
 // Duplicate c to c->alt and return it

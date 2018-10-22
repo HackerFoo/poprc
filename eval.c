@@ -193,7 +193,6 @@ int main(int argc, char **argv) {
   }
 
   log_soft_init();
-  reset_counters();
   cells_init();
   parse_init();
   module_init();

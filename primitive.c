@@ -730,17 +730,19 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
 
   COUNTUP(i, out) {
     cell_t **x = list_next(&it, false);
-    if(!x) {
-      drop(l);
-      LOG("null quote output");
-      ABORT(FAIL);
-    }
     cell_t *d = c->expr.arg[n-1-i];
-    mark_pos(*x, pos);
-    cell_t *seq_x = build_seq(ref(*x), ref(res));
-    store_lazy_dep(d, seq_x, ctx->alt_set);
-    LOG_WHEN(res->alt, MARK("WARN") " alt seq dep %C <- %C #condition", d, seq_x);
-    if(d) d->pos = pos; // ***
+    if(d) {
+      if(!x) {
+        drop(l);
+        LOG("null quote output");
+        ABORT(FAIL);
+      }
+      mark_pos(*x, pos);
+      cell_t *seq_x = build_seq(ref(*x), ref(res));
+      store_lazy_dep(d, seq_x, ctx->alt_set);
+      LOG_WHEN(res->alt, MARK("WARN") " alt seq dep %C <- %C #condition", d, seq_x);
+      d->pos = pos; // ***
+    }
   }
   remove_root(q);
 
