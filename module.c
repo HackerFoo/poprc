@@ -123,7 +123,7 @@ cell_t *module_set(cell_t *m, seg_t key, cell_t *val) {
   const char *s = seg_string(key);
   pair_t p = {(uintptr_t)s, (uintptr_t)val};
   string_map_insert(map, p);
-  *module_ref(m) = c;
+  *module_ref(m) = persistent(c);
   return NULL;
 }
 
@@ -151,7 +151,7 @@ cell_t *module_get_or_create(cell_t *m, seg_t key) {
   r = make_module();
   pair_t p = {(uintptr_t)s, (uintptr_t)r};
   string_map_insert(map, p);
-  *module_ref(m) = c;
+  *module_ref(m) = persistent(c);
 
   return r;
 }
@@ -314,10 +314,9 @@ cell_t *build_module(cell_t *c) {
   }
 
   if(n == 1) {
-    m = persistent(copy(c->value.ptr[0]));
+    m = copy(c->value.ptr[0]);
   } else {
     m = make_map(ms);
-    m->n = PERSISTENT;
     COUNTUP(i, n) {
       cell_t *p = c->value.ptr[i];
       if(p) {
@@ -328,7 +327,7 @@ cell_t *build_module(cell_t *c) {
 
   closure_free(c);
   cell_t *r = make_module();
-  *module_ref(r) = m;
+  *module_ref(r) = persistent(m);
   return r;
 }
 
@@ -521,7 +520,7 @@ void print_module_bytecode(cell_t *m) {
   error_t error;
   assert_error(is_module(m));
   if(!*module_ref(m)) return;
-  cell_t *map_copy = copy(*module_ref(m));
+  cell_t *map_copy = persistent(copy(*module_ref(m)));
   map_t map = value_map(map_copy);
   string_map_sort_full(map);
   FORMAP(i, map) {
@@ -533,6 +532,7 @@ void print_module_bytecode(cell_t *m) {
       print_active_entries("  - while compiling ");
       printf("\n");
       log_soft_init();
+      cleanup_cells();
     } else {
       cell_t *e = module_lookup_compiled(string_seg(name), &m);
       if(e && !(e->entry.flags & ENTRY_QUOTE)) {
