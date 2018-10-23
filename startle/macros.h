@@ -337,4 +337,14 @@
 /** Define a new format string specifier (for logging). */
 #define FORMAT(name, c) void format_##name(intptr_t i)
 
+/** Call `f` for each of the following arguments. */
+#define EACH_2(f, x0) f(x0)
+#define EACH_3(f, x0, x1) f(x0); f(x1)
+#define EACH_4(f, x0, x1, x2) f(x0); f(x1); f(x2)
+#define EACH_5(f, x0, x1, x2) f(x0); f(x1); f(x2); f(x3)
+#define EACH(...) \
+  do {                                          \
+    DISPATCH(EACH, __VA_ARGS__);                \
+  } while(0)
+
 #endif
