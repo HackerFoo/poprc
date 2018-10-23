@@ -620,7 +620,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
 
 // replace variable c if there is a matching entry in a
 void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *entry) {
-  int x = var_index(c->value.var);
+  int x = var_index(entry, c->value.var);
   COUNTUP(j, a_n) {
     int y = trace_decode(a[j]);
     if(y == x) {
@@ -863,7 +863,7 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
   assert_error(var_entry(res->value.var) == parent_entry,
                "parent: %E, tc.entry: %E",
                parent_entry, var_entry(res->value.var));
-  int x = var_index(res->value.var);
+  int x = var_index(parent_entry, res->value.var);
   trace_reduction(q, res);
   drop(q);
   drop(res);

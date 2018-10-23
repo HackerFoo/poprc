@@ -94,7 +94,14 @@ cell_t *var_entry(cell_t *v) {
   return &trace_cells[offset & ~(ENTRY_BLOCK_SIZE - 1)];
 }
 
-int var_index(cell_t *v) {
+int var_index(cell_t *entry, cell_t *v) {
+  if(entry) {
+    while(var_entry(v) != entry) {
+      assert_error(is_value(v));
+      v = v->value.var;
+    }
+  }
+  assert_error(v);
   size_t offset = v - trace_cells;
   return offset & (ENTRY_BLOCK_SIZE - 1);
 }
@@ -175,9 +182,10 @@ end:
 void switch_entry(cell_t *entry, cell_t *r) {
   CONTEXT("switch_entry %E %C", entry, r);
   assert_error(is_var(r));
-  if(var_entry(r->value.var) != entry) {
+  cell_t *ve = var_entry(r->value.var);
+  if(!is_ancestor_of(entry, ve)) {
     WATCH(r, "switch_entry", "%E", entry);
-    assert_error(is_ancestor_of(var_entry(r->value.var), entry));
+    assert_error(is_ancestor_of(ve, entry));
     switch_entry_(entry, &r->value.var);
   }
 }
@@ -203,7 +211,7 @@ int trace_get_value(cell_t *entry, cell_t *r) {
   } else if(is_var(r)) {
     if(FLAG(r->value, VALUE_DEP)) return 0;
     switch_entry(entry, r);
-    return var_index(r->value.var);
+    return var_index(entry, r->value.var);
   } else {
     int t = trace_lookup_value_linear(entry, r);
     if(t) return t;
@@ -260,7 +268,7 @@ void trace_arg(cell_t *tc, int n, cell_t *a) {
   cell_t **p = &tc->expr.arg[n];
   if(!*p) {
     cell_t *v = a->value.var;
-    *p = trace_encode(var_index(v));
+    *p = trace_encode(var_index(NULL, v));
     v->n++;
   }
 }
@@ -281,7 +289,7 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
         FOR_TRACE(x, entry) {
           // update through assertions
           if(x->op == OP_assert) {
-            if(trace_decode(x->expr.arg[0]) == var_index(r->value.var)) {
+            if(trace_decode(x->expr.arg[0]) == var_index(entry, r->value.var)) {
               x->trace.type = t;
             }
           }
@@ -368,7 +376,7 @@ void trace_store_row_assert(cell_t *c, cell_t *r) {
 cell_t *trace_partial(op op, int n, cell_t *p) {
   CONTEXT_LOG("trace_partial %O, arg[%d] = %C", op, n, p);
   cell_t *entry = var_entry(p->value.var);
-  int a = is_var(p) ? var_index(p->value.var) : trace_store_value(entry, p);
+  int a = is_var(p) ? var_index(entry, p->value.var) : trace_store_value(entry, p);
   int x = trace_alloc(entry, 2);
   cell_t *tc = &entry[x];
   tc->op = op;
@@ -382,7 +390,7 @@ void apply_condition(cell_t *c, int *x) {
     cell_t *entry = var_entry(c->value.var);
     cell_t *t = concatenate_conditions(c->value.var, &entry[*x]);
     c->value.var = t;
-    *x = var_index(t);
+    *x = var_index(entry, t);
   }
 }
 
@@ -514,7 +522,7 @@ void trace_dep(cell_t *c) {
   int x = trace_alloc(entry, 1);
   cell_t *tc = &entry[x];
   cell_t *ph = c->value.var;
-  int ph_x = var_index(c->value.var);
+  int ph_x = var_index(entry, c->value.var);
   ph->expr.arg[c->pos] = trace_encode(x);
   LOG("trace_dep: %d <- %C %d[%d]", x, c, ph_x, c->pos);
   tc->op = OP_dep;
@@ -532,7 +540,7 @@ void trace_drop(cell_t *r) {
   cell_t *v = r->value.var;
   if(v && !v->op) {
     cell_t *e = var_entry(v);
-    int ix = var_index(v);
+    int ix = var_index(e, v);
     if(e->entry.len - (ix - 1) == calculate_cells(v->size)) {
       e->entry.len = ix - 1;
     }
@@ -630,7 +638,7 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
     if(is_var(p) && is_function(p)) {
       // identity list, so just return the trace cell for the item in the list
       switch_entry(entry, p);
-      return var_index(p->value.var);
+      return var_index(entry, p->value.var);
     }
   }
 
@@ -658,7 +666,7 @@ int trace_return(cell_t *entry, cell_t *c_) {
     trace_index_t x;
     if(is_var(*p)) {
       switch_entry(entry, *p);
-      x = var_index((*p)->value.var);
+      x = var_index(entry, (*p)->value.var);
     } else if(is_list(*p)) {
       x = trace_build_quote(entry, *p);
     } else {
@@ -870,7 +878,7 @@ FORMAT(entry_short, 'e') {
 FORMAT(trace_cell, 'T') {
   cell_t *tc = (cell_t *)i;
   format_entry_short((val_t)var_entry(tc));
-  printf("[%d]", var_index(tc));
+  printf("[%d]", var_index(NULL, tc));
 }
 
 /* condiitons */
@@ -885,7 +893,7 @@ cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
   cell_t *entry = var_entry(a);
   assert_error(entry == var_entry(b), "%T %T", a, b);
   cell_t *p = a;
-  cell_t *bi = trace_encode(var_index(b));
+  cell_t *bi = trace_encode(var_index(entry, b));
 
   // find the end of a
   while(p != b) {
@@ -935,9 +943,9 @@ cell_t *trace_seq(cell_t *a, cell_t *b) {
     tc->op = OP_seq;
   }
   tc->pos = 0;
-  tc->expr.arg[0] = trace_encode(var_index(p));
+  tc->expr.arg[0] = trace_encode(var_index(entry, p));
   p->n++;
-  tc->expr.arg[1] = trace_encode(var_index(q));
+  tc->expr.arg[1] = trace_encode(var_index(entry, q));
   q->n++;
   return tc;
 }

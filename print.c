@@ -278,9 +278,10 @@ void graph_cell(FILE *f, cell_t const *c) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
     }
     if(c->value.var) {
+      cell_t *entry = var_entry(c->value.var);
       fprintf(f, "<tr><td bgcolor=\"orange\">trace: %d.%d",
-              entry_number(var_entry(c->value.var)),
-              (int)var_index(c->value.var));
+              entry_number(entry),
+              (int)var_index(entry, c->value.var));
       if(FLAG(c->value, VALUE_DEP)) {
         fprintf(f, "[%d]", (int)c->pos);
       }

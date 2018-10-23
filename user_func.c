@@ -74,7 +74,7 @@ cell_t *apply_list(cell_t *l, csize_t in, csize_t out) {
 // print a representation of a pattern for debugging
 void print_pattern(cell_t *pattern) {
   if(is_var(pattern)) {
-    printf(" ?%d", (int)var_index(pattern->value.var));
+    printf(" ?%d", (int)var_index(NULL, pattern->value.var));
   } else if(is_list(pattern)) {
     csize_t in = function_in(pattern);
     cell_t **p;
@@ -92,7 +92,7 @@ void print_pattern(cell_t *pattern) {
 // print the list of bindings for debugging
 void print_bindings(cell_t *vl) {
   FOLLOW(p, q, vl, tmp) {
-    csize_t x = var_index(p->value.var);
+    csize_t x = var_index(NULL, p->value.var);
     printf("?%d = %d\n", x, (int)(q-cells));
   }
 }
