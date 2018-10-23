@@ -287,10 +287,24 @@ void graph_cell(FILE *f, cell_t const *c) {
       fprintf(f, "</td></tr>");
     }
     if(!is_var(c)) {
-      if(ONEOF(c->value.type, T_INT, T_SYMBOL)) {
+      switch(c->value.type) {
+      case T_INT:
         fprintf(f, "<tr><td bgcolor=\"yellow\">val: %" PRIdPTR "</td></tr>", c->value.integer);
-      } else if(c->value.type == T_FLOAT && !is_var(c)) {
+        break;
+      case T_SYMBOL:
+        fprintf(f, "<tr><td bgcolor=\"yellow\">val: %s</td></tr>", symbol_string(c->value.integer));
+        break;
+      case T_FLOAT:
         fprintf(f, "<tr><td bgcolor=\"yellow\">val: %.15g</td></tr>", c->value.flt);
+        break;
+      case T_STRING:
+        fprintf(f, "<tr><td bgcolor=\"yellow\">val: %.*s</td></tr>", (int)max_strlen(c), c->value.str);
+        break;
+      case T_LIST:
+        break;
+      default:
+        fprintf(f, "<tr><td bgcolor=\"yellow\">val: ?</td></tr>");
+        break;
       }
     }
   } else {

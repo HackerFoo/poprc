@@ -273,6 +273,11 @@ cell_t *closure_alloc_string(size_t n) {
   return c;
 }
 
+size_t max_strlen(const cell_t *c) {
+  if(c->size < VALUE_OFFSET(str)) return 0;
+  return (c->size - VALUE_OFFSET(str)) * sizeof_field(cell_t, expr.arg[0]) - 1;
+}
+
 cell_t *make_string(seg_t s) {
   cell_t *c = closure_alloc_string(s.n);
   memcpy(c->value.str, s.s, s.n);
