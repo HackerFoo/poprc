@@ -207,22 +207,31 @@
 
 #define PRE(...) DISPATCH2(PRE, ##__VA_ARGS__)
 
-#define WATCH_2(c, msg)                                         \
-  do {                                                          \
-    int i = get_watch(c);                                       \
-    if unlikely(i) {                                            \
-      LOG_NOBREAK(NOTE("WATCH") " %d " msg " %C", i, c);        \
-      breakpoint();                                             \
-    }                                                           \
+#define WATCH_2(c, msg)                                                 \
+  do {                                                                  \
+    int i = get_watch(c);                                               \
+    if unlikely(i) {                                                    \
+        if(i == -1) {                                                   \
+          LOG_NOBREAK(NOTE("WATCH OP") " %O " msg " %C", c->op, c);     \
+        } else {                                                        \
+          LOG_NOBREAK(NOTE("WATCH") " %d " msg " %C", i, c);            \
+        }                                                               \
+        breakpoint();                                                   \
+      }                                                                 \
   } while(0)
 
 #define WATCH_4(c, msg, fmt, x)                                         \
   do {                                                                  \
     int i = get_watch(c);                                               \
     if unlikely(i) {                                                    \
-      LOG_NOBREAK(NOTE("WATCH") " %d " msg " %C " fmt, i, c, (x));      \
-      breakpoint();                                                     \
-    }                                                                   \
+        if(i == -1) {                                                   \
+          LOG_NOBREAK(NOTE("WATCH OP") " %O " msg " %C" fmt,            \
+                      c->op, c, (x));                                   \
+        } else {                                                        \
+          LOG_NOBREAK(NOTE("WATCH") " %d " msg " %C" fmt, i, c, (x));   \
+        }                                                               \
+        breakpoint();                                                   \
+      }                                                                 \
   } while(0)
 
 #define WATCH(...) DISPATCH3(WATCH, ##__VA_ARGS__)

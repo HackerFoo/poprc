@@ -900,3 +900,26 @@ const io_t irc_io = {
   .read = irc_io_read_with_prompt,
   .write = irc_io_write
 };
+
+COMMAND(op, "set a watched op") {
+  if(rest) {
+    seg_t w = tok_seg(rest);
+    op op = OP_null;
+    if(segcmp("ap", w) == 0) {
+      op = OP_ap;
+    } else if(segcmp("compose", w) == 0) {
+      op = OP_compose;
+    } else {
+      cell_t *e = lookup_word(w);
+      if(e) {
+        op = e->op;
+      }
+    }
+    if(op) {
+      set_watched_op(op);
+      printf("watching op %s\n", op_name(op));
+    }
+  } else {
+    set_watched_op(OP_null);
+  }
+}

@@ -42,6 +42,7 @@ cell_t **rt_roots[31];
 const size_t rt_roots_n = LENGTH(rt_roots);
 
 static cell_t *watched_cells[4] = {0};
+static op watched_op = OP_null;
 static bool watch_enabled = false;
 
 #if INTERFACE
@@ -71,12 +72,20 @@ int set_watch(cell_t *c) {
   return 0;
 }
 
+void set_watched_op(op op) {
+  watch_enabled = op != OP_null;
+  watched_op = op;
+}
+
 int get_watch(cell_t *c) {
   if(!watch_enabled) return 0;
   FOREACH(i, watched_cells) {
     if(watched_cells[i] == c) {
       return i + 1;
     }
+  }
+  if(c->op == watched_op) {
+    return -1;
   }
   return 0;
 }
