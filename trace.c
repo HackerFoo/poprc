@@ -94,13 +94,29 @@ cell_t *var_entry(cell_t *v) {
   return &trace_cells[offset & ~(ENTRY_BLOCK_SIZE - 1)];
 }
 
-int var_index(cell_t *entry, cell_t *v) {
-  if(entry) {
-    while(var_entry(v) != entry) {
-      assert_error(is_value(v));
-      v = v->value.var;
-    }
+int entry_pos(cell_t *e) {
+  FOLLOW(p, e, entry.parent) {
+    if(e->pos) return e->pos;
   }
+  return 0;
+}
+
+cell_t *get_var(cell_t *entry, cell_t *c) {
+  assert_error(is_value(c));
+  return var_for_entry(entry, c->value.var);
+}
+
+cell_t *var_for_entry(cell_t *entry, cell_t *v) {
+  if(!entry) return v;
+  FOLLOW(p, v, value.var) {
+    if(var_entry(p) == entry) return p;
+    if(!is_value(p)) break;
+  }
+  return NULL;
+}
+
+int var_index(cell_t *entry, cell_t *v) {
+  v = var_for_entry(entry, v);
   assert_error(v);
   size_t offset = v - trace_cells;
   return offset & (ENTRY_BLOCK_SIZE - 1);
@@ -145,48 +161,32 @@ int trace_lookup_value_linear(cell_t *entry, const cell_t *c) {
   return -1;
 }
 
-bool is_ancestor_of(cell_t *ancestor, cell_t *entry) {
-  while(entry) {
-    if(entry == ancestor) {
-      return true;
-    } else {
-      entry = entry->entry.parent;
-    }
-  }
-  return false;
-}
-
-static
-void switch_entry_(cell_t *entry, cell_t **v) {
-  if(var_entry(*v) != entry->entry.parent) {
-    switch_entry_(entry->entry.parent, v);
-  }
-  cell_t *old = *v;
-  // a little hacky because ideally variables shouldn't be duplicated
-  // see TODO in func_value
-  FOR_TRACE(c, entry) {
-    if(is_var(c) &&
-       c->value.var == old) {
-      *v = c;
-      goto end;
-    }
-  }
-  cell_t *p = *v = trace_alloc_var(entry);
-  p->value.var = old;
-  p->value.type = trace_type(old);
-end:
-  LOG("%T -> %T", old, *v);
-}
-
-//static
+// Change the active entry, and add to the list if needed.
 void switch_entry(cell_t *entry, cell_t *r) {
   CONTEXT("switch_entry %E %C", entry, r);
   assert_error(is_var(r));
-  cell_t *ve = var_entry(r->value.var);
-  if(!is_ancestor_of(entry, ve)) {
+  if(!get_var(entry, r)) {
+    if(entry->entry.parent)
+      switch_entry(entry->entry.parent, r);
+
     WATCH(r, "switch_entry", "%E", entry);
-    assert_error(is_ancestor_of(ve, entry));
-    switch_entry_(entry, &r->value.var);
+    cell_t *v = r->value.var;
+
+    // a little hacky because ideally variables shouldn't be duplicated
+    // see TODO in func_value
+    FOR_TRACE(c, entry) {
+      if(is_var(c) &&
+         c->value.var == v) {
+        r->value.var = c;
+        return;
+      }
+    }
+
+    cell_t *n = trace_alloc_var(entry);
+    n->value.type = trace_type(v);
+    //if(is_var(v)) v = &var_entry(v)[v->pos]; // variables move *** DOESN'T WORK
+    n->value.var = v;
+    r->value.var = n;
   }
 }
 

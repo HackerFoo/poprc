@@ -302,6 +302,8 @@ calc_step:
     ["dup"  =s [[dup]  .] dip11 !] |
     ["drop" =s [[drop] .] dip11 !] | ap21 nip
 
+__ str_list: "[" [->str " " ++ ++] foldl strtrim "]" ++
+
 __ simplified versions of calc_step
 
 calc_step_dummy: strtrim <-str int_t [+] pushl .
@@ -322,3 +324,7 @@ calc_loop: dup [head ->str print input] dip22 swap calc_step calc_loop
 calc: [0] calc_loop Done default
 
 __ compq: [.]
+
+spilling: not dup not [] pushl
+spilling2: not dup not [] pushl swap [] pushl
+spilling3: not dup not [] pushl swap not dup [] pushl swap [] pushl

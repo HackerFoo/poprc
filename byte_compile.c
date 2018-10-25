@@ -445,9 +445,19 @@ void trace_final_pass(cell_t *entry) {
     }
     prev = p;
   }
-  if(TWEAK(true, "to disable condense/move_vars in %e", entry)) {
+  if(NOT_FLAG(entry->entry, ENTRY_QUOTE) &&
+    TWEAK(true, "to disable condense/move_vars in %e", entry)) {
     condense(entry);
     move_vars(entry);
+  }
+  FOR_TRACE(p, entry) {
+    if(p->op == OP_exec) {
+      cell_t *e = get_entry(p);
+      if(FLAG(e->entry, ENTRY_QUOTE)) {
+        condense(e);
+        move_vars(e);
+      }
+    }
   }
 }
 
@@ -781,17 +791,16 @@ void move_changing_values(cell_t *entry, cell_t *c) {
   }
 }
 
+// TODO pull out/duplicate things referenced in multiple quotes
 void mark_quote_barriers(cell_t *entry, cell_t *c) {
-  TRAVERSE(c, in, ptrs) {
+  TRAVERSE(c, in) {
     cell_t *x = *p;
     if(!x) continue;
-    if(is_var(x)) {
-      cell_t *v = x->value.var;
-      if(var_entry(v) == entry) continue;
-      drop(x);
-      *p = var_create_nonlist(x->value.type,
-                              trace_alloc_var(entry));
-      (*p)->value.var->value.var = v;
+    if(x->n >= 0) {
+      LOG("quote barrier %E %C #barrier", entry, x);
+      mark_pos(x, entry->pos);
+    } else {
+      mark_quote_barriers(entry, x);
     }
   }
 }
@@ -811,9 +820,7 @@ cell_t *flat_quote(cell_t *new_entry, cell_t *parent_entry) {
 
   FOR_TRACE(p, new_entry) {
     if(is_var(p) && p->value.var) {
-      switch_entry(parent_entry, p); // ***
-      assert_error(var_entry(p->value.var) == parent_entry);
-      cell_t *tp = p->value.var;
+      cell_t *tp = var_for_entry(parent_entry, p);
       cell_t *v = var_create_nonlist(trace_type(tp), tp);
       assert_error(INRANGE(p->pos, 1, in));
       nc->expr.arg[in - p->pos] = v;
@@ -830,6 +837,7 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
   cell_t *e = trace_start_entry(parent_entry, 1);
   e->module_name = parent_entry->module_name;
   e->word_name = string_printf("%s_q%d", parent_entry->word_name, parent_entry->entry.sub_id++);
+  FLAG_SET(e->entry, ENTRY_QUOTE);
   CONTEXT_LOG("compiling %C to quote %E", l, e);
 
   // conversion
@@ -842,7 +850,9 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
     arg(ph, ref(*p));
   }
 
+  EACH(fake_drop, l, ph);
   mark_quote_barriers(e, ph);
+  EACH(fake_undrop, ph, l);
 
   // compile
   fill_args(e, ph);
@@ -855,11 +865,11 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
   drop(init);
   remove_root(&init);
 
-  trace_final_pass(e);
+  trace_final_pass(e); // *** wait?
   trace_end_entry(e);
 
   trace_clear_alt(parent_entry);
-  cell_t *res = var(T_ANY, q, parent_entry->pos);
+  cell_t *res = var(T_LIST, q, parent_entry->pos);
   assert_error(var_entry(res->value.var) == parent_entry,
                "parent: %E, tc.entry: %E",
                parent_entry, var_entry(res->value.var));

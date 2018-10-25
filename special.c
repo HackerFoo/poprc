@@ -221,17 +221,21 @@ cell_t *var_create_with_entry(type_t t, cell_t *entry, csize_t size) {
 
 cell_t *var_(type_t t, cell_t *c, uint8_t pos) {
   assert_error(c);
-  cell_t *entry = trace_expr_entry(pos);
   TRAVERSE(c, in) {
     cell_t *a = clear_ptr(*p);
     if(a && is_var(a)) {
       // inherit entry with highest pos
-      cell_t *e = var_entry(a->value.var);
-      if(e && e->pos > pos) {
-        pos = e->pos;
-        entry = e;
+      int ep = entry_pos(var_entry(a->value.var));
+      if(ep > pos) {
+        pos = ep;
       }
     }
+  }
+
+  cell_t *entry = trace_expr_entry(pos);
+  if(!entry) {
+    entry = trace_current_entry();
+    LOG(HACK " using current entry %E", entry);
   }
 
   return var_create_with_entry(t, entry, c->size);

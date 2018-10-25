@@ -535,7 +535,7 @@ void print_module_bytecode(cell_t *m) {
       cleanup_cells();
     } else {
       cell_t *e = module_lookup_compiled(string_seg(name), &m);
-      if(e && !(e->entry.flags & ENTRY_QUOTE)) {
+      if(e) {
         print_bytecode(e);
         putchar('\n');
       }

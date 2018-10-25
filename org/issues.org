@@ -55,6 +55,9 @@ assert also works this way
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
+** TODO look at logic to trace ap vs. compose (tests.ap_loop4)
+- compMN = apM0 . ap0N
+** TODO hash function definitions
 ** TODO [id] popr drop ==> [], should fail
 ** DONE propagate drops in to loop returns to avoid building values to drop (tests.f7c)
 ** TODO handle nil the same as other non-list values in trace

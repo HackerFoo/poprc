@@ -476,8 +476,7 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
 
   int pos = 1;
   FOLLOW(p, vl, tmp) {
-    assert_error(var_entry(p->value.var) == entry);
-    cell_t *tn = p->value.var;
+    cell_t *tn = get_var(entry, p);
     // Is it okay to update this from reassign_input_order?
     tn->pos = pos;
     // assert_error(tn->pos == pos, "%T (%C)", p->value.var, p);
