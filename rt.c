@@ -43,7 +43,7 @@ const size_t rt_roots_n = LENGTH(rt_roots);
 
 static cell_t *watched_cells[4] = {0};
 static op watched_op = OP_null;
-static bool watch_enabled = false;
+bool watch_enabled = false;
 
 #if INTERFACE
 #define ASSERT_REF() if(!ctx->delay_var) assert_error(assert_ref(rt_roots, rt_roots_n))
@@ -84,7 +84,7 @@ int get_watch(cell_t *c) {
       return i + 1;
     }
   }
-  if(c->op == watched_op) {
+  if(watched_op && c->op == watched_op) {
     return -1;
   }
   return 0;
