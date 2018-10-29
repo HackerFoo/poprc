@@ -239,6 +239,8 @@ set[3] = 28
 set[4] = 8
 set[5] = 9
 set => 0
+@ shadow
+shadow => 0
 @ sort
 {{0, 5}, {2, 2}, {3, 0}, {4, 7}, {4, 3}, {7, 1}, {8, 6}, {500, 4}}
 index find existing: PASS

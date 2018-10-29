@@ -125,6 +125,7 @@ TEST(next_bit) {
 }
 
 /** [macro_dispatch] */
+
 #define TEST_0() printf("TEST_0()\n")
 #define TEST_1(x0) printf("TEST_1(" x0 ")\n")
 #define TEST_2(x0, x1) printf("TEST_2(" x0 ", " x1 ")\n")
@@ -135,6 +136,8 @@ TEST(macro_dispatch) {
   DISPATCH(TEST, "1", "2");
   return 0;
 }
+
+/** [macro_dispatch] */
 
 TEST(inrange) {
   if(!INRANGE(1, -3, 3)) return -1;
@@ -150,4 +153,16 @@ TEST(oneof) {
   return 0;
 }
 
-/** [macro_dispatch] */
+static int shadow_x = 1;
+TEST(shadow) {
+  if(shadow_x != 1) return -1;
+  SHADOW(shadow_x, 2) {
+    if(shadow_x != 2) return -2;
+    SHADOW(shadow_x, 3) {
+      if(shadow_x != 3) return -3;
+    }
+    if(shadow_x != 2) return -4;
+  }
+  if(shadow_x != 1) return -5;
+  return 0;
+}

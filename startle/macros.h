@@ -347,4 +347,11 @@
     DISPATCH(EACH, __VA_ARGS__);                \
   } while(0)
 
+/** Reassign a variable for the duration of the following block. */
+#define SHADOW(var, val)                        \
+  for(const __typeof(var) __tmp = (var),        \
+        *__tmpp = (((var) = (val)), &__tmp);    \
+      __tmpp;                                   \
+      ((var) = __tmp), __tmpp = NULL)
+
 #endif
