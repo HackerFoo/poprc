@@ -235,7 +235,7 @@ void gen_call(cell_t *e, cell_t *c) {
       n = closure_args(c),
       start_out = n - closure_out(c);
 
-    trace_get_name(c, &module_name, &word_name);
+    get_name(c, &module_name, &word_name);
 
     printf("  %s%d = %s_%s", cname(trace_type(c)), i, module_name, word_name);
     if(c->op == OP_ap || c->op == OP_compose) {

@@ -144,6 +144,8 @@ bool equal_value(const cell_t *a, const cell_t *b) {
   case T_LIST:
     // only handle nil
     return is_empty_list(a) && is_empty_list(b);
+  case T_STRING:
+    return strcmp(a->value.str, b->value.str) == 0;
   default:
     return false;
   }
@@ -489,11 +491,9 @@ cell_t *trace_start_entry(cell_t *parent, csize_t out) {
   trace_ptr += ENTRY_BLOCK_SIZE; // TODO
   e->n = PERSISTENT;
   e->entry = (struct entry) {
-    .in = 0,
-    .out = out
+    .out = out,
+    .parent = parent
   };
-  e->entry.parent = parent;
-  e->entry.wrap = NULL;
 
   // active_entries[e->pos-1] = e
   assert_error(prev_entry_pos < LENGTH(active_entries));
@@ -568,6 +568,7 @@ void trace_drop(cell_t *r) {
 }
 
 // find the function variable in a list
+static
 cell_t *get_list_function_var(cell_t *c) {
   cell_t *left = *leftmost(&c);
        if(!left)                return NULL;
@@ -743,27 +744,6 @@ TEST(var_count) {
   return n == 5 ? 0 : -1;
 }
 
-// HACK to make convert tail calls with type T_ANY to T_BOTTOM
-bool tail_call_to_bottom(cell_t *entry, int x) {
-  if(x < 0) return false;
-  cell_t *tc = &entry[x];
-  bool is_assert = tc->op == OP_assert;
-  if((is_assert || (tc->op == OP_exec &&
-                    trace_decode(tc->expr.arg[closure_in(tc)]) == (int)entry->entry.len-1)) &&
-     tc->trace.type == T_ANY) {
-    if(is_assert) {
-      if(tail_call_to_bottom(entry, trace_decode(tc->expr.arg[0]))) {
-        tc->trace.type = T_BOTTOM;
-        return true;
-      }
-    } else {
-      tc->trace.type = T_BOTTOM;
-      return true;
-    }
-  }
-  return false;
-}
-
 // reduce for tracing & compilation
 unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
   cell_t *tc = NULL, **prev = &tc;
@@ -802,9 +782,6 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
       }
       int x = trace_return(entry, *p);
       cell_t *r = &entry[x];
-      COUNTUP(i, list_size(r)) {
-        tail_call_to_bottom(entry, trace_decode(r->value.ptr[i]));
-      }
 
       LOG("branch %d finished %C", alts, *p);
 
@@ -842,7 +819,7 @@ cell_t *trace_alloc_var(cell_t *entry) {
   if(tc->pos != x) {
     FLAG_SET(entry->entry, ENTRY_MOV_VARS);
   }
-  return &entry[x];
+  return tc;
 }
 
 bool valid_pos(uint8_t pos) {

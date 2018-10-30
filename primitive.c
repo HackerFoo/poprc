@@ -700,12 +700,12 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   placeholder_extend(q, function_compose_in(p, ctx->in, arg_in, true /*_1_*/), ctx->out + out);
   // *** _1_ don't know if/why this works
 
-  list_iterator_t it;
   reverse_ptrs((void **)c->expr.arg, in);
-  it.array = c->expr.arg;
-  it.index = 0;
-  it.size = in - row;
-  it.row = row;
+  list_iterator_t it = {
+    .array = c->expr.arg,
+    .size = in - row,
+    .row = row
+  };
 
   // Maybe remove these?
   // *** prevent leaking outside variables into lists
@@ -717,10 +717,11 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
 
   insert_root(q);
   it = list_begin(l);
-
-  list_iterator_t end = it;
-  LOOP(out) list_next(&end, false);
-  res = list_rest(end);
+  {
+    list_iterator_t end = it;
+    LOOP(out) list_next(&end, false);
+    res = list_rest(end);
+  }
   unique(&res);
   drop(res->alt);
   res->alt = c->alt;

@@ -112,7 +112,7 @@ void print_bytecode(cell_t *entry) {
     } else { // print a call
       const char *module_name = NULL, *word_name = NULL;
       if(NOT_FLAG(c->trace, TRACE_INCOMPLETE)) {
-        trace_get_name(c, &module_name, &word_name);
+        get_name(c, &module_name, &word_name);
         printf(" %s.%s", module_name, word_name);
       } else {
         printf(" incomplete %s", op_name(c->op));
@@ -875,8 +875,7 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
                parent_entry, var_entry(res->value.var));
   int x = var_index(parent_entry, res->value.var);
   trace_reduction(q, res);
-  drop(q);
-  drop(res);
+  EACH(drop, q, res);
 
   //if(simplify_quote(e, parent_entry, q)) return NULL;
 
@@ -927,18 +926,6 @@ void resolve_types(cell_t *e, type_t *t) {
       }
     }
     p = tref(e, p->alt);
-  }
-}
-
-// very similar to get_name() but decodes entry
-void trace_get_name(const cell_t *c, const char **module_name, const char **word_name) {
-  if(is_user_func(c)) {
-    cell_t *e = get_entry(c); // <- differs from get_name()
-    *module_name = e->module_name;
-    *word_name = e->word_name;
-  } else {
-    *module_name = PRIMITIVE_MODULE_NAME;
-    *word_name = op_name(c->op);
   }
 }
 
