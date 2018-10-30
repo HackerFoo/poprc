@@ -238,8 +238,6 @@ after0:
 
 __ bad_deps: [dup] popr swap 1 swap dup swap [ap21] dip32 2 swap ap11
 
-vifte: swap2 valid -swap2 ifte
-
 __ equivalent to `True otherwise`
 ow_assert: True swap True otherwise !
 ow_not: False otherwise not
@@ -320,11 +318,35 @@ calc_step_push:
 
 __ calc: [[0]] ap10 [[dup [head ->str print input] dip22 swap calc_step_push] .] [head valid] iterate
 
-calc_loop: dup [head ->str print input] dip22 swap calc_step calc_loop
-calc: [0] calc_loop Done default
+calc_loop:
+  top swap [->str print input] dip22 swap
+    calc_step top [calc_loop] [drop] vifte $$
+
+__[ broken
+calc_loop:
+  top swap [->str print input] dip22 swap
+    calc_step top [calc_loop] [tail] vifte ap22 swap2 drop
+]__
+
+calc: [0] calc_loop
 
 __ compq: [.]
 
 spilling: not dup not [] pushl
 spilling2: not dup not [] pushl swap [] pushl
 spilling3: not dup not [] pushl swap not dup [] pushl swap [] pushl
+
+__ x y [f] -> fx fy, except for y = _|_, x _|_
+__ useful when x is IO
+failthru: [drop tuck swap otherwise swap] [ap22] | ap32 swap2 drop
+
+__ fake seq using otherwise
+oseq: False False! otherwise swap otherwise
+
+while_length:
+  [0 swap] pushl
+    [[[1+] [tail] para] .]
+    while tail head
+
+vifte_quote: dup [1+] [0] vifte $
+assert_otherwise_quote: [1] swap ! swap otherwise

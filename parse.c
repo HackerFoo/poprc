@@ -50,16 +50,18 @@ static const char *symbol_index[MAX_SYMBOLS] = {
   ENTRY(False),
   ENTRY(True),
   ENTRY(IO),
-  ENTRY(Dict)
+  ENTRY(Dict),
+  ENTRY(Something)
 };
 #undef ENTRY
 
 #define ENTRY(name) {(uintptr_t)#name, SYM_##name}
 static pair_t symbols[MAX_SYMBOLS+1] = {
-  {MAX_SYMBOLS, 4},
+  {MAX_SYMBOLS, 5},
   ENTRY(Dict),
   ENTRY(False),
   ENTRY(IO),
+  ENTRY(Something),
   ENTRY(True)
 };
 #undef ENTRY

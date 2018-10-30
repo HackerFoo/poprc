@@ -8,6 +8,7 @@ __ num
 
 __ list
 [1 2] head
+[1 2] top
 [1 2 3] length
 [1 2 3] 0 [+] foldr
 [1 2 3] 0 [+] foldl
@@ -83,6 +84,7 @@ False A B ifte
 1 [dup 2+ swap even] ifdo
 1 2 in2
 0 [3+] [10<] iterate
+0 [3+ dup 10< !] while
 0 [3+] 4 times
 [Nothing] [3+] 0 maybe
 [2 Just] [3+] 0 maybe
@@ -104,6 +106,8 @@ True False implies
 True True implies
 1 2 default
 1 0/ 2 default
+1 2 3 vifte
+1 0/ 2 3 vifte
 1 valid
 1 0/ valid
 

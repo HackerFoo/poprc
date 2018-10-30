@@ -13,6 +13,11 @@ Compile to direct C when possible
 **** closure_set_ready
 **** split_args
 * major
+** TODO push cases in from `otherwise` to avoid seq
+- if handling all cases without knowledge is allowed, it's easy to build `seq`
+- switching always forces an argument, which is okay as long as it requires knowing the structure
+- ideally, `dup ifte` should be equivalent to `nip`, but this probably isn't feasible in general
+- maybe this can be eliminated with context, or not allowing nonlinear values for otherwise
 ** TODO define symbols in modules and limit exporting
 ** DONE remove underscore hack
 ** DONE avoid expanding placeholders
@@ -57,6 +62,10 @@ assert also works this way
 * minor
 ** TODO look at logic to trace ap vs. compose (tests.ap_loop4)
 - compMN = apM0 . ap0N
+- apMN = [] ... compMN
+- broken:
+  - [1+] 2 3 [+] comp20
+  - [] 1 2 [+] comp21
 ** TODO hash function definitions
 ** TODO [id] popr drop ==> [], should fail
 ** DONE propagate drops in to loop returns to avoid building values to drop (tests.f7c)

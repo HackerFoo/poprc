@@ -376,7 +376,10 @@ void trace_store_row_assert(cell_t *c, cell_t *r) {
 cell_t *trace_partial(op op, int n, cell_t *p) {
   CONTEXT_LOG("trace_partial %O, arg[%d] = %C", op, n, p);
   cell_t *entry = var_entry(p->value.var);
-  int a = is_var(p) ? var_index(entry, p->value.var) : trace_store_value(entry, p);
+  int a = is_var(p) ? var_index(entry, p->value.var) :
+    op == OP_otherwise && p->value.var ? trace_store_something(entry, &p->value.var) : // (*)
+    trace_store_value(entry, p);
+  // (*) Because the value will be discarded, just use Something
   int x = trace_alloc(entry, 2);
   cell_t *tc = &entry[x];
   tc->op = op;
@@ -401,6 +404,7 @@ int trace_store_value(cell_t *entry, cell_t *c) {
   // look to see if the value already is in the trace
   int x = trace_lookup_value_linear(entry, c);
   if(x == -1) {
+    assert_error(!is_list(c) || list_size(c) == 0);
     x = trace_copy(entry, c);
     cell_t *tc = &entry[x];
     tc->value.alt_set = 0;
@@ -411,6 +415,22 @@ int trace_store_value(cell_t *entry, cell_t *c) {
   }
 
   apply_condition(c, &x);
+  return x;
+}
+
+int trace_store_something(cell_t *entry, cell_t **v) {
+  cell_t c = (cell_t) {
+    .op = OP_value,
+    .value = {
+      .type = T_SYMBOL,
+      .integer = SYM_Something,
+      .var = *v
+    },
+    .size = 2,
+    .n = -1
+  };
+  int x = trace_store_value(entry, &c);
+  *v = c.value.var;
   return x;
 }
 

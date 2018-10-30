@@ -49,6 +49,7 @@ imports:
 
 __ take rightmost value from quote
 head: popr nip
+top: dup head
 
 __ return the length of a list
 length:
@@ -255,6 +256,9 @@ iterate:
     [swap] dip22 . swap __ a [fn [fn] [test] iterate] [test]
     [fork] ap20 ifdo
 
+while:
+   over [$keep [dup] dip12 while] dip22 vifte
+
 __ apply [f] n times
 times: __ a [f] n
   [] ap30
@@ -288,7 +292,9 @@ implies: swap not or
 __ A B default -> A, or B if A fails
 default: [dup] dip12 otherwise |
 
-valid: False otherwise dup True otherwise |
+vifte: [swap] dip22 otherwise dup swap2 otherwise |
+
+valid: True False vifte
 
 module algorithm:
 

@@ -15,6 +15,8 @@ __ num
 __ list
 [1 2] head
   2
+[1 2] top
+  [1 2] 2
 [1 2 3] length
   3
 [1 2 3] 0 [+] foldr
@@ -157,6 +159,8 @@ False A B ifte
   1 2 [1 2]
 0 [3+] [10<] iterate
   12
+0 [3+ dup 10< !] while
+  9
 0 [3+] 4 times
   12
 [Nothing] [3+] 0 maybe
@@ -196,6 +200,10 @@ True True implies
   1
 1 0/ 2 default
   2
+1 2 3 vifte
+  2
+1 0/ 2 3 vifte
+  3
 1 valid
   True
 1 0/ valid
