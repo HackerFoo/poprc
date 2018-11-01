@@ -156,6 +156,7 @@ struct __attribute__((packed)) mem {
 #define ENTRY_QUOTE     0x08
 #define ENTRY_ROW       0x10
 #define ENTRY_MOV_VARS  0x20
+#define ENTRY_BLOCK     0x40
 #define ENTRY_COMPLETE  0x80
 
 typedef struct wrap_data {
@@ -169,7 +170,10 @@ struct __attribute__((packed)) entry {
   uint8_t rec, flags, alts, sub_id;
   csize_t in, out, len;
   cell_t *parent;
-  wrap_data *wrap;
+  union {
+    wrap_data *wrap;
+    cell_t *compact;
+  };
 };
 
 typedef enum char_class_t {

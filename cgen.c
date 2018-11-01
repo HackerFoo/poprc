@@ -313,7 +313,7 @@ void gen_assert(cell_t *e, cell_t *c) {
   const char *cn = cname(trace_type(c));
   cell_t *ret = NULL;
   printf("\n  // assert %d\n", iq);
-  cell_t *end = e + e->entry.len + 1;
+  cell_t *end = e + trace_entry_size(e);
   bool bottom = trace_type(c) == T_BOTTOM;
   if(!bottom) {
     // use #define to replace references to the assertion output to the output of arg[0]

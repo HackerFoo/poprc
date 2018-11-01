@@ -112,7 +112,7 @@ void print_bytecode(cell_t *entry) {
     } else { // print a call
       const char *module_name = NULL, *word_name = NULL;
       if(NOT_FLAG(c->trace, TRACE_INCOMPLETE)) {
-        get_name(c, &module_name, &word_name);
+        trace_get_name(c, &module_name, &word_name);
         printf(" %s.%s", module_name, word_name);
       } else {
         printf(" incomplete %s", op_name(c->op));
@@ -622,6 +622,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   drop(c);
   trace_final_pass(e);
   trace_end_entry(e);
+  trace_compact(e);
 
   // finish
   free_def(l);
@@ -926,6 +927,18 @@ void resolve_types(cell_t *e, type_t *t) {
       }
     }
     p = tref(e, p->alt);
+  }
+}
+
+// very similar to get_name() but decodes entry
+void trace_get_name(const cell_t *c, const char **module_name, const char **word_name) {
+  if(is_user_func(c)) {
+    cell_t *e = get_entry(c); // <- differs from get_name()
+    *module_name = e->module_name;
+    *word_name = e->word_name;
+  } else {
+    *module_name = PRIMITIVE_MODULE_NAME;
+    *word_name = op_name(c->op);
   }
 }
 

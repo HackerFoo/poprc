@@ -38,14 +38,15 @@
 
 // storage for tracing
 #define ALIGN64 __attribute__((aligned(64)))
+
+#define ENTRY_BLOCK_SIZE 2048
+
 static cell_t trace_cells[1 << 16] ALIGN64;
 static cell_t *trace_ptr = &trace_cells[0];
 static cell_t *active_entries[1 << 4];
 static unsigned int prev_entry_pos = 0;
 
 #include "trace-local.h"
-
-#define ENTRY_BLOCK_SIZE 128
 
 #if INTERFACE
 typedef intptr_t trace_index_t;
@@ -77,21 +78,38 @@ cell_t *get_entry(cell_t const *c) {
   return &trace_cells[trace_decode(c->expr.arg[closure_in(c)])];
 }
 
+void set_entry(cell_t *c, cell_t *e) {
+  assert_error(is_user_func(c));
+  c->expr.arg[closure_in(c)] = trace_encode(e - trace_cells);
+}
+
 int entry_number(cell_t const *e) {
   return e - trace_cells;
 }
 
 cell_t *entry_from_number(int n) {
   assert_throw(n >= 0 &&
-               n % ENTRY_BLOCK_SIZE == 0 &&
                n < trace_ptr - trace_cells,
                "invalid entry number");
   return &trace_cells[n];
 }
 
+bool entry_has(cell_t *entry, cell_t *v) {
+  cell_t *end = entry + trace_entry_size(entry);
+  return v > entry && v < end;
+}
+
+cell_t *trace_entry_next(cell_t *e) {
+  return e + (FLAG(e->entry, ENTRY_BLOCK) ?
+              ENTRY_BLOCK_SIZE :
+              trace_entry_size(e));
+}
+
 cell_t *var_entry(cell_t *v) {
-  size_t offset = v - trace_cells;
-  return &trace_cells[offset & ~(ENTRY_BLOCK_SIZE - 1)];
+  for(cell_t *e = trace_cells; e < trace_ptr; e = trace_entry_next(e)) {
+    if(entry_has(e, v)) return e;
+  }
+  return NULL;
 }
 
 int entry_pos(cell_t *e) {
@@ -107,7 +125,9 @@ cell_t *get_var(cell_t *entry, cell_t *c) {
 }
 
 cell_t *var_for_entry(cell_t *entry, cell_t *v) {
-  if(!entry) return v;
+  if(!entry) {
+    entry = var_entry(v);
+  }
   FOLLOW(p, v, value.var) {
     if(var_entry(p) == entry) return p;
     if(!is_value(p)) break;
@@ -116,10 +136,12 @@ cell_t *var_for_entry(cell_t *entry, cell_t *v) {
 }
 
 int var_index(cell_t *entry, cell_t *v) {
+  if(!entry) {
+    entry = var_entry(v);
+  }
   v = var_for_entry(entry, v);
   assert_error(v);
-  size_t offset = v - trace_cells;
-  return offset & (ENTRY_BLOCK_SIZE - 1);
+  return v - entry;
 }
 
 // trace_encode/decode allow small integers to be encoded as pointers
@@ -492,7 +514,8 @@ cell_t *trace_start_entry(cell_t *parent, csize_t out) {
   e->n = PERSISTENT;
   e->entry = (struct entry) {
     .out = out,
-    .parent = parent
+    .parent = parent,
+    .flags = ENTRY_BLOCK
   };
 
   // active_entries[e->pos-1] = e
@@ -579,7 +602,7 @@ cell_t *get_list_function_var(cell_t *c) {
 
 // called when c is reduced to r to copy to pre-allocated space in the trace
 void trace_reduction(cell_t *c, cell_t *r) {
-  WATCH(c, "trace_reduction", "%C", r);
+  WATCH(c, "trace_reduction", " %C", r);
   cell_t *new_entry = trace_expr_entry(c->pos);
   if(!is_var(r)) {
     // print tracing information for a reduction
@@ -865,7 +888,9 @@ FORMAT(entry, 'E') {
 
 FORMAT(entry_short, 'e') {
   cell_t *entry = (cell_t *)i;
-  if(entry->word_name) {
+  if(!entry) {
+    printf("???");
+  } else if(entry->word_name) {
     printf("%s", entry->word_name);
   } else {
     printf("%d", entry_number(entry));
@@ -874,8 +899,9 @@ FORMAT(entry_short, 'e') {
 
 FORMAT(trace_cell, 'T') {
   cell_t *tc = (cell_t *)i;
-  format_entry_short((val_t)var_entry(tc));
-  printf("[%d]", var_index(NULL, tc));
+  cell_t *entry = var_entry(tc);
+  format_entry_short((val_t)entry);
+  printf("[%d]", var_index(entry, tc));
 }
 
 /* condiitons */
@@ -993,3 +1019,56 @@ void add_conditions_var_3(cell_t *res, cell_t *t, cell_t *a0) {
 #define add_conditions(...) DISPATCH(add_conditions, __VA_ARGS__)
 #define add_conditions_var(...) DISPATCH(add_conditions_var, __VA_ARGS__)
 #endif
+
+int trace_entry_size(cell_t *e) {
+  return e->entry.len + 1;
+}
+
+// Compact from blocks to minimum size
+void trace_compact(cell_t *entry) {
+  // build map
+  cell_t *end = trace_ptr;
+  cell_t *ne = entry;
+  for(cell_t *e = entry;
+      e < end;
+      ne += trace_entry_size(e),
+        e += ENTRY_BLOCK_SIZE) {
+    e->entry.compact = ne;
+  }
+
+  // update references
+  for(cell_t *e = entry; e < end; e += ENTRY_BLOCK_SIZE) {
+    // update calls
+    FOR_TRACE(c, e) {
+      if(is_user_func(c)) {
+        cell_t *ce = get_entry(c);
+        if(ce > entry && ce->entry.compact) {
+          set_entry(c, ce->entry.compact);
+        }
+      }
+    }
+
+    // update parent
+    if(e->entry.parent > entry) {
+      e->entry.parent = e->entry.parent->entry.compact;
+    }
+  }
+
+  // move and clean up
+  for(cell_t *e = entry; e < end; e += ENTRY_BLOCK_SIZE) {
+    FLAG_CLEAR(e->entry, ENTRY_BLOCK);
+
+    // move
+    cell_t *compact = e->entry.compact;
+    e->entry.compact = NULL;
+    if(e > compact) {
+      int size = trace_entry_size(e);
+      memmove(compact, e, sizeof(trace_cells[0]) * size);
+      int zero_size = min(size, e - compact);
+      int offset = size - zero_size;
+      memset(e + offset, 0, sizeof(trace_cells[0]) * zero_size);
+    }
+  }
+
+  trace_ptr = ne;
+}
