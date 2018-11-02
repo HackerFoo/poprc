@@ -800,8 +800,7 @@ COMMAND(irc, "IRC bot mode") {
 }
 
 void irc_connect() {
-  char username[64];
-  getlogin_r(username, sizeof(username));
+  char *username = getenv("LOGNAME");
   if(irc.password.n) {
     printf("PASS %.*s\n", (int)irc.password.n, irc.password.s);
   }
