@@ -151,7 +151,7 @@ cell_t *var_for_entry(cell_t *entry, cell_t *v) {
     entry = var_entry(v);
   }
   FOLLOW(p, v, value.var) {
-    if(var_entry(p) == entry) return p;
+    if(entry_has(entry, p)) return p;
     if(!is_value(p)) break;
   }
   return NULL;
@@ -936,7 +936,7 @@ cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
   if(b == NULL) return a;
   cell_t **arg = NULL;
   cell_t *entry = var_entry(a);
-  assert_error(entry == var_entry(b), "%T %T", a, b);
+  assert_error(entry_has(entry, b), "%T %T", a, b);
   cell_t *p = a;
   cell_t *bi = trace_encode(var_index(entry, b));
 
@@ -971,6 +971,7 @@ cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
 
 cell_t *trace_seq(cell_t *a, cell_t *b) {
   cell_t *entry = var_entry(a);
+  assert_error(entry_has(entry, b));
   int x = trace_alloc(entry, 2);
   cell_t *tc = &entry[x];
   cell_t *p, *q;

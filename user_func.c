@@ -413,7 +413,7 @@ void vars_in_entry(cell_t **p, cell_t *entry) {
   while(*p) {
     cell_t *v = *p;
     cell_t **next = &v->tmp;
-    if(var_entry(v->value.var) != entry) {
+    if(!entry_has(entry, v->value.var)) {
       // remove from list
       LOG("remove var %C", v);
       *p = *next;
@@ -446,7 +446,7 @@ void reassign_input_order(cell_t *entry) {
 
   int pos = 1;
   FOLLOW(p, vl, tmp) {
-    assert_error(var_entry(p->value.var) == entry);
+    assert_error(entry_has(entry, p->value.var));
     cell_t *tn = p->value.var;
     assert_error(tn->pos, "%T (%C)", p->value.var, p);
     if(tn->pos != pos) {
@@ -481,7 +481,7 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
     tn->pos = pos;
     // assert_error(tn->pos == pos, "%T (%C)", p->value.var, p);
     switch_entry(parent_entry, tn);
-    assert_error(var_entry(tn->value.var) == parent_entry);
+    assert_error(entry_has(parent_entry, tn->value.var));
     cell_t *v = var_create_nonlist(T_ANY, tn->value.var);
     nc->expr.arg[in - pos] = v;
     LOG("arg[%d] -> %d", in - pos, tn->value.var - parent_entry);

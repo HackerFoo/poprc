@@ -871,9 +871,9 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
 
   trace_clear_alt(parent_entry);
   cell_t *res = var(T_LIST, q, parent_entry->pos);
-  assert_error(var_entry(res->value.var) == parent_entry,
-               "parent: %E, tc.entry: %E",
-               parent_entry, var_entry(res->value.var));
+  assert_error(entry_has(parent_entry, res->value.var),
+               "parent: %E, var: %T",
+               parent_entry, res->value.var);
   int x = var_index(parent_entry, res->value.var);
   trace_reduction(q, res);
   EACH(drop, q, res);
