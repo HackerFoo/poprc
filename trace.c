@@ -40,11 +40,15 @@
 #define ALIGN64 __attribute__((aligned(64)))
 
 #define ENTRY_BLOCK_SIZE 1024
+#define MAP_BLOCK_SIZE 64
+#define MAX_TRACE_CELLS (1 << 14)
+#define BLOCK_MAP_SIZE ((MAX_TRACE_CELLS + MAP_BLOCK_SIZE - 1) / MAP_BLOCK_SIZE)
 
-static cell_t trace_cells[1 << 14] ALIGN64;
+static cell_t trace_cells[MAX_TRACE_CELLS] ALIGN64;
 static cell_t *trace_ptr = &trace_cells[0];
 static cell_t *active_entries[1 << 4];
 static unsigned int prev_entry_pos = 0;
+static cell_t *trace_block_map[BLOCK_MAP_SIZE] = {0};
 
 #include "trace-local.h"
 
@@ -94,6 +98,20 @@ cell_t *entry_from_number(int n) {
   return &trace_cells[n];
 }
 
+static
+void trace_update_block_map(cell_t *entry) {
+  cell_t *e = entry, *ne = trace_entry_next(e);
+  RANGEUP(i, DIV_UP(entry - trace_cells, MAP_BLOCK_SIZE), BLOCK_MAP_SIZE) {
+    cell_t *block_start = &trace_cells[i * MAP_BLOCK_SIZE];
+    while(ne <= block_start) {
+      e = ne;
+      ne = trace_entry_next(ne);
+    }
+    trace_block_map[i] = e;
+    if(e >= trace_ptr) break;
+  }
+}
+
 bool entry_has(cell_t *entry, cell_t *v) {
   cell_t *end = entry + trace_entry_size(entry);
   return v > entry && v < end;
@@ -106,7 +124,11 @@ cell_t *trace_entry_next(cell_t *e) {
 }
 
 cell_t *var_entry(cell_t *v) {
-  for(cell_t *e = trace_cells; e < trace_ptr; e = trace_entry_next(e)) {
+  assert_error(is_trace_cell(v));
+  int i = (v - trace_cells) / MAP_BLOCK_SIZE;
+  for(cell_t *e = trace_block_map[i];
+      e < trace_ptr;
+      e = trace_entry_next(e)) {
     if(entry_has(e, v)) return e;
   }
   return NULL;
@@ -522,6 +544,7 @@ cell_t *trace_start_entry(cell_t *parent, csize_t out) {
   assert_error(prev_entry_pos < LENGTH(active_entries));
   active_entries[prev_entry_pos++] = e;
   e->pos = prev_entry_pos;
+  trace_update_block_map(e);
 
   return e;
 }
@@ -1070,6 +1093,7 @@ void trace_compact(cell_t *entry) {
   }
 
   trace_ptr = ne;
+  trace_update_block_map(entry);
 }
 
 int trace_count() {
