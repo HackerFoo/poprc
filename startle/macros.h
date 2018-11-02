@@ -48,6 +48,7 @@
 #define _STRINGIFY(x) #x
 #define STRINGIFY(x) _STRINGIFY(x)
 
+#define LET(x, y) __typeof__(y) x = (y)
 
 
 // SIZES & OFFSETS ________________________________________
@@ -138,7 +139,7 @@
  */
 #define LIST_ADD(f, l, v)                       \
   ({                                            \
-    __typeof__(v) __v = (v);                    \
+    LET(__v, v);                                \
     *(l) = __v;                                 \
     (l) = &__v->f;                              \
   })
@@ -150,8 +151,8 @@
  */
 #define CONS(f, l, v)                           \
   ({                                            \
-    __typeof__(l) __l = (l);                    \
-    __typeof__(v) __v = (v);                    \
+    LET(__l, l);                                \
+    LET(__v, v);                                \
     __v->f = *__l;                              \
     *__l = __v;                                 \
   })
@@ -162,108 +163,115 @@
 
 #define min(a, b)                               \
   ({                                            \
-    __typeof__(a) __a = (a);                    \
-    __typeof__(b) __b = (b);                    \
+    LET(__a, a);                                \
+    LET(__b, b);                                \
     __a <= __b ? __a : __b;                     \
   })
 
 #define max(a, b)                               \
   ({                                            \
-    __typeof__(a) __a = (a);                    \
-    __typeof__(b) __b = (b);                    \
+    LET(__a, a);                                \
+    LET(__b, b);                                \
     __a >= __b ? __a : __b;                     \
   })
 
 /** Non-negative saturating subtraction. */
 #define csub(a, b)                              \
   ({                                            \
-    __typeof__(a) _a = (a);                     \
-    __typeof__(b) _b = (b);                     \
-    _b > _a ? 0 : _a - _b;                      \
+    LET(__a, a);                                \
+    LET(__b, b);                                \
+    __b > __a ? 0 : __a - __b;                  \
   })
 
 /** Integer division rounding up. */
 #define DIV_UP(n, d)                            \
   ({                                            \
-    __typeof__(d) _d = (d);                     \
-    (_d - 1 + (n)) / _d;                        \
+    LET(__d, d);                                \
+    (__d - 1 + (n)) / __d;                      \
   })
 
 #define INRANGE_3(x, lo0, hi0)                  \
   ({                                            \
-    __typeof__(x) _x = (x);                     \
-    _x >= (lo0) && _x <= (hi0);                 \
+    LET(__x, x);                                \
+    __x >= (lo0) && __x <= (hi0);               \
   })
 
 #define INRANGE_5(x, lo0, hi0, lo1, hi1)        \
   ({                                            \
-    __typeof__(x) _x = (x);                     \
-    (_x >= (lo0) && _x <= (hi0))                \
-      || (_x >= (lo1) && _x <= (hi1));          \
+    LET(__x, x);                                \
+    (__x >= (lo0) && __x <= (hi0))              \
+      || (__x >= (lo1) && __x <= (hi1));        \
   })
 
 #define INRANGE_7(x, lo0, hi0, lo1, hi1, lo2, hi2)      \
   ({                                                    \
-    __typeof__(x) _x = (x);                             \
-    (_x >= (lo0) && _x <= (hi0))                        \
-      || (_x >= (lo1) && _x <= (hi1))                   \
-      || (_x >= (lo2) && _x <= (hi2));                  \
+    LET(__x, x);                                        \
+    (__x >= (lo0) && __x <= (hi0))                      \
+      || (__x >= (lo1) && __x <= (hi1))                 \
+      || (__x >= (lo2) && __x <= (hi2));                \
   })
 
 #define INRANGE(...) DISPATCH(INRANGE, __VA_ARGS__)
 
 #define ONEOF_2(x, y0)                          \
-  ({                                            \
-    __typeof__(x) _x = (x);                     \
-    _x == (y0);                                 \
-  })
+    ((x) == (y0))
 
 #define ONEOF_3(x, y0, y1)                      \
   ({                                            \
-    __typeof__(x) _x = (x);                     \
-    _x == (y0)                                  \
-      || _x == (y1);                            \
+    LET(__x, x);                                \
+    __x == (y0)                                 \
+      || __x == (y1);                           \
   })
 
 #define ONEOF_4(x, y0, y1, y2)                  \
   ({                                            \
-    __typeof__(x) _x = (x);                     \
-    _x == (y0)                                  \
-      || _x == (y1)                             \
-      || _x == (y2);                            \
+    LET(__x, x);                                \
+    __x == (y0)                                 \
+      || __x == (y1)                            \
+      || __x == (y2);                           \
   })
 
 #define ONEOF_5(x, y0, y1, y2, y3)              \
   ({                                            \
-    __typeof__(x) _x = (x);                     \
-    _x == (y0)                                  \
-      || _x == (y1)                             \
-      || _x == (y2)                             \
-      || _x == (y3);                            \
+    LET(__x, x);                                \
+    __x == (y0)                                 \
+      || __x == (y1)                            \
+      || __x == (y2)                            \
+      || __x == (y3);                           \
   })
 
 #define ONEOF_6(x, y0, y1, y2, y3, y4)          \
   ({                                            \
-    __typeof__(x) _x = (x);                     \
-    _x == (y0)                                  \
-      || _x == (y1)                             \
-      || _x == (y2)                             \
-      || _x == (y3)                             \
-      || _x == (y4);                            \
+    LET(__x, x);                                \
+    __x == (y0)                                 \
+      || __x == (y1)                            \
+      || __x == (y2)                            \
+      || __x == (y3)                            \
+      || __x == (y4);                           \
   })
 
 #define ONEOF_7(x, y0, y1, y2, y3, y4, y5)      \
   ({                                            \
-    __typeof__(x) _x = (x);                     \
-    _x == (y0)                                  \
-      || _x == (y1)                             \
-      || _x == (y2)                             \
-      || _x == (y3)                             \
-      || _x == (y4)                             \
-      || _x == (y5);                            \
+    LET(__x, x);                                \
+    __x == (y0)                                 \
+      || __x == (y1)                            \
+      || __x == (y2)                            \
+      || __x == (y3)                            \
+      || __x == (y4)                            \
+      || __x == (y5);                           \
   })
 
 #define ONEOF(...) DISPATCH(ONEOF, __VA_ARGS__)
+
+#define SNAP_UP(x, d)                           \
+  ({                                            \
+    LET(__x, x);                                \
+    LET(__d, d);                                \
+    LET(__m, __x % __d);                        \
+    __m ? __x + __d - __m : __x;                \
+  })
+
+
 
 // UM... OTHER STUFF ________________________________________
 
@@ -349,7 +357,7 @@
 
 /** Reassign a variable for the duration of the following block. */
 #define SHADOW(var, val)                        \
-  for(const __typeof(var) __tmp = (var),        \
+  for(const __typeof__(var) __tmp = (var),      \
         *__tmpp = (((var) = (val)), &__tmp);    \
       __tmpp;                                   \
       ((var) = __tmp), __tmpp = NULL)

@@ -166,3 +166,15 @@ TEST(shadow) {
   if(shadow_x != 1) return -5;
   return 0;
 }
+
+TEST(macro_math) {
+  if(min(3, 4) != 3) return -1;
+  if(max(3, 4) != 4) return -2;
+  if(DIV_UP(4, 3) != 2) return -3;
+  if(DIV_UP(3, 3) != 1) return -4;
+  if(csub(3, 4) != 0) return -5;
+  if(csub(4, 3) != 1) return -6;
+  if(SNAP_UP(1, 3) != 3) return -7;
+  if(SNAP_UP(3, 3) != 3) return -8;
+  return 0;
+}
