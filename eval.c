@@ -91,6 +91,7 @@ void stats_stop() {
   memcpy(&saved_stats, &stats, sizeof(stats));
   saved_stats.stop = clock();
   saved_stats.alt_cnt = alt_cnt;
+  saved_stats.trace_cnt = trace_count();
 }
 
 void stats_display() {
@@ -100,12 +101,15 @@ void stats_display() {
          "allocated   : %d cells\n"
          "working set : %d cells\n"
          "reductions  : %d\n"
-         "failures    : %d\n",
+         "failures    : %d\n"
+         "trace       : %d\n",
          time,
          saved_stats.alloc_cnt,
          saved_stats.max_alloc_cnt,
          saved_stats.reduce_cnt,
-         saved_stats.fail_cnt);
+         saved_stats.fail_cnt,
+         saved_stats.trace_cnt
+    );
   printf("rate        :");
   if(time != 0) {
     printf(" %.3e reductions/sec",

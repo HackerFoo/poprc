@@ -249,7 +249,7 @@ static_assert(sizeof(cell_t) == sizeof_field(cell_t, raw), "cell_t wrong size");
 static_assert(offsetof(cell_t, expr.flags) == offsetof(cell_t, value.flags), "expr.flags should alias value.flags");
 
 typedef struct stats_t {
-  int reduce_cnt, fail_cnt, alloc_cnt, max_alloc_cnt;
+  int reduce_cnt, fail_cnt, alloc_cnt, max_alloc_cnt, trace_cnt;
   clock_t start, stop;
   uint8_t alt_cnt;
 } stats_t;

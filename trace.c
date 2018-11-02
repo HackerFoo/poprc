@@ -41,7 +41,7 @@
 
 #define ENTRY_BLOCK_SIZE 1024
 
-static cell_t trace_cells[1 << 16] ALIGN64;
+static cell_t trace_cells[1 << 14] ALIGN64;
 static cell_t *trace_ptr = &trace_cells[0];
 static cell_t *active_entries[1 << 4];
 static unsigned int prev_entry_pos = 0;
@@ -1070,4 +1070,8 @@ void trace_compact(cell_t *entry) {
   }
 
   trace_ptr = ne;
+}
+
+int trace_count() {
+  return trace_ptr - trace_cells;
 }
