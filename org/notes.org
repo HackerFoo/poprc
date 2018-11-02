@@ -1,5 +1,15 @@
 #+TITLE: PoprC Notes
 
+* otherwise per alt e.g. f9:
+___ tests.f9 (2 -> 1) x3 ___
+[1] var, type = ?a x1
+[2] var, type = ?a x2
+[3] return [ 2 ], type = r -> 4 x1
+[4] return [ 1 ], type = r -> 7 x1
+[5] __primitive.otherwise 2 6, type = a x1
+[6] __primitive.otherwise 1 7, type = a x1
+[7] val 3, type = i x1
+[8] return [ 5 ], type = r x1
 * use context to identify dep and pass types
 * pos's are barriers that should only be moved down for transparent ops and lists
 * monopath and recursion

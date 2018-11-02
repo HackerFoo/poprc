@@ -540,30 +540,33 @@ OP(otherwise) {
   PRE(otherwise);
 
   cell_t *res = NULL;
-  cell_t *tc = NULL;
-  response rsp0 = reduce(&c->expr.arg[0], &CTX(any));
-  CHECK_IF(rsp0 == DELAY, DELAY);
-  cell_t *p = clear_ptr(c->expr.arg[0]);
-  bool p_var = is_var(p);
+  cell_t *tc = NULL, *tp = NULL;
 
-  CHECK_IF(!p_var &&
-           !p->value.var &&
-           rsp0 != FAIL, FAIL);
+  // reduce each alt
+  cell_t **p = &c->expr.arg[0];
+  cell_t **q = &c->expr.arg[1];
+  while(*p) {
+    response rsp0 = reduce(p, &CTX(any));
+    CHECK_IF(rsp0 == DELAY, DELAY);
+    CHECK_IF(!is_var(*p) &&
+             !(*p)->value.var &&
+             rsp0 != FAIL, FAIL);
+    if(rsp0 != FAIL) {
+      CHECK_IF(ctx->delay_assert, DELAY);
+      tc = concatenate_conditions(trace_partial(OP_otherwise, 0, *p), tc);
+      if(!tp) tp = tc;
+    }
 
-  if(rsp0 != FAIL) {
-    CHECK_IF(ctx->delay_assert, DELAY);
-    tc = trace_partial(OP_otherwise, 0, p);
-    // alt?
+    p = &(*p)->alt;
   }
 
   CHECK(reduce_arg(c, 1, &CTX_UP));
   CHECK_DELAY();
   clear_flags(c);
-  cell_t **q = &c->expr.arg[1];
 
-  if(p_var && is_var(*q)) {
+  if(tc && is_var(*q)) {
     res = var_create((*q)->value.type, tc, 0, 0);
-    trace_arg(tc, 1, *q);
+    trace_arg(tp, 1, *q);
   } else {
     // handle is_var(*q)?
     res = take(q);

@@ -319,17 +319,20 @@ calc_step_push:
 __ calc: [[0]] ap10 [[dup [head ->str print input] dip22 swap calc_step_push] .] [head valid] iterate
 
 calc_loop:
-  top swap [->str print input] dip22 swap
-    calc_step top [calc_loop] [drop] vifte $$
-
-__[ broken
-calc_loop:
-  top swap [->str print input] dip22 swap
-    calc_step top [calc_loop] [tail] vifte ap22 swap2 drop
-]__
+  top swap [->str print input] dip22 swap  __ IO [s] "t"
+    calc_step top -swap2 over              __ "t" IO [s] IO
+    [calc_loop] dip21 vifte
 
 calc: [0] calc_loop
 
+__ matches structure of calc_loop
+vifte_collatz_step:
+  [dup 3* 1+ swap odd!]
+    [dup 2/ swap even!] | $ dup 1 > !
+vifte_collatz: dup vifte_collatz_step dup [vifte_collatz] $ swap2 vifte
+
+
+__ while_collatz: [[dup 3* 1+ swap odd!] [dup 2/ swap even!] | $ dup 1> !] while
 __ compq: [.]
 
 spilling: not dup not [] pushl
@@ -350,3 +353,6 @@ while_length:
 
 vifte_quote: dup [1+] [0] vifte $
 assert_otherwise_quote: [1] swap ! swap otherwise
+
+__ 1 0/ 2 f9
+f9: | 3 default

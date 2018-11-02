@@ -39,7 +39,7 @@
 // storage for tracing
 #define ALIGN64 __attribute__((aligned(64)))
 
-#define ENTRY_BLOCK_SIZE 2048
+#define ENTRY_BLOCK_SIZE 1024
 
 static cell_t trace_cells[1 << 16] ALIGN64;
 static cell_t *trace_ptr = &trace_cells[0];
@@ -908,7 +908,6 @@ FORMAT(trace_cell, 'T') {
 
 // assert & otherwise form lists that can be concatenated
 // TODO use refcounting to avoid destructive concatenation
-static
 cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
   if(a == NULL) return b;
   if(b == NULL) return a;
