@@ -111,7 +111,7 @@ void print_word_pattern(cell_t *word) {
 cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) {
   c = clear_ptr(c);
   assert_error(c);
-  CONTEXT("bind_pattern %E %C %C @barrier", entry, c, pattern);
+  CONTEXT("bind_pattern %s %C %C @barrier", strfield(entry, word_name), c, pattern);
   if(!pattern || !tail) return NULL;
   if(c->tmp || c == *tail) return tail;
   if(c == pattern) {
@@ -124,8 +124,12 @@ cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) 
   } else if(is_var(pattern)) {
     // found a binding
     assert_error(!pattern->alt);
-    if(entry) switch_entry(entry, pattern);
-    LOG("bound %T = %C", pattern->value.var, c);
+    if(entry) {
+      switch_entry(entry, pattern);
+    } else {
+      entry = var_entry(pattern->value.var);
+    }
+    LOG("bound %s[%d] = %C", entry->word_name, pattern->value.var-entry, c);
     LIST_ADD(tmp, tail, ref(c));
   } else if(is_list(pattern) && !is_empty_list(pattern)) {
 
@@ -167,7 +171,7 @@ cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) 
   } else if(pattern->op == OP_value && (pattern->pos || entry)) { // HACK to move constants out
     assert_error(!is_list(pattern) || is_empty_list(pattern));
     if(!pattern->pos) {
-      LOG(HACK " forcing pos for %C (%C) to %E", pattern, c, entry);
+      LOG(HACK " forcing pos for %C (%C) to %s", pattern, c, entry->word_name);
       pattern->pos = entry->pos; // HACKity HACK
     }
     reduce(&pattern, &CTX(any));
@@ -184,7 +188,7 @@ cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) 
 
 // unify c with pattern pat if possible, returning the unified result
 bool unify_exec(cell_t **cp, cell_t *parent_entry, context_t *ctx) {
-  PRE(unify_exec, " #wrap");
+  PRE(unify_exec, "#wrap");
 
   csize_t
     in = closure_in(c),
@@ -229,8 +233,9 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry, context_t *ctx) {
     }
     clean_tmp(vl);
 
-    LOG("unified %E %C with initial_word in %E %C",
-        entry, c, parent_entry, pat);
+    LOG("unified %s %C with initial_word in %s %C",
+        entry->word_name, c,
+        parent_entry->word_name, pat);
     LOG_WHEN(closure_out(c), TODO " handle deps in c = %C, n = %C", c, n);
 
     TRAVERSE(c, in) {
@@ -263,7 +268,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
     results[i] = &c->expr.arg[n - 1 - i]; // ***
   }
 
-  CONTEXT("exec_expand %E: %C 0x%x", entry, c, c->expr.flags);
+  CONTEXT("exec_expand %s: %C 0x%x", entry->word_name, c, c->expr.flags);
 
   assert_error(entry->entry.len && FLAG(entry->entry, ENTRY_COMPLETE));
   trace_clear_alt(entry); // *** probably shouldn't need this
@@ -430,15 +435,15 @@ void reassign_input_order(cell_t *entry) {
   set_ptr_tag(c, "wrap-&gt;expand");
   if(!c) return;
   cell_t *parent_entry = entry->entry.parent;
-  CONTEXT("reassign input order %C (%e -> %e)", c,
-          parent_entry, entry);
+  CONTEXT("reassign input order %C (%s -> %s)", c,
+          parent_entry->word_name, entry->word_name);
   UNUSED csize_t in = entry->entry.in;
   cell_t *vl = 0;
   input_var_list(c, &vl);
   vars_in_entry(&vl, entry); // ***
   on_assert_error(tmp_list_length(vl) == in,
-                  "%d != %d, %E %C @wrap",
-                  tmp_list_length(vl), in, entry, c) {
+                  "%d != %d, %s %C @wrap",
+                  tmp_list_length(vl), in, entry->word_name, c) {
     FOLLOW(p, vl, tmp) {
       LOG("input var %C", p);
     }
@@ -448,7 +453,8 @@ void reassign_input_order(cell_t *entry) {
   FOLLOW(p, vl, tmp) {
     assert_error(entry_has(entry, p->value.var));
     cell_t *tn = p->value.var;
-    assert_error(tn->pos, "%T (%C)", p->value.var, p);
+    assert_error(tn->pos, "%s[%d] (%C)",
+                 entry->word_name, tn-entry, p);
     if(tn->pos != pos) {
       tn->pos = pos;
       FLAG_SET(entry->entry, ENTRY_MOV_VARS);
@@ -462,8 +468,8 @@ void reassign_input_order(cell_t *entry) {
 // all c's input args must be params
 cell_t *flat_call(cell_t *c, cell_t *entry) {
   cell_t *parent_entry = entry->entry.parent;
-  CONTEXT("flat call %C (%e -> %e)", c,
-          parent_entry, entry);
+  CONTEXT("flat call %C (%s -> %s)", c,
+          parent_entry->word_name, entry->word_name);
   csize_t
     in = entry->entry.in,
     out = entry->entry.out;
@@ -472,7 +478,9 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
   nc->op = OP_exec;
   cell_t *vl = 0;
   input_var_list(c, &vl);
-  assert_error(tmp_list_length(vl) == in, "%d != %d, %E @wrap", tmp_list_length(vl), in, entry);
+  assert_error(tmp_list_length(vl) == in,
+               "%d != %d, %s @wrap",
+               tmp_list_length(vl), in, entry->word_name);
 
   int pos = 1;
   FOLLOW(p, vl, tmp) {
@@ -592,7 +600,7 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
     out = closure_out(*cp);
   cell_t *entry = (*cp)->expr.arg[in];
   wrap_data wrap;
-  PRE(exec_wrap, " %E 0x%x #wrap", entry, (*cp)->expr.flags);
+  PRE(exec_wrap, "%s 0x%x #wrap", entry->word_name, (*cp)->expr.flags);
   LOG_UNLESS(entry->entry.out == 1, "out = %d #unify-multiout", entry->entry.out);
 
   assert_error(ctx->out < sizeof(wrap.dep_mask) * 8);
@@ -618,7 +626,7 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
   new_entry->entry.wrap = &wrap;
   new_entry->module_name = parent_entry->module_name;
   new_entry->word_name = string_printf("%s_r%d", parent_entry->word_name, parent_entry->entry.sub_id++);
-  LOG("created entry for %E", new_entry);
+  LOG("created entry for %s", new_entry->word_name);
 
   COUNTUP(i, in) {
     if(c->expr.arg[i]->op != OP_ap ||
@@ -739,7 +747,7 @@ static
 response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
   size_t in = closure_in(*cp);
   cell_t *entry = (*cp)->expr.arg[in];
-  PRE(exec_trace, " %E 0x%x", entry, (*cp)->expr.flags);
+  PRE(exec_trace, "%s 0x%x", entry->word_name, (*cp)->expr.flags);
 
   assert_error(parent_entry);
 
@@ -857,7 +865,7 @@ bool all_dynamic(cell_t *entry, cell_t *c) {
       int a = REVI(i);
       reduce(&c->expr.arg[a], &CTX(any)); // HACK
       if(!is_input(c->expr.arg[a])) {
-        LOG("not dynamic: %C %E arg[%d] = %C", c, entry, a, c->expr.arg[a]);
+        LOG("not dynamic: %C %s arg[%d] = %C", c, entry->word_name, a, c->expr.arg[a]);
         return false;
       }
     }
@@ -867,14 +875,14 @@ bool all_dynamic(cell_t *entry, cell_t *c) {
 
 OP(exec) {
   cell_t *entry = (*cp)->expr.arg[closure_in(*cp)];
-  PRE(exec, " %E", entry);
+  PRE(exec, "%s", entry->word_name);
 
   cell_t *parent_entry = trace_current_entry();
 
   if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
     if(ctx->priority < 1 &&
        TWEAK(1, "to disable exec delay")) {
-      LOG("delay exec (priority %d) %E %C #abort", ctx->priority, entry, c);
+      LOG("delay exec (priority %d) %s %C #abort", ctx->priority, entry->word_name, c);
       return DELAY;
     }
     assert_error(parent_entry,

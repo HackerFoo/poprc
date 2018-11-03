@@ -190,19 +190,19 @@
   PRE_NO_CONTEXT(func)
 
 #define PRE_2(func, fmt)                        \
-  CONTEXT(#func ": %C" fmt, *cp);               \
+  CONTEXT(#func ": %C " fmt, *cp);              \
   PRE_NO_CONTEXT(func)
 
 #define PRE_3(func, fmt, x)                     \
-  CONTEXT(#func ": %C" fmt, *cp, x);            \
+  CONTEXT(#func ": %C " fmt, *cp, x);           \
   PRE_NO_CONTEXT(func)
 
 #define PRE_4(func, fmt, x, y)                  \
-  CONTEXT(#func ": %C" fmt, *cp, x, y);         \
+  CONTEXT(#func ": %C " fmt, *cp, x, y);        \
   PRE_NO_CONTEXT(func)
 
 #define PRE_5(func, fmt, x, y, z)               \
-  CONTEXT(#func ": %C" fmt, *cp, x, y, z);      \
+  CONTEXT(#func ": %C " fmt, *cp, x, y, z);     \
   PRE_NO_CONTEXT(func)
 
 #define PRE(...) DISPATCH2(PRE, ##__VA_ARGS__)
@@ -225,10 +225,10 @@
     int i = get_watch(c);                                               \
     if unlikely(i) {                                                    \
         if(i == -1) {                                                   \
-          LOG_NOBREAK(NOTE("WATCH OP") " %O " msg " %C" fmt,            \
+          LOG_NOBREAK(NOTE("WATCH OP") " %O " msg " %C " fmt,           \
                       c->op, c, (x));                                   \
         } else {                                                        \
-          LOG_NOBREAK(NOTE("WATCH") " %d " msg " %C" fmt, i, c, (x));   \
+          LOG_NOBREAK(NOTE("WATCH") " %d " msg " %C " fmt, i, c, (x));  \
         }                                                               \
         breakpoint();                                                   \
       }                                                                 \
@@ -290,6 +290,12 @@
     __typeof(x) __ptr = (x);                            \
     assert_error(__ptr != NULL, "null pointer");        \
     __ptr;                                              \
+  })
+
+#define strfield(s, f)                          \
+  ({                                            \
+    LET(__s, s);                                \
+    __s && __s->f ? __s->f : "null";            \
   })
 
 #endif

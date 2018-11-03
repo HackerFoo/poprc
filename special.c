@@ -81,9 +81,11 @@ OP(value) {
       cell_t *parent = entry->entry.parent;
       if(parent) {
         LOG_WHEN(is_list(c), "nil %C", c);
-        int v = trace_store_value(entry->entry.parent, c);
+        int v = trace_store_value(parent, c);
         cell_t *tc = trace_alloc_var(entry);
-        LOG("move value %C %T -> %T", c, tc, &parent[v]);
+        LOG("move value %C %s[%d] -> %s[%d]", c,
+            entry->word_name, tc-entry,
+            parent->word_name, v);
         c->value.var = tc;
         c->value.flags = VALUE_VAR;
         tc->value.var = &parent[v];
@@ -235,7 +237,7 @@ cell_t *var_(type_t t, cell_t *c, uint8_t pos) {
   cell_t *entry = trace_expr_entry(pos);
   if(!entry) {
     entry = trace_current_entry();
-    LOG(HACK " using current entry %E", entry);
+    LOG(HACK " using current entry %s", entry->word_name);
   }
 
   return var_create_with_entry(t, entry, c->size);

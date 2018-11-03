@@ -263,13 +263,13 @@ int trace_lookup_value_linear(cell_t *entry, const cell_t *c) {
 
 // Change the active entry, and add to the list if needed.
 void switch_entry(cell_t *entry, cell_t *r) {
-  CONTEXT("switch_entry %E %C", entry, r);
+  CONTEXT("switch_entry %s %C", entry->word_name, r);
   assert_error(is_var(r));
   if(!get_var(entry, r)) {
     if(entry->entry.parent)
       switch_entry(entry->entry.parent, r);
 
-    WATCH(r, "switch_entry", "%E", entry);
+    WATCH(r, "switch_entry", "%s", entry->word_name);
     cell_t *v = r->value.var;
 
     // a little hacky because ideally variables shouldn't be duplicated
@@ -294,7 +294,7 @@ void mark_pos(cell_t *c, int pos) {
   if(!pos || c->pos == pos) return;
   assert_error(c->n != PERSISTENT);
   cell_t *entry = trace_expr_entry(pos);
-  WATCH(c, "mark_pos", "%E", entry);
+  WATCH(c, "mark_pos", "%s", entry->word_name);
   if(is_var(c)) {
     switch_entry(entry, c);
   } else {
@@ -333,7 +333,7 @@ int trace_alloc(cell_t *entry, csize_t args) {
   cell_t *tc = &entry[index];
   tc->n = -1;
   tc->size = args;
-  LOG("trace_alloc %T size = %d", tc, args);
+  LOG("trace_alloc %s[%d] size = %d", entry->word_name, tc-entry, args);
   return index;
 }
 
@@ -402,8 +402,10 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
   }
   assert_error(tc->size == c->size);
   assert_error(c->op != OP_dep);
-  CONTEXT_LOG("trace_store_expr: %T <- %s %C %C",
-              r->value.var, op_name(c->op), c, r);
+  CONTEXT_LOG("trace_store_expr: %s[%d] <- %O %C %C",
+              entry->word_name,
+              r->value.var-entry,
+              c->op, c, r);
 
   refcount_t n = tc->n;
   memcpy(tc, c, sizeof(cell_t) * closure_cells(c));
@@ -556,7 +558,9 @@ uint8_t trace_recursive_changes(cell_t *entry) {
     if(p->op == OP_exec &&
        p->expr.arg[in = closure_in(p)] == encoded_entry) {
       unsigned int cnt = 0;
-      assert_error(in == entry->entry.in, "incorrect self call arity at %E %d", entry, p-entry);
+      assert_error(in == entry->entry.in,
+                   "incorrect self call arity at %s %d",
+                   entry->word_name, p-entry);
       COUNTUP(i, in) {
         trace_index_t v = in - i;
         if(trace_decode(p->expr.arg[i]) != v) {
@@ -679,7 +683,7 @@ cell_t *get_list_function_var(cell_t *c) {
 
 // called when c is reduced to r to copy to pre-allocated space in the trace
 void trace_reduction(cell_t *c, cell_t *r) {
-  WATCH(c, "trace_reduction", " %C", r);
+  WATCH(c, "trace_reduction", "%C", r);
   cell_t *new_entry = trace_expr_entry(c->pos);
   if(!is_var(r)) {
     // print tracing information for a reduction
@@ -798,7 +802,7 @@ int trace_return(cell_t *entry, cell_t *c_) {
   }
   int x = trace_copy(entry, c);
   cell_t *tc = &entry[x];
-  LOG("trace_return: %T <- %C", tc, c_);
+  LOG("trace_return: %s[%d] <- %C", entry->word_name, tc-entry, c_);
   closure_free(c);
   tc->value.type = T_RETURN;
   tc->n = -1;
@@ -850,7 +854,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
   unsigned int alts = 0;
   context_t *ctx = ctx_pos(&CTX(return), entry->pos);
 
-  CONTEXT("trace_reduce %E %C", entry, *cp);
+  CONTEXT("trace_reduce %s %C", entry->word_name, *cp);
   insert_root(cp);
 
   COUNTUP(priority, 8) {
@@ -897,7 +901,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
 
   remove_root(cp);
   if(!alts) {
-    LOG("reduction failed for %E", entry);
+    LOG("reduction failed for %s", entry->word_name);
   }
   return alts;
 }
@@ -990,7 +994,7 @@ cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
   if(b == NULL) return a;
   cell_t **arg = NULL;
   cell_t *entry = var_entry(a);
-  assert_error(entry_has(entry, b), "%T %T", a, b);
+  assert_error(entry_has(entry, b), "%s %d %d", entry->word_name, a-entry, b-entry);
   cell_t *p = a;
   cell_t *bi = trace_encode(var_index(entry, b));
 
@@ -1004,17 +1008,21 @@ cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
     case OP_otherwise:
       arg = &p->expr.arg[1];
       LOG_WHEN(p->expr.arg[0] == bi,
-               "duplicate arg for otherwise: %T <- %T", p, b);
+               "duplicate arg for otherwise: %s %d <- %d",
+               entry->word_name, p-entry, b-entry);
       break;
     default:
-      LOG("trace_seq: %T ... %T <- %T", a, p, b);
+      LOG("trace_seq: %s %d ... %d <- %d",
+          entry->word_name,
+          a-entry, p-entry, b-entry);
       return trace_seq(b, a);
     }
     if(*arg) {
       p = &entry[trace_decode(*arg)];
       assert_error(p != a, "loop");
     } else { // found empty arg
-      LOG("condition %T ... %T %O arg <- %T", a, p, p->op, b);
+      LOG("condition %s %d ... %d %O arg <- %d",
+          entry->word_name, a-entry, p-entry, p->op, b-entry);
       *arg = bi;
       b->n++;
       return a;

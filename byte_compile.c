@@ -173,7 +173,7 @@ void print_bytecode(cell_t *entry) {
 
 void drop_trace(cell_t *entry, cell_t *tc) {
   if(tc->n <= 0) {
-    LOG("drop %T %O", tc, tc->op);
+    LOG("drop %s[%d] %O", entry->word_name, tc-entry, tc->op);
     TRAVERSE(tc, in, ptrs) {
       int x = trace_decode(*p);
       if(x > 0) {
@@ -210,7 +210,7 @@ void condense(cell_t *entry) {
       }
       idx += calculate_cells(tc->size);
     } else {
-      LOG("collapse %d", tc - entry);
+      LOG("collapse %d", tc-entry);
     }
   }
 
@@ -234,7 +234,7 @@ void condense(cell_t *entry) {
             int x = trace_decode(*p);
             if(x > 0) {
               *p = entry[x].alt;
-              assert_error(trace_decode(*p) > 0, "at %T", tc);
+              assert_error(trace_decode(*p) > 0, "at %s[%d]", entry->word_name, tc-entry);
             }
           }
         }
@@ -273,7 +273,7 @@ void move_vars(cell_t *entry) {
   int idx = 1 + in;
   int nvars = 0;
 
-  CONTEXT("move_vars for %E", entry);
+  CONTEXT("move_vars for %s", entry->word_name);
 
   // calculate mapping
   FOR_TRACE(p, entry) {
@@ -453,7 +453,7 @@ void trace_final_pass(cell_t *entry) {
     prev = p;
   }
   if(NOT_FLAG(entry->entry, ENTRY_QUOTE) &&
-    TWEAK(true, "to disable condense/move_vars in %e", entry)) {
+    TWEAK(true, "to disable condense/move_vars in %s", entry->word_name)) {
     condense(entry);
     move_vars(entry);
   }
@@ -616,7 +616,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
     .n = expand_sym(ident, LENGTH(ident), name)
   };
   e->word_name = seg_string(ident_seg); // TODO fix unnecessary alloc
-  CONTEXT_LOG("compiling %E", e);
+  CONTEXT_LOG("compiling %s", e->word_name);
 
   // parse
   cell_t *c = parse_expr(&toks, module, e);
@@ -663,7 +663,7 @@ void mark_barriers(cell_t *entry, cell_t *c) {
   TRAVERSE(c, in) {
     cell_t *x = *p;
     if(x) {
-      LOG("barrier %E %C[%d]: %C #barrier", entry, c, p-c->expr.arg, x);
+      LOG("barrier %s %C[%d]: %C #barrier", entry->word_name, c, p-c->expr.arg, x);
       mark_pos(x, entry->pos);
     }
   }
@@ -672,7 +672,7 @@ void mark_barriers(cell_t *entry, cell_t *c) {
 void set_pos_for_values(cell_t *c, cell_t *entry) {
   if(is_value(c)) {
     if(!is_var(c) && is_cell(c)) {
-      LOG("set pos for %C to %e", c, entry);
+      LOG("set pos for %C to %s", c, entry->word_name);
       c->pos = entry->pos;
     }
   } else if(c->op == OP_ap ||
@@ -700,7 +700,7 @@ void mark_quote_barriers(cell_t *entry, cell_t *c) {
     cell_t *x = *p;
     if(!x) continue;
     if(x->n >= 0) {
-      LOG("quote barrier %E %C #barrier", entry, x);
+      LOG("quote barrier %s %C #barrier", entry->word_name, x);
       mark_pos(x, entry->pos);
     } else {
       mark_quote_barriers(entry, x);
@@ -709,7 +709,7 @@ void mark_quote_barriers(cell_t *entry, cell_t *c) {
 }
 
 cell_t *flat_quote(cell_t *new_entry, cell_t *parent_entry) {
-  CONTEXT("flat quote (%e -> %e)", parent_entry, new_entry);
+  CONTEXT("flat quote (%s -> %s)", parent_entry->word_name, new_entry->word_name);
   unsigned int in = new_entry->entry.in;
 
   FOR_TRACE(p, new_entry) {
@@ -741,7 +741,7 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
   e->module_name = parent_entry->module_name;
   e->word_name = string_printf("%s_q%d", parent_entry->word_name, parent_entry->entry.sub_id++);
   FLAG_SET(e->entry, ENTRY_QUOTE);
-  CONTEXT_LOG("compiling %C to quote %E", l, e);
+  CONTEXT_LOG("compiling %C to quote %s", l, e->word_name);
 
   // conversion
   csize_t len = function_out(l, true);
@@ -777,8 +777,10 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
   trace_clear_alt(parent_entry);
   cell_t *res = var(T_LIST, q, parent_entry->pos);
   assert_error(entry_has(parent_entry, res->value.var),
-               "parent: %E, var: %T",
-               parent_entry, res->value.var);
+               "parent: %s, var: %s[%d]",
+               parent_entry->word_name,
+               var_entry(res->value.var),
+               var_index(NULL, res->value.var));
   int x = var_index(parent_entry, res->value.var);
   trace_reduction(q, res);
   EACH(drop, q, res);
