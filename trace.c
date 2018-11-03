@@ -127,11 +127,17 @@ cell_t *trace_entry_next(cell_t *e) {
 bool closure_match(cell_t *a, cell_t *b) {
   if(a->op != b->op ||
      a->size != b->size) return false;
-  ptrdiff_t offset = (char *)b - (char *)a;
-  TRAVERSE(a, args, ptrs) {
-    if(*p != *(cell_t **)((char *)p + offset)) return false;
+  if(is_var(a)) {
+    return a->value.type == b->value.type;
+  } else if(!is_value(a)) {
+    return memcmp(a->expr.arg, b->expr.arg,
+                  sizeof_field(cell_t, expr.arg[0]) * closure_args(a)) == 0;
+  } else if(ONEOF(a->value.type, T_LIST, T_RETURN)) {
+    return memcmp(a->value.ptr, b->value.ptr,
+                  sizeof_field(cell_t, expr.arg[0]) * list_size(a)) == 0;
+  } else {
+    return equal_value(a, b);
   }
-  return true;
 }
 
 bool entries_match(cell_t *entry_a, cell_t *entry_b) {

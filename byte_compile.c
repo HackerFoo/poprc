@@ -629,11 +629,25 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   drop(c);
   trace_final_pass(e);
   trace_end_entry(e);
+  dedup_subentries(e);
   trace_compact(e);
 
   // finish
   free_def(l);
   return true;
+}
+
+void dedup_subentries(cell_t *e) {
+  FOR_TRACE(c, e) {
+    // duplicate quotes are common
+    if(is_user_func(c)) {
+      cell_t *ce = get_entry(c);
+      if(FLAG(ce->entry, ENTRY_QUOTE)) {
+        dedup_entry(&ce);
+        set_entry(c, ce);
+      }
+    }
+  }
 }
 
 // replace variable c if there is a matching entry in a
@@ -770,9 +784,6 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
 
   trace_final_pass(e); // *** wait?
   trace_end_entry(e);
-
-  // duplicate quotes are common
-  dedup_entry(&q->expr.arg[closure_in(q)]);
 
   trace_clear_alt(parent_entry);
   cell_t *res = var(T_LIST, q, parent_entry->pos);
