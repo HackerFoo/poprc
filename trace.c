@@ -377,6 +377,7 @@ void trace_arg(cell_t *tc, int n, cell_t *a) {
     *p = trace_encode(var_index(NULL, v));
     v->n++;
   }
+  trace_set_type(tc, a->value.type);
 }
 
 // store expression c in the trace
@@ -691,6 +692,7 @@ cell_t *get_list_function_var(cell_t *c) {
 void trace_reduction(cell_t *c, cell_t *r) {
   WATCH(c, "trace_reduction", "%C", r);
   cell_t *new_entry = trace_expr_entry(c->pos);
+  trace_update_type(r);
   if(!is_var(r)) {
     // print tracing information for a reduction
     if(FLAG(c->expr, EXPR_TRACE)) {

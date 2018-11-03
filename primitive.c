@@ -565,6 +565,13 @@ OP(otherwise) {
   clear_flags(c);
 
   if(tc && is_var(*q)) {
+    // propagate type
+    cell_t *entry = var_entry(tc);
+    for(cell_t *p = tc; p != tp;
+        p = &entry[trace_decode(p->expr.arg[1])]) {
+      trace_set_type(p, (*q)->value.type);
+    }
+
     res = var_create((*q)->value.type, tc, 0, 0);
     trace_arg(tp, 1, *q);
   } else {
