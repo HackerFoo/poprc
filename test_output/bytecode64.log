@@ -1631,22 +1631,22 @@ ___ tests.calc_loop (2 -> 1) x9 rec ___
 [66] return [ 63 ], type = r -> 71 x1
 [67] __primitive.otherwise 61 68, type = s x1
 [68] tests.calc_loop 7 70, type = s x1
-[69] tests.calc_loop_q1 29 26, type = l x1
+[69] tests.calc_loop_q0 29 26, type = l x1
 [70] __primitive.assert 69 12, type = l x1
 [71] return [ 67 ], type = r -> 76 x1
 [72] __primitive.otherwise 61 73, type = s x1
 [73] tests.calc_loop 7 75, type = s x1
-[74] tests.calc_loop_q2 35 32, type = l x1
+[74] tests.calc_loop_q0 35 32, type = l x1
 [75] __primitive.assert 74 14, type = l x1
 [76] return [ 72 ], type = r -> 81 x1
 [77] __primitive.otherwise 61 78, type = s x1
 [78] tests.calc_loop 7 80, type = s x1
-[79] tests.calc_loop_q3 41 38, type = l x1
+[79] tests.calc_loop_q0 41 38, type = l x1
 [80] __primitive.assert 79 16, type = l x1
 [81] return [ 77 ], type = r -> 86 x1
 [82] __primitive.otherwise 61 83, type = s x1
 [83] tests.calc_loop 7 85, type = s x1
-[84] tests.calc_loop_q4 47 44, type = l x1
+[84] tests.calc_loop_q0 47 44, type = l x1
 [85] __primitive.assert 84 18, type = l x1
 [86] return [ 82 ], type = r -> 92 x1
 [87] __primitive.otherwise 61 89, type = s x1
@@ -1662,39 +1662,11 @@ ___ tests.calc_loop (2 -> 1) x9 rec ___
 [97] return [ 93 ], type = r -> 102 x1
 [98] __primitive.otherwise 61 99, type = s x1
 [99] tests.calc_loop 7 101, type = s x1
-[100] tests.calc_loop_q7 59 58, type = l x1
+[100] tests.calc_loop_q0 59 58, type = l x1
 [101] __primitive.assert 100 24, type = l x1
 [102] return [ 98 ], type = r x1
 
 ___ tests.calc_loop_q0 (2 -> 1) ___
-[1] var, type = ?l x1
-[2] var, type = ?i x1
-[3] __primitive.compose 1 2 4, type = l x1
-[4] [ ], type = l x1
-[5] return [ 3 ], type = r x1
-
-___ tests.calc_loop_q1 (2 -> 1) ___
-[1] var, type = ?l x1
-[2] var, type = ?i x1
-[3] __primitive.compose 1 2 4, type = l x1
-[4] [ ], type = l x1
-[5] return [ 3 ], type = r x1
-
-___ tests.calc_loop_q2 (2 -> 1) ___
-[1] var, type = ?l x1
-[2] var, type = ?i x1
-[3] __primitive.compose 1 2 4, type = l x1
-[4] [ ], type = l x1
-[5] return [ 3 ], type = r x1
-
-___ tests.calc_loop_q3 (2 -> 1) ___
-[1] var, type = ?l x1
-[2] var, type = ?i x1
-[3] __primitive.compose 1 2 4, type = l x1
-[4] [ ], type = l x1
-[5] return [ 3 ], type = r x1
-
-___ tests.calc_loop_q4 (2 -> 1) ___
 [1] var, type = ?l x1
 [2] var, type = ?i x1
 [3] __primitive.compose 1 2 4, type = l x1
@@ -1713,13 +1685,6 @@ ___ tests.calc_loop_q6 (2 -> 1) ___
 [1] var, type = ?l x1
 [2] var, type = ?a x2
 [3] __primitive.compose 1 2 2 4, type = l x1
-[4] [ ], type = l x1
-[5] return [ 3 ], type = r x1
-
-___ tests.calc_loop_q7 (2 -> 1) ___
-[1] var, type = ?l x1
-[2] var, type = ?a x1
-[3] __primitive.compose 1 2 4, type = l x1
 [4] [ ], type = l x1
 [5] return [ 3 ], type = r x1
 
@@ -2816,7 +2781,7 @@ ___ tests.spilling3 (1 -> 3) ___
 [4] tests.spilling3_q0 3, type = l x1
 [5] tests.spilling3_q1 3, type = l x1
 [6] __primitive.not 2, type = s x1
-[7] tests.spilling3_q2 6, type = l x1
+[7] tests.spilling3_q0 6, type = l x1
 [8] return [ 7 5 4 ], type = r x1
 
 ___ tests.spilling3_q0 (1 -> 1) ___
@@ -2826,12 +2791,6 @@ ___ tests.spilling3_q0 (1 -> 1) ___
 [4] return [ 2 ], type = r x1
 
 ___ tests.spilling3_q1 (1 -> 1) ___
-[1] var, type = ?s x1
-[2] __primitive.ap 1 3, type = l x1
-[3] [ ], type = l x1
-[4] return [ 2 ], type = r x1
-
-___ tests.spilling3_q2 (1 -> 1) ___
 [1] var, type = ?s x1
 [2] __primitive.ap 1 3, type = l x1
 [3] [ ], type = l x1

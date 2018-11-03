@@ -152,14 +152,21 @@ void print_bytecode(cell_t *entry) {
     }
   }
 
-  // print sub-functions
+  // print sub-functions once
   FOR_TRACE(c, entry) {
     if(is_user_func(c)) {
       cell_t *e = get_entry(c);
-      if(e->entry.parent == entry) {
+      if(e->entry.parent == entry && !e->op) {
         printf("\n");
         print_bytecode(e);
+        e->op = OP_value;
       }
+    }
+  }
+  FOR_TRACE(c, entry) {
+    if(is_user_func(c)) {
+      cell_t *e = get_entry(c);
+      e->op = OP_null;
     }
   }
 }
@@ -651,111 +658,6 @@ void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *entry) {
   }
 }
 
-/*
-// matches:
-// ___ f (1 -> 1) ___
-// [0] var, type = ?f x1
-// [1] __primitive.ap 0 -> X, type = f x1
-// [2] return [ 1 ], type = @r x1
-#define OPERAND(x) FLIP_PTR((cell_t *)(x))
-static
-bool is_tail(cell_t *e) {
-  static const cell_t pattern[] = {
-    [0] = {
-      .op = OP_value,
-      .size = 2,
-      .value = {
-        .type = T_LIST,
-        .flags = T_VAR }},
-    [1] = {
-      .op = OP_ap,
-      .trace = { .type = T_LIST },
-      .size = 2,
-      .expr = {
-        .out = 1,
-        .arg = { OPERAND(1), 0 }}},
-    [2] = {
-      .op = OP_value,
-      .size = 2,
-      .value = {
-        .type = T_RETURN,
-        .ptr = { OPERAND(2) }}}
-  };
-  return
-    e->entry.in == 1 &&
-    e->entry.out == 1 &&
-    e->entry.len == LENGTH(pattern) &&
-    memcmp(pattern, e+1, sizeof(pattern)) == 0;
-}
-
-// all variable quote can be replaced with ap
-static
-bool is_ap(cell_t *e) {
-  cell_t *code = e + 1;
-  size_t in = e->entry.in;
-  if(in >= e->entry.len ||
-     e->entry.alts != 1) return false;
-  cell_t *ap = &code[in];
-  if((ap->op != OP_ap &&
-      ap->op != OP_compose) ||
-     closure_out(ap)) return false;
-  cell_t *ret = &code[in + closure_cells(ap)];
-  if(!is_value(ret) ||
-     list_size(ret) != 1 ||
-     trace_decode(ret->value.ptr[0]) != ap - code ||
-     FLAG(ret->value.type, T_ROW) ||
-     ret->value.type != T_RETURN) return false;
-  return true;
-}
-
-static
-bool simplify_quote(cell_t *e, cell_t *parent_entry, cell_t *q) {
-  cell_t **root = &q->expr.arg[closure_in(q)];
-  if(is_tail(e)) {
-    LOG("%d -> tail", q-parent_entry-1);
-    trace_shrink(q, 2);
-    q->op = OP_ap;
-    q->trace.type = T_LIST;
-    q->trace.flags = 0;
-    q->expr.out = 1;
-    // q->expr.arg[0] stays the same
-    q->expr.arg[1] = NULL;
-    goto finish;
-  } else if (e->entry.in + 1 == q->size && is_ap(e)) {
-    LOG("%d -> ap", q-parent_entry-1);
-    csize_t in = e->entry.in;
-    assert_error(q->expr.out == 0);
-    cell_t *code = e + 1;
-    cell_t *ap = &code[in];
-    csize_t args = closure_in(ap);
-    if(args <= q->size) {
-      // store arguments in alts
-      COUNTUP(i, in) {
-        code[in - 1 - i].alt = q->expr.arg[i];
-      }
-
-      trace_shrink(q, args);
-
-      // look up arguments stored earlier
-      COUNTUP(i, args) {
-        trace_index_t x = trace_decode(ap->expr.arg[i]);
-        q->expr.arg[i] = x == NIL_INDEX ? trace_encode(NIL_INDEX) : code[x].alt;
-      }
-
-      q->op = ap->op;
-      q->trace.type = T_LIST;
-      q->trace.flags = 0;
-      goto finish;
-    }
-  }
-  return false;
-finish:
-  trace_clear(e);
-  remove_root(root);
-  return true;
-}
-*/
-
 // need a quote version that only marks vars
 void mark_barriers(cell_t *entry, cell_t *c) {
   TRAVERSE(c, in) {
@@ -869,6 +771,9 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
   trace_final_pass(e); // *** wait?
   trace_end_entry(e);
 
+  // duplicate quotes are common
+  dedup_entry(&q->expr.arg[closure_in(q)]);
+
   trace_clear_alt(parent_entry);
   cell_t *res = var(T_LIST, q, parent_entry->pos);
   assert_error(entry_has(parent_entry, res->value.var),
@@ -877,8 +782,6 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
   int x = var_index(parent_entry, res->value.var);
   trace_reduction(q, res);
   EACH(drop, q, res);
-
-  //if(simplify_quote(e, parent_entry, q)) return NULL;
 
   apply_condition(l, &x);
   return x;

@@ -113,6 +113,7 @@ void trace_update_block_map(cell_t *entry) {
 }
 
 bool entry_has(cell_t *entry, cell_t *v) {
+  if(!entry) return false;
   cell_t *end = entry + trace_entry_size(entry);
   return v > entry && v < end;
 }
@@ -123,10 +124,63 @@ cell_t *trace_entry_next(cell_t *e) {
               trace_entry_size(e));
 }
 
+bool closure_match(cell_t *a, cell_t *b) {
+  if(a->op != b->op ||
+     a->size != b->size) return false;
+  ptrdiff_t offset = (char *)b - (char *)a;
+  TRAVERSE(a, args, ptrs) {
+    if(*p != *(cell_t **)((char *)p + offset)) return false;
+  }
+  return true;
+}
+
+bool entries_match(cell_t *entry_a, cell_t *entry_b) {
+  int len = entry_a->entry.len;
+  if(len != entry_b->entry.len) return false;
+  int offset = entry_b - entry_a;
+  FOR_TRACE(a, entry_a) {
+    if(!closure_match(a, a + offset)) return false;
+  }
+  return true;
+}
+
+cell_t *block_first_entry(cell_t *v) {
+  int i = (v - trace_cells) / MAP_BLOCK_SIZE;
+  assert_error(i < BLOCK_MAP_SIZE);
+  return trace_block_map[i];
+}
+
+cell_t *top_parent(cell_t *e) {
+  cell_t *r = NULL;
+  FOLLOW(p, e, entry.parent) {
+    r = p;
+  }
+  return r;
+}
+
+cell_t *trace_matching_entry(cell_t *x) {
+  assert_error(is_trace_cell(x));
+  cell_t *top = top_parent(x);
+  if(!top) return x;
+  for(cell_t *e = top;
+      e < x;
+      e = trace_entry_next(e)) {
+    if(entries_match(e, x)) return e;
+  }
+  return x;
+}
+
+void dedup_entry(cell_t **e) {
+  cell_t *p = trace_matching_entry(*e);
+  if(p < *e) {
+    (*e)->n = 0; // tag for deletion
+    *e = p;
+  }
+}
+
 cell_t *var_entry(cell_t *v) {
   assert_error(is_trace_cell(v));
-  int i = (v - trace_cells) / MAP_BLOCK_SIZE;
-  for(cell_t *e = trace_block_map[i];
+  for(cell_t *e = block_first_entry(v);
       e < trace_ptr;
       e = trace_entry_next(e)) {
     if(entry_has(e, v)) return e;
@@ -1054,13 +1108,19 @@ void trace_compact(cell_t *entry) {
   cell_t *ne = entry;
   for(cell_t *e = entry;
       e < end;
-      ne += trace_entry_size(e),
-        e += ENTRY_BLOCK_SIZE) {
-    e->entry.compact = ne;
+      e += ENTRY_BLOCK_SIZE) {
+    if(e->n) {
+      e->entry.compact = ne;
+      ne += trace_entry_size(e);
+    } else {
+      memset(e, 0, sizeof(trace_cells[0]) * ENTRY_BLOCK_SIZE);
+    }
   }
 
   // update references
   for(cell_t *e = entry; e < end; e += ENTRY_BLOCK_SIZE) {
+    if(!e->n) continue;
+
     // update calls
     FOR_TRACE(c, e) {
       if(is_user_func(c)) {
@@ -1079,6 +1139,7 @@ void trace_compact(cell_t *entry) {
 
   // move and clean up
   for(cell_t *e = entry; e < end; e += ENTRY_BLOCK_SIZE) {
+    if(!e->n) continue;
     FLAG_CLEAR(e->entry, ENTRY_BLOCK);
 
     // move
