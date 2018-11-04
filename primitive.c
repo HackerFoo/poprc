@@ -451,6 +451,7 @@ OP(assert) {
 
   cell_t *res = NULL;
   cell_t *tc = NULL;
+  CHECK_PRIORITY(ASSERT);
   CHECK(reduce_arg(c, 1, &CTX(symbol, SYM_True)));
   CHECK_DELAY();
   cell_t *p = clear_ptr(c->expr.arg[1]);
@@ -460,7 +461,6 @@ OP(assert) {
            p->value.integer != SYM_True, FAIL);
 
   if(p_var) {
-    CHECK_IF(ctx->delay_assert, DELAY);
     tc = trace_partial(OP_assert, 1, p);
   }
 
@@ -498,13 +498,13 @@ OP(seq) {
 
   cell_t *res = NULL;
   cell_t *tc = NULL;
+  CHECK_PRIORITY(SEQ);
   CHECK(reduce_arg(c, 1, &CTX(any))); // don't split arg here?
   CHECK_DELAY();
   cell_t *p = clear_ptr(c->expr.arg[1]);
   bool p_var = is_var(p);
 
   if(p_var) {
-    CHECK_IF(ctx->delay_assert, DELAY);
     tc = trace_partial(OP_seq, 1, p);
   }
 
@@ -545,14 +545,14 @@ OP(otherwise) {
   // reduce each alt
   cell_t **p = &c->expr.arg[0];
   cell_t **q = &c->expr.arg[1];
+  CHECK_PRIORITY(OTHERWISE);
   while(*p) {
-    response rsp0 = reduce(p, &CTX(any));
+    response rsp0 = force(p);
     CHECK_IF(rsp0 == DELAY, DELAY);
     CHECK_IF(!is_var(*p) &&
              !(*p)->value.var &&
              rsp0 != FAIL, FAIL);
     if(rsp0 != FAIL) {
-      CHECK_IF(ctx->delay_assert, DELAY);
       tc = concatenate_conditions(trace_partial(OP_otherwise, 0, *p), tc);
       if(!tp) tp = tc;
     }
@@ -638,13 +638,12 @@ OP(swap) {
 WORD("delay", delay, 1, 1)
 OP(delay) {
   PRE(delay);
-  if(ctx->priority < 1) {
-    LOG("delay (priority %d) %C", ctx->priority, c);
-    return DELAY;
-  }
-
+  CHECK_PRIORITY(DELAY);
   store_lazy(cp, c->expr.arg[0], 0);
   return RETRY;
+
+abort:
+  return abort_op(rsp, cp, ctx);
 }
 
 cell_t *id(cell_t *c, alt_set_t as) {
@@ -688,7 +687,7 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
 
   cell_t *p = NULL;
   cell_t *res = NULL;
-  int pos = c->pos ? c->pos : c->expr.arg[in]->pos;
+  int pos = c->pos ? c->pos : ((cell_t *)clear_ptr(c->expr.arg[in]))->pos;
 
   if(row) {
     CHECK(reduce_arg(c, 0, &CTX(list, ctx->in, 0)));

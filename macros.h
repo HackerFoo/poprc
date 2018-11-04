@@ -294,4 +294,20 @@
 
 #define strfield(s, f) maybe_get(s, f, "null")
 
+#define WITH(p, f, v)                           \
+  ({                                            \
+    LET(__p, (p));                              \
+    __p->f = (v);                               \
+    __p;                                        \
+  })
+
+#define CHECK_PRIORITY(p)                               \
+  do {                                                  \
+    if(ctx->priority < (int)PRIORITY_##p) {             \
+      rsp = DELAY;                                      \
+      LOG("delay (priority %d) %C", ctx->priority, c);  \
+      goto abort;                                       \
+    }                                                   \
+  } while(0)
+
 #endif

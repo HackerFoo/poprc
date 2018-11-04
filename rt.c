@@ -35,6 +35,19 @@
 #include "user_func.h"
 #include "tags.h"
 
+#if INTERFACE
+enum priority {
+  PRIORITY_ALWAYS = 0,
+  PRIORITY_ASSERT = 1,
+  PRIORITY_SEQ = 1,
+  PRIORITY_DELAY = 1,
+  PRIORITY_EXEC_SELF = 2,
+  PRIORITY_OTHERWISE = 3,
+  PRIORITY_MAX
+};
+#define PRIORITY_TOP (PRIORITY_MAX - 1)
+#endif
+
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
 
@@ -46,7 +59,7 @@ static op watched_op = OP_null;
 bool watch_enabled = false;
 
 #if INTERFACE
-#define ASSERT_REF() if(!ctx->delay_var) assert_error(assert_ref(rt_roots, rt_roots_n))
+#define ASSERT_REF() if(!ctx->simplify) assert_error(assert_ref(rt_roots, rt_roots_n))
 #endif
 
 bool insert_root(cell_t **r) {
@@ -165,7 +178,7 @@ response reduce_arg(cell_t *c,
   response r = reduce(ap, ctx);
   cell_t *a = clear_ptr(*ap);
   if(r == SUCCESS) ctx->up->alt_set |= a->value.alt_set;
-  if(r < DELAY) split_arg(c, n);
+  if(r <= DELAY) split_arg(c, n);
   return r;
 }
 
@@ -217,7 +230,7 @@ response reduce_ptr(cell_t *c,
   response r = reduce(ap, ctx);
   cell_t *a = clear_ptr(*ap);
   if(r == SUCCESS) ctx->up->alt_set |= a->value.alt_set;
-  if(r < DELAY) split_ptr(c, n);
+  if(r <= DELAY) split_ptr(c, n);
   return r;
 }
 
@@ -278,10 +291,13 @@ response reduce(cell_t **cp, context_t *ctx) {
   return FAIL;
 }
 
+response force(cell_t **cp) {
+  return reduce(cp, &CTX(any));
+}
+
 response simplify(cell_t **cp, context_t *ctx) {
-  ctx->delay_var = true;
   CONTEXT("simplify %C", *cp);
-  return reduce(cp, ctx);
+  return reduce(cp, WITH(ctx, simplify, true));
 }
 
 // Perform one reduction step on *cp
@@ -848,8 +864,7 @@ uint8_t new_alt_id(unsigned int n) {
 #if INTERFACE
 #define CTX_INHERIT                             \
   .priority = ctx->priority,                    \
-  .delay_assert = ctx->delay_assert,            \
-  .delay_var = ctx->delay_var,                  \
+  .simplify = ctx->simplify,                    \
   .up = ctx
 #define CTX(type, ...) CONCAT(CTX_, type)(__VA_ARGS__)
 #define CTX_list(_in, _out) \
@@ -873,7 +888,7 @@ uint8_t new_alt_id(unsigned int n) {
 #endif
 
 // default 'ctx' for CTX(...) to inherit
-context_t * const ctx = &(context_t) { .t = T_ANY };
+context_t * const ctx = &(context_t) { .t = T_ANY, .priority = PRIORITY_TOP };
 
 context_t *ctx_pos(context_t *ctx, uint8_t pos) {
   ctx->pos = pos;
@@ -896,10 +911,12 @@ void assert_alt(cell_t *c, cell_t *a) {
   (void)c;
   (void)a;
 #else
+  if(!is_value(a)) return;
   alt_set_t alt_set = a->value.alt_set;
   FOLLOW(p, c, alt) {
     if(p == a) break;
-    assert_error(as_conflict(p->value.alt_set | alt_set),
+    assert_error(!is_value(p) ||
+                 !as_conflict(p->value.alt_set | alt_set),
                  "overlapping alts %C %C @exec_split", p, a);
   }
 #endif

@@ -874,14 +874,13 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
   CONTEXT("trace_reduce %s %C", entry->word_name, *cp);
   insert_root(cp);
 
-  COUNTUP(priority, 8) {
+  COUNTUP(priority, PRIORITY_MAX) {
     cell_t **p = cp;
     bool delay = false;
-    ctx->priority = priority;
     CONTEXT("priority = %d", priority);
     while(*p) {
       CONTEXT("branch %d: %C", alts, *p);
-      response rsp = func_list(p, ctx);
+      response rsp = func_list(p, WITH(ctx, priority, priority));
       if(rsp == DELAY) {
         delay = true;
         p = &(*p)->alt;
@@ -893,7 +892,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
       cell_t **a;
       FORLIST(a, *p, true) {
         collapse_row(a);
-        reduce(a, &CTX(any)); // ***
+        force(a); // ***
         if(is_value(*a) &&
            !is_list(*a) &&
            !is_var(*a)) { // TODO deps?

@@ -174,7 +174,7 @@ cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) 
       LOG(HACK " forcing pos for %C (%C) to %s", pattern, c, entry->word_name);
       pattern->pos = entry->pos; // HACKity HACK
     }
-    reduce(&pattern, &CTX(any));
+    force(&pattern);
     return bind_pattern(entry, c, pattern, tail);
   } else {
     // This can be caused by an operation before an infinite loop
@@ -418,7 +418,7 @@ void vars_in_entry(cell_t **p, cell_t *entry) {
   while(*p) {
     cell_t *v = *p;
     cell_t **next = &v->tmp;
-    if(!entry_has(entry, v->value.var)) {
+    if(!var_for_entry(entry, v->value.var)) {
       // remove from list
       LOG("remove var %C", v);
       *p = *next;
@@ -451,8 +451,8 @@ void reassign_input_order(cell_t *entry) {
 
   int pos = 1;
   FOLLOW(p, vl, tmp) {
-    assert_error(entry_has(entry, p->value.var));
-    cell_t *tn = p->value.var;
+    cell_t *tn = var_for_entry(entry, p->value.var);
+    assert_error(tn);
     assert_error(tn->pos, "%s[%d] (%C)",
                  entry->word_name, tn-entry, p);
     if(tn->pos != pos) {
@@ -770,9 +770,8 @@ response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
         type_t t = p->value.type;
         if(t == T_LIST) t = T_ANY; // HACK, T_FUNCTION breaks things
         in_types[i] = t;
-        context_t tr = CTX(t, t);
-        tr.delay_assert = true;
-        CHECK_IF(reduce(&c->expr.arg[i], &tr) == FAIL, FAIL);
+        CHECK_IF(reduce(&c->expr.arg[i],
+                        WITH(&CTX(t, t), priority, PRIORITY_ASSERT - 1)) == FAIL, FAIL);
         if(++n >= in) break;
       }
     }
@@ -802,7 +801,7 @@ response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
             switch_entry(entry, f);
           }
         }
-        CHECK(func_list(ap, &CTX(return)));
+        CHECK(func_list(ap, WITH(&CTX(return), priority, PRIORITY_TOP)));
         CHECK_DELAY();
 
         // ensure quotes are stored first
@@ -863,7 +862,7 @@ bool all_dynamic(cell_t *entry, cell_t *c) {
   COUNTUP(i, in) {
     if(NOT_FLAG(entry[i+1].value, VALUE_CHANGES)) {
       int a = REVI(i);
-      reduce(&c->expr.arg[a], &CTX(any)); // HACK
+      force(&c->expr.arg[a]); // HACK
       if(!is_input(c->expr.arg[a])) {
         LOG("not dynamic: %C %s arg[%d] = %C", c, entry->word_name, a, c->expr.arg[a]);
         return false;
@@ -880,11 +879,7 @@ OP(exec) {
   cell_t *parent_entry = trace_current_entry();
 
   if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
-    if(ctx->priority < 1 &&
-       TWEAK(1, "to disable exec delay")) {
-      LOG("delay exec (priority %d) %s %C #abort", ctx->priority, entry->word_name, c);
-      return DELAY;
-    }
+    CHECK_PRIORITY(EXEC_SELF);
     assert_error(parent_entry,
                  "incomplete entry can't be unified without "
                  "a parent entry %C @exec_split", c);
@@ -904,14 +899,13 @@ OP(exec) {
 
     if(FLAG(c->expr, EXPR_RECURSIVE)) {
       TRAVERSE(c, in) {
-        CHECK(reduce(p, &CTX(any)));
+        CHECK(force(p));
       }
       CHECK_DELAY();
     }
     cell_t *res = exec_expand(c, entry);
 
     if(FLAG(entry->entry, ENTRY_TRACE)) {
-      // HACK forces inputs
       printf("TRACE: %s.%s", entry->module_name, entry->word_name);
       TRAVERSE(c, in) {
         putchar(' ');
@@ -935,7 +929,7 @@ void reduce_quote(cell_t **cp) {
   if(is_user_func(*cp) && closure_is_ready(*cp)) { // HACKy
     LOG("HACK reduce_quote[%C]", *cp);
     insert_root(cp);
-    reduce(cp, &CTX(any));
+    force(cp);
     remove_root(cp);
   }
 }

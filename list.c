@@ -114,13 +114,12 @@ void log_ptrs(cell_t *c) {
 void reduce_list(cell_t **cp) {
   context_t *ctx = &CTX(return);
   response rsp = SUCCESS;
-  COUNTUP(priority, 8) {
+  COUNTUP(priority, PRIORITY_MAX) {
     cell_t **p = cp;
     bool delay = false;
-    ctx->priority = priority;
     CONTEXT("priority = %d", priority);
     while(*p) {
-      rsp = func_list(p, ctx);
+      rsp = func_list(p, WITH(ctx, priority, priority));
       if(ONEOF(rsp, SUCCESS, DELAY)) {
         if(rsp == DELAY) delay = true;
         p = &(*p)->alt;

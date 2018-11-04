@@ -76,8 +76,7 @@ struct context {
   type_t t;
   uint8_t pos;
   bool retry;
-  bool delay_assert;
-  bool delay_var;
+  bool simplify;
   bool expected;
 };
 

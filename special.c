@@ -32,7 +32,7 @@ OP(value) {
   PRE(value);
   stats.reduce_cnt--;
 
-  CHECK_IF(is_var(c) && ctx->delay_var, DELAY);
+  CHECK_IF(is_var(c) && ctx->simplify, DELAY);
 
   // promote integer constants to float constants
   if(ctx->t == T_FLOAT &&
@@ -149,7 +149,7 @@ void placeholder_extend(cell_t **lp, int in, int out) {
   cell_t **left = leftmost_row(&l);
   if(!left) return;
   // HACK need to map_assert after extending
-  if((*left)->op == OP_assert) reduce(left, &CTX(any));
+  if((*left)->op == OP_assert) force(left);
   cell_t *f = *left;
   if(!(is_function(f) || is_placeholder(f))) return;
   cell_t *ph = func(OP_placeholder, d_in + 1, d_out + 1);
