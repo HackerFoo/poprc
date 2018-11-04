@@ -292,10 +292,6 @@
     __ptr;                                              \
   })
 
-#define strfield(s, f)                          \
-  ({                                            \
-    LET(__s, s);                                \
-    __s && __s->f ? __s->f : "null";            \
-  })
+#define strfield(s, f) maybe_get(s, f, "null")
 
 #endif

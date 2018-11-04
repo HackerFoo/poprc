@@ -29,6 +29,8 @@
 #include "startle/error.h"
 #include "startle/log.h"
 
+static bool breakpoint_disabled = false;
+
 #if INTERFACE
 #include <setjmp.h>
 
@@ -241,12 +243,15 @@ void breakpoint_hook() {}
 
 /** Convenient place to set a breakpoint for debugger integration. */
 void breakpoint() {
-  if(!current_error || !current_error->quiet) {
-    print_context(5);
-    printf(NOTE("BREAKPOINT") " ");
-    print_last_log_msg();
+  if(breakpoint_disabled) return;
+  SHADOW(breakpoint_disabled, true) { // avoid error loops
+    if(!maybe_get(current_error, quiet, false)) {
+      print_context(5);
+      printf(NOTE("BREAKPOINT") " ");
+      print_last_log_msg();
+    }
+    breakpoint_hook();
   }
-  breakpoint_hook();
 }
 
 static unsigned int counters[8] = {0};

@@ -87,10 +87,10 @@ void fprint_tree(cell_t *c, map_t map, FILE *f) {
     if(is_var(c) && c->value.var) {
       cell_t *var = c->value.var;
       cell_t *entry = var_entry(var);
-      int index = var_index(entry, var);
+      int index = var_index_nofail(entry, var);
       fprintf(f, " %s.%s[%d]",
-              entry->module_name,
-              entry->word_name,
+              strfield(entry, module_name),
+              strfield(entry, word_name),
               index);
     } else if(is_list(c)) {
       TRAVERSE(c, ptrs) {

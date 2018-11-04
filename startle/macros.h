@@ -362,4 +362,10 @@
       __tmpp;                                   \
       ((var) = __tmp), __tmpp = NULL)
 
+#define maybe_get(s, f, d)                      \
+  ({                                            \
+    LET(__s, s);                                \
+    __s && __s->f ? __s->f : (d);               \
+  })
+
 #endif

@@ -226,6 +226,15 @@ int var_index(cell_t *entry, cell_t *v) {
   return v - entry;
 }
 
+int var_index_nofail(cell_t *entry, cell_t *v) {
+  if(!entry) {
+    entry = var_entry(v);
+  }
+  v = var_for_entry(entry, v);
+  if(!v) return -1;
+  return v - entry;
+}
+
 // trace_encode/decode allow small integers to be encoded as pointers
 // This avoids a reference to index 0 being treated as a missing argument
 cell_t *trace_encode(int index) {
