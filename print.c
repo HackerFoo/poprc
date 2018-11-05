@@ -556,7 +556,7 @@ char *show_type(type_t t) {
   _case(T_MODULE);
   default: return "???";
   }
-#undef case
+#undef _case
 }
 
 // unsafe

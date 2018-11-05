@@ -235,7 +235,7 @@ void gen_call(cell_t *e, cell_t *c) {
       n = closure_args(c),
       start_out = n - closure_out(c);
 
-    get_name(c, &module_name, &word_name);
+    trace_get_name(c, &module_name, &word_name);
 
     printf("  %s%d = %s_%s", cname(trace_type(c)), i, module_name, word_name);
     if(c->op == OP_ap || c->op == OP_compose) {
@@ -278,6 +278,10 @@ void gen_value_rhs(cell_t *c) {
     printf("{ .s = \"%s\", .n = %d };\n", s, n);
     break;
   }
+  case T_LIST:
+    assert_error(list_size(c) == 0);
+    printf("nil;\n");
+    break;
   default:
     assert_error(false); // TODO add more types
   }

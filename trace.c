@@ -888,7 +888,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
       }
       // TODO handle rotating alts
       if(rsp != SUCCESS) continue;
-      assert_alt(*cp, *p); // O(alts^2)
+      if(!delay) assert_alt(*cp, *p); // O(alts^2)
       cell_t **a;
       FORLIST(a, *p, true) {
         collapse_row(a);
