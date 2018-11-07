@@ -532,12 +532,31 @@ OP(seq) {
   return abort_op(rsp, cp, ctx);
 }
 
+// merge two otherwise's into a seq
+bool rule_merge_otherwise(context_t *ctx) {
+  if(ctx->inv) {
+    cell_t *c = ctx->src;
+    cell_t *p = ctx->up->src;
+    if(p->op == OP_otherwise && clear_ptr(p->expr.arg[0]) == c) {
+      LOG("rule match: merge_otherwise %C %C", p, c);
+      p->op = OP_seq;
+      p->expr.arg[0] = p->expr.arg[1];
+      p->expr.arg[1] = ref(c->expr.arg[0]);
+      drop(c);
+      ctx->retry = true;
+      return true;
+    }
+  }
+  return false;
+}
+
 // very similar to assert
 // TODO merge common code
 WORD("otherwise", otherwise, 2, 1)
 OP(otherwise) {
   PRE(otherwise);
   CHECK_PRIORITY(OTHERWISE);
+  RULE(merge_otherwise);
 
   cell_t *res = NULL;
   cell_t *tc = NULL, *tp = NULL;
@@ -546,8 +565,9 @@ OP(otherwise) {
   cell_t **p = &c->expr.arg[0];
   cell_t **q = &c->expr.arg[1];
   while(*p) {
-    response rsp0 = force(p);
-    CHECK_IF(rsp0 == DELAY, DELAY);
+    response rsp0 = reduce(p, WITH(&CTX(any), inv, !ctx->inv));
+    CHECK_IF(rsp0 == RETRY, RETRY);
+    CHECK_IF(rsp0 == DELAY, DELAY); // ***
     CHECK_IF(!is_var(*p) &&
              !(*p)->value.var &&
              rsp0 != FAIL, FAIL);

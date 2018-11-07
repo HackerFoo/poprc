@@ -77,6 +77,7 @@ struct context {
   uint8_t pos;
   bool retry;
   bool expected;
+  bool inv;
 };
 
 typedef enum response {

@@ -303,12 +303,17 @@
 
 #define CHECK_PRIORITY(p)                                       \
   do {                                                          \
-    if(ctx->priority < (int)PRIORITY_##p) {                     \
+    if(should_delay(ctx, PRIORITY_##p)) {                       \
       rsp = DELAY;                                              \
       if(c->op != OP_value) FLAG_SET(c->expr, EXPR_DELAYED);    \
       LOG("delay (priority %d) %C", ctx->priority, c);          \
       goto abort;                                               \
     }                                                           \
+  } while(0)
+
+#define RULE(name)                              \
+  do {                                          \
+    if(rule_##name(ctx)) return RETRY;          \
   } while(0)
 
 #endif

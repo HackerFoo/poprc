@@ -680,9 +680,11 @@ void trace_drop(cell_t *r) {
   cell_t *v = r->value.var;
   if(v && !v->op) {
     cell_t *e = var_entry(v);
-    int ix = var_index(e, v);
-    if(e->entry.len - (ix - 1) == calculate_cells(v->size)) {
-      e->entry.len = ix - 1;
+    if(e) {
+      int ix = var_index(e, v);
+      if(e->entry.len - (ix - 1) == calculate_cells(v->size)) {
+        e->entry.len = ix - 1;
+      }
     }
   }
 }

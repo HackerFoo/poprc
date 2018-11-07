@@ -41,9 +41,9 @@ enum priority {
   PRIORITY_VAR = 1,
   PRIORITY_ASSERT = 1,
   PRIORITY_DELAY = 1,
-  PRIORITY_EXEC_SELF = 2,
-  PRIORITY_OTHERWISE = 3,
-  PRIORITY_MAX
+  PRIORITY_OTHERWISE = 2,
+  PRIORITY_EXEC_SELF = 3,
+ PRIORITY_MAX
 };
 #define PRIORITY_TOP (PRIORITY_MAX - 1)
 #endif
@@ -301,9 +301,9 @@ response reduce(cell_t **cp, context_t *ctx) {
   return FAIL;
 }
 
-response force(cell_t **cp) {
-  return reduce(cp, &CTX(any));
-}
+#if INTERFACE
+#define force(cp) reduce((cp), &CTX(any))
+#endif
 
 response simplify(cell_t **cp) {
   CONTEXT("simplify %C", *cp);
@@ -869,7 +869,8 @@ uint8_t new_alt_id(unsigned int n) {
 #if INTERFACE
 #define CTX_INHERIT                             \
   .priority = ctx->priority,                    \
-  .up = ctx
+  .up = ctx,                                    \
+  .inv = ctx->inv
 #define CTX(type, ...) CONCAT(CTX_, type)(__VA_ARGS__)
 #define CTX_list(_in, _out) \
   ((context_t) { .t = T_LIST, .in = _in, .out = _out, CTX_INHERIT})
@@ -997,3 +998,9 @@ const io_t default_io = {
 };
 
 const io_t *io = &default_io;
+
+bool should_delay(context_t *ctx, int priority) {
+  return ctx->priority == PRIORITY_SIMPLIFY ?
+    priority == PRIORITY_VAR || priority >= PRIORITY_EXEC_SELF:
+    ctx->priority < priority;
+}
