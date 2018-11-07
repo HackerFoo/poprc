@@ -76,7 +76,6 @@ struct context {
   type_t t;
   uint8_t pos;
   bool retry;
-  bool simplify;
   bool expected;
 };
 
@@ -91,6 +90,7 @@ typedef enum response {
 #define EXPR_RECURSIVE 0x04
 #define EXPR_TRACE     0x08
 #define EXPR_NO_UNIFY  0x10
+#define EXPR_DELAYED   0x20
 
 /* unevaluated expression */
 struct __attribute__((packed)) expr {
@@ -99,7 +99,7 @@ struct __attribute__((packed)) expr {
     cell_t *arg[2];
     val_t idx[2];
     struct {
-      cell_t *arg0;
+      cell_t *arg0; // padding
       alt_set_t alt_set;
     };
   };
@@ -244,8 +244,12 @@ struct __attribute__((packed, aligned(4))) cell {
 static_assert(sizeof(cell_t) == sizeof_field(cell_t, raw), "cell_t wrong size");
 #endif
 
-//static_assert(offsetof(cell_t, expr.arg[1]) == offsetof(cell_t, value.ptr[0]), "second arg not aliased with first ptr"); // what relies on this?
-static_assert(offsetof(cell_t, expr.flags) == offsetof(cell_t, value.flags), "expr.flags should alias value.flags");
+#define ASSERT_ALIAS(s, f0, f1) \
+  static_assert(offsetof(s, f0) == offsetof(s, f1), #f0 " should alias " #f1 " in " #s)
+
+ASSERT_ALIAS(cell_t, expr.arg[2], value.ptr[0]);
+ASSERT_ALIAS(cell_t, expr.flags, value.flags);
+ASSERT_ALIAS(cell_t, expr.arg[1], expr.alt_set);
 
 typedef struct stats_t {
   int reduce_cnt, fail_cnt, alloc_cnt, max_alloc_cnt, trace_cnt;

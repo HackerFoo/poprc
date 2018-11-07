@@ -112,22 +112,16 @@ void log_ptrs(cell_t *c) {
 }
 
 void reduce_list(cell_t **cp) {
-  context_t *ctx = &CTX(return);
+  context_t *ctx = WITH(&CTX(return), priority, PRIORITY_TOP);
   response rsp = SUCCESS;
-  COUNTUP(priority, PRIORITY_MAX) {
-    cell_t **p = cp;
-    bool delay = false;
-    CONTEXT("priority = %d", priority);
-    while(*p) {
-      rsp = func_list(p, WITH(ctx, priority, priority));
-      if(ONEOF(rsp, SUCCESS, DELAY)) {
-        if(rsp == DELAY) delay = true;
-        p = &(*p)->alt;
-      }
+  cell_t **p = cp;
+  while(*p) {
+    rsp = func_list(p, ctx);
+    assert_error(rsp != DELAY);
+    if(rsp == SUCCESS) {
+      p = &(*p)->alt;
     }
-    if(!delay) return;
   }
-  assert_error(0, "still delayed");
 }
 
 list_iterator_t list_begin(cell_t *l) {

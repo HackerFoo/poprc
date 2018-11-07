@@ -386,23 +386,29 @@ void print_int(val_t x) {
   }
 }
 
+bool has_type(cell_t const *c, int t) {
+  return c &&
+    c->op == OP_value &&
+    c->value.type == t;
+}
+
 void show_int(cell_t const *c) {
-  assert_error(c && type_match(T_INT, c));
+  assert_error(has_type(c, T_INT));
   print_int(c->value.integer);
 }
 
 void show_float(cell_t const *c) {
-  assert_error(c && type_match(T_FLOAT, c));
+  assert_error(has_type(c, T_FLOAT));
   printf("%.15g", c->value.flt);
 }
 
 void show_string(cell_t const *c) {
-  assert_error(c && type_match(T_STRING, c));
+  assert_error(has_type(c, T_STRING));
   printf("\"%s\"",  c->value.str);
 }
 
 bool any_alt_overlap(cell_t const * const *p, csize_t size) {
-  uintptr_t  mask = 0;
+  uintptr_t mask = 0;
   while(size--) {
     if(is_value(*p)) {
       alt_set_t m = as_mask((*p)->value.alt_set);
@@ -510,15 +516,15 @@ void show_one(cell_t const *c) {
     printf("{}");
   } else if(is_var(c)) {
     show_var(c);
-  } else if(type_match(T_INT, c)) {
+  } else if(has_type(c, T_INT)) {
     show_int(c);
-  } else if(type_match(T_FLOAT, c)) {
+  } else if(has_type(c, T_FLOAT)) {
     show_float(c);
-  } else if(type_match(T_STRING, c)) {
+  } else if(has_type(c, T_STRING)) {
     show_string(c);
-  } else if(type_match(T_LIST, c)) {
+  } else if(has_type(c, T_LIST)) {
     show_list(c);
-  } else if(type_match(T_SYMBOL, c)) {
+  } else if(has_type(c, T_SYMBOL)) {
     val_t x = c->value.integer;
     const char *str = symbol_string(x);
     if(str) {

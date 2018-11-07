@@ -37,9 +37,9 @@
 
 #if INTERFACE
 enum priority {
-  PRIORITY_ALWAYS = 0,
+  PRIORITY_SIMPLIFY = 0,
+  PRIORITY_VAR = 1,
   PRIORITY_ASSERT = 1,
-  PRIORITY_SEQ = 1,
   PRIORITY_DELAY = 1,
   PRIORITY_EXEC_SELF = 2,
   PRIORITY_OTHERWISE = 3,
@@ -59,7 +59,7 @@ static op watched_op = OP_null;
 bool watch_enabled = false;
 
 #if INTERFACE
-#define ASSERT_REF() if(!ctx->simplify) assert_error(assert_ref(rt_roots, rt_roots_n))
+#define ASSERT_REF() if(ctx->priority > PRIORITY_SIMPLIFY) assert_error(assert_ref(rt_roots, rt_roots_n))
 #endif
 
 bool insert_root(cell_t **r) {
@@ -264,11 +264,18 @@ cell_t *fill_incomplete(cell_t *c) {
   return c;
 }
 
+bool is_delayed(const cell_t *c) {
+  return !is_value(c) && FLAG(c->expr, EXPR_DELAYED);
+}
+
 // Reduce *cp with type t
 response reduce(cell_t **cp, context_t *ctx) {
-  bool marked = is_marked(*cp);
+  const bool marked = is_marked(*cp);
   *cp = clear_ptr(*cp);
   cell_t *c = *cp;
+  const int priority = ctx->priority;
+  int current_priority = is_delayed(c) ? 0 : priority;
+
   while(c) {
     assert_error(is_closure(c));
     c = *cp = fill_incomplete(c);
@@ -281,12 +288,15 @@ response reduce(cell_t **cp, context_t *ctx) {
 
     LOG_WHEN(!*cp, MARK("FAIL") ": %O %C @abort", op, c);
     c = *cp;
-    if(r <= DELAY || (r == RETRY && ctx->retry)) {
+    if(r == DELAY && current_priority < priority) {
+      current_priority++;
+    } else if(r <= DELAY || (r == RETRY && ctx->retry)) {
       ctx->retry = false;
       if(marked) *cp = mark_ptr(c); // *** is the right pointer being marked?
       return r;
     }
   }
+
   *cp = &fail_cell;
   return FAIL;
 }
@@ -295,9 +305,9 @@ response force(cell_t **cp) {
   return reduce(cp, &CTX(any));
 }
 
-response simplify(cell_t **cp, context_t *ctx) {
+response simplify(cell_t **cp) {
   CONTEXT("simplify %C", *cp);
-  return reduce(cp, WITH(ctx, simplify, true));
+  return reduce(cp, WITH(&CTX(any), priority, PRIORITY_SIMPLIFY));
 }
 
 // Perform one reduction step on *cp
@@ -313,11 +323,6 @@ response reduce_one(cell_t **cp, context_t *ctx) {
     stats.reduce_cnt++;
     return op_call(c->op, cp, ctx);
   }
-}
-
-bool type_match(int t, cell_t const *c) {
-  type_t tc = c->value.type;
-  return t == T_ANY || tc == T_ANY || t == tc;
 }
 
 // TODO clean up these expand functions
@@ -864,7 +869,6 @@ uint8_t new_alt_id(unsigned int n) {
 #if INTERFACE
 #define CTX_INHERIT                             \
   .priority = ctx->priority,                    \
-  .simplify = ctx->simplify,                    \
   .up = ctx
 #define CTX(type, ...) CONCAT(CTX_, type)(__VA_ARGS__)
 #define CTX_list(_in, _out) \
@@ -896,8 +900,10 @@ context_t *ctx_pos(context_t *ctx, uint8_t pos) {
 }
 
 bool check_type(uint8_t requested, uint8_t expected) {
-  if(requested != T_ANY &&
-     requested != expected) {
+  if(expected != T_ANY &&
+     !ONEOF(requested, T_ANY,
+                       T_BOTTOM,
+                       expected)) {
     LOG("check_type: requested %d, but expected %d", requested, expected);
     return false;
   }

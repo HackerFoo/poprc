@@ -301,13 +301,14 @@
     __p;                                        \
   })
 
-#define CHECK_PRIORITY(p)                               \
-  do {                                                  \
-    if(ctx->priority < (int)PRIORITY_##p) {             \
-      rsp = DELAY;                                      \
-      LOG("delay (priority %d) %C", ctx->priority, c);  \
-      goto abort;                                       \
-    }                                                   \
+#define CHECK_PRIORITY(p)                                       \
+  do {                                                          \
+    if(ctx->priority < (int)PRIORITY_##p) {                     \
+      rsp = DELAY;                                              \
+      if(c->op != OP_value) FLAG_SET(c->expr, EXPR_DELAYED);    \
+      LOG("delay (priority %d) %C", ctx->priority, c);          \
+      goto abort;                                               \
+    }                                                           \
   } while(0)
 
 #endif

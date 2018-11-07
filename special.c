@@ -31,8 +31,7 @@
 OP(value) {
   PRE(value);
   stats.reduce_cnt--;
-
-  CHECK_IF(is_var(c) && ctx->simplify, DELAY);
+  if(is_var(c)) CHECK_PRIORITY(VAR);
 
   // promote integer constants to float constants
   if(ctx->t == T_FLOAT &&
@@ -47,7 +46,7 @@ OP(value) {
 
   // TODO move this check out - ctx shouldn't cause a FAIL
   CHECK_IF(FLAG(c->value, VALUE_FAIL) ||
-           !type_match(ctx->t, c),
+           !check_type(ctx->t, c->value.type),
            FAIL);
 
   if(ctx->expected && !is_var(c) &&

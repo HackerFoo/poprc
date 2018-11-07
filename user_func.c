@@ -140,7 +140,7 @@ cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) 
       assert_error(list_size(c) == list_size(pattern));
       COUNTUP(i, list_size(pattern)) {
         cell_t **a = &c->value.ptr[i];
-        if(closure_is_ready(*a)) simplify(a, &CTX(any));
+        if(closure_is_ready(*a)) simplify(a);
         tail = bind_pattern(entry,
                             *a,
                             pattern->value.ptr[i],
@@ -209,7 +209,7 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry, context_t *ctx) {
     *vl = 0,
     **tail = &vl;
   COUNTUP(i, in) {
-    simplify(&c->expr.arg[i], &CTX(any)); // FIX this can cause arg flips
+    simplify(&c->expr.arg[i]); // FIX this can cause arg flips
     tail = bind_pattern(NULL, c->expr.arg[i], pat->expr.arg[i], tail);
     if(!tail) {
       LOG("bind_pattern failed %C %C", c->expr.arg[i], pat->expr.arg[i]);
@@ -631,7 +631,7 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
   COUNTUP(i, in) {
     if(c->expr.arg[i]->op != OP_ap ||
        TWEAK(true, "to disable ap simplify %C", c->expr.arg[i]))
-    simplify(&c->expr.arg[i], &CTX(any));
+    simplify(&c->expr.arg[i]);
   }
 
   wrap.initial = ref(c);

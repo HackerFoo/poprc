@@ -448,10 +448,10 @@ OP(alt) {
 WORD("!", assert, 2, 1)
 OP(assert) {
   PRE(assert);
+  CHECK_PRIORITY(ASSERT);
 
   cell_t *res = NULL;
   cell_t *tc = NULL;
-  CHECK_PRIORITY(ASSERT);
   CHECK(reduce_arg(c, 1, &CTX(symbol, SYM_True)));
   CHECK_DELAY();
   cell_t *p = clear_ptr(c->expr.arg[1]);
@@ -498,7 +498,6 @@ OP(seq) {
 
   cell_t *res = NULL;
   cell_t *tc = NULL;
-  CHECK_PRIORITY(SEQ);
   CHECK(reduce_arg(c, 1, &CTX(any))); // don't split arg here?
   CHECK_DELAY();
   cell_t *p = clear_ptr(c->expr.arg[1]);
@@ -538,6 +537,7 @@ OP(seq) {
 WORD("otherwise", otherwise, 2, 1)
 OP(otherwise) {
   PRE(otherwise);
+  CHECK_PRIORITY(OTHERWISE);
 
   cell_t *res = NULL;
   cell_t *tc = NULL, *tp = NULL;
@@ -545,7 +545,6 @@ OP(otherwise) {
   // reduce each alt
   cell_t **p = &c->expr.arg[0];
   cell_t **q = &c->expr.arg[1];
-  CHECK_PRIORITY(OTHERWISE);
   while(*p) {
     response rsp0 = force(p);
     CHECK_IF(rsp0 == DELAY, DELAY);
