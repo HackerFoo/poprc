@@ -39,11 +39,11 @@
 enum priority {
   PRIORITY_SIMPLIFY = 0,
   PRIORITY_VAR = 1,
-  PRIORITY_ASSERT = 1,
-  PRIORITY_DELAY = 1,
-  PRIORITY_OTHERWISE = 2,
+  PRIORITY_ASSERT = 2,
   PRIORITY_EXEC_SELF = 3,
- PRIORITY_MAX
+  PRIORITY_DELAY = 4,
+  PRIORITY_OTHERWISE = 5,
+  PRIORITY_MAX
 };
 #define PRIORITY_TOP (PRIORITY_MAX - 1)
 #endif
@@ -187,6 +187,7 @@ cell_t *dup_list_alt(cell_t *c, csize_t n, cell_t *b) {
   csize_t in = list_size(c);
   assert_error(n < in);
   cell_t *a = copy(c);
+  FLAG_CLEAR(a->value, VALUE_DELAY);
 
   // ref args
   COUNTUP(i, in) {
@@ -273,8 +274,6 @@ response reduce(cell_t **cp, context_t *ctx) {
   const bool marked = is_marked(*cp);
   *cp = clear_ptr(*cp);
   cell_t *c = *cp;
-  const int priority = ctx->priority;
-  int current_priority = is_delayed(c) ? 0 : priority;
 
   while(c) {
     assert_error(is_closure(c));
@@ -288,9 +287,7 @@ response reduce(cell_t **cp, context_t *ctx) {
 
     LOG_WHEN(!*cp, MARK("FAIL") ": %O %C @abort", op, c);
     c = *cp;
-    if(r == DELAY && current_priority < priority) {
-      current_priority++;
-    } else if(r <= DELAY || (r == RETRY && ctx->retry)) {
+    if(r <= DELAY || (r == RETRY && ctx->retry)) {
       ctx->retry = false;
       if(marked) *cp = mark_ptr(c); // *** is the right pointer being marked?
       return r;
@@ -1001,6 +998,6 @@ const io_t *io = &default_io;
 
 bool should_delay(context_t *ctx, int priority) {
   return ctx->priority == PRIORITY_SIMPLIFY ?
-    priority == PRIORITY_VAR || priority >= PRIORITY_EXEC_SELF:
+    ONEOF(priority, PRIORITY_VAR, PRIORITY_EXEC_SELF):
     ctx->priority < priority;
 }

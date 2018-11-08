@@ -137,7 +137,7 @@ cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) 
     if(pattern->pos) entry = trace_expr_entry(pattern->pos);
 
     if(is_list(c)) {
-      assert_error(list_size(c) == list_size(pattern));
+      assert_eq(list_size(c), list_size(pattern));
       COUNTUP(i, list_size(pattern)) {
         cell_t **a = &c->value.ptr[i];
         if(closure_is_ready(*a)) simplify(a);
@@ -872,6 +872,16 @@ bool all_dynamic(cell_t *entry, cell_t *c) {
   return true;
 }
 
+void delay_branch(context_t *ctx) {
+  FOLLOW(p, ctx, up) {
+    cell_t *c = p->src;
+    if(is_list(c)) {
+      FLAG_SET(c->value, VALUE_DELAY);
+      LOG("delay branch %C", c);
+    }
+  }
+}
+
 OP(exec) {
   cell_t *entry = (*cp)->expr.arg[closure_in(*cp)];
   PRE(exec, "%s", entry->word_name);
@@ -879,6 +889,7 @@ OP(exec) {
   cell_t *parent_entry = trace_current_entry();
 
   if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
+    delay_branch(ctx);
     CHECK_PRIORITY(EXEC_SELF);
     assert_error(parent_entry,
                  "incomplete entry can't be unified without "

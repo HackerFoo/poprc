@@ -452,18 +452,20 @@ OP(assert) {
 
   cell_t *res = NULL;
   cell_t *tc = NULL;
+  cell_t *p = NULL;
+  bool p_var = false;
   CHECK(reduce_arg(c, 1, &CTX(symbol, SYM_True)));
-  CHECK_DELAY();
-  cell_t *p = clear_ptr(c->expr.arg[1]);
-  bool p_var = is_var(p);
+  if(rsp == SUCCESS) {
+    p = clear_ptr(c->expr.arg[1]);
+    p_var = is_var(p);
 
-  CHECK_IF(!p_var &&
-           p->value.integer != SYM_True, FAIL);
+    CHECK_IF(!p_var &&
+             p->value.integer != SYM_True, FAIL);
 
-  if(p_var) {
-    tc = trace_partial(OP_assert, 1, p);
+    if(p_var) {
+      tc = trace_partial(OP_assert, 1, p);
+    }
   }
-
   CHECK(reduce_arg(c, 0, &CTX_UP));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
@@ -498,15 +500,17 @@ OP(seq) {
 
   cell_t *res = NULL;
   cell_t *tc = NULL;
+  cell_t *p = NULL;
+  bool p_var = false;
   CHECK(reduce_arg(c, 1, &CTX(any))); // don't split arg here?
-  CHECK_DELAY();
-  cell_t *p = clear_ptr(c->expr.arg[1]);
-  bool p_var = is_var(p);
+  if(rsp == SUCCESS) {
+    p = clear_ptr(c->expr.arg[1]);
+    p_var = is_var(p);
 
-  if(p_var) {
-    tc = trace_partial(OP_seq, 1, p);
+    if(p_var) {
+      tc = trace_partial(OP_seq, 1, p);
+    }
   }
-
   CHECK(reduce_arg(c, 0, &CTX_UP));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
@@ -567,13 +571,16 @@ OP(otherwise) {
   while(*p) {
     response rsp0 = reduce(p, WITH(&CTX(any), inv, !ctx->inv));
     CHECK_IF(rsp0 == RETRY, RETRY);
-    CHECK_IF(rsp0 == DELAY, DELAY); // ***
-    CHECK_IF(!is_var(*p) &&
-             !(*p)->value.var &&
-             rsp0 != FAIL, FAIL);
-    if(rsp0 != FAIL) {
-      tc = concatenate_conditions(trace_partial(OP_otherwise, 0, *p), tc);
-      if(!tp) tp = tc;
+    if(rsp0 == DELAY) {
+      rsp = DELAY;
+    } else {
+      CHECK_IF(!is_var(*p) &&
+               !(*p)->value.var &&
+               rsp0 != FAIL, FAIL);
+      if(rsp0 != FAIL) {
+        tc = concatenate_conditions(trace_partial(OP_otherwise, 0, *p), tc);
+        if(!tp) tp = tc;
+      }
     }
 
     p = &(*p)->alt;

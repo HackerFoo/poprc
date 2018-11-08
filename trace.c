@@ -1012,7 +1012,8 @@ cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
   if(b == NULL) return a;
   cell_t **arg = NULL;
   cell_t *entry = var_entry(a);
-  assert_error(entry_has(entry, b), "%s %d %d", entry->word_name, a-entry, b-entry);
+  b = var_for_entry(entry, b);
+  assert_error(b, "%s %d %d", entry->word_name, a-entry, b-entry);
   cell_t *p = a;
   cell_t *bi = trace_encode(var_index(entry, b));
 
