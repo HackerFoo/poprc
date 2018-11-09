@@ -100,3 +100,5 @@ __ strings
 __ IO
 IO input "Hello " swap ++ print
 World
+
+__ [] [] | popr

@@ -319,7 +319,7 @@ calc_step_push:
 __ calc: [[0]] ap10 [[dup [head ->str print input] dip22 swap calc_step_push] .] [head valid] iterate
 
 calc_loop:
-  top swap [->str print input] dip22 swap  __ IO [s] "t"
+  top swap [int_t ->str print input] dip22 swap  __ IO [s] "t"
     calc_step top -swap2 over              __ "t" IO [s] IO
     [calc_loop] dip21 vifte
 
@@ -356,3 +356,8 @@ assert_otherwise_quote: [1] swap ! swap otherwise
 
 __ 1 0/ 2 f9
 f9: | 3 default
+
+hello:
+  "What's your name?" print
+    input
+    "Hello " swap ++ "!" ++ print

@@ -47,7 +47,7 @@ const char *ctype(type_t t) {
     [T_ANY]      = "any_t ",
     [T_INT]      = "int ",
     [T_LIST]     = "array ",
-    [T_SYMBOL]   = "int ",
+    [T_SYMBOL]   = "symbol_t ",
     [T_MAP]      = "map_t ",
     [T_STRING]   = "seg_t ",
     [T_BOTTOM]   = "void ",
@@ -112,7 +112,7 @@ void gen_body(cell_t *e) {
     if(is_var(c)) continue;
     gen_decl(e, c);
   }
-  printf("\nbody:\n");
+  if(e->entry.rec) printf("\nbody:\n");
   FOR_TRACE(c, e) {
     if(is_var(c)) continue;
     gen_instruction(e, c);
@@ -160,9 +160,11 @@ void gen_decl(cell_t *e, cell_t *c) {
      t != T_BOTTOM &&
      c->op != OP_assert) {
     if(c->op == OP_value) {
-      printf("  %s%s%d = ", ctype(t), cname(t), i);
+      printf("  const %s%s%d = ", ctype(t), cname(t), i);
       gen_value_rhs(c);
-    } else {
+    } else if(c->n ||
+              is_dep(c) ||
+              FLAG(c->expr, EXPR_PARTIAL)) {
       printf("  %s%s%d;\n", ctype(t), cname(t), i);
     }
   }
@@ -236,11 +238,19 @@ void gen_call(cell_t *e, cell_t *c) {
       start_out = n - closure_out(c);
 
     trace_get_name(c, &module_name, &word_name);
-
-    printf("  %s%d = %s_%s", cname(trace_type(c)), i, module_name, word_name);
-    if(c->op == OP_ap || c->op == OP_compose) {
+    type_t t = trace_type(c);
+    bool partial = FLAG(c->expr, EXPR_PARTIAL);
+    if(partial) {
+      printf("  if(%s_%s", module_name, word_name);
+    } else {
+      printf("  %s%s%d = %s_%s", c->n ? "" : ctype(t), cname(t), i, module_name, word_name);
+    }
+    if(ONEOF(c->op, OP_ap, OP_compose)) {
       assert_error(in >= 1);
       printf("%d%d", in-1, out);
+    } else if(ONEOF(c->op, OP_quote, OP_pushr)) {
+      assert_error(in >= 1 && out == 0);
+      printf("%d", in-1);
     }
     printf("(");
 
@@ -249,6 +259,11 @@ void gen_call(cell_t *e, cell_t *c) {
       printf("%s%s%d", sep, cname(trace_type(&e[a])), a);
       sep = ", ";
     };
+
+    if(partial) {
+      printf("%s&%s%d", sep, cname(t), i);
+      sep = ", ";
+    }
 
     RANGEUP(i, start_out, n) {
       int a = trace_decode(c->expr.arg[i]);
@@ -260,7 +275,18 @@ void gen_call(cell_t *e, cell_t *c) {
       sep = ", ";
     }
 
-    printf(");\n");
+    if(partial) {
+      cell_t *ret = NULL;
+      FOR_TRACE(p, e, closure_next(c) - e - 1) {
+        if(trace_type(p) == T_RETURN) {
+          ret = p;
+          break;
+        }
+      }
+      printf(")) goto block%d;\n", (int)(ret - e + 1));
+    } else {
+      printf(");\n");
+    }
   }
 }
 
@@ -346,6 +372,7 @@ void gen_assert(cell_t *e, cell_t *c) {
 }
 
 void gen_function(cell_t *e) {
+  e->op = OP_value;
   zero(assert_set);
 
   gen_function_signature(e);
@@ -356,7 +383,7 @@ void gen_function(cell_t *e) {
   FOR_TRACE(c, e) {
     if(c->op == OP_exec && c->trace.type != T_BOTTOM) {
       cell_t *x = get_entry(c);
-      if(x != e) {
+      if(x != e && e->op != OP_null) {
         printf("\n");
         gen_function(x);
       }
@@ -364,14 +391,11 @@ void gen_function(cell_t *e) {
   }
 }
 
-void gen_functions(cell_t *e) {
-  gen_function(e);
-  printf("\n");
-
+void clear_ops(cell_t *e) {
   FOR_TRACE(c, e) {
     if(c->op == OP_exec) {
       cell_t *x = get_entry(c);
-      if(x != e) gen_functions(x);
+      x->op = OP_null;
     }
   }
 }
@@ -382,75 +406,16 @@ void gen_main(cell_t *e) {
   type_t rtypes[e->entry.out];
   resolve_types(e, rtypes);
 
-  printf("#include <stdio.h>\n"
-         "#include <stdlib.h>\n"
-         "#include <assert.h>\n"
-         "#include \"macros.h\"\n"
-         "#include \"rt_types.h\"\n"
-         "#include \"startle/support.h\"\n"
-         "#include \"cgen/primitives.h\"\n\n");
+  printf("#include \"cgen/primitives.h\"\n\n");
 
-  gen_function_signatures(e);
-  printf("\n");
+  gen_function_signature(e);
+  printf(";\n");
 
-  printf("int main(int argc, char **argv)\n{\n");
-  printf("  const int arity_in = %d;\n", e->entry.in);
-  printf("  const int arity_out = %d;\n", e->entry.out);
-  printf("  array in[arity_in];\n"
-         "  array out[arity_out];\n"
-         "  error_t error;\n"
-         "  if(catch_error(&error)) {\n"
-         "    log_print_all();\n"
-         "    return -1;\n"
-         "  }\n"
-         "  if(argc < 2) {\n"
-         "    printf(\"not enough arguments\\n\");\n"
-         "    return -1;\n"
-         "  }\n\n");
-
-  printf("  const char *p = arguments(argc - 1, argv + 1);\n"
-         "  const char *e = p + strlen(p);\n"
-         "  COUNTUP(i, arity_in) {\n"
-         "    if(!p) {\n"
-         "      printf(\"parse error at argument %%d\\n\", (int)i);\n"
-         "      return -1;\n"
-         "    }\n"
-         "    in[i] = parse(&p, e);\n"
-         "  }\n\n");
-
-  char *sep = "";
-  if(rtypes[0] == T_LIST) {
-    printf("  out[0]");
-  } else {
-    printf("  *alloc_arr(&out[0], 1)");
-  }
-  printf(" = %s_%s(", e->module_name, e->word_name);
-  cell_t *code = e + 1;
-  csize_t in = e->entry.in;
-  COUNTUP(i, in) {
-    if(code[in - 1 - i].value.type == T_LIST) {
-      printf("%sin[%d]", sep, (int)i);
-    } else {
-      printf("%sin[%d].elem[0]", sep, (int)i);
-    }
-    sep = ", ";
-  }
-  RANGEUP(i, 1, e->entry.out) {
-    if(rtypes[i] == T_LIST) {
-      printf("%s&out[%d]", sep, (int)i);
-    } else {
-      printf("%salloc_arr(&out[%d], 1)", sep, (int)i);
-    }
-    sep = ", ";
-  }
-  printf(");\n");
-  printf("  printf(\"%s_%s =>\");\n", e->module_name, e->word_name);
-  printf("  COUNTUP(i, arity_out) {\n"
-         "    print_array(out[i]);\n"
-         "  }\n");
-  printf("  printf(\"\\n\");\n\n"
+  printf("int main(UNUSED int argc, UNUSED char **argv)\n"
+         "{\n"
+         "  %s_%s(SYM_IO);\n"
          "  return 0;\n"
-         "}\n\n");
+         "}\n\n", e->module_name, e->word_name);
 }
 
 COMMAND(cc, "print C code for given function") {
@@ -464,6 +429,7 @@ COMMAND(cc, "print C code for given function") {
       gen_function_signatures(e);
       printf("\n");
       gen_function(e);
+      clear_ops(e);
     }
   }
   if(command_line) quit = true;

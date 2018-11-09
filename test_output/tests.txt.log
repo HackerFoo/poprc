@@ -133,3 +133,4 @@ __ IO
 IO input "Hello " swap ++ print
 Hello World
   IO
+__ [] [] | popr

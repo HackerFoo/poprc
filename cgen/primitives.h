@@ -2,8 +2,17 @@
 #define __cgen_primitives__
 
 #include <string.h>
+#include <stdbool.h>
+#include "startle/macros.h"
+#include "startle/types.h"
 #include "startle/error.h"
 #include "startle/log.h"
+
+typedef int symbol_t;
+
+#define SYM_False 0
+#define SYM_True 1
+#define SYM_IO 2
 
 #define __primitive_add(x, y) x + y
 #define __primitive_sub(x, y) x - y
@@ -24,7 +33,16 @@
 #define __primitive_shiftl(x, y) x << y
 #define __primitive_shiftr(x, y) x >> y
 #define __primitive_complement(x) ~x
-#define __primitive_div(x, y) x / y
+
+static inline
+bool __primitive_div(int x, int y, int *res) {
+  if(y == 0) {
+    return true;
+  } else {
+    if(res) *res = x / y;
+    return false;
+  }
+}
 
 typedef struct array {
   int size;
@@ -85,11 +103,38 @@ array __primitive_compose30(array arrL, int in0, int in1, const array arrR) {
 }
 
 static inline
+array __primitive_pushr1(array arr, int in0) {
+  int *elem = arr.elem ? arr.elem + 1 : mem_alloc(1);
+  elem[0] = in0;
+  return (array) { .elem = elem,
+                   .size = arr.size + 1 };
+}
+
+static inline
+array __primitive_pushr2(array arr, int in0, int in1) {
+  int *elem = arr.elem ? arr.elem + 2 : mem_alloc(2);
+  elem[-1] = in0;
+  elem[0] = in1;
+  return (array) { .elem = elem,
+                   .size = arr.size + 2 };
+}
+
+static inline
 int __primitive_is_nil(array arr) {
   return arr.size == 0;
 }
 
+#define __primitive_otherwise(bottom, x) (x)
+
 array parse(const char **sp, const char *e);
 void print_array(array arr);
+
+seg_t __primitive_to_string(int);
+symbol_t __primitive_print(symbol_t, seg_t);
+symbol_t __primitive_input(symbol_t, seg_t *);
+seg_t __primitive_strtrim(seg_t);
+bool __from_string(seg_t, int *);
+symbol_t __primitive_eq_str(seg_t, seg_t);
+seg_t __primitive_strcat(seg_t, seg_t);
 
 #endif

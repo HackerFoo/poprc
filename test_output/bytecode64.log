@@ -1513,7 +1513,7 @@ ___ tests.calc_loop (2 -> 1) x9 rec ___
 [1] var, type = ?*l x9
 [2] var, type = ?*s x1
 [3] __primitive.ap 1 -> 4, type = l x1
-[4] __primitive.dep 3, type = a x1
+[4] __primitive.dep 3, type = i x1
 [5] __primitive.to_string 4, type = S x1
 [6] __primitive.print 2 5, type = s x1
 [7] __primitive.input 6 -> 8, type = s x10
@@ -2250,6 +2250,19 @@ ___ tests.get2 (1 -> 2) ___
 [3] __primitive.dep 2, type = a x1
 [4] __primitive.dep 2, type = a x1
 [5] return [ 4 3 ], type = r x1
+
+___ tests.hello (1 -> 1) ___
+[1] var, type = ?s x1
+[2] __primitive.print 1 3, type = s x1
+[3] val "What's your name?", type = S x1
+[4] __primitive.input 2 -> 5, type = s x2
+[5] __primitive.dep 4, type = S x1
+[6] __primitive.strcat 7 5, type = S x1
+[7] val "Hello ", type = S x1
+[8] __primitive.strcat 6 9, type = S x1
+[9] val "!", type = S x1
+[10] __primitive.print 4 8, type = s x1
+[11] return [ 10 ], type = r x1
 
 ___ tests.id_quote_compose (1 -> 1) ___
 [1] var, type = ?l x1

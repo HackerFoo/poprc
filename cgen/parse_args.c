@@ -6,22 +6,6 @@
 #include "tok.h"
 #include "startle/support.h"
 
-static int mem[256];
-static int *mem_ptr = mem;
-
-int *mem_alloc(unsigned int n) {
-  assert_throw(mem_ptr - mem + n <= LENGTH(mem), "out of mem");
-  int *m = mem_ptr;
-  mem_ptr += n;
-  return m;
-}
-
-int *alloc_arr(array *arr, unsigned int n) {
-  arr->size = n;
-  arr->elem = mem_alloc(n);
-  return arr->elem;
-}
-
 void print_array(array arr) {
   int *x = arr.elem - arr.size + 1;
   if(arr.size == 0) {
@@ -69,9 +53,3 @@ array parse(const char **sp, const char *e) {
   *sp = seg_end(t);
   return arr;
 }
-
-// dummy formatters
-FORMAT(cell, 'C') {}
-FORMAT(entry, 'E') {}
-FORMAT(entry_short, 'e') {}
-FORMAT(function, 'O') {}
