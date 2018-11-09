@@ -448,7 +448,7 @@ OP(alt) {
 WORD("!", assert, 2, 1)
 OP(assert) {
   PRE(assert);
-  CHECK_PRIORITY(ASSERT);
+  CHECK_PRIORITY(PRIORITY_ASSERT);
 
   cell_t *res = NULL;
   cell_t *tc = NULL;
@@ -559,8 +559,8 @@ bool rule_merge_otherwise(context_t *ctx) {
 WORD("otherwise", otherwise, 2, 1)
 OP(otherwise) {
   PRE(otherwise);
-  CHECK_PRIORITY(OTHERWISE);
   RULE(merge_otherwise);
+  CHECK_PRIORITY(PRIORITY_OTHERWISE);
 
   cell_t *res = NULL;
   cell_t *tc = NULL, *tp = NULL;
@@ -664,7 +664,7 @@ OP(swap) {
 WORD("delay", delay, 1, 1)
 OP(delay) {
   PRE(delay);
-  CHECK_PRIORITY(DELAY);
+  CHECK_PRIORITY(PRIORITY_DELAY);
   store_lazy(cp, c->expr.arg[0], 0);
   return RETRY;
 

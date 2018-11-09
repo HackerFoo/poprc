@@ -226,7 +226,10 @@ struct __attribute__((packed, aligned(4))) cell {
         } trace;
       };
       op op;
-      uint8_t pos;
+      union {
+        uint8_t pos;
+        uint8_t priority; // for use in func_list() & delay_branch()
+      };
       refcount_t n;
       csize_t size;
       union {

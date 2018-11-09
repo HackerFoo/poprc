@@ -73,10 +73,11 @@ bool is_function(cell_t const *c) {
 response func_list(cell_t **cp, context_t *ctx) {
   PRE(list);
   if(FLAG(c->value, VALUE_DELAY)) {
-    CHECK_PRIORITY(DELAY);
+    CHECK_PRIORITY(c->priority);
 
     // commit - force everything in this branch
     ctx->priority = PRIORITY_TOP;
+    c->priority = 0;
   }
 
   // if(ctx->t == T_ANY && ctx->t == T_LIST) return SUCCESS; // *** always fails

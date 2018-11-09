@@ -31,7 +31,7 @@
 OP(value) {
   PRE(value);
   stats.reduce_cnt--;
-  if(is_var(c)) CHECK_PRIORITY(VAR);
+  if(is_var(c)) CHECK_PRIORITY(PRIORITY_VAR);
 
   // promote integer constants to float constants
   if(ctx->t == T_FLOAT &&

@@ -303,7 +303,7 @@
 
 #define CHECK_PRIORITY(p)                                       \
   do {                                                          \
-    if(should_delay(ctx, PRIORITY_##p)) {                       \
+    if(should_delay(ctx, p)) {                                  \
       rsp = DELAY;                                              \
       if(c->op != OP_value) FLAG_SET(c->expr, EXPR_DELAYED);    \
       LOG("delay (priority %d) %C", ctx->priority, c);          \

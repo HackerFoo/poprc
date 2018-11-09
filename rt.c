@@ -35,19 +35,6 @@
 #include "user_func.h"
 #include "tags.h"
 
-#if INTERFACE
-enum priority {
-  PRIORITY_SIMPLIFY = 0,
-  PRIORITY_VAR = 1,
-  PRIORITY_ASSERT = 2,
-  PRIORITY_EXEC_SELF = 3,
-  PRIORITY_DELAY = 4,
-  PRIORITY_OTHERWISE = 5,
-  PRIORITY_MAX
-};
-#define PRIORITY_TOP (PRIORITY_MAX - 1)
-#endif
-
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
 
@@ -995,6 +982,19 @@ const io_t default_io = {
 };
 
 const io_t *io = &default_io;
+
+#if INTERFACE
+enum priority {
+  PRIORITY_SIMPLIFY = 0,
+  PRIORITY_VAR = 1,
+  PRIORITY_ASSERT = 2,
+  PRIORITY_EXEC_SELF = 3,
+  PRIORITY_DELAY = 4,
+  PRIORITY_OTHERWISE = 5,
+  PRIORITY_MAX
+};
+#define PRIORITY_TOP (PRIORITY_MAX - 1)
+#endif
 
 bool should_delay(context_t *ctx, int priority) {
   return ctx->priority == PRIORITY_SIMPLIFY ?
