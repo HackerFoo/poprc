@@ -252,9 +252,14 @@ static_assert(sizeof(cell_t) == sizeof_field(cell_t, raw), "cell_t wrong size");
 #define ASSERT_ALIAS(s, f0, f1) \
   static_assert(offsetof(s, f0) == offsetof(s, f1), #f0 " should alias " #f1 " in " #s)
 
-#ifndef EMSCRIPTEN // Why doesn't this hold in Emscripten?
-ASSERT_ALIAS(cell_t, expr.arg[2], value.ptr[0]);
-#endif
+#define ASSERT_VALUE_OFFSET(f) ASSERT_ALIAS(cell_t, expr.arg[VALUE_OFFSET(f)], value.f)
+
+ASSERT_VALUE_OFFSET(integer);
+ASSERT_VALUE_OFFSET(flt);
+ASSERT_VALUE_OFFSET(str);
+ASSERT_VALUE_OFFSET(ptr);
+ASSERT_VALUE_OFFSET(map);
+
 ASSERT_ALIAS(cell_t, expr.flags, value.flags);
 ASSERT_ALIAS(cell_t, expr.arg[1], expr.alt_set);
 

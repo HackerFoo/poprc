@@ -138,6 +138,29 @@ void cell_alloc(cell_t *c) {
   next->mem.prev = prev;
 }
 
+cell_t *alloc_value() {
+  return closure_alloc(1 + VALUE_OFFSET(integer));
+}
+
+cell_t *alloc_list(csize_t n) {
+  return closure_alloc(n + VALUE_OFFSET(ptr));
+}
+
+// allocate space for n chars + '\0'
+cell_t *alloc_string(csize_t n) {
+  int args = DIV_UP(n + 1, sizeof_field(cell_t, expr.arg[0]));
+  cell_t *c = closure_alloc(args + VALUE_OFFSET(str));
+  c->op = OP_value;
+  c->value.type = T_STRING;
+  c->value.str[n] = '\0';
+  return c;
+}
+
+size_t max_strlen(const cell_t *c) {
+  if(c->size < VALUE_OFFSET(str)) return 0;
+  return (c->size - VALUE_OFFSET(str)) * sizeof_field(cell_t, expr.arg[0]) - 1;
+}
+
 cell_t *closure_alloc(csize_t args) {
   cell_t *c = closure_alloc_cells(calculate_cells(args));
   c->size = args;

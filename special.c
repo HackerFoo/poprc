@@ -100,7 +100,7 @@ OP(value) {
 }
 
 cell_t *make_val(uint8_t t) {
-  cell_t *c = closure_alloc(2);
+  cell_t *c = alloc_value();
   c->op = OP_value;
   c->value.type = t;
   return c;
@@ -188,7 +188,7 @@ cell_t *var_create(type_t t, cell_t *tc, int in, int out) {
 }
 
 cell_t *var_create_nonlist(type_t t, cell_t *tc) {
-  cell_t *c = closure_alloc(1);
+  cell_t *c = alloc_value();
   c->op = OP_value;
   c->size = 2;
   c->value.var = tc;
@@ -268,29 +268,14 @@ bool is_map(cell_t const *c) {
   return c && is_value(c) && c->value.type == T_MAP;
 }
 
-// allocate space for n chars + '\0'
-cell_t *closure_alloc_string(size_t n) {
-  int args = DIV_UP(n + 1, sizeof_field(cell_t, expr.arg[0]));
-  cell_t *c = closure_alloc(args + VALUE_OFFSET(str));
-  c->op = OP_value;
-  c->value.type = T_STRING;
-  c->value.str[n] = '\0';
-  return c;
-}
-
-size_t max_strlen(const cell_t *c) {
-  if(c->size < VALUE_OFFSET(str)) return 0;
-  return (c->size - VALUE_OFFSET(str)) * sizeof_field(cell_t, expr.arg[0]) - 1;
-}
-
 cell_t *make_string(seg_t s) {
-  cell_t *c = closure_alloc_string(s.n);
+  cell_t *c = alloc_string(s.n);
   memcpy(c->value.str, s.s, s.n);
   return c;
 }
 
 cell_t *make_strcat(seg_t s1, seg_t s2) {
-  cell_t *c = closure_alloc_string(s1.n + s2.n);
+  cell_t *c = alloc_string(s1.n + s2.n);
   c->op = OP_value;
   c->value.type = T_STRING;
   memcpy(c->value.str, s1.s, s1.n);

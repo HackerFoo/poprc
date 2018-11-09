@@ -69,7 +69,7 @@ pair_t primitive_module[] = {
 cell_t *modules = NULL;
 
 cell_t *make_module() {
-  cell_t *l = closure_alloc(2);
+  cell_t *l = alloc_list(1);
   l->op = OP_value;
   l->value.type = T_MODULE;
   l->n = PERSISTENT;
