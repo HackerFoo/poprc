@@ -769,6 +769,16 @@ void trace_set_type(cell_t *tc, type_t t) {
   }
 }
 
+bool all_var_list(cell_t *l) {
+  cell_t **p;
+  FORLIST(p, l, true) {
+    if(!is_var(*p)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // store captured variables to be compiled into a quote
 int trace_build_quote(cell_t *entry, cell_t *l) {
   assert_error(is_list(l));
@@ -784,6 +794,28 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
       switch_entry(entry, p);
       return var_index(entry, p->value.var);
     }
+  }
+
+  // if there is no computation in the quote, convert to ap or compose
+  if(all_var_list(l)) {
+    LOG("all var list %C", l);
+    bool row = is_row_list(l);
+    const int size = function_out(l, true) + 1;
+    int x = trace_alloc(entry, size);
+    cell_t *tc = &entry[x];
+    tc->op = row ? OP_compose : OP_ap;
+    int n = size;
+    int nil = trace_store_value(entry, &nil_cell);
+    entry[nil].n++;
+    tc->expr.arg[--n] = trace_encode(nil);
+
+    cell_t **p;
+    FORLIST(p, l, true) {
+      cell_t *v = (*p)->value.var;
+      tc->expr.arg[--n] = trace_encode(var_index(entry, v));
+      v->n++;
+    }
+    return x;
   }
 
   return compile_quote(entry, l);
