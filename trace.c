@@ -800,14 +800,11 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
   if(all_var_list(l)) {
     LOG("all var list %C", l);
     bool row = is_row_list(l);
-    const int size = function_out(l, true) + 1;
+    const int size = function_out(l, true);
     int x = trace_alloc(entry, size);
     cell_t *tc = &entry[x];
-    tc->op = row ? OP_compose : OP_ap;
+    tc->op = row ? OP_pushr : OP_quote;
     int n = size;
-    int nil = trace_store_value(entry, &nil_cell);
-    entry[nil].n++;
-    tc->expr.arg[--n] = trace_encode(nil);
 
     cell_t **p;
     FORLIST(p, l, true) {

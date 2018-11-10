@@ -399,18 +399,6 @@ OP(trunc) {
   return abort_op(rsp, cp, ctx);
 }
 
-WORD("pushr", pushr, 2, 1)
-OP(pushr) {
-  cell_t *c = *cp;
-
-  // lower to compose
-  c = expand(c, 1);
-  c->expr.arg[2] = empty_list();
-  c->op = OP_compose;
-  *cp = c;
-  return RETRY;
-}
-
 cell_t *set_alt(cell_t *c, alt_set_t as, cell_t *alt) {
   if(!c) return NULL;
   if(!as && !alt) return c;
@@ -801,6 +789,29 @@ OP(ap) {
 WORD(".", compose, 2, 1)
 OP(compose) {
   return func_compose_ap(cp, ctx, true);
+}
+
+static
+cell_t *expand_nil(cell_t *c) {
+  int n = c->n;
+  c->n = 0;
+  c = expand(c, 1);
+  c->n = n;
+  c->expr.arg[closure_args(c) - 1] = empty_list();
+  return c;
+}
+
+OP(quote) {
+  (*cp)->op = OP_ap;
+  *cp = expand_nil(*cp);
+  return RETRY;
+}
+
+WORD("pushr", pushr, 2, 1)
+OP(pushr) {
+  (*cp)->op = OP_compose;
+  *cp = expand_nil(*cp);
+  return RETRY;
 }
 
 WORD("print", print, 2, 1)
