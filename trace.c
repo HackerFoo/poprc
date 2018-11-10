@@ -389,6 +389,13 @@ void trace_arg(cell_t *tc, int n, cell_t *a) {
   trace_set_type(tc, a->value.type);
 }
 
+static
+int trace_value(cell_t *entry, cell_t *v) {
+  return is_var(v) || is_list(v) ?
+    trace_get_value(entry, v) :
+    trace_store_value(entry, v);
+}
+
 // store expression c in the trace
 static
 void trace_store_expr(cell_t *c, const cell_t *r) {
@@ -437,15 +444,8 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
   TRAVERSE(tc, in) {
     cell_t *a = *p;
     if(a) {
-      int x;
       assert_error(!is_marked(a));
-      if(is_value(a) &&
-         !is_var(a) &&
-         !is_list(a)) {
-        x = trace_store_value(entry, a);
-      } else {
-        x = trace_get_value(entry, a);
-      }
+      int x = trace_value(entry, a);
       *p = trace_encode(x);
       if(x >= 0) entry[x].n++;
     }
@@ -769,10 +769,10 @@ void trace_set_type(cell_t *tc, type_t t) {
   }
 }
 
-bool all_var_list(cell_t *l) {
+bool reduced_list(cell_t *l) {
   cell_t **p;
   FORLIST(p, l, true) {
-    if(!is_var(*p)) {
+    if(!is_value(*p)) {
       return false;
     }
   }
@@ -797,7 +797,7 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
   }
 
   // if there is no computation in the quote, convert to ap or compose
-  if(all_var_list(l)) {
+  if(reduced_list(l)) {
     LOG("all var list %C", l);
     bool row = is_row_list(l);
     const int size = function_out(l, true);
@@ -808,9 +808,9 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
 
     cell_t **p;
     FORLIST(p, l, true) {
-      cell_t *v = (*p)->value.var;
-      tc->expr.arg[--n] = trace_encode(var_index(entry, v));
-      v->n++;
+      int x = trace_value(entry, *p);
+      tc->expr.arg[--n] = trace_encode(x);
+      entry[x].n++;
     }
     return x;
   }
@@ -818,15 +818,12 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
   return compile_quote(entry, l);
 }
 
-cell_t *trace_quote_var(cell_t *l) {
-  if(is_empty_list(l)) return l;
-  if(l->value.var) return ref(l);
+cell_t *trace_quote_var(cell_t *entry, cell_t *l) {
   assert_error(l != NULL);
-  cell_t *f = *NOT_NULL(leftmost_row(&l));
-  while(is_placeholder(f)) f = f->expr.arg[closure_in(f) - 1];
-  assert_error(is_var(f), "not a var: %O %C", f->op, f);
-  cell_t *entry = var_entry(f->value.var);
+  if(is_empty_list(l)) return l;
+  if(is_var(l)) return l;
   int x = trace_build_quote(entry, l);
+  drop(l);
   return var_create_nonlist(T_LIST, &entry[x]);
 }
 

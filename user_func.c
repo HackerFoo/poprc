@@ -786,29 +786,25 @@ response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
   CHECK_DELAY();
   clear_flags(c);
 
-  // HACK force lists on tail calls
-  if(entry == parent_entry) {
-    COUNTUP(i, in) {
-      cell_t **ap = &c->expr.arg[i];
-      cell_t *left;
-      if(is_list(*ap) &&
-         closure_is_ready(left = *leftmost(ap))) {
-        LOG(HACK " forced cells[%C].expr.arg[%d]", c, i);
-        // hacky, switches function var in placeholders
-        if(is_placeholder(left)) {
-          cell_t *f = left->expr.arg[closure_in(left) - 1];
-          if(is_var(f)) {
-            switch_entry(entry, f);
-          }
+  // HACK force lists
+  COUNTUP(i, in) {
+    cell_t **ap = &c->expr.arg[i];
+    cell_t *left;
+    if(is_list(*ap) &&
+       closure_is_ready(left = *leftmost(ap))) {
+      LOG(HACK " forced cells[%C].expr.arg[%d]", c, i);
+      // hacky, switches function var in placeholders
+      if(is_placeholder(left)) {
+        cell_t *f = left->expr.arg[closure_in(left) - 1];
+        if(is_var(f)) {
+          switch_entry(entry, f);
         }
-        CHECK(func_list(ap, WITH(&CTX(return), priority, PRIORITY_TOP)));
-        CHECK_DELAY();
-
-        // ensure quotes are stored first
-        cell_t *l = *ap;
-        *ap = trace_quote_var(l);
-        drop(l);
       }
+      CHECK(func_list(ap, WITH(&CTX(return), priority, PRIORITY_TOP)));
+      CHECK_DELAY();
+
+      // ensure quotes are stored first
+      *ap = trace_quote_var(parent_entry, *ap);
     }
   }
 

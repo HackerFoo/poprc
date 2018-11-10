@@ -801,6 +801,7 @@ cell_t *expand_nil(cell_t *c) {
   return c;
 }
 
+WORD("quote", quote, 1, 1)
 OP(quote) {
   (*cp)->op = OP_ap;
   *cp = expand_nil(*cp);
