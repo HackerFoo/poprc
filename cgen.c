@@ -400,24 +400,6 @@ void clear_ops(cell_t *e) {
   }
 }
 
-// generate the driver to allow testing the function from the command line
-// for now assumes int
-void gen_main(cell_t *e) {
-  type_t rtypes[e->entry.out];
-  resolve_types(e, rtypes);
-
-  printf("#include \"cgen/primitives.h\"\n\n");
-
-  gen_function_signature(e);
-  printf(";\n");
-
-  printf("int main(UNUSED int argc, UNUSED char **argv)\n"
-         "{\n"
-         "  %s_%s(SYM_IO);\n"
-         "  return 0;\n"
-         "}\n\n", e->module_name, e->word_name);
-}
-
 COMMAND(cc, "print C code for given function") {
   if(rest) {
     command_define(rest);
@@ -431,17 +413,6 @@ COMMAND(cc, "print C code for given function") {
       gen_function(e);
       clear_ops(e);
     }
-  }
-  if(command_line) quit = true;
-}
-
-COMMAND(main, "print main() for given function") {
-  if(rest) {
-    cell_t
-      *m = eval_module(),
-      *e = module_lookup_compiled(tok_seg(rest), &m);
-
-    if(e) gen_main(e);
   }
   if(command_line) quit = true;
 }

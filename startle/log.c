@@ -32,7 +32,9 @@
  */
 
 
-#define FORMAT__ITEM(name, c) extern FORMAT(name, c);
+#define FORMAT__ITEM(name, c) \
+  void format_##name(intptr_t) __attribute__((weak)); \
+  void format_##name(intptr_t x) { printf("?0x%lx", x); }
 #include "format_list.h"
 #undef FORMAT__ITEM
 

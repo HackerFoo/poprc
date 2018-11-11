@@ -111,7 +111,7 @@ BUILD_DIR := build/$(CC)/$(BUILD)
 DIAGRAMS := diagrams
 DIAGRAMS_FILE := diagrams.html
 
-SRC := $(wildcard *.c) $(wildcard startle/*.c)
+SRC := $(wildcard *.c) $(wildcard startle/*.c) $(wildcard cgen/*.c)
 OBJS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SRC))
 EMCC_OBJS := $(patsubst %.c, build/emcc/$(BUILD)/%.o, $(SRC))
 DEPS := $(patsubst %.c, $(BUILD_DIR)/%.d, $(SRC))

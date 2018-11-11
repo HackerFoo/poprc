@@ -12,8 +12,18 @@ fi
 OUT=`./eval -ident $1`
 DIR=poprc_out
 
-set -x
+BUILDDIR="build/clang/release-with-asserts"
+RT="${BUILDDIR}/cgen/primitives.o ${BUILDDIR}/startle/support.o ${BUILDDIR}/startle/error.o ${BUILDDIR}/startle/log.o"
+
+make -s ${RT} CC=clang BUILD=release-with-asserts
+
+# set -x
 mkdir -p $DIR
-./eval -lo ${LIBS} -main $1 -cc $1 > ${DIR}/${OUT}.c
+printf "#include \"cgen/main.h\"\n\n" > ${DIR}/${OUT}.c
+./eval -lo ${LIBS} -cc $1 >> ${DIR}/${OUT}.c
+printf "\nMAIN(${OUT})\n" >> ${DIR}/${OUT}.c
 clang -S -emit-llvm ${CFLAGS} -DNOLOG -I. -I.gen -o ${DIR}/${OUT}.ll ${DIR}/${OUT}.c
-clang ${CFLAGS} -DNOLOG -I. -I.gen -o ${DIR}/${OUT} ${DIR}/${OUT}.c cgen/primitives.c startle/support.c startle/error.c startle/log.c
+clang ${CFLAGS} -DNOLOG -I. -I.gen -o ${DIR}/${OUT} ${DIR}/${OUT}.c ${RT}
+
+# run the executable
+./poprc_out/${OUT}
