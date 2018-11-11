@@ -72,7 +72,7 @@ bool is_function(cell_t const *c) {
 #define MAX_RETURN_VALUES 64
 response func_list(cell_t **cp, context_t *ctx) {
   PRE(list);
-  if(FLAG(c->value, VALUE_DELAY)) {
+  if(c->priority) {
     CHECK_PRIORITY(c->priority);
 
     // commit - force everything in this branch

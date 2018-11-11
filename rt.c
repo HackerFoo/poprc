@@ -174,7 +174,7 @@ cell_t *dup_list_alt(cell_t *c, csize_t n, cell_t *b) {
   csize_t in = list_size(c);
   assert_error(n < in);
   cell_t *a = copy(c);
-  FLAG_CLEAR(a->value, VALUE_DELAY);
+  a->priority = 0;
 
   // ref args
   COUNTUP(i, in) {

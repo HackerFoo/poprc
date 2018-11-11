@@ -1219,7 +1219,6 @@ void delay_branch(context_t *ctx, int priority) {
   FOLLOW(p, ctx, up) {
     cell_t *c = p->src;
     if(is_list(c)) {
-      FLAG_SET(c->value, VALUE_DELAY);
       c->priority = priority;
       LOG("delay branch %C %d", c, priority);
     }
