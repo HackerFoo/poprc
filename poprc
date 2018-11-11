@@ -15,9 +15,9 @@ DIR=poprc_out
 BUILDDIR="build/clang/release-with-asserts"
 RT="${BUILDDIR}/cgen/primitives.o ${BUILDDIR}/startle/support.o ${BUILDDIR}/startle/error.o ${BUILDDIR}/startle/log.o"
 
+make -s .gen/cgen/primitives.h
 make -s ${RT} CC=clang BUILD=release-with-asserts
 
-# set -x
 mkdir -p $DIR
 printf "#include \"cgen/main.h\"\n\n" > ${DIR}/${OUT}.c
 ./eval -lo ${LIBS} -cc $1 >> ${DIR}/${OUT}.c

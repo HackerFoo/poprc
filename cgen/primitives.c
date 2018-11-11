@@ -15,19 +15,100 @@ static char strings[1024];
 static char *strings_ptr = strings;
 static char string_buffer[64];
 
+#if INTERFACE
+typedef int symbol_t;
+typedef int any_t;
+
+typedef struct array {
+  unsigned int capacity,
+               offset,
+               size;
+  int *elem;
+} array;
+#endif
+
 void init_primitives() {
   mem_ptr = mem;
   strings_ptr = strings;
 }
 
+array arr_alloc(unsigned int n) {
+  assert_throw(mem_ptr - mem + n <= (int)LENGTH(mem), "out of mem");
+  array arr = {
+    .capacity = n,
+    .elem = mem_ptr
+  };
+  mem_ptr += n;
+  return arr;
+}
+
+char *string_alloc(unsigned int n) {
+  assert_throw(strings_ptr - strings + n <= (int)LENGTH(strings), "out of mem");
+  char *s = strings_ptr;
+  strings_ptr += n;
+  return s;
+}
+
+seg_t seg_alloc(char *s, unsigned int n) {
+  char *ns = string_alloc(n);
+  memcpy(ns, s, n);
+  return (seg_t) {
+    .s = ns,
+    .n = n
+  };
+}
+
+unsigned int array_remaining(array *arr) {
+  return arr->capacity - arr->size;
+}
+
+int *arr_elem(array *arr, unsigned int i) {
+  return i < arr->size ?
+    &arr->elem[(arr->capacity + arr->offset - i) % arr->capacity] :
+    NULL;
+}
+
+bool arr_shift(array *arr, int l, int r) {
+  bool res;
+  int s = l - r;
+  if((res = INRANGE(arr->size + s, 0, arr->capacity))) {
+    arr->size += s;
+    arr->offset = (arr->capacity + arr->offset - r) % arr->capacity;
+  }
+  return res;
+}
+
+void print_array(array *arr) {
+  printf("[");
+  if(arr->size > 0) {
+    printf("%d", *arr_elem(arr, arr->size - 1));
+    COUNTDOWN(i, arr->size - 1) {
+      printf(", %d", *arr_elem(arr, i));
+    }
+  }
+  printf("]\n");
+}
+
+array arr_new() {
+  return arr_alloc(32);
+}
+
+TEST(arr_shift) {
+  init_primitives();
+  array arr = arr_alloc(16);
+  print_array(&arr);
+  arr_shift(&arr, 3, 0);
+  COUNTUP(i, 3) *arr_elem(&arr, i) = i;
+  print_array(&arr);
+  arr_shift(&arr, 0, 1);
+  print_array(&arr);
+  arr_shift(&arr, 1, 0);
+  *arr_elem(&arr, arr.size - 1) = 3;
+  print_array(&arr);
+  return 0;
+}
+
 #if INTERFACE
-
-typedef int symbol_t;
-
-typedef struct array {
-  int size;
-  int *elem;
-} array;
 
 #define __primitive_add(x, y) x + y
 #define __primitive_sub(x, y) x - y
@@ -61,102 +142,75 @@ bool __primitive_div(int x, int y, int *res) {
   }
 }
 
-const array nil = {0, NULL};
+const array nil = {0, 0, 0, NULL};
 
 array __primitive_ap01(array arr, int *out0) {
-  assert_error(arr.size >= 1, "array underflow");
-  if(out0) *out0 = arr.elem[0];
-  return (array) { .elem = arr.elem - 1,
-                   .size = arr.size - 1 };
+  if(out0) *out0 = *arr_elem(&arr, 0);
+  arr_shift(&arr, 0, 1);
+  return arr;
 }
 
 array __primitive_ap02(array arr, int *out1, int *out0) {
-  assert_error(arr.size >= 2, "array underflow");
-  if(out0) *out0 = arr.elem[0];
-  if(out1) *out1 = arr.elem[-1];
-  return (array) { .elem = arr.elem - 2,
-                   .size = arr.size - 2 };
+  if(out0) *out0 = *arr_elem(&arr, 0);
+  if(out1) *out1 = *arr_elem(&arr, 1);
+  arr_shift(&arr, 0, 2);
+  return arr;
 }
 
 array __primitive_ap10(int in0, array arr) {
-  int *elem = arr.elem ? arr.elem : mem_alloc(1);
-  elem[-arr.size] = in0;
-  return (array) { .elem = elem,
-                   .size = arr.size + 1 };
-}
-
-array __primitive_compose20(array arrL, int in0, const array arrR) {
-  array arr = {
-    .elem = arrL.elem + arrR.size + 1,
-    .size = arrL.size + arrR.size + 1
-  };
-  arr.elem[-arrR.size] = in0;
-  memcpy(&arr.elem[-arrR.size + 1], &arrR.elem[-arrR.size + 1], arrR.size * sizeof(*arr.elem));
+  arr_shift(&arr, 1, 0);
+  *arr_elem(&arr, arr.size - 1) = in0;
   return arr;
 }
 
-array __primitive_compose30(array arrL, int in0, int in1, const array arrR) {
-  array arr = {
-    .elem = arrL.elem + arrR.size + 2,
-    .size = arrL.size + arrR.size + 2
-  };
-  arr.elem[-arrR.size-1] = in0;
-  arr.elem[-arrR.size] = in1;
-  memcpy(&arr.elem[-arrR.size + 1], &arrR.elem[-arrR.size + 1], arrR.size * sizeof(*arr.elem));
-  return arr;
+array __primitive_compose20(array arrL, int in0, array arrR) {
+  unsigned int n = arrL.size + 1;
+  arr_shift(&arrR, n, 0);
+  COUNTUP(i, arrL.size) {
+    *arr_elem(&arrR, i + n) = *arr_elem(&arrL, i);
+  }
+  *arr_elem(&arrR, n - 1) = in0;
+  return arrR;
+}
+
+array __primitive_compose30(array arrL, int in0, int in1, array arrR) {
+  unsigned int n = arrL.size + 2;
+  arr_shift(&arrR, n, 0);
+  COUNTUP(i, arrL.size) {
+    *arr_elem(&arrR, i + n) = *arr_elem(&arrL, i);
+  }
+  *arr_elem(&arrR, n - 1) = in0;
+  *arr_elem(&arrR, n - 2) = in1;
+  return arrR;
 }
 
 array __primitive_pushr1(array arr, int in0) {
-  int *elem = arr.elem ? arr.elem + 1 : mem_alloc(1);
-  elem[0] = in0;
-  return (array) { .elem = elem,
-                   .size = arr.size + 1 };
+  arr_shift(&arr, 0, -1);
+  *arr_elem(&arr, 0) = in0;
+  return arr;
 }
 
-array __primitive_pushr2(array arr, int in0, int in1) {
-  int *elem = arr.elem ? arr.elem + 2 : mem_alloc(2);
-  elem[-1] = in0;
-  elem[0] = in1;
-  return (array) { .elem = elem,
-                   .size = arr.size + 2 };
+array __primitive_pushr2(array arr, int in1, int in0) {
+  arr_shift(&arr, 0, -2);
+  *arr_elem(&arr, 0) = in0;
+  *arr_elem(&arr, 1) = in1;
+  return arr;
 }
 
-int __primitive_is_nil(array arr) {
+array __primitive_quote0(int in0) {
+  array arr = arr_new();
+  arr_shift(&arr, 1, 0);
+  *arr_elem(&arr, 0) = in0;
+  return arr;
+}
+
+symbol_t __primitive_is_nil(array arr) {
   return arr.size == 0;
-}
-
-int *mem_alloc(unsigned int n) {
-  assert_throw(mem_ptr - mem + n <= (int)LENGTH(mem), "out of mem");
-  int *m = mem_ptr;
-  mem_ptr += n;
-  return m;
-}
-
-int *alloc_arr(array *arr, unsigned int n) {
-  arr->size = n;
-  arr->elem = mem_alloc(n);
-  return arr->elem;
-}
-
-char *string_alloc(unsigned int n) {
-  assert_throw(strings_ptr - strings + n <= (int)LENGTH(strings), "out of mem");
-  char *s = strings_ptr;
-  strings_ptr += n;
-  return s;
-}
-
-seg_t alloc_seg(char *s, unsigned int n) {
-  char *ns = string_alloc(n);
-  memcpy(ns, s, n);
-  return (seg_t) {
-    .s = ns,
-    .n = n
-  };
 }
 
 seg_t __primitive_to_string(int x) {
   unsigned int len = max(0, snprintf(string_buffer,sizeof(string_buffer), "%d", x));
-  return alloc_seg(string_buffer, min(sizeof(string_buffer), len));
+  return seg_alloc(string_buffer, min(sizeof(string_buffer), len));
 }
 
 TEST(prim_to_string) {
@@ -180,7 +234,7 @@ symbol_t __primitive_input(symbol_t io, seg_t *str) {
           !ONEOF(*e, '\0', '\n')) e++;
     n = e - s;
   }
-  if(str) *str = alloc_seg(s, n);
+  if(str) *str = seg_alloc(s, n);
   return io;
 }
 
@@ -188,10 +242,10 @@ seg_t __primitive_strtrim(seg_t str) {
   return seg_trim(str);
 }
 
-bool __from_string(seg_t str, int *x) {
+bool __primitive_from_string(seg_t str, int *x) {
   char *end = NULL;
   long lx = strtol(str.s, &end, 0);
-  if(!end) {
+  if(!end || end <= str.s) {
     return true;
   } else {
     *x = lx;
@@ -200,8 +254,7 @@ bool __from_string(seg_t str, int *x) {
 }
 
 symbol_t __primitive_eq_str(seg_t a, seg_t b) {
-  return a.n == b.n && strncmp(a.s, b.s, a.n) == 0 ?
-    SYM_True : SYM_False;
+  return a.n == b.n && strncmp(a.s, b.s, a.n) == 0;
 }
 
 seg_t __primitive_strcat(seg_t a, seg_t b) {

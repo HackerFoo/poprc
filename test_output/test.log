@@ -2,6 +2,12 @@
 alloc => 0
 @ alt_sets
 alt_sets => 0
+@ arr_shift
+[]
+[2, 1, 0]
+[2, 1]
+[3, 2, 1]
+arr_shift => 0
 @ comments
 [1] One def
 [2] T_w_o def

@@ -112,7 +112,7 @@ void gen_body(cell_t *e) {
     if(is_var(c)) continue;
     gen_decl(e, c);
   }
-  if(e->entry.rec) printf("\nbody:\n");
+  if(e->entry.rec) printf("\nentry: {\n");
   FOR_TRACE(c, e) {
     if(is_var(c)) continue;
     gen_instruction(e, c);
@@ -148,7 +148,7 @@ end:
   {
     cell_t *next = closure_next(l);
     if(closure_next(l) <= end) {
-      printf("\nblock%d:\n", (int)(next - e));
+      printf("}\n\nblock%d: {\n", (int)(next - e));
     }
   }
 }
@@ -229,7 +229,7 @@ void gen_call(cell_t *e, cell_t *c) {
     };
 
     // jump to the beginning
-    printf("  goto body;\n");
+    printf("  goto entry;\n");
   } else if(trace_type(c) != T_BOTTOM) {
     csize_t
       in = closure_in(c),
@@ -306,7 +306,7 @@ void gen_value_rhs(cell_t *c) {
   }
   case T_LIST:
     assert_error(list_size(c) == 0);
-    printf("nil;\n");
+    printf("arr_new();\n");
     break;
   default:
     assert_error(false); // TODO add more types
@@ -378,7 +378,8 @@ void gen_function(cell_t *e) {
   gen_function_signature(e);
   printf("\n{\n");
   gen_body(e);
-  printf("}\n");
+  if(e->entry.rec || e->entry.alts > 1) printf("}\n");
+  printf("} // end %s_%s\n", e->module_name, e->word_name);
 
   FOR_TRACE(c, e) {
     if(c->op == OP_exec && c->trace.type != T_BOTTOM) {

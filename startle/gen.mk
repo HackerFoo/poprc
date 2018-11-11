@@ -31,7 +31,7 @@ SHELL := bash
 	@mkdir -p $(dir $@)
 	startle/bin/makeheaders $<:$@
 
-.gen/%.h: .gen/%.h.new $(wildcard %.c)
+.gen/%.h: .gen/%.h.new $(SRC)
 	@cmp -s $< $@ || cp $< $@
 
 startle/bin/makeheaders: startle/makeheaders/makeheaders.c
