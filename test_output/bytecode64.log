@@ -65,7 +65,7 @@ ___ algorithm.gcd_r0 (2 -> 1) x2 rec ___
 [7] return [ 6 ], type = r -> 12 x1
 [8] __primitive.neq 1 4, type = s x1
 [9] __primitive.assert 11 8, type = i x1
-[10] __primitive.mod 2 1, type = i x1
+[10] __primitive.mod 2 1, type = i? x1
 [11] algorithm.gcd_r0 1 10, type = i x1
 [12] return [ 9 ], type = r x1
 
@@ -1519,7 +1519,7 @@ ___ tests.calc_loop (2 -> 1) x9 rec ___
 [7] __primitive.input 6 -> 8, type = s x10
 [8] __primitive.dep 7, type = S x1
 [9] __primitive.strtrim 8, type = S x8
-[10] __primitive.from_string 9, type = i x3
+[10] __primitive.from_string 9, type = i? x3
 [11] __primitive.seq 13 10, type = 0 x1
 [12] __primitive.pushr 1 10, type = l x1
 [13] tests.calc_loop 7 12, type = 0 x1
@@ -1563,7 +1563,7 @@ ___ tests.calc_loop (2 -> 1) x9 rec ___
 [51] __primitive.ap 1 -> 52 53, type = l x3
 [52] __primitive.dep 51, type = i x1
 [53] __primitive.dep 51, type = i x1
-[54] __primitive.div 52 53, type = i x2
+[54] __primitive.div 52 53, type = i? x2
 [55] __primitive.seq 57 50, type = 0 x1
 [56] __primitive.pushr 51 54, type = l x1
 [57] tests.calc_loop 7 56, type = 0 x1
@@ -1610,7 +1610,7 @@ ___ tests.calc_step (2 -> 1) x8 ___
 [1] var, type = ?S x1
 [2] var, type = ?l x8
 [3] __primitive.strtrim 1, type = S x8
-[4] __primitive.from_string 3, type = i x1
+[4] __primitive.from_string 3, type = i? x1
 [5] tests.calc_step_q0 4 2, type = l x1
 [6] return [ 5 ], type = r -> 11 x1
 [7] __primitive.eq_str 3 8, type = s x1
@@ -1691,7 +1691,7 @@ ___ tests.calc_step_q4 (1 -> 1) ___
 [2] __primitive.ap 1 -> 3 4, type = l x3
 [3] __primitive.dep 2, type = i x1
 [4] __primitive.dep 2, type = i x1
-[5] __primitive.div 3 4, type = i x1
+[5] __primitive.div 3 4, type = i? x1
 [6] __primitive.compose 2 5 7, type = l x1
 [7] [ ], type = l x1
 [8] return [ 6 ], type = r x1
@@ -1727,7 +1727,7 @@ ___ tests.calc_step_dummy (2 -> 1) ___
 [3] __primitive.ap 2 -> 4, type = l x2
 [4] __primitive.dep 3, type = i x1
 [5] __primitive.strtrim 1, type = S x1
-[6] __primitive.from_string 5, type = i x1
+[6] __primitive.from_string 5, type = i? x1
 [7] __primitive.add 4 6, type = i x1
 [8] tests.calc_step_dummy_q0 7 3, type = l x1
 [9] return [ 8 ], type = r x1
@@ -1767,7 +1767,7 @@ ___ tests.calc_step_simple (2 -> 1) x2 ___
 [1] var, type = ?S x1
 [2] var, type = ?l x2
 [3] __primitive.strtrim 1, type = S x2
-[4] __primitive.from_string 3, type = i x1
+[4] __primitive.from_string 3, type = i? x1
 [5] tests.calc_step_simple_q0 4 2, type = l x1
 [6] return [ 5 ], type = r -> 11 x1
 [7] __primitive.eq_str 3 8, type = s x1
@@ -1814,7 +1814,7 @@ ___ tests.collatz_r0 (2 -> 1) x4 rec ___
 [12] __primitive.eq 11 13, type = s x1
 [13] val 0, type = i x1
 [14] __primitive.assert 15 12, type = i x1
-[15] __primitive.div 1 16, type = i x1
+[15] __primitive.div 1 16, type = i? x1
 [16] val 2, type = i x1
 [17] tests.collatz_r0 10 14, type = i x1
 [18] return [ 9 ], type = r -> 27 x1
@@ -1839,7 +1839,7 @@ ___ tests.collatz_step (1 -> 1) x3 ___
 [4] __primitive.eq 2 5, type = s x1
 [5] val 0, type = i x1
 [6] __primitive.assert 7 4, type = i x1
-[7] __primitive.div 1 8, type = i x1
+[7] __primitive.div 1 8, type = i? x1
 [8] val 2, type = i x1
 [9] return [ 6 ], type = r -> 16 x1
 [10] __primitive.mul 1 11, type = i x1
@@ -2494,7 +2494,7 @@ ___ tests.pct (2 -> 1) ___
 [1] var, type = ?i x1
 [2] var, type = ?d x1
 [3] __primitive.to_float 1, type = d x1
-[4] __primitive.div_float 3 5, type = d x1
+[4] __primitive.div_float 3 5, type = d? x1
 [5] val 100, type = d x1
 [6] __primitive.add_float 4 7, type = d x1
 [7] val 1, type = d x1
@@ -2608,7 +2608,7 @@ ___ tests.spaces_r0 (1 -> 1) x2 rec ___
 [8] __primitive.eq_str 1 3, type = s x1
 [9] __primitive.not 8, type = s x1
 [10] __primitive.assert 16 9, type = S x1
-[11] __primitive.strsplit 1 12 -> 15, type = S x2
+[11] __primitive.strsplit 1 12 -> 15, type = S? x2
 [12] val " ", type = S x1
 [13] __primitive.eq_str 11 3, type = s x1
 [14] __primitive.assert 15 13, type = S x1
@@ -2700,7 +2700,7 @@ ___ tests.sum_times2_r0 (3 -> 1) x2 rec ___
 [12] val 1, type = i x1
 [13] __primitive.input 2 -> 14, type = s x2
 [14] __primitive.dep 13, type = S x1
-[15] __primitive.from_string 14, type = i x1
+[15] __primitive.from_string 14, type = i? x1
 [16] __primitive.add 15 1, type = i x1
 [17] tests.sum_times2_r0 11 13 16, type = i x1
 [18] return [ 10 ], type = r x1
@@ -2727,7 +2727,7 @@ ___ tests.sum_times2v_r0 (3 -> 1) x2 rec ___
 [12] val 1, type = i x1
 [13] __primitive.input 2 -> 14, type = s x2
 [14] __primitive.dep 13, type = S x2
-[15] __primitive.from_string 14, type = i x1
+[15] __primitive.from_string 14, type = i? x1
 [16] __primitive.add 15 1, type = i x1
 [17] __primitive.strcat 18 14, type = S x1
 [18] val "'", type = S x2
@@ -2777,7 +2777,7 @@ ___ tests.vifte_collatz (1 -> 1) x6 rec ___
 [15] __primitive.eq 14 16, type = s x1
 [16] val 0, type = i x1
 [17] __primitive.assert 18 15, type = i x6
-[18] __primitive.div 1 19, type = i x1
+[18] __primitive.div 1 19, type = i? x1
 [19] val 2, type = i x1
 [20] __primitive.gt 17 3, type = s x2
 [21] __primitive.assert 17 20, type = i x3
@@ -2820,7 +2820,7 @@ ___ tests.vifte_collatz_step (1 -> 1) x5 ___
 [13] __primitive.eq 12 14, type = s x1
 [14] val 0, type = i x1
 [15] __primitive.assert 16 13, type = i x6
-[16] __primitive.div 1 17, type = i x1
+[16] __primitive.div 1 17, type = i? x1
 [17] val 2, type = i x1
 [18] __primitive.gt 15 3, type = s x2
 [19] __primitive.assert 15 18, type = i x1

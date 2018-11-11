@@ -137,6 +137,7 @@ void print_bytecode(cell_t *entry) {
         }
       }
       printf(", type = %c", type_char(c->trace.type));
+      if(FLAG(c->expr, EXPR_PARTIAL)) printf("?");
     }
     printf(" x%d", c->n + 1);
     if(!is_value(c) && FLAG(c->expr, EXPR_TRACE)) {

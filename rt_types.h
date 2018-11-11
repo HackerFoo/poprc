@@ -92,6 +92,7 @@ typedef enum response {
 #define EXPR_TRACE     0x08
 #define EXPR_NO_UNIFY  0x10
 #define EXPR_DELAYED   0x20
+#define EXPR_PARTIAL   0x40
 
 /* unevaluated expression */
 struct __attribute__((packed)) expr {

@@ -86,6 +86,7 @@ response func_op2(cell_t **cp, context_t *ctx, int arg_type, int res_type, val_t
   res->alt = c->alt;
   res->value.alt_set = ctx->alt_set;
   add_conditions(res, p, q);
+  if(nonzero) FLAG_SET(c->expr, EXPR_PARTIAL);
   store_reduced(cp, res);
   return SUCCESS;
 
@@ -143,6 +144,7 @@ response func_op2_float(cell_t **cp, context_t *ctx, double (*op)(double, double
   res->alt = c->alt;
   res->value.alt_set = ctx->alt_set;
   add_conditions(res, p, q);
+  if(nonzero) FLAG_SET(c->expr, EXPR_PARTIAL);
   store_reduced(cp, res);
   return SUCCESS;
 
@@ -473,6 +475,7 @@ OP(assert) {
   res->value.alt_set = ctx->alt_set;
   res->alt = c->alt;
 
+  FLAG_SET(c->expr, EXPR_PARTIAL);
   store_reduced(cp, res);
   return SUCCESS;
 
@@ -598,6 +601,7 @@ OP(otherwise) {
   res->value.alt_set = ctx->alt_set;
   res->alt = c->alt;
 
+  FLAG_SET(c->expr, EXPR_PARTIAL);
   store_reduced(cp, res);
   return SUCCESS;
 
@@ -771,6 +775,7 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   remove_root(q);
 
   drop(l);
+  if(out) FLAG_SET(c->expr, EXPR_PARTIAL);
   store_reduced(cp, res);
   ASSERT_REF();
   return SUCCESS;
@@ -1044,6 +1049,7 @@ OP(from_string) {
   res->alt = c->alt;
   res->value.alt_set = ctx->alt_set;
   add_conditions(res, p);
+  FLAG_SET(c->expr, EXPR_PARTIAL);
   store_reduced(cp, res);
   return SUCCESS;
 
@@ -1082,6 +1088,7 @@ OP(strsplit) {
   res->alt = c->alt;
   res->value.alt_set = ctx->alt_set;
   add_conditions(res, p, q);
+  FLAG_SET(c->expr, EXPR_PARTIAL);
   store_reduced(cp, res);
   return SUCCESS;
 
