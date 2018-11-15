@@ -160,9 +160,6 @@
    c->expr.arg[z]->value.alt_set)
 #define AS_UNION(c, ...) DISPATCH(AS_UNION, c, ##__VA_ARGS__)
 
-// encode small integers as pointers
-#define FLIP_PTR(p) ((void *)~(uintptr_t)(p))
-
 // marking
 #ifdef EMSCRIPTEN
 #define MARK_BIT (1<<31)

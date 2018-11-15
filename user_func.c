@@ -49,7 +49,7 @@ cell_t *map_cell(cell_t *entry, intptr_t x) {
 static
 cell_t *get_return_arg(cell_t *entry, cell_t *returns, intptr_t x) {
   assert_error(x < entry->entry.out);
-  trace_index_t i = trace_decode(returns->value.ptr[x]);
+  trace_index_t i = tr_index(returns->value.ptr[x]);
   assert_error(i > 0);
   return map_cell(entry, i);
 }
@@ -341,7 +341,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
 
     TRAVERSE(t, alt, args, ptrs) {
       if(p != t_entry && *p) {
-        trace_index_t x = trace_decode(*p);
+        trace_index_t x = tr_index(*p);
         *p = map_cell(entry, x);
       }
     }
@@ -369,8 +369,8 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
   }
 
   // rest
-  trace_index_t next = trace_decode(returns->alt);
-  while(next >= 0) {
+  trace_index_t next = tr_index(returns->alt);
+  while(next > 0) {
     alt_set_t as = tracing ? as_multi(alt_id, alt_n, branch++) : 0;
     returns = &entry[next];
     FOREACH(i, results) {
@@ -382,7 +382,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
         drop(a);
       }
     }
-    next = trace_decode(returns->alt);
+    next = tr_index(returns->alt);
   }
 
   return res;
@@ -394,11 +394,11 @@ bool is_within_entry(cell_t *entry, cell_t *p) {
 
 // builds a temporary list of referenced variables
 cell_t **input_var_list(cell_t *c, cell_t **tail) {
-  if(c && !c->tmp && tail != &c->tmp) {
+  if(c && !c->tmp_val && tail != &c->tmp) {
     if(is_var(c) && !is_list(c)) {
       LIST_ADD(tmp, tail, c);
     } else {
-      c->tmp = FLIP_PTR(0); // prevent loops
+      c->tmp_val = true; // prevent loops
       if(is_list(c)) {
         COUNTDOWN(i, list_size(c)) {
           tail = trace_var_list(c->value.ptr[i], tail);
@@ -408,7 +408,7 @@ cell_t **input_var_list(cell_t *c, cell_t **tail) {
           tail = trace_var_list(*p, tail);
         }
       }
-      c->tmp = 0;
+      c->tmp_val = false;
     }
   }
   return tail;

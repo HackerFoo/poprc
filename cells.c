@@ -298,7 +298,7 @@ csize_t closure_out(cell_t const *c) {
 
 csize_t closure_next_child(cell_t const *c) {
   assert_error(is_closure(c));
-  return is_offset(c->expr.arg[0]) ? (intptr_t)c->expr.arg[0] : 0;
+  return !closure_is_ready(c) && is_offset(c->expr.arg[0]) ? (intptr_t)c->expr.arg[0] : 0;
 }
 
 cell_t **closure_next_arg(cell_t *c) {

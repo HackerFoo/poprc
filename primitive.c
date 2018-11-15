@@ -585,7 +585,7 @@ OP(otherwise) {
     // propagate type
     cell_t *entry = var_entry(tc);
     for(cell_t *p = tc; p != tp;
-        p = &entry[trace_decode(p->expr.arg[1])]) {
+        p = &entry[tr_index(p->expr.arg[1])]) {
       trace_set_type(p, (*q)->value.type);
     }
 

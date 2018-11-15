@@ -97,7 +97,7 @@ void print_bytecode(cell_t *entry) {
         if(c->value.type == T_RETURN) printf(" return");
         printf(" [");
         COUNTDOWN(i, list_size(c)) {
-          printf(" %d", trace_decode(c->value.ptr[i]));
+          printf(" %d", tr_index(c->value.ptr[i]));
         }
         printf(" ]");
       } else if(is_var(c)) { // variable
@@ -107,7 +107,7 @@ void print_bytecode(cell_t *entry) {
       }
       printf(", type = %s", show_type_all_short(c));
       if(c->value.type == T_RETURN && c->alt) {
-        printf(" -> %d", trace_decode(c->alt));
+        printf(" -> %d", tr_index(c->alt));
       }
     } else { // print a call
       const char *module_name = NULL, *word_name = NULL;
@@ -118,7 +118,7 @@ void print_bytecode(cell_t *entry) {
         printf(" incomplete %s", op_name(c->op));
       }
       TRAVERSE(c, in) {
-        int x = trace_decode(*p);
+        int x = tr_index(*p);
         if(x == 0) {
           printf(" X");
         } else {
@@ -128,7 +128,7 @@ void print_bytecode(cell_t *entry) {
       if(closure_out(c)) {
         printf(" ->");
         TRAVERSE(c, out) {
-          int x = trace_decode(*p);
+          int x = tr_index(*p);
           if(x == 0) {
             printf(" X");
           } else {
@@ -176,7 +176,7 @@ void drop_trace(cell_t *entry, cell_t *tc) {
   if(tc->n <= 0) {
     LOG("drop %s[%d] %O", entry->word_name, tc-entry, tc->op);
     TRAVERSE(tc, in, ptrs) {
-      int x = trace_decode(*p);
+      int x = tr_index(*p);
       if(x > 0) {
         drop_trace(entry, &entry[x]);
       }
@@ -204,10 +204,10 @@ void condense(cell_t *entry) {
   FOR_TRACE(tc, entry) {
     if(tc->op) {
       if(is_value(tc) && tc->value.type == T_RETURN) {
-        if(ret) ret->alt = trace_encode(idx);
+        if(ret) ret->alt = index_tr(idx);
         ret = tc;
       } else {
-        tc->alt = trace_encode(idx);
+        tc->alt = index_tr(idx);
       }
       idx += calculate_cells(tc->size);
     } else {
@@ -223,19 +223,19 @@ void condense(cell_t *entry) {
          tc->value.type == T_RETURN) {
         COUNTUP(i, list_size(tc)) {
           cell_t **p = &tc->value.ptr[i];
-          int x = trace_decode(*p);
+          int x = tr_index(*p);
           if(x > 0) {
-            *p = entry[x].alt;
-            assert_error(trace_decode(*p) > 0);
+            tr_set_index(p, tr_index(entry[x].alt));
+            assert_error(tr_index(*p) > 0);
           }
         }
       } else {
         TRAVERSE(tc, args, ptrs) {
           if(p != e) {
-            int x = trace_decode(*p);
+            int x = tr_index(*p);
             if(x > 0) {
-              *p = entry[x].alt;
-              assert_error(trace_decode(*p) > 0, "at %s[%d]", entry->word_name, tc-entry);
+              tr_set_index(p, tr_index(entry[x].alt));
+              assert_error(tr_index(*p) > 0, "at %s[%d]", entry->word_name, tc-entry);
             }
           }
         }
@@ -280,11 +280,11 @@ void move_vars(cell_t *entry) {
   FOR_TRACE(p, entry) {
     if(!is_var(p)) {
       if(is_value(p) && p->value.type == T_RETURN) {
-        if(ret) ret->alt = trace_encode(idx);
+        if(ret) ret->alt = index_tr(idx);
         ret = p;
       } else {
         LOG_WHEN(idx != p-entry, "move %d -> %d", p-entry, idx);
-        p->alt = trace_encode(idx);
+        p->alt = index_tr(idx);
       }
       idx += calculate_cells(p->size);
     } else {
@@ -293,7 +293,7 @@ void move_vars(cell_t *entry) {
       int i = p->pos - 1;
       memcpy(&vars[i], p, sizeof(cell_t));
       p->op = OP_null;
-      p->alt = trace_encode(p->pos);
+      p->alt = index_tr(p->pos);
       LOG_WHEN(i + 1 != p-entry, "move var %d -> %d", p-entry, p->pos);
     }
   }
@@ -308,13 +308,13 @@ void move_vars(cell_t *entry) {
          tc->value.type == T_RETURN) {
         COUNTUP(i, list_size(tc)) {
           cell_t **p = &tc->value.ptr[i];
-          int x = trace_decode(*p);
+          int x = tr_index(*p);
           if(x > 0) *p = entry[x].alt;
         }
       } else {
         TRAVERSE(tc, args, ptrs) {
           if(p != e) {
-            int x = trace_decode(*p);
+            int x = tr_index(*p);
             if(x > 0) *p = entry[x].alt;
           }
         }
@@ -347,7 +347,7 @@ void move_vars(cell_t *entry) {
 }
 
 static
-void trace_replace_arg(cell_t *entry, cell_t *old, cell_t *new) {
+void trace_replace_arg(cell_t *entry, int old, int new) {
   FOR_TRACE(tc, entry) {
     if(tc->op) {
       cell_t **e = is_user_func(tc) ? &tc->expr.arg[closure_in(tc)] : NULL;
@@ -355,12 +355,12 @@ void trace_replace_arg(cell_t *entry, cell_t *old, cell_t *new) {
          tc->value.type == T_RETURN) {
         COUNTUP(i, list_size(tc)) {
           cell_t **p = &tc->value.ptr[i];
-          if(*p == old) *p = new;
+          if(tr_index(*p) == old) *p = index_tr(new);
         }
       } else {
         TRAVERSE(tc, args, ptrs) {
           if(p != e) {
-            if(*p == old) *p = new;
+            if(tr_index(*p) == old) *p = index_tr(new);
           }
         }
       }
@@ -410,7 +410,7 @@ void trace_final_pass(cell_t *entry) {
   FOR_TRACE(p, entry) {
     if(p->op == OP_assert &&
        p->trace.type == T_ANY) {
-      p->trace.type = trace_type(&entry[trace_decode(p->expr.arg[0])]);
+      p->trace.type = trace_type(&entry[tr_index(p->expr.arg[0])]);
     }
   }
 
@@ -418,7 +418,7 @@ void trace_final_pass(cell_t *entry) {
     if(FLAG(p->trace, TRACE_INCOMPLETE)) {
       if(p->op == OP_placeholder) { // convert a placeholder to ap or compose
         FLAG_CLEAR(p->trace, TRACE_INCOMPLETE);
-        trace_index_t left = trace_decode(p->expr.arg[0]);
+        trace_index_t left = tr_index(p->expr.arg[0]);
         assert_error(left >= 0);
         if(closure_in(p) > 1 && trace_type(&entry[left]) == T_LIST) {
           p->op = OP_compose;
@@ -426,7 +426,7 @@ void trace_final_pass(cell_t *entry) {
           p->op = OP_ap;
         }
         if(prev && prev->op == OP_ap &&
-           trace_decode(p->expr.arg[closure_in(p) - 1]) == prev - entry &&
+           tr_index(p->expr.arg[closure_in(p) - 1]) == prev - entry &&
            prev->n == 0) {
           LOG("merging ap %d to %d", p - entry, prev - entry);
           csize_t
@@ -435,10 +435,7 @@ void trace_final_pass(cell_t *entry) {
             p_size = closure_args(p);
           refcount_t p_n = p->n;
           cell_t *tmp = copy(p);
-          cell_t
-            *p_enc = trace_encode(p - entry),
-            *prev_enc = trace_encode(prev - entry);
-          trace_replace_arg(entry, p_enc, prev_enc);
+          trace_replace_arg(entry, p - entry, prev - entry);
           prev->op = p->op;
           memset(p, 0, calculate_cells(p_size) * sizeof(cell_t));
           ARRAY_SHIFTR(prev->expr.arg[0], p_in-1, prev->size);
@@ -457,6 +454,7 @@ void trace_final_pass(cell_t *entry) {
     TWEAK(true, "to disable condense/move_vars in %s", entry->word_name)) {
     condense(entry);
     move_vars(entry);
+    keep_analysis(entry);
   }
   FOR_TRACE(p, entry) {
     if(p->op == OP_exec) {
@@ -464,6 +462,7 @@ void trace_final_pass(cell_t *entry) {
       if(FLAG(e->entry, ENTRY_QUOTE)) {
         condense(e);
         move_vars(e);
+        keep_analysis(e);
       }
     }
   }
@@ -655,7 +654,7 @@ void dedup_subentries(cell_t *e) {
 void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *entry) {
   int x = var_index(entry, c->value.var);
   COUNTUP(j, a_n) {
-    int y = trace_decode(a[j]);
+    int y = tr_index(a[j]);
     if(y == x) {
       int xn = a_n - j;
       cell_t *tc = &entry[xn];
@@ -668,7 +667,7 @@ void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *entry) {
   { // diagnostics for fall through, which shouldn't happen
     CONTEXT_LOG("replace_var fall through: %C (%d)", c, x);
     COUNTUP(j, a_n) {
-      LOG("%d -> %d", trace_decode(a[j]), j);
+      LOG("%d -> %d", tr_index(a[j]), j);
     }
   }
 }
@@ -804,7 +803,7 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
 // decode a pointer to an index and return a trace pointer
 static
 cell_t *tref(cell_t *entry, cell_t *c) {
-  int i = trace_decode(c);
+  int i = tr_index(c);
   return i <= 0 ? NULL : &entry[i];
 }
 
@@ -866,6 +865,54 @@ cell_t *entry_from_token(cell_t *tok) {
   } else {
     cell_t *m = eval_module();
     return module_lookup_compiled(id, &m);
+  }
+}
+
+static
+void keep_mark(cell_t *entry, cell_t **p) {
+  int x = tr_index(*p);
+  csize_t *n = &entry[x].trace.n;
+  (*n)--;
+  if(x && *n) {
+    tr_set_flags(p, TR_KEEP);
+  }
+}
+
+bool is_return(cell_t *c) {
+  return is_value(c) && c->value.type == T_RETURN;
+}
+
+void keep_analysis(cell_t *entry) {
+  // copy ref counts
+  FOR_TRACE(c, entry) {
+    c->trace.n = is_return(c) ? 0 : c->n + 1;
+  }
+
+  // deps first
+  FOR_TRACE(c, entry) {
+    if(is_dep(c)) {
+      keep_mark(entry, &c->expr.arg[0]);
+    }
+  }
+
+  // calls and returns
+  FOR_TRACE(c, entry) {
+    if(is_value(c)) {
+      if(is_return(c)) {
+        COUNTDOWN(i, list_size(c)) {
+          keep_mark(entry, &c->value.ptr[i]);
+        }
+      }
+    } else if(!is_dep(c)) {
+      TRAVERSE(c, in) {
+        keep_mark(entry, p);
+      }
+    }
+  }
+
+  // check that everything was accounted for
+  FOR_TRACE(c, entry) {
+    assert_eq(c->trace.n, 0);
   }
 }
 

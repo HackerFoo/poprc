@@ -270,6 +270,8 @@ strings => 0
 @ tag
 tag: 20116 = good
 tag => 0
+@ trace_encode
+trace_encode => 0
 @ var_count
 length(vl) = 5
 var_count => 0

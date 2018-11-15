@@ -123,19 +123,19 @@ void gen_body(cell_t *e) {
 void gen_return(cell_t *e, cell_t *l) {
   cell_t *end = e + e->entry.len;
   csize_t out_n = list_size(l);
-  int ires = trace_decode(l->value.ptr[out_n - 1]);
+  int ires = tr_index(l->value.ptr[out_n - 1]);
 
   if(FLAG(l->trace, TRACE_TRACED)) goto end;
 
   // skip if T_BOTTOM
   COUNTDOWN(i, out_n) {
-    int ai = trace_decode(l->value.ptr[i]);
+    int ai = tr_index(l->value.ptr[i]);
     type_t t = trace_type(&e[ai]);
     if(t == T_BOTTOM) goto end;
   }
 
   COUNTDOWN(i, out_n-1) {
-    int ai = trace_decode(l->value.ptr[i]);
+    int ai = tr_index(l->value.ptr[i]);
     cell_t *a = &e[ai];
     type_t t = trace_type(a);
     const char *n = cname(t);
@@ -221,7 +221,7 @@ void gen_call(cell_t *e, cell_t *c) {
 
     // overwrite function arguments with new values
     COUNTUP(i, in) {
-      int a = trace_decode(c->expr.arg[i]);
+      int a = tr_index(c->expr.arg[i]);
       printf("  %s%d = %s%d;\n",
              cname(trace_type(&e[in - i])),
              (int)(in - i),
@@ -255,7 +255,7 @@ void gen_call(cell_t *e, cell_t *c) {
     printf("(");
 
     COUNTUP(i, in) {
-      int a = trace_decode(c->expr.arg[i]);
+      int a = tr_index(c->expr.arg[i]);
       printf("%s%s%d", sep, cname(trace_type(&e[a])), a);
       sep = ", ";
     };
@@ -266,7 +266,7 @@ void gen_call(cell_t *e, cell_t *c) {
     }
 
     RANGEUP(i, start_out, n) {
-      int a = trace_decode(c->expr.arg[i]);
+      int a = tr_index(c->expr.arg[i]);
       if(a <= 0) {
         printf("%sNULL", sep);
       } else {
@@ -326,7 +326,7 @@ void gen_skipped(cell_t *e, int start_after, int until) {
       type_t t = trace_type(c);
       if(t == T_RETURN) break;
       TRAVERSE(c, in) {
-        if(*p && trace_decode(*p) == until) return;
+        if(*p && tr_index(*p) == until) return;
       }
       gen_instruction(e, c);
       FLAG_SET(c->trace, TRACE_TRACED);
@@ -338,8 +338,8 @@ void gen_assert(cell_t *e, cell_t *c) {
   if(FLAG(c->trace, TRACE_TRACED)) return;
   int
     i = c - e,
-    ip = trace_decode(c->expr.arg[0]),
-    iq = trace_decode(c->expr.arg[1]);
+    ip = tr_index(c->expr.arg[0]),
+    iq = tr_index(c->expr.arg[1]);
   const char *cn = cname(trace_type(c));
   cell_t *ret = NULL;
   printf("\n  // assert %d\n", iq);
@@ -355,7 +355,7 @@ void gen_assert(cell_t *e, cell_t *c) {
       if(!ret && trace_type(p) == T_RETURN) {
         ret = p;
       }
-      if(p->op == OP_assert && trace_decode(p->expr.arg[1]) == iq) {
+      if(p->op == OP_assert && tr_index(p->expr.arg[1]) == iq) {
         ret = NULL;
       }
     }

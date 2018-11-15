@@ -63,7 +63,6 @@ typedef intptr_t val_t;
 #pragma clang diagnostic ignored "-Wnested-anon-types"
 #pragma clang diagnostic ignored "-Wgnu-folding-constant"
 #pragma clang diagnostic ignored "-Wgnu-empty-initializer"
-#pragma clang diagnostic ignored "-Wextended-offsetof"
 #endif
 
 struct context {
@@ -86,6 +85,20 @@ typedef enum response {
   RETRY,
   FAIL
 } response;
+
+#define TR_KEEP 0x01
+
+typedef struct tr tr;
+struct __attribute__((packed)) tr {
+  union {
+    cell_t *ptr;
+    int entry;
+    struct {
+      int16_t index;
+      uint8_t flags;
+    };
+  };
+};
 
 #define EXPR_NEEDS_ARG 0x02
 #define EXPR_RECURSIVE 0x04
@@ -218,11 +231,13 @@ struct __attribute__((packed, aligned(4))) cell {
       };
       union {
         cell_t *tmp;
+        val_t tmp_val;
         const char *module_name; // entry
         char_class_t char_class; // tok_list
         struct { // trace
           type_t type;
           uint8_t flags;
+          csize_t n;
         } trace;
       };
       op op;
@@ -248,6 +263,8 @@ struct __attribute__((packed, aligned(4))) cell {
 #ifndef EMSCRIPTEN
 static_assert(sizeof(cell_t) == sizeof_field(cell_t, raw), "cell_t wrong size");
 #endif
+
+static_assert(sizeof(tr) == sizeof_field(cell_t, expr.arg[0]), "tr wrong size");
 
 #define ASSERT_ALIAS(s, f0, f1) \
   static_assert(offsetof(s, f0) == offsetof(s, f1), #f0 " should alias " #f1 " in " #s)
