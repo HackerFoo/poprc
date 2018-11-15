@@ -93,22 +93,26 @@ void print_bytecode(cell_t *entry) {
       continue;
     }
     if(is_value(c)) {
-      if(is_list(c) || c->value.type == T_RETURN) { // return
-        if(c->value.type == T_RETURN) printf(" return");
+      bool is_ret = c->value.type == T_RETURN;
+      if(is_list(c) || is_ret) { // return or list
+        if(is_ret) printf(" return");
         printf(" [");
         COUNTDOWN(i, list_size(c)) {
-          printf(" %d", tr_index(c->value.ptr[i]));
+          cell_t *p = c->value.ptr[i];
+          printf("%s%d", tr_flags(p, TR_KEEP) ? "&" : "", tr_index(p));
+          if(i) printf(" ");
         }
-        printf(" ]");
+        printf("]");
       } else if(is_var(c)) { // variable
         printf(" var");
       } else { // value
         print_value(c);
       }
-      printf(", type = %s", show_type_all_short(c));
-      if(c->value.type == T_RETURN && c->alt) {
+      if(!is_ret) printf(" :: %s", show_type_all_short(c));
+      if(is_ret && c->alt) {
         printf(" -> %d", tr_index(c->alt));
       }
+      if(!is_ret) printf(" x%d", c->n + 1);
     } else { // print a call
       const char *module_name = NULL, *word_name = NULL;
       if(NOT_FLAG(c->trace, TRACE_INCOMPLETE)) {
@@ -122,7 +126,7 @@ void print_bytecode(cell_t *entry) {
         if(x == 0) {
           printf(" X");
         } else {
-          printf(" %d", x);
+          printf(" %s%d", tr_flags(*p, TR_KEEP) ? "&" : "", x);
         }
       }
       if(closure_out(c)) {
@@ -136,10 +140,10 @@ void print_bytecode(cell_t *entry) {
           }
         }
       }
-      printf(", type = %c", type_char(c->trace.type));
+      printf(" :: %c", type_char(c->trace.type));
       if(FLAG(c->expr, EXPR_PARTIAL)) printf("?");
+      printf(" x%d", c->n + 1);
     }
-    printf(" x%d", c->n + 1);
     if(!is_value(c) && FLAG(c->expr, EXPR_TRACE)) {
       printf(" [TRACING]");
     }
