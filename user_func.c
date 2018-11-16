@@ -61,7 +61,7 @@ cell_t *apply_list(cell_t *l, csize_t in, csize_t out) {
   if(in) {
     c->expr.arg[0] = (cell_t *)(intptr_t)(in - 1);
   } else {
-    FLAG_CLEAR(c->expr, EXPR_NEEDS_ARG);
+    FLAG_CLEAR(*c, expr, NEEDS_ARG);
   }
   c->expr.arg[in] = l;
   RANGEUP(i, in+1, in+1+out) {
@@ -199,7 +199,7 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry, context_t *ctx) {
 
   if(!pat) return false;
   if(!is_value(c) &&
-     FLAG(c->expr, EXPR_NO_UNIFY)) return true;
+     FLAG(*c, expr, NO_UNIFY)) return true;
 
   assert_eq(in, closure_in(pat));
 
@@ -223,7 +223,7 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry, context_t *ctx) {
     n->expr.out = out;
     n->op = OP_exec;
     n->expr.arg[in] = entry;
-    FLAG_SET(n->expr, EXPR_RECURSIVE);
+    FLAG_SET(*n, expr, RECURSIVE);
     int pos = 0;
 
     // TODO this list should be sorted first by the parent variable pos's
@@ -270,7 +270,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
 
   CONTEXT("exec_expand %s: %C 0x%x", entry->word_name, c, c->expr.flags);
 
-  assert_error(entry->entry.len && FLAG(entry->entry, ENTRY_COMPLETE));
+  assert_error(entry->entry.len && FLAG(*entry, entry, COMPLETE));
   trace_clear_alt(entry); // *** probably shouldn't need this
 
   COUNTUP(i, in) {
@@ -349,7 +349,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
     // TODO remove this
     if(t_entry &&
        *t_entry == entry) { // mark recursion
-      FLAG_SET(t->expr, EXPR_RECURSIVE);
+      FLAG_SET(*t, expr, RECURSIVE);
       //LOG("recursive exec %C -> %d", c, trace_ptr-trace_cur);
     }
   }
@@ -457,7 +457,7 @@ void reassign_input_order(cell_t *entry) {
                  entry->word_name, tn-entry, p);
     if(tn->pos != pos) {
       tn->pos = pos;
-      FLAG_SET(entry->entry, ENTRY_MOV_VARS);
+      FLAG_SET(*entry, entry, MOV_VARS);
     }
     pos++;
   }
@@ -726,7 +726,7 @@ response exec_list(cell_t **cp, context_t *ctx) {
   // if ctx->t == T_LIST, need to wrap here
   // move to func_exec; expand, wrap, and return the original function
   c = expand(c, out);
-  FLAG_SET(c->expr, EXPR_NO_UNIFY);
+  FLAG_SET(*c, expr, NO_UNIFY);
   c->expr.out = out;
   res = make_list(ctx->out);
   res->value.ptr[out] = c;
@@ -856,7 +856,7 @@ bool all_dynamic(cell_t *entry, cell_t *c) {
   assert_error(in == closure_in(c));
   if(!entry->entry.rec) return false;
   COUNTUP(i, in) {
-    if(NOT_FLAG(entry[i+1].value, VALUE_CHANGES)) {
+    if(NOT_FLAG(entry[i+1], value, CHANGES)) {
       int a = REVI(i);
       force(&c->expr.arg[a]); // HACK
       if(!is_input(c->expr.arg[a])) {
@@ -874,7 +874,7 @@ OP(exec) {
 
   cell_t *parent_entry = trace_current_entry();
 
-  if(NOT_FLAG(entry->entry, ENTRY_COMPLETE)) {
+  if(NOT_FLAG(*entry, entry, COMPLETE)) {
     delay_branch(ctx, PRIORITY_DELAY);
     CHECK_PRIORITY(PRIORITY_EXEC_SELF);
     assert_error(parent_entry,
@@ -894,7 +894,7 @@ OP(exec) {
   } else {
     assert_counter(1000);
 
-    if(FLAG(c->expr, EXPR_RECURSIVE)) {
+    if(FLAG(*c, expr, RECURSIVE)) {
       TRAVERSE(c, in) {
         CHECK(force(p));
       }
@@ -902,7 +902,7 @@ OP(exec) {
     }
     cell_t *res = exec_expand(c, entry);
 
-    if(FLAG(entry->entry, ENTRY_TRACE)) {
+    if(FLAG(*entry, entry, TRACE)) {
       printf("TRACE: %s.%s", entry->module_name, entry->word_name);
       TRAVERSE(c, in) {
         putchar(' ');

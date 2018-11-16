@@ -115,7 +115,7 @@ void print_bytecode(cell_t *entry) {
       if(!is_ret) printf(" x%d", c->n + 1);
     } else { // print a call
       const char *module_name = NULL, *word_name = NULL;
-      if(NOT_FLAG(c->trace, TRACE_INCOMPLETE)) {
+      if(NOT_FLAG(*c, trace, INCOMPLETE)) {
         trace_get_name(c, &module_name, &word_name);
         printf(" %s.%s", module_name, word_name);
       } else {
@@ -141,10 +141,10 @@ void print_bytecode(cell_t *entry) {
         }
       }
       printf(" :: %c", type_char(c->trace.type));
-      if(FLAG(c->expr, EXPR_PARTIAL)) printf("?");
+      if(FLAG(*c, expr, PARTIAL)) printf("?");
       printf(" x%d", c->n + 1);
     }
-    if(!is_value(c) && FLAG(c->expr, EXPR_TRACE)) {
+    if(!is_value(c) && FLAG(*c, expr, TRACE)) {
       printf(" [TRACING]");
     }
     if(t > entry->entry.in &&
@@ -269,7 +269,7 @@ void condense(cell_t *entry) {
 // TODO optimize
 static
 void move_vars(cell_t *entry) {
-  if(NOT_FLAG(entry->entry, ENTRY_MOV_VARS) ||
+  if(NOT_FLAG(*entry, entry, MOV_VARS) ||
      entry->entry.len == 0) return;
   cell_t *ret = NULL;
   csize_t in = entry->entry.in;
@@ -347,7 +347,7 @@ void move_vars(cell_t *entry) {
   memmove(&entry[in + 1], &entry[1], (len - in) * sizeof(cell_t));
   memcpy(&entry[1], vars, in * sizeof(cell_t));
   memset(vars, 0, in * sizeof(cell_t));
-  FLAG_CLEAR(entry->entry, ENTRY_MOV_VARS);
+  FLAG_CLEAR(*entry, entry, MOV_VARS);
 }
 
 static
@@ -419,9 +419,9 @@ void trace_final_pass(cell_t *entry) {
   }
 
   FOR_TRACE(p, entry) {
-    if(FLAG(p->trace, TRACE_INCOMPLETE)) {
+    if(FLAG(*p, trace, INCOMPLETE)) {
       if(p->op == OP_placeholder) { // convert a placeholder to ap or compose
-        FLAG_CLEAR(p->trace, TRACE_INCOMPLETE);
+        FLAG_CLEAR(*p, trace, INCOMPLETE);
         trace_index_t left = tr_index(p->expr.arg[0]);
         assert_error(left >= 0);
         if(closure_in(p) > 1 && trace_type(&entry[left]) == T_LIST) {
@@ -454,7 +454,7 @@ void trace_final_pass(cell_t *entry) {
     }
     prev = p;
   }
-  if(NOT_FLAG(entry->entry, ENTRY_QUOTE) &&
+  if(NOT_FLAG(*entry, entry, QUOTE) &&
     TWEAK(true, "to disable condense/move_vars in %s", entry->word_name)) {
     condense(entry);
     move_vars(entry);
@@ -463,7 +463,7 @@ void trace_final_pass(cell_t *entry) {
   FOR_TRACE(p, entry) {
     if(p->op == OP_exec) {
       cell_t *e = get_entry(p);
-      if(FLAG(e->entry, ENTRY_QUOTE)) {
+      if(FLAG(*e, entry, QUOTE)) {
         condense(e);
         move_vars(e);
         keep_analysis(e);
@@ -514,17 +514,17 @@ cell_t *module_lookup_compiled(seg_t path, cell_t **context) {
   cell_t *p = module_lookup(path, context);
   if(!p) return NULL;
   if(!is_list(p)) return p;
-  if(FLAG(p->value, VALUE_TRACED)) {
+  if(FLAG(*p, value, TRACED)) {
     if(p->alt) { // HACKy
       return p->alt;
     } else {
       return lookup_word(string_seg("??"));
     }
   }
-  FLAG_SET(p->value, VALUE_TRACED);
+  FLAG_SET(*p, value, TRACED);
   seg_t name = path_name(path);
   cell_t *res = compile_entry(name, *context);
-  if(!res) FLAG_CLEAR(p->value, VALUE_TRACED);
+  if(!res) FLAG_CLEAR(*p, value, TRACED);
   return res;
 }
 
@@ -646,7 +646,7 @@ void dedup_subentries(cell_t *e) {
     // duplicate quotes are common
     if(is_user_func(c)) {
       cell_t *ce = get_entry(c);
-      if(FLAG(ce->entry, ENTRY_QUOTE)) {
+      if(FLAG(*ce, entry, QUOTE)) {
         dedup_entry(&ce);
         set_entry(c, ce);
       }
@@ -706,7 +706,7 @@ void move_changing_values(cell_t *entry, cell_t *c) {
   cell_t *expanding = c->expr.arg[closure_in(c)];
   TRAVERSE(c, in) {
     int i = expanding->entry.in - (p - c->expr.arg);
-    if(FLAG(expanding[i].value, VALUE_CHANGES)) {
+    if(FLAG(expanding[i], value, CHANGES)) {
       set_pos_for_values(*p, entry);
     }
   }
@@ -758,7 +758,7 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
   cell_t *e = trace_start_entry(parent_entry, 1);
   e->module_name = parent_entry->module_name;
   e->word_name = string_printf("%s_q%d", parent_entry->word_name, parent_entry->entry.sub_id++);
-  FLAG_SET(e->entry, ENTRY_QUOTE);
+  FLAG_SET(*e, entry, QUOTE);
   CONTEXT_LOG("compiling %C to quote %s", l, e->word_name);
 
   // conversion
@@ -943,7 +943,7 @@ COMMAND(trace, "trace an instruction") {
       bool set = false;
       cell_t *arg = rest->tok_list.next;
       if(!arg) {
-        FLAG_SET(e->entry, ENTRY_TRACE);
+        FLAG_SET(*e, entry, TRACE);
         set = true;
         printf("tracing %s.%s\n",
                e->module_name,
@@ -953,7 +953,7 @@ COMMAND(trace, "trace an instruction") {
         if(x > 0 &&
            x <= e->entry.len &&
            !is_value(&e[x])) {
-          FLAG_SET(e[x].expr, EXPR_TRACE);
+          FLAG_SET(e[x], expr, TRACE);
           set = true;
           printf("tracing %s.%s [%d]\n",
                  e->module_name,

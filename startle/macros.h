@@ -283,15 +283,24 @@
  */
 #define show(x) printf(#x " = %d\n", (int)(x))
 
+#define FLAG_(x, flag) (((x) & (flag)) != 0)
+#define FLAG_FIELD(s, t) ((s).GET(0, CONCAT(FLAG_, t)).flags)
+#define FLAG_BIT(flag, t) CONCAT(CONCAT(GET(1, CONCAT(FLAG_, t)), _), flag)
+
 /** Return `true` if the flag is set. */
-#define FLAG(s, flag) (((s).flags & (flag)) != 0)
+#define FLAG(s, t, flag) FLAG_(FLAG_FIELD(s, t), FLAG_BIT(flag, t))
 
 /** Return `true` if the flag is NOT set. */
-#define NOT_FLAG(s, flag) (((s).flags & (flag)) == 0)
+#define NOT_FLAG(s, t, flag) (!FLAG(s, t, flag))
 
-#define FLAG_SET(s, flag) ((s).flags |= (flag))
-#define FLAG_CLEAR(s, flag) ((s).flags &= ~(flag))
-#define FLAG_SET_TO(s, flag, val) ((val) ? FLAG_SET(s, flag) : FLAG_CLEAR(s, flag))
+#define FLAG_SET_(x, flag) ((x) |= (flag))
+#define FLAG_SET(s, t, flag) FLAG_SET_(FLAG_FIELD(s, t), FLAG_BIT(flag, t))
+
+#define FLAG_CLEAR_(x, flag) ((x) &= ~(flag))
+#define FLAG_CLEAR(s, t, flag) FLAG_CLEAR_(FLAG_FIELD(s, t), FLAG_BIT(flag, t))
+
+#define FLAG_SET_TO_(x, flag, val) ((val) ? FLAG_SET_(x, flag) : FLAG_CLEAR_(x, flag))
+#define FLAG_SET_TO(s, t, flag, val) FLAG_SET_TO_(FLAG_FIELD(s, t), FLAG_BIT(flag, t), val)
 
 /** Shift elements in the array to the right. */
 #define ARRAY_SHIFTR(array, offset, length) memmove(&(array) + (offset), &(array), (length) * sizeof(array))

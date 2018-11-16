@@ -35,7 +35,7 @@ OP(value) {
 
   // promote integer constants to float constants
   if(ctx->t == T_FLOAT &&
-     NOT_FLAG(c->value, VALUE_VAR) &&
+     NOT_FLAG(*c, value, VAR) &&
      c->value.type == T_INT) {
     val_t x = c->value.integer;
     LOG("convert integer constant %d", x);
@@ -45,7 +45,7 @@ OP(value) {
   }
 
   // TODO move this check out - ctx shouldn't cause a FAIL
-  CHECK_IF(FLAG(c->value, VALUE_FAIL) ||
+  CHECK_IF(FLAG(*c, value, FAIL) ||
            !check_type(ctx->t, c->value.type),
            FAIL);
 
@@ -249,7 +249,7 @@ cell_t *var_(type_t t, cell_t *c, uint8_t pos) {
 #endif
 
 bool is_var(cell_t const *c) {
-  return c && is_value(c) && FLAG(c->value, VALUE_VAR);
+  return c && is_value(c) && FLAG(*c, value, VAR);
 }
 
 cell_t *make_map(csize_t s) {

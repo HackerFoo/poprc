@@ -262,7 +262,7 @@ void graph_cell(FILE *f, cell_t const *c) {
     }
     if(is_list(c)) {
       csize_t n = list_size(c);
-      if(n && FLAG(c->value, VALUE_ROW)) {
+      if(n && FLAG(*c, value, ROW)) {
         n--;
         fprintf(f, "<tr><td port=\"ptr%u\">", (unsigned int)n);
         print_cell_pointer(f, "row", c->value.ptr[n]);
@@ -282,7 +282,7 @@ void graph_cell(FILE *f, cell_t const *c) {
       fprintf(f, "<tr><td bgcolor=\"orange\">trace: %d.%d",
               entry_number(entry),
               (int)var_index_nofail(entry, c->value.var));
-      if(FLAG(c->value, VALUE_DEP)) {
+      if(FLAG(*c, value, DEP)) {
         fprintf(f, "[%d]", (int)c->pos);
       }
       fprintf(f, "</td></tr>");
@@ -324,7 +324,7 @@ void graph_cell(FILE *f, cell_t const *c) {
               show_alt_set((alt_set_t)c->expr.arg[1]));
     }
   }
-  if(c->pos && !(is_var(c) && FLAG(c->value, VALUE_DEP))) {
+  if(c->pos && !(is_var(c) && FLAG(*c, value, DEP))) {
     fprintf(f, "<tr><td bgcolor=\"deepskyblue\">pos: %d</td></tr>",
             entry_number(trace_expr_entry(c->pos)));
   }
@@ -579,7 +579,7 @@ char *show_type_all(const cell_t *c) {
   char *p = buf;
   p += sprintf(p, "%s", show_type(c->value.type));
   FOREACH(i, type_flag_name) {
-    if(FLAG(c->value, 0x80 >> i)) {
+    if(FLAG_(c->value.flags, 0x80 >> i)) {
       p += sprintf(p, "|%s", type_flag_name[i]);
     }
   }
@@ -617,7 +617,7 @@ char *show_type_all_short(const cell_t *c) {
   char *p = buf;
 
   FOREACH(i, type_flag_char) {
-    if(FLAG(c->value, 0x80 >> i)) {
+    if(FLAG_(c->value.flags, 0x80 >> i)) {
       *p++ = type_flag_char[i];
     }
   }

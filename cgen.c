@@ -116,7 +116,7 @@ void gen_body(cell_t *e) {
   FOR_TRACE(c, e) {
     if(is_var(c)) continue;
     gen_instruction(e, c);
-    FLAG_CLEAR(c->trace, TRACE_TRACED);
+    FLAG_CLEAR(*c, trace, TRACED);
   }
 }
 
@@ -125,7 +125,7 @@ void gen_return(cell_t *e, cell_t *l) {
   csize_t out_n = list_size(l);
   int ires = tr_index(l->value.ptr[out_n - 1]);
 
-  if(FLAG(l->trace, TRACE_TRACED)) goto end;
+  if(FLAG(*l, trace, TRACED)) goto end;
 
   // skip if T_BOTTOM
   COUNTDOWN(i, out_n) {
@@ -164,7 +164,7 @@ void gen_decl(cell_t *e, cell_t *c) {
       gen_value_rhs(c);
     } else if(c->n ||
               is_dep(c) ||
-              FLAG(c->expr, EXPR_PARTIAL)) {
+              FLAG(*c, expr, PARTIAL)) {
       printf("  %s%s%d;\n", ctype(t), cname(t), i);
     }
   }
@@ -202,13 +202,13 @@ bool last_call(cell_t *e, cell_t *c) {
 void skip_to_next_block(cell_t *e, cell_t *c) {
   c = closure_next(c);
   FOR_TRACE(p, e, c - e - 1) {
-    FLAG_SET(p->trace, TRACE_TRACED);
+    FLAG_SET(*p, trace, TRACED);
     if(trace_type(p) == T_RETURN) break;
   }
 }
 
 void gen_call(cell_t *e, cell_t *c) {
-  if(FLAG(c->trace, TRACE_TRACED)) return;
+  if(FLAG(*c, trace, TRACED)) return;
   int i = c - e;
   char *sep = "";
   const char *module_name, *word_name;
@@ -239,7 +239,7 @@ void gen_call(cell_t *e, cell_t *c) {
 
     trace_get_name(c, &module_name, &word_name);
     type_t t = trace_type(c);
-    bool partial = FLAG(c->expr, EXPR_PARTIAL);
+    bool partial = FLAG(*c, expr, PARTIAL);
     if(partial) {
       printf("  if(%s_%s", module_name, word_name);
     } else {
@@ -329,13 +329,13 @@ void gen_skipped(cell_t *e, int start_after, int until) {
         if(*p && tr_index(*p) == until) return;
       }
       gen_instruction(e, c);
-      FLAG_SET(c->trace, TRACE_TRACED);
+      FLAG_SET(*c, trace, TRACED);
     }
   }
 }
 
 void gen_assert(cell_t *e, cell_t *c) {
-  if(FLAG(c->trace, TRACE_TRACED)) return;
+  if(FLAG(*c, trace, TRACED)) return;
   int
     i = c - e,
     ip = tr_index(c->expr.arg[0]),

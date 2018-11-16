@@ -100,6 +100,7 @@ struct __attribute__((packed)) tr {
   };
 };
 
+#define FLAG_expr (expr, EXPR)
 #define EXPR_NEEDS_ARG 0x02
 #define EXPR_RECURSIVE 0x04
 #define EXPR_TRACE     0x08
@@ -121,6 +122,7 @@ struct __attribute__((packed)) expr {
 };
 
 // value flags
+#define FLAG_value (value, VALUE)
 #define VALUE_DEP        0x04
 #define VALUE_CHANGES    0x08
 #define VALUE_ROW        0x10
@@ -129,6 +131,7 @@ struct __attribute__((packed)) expr {
 #define VALUE_VAR        0x80
 
 // trace flags
+#define FLAG_trace (trace, TRACE)
 #define TRACE_INCOMPLETE 0x08
 #define TRACE_TRACED     0x20
 
@@ -164,6 +167,7 @@ struct __attribute__((packed)) mem {
   cell_t *prev, *next;
 };
 
+#define FLAG_entry (entry, ENTRY)
 #define ENTRY_PRIMITIVE 0x01
 #define ENTRY_TRACE     0x02
 #define ENTRY_RECURSIVE 0x04

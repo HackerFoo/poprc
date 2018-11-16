@@ -119,7 +119,7 @@ bool entry_has(cell_t *entry, cell_t *v) {
 }
 
 cell_t *trace_entry_next(cell_t *e) {
-  return e + (FLAG(e->entry, ENTRY_BLOCK) ?
+  return e + (FLAG(*e, entry, BLOCK) ?
               ENTRY_BLOCK_SIZE :
               trace_entry_size(e));
 }
@@ -297,7 +297,7 @@ static
 int trace_lookup_value_linear(cell_t *entry, const cell_t *c) {
   FOR_TRACE(p, entry) {
     if(p->op == OP_value &&
-       NOT_FLAG(p->value, VALUE_VAR) &&
+       NOT_FLAG(*p, value, VAR) &&
        equal_value(p, c))
       return p - entry;
   }
@@ -352,7 +352,7 @@ int trace_get_value(cell_t *entry, cell_t *r) {
   if(is_list(r)) {
     return trace_build_quote(entry, r); // *** TODO prevent building duplicate quotes
   } else if(is_var(r)) {
-    if(FLAG(r->value, VALUE_DEP)) return 0;
+    if(FLAG(*r, value, DEP)) return 0;
     switch_entry(entry, r);
     return var_index(entry, r->value.var);
   } else {
@@ -492,7 +492,7 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
     tc->value.type = t;
   }
   tc->trace.type = t;
-  if(tc->op == OP_placeholder) FLAG_SET(tc->trace, TRACE_INCOMPLETE);
+  if(tc->op == OP_placeholder) FLAG_SET(*tc, trace, INCOMPLETE);
   tc->alt = NULL;
 }
 
@@ -584,7 +584,7 @@ int trace_store_something(cell_t *entry, cell_t **v) {
 static
 void trace_store(cell_t *c, const cell_t *r) {
   assert_error(is_var(r));
-  if(FLAG(r->value, VALUE_DEP)) {
+  if(FLAG(*r, value, DEP)) {
     trace_dep(c);
   } else {
     trace_store_expr(c, r);
@@ -612,7 +612,7 @@ uint8_t trace_recursive_changes(cell_t *entry) {
           assert_error(is_var(a));
           cnt++;
           // mark variables that change during recursion
-          FLAG_SET(a->value, VALUE_CHANGES);
+          FLAG_SET(*a, value, CHANGES);
         }
       }
 
@@ -657,7 +657,7 @@ void trace_end_entry(cell_t *e) {
   assert_error(prev_entry_pos && e->pos == prev_entry_pos, "out of order start/end entry");
   active_entries[--prev_entry_pos] = NULL;
   e->pos = 0;
-  FLAG_SET(e->entry, ENTRY_COMPLETE);
+  FLAG_SET(*e, entry, COMPLETE);
   e->entry.rec = trace_recursive_changes(e);
 }
 
@@ -684,7 +684,7 @@ void trace_update(cell_t *c, cell_t *r) {
 
 void trace_dep(cell_t *c) {
   if(!is_var(c)) return;
-  if(NOT_FLAG(c->value, VALUE_DEP)) return;
+  if(NOT_FLAG(*c, value, DEP)) return;
   cell_t *entry = var_entry(c->value.var);
   if(!entry) return;
   int x = trace_alloc(entry, 1);
@@ -699,7 +699,7 @@ void trace_dep(cell_t *c) {
   ph->n++;
   c->value.var = tc;
   c->pos = 0;
-  FLAG_CLEAR(c->value, VALUE_DEP);
+  FLAG_CLEAR(*c, value, DEP);
 }
 
 // reclaim failed allocation if possible
@@ -734,7 +734,7 @@ void trace_reduction(cell_t *c, cell_t *r) {
   trace_update_type(r);
   if(!is_var(r)) {
     // print tracing information for a reduction
-    if(FLAG(c->expr, EXPR_TRACE)) {
+    if(FLAG(*c, expr, TRACE)) {
       printf("TRACE: %s", op_name(c->op));
       TRAVERSE(c, in) {
         putchar(' ');
@@ -993,7 +993,7 @@ cell_t *trace_alloc_var(cell_t *entry) {
   tc->value.flags = VALUE_VAR;
   tc->pos = ++entry->entry.in;
   if(tc->pos != x) {
-    FLAG_SET(entry->entry, ENTRY_MOV_VARS);
+    FLAG_SET(*entry, entry, MOV_VARS);
   }
   return tc;
 }
@@ -1221,7 +1221,7 @@ void trace_compact(cell_t *entry) {
   // move and clean up
   for(cell_t *e = entry; e < end; e += ENTRY_BLOCK_SIZE) {
     if(!e->n) continue;
-    FLAG_CLEAR(e->entry, ENTRY_BLOCK);
+    FLAG_CLEAR(*e, entry, BLOCK);
 
     // move
     cell_t *compact = e->entry.compact;

@@ -253,7 +253,7 @@ cell_t *fill_incomplete(cell_t *c) {
 }
 
 bool is_delayed(const cell_t *c) {
-  return !is_value(c) && FLAG(c->expr, EXPR_DELAYED);
+  return !is_value(c) && FLAG(*c, expr, DELAYED);
 }
 
 // Reduce *cp with type t
@@ -394,7 +394,7 @@ cell_t *compose(list_iterator_t it, cell_t *b) {
     WHILELIST(x, it, true) {
       *bp++ = ref(*x);
     }
-    if(it.row) FLAG_SET((*ll)->value, VALUE_ROW);
+    if(it.row) FLAG_SET(**ll, value, ROW);
   }
 
   return b;
@@ -499,7 +499,7 @@ void store_fail(cell_t *c, cell_t *alt) {
   closure_shrink(c, 1);
   memset(&c->value, 0, sizeof(c->value));
   c->op = OP_value;
-  FLAG_SET(c->value, VALUE_FAIL);
+  FLAG_SET(*c, value, FAIL);
   c->alt = alt;
 }
 

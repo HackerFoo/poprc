@@ -302,7 +302,7 @@
   do {                                                          \
     if(should_delay(ctx, p)) {                                  \
       rsp = DELAY;                                              \
-      if(c->op != OP_value) FLAG_SET(c->expr, EXPR_DELAYED);    \
+      if(c->op != OP_value) FLAG_SET(*c, expr, DELAYED);        \
       LOG("delay (priority %d) %C", ctx->priority, c);          \
       goto abort;                                               \
     }                                                           \
