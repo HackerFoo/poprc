@@ -188,7 +188,7 @@ void gen_instruction(cell_t *e, cell_t *c) {
 static
 bool last_call(cell_t *e, cell_t *c) {
   c = closure_next(c);
-  FOR_TRACE(p, e, c - e - 1) {
+  FOR_TRACE(p, e, c - e) {
     if(trace_type(p) == T_RETURN) {
       return true;
     } else if(p->op != OP_dep &&
@@ -201,7 +201,7 @@ bool last_call(cell_t *e, cell_t *c) {
 
 void skip_to_next_block(cell_t *e, cell_t *c) {
   c = closure_next(c);
-  FOR_TRACE(p, e, c - e - 1) {
+  FOR_TRACE(p, e, c - e) {
     FLAG_SET(*p, trace, TRACED);
     if(trace_type(p) == T_RETURN) break;
   }
@@ -230,7 +230,7 @@ void gen_call(cell_t *e, cell_t *c) {
 
     // jump to the beginning
     printf("  goto entry;\n");
-  } else if(trace_type(c) != T_BOTTOM) {
+  } else if(!ONEOF(c->op, OP_seq)) {
     csize_t
       in = closure_in(c),
       out = closure_out(c),
@@ -243,7 +243,11 @@ void gen_call(cell_t *e, cell_t *c) {
     if(partial) {
       printf("  if(%s_%s", module_name, word_name);
     } else {
-      printf("  %s%s%d = %s_%s", c->n ? "" : ctype(t), cname(t), i, module_name, word_name);
+      if(trace_type(c) == T_BOTTOM) {
+        printf("  %s_%s", module_name, word_name);
+      } else {
+        printf("  %s%s%d = %s_%s", c->n ? "" : ctype(t), cname(t), i, module_name, word_name);
+      }
     }
     if(ONEOF(c->op, OP_ap, OP_compose)) {
       assert_error(in >= 1);
@@ -261,7 +265,11 @@ void gen_call(cell_t *e, cell_t *c) {
     };
 
     if(partial) {
-      printf("%s&%s%d", sep, cname(t), i);
+      if(trace_type(c) == T_BOTTOM) {
+        printf("%sNULL", sep);
+      } else {
+        printf("%s&%s%d", sep, cname(t), i);
+      }
       sep = ", ";
     }
 
@@ -277,7 +285,7 @@ void gen_call(cell_t *e, cell_t *c) {
 
     if(partial) {
       cell_t *ret = NULL;
-      FOR_TRACE(p, e, closure_next(c) - e - 1) {
+      FOR_TRACE(p, e, closure_next(c) - e) {
         if(trace_type(p) == T_RETURN) {
           ret = p;
           break;
@@ -351,7 +359,7 @@ void gen_assert(cell_t *e, cell_t *c) {
   }
 
   if(!set_insert(iq, assert_set, LENGTH(assert_set))) {
-    FOR_TRACE(p, e, closure_next(c) - e - 1) {
+    FOR_TRACE(p, e, closure_next(c) - e) {
       if(!ret && trace_type(p) == T_RETURN) {
         ret = p;
       }

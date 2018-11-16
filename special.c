@@ -369,6 +369,7 @@ OP(placeholder) {
     }
   }
   add_conditions_from_array(res, c->expr.arg, in);
+  if(c->expr.out) FLAG_SET(*c, expr, PARTIAL);
   store_reduced(cp, res);
   ASSERT_REF();
   return SUCCESS;

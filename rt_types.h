@@ -86,7 +86,7 @@ typedef enum response {
   FAIL
 } response;
 
-#define TR_KEEP 0x01
+#define TR_FINAL 0x01
 
 typedef struct tr tr;
 struct __attribute__((packed)) tr {
@@ -132,8 +132,9 @@ struct __attribute__((packed)) expr {
 
 // trace flags
 #define FLAG_trace (trace, TRACE)
-#define TRACE_INCOMPLETE 0x08
-#define TRACE_TRACED     0x20
+#define TRACE_INCOMPLETE 0x01
+#define TRACE_TRACED     0x02
+#define TRACE_USED       0x04
 
 /* reduced value */
 struct __attribute__((packed)) value {
@@ -241,7 +242,7 @@ struct __attribute__((packed, aligned(4))) cell {
         struct { // trace
           type_t type;
           uint8_t flags;
-          csize_t n;
+          csize_t prev_cells;
         } trace;
       };
       op op;

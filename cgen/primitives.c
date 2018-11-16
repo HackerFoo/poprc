@@ -144,17 +144,21 @@ bool __primitive_div(int x, int y, int *res) {
 
 const array nil = {0, 0, 0, NULL};
 
-array __primitive_ap01(array arr, int *out0) {
+bool __primitive_ap01(array arr, array *ret, int *out0) {
+  if(arr.size < 1) return true;
   if(out0) *out0 = *arr_elem(&arr, 0);
   arr_shift(&arr, 0, 1);
-  return arr;
+  if(ret) *ret = arr;
+  return false;
 }
 
-array __primitive_ap02(array arr, int *out1, int *out0) {
+bool __primitive_ap02(array arr, array *ret, int *out1, int *out0) {
+  if(arr.size < 2) return true;
   if(out0) *out0 = *arr_elem(&arr, 0);
   if(out1) *out1 = *arr_elem(&arr, 1);
   arr_shift(&arr, 0, 2);
-  return arr;
+  if(ret) *ret = arr;
+  return false;
 }
 
 array __primitive_ap10(int in0, array arr) {

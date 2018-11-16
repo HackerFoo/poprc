@@ -285,7 +285,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
   }
 
   // allocate, copy, and index
-  FOR_TRACE(p, entry, in) {
+  FOR_TRACE(p, entry, in + 1) {
     int i = p - entry;
     if(!p->op) {
       p->alt = 0;
@@ -324,7 +324,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
   assert_error(returns);
 
   // rewrite pointers
-  FOR_TRACE(p, entry, in) {
+  FOR_TRACE(p, entry, in + 1) {
     int i = p - entry;
     cell_t *t = map_cell(entry, i);
     if((is_value(p) && p->value.type == T_RETURN) || !t) continue;
@@ -758,7 +758,7 @@ response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
   assert_error(out >= entry_out, "%d %d", out, entry_out);
 
   // reduce all inputs
-  {
+  if(in) {
     csize_t n = 0;
     uint8_t in_types[in];
     memset(in_types, 0, in * sizeof(in_types[0]));

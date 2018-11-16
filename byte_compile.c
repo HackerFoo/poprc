@@ -99,7 +99,7 @@ void print_bytecode(cell_t *entry) {
         printf(" [");
         COUNTDOWN(i, list_size(c)) {
           cell_t *p = c->value.ptr[i];
-          printf("%s%d", tr_flags(p, TR_KEEP) ? "&" : "", tr_index(p));
+          printf("%s%d", tr_flags(p, TR_FINAL) ? "" : "&", tr_index(p));
           if(i) printf(" ");
         }
         printf("]");
@@ -126,7 +126,7 @@ void print_bytecode(cell_t *entry) {
         if(x == 0) {
           printf(" X");
         } else {
-          printf(" %s%d", tr_flags(*p, TR_KEEP) ? "&" : "", x);
+          printf(" %s%d", is_dep(c) || tr_flags(*p, TR_FINAL) ? "" : "&", x);
         }
       }
       if(closure_out(c)) {
@@ -458,7 +458,7 @@ void trace_final_pass(cell_t *entry) {
     TWEAK(true, "to disable condense/move_vars in %s", entry->word_name)) {
     condense(entry);
     move_vars(entry);
-    keep_analysis(entry);
+    last_use_analysis(entry);
   }
   FOR_TRACE(p, entry) {
     if(p->op == OP_exec) {
@@ -466,7 +466,7 @@ void trace_final_pass(cell_t *entry) {
       if(FLAG(*e, entry, QUOTE)) {
         condense(e);
         move_vars(e);
-        keep_analysis(e);
+        last_use_analysis(e);
       }
     }
   }
@@ -872,13 +872,23 @@ cell_t *entry_from_token(cell_t *tok) {
   }
 }
 
+// to allow backwards iteration
+void set_prev_cells(cell_t *entry) {
+  csize_t prev_cells = 0;
+  FOR_TRACE(c, entry) {
+    c->trace.prev_cells = prev_cells;
+    prev_cells = calculate_cells(c->size);
+  }
+  entry[1].trace.prev_cells = prev_cells;
+}
+
 static
-void keep_mark(cell_t *entry, cell_t **p) {
+void last_use_mark(cell_t *entry, cell_t **p) {
   int x = tr_index(*p);
-  csize_t *n = &entry[x].trace.n;
-  (*n)--;
-  if(x && *n) {
-    tr_set_flags(p, TR_KEEP);
+  cell_t *a = &entry[x];
+  if(x && NOT_FLAG(*a, trace, USED)) {
+    tr_set_flags(p, TR_FINAL);
+    FLAG_SET(*a, trace, USED);
   }
 }
 
@@ -886,37 +896,66 @@ bool is_return(cell_t *c) {
   return is_value(c) && c->value.type == T_RETURN;
 }
 
-void keep_analysis(cell_t *entry) {
-  // copy ref counts
-  FOR_TRACE(c, entry) {
-    c->trace.n = is_return(c) ? 0 : c->n + 1;
-  }
+bool is_expr(cell_t *c) {
+  return c && c->op != OP_value;
+}
 
-  // deps first
+static
+void clear_used(cell_t *entry) {
   FOR_TRACE(c, entry) {
-    if(is_dep(c)) {
-      keep_mark(entry, &c->expr.arg[0]);
+    FLAG_CLEAR(*c, trace, USED);
+  }
+}
+
+static
+void last_use_mark_cell(cell_t *entry, cell_t *c) {
+  if(is_value(c)) {
+    if(is_return(c)) {
+      COUNTUP(i, list_size(c)) {
+        last_use_mark(entry, &c->value.ptr[i]);
+      }
+    }
+  } else if(!is_dep(c)) {
+    COUNTDOWN(i, closure_in(c)) {
+      last_use_mark(entry, &c->expr.arg[i]);
     }
   }
+}
+
+bool no_direct_reference(cell_t *c) {
+  unsigned int n = c->n + 1;
+  if(!n) return true;
+  TRAVERSE(c, out) {
+    if(*p && !--n) return true;
+  }
+  return false;
+}
+
+void last_use_analysis(cell_t *entry) {
+  set_prev_cells(entry);
+  clear_used(entry);
 
   // calls and returns
-  FOR_TRACE(c, entry) {
-    if(is_value(c)) {
-      if(is_return(c)) {
-        COUNTDOWN(i, list_size(c)) {
-          keep_mark(entry, &c->value.ptr[i]);
-        }
-      }
-    } else if(!is_dep(c)) {
-      TRAVERSE(c, in) {
-        keep_mark(entry, p);
-      }
+  FOR_TRACE_REV(c, entry) {
+    last_use_mark_cell(entry, c);
+    if(!is_return(c) && !is_dep(c) && no_direct_reference(c)) {
+      trace_set_type(c, T_BOTTOM);
     }
   }
 
-  // check that everything was accounted for
-  FOR_TRACE(c, entry) {
-    assert_eq(c->trace.n, 0);
+  // go back over non-partial segments for each branch
+  bool partial = false;
+  FOR_TRACE_REV(c, entry) {
+    if(is_return(c)) {
+      clear_used(entry);
+      partial = false;
+    } else if(is_expr(c) && FLAG(*c, expr, PARTIAL)) {
+      partial = true;
+    }
+
+    if(!partial) {
+      last_use_mark_cell(entry, c);
+    }
   }
 }
 

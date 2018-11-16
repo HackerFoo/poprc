@@ -62,11 +62,21 @@ typedef intptr_t trace_index_t;
 #define FOR_TRACE_3(c, e, n)                                  \
   for(cell_t                                                  \
         *_entry = (e),                                        \
-        *c = _entry + 1 + (n);                                \
+        *c = _entry + (n);                                    \
       c - _entry - 1 < _entry->entry.len;                     \
       c += calculate_cells(c->size))
-#define FOR_TRACE_2(c, e) FOR_TRACE_3(c, e, 0)
+#define FOR_TRACE_2(c, e) FOR_TRACE_3(c, e, 1)
 #define FOR_TRACE(...) DISPATCH(FOR_TRACE, __VA_ARGS__)
+
+// cell_t *c ranges from end to start
+#define FOR_TRACE_REV_3(c, e, n)                              \
+  for(cell_t                                                  \
+        *_entry = (e),                                        \
+        *c = _entry + (n);                                    \
+      c > _entry && c->trace.prev_cells;                      \
+      c -= c->trace.prev_cells)
+#define FOR_TRACE_REV_2(c, e) FOR_TRACE_REV_3(c, e, (e)->entry.len - ((e) + 1)->trace.prev_cells + 1)
+#define FOR_TRACE_REV(...) DISPATCH(FOR_TRACE_REV, __VA_ARGS__)
 #endif
 
 bool is_trace_cell(void const *p) {
@@ -530,6 +540,7 @@ cell_t *trace_partial(op op, int n, cell_t *p) {
   cell_t *tc = &entry[x];
   tc->op = op;
   tc->expr.arg[n] = index_tr(a);
+  if(op == OP_assert) FLAG_SET(*tc, expr, PARTIAL);
   entry[a].n++;
   return tc;
 }
