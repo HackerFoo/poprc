@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <assert.h>
 
 #include "rt_types.h"
 #include "startle/macros.h"

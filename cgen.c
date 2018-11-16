@@ -240,8 +240,22 @@ void gen_call(cell_t *e, cell_t *c) {
     trace_get_name(c, &module_name, &word_name);
     type_t t = trace_type(c);
     bool partial = FLAG(*c, expr, PARTIAL);
+    int next_block = 0;
     if(partial) {
-      printf("  if(%s_%s", module_name, word_name);
+      FOR_TRACE(p, e, closure_next(c) - e) {
+        if(trace_type(p) == T_RETURN) {
+          int size = calculate_cells(p->size);
+          if(e->entry.len + 1 - (p-e) > size) { // if this isn't the last return
+            next_block = p - e + size;
+          }
+          break;
+        }
+      }
+      if(next_block) {
+        printf("  if(%s_%s", module_name, word_name);
+      } else {
+        printf("  assert(!%s_%s", module_name, word_name);
+      }
     } else {
       if(trace_type(c) == T_BOTTOM) {
         printf("  %s_%s", module_name, word_name);
@@ -284,14 +298,11 @@ void gen_call(cell_t *e, cell_t *c) {
     }
 
     if(partial) {
-      cell_t *ret = NULL;
-      FOR_TRACE(p, e, closure_next(c) - e) {
-        if(trace_type(p) == T_RETURN) {
-          ret = p;
-          break;
-        }
+      if(next_block) {
+        printf(")) goto block%d;\n", next_block);
+      } else {
+        printf("));\n");
       }
-      printf(")) goto block%d;\n", (int)(ret - e + 1));
     } else {
       printf(");\n");
     }

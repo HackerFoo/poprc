@@ -296,6 +296,8 @@ calc_step:
     ["-"    =s [[-]    .] dip11 !] |
     ["*"    =s [[*]    .] dip11 !] |
     ["/"    =s [[/]    .] dip11 !] |
+    ["gcd"  =s [[gcd]  .] dip11 !] |
+    ["^"    =s [[^]    .] dip11 !] |
     ["swap" =s [[swap] .] dip11 !] |
     ["dup"  =s [[dup]  .] dip11 !] |
     ["drop" =s [[drop] .] dip11 !] | ap21 nip

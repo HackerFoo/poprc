@@ -1509,16 +1509,16 @@ ___ tests.calc (1 -> 1) ___
 [4] tests.calc_loop 1 2 :: s x1
 [5] return [4]
 
-___ tests.calc_loop (2 -> 1) x9 rec ___
-[1] var :: ?*l x9
+___ tests.calc_loop (2 -> 1) x11 rec ___
+[1] var :: ?*l x11
 [2] var :: ?*s x1
 [3] __primitive.ap &1 -> 4 :: 0? x1
 [4] __primitive.dep 3 :: i x1
 [5] __primitive.to_string 4 :: S x1
 [6] __primitive.print 2 5 :: s x1
-[7] __primitive.input 6 -> 8 :: s x10
+[7] __primitive.input 6 -> 8 :: s x12
 [8] __primitive.dep 7 :: S x1
-[9] __primitive.strtrim 8 :: S x8
+[9] __primitive.strtrim 8 :: S x10
 [10] __primitive.from_string &9 :: i? x3
 [11] __primitive.seq 13 &10 :: 0 x1
 [12] __primitive.pushr 1 10 :: l x1
@@ -1567,49 +1567,74 @@ ___ tests.calc_loop (2 -> 1) x9 rec ___
 [55] __primitive.seq 57 50 :: 0 x1
 [56] __primitive.pushr 51 54 :: l x1
 [57] tests.calc_loop 7 56 :: 0 x1
-[58] return [55] -> 68
+[58] return [55] -> 69
 [59] __primitive.eq_str &9 60 :: s x1
-[60] val "swap" :: S x1
-[61] __primitive.assert &63 59 :: l? x2
-[62] __primitive.ap &1 -> 63 65 :: l? x3
-[63] __primitive.dep 62 :: a x2
-[64] __primitive.seq 67 61 :: 0 x1
-[65] __primitive.dep 62 :: a x1
-[66] __primitive.pushr 62 65 63 :: l x1
-[67] tests.calc_loop 7 66 :: 0 x1
-[68] return [64] -> 77
-[69] __primitive.eq_str &9 70 :: s x1
-[70] val "dup" :: S x1
-[71] __primitive.assert &73 69 :: l? x2
-[72] __primitive.ap &1 -> 73 :: l? x2
-[73] __primitive.dep 72 :: a x3
-[74] __primitive.seq 76 71 :: 0 x1
-[75] __primitive.pushr 72 &73 73 :: l x1
-[76] tests.calc_loop 7 75 :: 0 x1
-[77] return [74] -> 86
-[78] __primitive.eq_str 9 79 :: s x1
-[79] val "drop" :: S x1
-[80] __primitive.assert &82 78 :: l? x2
-[81] __primitive.ap 1 -> 82 X :: l? x2
-[82] __primitive.dep 81 :: a x2
-[83] __primitive.seq 85 80 :: 0 x1
-[84] __primitive.pushr 81 82 :: l x1
-[85] tests.calc_loop 7 84 :: 0 x1
-[86] return [83] -> 95
-[87] __primitive.otherwise 10 7 :: s x1
-[88] __primitive.otherwise 17 87 :: s x1
-[89] __primitive.otherwise 28 88 :: s x1
-[90] __primitive.otherwise 39 89 :: s x1
-[91] __primitive.otherwise 50 90 :: s x1
-[92] __primitive.otherwise 61 91 :: s x1
-[93] __primitive.otherwise 71 92 :: s x1
-[94] __primitive.otherwise 80 93 :: s x1
-[95] return [94]
+[60] val "gcd" :: S x1
+[61] __primitive.assert &65 59 :: i? x2
+[62] __primitive.ap &1 -> 64 63 :: l? x3
+[63] __primitive.dep 62 :: i x1
+[64] __primitive.dep 62 :: i x1
+[65] algorithm.gcd_r0 64 63 :: i x2
+[66] __primitive.seq 68 61 :: 0 x1
+[67] __primitive.pushr 62 65 :: l x1
+[68] tests.calc_loop 7 67 :: 0 x1
+[69] return [66] -> 81
+[70] __primitive.eq_str &9 71 :: s x1
+[71] val "^" :: S x1
+[72] __primitive.assert &76 70 :: i? x2
+[73] __primitive.ap &1 -> 75 74 :: l? x3
+[74] __primitive.dep 73 :: i x1
+[75] __primitive.dep 73 :: i x1
+[76] algorithm.__caret___r0 77 75 74 :: i x2
+[77] val 1 :: i x1
+[78] __primitive.seq 80 72 :: 0 x1
+[79] __primitive.pushr 73 76 :: l x1
+[80] tests.calc_loop 7 79 :: 0 x1
+[81] return [78] -> 91
+[82] __primitive.eq_str &9 83 :: s x1
+[83] val "swap" :: S x1
+[84] __primitive.assert &86 82 :: l? x2
+[85] __primitive.ap &1 -> 86 88 :: l? x3
+[86] __primitive.dep 85 :: a x2
+[87] __primitive.seq 90 84 :: 0 x1
+[88] __primitive.dep 85 :: a x1
+[89] __primitive.pushr 85 88 86 :: l x1
+[90] tests.calc_loop 7 89 :: 0 x1
+[91] return [87] -> 100
+[92] __primitive.eq_str &9 93 :: s x1
+[93] val "dup" :: S x1
+[94] __primitive.assert &96 92 :: l? x2
+[95] __primitive.ap &1 -> 96 :: l? x2
+[96] __primitive.dep 95 :: a x3
+[97] __primitive.seq 99 94 :: 0 x1
+[98] __primitive.pushr 95 &96 96 :: l x1
+[99] tests.calc_loop 7 98 :: 0 x1
+[100] return [97] -> 109
+[101] __primitive.eq_str 9 102 :: s x1
+[102] val "drop" :: S x1
+[103] __primitive.assert &105 101 :: l? x2
+[104] __primitive.ap 1 -> 105 X :: l? x2
+[105] __primitive.dep 104 :: a x2
+[106] __primitive.seq 108 103 :: 0 x1
+[107] __primitive.pushr 104 105 :: l x1
+[108] tests.calc_loop 7 107 :: 0 x1
+[109] return [106] -> 120
+[110] __primitive.otherwise 10 7 :: s x1
+[111] __primitive.otherwise 17 110 :: s x1
+[112] __primitive.otherwise 28 111 :: s x1
+[113] __primitive.otherwise 39 112 :: s x1
+[114] __primitive.otherwise 50 113 :: s x1
+[115] __primitive.otherwise 61 114 :: s x1
+[116] __primitive.otherwise 72 115 :: s x1
+[117] __primitive.otherwise 84 116 :: s x1
+[118] __primitive.otherwise 94 117 :: s x1
+[119] __primitive.otherwise 103 118 :: s x1
+[120] return [119]
 
-___ tests.calc_step (2 -> 1) x8 ___
+___ tests.calc_step (2 -> 1) x10 ___
 [1] var :: ?S x1
-[2] var :: ?l x8
-[3] __primitive.strtrim 1 :: S x8
+[2] var :: ?l x10
+[3] __primitive.strtrim 1 :: S x10
 [4] __primitive.from_string &3 :: i? x1
 [5] tests.calc_step_q0 4 2 :: l x1
 [6] return [5] -> 11
@@ -1634,20 +1659,30 @@ ___ tests.calc_step (2 -> 1) x8 ___
 [25] tests.calc_step_q4 2 :: l x1
 [26] return [24] -> 31
 [27] __primitive.eq_str &3 28 :: s x1
-[28] val "swap" :: S x1
+[28] val "gcd" :: S x1
 [29] __primitive.assert 30 27 :: l? x1
 [30] tests.calc_step_q5 2 :: l x1
 [31] return [29] -> 36
 [32] __primitive.eq_str &3 33 :: s x1
-[33] val "dup" :: S x1
+[33] val "^" :: S x1
 [34] __primitive.assert 35 32 :: l? x1
 [35] tests.calc_step_q6 2 :: l x1
 [36] return [34] -> 41
-[37] __primitive.eq_str 3 38 :: s x1
-[38] val "drop" :: S x1
+[37] __primitive.eq_str &3 38 :: s x1
+[38] val "swap" :: S x1
 [39] __primitive.assert 40 37 :: l? x1
 [40] tests.calc_step_q7 2 :: l x1
-[41] return [39]
+[41] return [39] -> 46
+[42] __primitive.eq_str &3 43 :: s x1
+[43] val "dup" :: S x1
+[44] __primitive.assert 45 42 :: l? x1
+[45] tests.calc_step_q8 2 :: l x1
+[46] return [44] -> 51
+[47] __primitive.eq_str 3 48 :: s x1
+[48] val "drop" :: S x1
+[49] __primitive.assert 50 47 :: l? x1
+[50] tests.calc_step_q9 2 :: l x1
+[51] return [49]
 
 ___ tests.calc_step_q0 (2 -> 1) ___
 [1] var :: ?l x1
@@ -1699,13 +1734,34 @@ ___ tests.calc_step_q4 (1 -> 1) ___
 ___ tests.calc_step_q5 (1 -> 1) ___
 [1] var :: ?l x1
 [2] __primitive.ap 1 -> 4 3 :: l? x3
+[3] __primitive.dep 2 :: i x1
+[4] __primitive.dep 2 :: i x1
+[5] algorithm.gcd_r0 4 3 :: i x1
+[6] __primitive.compose 2 5 7 :: l x1
+[7] [] :: l x1
+[8] return [6]
+
+___ tests.calc_step_q6 (1 -> 1) ___
+[1] var :: ?l x1
+[2] __primitive.ap 1 -> 4 3 :: l? x3
+[3] __primitive.dep 2 :: i x1
+[4] __primitive.dep 2 :: i x1
+[5] algorithm.__caret___r0 6 4 3 :: i x1
+[6] val 1 :: i x1
+[7] __primitive.compose 2 5 8 :: l x1
+[8] [] :: l x1
+[9] return [7]
+
+___ tests.calc_step_q7 (1 -> 1) ___
+[1] var :: ?l x1
+[2] __primitive.ap 1 -> 4 3 :: l? x3
 [3] __primitive.dep 2 :: a x1
 [4] __primitive.dep 2 :: a x1
 [5] __primitive.compose 2 3 4 6 :: l x1
 [6] [] :: l x1
 [7] return [5]
 
-___ tests.calc_step_q6 (1 -> 1) ___
+___ tests.calc_step_q8 (1 -> 1) ___
 [1] var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: a x2
@@ -1713,7 +1769,7 @@ ___ tests.calc_step_q6 (1 -> 1) ___
 [5] [] :: l x1
 [6] return [4]
 
-___ tests.calc_step_q7 (1 -> 1) ___
+___ tests.calc_step_q9 (1 -> 1) ___
 [1] var :: ?l x1
 [2] __primitive.ap 1 -> 3 X :: l? x2
 [3] __primitive.dep 2 :: a x1

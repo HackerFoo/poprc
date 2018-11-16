@@ -121,7 +121,6 @@ TEST(arr_shift) {
 #define __primitive_gte(x, y) x >= y
 #define __primitive_lt(x, y) x < y
 #define __primitive_lte(x, y) x <= y
-#define __primitive_mod(x, y) x % y
 #define __primitive_not(x) !x
 #define __primitive_bitand(x, y) x & y
 #define __primitive_bitor(x, y) x | y
@@ -138,6 +137,15 @@ bool __primitive_div(int x, int y, int *res) {
     return true;
   } else {
     if(res) *res = x / y;
+    return false;
+  }
+}
+
+bool __primitive_mod(int x, int y, int *res) {
+  if(y == 0) {
+    return true;
+  } else {
+    if(res) *res = x % y;
     return false;
   }
 }
