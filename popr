@@ -5,7 +5,7 @@ POPRC_ROOT=$HOME/src/poprc
 pushd $POPRC_ROOT > /dev/null
 
 if [ ! -f eval ]; then
-    make
+    make BUILD=release-with-asserts
 fi
 
 ./eval -lo *.ppr -im

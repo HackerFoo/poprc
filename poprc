@@ -25,11 +25,14 @@ make -s .gen/cgen/primitives.h
 make -s ${RT} CC=clang BUILD=release-with-asserts
 
 mkdir -p $DIR
+
+# generate the C source
 printf "#include \"cgen/main.h\"\n\n" > ${DIR}/${OUT}.c
 ./eval -lo ${LIBS} -cc $1 >> ${DIR}/${OUT}.c
 printf "\nMAIN(${OUT})\n" >> ${DIR}/${OUT}.c
-clang -S -emit-llvm ${CFLAGS} -DNOLOG -I. -I.gen -o ${DIR}/${OUT}.ll ${DIR}/${OUT}.c
-clang ${CFLAGS} -DNOLOG -I. -I.gen -o ${DIR}/${OUT} ${DIR}/${OUT}.c ${RT}
+
+clang -S -emit-llvm ${CFLAGS} -DNOLOG -I. -I.gen -o ${DIR}/${OUT}.ll ${DIR}/${OUT}.c 2>/dev/null
+clang ${CFLAGS} -DNOLOG -I. -I.gen -o ${DIR}/${OUT} ${DIR}/${OUT}.c ${RT} || exit -1
 
 # run the executable
 ./poprc_out/${OUT}
