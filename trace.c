@@ -41,7 +41,7 @@
 
 #define ENTRY_BLOCK_SIZE 1024
 #define MAP_BLOCK_SIZE 64
-#define MAX_TRACE_CELLS (1 << 14)
+#define MAX_TRACE_CELLS (1 << 15)
 #define BLOCK_MAP_SIZE ((MAX_TRACE_CELLS + MAP_BLOCK_SIZE - 1) / MAP_BLOCK_SIZE)
 
 static cell_t trace_cells[MAX_TRACE_CELLS] ALIGN64;

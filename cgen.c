@@ -366,7 +366,7 @@ void gen_assert(cell_t *e, cell_t *c) {
   bool bottom = trace_type(c) == T_BOTTOM;
   if(!bottom) {
     // use #define to replace references to the assertion output to the output of arg[0]
-    printf("  #define %s%d %s%d\n", cn, i, cname(trace_type(&e[ip])), ip); // a little HACKy
+    printf("#define %s%d %s%d\n", cn, i, cname(trace_type(&e[ip])), ip); // a little HACKy
   }
 
   if(!set_insert(iq, assert_set, LENGTH(assert_set))) {
@@ -390,6 +390,15 @@ void gen_assert(cell_t *e, cell_t *c) {
   }
 }
 
+void undef_asserts(cell_t *e) {
+  FOR_TRACE(c, e) {
+    type_t t = trace_type(c);
+    if(c->op == OP_assert && t != T_BOTTOM) {
+      printf("#undef %s%d\n", cname(t), (int)(c - e));
+    }
+  }
+}
+
 void gen_function(cell_t *e) {
   e->op = OP_value;
   zero(assert_set);
@@ -398,6 +407,7 @@ void gen_function(cell_t *e) {
   printf("\n{\n");
   gen_body(e);
   if(e->entry.rec || e->entry.alts > 1) printf("}\n");
+  undef_asserts(e);
   printf("} // end %s_%s\n", e->module_name, e->word_name);
 
   FOR_TRACE(c, e) {
