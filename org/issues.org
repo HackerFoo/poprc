@@ -48,18 +48,19 @@ assert also works this way
 *** DONE function signature
 *** DONE simple expressions
 *** DONE select -> if/then
-*** STARTED pushl/popr
+*** DONE pushl/popr
 - experiments/quote
 ** modules
 *** TODO module linking
 *** DONE look up words from modules
 *** DONE build/compile on demand
 *** DONE add module union operation
-** TODO look into adding conflict-driven clause learning
+** CANCELED look into adding conflict-driven clause learning
 ** DONE add comment and symbol support to parser
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
+** TODO Document different uses of cell_t fields
 ** TODO look at logic to trace ap vs. compose (tests.ap_loop4)
 - compMN = apM0 . ap0N
 - apMN = [] ... compMN
@@ -69,7 +70,7 @@ assert also works this way
 ** TODO hash function definitions
 ** TODO [id] popr drop ==> [], should fail
 ** DONE propagate drops in to loop returns to avoid building values to drop (tests.f7c)
-** TODO handle nil the same as other non-list values in trace
+** DONE handle nil the same as other non-list values in trace
 ** TODO need to review handling of pos
 ** TODO log tag support in lldbinint.py
 ** DONE optimize breakpoint() with log_add_last
@@ -95,15 +96,15 @@ Leftmost the list can be a function
 ** DONE stable references in modules
 ** TODO handle module scope chain when compiling a word
 look for word in parent module, parent imports, context module, context imports, ...
-** TODO get cgen working with simple popr & pushl functions
-** STARTED fix func_exec to work when branching and recursive
+** DONE get cgen working with simple popr & pushl functions
+** DONE fix func_exec to work when branching and recursive
 ** DONE add compilation tests
 ** DONE handle alts correctly in func_exec
 ** DONE f1: [1+]
 ** DONE fix get2 in tests.peg
-** TODO pass T_BOTTOM instead of T_ANY down reduce
+** CANCELED pass T_BOTTOM instead of T_ANY down reduce
 ** DONE remove cut
-** TODO update refcnt for cells in genc
+** CANCELED update refcnt for cells in genc
 ** TODO use refcounts properly for maps and lists in modules
 ** TODO add static asserts as tests
 - check symbol table
@@ -116,20 +117,20 @@ look for word in parent module, parent imports, context module, context imports,
 * bugs
 ** DONE f: [id]
 ** DONE f: [id] swap .
-** TODO ladd: [1+ ladd] [dup] dip12 pushl
+** DONE ladd: [1+ ladd] [dup] dip12 pushl
 ** DONE isolate alt_sets and reset alt_cnt during compilation
-** TODO f: [] pushl [dup [[1+] . f] [head 10 <] para] ifdo head
-** TODO f: [] pushl [[1+] .] [head 10 <] iterate head
+** DONE f: [] pushl [dup [[1+] . f] [head 10 <] para] ifdo head
+** DONE f: [] pushl [[1+] .] [head 10 <] iterate head
 ** DONE f: | dup f, f: 1+ 0 | f
-** TODO f: [] ap30 [[power_step] .] [head 0 !=] iterate popr drop popr drop head
+** DONE f: [] ap30 [[power_step] .] [head 0 !=] iterate popr drop popr drop head
 ** DONE f: 1 2 | swap ap11 swap drop
 ** DONE [1 3] 2 pushr popr swap popr swap popr swap popr
 ** DONE imports don't always work
-** TODO stack.nip leaks
+** DONE stack.nip leaks
 ** TODO staging.carry doesn't seem to work right
 ** DONE staging.ifdo
 ** DONE 1 [dup 2+] [3+ dup] | ap12 stack.swap2 drop
-** TODO f: 3+ [[] pushl] pushl [] [[2]] | . popr swap drop
+** DONE f: 3+ [[] pushl] pushl [] [[2]] | . popr swap drop
 - leak
 ** DONE ? [id] . popr
 ** DONE no return in 32 bit control.ap21
@@ -159,7 +160,7 @@ Creates a cycle that can't be freed
 ** DONE f: . popr swap drop
 [1] [2] f __ leak!
 ** DONE f: pushr popr swap drop __ unreferenced pushr
-** TODO fix tests.sum
+** DONE fix tests.sum
 ** DONE f1: [1] swap ! popr swap drop
 ** DONE f1: 1 swap pushl popr ! popr swap drop
 [3<] f1 __ crashes!
