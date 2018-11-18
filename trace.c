@@ -506,6 +506,9 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
     FLAG_SET(*tc, trace, INCOMPLETE);
     trace_extend(entry, tc);
   }
+  if(FLAG(*c, expr, PARTIAL)) {
+    FLAG_SET(*entry, entry, PARTIAL);
+  }
   tc->alt = NULL;
 }
 
@@ -543,7 +546,10 @@ cell_t *trace_partial(op op, int n, cell_t *p) {
   cell_t *tc = &entry[x];
   tc->op = op;
   tc->expr.arg[n] = index_tr(a);
-  if(op == OP_assert) FLAG_SET(*tc, expr, PARTIAL);
+  if(op == OP_assert) {
+    FLAG_SET(*tc, expr, PARTIAL);
+    FLAG_SET(*entry, entry, PARTIAL);
+  }
   entry[a].n++;
   return tc;
 }
@@ -972,6 +978,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
       }
       int x = trace_return(entry, *p);
       cell_t *r = &entry[x];
+      FLAG_CLEAR(*entry, entry, PARTIAL);
 
       LOG("branch %d finished %C", alts, *p);
 
@@ -1269,7 +1276,8 @@ void delay_branch(context_t *ctx, int priority) {
 
 void trace_extend(cell_t *entry, cell_t *tc) {
   assert_error(entry && tc->op == OP_placeholder);
-  if(closure_in(tc) != 1) return;
+  if(FLAG(*entry, entry, PARTIAL) ||
+     closure_in(tc) != 1) return;
   cell_t *l = &entry[tr_index(tc->expr.arg[0])];
   l->trace.extension = tc - entry;
 }
