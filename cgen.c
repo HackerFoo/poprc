@@ -254,7 +254,7 @@ void gen_call(cell_t *e, cell_t *c) {
       if(next_block) {
         printf("  if(%s_%s", module_name, word_name);
       } else {
-        printf("  assert(!%s_%s", module_name, word_name);
+        printf("  assert_error(!%s_%s", module_name, word_name);
       }
     } else {
       if(trace_type(c) == T_BOTTOM) {
@@ -384,7 +384,7 @@ void gen_assert(cell_t *e, cell_t *c) {
         printf("  if(!%s%d)", cname(trace_type(&e[iq])), iq);
         printf(" goto block%d;\n", (int)(next - e));
       } else {
-        printf("  assert(%s%d);\n", cname(trace_type(&e[iq])), iq);
+        printf("  assert_error(%s%d);\n", cname(trace_type(&e[iq])), iq);
       }
     }
   }

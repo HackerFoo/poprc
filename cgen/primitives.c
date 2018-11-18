@@ -33,7 +33,7 @@ void init_primitives() {
 }
 
 array arr_alloc(unsigned int n) {
-  assert_throw(mem_ptr - mem + n <= (int)LENGTH(mem), "out of mem");
+  assert_error(mem_ptr - mem + n <= (int)LENGTH(mem), "out of mem");
   array arr = {
     .capacity = n,
     .elem = mem_ptr
@@ -43,7 +43,7 @@ array arr_alloc(unsigned int n) {
 }
 
 char *string_alloc(unsigned int n) {
-  assert_throw(strings_ptr - strings + n <= (int)LENGTH(strings), "out of mem");
+  assert_error(strings_ptr - strings + n <= (int)LENGTH(strings), "out of mem");
   char *s = strings_ptr;
   strings_ptr += n;
   return s;
