@@ -135,7 +135,9 @@ void placeholder_extend(cell_t **lp, int in, int out) {
   assert_error(l->value.type == T_LIST);
   if(in == 0 && out == 0) return;
   if(is_var(l)) {
-    *lp = var_create_list(l, in, out, 0);
+    cell_t *ex = trace_extension(l, in, out);
+    if(!ex) ex = var_create_list(l, in, out, 0);
+    *lp = ex;
     return;
   }
   if(!is_row_list(l)) return;

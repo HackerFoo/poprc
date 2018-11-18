@@ -502,7 +502,10 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
     tc->value.type = t;
   }
   tc->trace.type = t;
-  if(tc->op == OP_placeholder) FLAG_SET(*tc, trace, INCOMPLETE);
+  if(tc->op == OP_placeholder) {
+    FLAG_SET(*tc, trace, INCOMPLETE);
+    trace_extend(entry, tc);
+  }
   tc->alt = NULL;
 }
 
@@ -1261,5 +1264,35 @@ void delay_branch(context_t *ctx, int priority) {
       c->priority = priority;
       LOG("delay branch %C %d", c, priority);
     }
+  }
+}
+
+void trace_extend(cell_t *entry, cell_t *tc) {
+  assert_error(entry && tc->op == OP_placeholder);
+  if(closure_in(tc) != 1) return;
+  cell_t *l = &entry[tr_index(tc->expr.arg[0])];
+  l->trace.extension = tc - entry;
+}
+
+cell_t *trace_extension(cell_t *l, int in, int out) {
+  cell_t *v = l->value.var;
+  if(!v->trace.extension) return NULL;
+  assert_lt(v->trace.extension, ENTRY_BLOCK_SIZE);
+  cell_t *entry = var_entry(v);
+  if(entry != trace_current_entry()) return NULL; // HACK to avoid switch_entry
+  cell_t *tc = &entry[v->trace.extension];
+  if(closure_in(tc) == in + 1 && closure_out(tc) >= out) {
+    LOG("trace_extension %s %d -> %d", entry->word_name, v-entry, tc-entry);
+    drop(l);
+    cell_t *ex = make_list(out + 1);
+    COUNTDOWN(i, out) {
+      cell_t *x = &entry[tr_index(tc->expr.arg[1 + REVI(i)])];
+      ex->value.ptr[i] = var_create_nonlist(trace_type(x), x);
+    }
+    ex->value.ptr[out] = var_create_nonlist(T_LIST, tc);
+    ex->value.flags = VALUE_ROW;
+    return ex;
+  } else {
+    return NULL;
   }
 }

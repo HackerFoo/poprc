@@ -242,7 +242,10 @@ struct __attribute__((packed, aligned(4))) cell {
         struct { // trace
           type_t type;
           uint8_t flags;
-          csize_t prev_cells;
+          union {
+            csize_t prev_cells;
+            csize_t extension;
+          };
         } trace;
       };
       op op;
