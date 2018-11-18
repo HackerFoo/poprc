@@ -568,16 +568,14 @@ bool eval(const char *prefix, const cell_t *p) {
 }
 
 bool get_arity(const cell_t *p, csize_t *in, csize_t *out, cell_t *module) {
-  SHADOW(watch_enabled, false) {
-    cell_t *c = parse_expr(&p, module, NULL);
-    if(!c) {
-      LOG("parse failed");
-      return false;
-    }
-    *in = function_in(c);
-    *out = function_out(c, false);
-    drop(c);
+  cell_t *c = parse_expr(&p, module, NULL);
+  if(!c) {
+    LOG("parse failed");
+    return false;
   }
+  *in = function_in(c);
+  *out = function_out(c, false);
+  drop(c);
   return true;
 }
 
