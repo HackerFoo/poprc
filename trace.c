@@ -335,8 +335,7 @@ void switch_entry(cell_t *entry, cell_t *r) {
       }
     }
 
-    cell_t *n = trace_alloc_var(entry);
-    n->value.type = trace_type(v);
+    cell_t *n = trace_alloc_var(entry, trace_type(v));
     //if(is_var(v)) v = &var_entry(v)[v->pos]; // variables move *** DOESN'T WORK
     n->value.var = v;
     r->value.var = n;
@@ -1006,11 +1005,12 @@ unsigned int trace_reduce_one(cell_t *entry, cell_t *c) {
   return alts;
 }
 
-cell_t *trace_alloc_var(cell_t *entry) {
+cell_t *trace_alloc_var(cell_t *entry, type_t t) {
   int x = trace_alloc(entry, 2);
   if(x <= 0) return NULL;
   cell_t *tc = &entry[x];
   tc->op = OP_value;
+  tc->value.type = t;
   tc->value.flags = VALUE_VAR;
   tc->pos = ++entry->entry.in;
   if(tc->pos != x) {
@@ -1029,7 +1029,7 @@ cell_t *trace_expr_entry(uint8_t pos) {
 }
 
 cell_t *param(int t, cell_t *entry) {
-  return var_create_nonlist(t, trace_alloc_var(entry));
+  return var_create_nonlist(t, trace_alloc_var(entry, t));
 }
 
 void print_active_entries(const char *msg) {

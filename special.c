@@ -81,7 +81,7 @@ OP(value) {
       if(parent) {
         LOG_WHEN(is_list(c), "nil %C", c);
         int v = trace_store_value(parent, c);
-        cell_t *tc = trace_alloc_var(entry);
+        cell_t *tc = trace_alloc_var(entry, c->value.type);
         LOG("move value %C %s[%d] -> %s[%d]", c,
             entry->word_name, tc-entry,
             parent->word_name, v);

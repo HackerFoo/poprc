@@ -154,10 +154,6 @@ TEST(arr_shift) {
 #define __primitive_from_string_iS __primitive_from_string_is
 #define __primitive_eq_str_ySs __primitive_eq_str_yss
 
-#define __primitive_mul_iai __primitive_mul_iii
-#define __primitive_add_iai __primitive_add_iii
-#define __primitive_add_iia __primitive_add_iii
-
 #endif
 
 bool __primitive_div_iii(int x, int y, int *res) {

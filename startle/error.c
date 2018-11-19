@@ -156,7 +156,7 @@ typedef struct {
   do {                                                                   \
     static unsigned int *counter = NULL;                                 \
     if(!counter) counter = alloc_counter();                              \
-    if(*counter >= (n)) {                                                \
+    if(*counter > (n)) {                                                 \
       throw_error(ERROR_TYPE_UNEXPECTED,                                 \
                   "Assertion counter exhausted: %d > " #n, X, *counter); \
     }                                                                    \
