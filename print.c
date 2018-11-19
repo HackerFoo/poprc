@@ -586,18 +586,19 @@ char *show_type_all(const cell_t *c) {
   return buf;
 }
 
+// a lowercase letter to represent each type
 char type_char(type_t t) {
   switch(t) {
-  case T_ANY: return 'a';
-  case T_INT: return 'i';
-  case T_LIST: return 'l';
-  case T_SYMBOL: return 's';
-  case T_MAP: return 'm';
-  case T_STRING: return 'S';
+  case T_ANY:    return 'a';
+  case T_INT:    return 'i';
+  case T_LIST:   return 'l';
+  case T_SYMBOL: return 'y';
+  case T_MAP:    return 'm';
+  case T_STRING: return 's';
   case T_RETURN: return 'r';
-  case T_FLOAT: return 'd';
-  case T_BOTTOM: return '0';
-  case T_MODULE: return 'M';
+  case T_FLOAT:  return 'd';
+  case T_BOTTOM: return 'v';
+  case T_MODULE: return 'e';
   }
   return 'x';
 }

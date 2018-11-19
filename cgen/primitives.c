@@ -110,29 +110,57 @@ TEST(arr_shift) {
 
 #if INTERFACE
 
-#define __primitive_add(x, y) x + y
-#define __primitive_sub(x, y) x - y
-#define __primitive_mul(x, y) x * y
-#define __primitive_eq(x, y) x == y;
-#define __primitive_eq_s(x, y) x == y;
-#define __primitive_neq(x, y) x != y;
-#define __primitive_neq_s(x, y) x != y;
-#define __primitive_gt(x, y) x > y
-#define __primitive_gte(x, y) x >= y
-#define __primitive_lt(x, y) x < y
-#define __primitive_lte(x, y) x <= y
-#define __primitive_not(x) !x
-#define __primitive_bitand(x, y) x & y
-#define __primitive_bitor(x, y) x | y
-#define __primitive_bitxor(x, y) x ^ y
-#define __primitive_shiftl(x, y) x << y
-#define __primitive_shiftr(x, y) x >> y
-#define __primitive_complement(x) ~x
+#define __primitive_add_iii(x, y) x + y
+#define __primitive_sub_iii(x, y) x - y
+#define __primitive_mul_iii(x, y) x * y
+#define __primitive_eq_yii(x, y) x == y;
+#define __primitive_eq_s_yyy(x, y) x == y;
+#define __primitive_neq_yii(x, y) x != y;
+#define __primitive_neq_s_yyy(x, y) x != y;
+#define __primitive_gt_yii(x, y) x > y
+#define __primitive_gte_yii(x, y) x >= y
+#define __primitive_lt_yii(x, y) x < y
+#define __primitive_lte_yii(x, y) x <= y
+#define __primitive_not_yy(x) !x
+#define __primitive_bitand_iii(x, y) x & y
+#define __primitive_bitor_iii(x, y) x | y
+#define __primitive_bitxor_iii(x, y) x ^ y
+#define __primitive_shiftl_iii(x, y) x << y
+#define __primitive_shiftr_iii(x, y) x >> y
+#define __primitive_complement_ii(x) ~x
 #define __primitive_otherwise(bottom, x) (x)
+
+// aliases
+#define __primitive_ap01_lLi __primitive_ap01
+#define __primitive_ap01_lli __primitive_ap01
+#define __primitive_ap02_lLii __primitive_ap02
+#define __primitive_ap02_llii __primitive_ap02
+#define __primitive_pushr1_lli __primitive_pushr1
+#define __primitive_pushr1_lLi __primitive_pushr1
+#define __primitive_pushr2_llii __primitive_pushr2
+#define __primitive_pushr2_lLii __primitive_pushr2
+
+#define __primitive_ap01_lLa __primitive_ap01
+#define __primitive_ap01_lla __primitive_ap01
+#define __primitive_ap02_lLaa __primitive_ap02
+#define __primitive_ap02_llaa __primitive_ap02
+#define __primitive_ap02_lla0(i0, r, o0, o1)  __primitive_ap02_lli0(i0, r, o0)
+#define __primitive_pushr1_lla __primitive_pushr1
+#define __primitive_pushr1_lLa __primitive_pushr1
+#define __primitive_pushr2_llaa __primitive_pushr2
+#define __primitive_pushr2_lLaa __primitive_pushr2
+
+#define __primitive_input_yyS __primitive_input_yys
+#define __primitive_from_string_iS __primitive_from_string_is
+#define __primitive_eq_str_ySs __primitive_eq_str_yss
+
+#define __primitive_mul_iai __primitive_mul_iii
+#define __primitive_add_iai __primitive_add_iii
+#define __primitive_add_iia __primitive_add_iii
 
 #endif
 
-bool __primitive_div(int x, int y, int *res) {
+bool __primitive_div_iii(int x, int y, int *res) {
   if(y == 0) {
     return true;
   } else {
@@ -141,7 +169,7 @@ bool __primitive_div(int x, int y, int *res) {
   }
 }
 
-bool __primitive_mod(int x, int y, int *res) {
+bool __primitive_mod_iii(int x, int y, int *res) {
   if(y == 0) {
     return true;
   } else {
@@ -155,8 +183,10 @@ const array nil = {0, 0, 0, NULL};
 bool __primitive_ap01(array arr, array *ret, int *out0) {
   if(arr.size < 1) return true;
   if(out0) *out0 = *arr_elem(&arr, 0);
-  arr_shift(&arr, 0, 1);
-  if(ret) *ret = arr;
+  if(ret) {
+    arr_shift(&arr, 0, 1);
+    *ret = arr;
+  }
   return false;
 }
 
@@ -164,8 +194,18 @@ bool __primitive_ap02(array arr, array *ret, int *out1, int *out0) {
   if(arr.size < 2) return true;
   if(out0) *out0 = *arr_elem(&arr, 0);
   if(out1) *out1 = *arr_elem(&arr, 1);
+  if(ret) {
+    arr_shift(&arr, 0, 2);
+    *ret = arr;
+  }
+  return false;
+}
+
+bool __primitive_ap02_lli0(array arr, array *ret, int *out1) {
+  if(arr.size < 2) return true;
+  *out1 = *arr_elem(&arr, 1);
   arr_shift(&arr, 0, 2);
-  if(ret) *ret = arr;
+  *ret = arr;
   return false;
 }
 
@@ -209,35 +249,31 @@ array __primitive_pushr2(array arr, int in1, int in0) {
   return arr;
 }
 
-array __primitive_quote0(int in0) {
+array __primitive_quote0_li(int in0) {
   array arr = arr_new();
   arr_shift(&arr, 1, 0);
   *arr_elem(&arr, 0) = in0;
   return arr;
 }
 
-symbol_t __primitive_is_nil(array arr) {
-  return arr.size == 0;
-}
-
-seg_t __primitive_to_string(int x) {
+seg_t __primitive_to_string_si(int x) {
   unsigned int len = max(0, snprintf(string_buffer,sizeof(string_buffer), "%d", x));
   return seg_alloc(string_buffer, min(sizeof(string_buffer), len));
 }
 
 TEST(prim_to_string) {
   init_primitives();
-  seg_t s = __primitive_to_string(42);
+  seg_t s = __primitive_to_string_si(42);
   return segcmp("42", s) == 0 ? 0 : -1;
 }
 
-symbol_t __primitive_print(symbol_t io, seg_t str) {
+symbol_t __primitive_print_yys(symbol_t io, seg_t str) {
   printf("%.*s\n", (int)str.n, str.s);
   fflush(stdout);
   return io;
 }
 
-symbol_t __primitive_input(symbol_t io, seg_t *str) {
+symbol_t __primitive_input_yys(symbol_t io, seg_t *str) {
   char *s = fgets(string_buffer, sizeof(string_buffer), stdin);
   int n = 0;
   if(s) {
@@ -250,11 +286,11 @@ symbol_t __primitive_input(symbol_t io, seg_t *str) {
   return io;
 }
 
-seg_t __primitive_strtrim(seg_t str) {
+seg_t __primitive_strtrim_ss(seg_t str) {
   return seg_trim(str);
 }
 
-bool __primitive_from_string(seg_t str, int *x) {
+bool __primitive_from_string_is(seg_t str, int *x) {
   char *end = NULL;
   long lx = strtol(str.s, &end, 0);
   if(!end || end <= str.s) {
@@ -265,11 +301,11 @@ bool __primitive_from_string(seg_t str, int *x) {
   }
 }
 
-symbol_t __primitive_eq_str(seg_t a, seg_t b) {
+symbol_t __primitive_eq_str_yss(seg_t a, seg_t b) {
   return a.n == b.n && strncmp(a.s, b.s, a.n) == 0;
 }
 
-seg_t __primitive_strcat(seg_t a, seg_t b) {
+seg_t __primitive_strcat_sss(seg_t a, seg_t b) {
   char *s = string_alloc(a.n + b.n);
   memcpy(s, a.s, a.n);
   memcpy(s + a.n, b.s, b.n);

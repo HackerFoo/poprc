@@ -2,7 +2,7 @@
 
 if [[ ! -f eval ]]; then
     printf "\x1b[92mBuilding eval...\x1b[0m\n"
-    make -s BUILD=release-with-asserts
+    make -s eval BUILD=release-with-asserts
     printf "\x1b[92mReady!\x1b[0m\n\n"
 fi
 

@@ -71,6 +71,31 @@ const char *cname(type_t t) {
   return table[t];
 }
 
+char capitalize(char c) {
+  return INRANGE(c, 'a', 'z') ? c - ('a' - 'A') : c;
+}
+
+// print a suffix to select the mode of some primitives
+void print_type_suffix(cell_t *entry, cell_t *c) {
+  if(ONEOF(c->op, OP_otherwise, OP_assert, OP_exec)) return;
+  printf("_%c", type_char(trace_type(c)));
+  TRAVERSE(c, args) {
+    char ch;
+    if(*p) {
+      cell_t *ta = &entry[tr_index(*p)];
+      type_t t = trace_type(ta);
+      ch = type_char(t);
+      if(!tr_flags(*p, TR_FINAL) &&
+         ONEOF(t, T_LIST, T_STRING)) {
+        ch = capitalize(ch);
+      }
+    } else {
+      ch = '0';
+    }
+    printf("%c", ch);
+  }
+}
+
 void gen_function_signature(cell_t *e) {
   cell_t *p = e + 1;
   csize_t out_n = e->entry.out;
@@ -270,6 +295,7 @@ void gen_call(cell_t *e, cell_t *c) {
       assert_error(in >= 1 && out == 0);
       printf("%d", in-1);
     }
+    print_type_suffix(e, c);
     printf("(");
 
     COUNTUP(i, in) {
