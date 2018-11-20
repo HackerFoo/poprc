@@ -43,7 +43,6 @@
 #include "user_func.h"
 #include "list.h"
 
-#define FUNC_AP 1
 #define MAX_SYMBOLS 64
 #define ENTRY(name) [SYM_##name] = #name
 static const char *symbol_index[MAX_SYMBOLS] = {
@@ -165,13 +164,16 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n, cell_t *entry) {
   csize_t in = 0, out = 1;
   if(w.s[0] == '?' && w.n == 1) {
     c = param(T_ANY, entry);
-#if FUNC_AP
   } else if(in = 1, out = 1, match_param_word("ap", w, &in, &out)) {
     c = func(OP_ap, ++in, ++out);
   } else if(in = 1, out = 1, match_param_word("comp", w, &in, &out)) {
     in += 2;
     c = func(OP_compose, in, ++out);
-#endif
+  } else if(in = 1, out = 1, match_param_word("external", w, &in, &out)) {
+    c = func(OP_external, ++in, out);
+  } else if(in = 1, out = 1, match_param_word("external_io", w, &in, &out)) {
+    in += 2;
+    c = func(OP_external, in, ++out);
   } else {
     cell_t *e = lookup_word(w);
     if(!e) e = module_lookup_compiled(w, &module);

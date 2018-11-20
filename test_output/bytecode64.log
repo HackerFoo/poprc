@@ -2236,6 +2236,12 @@ ___ tests.empty_assert (3 -> 1) ___
 [4] __primitive.assert 3 1 :: l? x1
 [5] return [4]
 
+___ tests.ext_cos (1 -> 1) ___
+[1] var :: ?d x1
+[2] __primitive.external 1 3 :: d x1
+[3] val "@math.h:cos" :: s x1
+[4] return [2]
+
 ___ tests.f2 (3 -> 1) ___
 [1] var :: ?l x1
 [2] var :: ?a x1

@@ -123,6 +123,7 @@ struct __attribute__((packed)) expr {
 
 // value flags
 #define FLAG_value (value, VALUE)
+#define VALUE_IMMEDIATE  0x02
 #define VALUE_DEP        0x04
 #define VALUE_CHANGES    0x08
 #define VALUE_ROW        0x10

@@ -238,6 +238,7 @@ cell_t *var_(type_t t, cell_t *c, uint8_t pos) {
   cell_t *entry = trace_expr_entry(pos);
   if(!entry) {
     entry = trace_current_entry();
+    assert_error(entry);
     LOG(HACK " using current entry %s", entry->word_name);
   }
 

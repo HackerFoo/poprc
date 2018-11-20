@@ -50,6 +50,7 @@ const char *ctype(type_t t) {
     [T_SYMBOL]   = "symbol_t ",
     [T_MAP]      = "map_t ",
     [T_STRING]   = "seg_t ",
+    [T_FLOAT]    = "double ",
     [T_BOTTOM]   = "void ",
   };
   assert_error(t < LENGTH(table));
@@ -65,6 +66,7 @@ const char *cname(type_t t) {
     [T_SYMBOL]   = "sym",
     [T_MAP]      = "map",
     [T_STRING]   = "str",
+    [T_FLOAT]    = "flt",
     [T_BOTTOM]   = "bot"
   };
   assert_error(t < LENGTH(table));
@@ -185,8 +187,10 @@ void gen_decl(cell_t *e, cell_t *c) {
      t != T_BOTTOM &&
      c->op != OP_assert) {
     if(c->op == OP_value) {
-      printf("  const %s%s%d = ", ctype(t), cname(t), i);
-      gen_value_rhs(c);
+      if(NOT_FLAG(*c, value, IMMEDIATE)) {
+        printf("  const %s%s%d = ", ctype(t), cname(t), i);
+        gen_value_rhs(c);
+      }
     } else if(c->n ||
               is_dep(c) ||
               FLAG(*c, expr, PARTIAL)) {
@@ -232,9 +236,31 @@ void skip_to_next_block(cell_t *e, cell_t *c) {
   }
 }
 
+const char *external_name(const char *str) {
+  const char *sep = strchr(str, ':');
+  return sep ? sep + 1 : str;
+}
+
+bool print_external_header(const char *str) {
+  bool sys = false;
+  if(str[0] == '@') {
+    sys = true;
+    str++;
+  }
+  const char *sep = strchr(str, ':');
+  if(sep) {
+    if(sys) {
+      printf("#include <%.*s>\n", (int)(sep-str), str);
+    } else {
+      printf("#include \"%.*s\"\n", (int)(sep-str), str);
+    }
+  }
+  return sep != NULL;
+}
+
 void gen_call(cell_t *e, cell_t *c) {
   if(FLAG(*c, trace, TRACED)) return;
-  int i = c - e;
+  int lhs = c - e;
   char *sep = "";
   const char *module_name, *word_name;
 
@@ -267,6 +293,8 @@ void gen_call(cell_t *e, cell_t *c) {
     bool partial = FLAG(*c, expr, PARTIAL);
     int next_block = 0;
     if(partial) {
+
+      // find next_block
       FOR_TRACE(p, e, closure_next(c) - e) {
         if(trace_type(p) == T_RETURN) {
           int size = calculate_cells(p->size);
@@ -276,17 +304,29 @@ void gen_call(cell_t *e, cell_t *c) {
           break;
         }
       }
+
       if(next_block) {
-        printf("  if(%s_%s", module_name, word_name);
+        printf("  if(");
       } else {
-        printf("  assert_error(!%s_%s", module_name, word_name);
+        printf("  assert_error(!");
       }
     } else {
       if(trace_type(c) == T_BOTTOM) {
-        printf("  %s_%s", module_name, word_name);
+        printf("  ");
       } else {
-        printf("  %s%s%d = %s_%s", c->n ? "" : ctype(t), cname(t), i, module_name, word_name);
+        printf("  %s%s%d = ", c->n ? "" : ctype(t), cname(t), lhs);
       }
+    }
+    if(ONEOF(c->op, OP_external, OP_external_io)) {
+      cell_t *name = &e[tr_index(c->expr.arg[closure_in(c) - 1])];
+      assert_error(is_value(name) &&
+                   !is_var(name) &&
+                   name->value.type == T_STRING,
+                   "external name must be an immediate string");
+      printf("%s", external_name(name->value.str));
+      in--;
+    } else {
+      printf("%s_%s", module_name, word_name);
     }
     if(ONEOF(c->op, OP_ap, OP_compose)) {
       assert_error(in >= 1);
@@ -295,7 +335,7 @@ void gen_call(cell_t *e, cell_t *c) {
       assert_error(in >= 1 && out == 0);
       printf("%d", in-1);
     }
-    print_type_suffix(e, c);
+    if(!ONEOF(c->op, OP_external, OP_external_io)) print_type_suffix(e, c);
     printf("(");
 
     COUNTUP(i, in) {
@@ -308,7 +348,7 @@ void gen_call(cell_t *e, cell_t *c) {
       if(trace_type(c) == T_BOTTOM) {
         printf("%sNULL", sep);
       } else {
-        printf("%s&%s%d", sep, cname(t), i);
+        printf("%s&%s%d", sep, cname(t), lhs);
       }
       sep = ", ";
     }
@@ -425,6 +465,19 @@ void undef_asserts(cell_t *e) {
   }
 }
 
+bool external_includes(cell_t *e) {
+  bool has_external_includes = false;
+  FOR_TRACE(c, e) {
+    if(ONEOF(c->op, OP_external, OP_external_io)) {
+      cell_t *name = &e[tr_index(c->expr.arg[closure_in(c) - 1])];
+      if(print_external_header(name->value.str)) {
+        has_external_includes = true;
+      }
+    }
+  }
+  return has_external_includes;
+}
+
 void gen_function(cell_t *e) {
   e->op = OP_value;
   zero(assert_set);
@@ -464,6 +517,9 @@ COMMAND(cc, "print C code for given function") {
       *e = module_lookup_compiled(tok_seg(rest), &m);
 
     if(e) {
+      if(external_includes(e)) {
+        printf("\n");
+      }
       gen_function_signatures(e);
       printf("\n");
       gen_function(e);

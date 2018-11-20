@@ -827,7 +827,7 @@ OP(print) {
 
   CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
 
-  CHECK(reduce_arg(c, 0, &CTX(symbol)));
+  CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_IO)));
   CHECK(reduce_arg(c, 1, &CTX(string)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
@@ -862,7 +862,7 @@ OP(input) {
 
   CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
 
-  CHECK(reduce_arg(c, 0, &CTX(symbol)));
+  CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_IO)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
@@ -922,6 +922,11 @@ OP(int_t) {
 WORD("symbol_t", symbol_t, 1, 1)
 OP(symbol_t) {
   return func_type(cp, ctx, T_SYMBOL);
+}
+
+WORD("float_t", float_t, 1, 1)
+OP(float_t) {
+  return func_type(cp, ctx, T_FLOAT);
 }
 
 WORD("++", strcat, 2, 1)
@@ -1118,6 +1123,95 @@ OP(strtrim) {
   res->value.alt_set = ctx->alt_set;
   add_conditions(res, p);
   store_reduced(cp, res);
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, ctx);
+}
+
+// a placeholder for FFI
+OP(external_io) {
+  PRE(external_io);
+
+  CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
+
+  csize_t in = closure_in(c), n = closure_args(c);
+  assert_error(in >= 2);
+
+  // get name, which must be a constant before code generation
+  CHECK(reduce_arg(c, in - 1, &CTX(string)));
+  cell_t *name = clear_ptr(c->expr.arg[in - 1]);
+  if(!is_var(name) || name->value.var) {
+    LOG("extern name must be a constant %C", c);
+  }
+
+  CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_IO)));
+  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+  cell_t *p = clear_ptr(c->expr.arg[0]);
+  CHECK_IF(!is_var(p) && p->value.integer != SYM_IO, FAIL);
+
+  RANGEUP(i, 1, in - 1) {
+    CHECK(reduce_arg(c, i, &CTX(any)));
+    CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+  }
+  CHECK_DELAY();
+  clear_flags(c);
+
+  cell_t *res = var(T_SYMBOL, c, ctx->pos);
+  res->alt = c->alt;
+  res->value.alt_set = ctx->alt_set;
+  RANGEUP(i, in, n) {
+    cell_t *d = c->expr.arg[i];
+    if(d && is_dep(d)) {
+      store_dep_var(c, res, i, T_ANY, ctx->alt_set);
+    } else {
+      LOG("dropped extern[%C] output", c);
+    }
+  }
+  add_conditions_from_array(res, c->expr.arg, in);
+  store_reduced(cp, res);
+  ASSERT_REF();
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, ctx);
+}
+
+// a placeholder for FFI
+OP(external) {
+  PRE(external);
+
+  csize_t in = closure_in(c), n = closure_args(c);
+  assert_error(in >= 1);
+
+  // get name, which must be a constant before code generation
+  CHECK(reduce_arg(c, in - 1, &CTX(string)));
+  cell_t *name = clear_ptr(c->expr.arg[in - 1]);
+  if(!is_var(name) || name->value.var) {
+    LOG("extern name must be a constant %C", c);
+  }
+
+  COUNTUP(i, in - 1) {
+    CHECK(reduce_arg(c, i, &CTX(any)));
+    CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+  }
+  CHECK_DELAY();
+  clear_flags(c);
+
+  cell_t *res = var(ctx->t, c, ctx->pos);
+  res->alt = c->alt;
+  res->value.alt_set = ctx->alt_set;
+  RANGEUP(i, in, n) {
+    cell_t *d = c->expr.arg[i];
+    if(d && is_dep(d)) {
+      store_dep_var(c, res, i, T_ANY, ctx->alt_set);
+    } else {
+      LOG("dropped extern[%C] output", c);
+    }
+  }
+  add_conditions_from_array(res, c->expr.arg, in);
+  store_reduced(cp, res);
+  ASSERT_REF();
   return SUCCESS;
 
  abort:

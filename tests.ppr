@@ -367,3 +367,5 @@ hello:
   "What's your name?" print
     input
     "Hello " swap ++ "!" ++ print
+
+ext_cos: float_t "@math.h:cos" external float_t
