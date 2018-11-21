@@ -317,7 +317,7 @@ void gen_call(cell_t *e, cell_t *c) {
         printf("  %s%s%d = ", c->n ? "" : ctype(t), cname(t), lhs);
       }
     }
-    if(ONEOF(c->op, OP_external, OP_external_io)) {
+    if(c->op == OP_external) {
       cell_t *name = &e[tr_index(c->expr.arg[closure_in(c) - 1])];
       assert_error(is_value(name) &&
                    !is_var(name) &&
@@ -335,7 +335,7 @@ void gen_call(cell_t *e, cell_t *c) {
       assert_error(in >= 1 && out == 0);
       printf("%d", in-1);
     }
-    if(!ONEOF(c->op, OP_external, OP_external_io)) print_type_suffix(e, c);
+    if(c->op != OP_external) print_type_suffix(e, c);
     printf("(");
 
     COUNTUP(i, in) {
@@ -468,7 +468,7 @@ void undef_asserts(cell_t *e) {
 bool external_includes(cell_t *e) {
   bool has_external_includes = false;
   FOR_TRACE(c, e) {
-    if(ONEOF(c->op, OP_external, OP_external_io)) {
+    if(c->op == OP_external) {
       cell_t *name = &e[tr_index(c->expr.arg[closure_in(c) - 1])];
       if(print_external_header(name->value.str)) {
         has_external_includes = true;

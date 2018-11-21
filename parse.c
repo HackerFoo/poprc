@@ -171,9 +171,6 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n, cell_t *entry) {
     c = func(OP_compose, in, ++out);
   } else if(in = 1, out = 1, match_param_word("external", w, &in, &out)) {
     c = func(OP_external, ++in, out);
-  } else if(in = 1, out = 1, match_param_word("external_io", w, &in, &out)) {
-    in += 2;
-    c = func(OP_external, in, ++out);
   } else {
     cell_t *e = lookup_word(w);
     if(!e) e = module_lookup_compiled(w, &module);

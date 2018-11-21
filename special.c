@@ -222,7 +222,7 @@ cell_t *var_create_with_entry(type_t t, cell_t *entry, csize_t size) {
   return var_create(t, tc_get(entry, ix), 0, 0);
 }
 
-cell_t *var_(type_t t, cell_t *c, uint8_t pos) {
+cell_t *infer_entry(cell_t *c, uint8_t pos) {
   assert_error(c);
   TRAVERSE(c, in) {
     cell_t *a = clear_ptr(*p);
@@ -241,8 +241,11 @@ cell_t *var_(type_t t, cell_t *c, uint8_t pos) {
     assert_error(entry);
     LOG(HACK " using current entry %s", entry->word_name);
   }
+  return entry;
+}
 
-  return var_create_with_entry(t, entry, c->size);
+cell_t *var_(type_t t, cell_t *c, uint8_t pos) {
+  return var_create_with_entry(t, infer_entry(c, pos), c->size);
 }
 
 #if INTERFACE

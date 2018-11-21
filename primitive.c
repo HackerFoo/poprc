@@ -163,11 +163,48 @@ response func_op1_float(cell_t **cp, context_t *ctx, double (*op)(double)) {
   clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
-  res = is_var(p) ? var(ctx->t, c) : _op1_float(op, p);
-  res->value.type = T_FLOAT;
+  res = is_var(p) ? var(T_FLOAT, c) : _op1_float(op, p);
   res->alt = c->alt;
   res->value.alt_set = ctx->alt_set;
   add_conditions(res, p);
+  store_reduced(cp, res);
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, ctx);
+}
+
+response func_eq_op(cell_t **cp, context_t *ctx, type_t type) {
+  cell_t *res = 0;
+  PRE(eq_op);
+
+  CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
+
+  cell_t
+    *p = clear_ptr(c->expr.arg[0]),
+    *q = clear_ptr(c->expr.arg[1]);
+  bool expect_eq = ctx->expected && ctx->expected_value == SYM_True;
+  if(expect_eq && is_value(p)) {
+    CHECK(reduce_arg(c, 0, &CTX(t, type)));
+    CHECK(reduce_arg(c, 1, &CTX(t, type, p->value.integer)));
+  } else if(expect_eq && is_value(q)) {
+    CHECK(reduce_arg(c, 1, &CTX(t, type)));
+    CHECK(reduce_arg(c, 0, &CTX(t, type, q->value.integer)));
+  } else {
+    CHECK(reduce_arg(c, 0, &CTX(t, type)));
+    CHECK(reduce_arg(c, 1, &CTX(t, type)));
+  }
+  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+  CHECK_DELAY();
+  clear_flags(c);
+
+  p = c->expr.arg[0];
+  q = c->expr.arg[1];
+
+  res = is_var(p) || is_var(q) ? var(T_SYMBOL, c) : symbol(p->value.integer == q->value.integer);
+  res->alt = c->alt;
+  res->value.alt_set = ctx->alt_set;
+  add_conditions(res, p, q);
   store_reduced(cp, res);
   return SUCCESS;
 
@@ -327,12 +364,11 @@ OP(lte) {
 
 WORD("==", eq, 2, 1)
 WORD("=:=", eq_s, 2, 1)
-val_t eq_op(val_t x, val_t y) { return x == y; }
 OP(eq) {
-  return func_op2(cp, ctx, T_INT, T_SYMBOL, eq_op, false);
+  return func_eq_op(cp, ctx, T_INT);
 }
 OP(eq_s) {
-  return func_op2(cp, ctx, T_SYMBOL, T_SYMBOL, eq_op, false);
+  return func_eq_op(cp, ctx, T_SYMBOL);
 }
 
 WORD("!=", neq, 2, 1)
@@ -1130,59 +1166,12 @@ OP(strtrim) {
 }
 
 // a placeholder for FFI
-OP(external_io) {
-  PRE(external_io);
-
-  CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
-
-  csize_t in = closure_in(c), n = closure_args(c);
-  assert_error(in >= 2);
-
-  // get name, which must be a constant before code generation
-  CHECK(reduce_arg(c, in - 1, &CTX(string)));
-  cell_t *name = clear_ptr(c->expr.arg[in - 1]);
-  if(!is_var(name) || name->value.var) {
-    LOG("extern name must be a constant %C", c);
-  }
-
-  CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_IO)));
-  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
-  cell_t *p = clear_ptr(c->expr.arg[0]);
-  CHECK_IF(!is_var(p) && p->value.integer != SYM_IO, FAIL);
-
-  RANGEUP(i, 1, in - 1) {
-    CHECK(reduce_arg(c, i, &CTX(any)));
-    CHECK_IF(as_conflict(ctx->alt_set), FAIL);
-  }
-  CHECK_DELAY();
-  clear_flags(c);
-
-  cell_t *res = var(T_SYMBOL, c, ctx->pos);
-  res->alt = c->alt;
-  res->value.alt_set = ctx->alt_set;
-  RANGEUP(i, in, n) {
-    cell_t *d = c->expr.arg[i];
-    if(d && is_dep(d)) {
-      store_dep_var(c, res, i, T_ANY, ctx->alt_set);
-    } else {
-      LOG("dropped extern[%C] output", c);
-    }
-  }
-  add_conditions_from_array(res, c->expr.arg, in);
-  store_reduced(cp, res);
-  ASSERT_REF();
-  return SUCCESS;
-
- abort:
-  return abort_op(rsp, cp, ctx);
-}
-
-// a placeholder for FFI
 OP(external) {
   PRE(external);
 
   csize_t in = closure_in(c), n = closure_args(c);
   assert_error(in >= 1);
+  bool io = ctx->expected && ctx->expected_value == SYM_IO;
 
   // get name, which must be a constant before code generation
   CHECK(reduce_arg(c, in - 1, &CTX(string)));
@@ -1192,7 +1181,11 @@ OP(external) {
   }
 
   COUNTUP(i, in - 1) {
-    CHECK(reduce_arg(c, i, &CTX(any)));
+    if(i == 0 && io) {
+      CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_IO)));
+    } else {
+      CHECK(reduce_arg(c, i, &CTX(any)));
+    }
     CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   }
   CHECK_DELAY();
@@ -1216,4 +1209,12 @@ OP(external) {
 
  abort:
   return abort_op(rsp, cp, ctx);
+}
+
+WORD("--partial", partial, 1, 1)
+OP(partial) {
+  // TODO check arg op and reference count
+  *cp = CUT(*cp, expr.arg[0]);
+  FLAG_SET(**cp, expr, PARTIAL);
+  return RETRY;
 }
