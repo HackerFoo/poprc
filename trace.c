@@ -296,7 +296,7 @@ bool equal_value(const cell_t *a, const cell_t *b) {
     // only handle nil
     return is_empty_list(a) && is_empty_list(b);
   case T_STRING:
-    return strcmp(a->value.str, b->value.str) == 0;
+    return eq_seg(value_seg(a), value_seg(b));
   default:
     return false;
   }

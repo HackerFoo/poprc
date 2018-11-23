@@ -98,7 +98,7 @@ __ strings
 "========>" "---------------good" ++
 
 __ IO
-IO input "Hello " swap ++ print
+IO input "Hello " swap ++ "\n" ++ write
 World
 
 __ [] [] | popr

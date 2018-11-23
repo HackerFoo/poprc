@@ -856,10 +856,10 @@ OP(pushr) {
   return RETRY;
 }
 
-WORD("print", print, 2, 1)
-OP(print) {
+WORD("write", write, 2, 1)
+OP(write) {
   cell_t *res = 0;
-  PRE(print);
+  PRE(write);
 
   CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
 
@@ -878,7 +878,7 @@ OP(print) {
   if(is_var(p) || is_var(q)) {
     res = var(T_SYMBOL, c);
   } else if(p->value.integer == SYM_IO) {
-    io->write(string_seg(q->value.str));
+    io->write(value_seg(q));
     res = ref(p);
   } else {
     ABORT(FAIL);
@@ -982,8 +982,7 @@ OP(strcat) {
   if(is_var(p) || is_var(q)) {
     res = var(T_STRING, c);
   } else {
-    res = make_strcat(string_seg(p->value.str),
-                      string_seg(q->value.str));
+    res = make_strcat(value_seg(p), value_seg(q));
   }
   res->alt = c->alt;
   res->value.alt_set = ctx->alt_set;
@@ -1012,9 +1011,7 @@ OP(eq_str) {
   if(is_var(p) || is_var(q)) {
     res = var(T_SYMBOL, c);
   } else {
-    res = val(T_SYMBOL,
-              strcmp(p->value.str,
-                     q->value.str) == 0);
+    res = val(T_SYMBOL, eq_seg(value_seg(p), value_seg(q)));
   }
   res->alt = c->alt;
   res->value.alt_set = ctx->alt_set;
@@ -1116,6 +1113,7 @@ OP(strsplit) {
     res = var(T_STRING, c);
     store_dep_var(c, res, 2, T_STRING, ctx->alt_set);
   } else {
+    // TODO rewrite to handle strings containing \0
     char *s = strstr(p->value.str, q->value.str);
     CHECK_IF(!s, FAIL);
     int needle_len = strlen(q->value.str);

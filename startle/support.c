@@ -679,3 +679,164 @@ TEST(seg_trim) {
   printf("trimmed: \"%.*s\"\n", (int)s.n, s.s);
   return strncmp("hi", s.s, s.n) == 0 ? 0 : -1;
 }
+
+int digit_value(char c) {
+  if(INRANGE(c, '0', '9')) {
+    return c - '0';
+  } else if(INRANGE(c, 'A', 'Z')) {
+    return c - 'A' + 10;
+  } else if(INRANGE(c, 'a', 'z')) {
+    return c - 'a' + 10;
+  } else {
+    return -1;
+  }
+}
+
+char digit(int n) {
+  if(!INRANGE(n, 0, 35)) return '?';
+  if(n <= 9) return '0' + n;
+  return 'a' + (n - 10);
+}
+
+int strnum(const char *s, size_t n, int base) {
+  if(!INRANGE(base, 1, 36)) return -1;
+  int v = 0;
+  LOOP(n) {
+    if(*s == '\0') break;
+    int d = digit_value(*s++);
+    if(!INRANGE(d, 0, base - 1)) return -1;
+    v = v * base + d;
+  }
+  return v;
+}
+
+TEST(strnum) {
+  if(strnum("1234", 3, 8) != 0123) return -1;
+  if(strnum("80", 2, 8) != -1) return -2;
+  if(strnum("cAFe", 4, 16) != 0xcafe) return -3;
+  return 0;
+}
+
+size_t unescape_string(char *dst, size_t n, seg_t str) {
+  char *d = dst;
+  const char
+    *s = str.s,
+    *s_end = seg_end(str),
+    *d_end = d + n;
+  while(*s && s < s_end && d < d_end) {
+    if(s[0] == '\\' && s + 1 < s_end) {
+      switch(s[1]) {
+      case '\'': *d++ = '\''; break;
+      case '\"': *d++ = '\"'; break;
+      case '\\': *d++ = '\\'; break;
+      case '0':  *d++ = '\0'; break; // just handle \0
+      case '?':  *d++ = '?';  break;
+      case 'a':  *d++ = '\a'; break;
+      case 'b':  *d++ = '\b'; break;
+      case 'f':  *d++ = '\f'; break;
+      case 'n':  *d++ = '\n'; break;
+      case 'r':  *d++ = '\r'; break;
+      case 't':  *d++ = '\t'; break;
+      case 'v':  *d++ = '\v'; break;
+      case 'x': {
+        if(s + 3 >= s_end) goto copy_char;
+        int v = strnum(s + 2, 2, 16);
+        if(v < 0) goto copy_char;
+        *d++ = v;
+        s += 4;
+      } continue;
+        // TODO Unicode
+      default:
+        goto copy_char;
+      }
+      s += 2;
+    } else {
+    copy_char:
+      *d++ = *s++;
+    }
+  }
+  if(d < d_end) *d = '\0';
+  return d - dst;
+}
+
+TEST(unescape_string) {
+  char out[32];
+  seg_t escaped = SEG("test\\n\\\\string\\bG\\x21\\0stuff");
+  seg_t unescaped = SEG("test\n\\string\bG\x21\0stuff");
+  unescape_string(out, sizeof(out), escaped);
+  printf("%s\n", out);
+  return segcmp(out, unescaped) == 0 ? 0 : -1;
+}
+
+size_t escape_string(char *dst, size_t n, seg_t str) {
+  char *d = dst;
+  const char
+    *s = str.s,
+    *s_end = seg_end(str),
+    *d_end = d + n;
+  while(s < s_end && d < d_end) {
+    char c = *s++;
+    if(INRANGE(c, 32, 126) && c != '\\') {
+      *d++ = c;
+    } else {
+      if(d + 1 >= d_end) break;
+      switch(c) {
+      case '\'':
+      case '\"':
+      case '\\':
+        break;
+      case '\0': c = '0'; break;
+      case '\a': c = 'a'; break;
+      case '\b': c = 'b'; break;
+      case '\f': c = 'f'; break;
+      case '\n': c = 'n'; break;
+      case '\r': c = 'r'; break;
+      case '\t': c = 't'; break;
+      case '\v': c = 'v'; break;
+      default:
+        if(d + 3 >= d_end) break;
+        *d++ = '\\';
+        *d++ = 'x';
+        *d++ = digit(c >> 4);
+        *d++ = digit(c & 0x0f);
+        continue;
+      };
+      *d++ = '\\';
+      *d++ = c;
+    }
+  }
+  if(d < d_end) *d = '\0';
+  return d - dst;
+}
+
+TEST(escape_string) {
+  char out[32];
+  seg_t escaped = SEG("test\\n\\\\string\\bG\\0stuff\\x1b");
+  seg_t unescaped = SEG("test\n\\string\bG\0stuff\x1b");
+  escape_string(out, sizeof(out), unescaped);
+  printf("%s\n", out);
+  return segcmp(out, escaped) == 0 ? 0 : -1;
+}
+
+void print_escaped_string(seg_t str) {
+  char buf[64];
+  while(str.n > 16) {
+    escape_string(buf, sizeof(buf), (seg_t) { .s = str.s, .n = 16 });
+    printf("%s", buf);
+    str.s += 16;
+    str.n -= 16;
+  }
+  escape_string(buf, sizeof(buf), str);
+  printf("%s", buf);
+}
+
+TEST(print_escaped_string) {
+  seg_t unescaped = SEG("test\n\\string\bG\0stuff");
+  print_escaped_string(unescaped);
+  printf("\n");
+  return 0;
+}
+
+bool eq_seg(seg_t a, seg_t b) {
+  return a.n == b.n && memcmp(a.s, b.s, a.n) == 0;
+}

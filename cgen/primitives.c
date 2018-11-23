@@ -263,8 +263,8 @@ TEST(prim_to_string) {
   return segcmp("42", s) == 0 ? 0 : -1;
 }
 
-symbol_t __primitive_print_yys(symbol_t io, seg_t str) {
-  printf("%.*s\n", (int)str.n, str.s);
+symbol_t __primitive_write_yys(symbol_t io, seg_t str) {
+  printf("%.*s", (int)str.n, str.s);
   fflush(stdout);
   return io;
 }

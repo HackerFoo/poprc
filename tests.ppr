@@ -283,7 +283,7 @@ __ maptest: [1] [] map head
 
 quote_str: "'" swap ++ "'" ++
 sum_times2: swap [0] pushl [[[input <-str] dip12 +] .] swap2 times head
-sum_times2v: swap [0] pushl [[[input dup [quote_str print] dip21 <-str] dip12 +] .] swap2 times head
+sum_times2v: swap [0] pushl [[[input dup [quote_str write] dip21 <-str] dip12 +] .] swap2 times head
 
 spaces: [" " strsplit swap "" =s !] ["" =s not] iterate True swap "" =s ! False default
 
@@ -325,7 +325,7 @@ calc_step_push:
 __ calc: [[0]] ap10 [[dup [head ->str print input] dip22 swap calc_step_push] .] [head valid] iterate
 
 calc_loop:
-  top swap [int_t ->str print input] dip22 swap  __ IO [s] "t"
+  top swap [int_t ->str "\n" ++ write input] dip22 swap  __ IO [s] "t"
     calc_step top -swap2 over              __ "t" IO [s] IO
     [calc_loop] dip21 vifte
 
@@ -364,8 +364,8 @@ __ 1 0/ 2 f9
 f9: | 3 default
 
 hello:
-  "What's your name?" print
+  "What's your name? " write
     input
-    "Hello " swap ++ "!" ++ print
+    "Hello " swap ++ "!\n" ++ write
 
 ext_cos: float_t "@math.h:cos" external float_t

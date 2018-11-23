@@ -130,7 +130,7 @@ __ strings
 "========>" "---------------good" ++
   "========>---------------good"
 __ IO
-IO input "Hello " swap ++ print
+IO input "Hello " swap ++ "\n" ++ write
 Hello World
   IO
 __ [] [] | popr

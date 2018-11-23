@@ -894,8 +894,29 @@ seg_t irc_io_read() {
   return (seg_t) {.s = NULL, .n = 0};
 }
 
+// safe io_write for IRC
+// - prints prefix before each line
+// - strips non-printable characters
+// - only prints non-empty lines
 void irc_io_write(seg_t s) {
-  printf("%s%.*s\n", irc_prefix, (int)s.n, s.s);
+  const char *p = s.s;
+  bool new_line = true;
+  LOOP(s.n) {
+    if(*p == '\n') {
+      if(!new_line) {
+        new_line = true;
+        printf("\n");
+      }
+    } else if(INRANGE(*p, 32, 126)) {
+      if(new_line) {
+        printf("%s", irc_prefix);
+        new_line = false;
+      }
+      printf("%c", *p);
+    }
+    p++;
+  }
+  if(!new_line) printf("\n");
   fflush(stdout);
 }
 

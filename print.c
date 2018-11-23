@@ -298,9 +298,12 @@ void graph_cell(FILE *f, cell_t const *c) {
       case T_FLOAT:
         fprintf(f, "<tr><td bgcolor=\"yellow\">val: %.15g</td></tr>", c->value.flt);
         break;
-      case T_STRING:
-        fprintf(f, "<tr><td bgcolor=\"yellow\">val: %.*s</td></tr>", (int)max_strlen(c), c->value.str);
-        break;
+      case T_STRING: {
+        seg_t str = value_seg(c);
+        char buf[64];
+        int len = escape_string(buf, sizeof(buf), str);
+        fprintf(f, "<tr><td bgcolor=\"yellow\">val: %.*s</td></tr>", (int)len, buf);
+      } break;
       case T_LIST:
         break;
       default:
@@ -404,7 +407,9 @@ void show_float(cell_t const *c) {
 
 void show_string(cell_t const *c) {
   assert_error(has_type(c, T_STRING));
-  printf("\"%s\"",  c->value.str);
+  printf("\"");
+  print_escaped_string(value_seg(c));
+  printf("\"");
 }
 
 bool any_alt_overlap(cell_t const * const *p, csize_t size) {

@@ -26,6 +26,9 @@ i = 2
 [37;44mBREAKPOINT[0m [37;41m!!![0m startle/error.c:231: test_error: Assertion `i < 3' failed: Don't worry, it's okay. [38;5;8mpshx[0m
 [37;44mTEST[0m [37;41m!!![0m startle/error.c:231: test_error: Assertion `i < 3' failed: Don't worry, it's okay. [38;5;8mpshx[0m
 error => 0
+@ escape_string
+test\n\\string\bG\0stuff\x1b
+escape_string => 0
 @ expand_map
 map[10] = {{eight, 7}, {five, 4}, {four, 3}, {one, 0}, {seven, 6}, {six, 5}, {three, 2}, {two, 1}, {nine, 8}, {ten, 9}}
 expand_map => 0
@@ -229,6 +232,9 @@ f4:
 parse_module => 0
 @ prim_to_string
 prim_to_string => 0
+@ print_escaped_string
+test\n\\string\bG\0stuff
+print_escaped_string => 0
 @ rotate
 {{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}}
 {{1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}, {0, 0}}
@@ -267,11 +273,17 @@ cow => 4
 string_map => 0
 @ strings
 strings => 0
+@ strnum
+strnum => 0
 @ tag
 tag: 20116 = good
 tag => 0
 @ trace_encode
 trace_encode => 0
+@ unescape_string
+test
+\stringG!
+unescape_string => 0
 @ var_count
 length(vl) = 5
 var_count => 0

@@ -58,7 +58,9 @@ static void print_value(const cell_t *c) {
     printf(" val %g", c->value.flt);
     break;
   case T_STRING:
-    printf(" val \"%s\"", c->value.str);
+    printf(" val \"");
+    print_escaped_string(value_seg(c));
+    printf("\"");
     break;
   default:
     printf(" val ??");

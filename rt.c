@@ -972,7 +972,7 @@ seg_t default_io_read() {
 }
 
 void default_io_write(seg_t s) {
-  printf("%.*s\n", (int)s.n, s.s);
+  printf("%.*s", (int)s.n, s.s);
   fflush(stdout);
 }
 

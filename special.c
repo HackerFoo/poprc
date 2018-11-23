@@ -21,6 +21,7 @@
 #include "startle/error.h"
 #include "startle/test.h"
 #include "startle/log.h"
+#include "startle/support.h"
 
 #include "cells.h"
 #include "rt.h"
@@ -274,6 +275,13 @@ bool is_map(cell_t const *c) {
   return c && is_value(c) && c->value.type == T_MAP;
 }
 
+cell_t *make_unescaped_string(seg_t s) {
+  cell_t *c = alloc_string(s.n);
+  int size = unescape_string(c->value.str, s.n, s);
+  set_string_size(c, size);
+  return c;
+}
+
 cell_t *make_string(seg_t s) {
   cell_t *c = alloc_string(s.n);
   memcpy(c->value.str, s.s, s.n);
@@ -287,6 +295,14 @@ cell_t *make_strcat(seg_t s1, seg_t s2) {
   memcpy(c->value.str, s1.s, s1.n);
   memcpy(c->value.str + s1.n, s2.s, s2.n);
   return c;
+}
+
+seg_t value_seg(const cell_t *c) {
+  assert_error(is_string(c));
+  return (seg_t) {
+    .s = c->value.str,
+    .n = string_size(c)
+  };
 }
 
 bool is_string(cell_t const *c) {

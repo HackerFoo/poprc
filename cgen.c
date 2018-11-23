@@ -384,9 +384,10 @@ void gen_value_rhs(cell_t *c) {
     printf("%d;\n", (int)c->value.integer);
     break;
   case T_STRING: {
-    char *s = c->value.str;
-    int n = strlen(s);
-    printf("{ .s = \"%s\", .n = %d };\n", s, n);
+    seg_t str = value_seg(c);
+    printf("{ .s = \"");
+    print_escaped_string(str);
+    printf("\", .n = %d };\n", (int)str.n);
     break;
   }
   case T_LIST:
