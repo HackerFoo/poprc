@@ -1,5 +1,14 @@
 #+TITLE: PoprC Notes
 
+* IO streams
+IO a b ++ write ==> IO a write b write
+IO read "\n" strsplit ==> ...
+- move consumer into producer, opposite of lazy IO
+IO read line
+  - line: "\n" strplit
+1. explicit size
+2. condition
+^ both could be built using recursion and getchar
 * otherwise per alt e.g. f9:
 ___ tests.f9 (2 -> 1) x3 ___
 [1] var, type = ?a x1
