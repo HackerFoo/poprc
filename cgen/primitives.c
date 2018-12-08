@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "rt_types.h"
 #include "startle/macros.h"
@@ -150,9 +151,10 @@ TEST(arr_shift) {
 #define __primitive_pushr2_llaa __primitive_pushr2
 #define __primitive_pushr2_lLaa __primitive_pushr2
 
-#define __primitive_input_yyS __primitive_input_yys
 #define __primitive_from_string_iS __primitive_from_string_is
+#define __primitive_eq_str_ySS __primitive_eq_str_yss
 #define __primitive_eq_str_ySs __primitive_eq_str_yss
+#define __primitive_read_yyiS __primitive_read_yyis
 
 #endif
 
@@ -269,16 +271,15 @@ symbol_t __primitive_write_yys(symbol_t io, seg_t str) {
   return io;
 }
 
-symbol_t __primitive_input_yys(symbol_t io, seg_t *str) {
-  char *s = fgets(string_buffer, sizeof(string_buffer), stdin);
-  int n = 0;
-  if(s) {
-    char *e = s;
-    while(e < *(&string_buffer + 1) &&
-          !ONEOF(*e, '\0', '\n')) e++;
-    n = e - s;
+symbol_t __primitive_read_yyis(symbol_t io, unsigned int size, seg_t *str) {
+  ssize_t r = read(STDIN_FILENO, string_buffer, min(sizeof(string_buffer), size));
+  if(r > 0) {
+    str->s = string_buffer;
+    str->n = r;
+  } else {
+    str->s = NULL;
+    str->n = 0;
   }
-  if(str) *str = seg_alloc(s, n);
   return io;
 }
 

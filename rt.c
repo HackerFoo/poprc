@@ -17,6 +17,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "rt_types.h"
 
 #include "startle/error.h"
@@ -984,15 +985,18 @@ bool is_linear(context_t *ctx) {
 
 static char input_buf[1024];
 
-seg_t default_io_read() {
-  seg_t s = string_seg(fgets(input_buf, sizeof(input_buf), stdin));
-  if(s.n > 0 && s.s[s.n - 1] == '\n') s.n--;
-  return s;
+seg_t default_io_read(size_t size) {
+  ssize_t r = read(STDIN_FILENO, input_buf, min(sizeof(input_buf) - 1, size));
+  if(r > 0) {
+    input_buf[r] = '\0';
+    return (seg_t) { .s = input_buf, .n = r };
+  } else {
+    return (seg_t) { .s = NULL, .n = 0 };
+  }
 }
 
 void default_io_write(seg_t s) {
-  printf("%.*s", (int)s.n, s.s);
-  fflush(stdout);
+  write(STDOUT_FILENO, s.s, s.n);
 }
 
 const io_t default_io = {

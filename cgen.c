@@ -104,7 +104,7 @@ void gen_function_signature(cell_t *e) {
   type_t rtypes[out_n];
   resolve_types(e, rtypes);
 
-  printf("%s%s_%s(", ctype(rtypes[out_n - 1]), e->module_name, e->word_name);
+  printf("%s%s_%s(", ctype(rtypes[0]), e->module_name, e->word_name);
   char *sep = "";
   COUNTDOWN(i, e->entry.in) {
     cell_t *a = &p[i];
@@ -113,8 +113,8 @@ void gen_function_signature(cell_t *e) {
     sep = ", ";
   }
 
-  COUNTDOWN(i, out_n-1) {
-    printf("%s%s*out_%s%d", sep, ctype(rtypes[i]), cname(rtypes[i]), (int)i);
+  RANGEUP(i, 1, out_n) {
+    printf("%s%s*out_%s%d", sep, ctype(rtypes[i]), cname(rtypes[i]), (int)i-1);
   }
 
   printf(")");

@@ -843,7 +843,7 @@ void irc_action(const char *msg) {
 
 void run_eval_irc() {
   error_t error;
-  seg_t s = irc_io_read();
+  seg_t s = irc_io_read(1024);
   while(s.s) {
     if(catch_error(&error, true)) {
       irc_action("scowls");
@@ -852,7 +852,7 @@ void run_eval_irc() {
     } else {
       irc_action("overlooks this");
     }
-    s = irc_io_read();
+    s = irc_io_read(1024);
   }
 }
 
@@ -860,12 +860,12 @@ COMMAND(noio, "prevent IO") {
   allow_io = false;
 }
 
-seg_t irc_io_read_with_prompt() {
+seg_t irc_io_read_with_prompt(size_t size) {
   irc_action("is waiting");
-  return irc_io_read();
+  return irc_io_read(size);
 }
 
-seg_t irc_io_read() {
+seg_t irc_io_read(UNUSED size_t size) {
   char *line;
   while((line = fgets(line_buffer, sizeof(line_buffer), stdin))) {
     if(!(replace_char(line, '\r', '\0') ||

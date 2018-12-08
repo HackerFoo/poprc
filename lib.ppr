@@ -334,3 +334,17 @@ __ ERROR: user_func.c:424: flat_call: Assertion `tn->pos' failed
 __ iota: [1-] pushl [[dup 1-] .] [head 0 >] iterate
 iota2: [[dup 1-] .] [head 0 >] iterate
 __ iota3: [] pushl [[dup 1-] .] [head 0 >] iterate
+
+module io:
+
+imports:
+  module stack
+  module control
+
+__ IO str
+input_loop:
+  [1 read] dip12 swap __ IO str ch
+    ["\n" =s]
+    [dup [++ input_loop] dip32 "\n" =s not] | ap31! ap02 swap2 drop
+
+input: "" input_loop
