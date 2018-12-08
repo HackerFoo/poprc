@@ -1920,7 +1920,7 @@ ___ tests.collatz (1 -> 1) ___
 [3] tests.collatz_r0 2 1 :: i x1
 [4] return [3]
 
-___ tests.collatz_r0 (2 -> 1) x4 rec ___
+___ tests.collatz_r0 (2 -> 1) x3 rec ___
 [1] var :: ?*i x6
 [2] var :: ?*i x2
 [3] __primitive.gt &1 &4 :: y x1
@@ -1928,9 +1928,9 @@ ___ tests.collatz_r0 (2 -> 1) x4 rec ___
 [5] __primitive.not 3 :: y x1
 [6] __primitive.assert &2 5 :: i? x1
 [7] return [6] -> 18
-[8] __primitive.gt &1 &4 :: y x3
+[8] __primitive.gt &1 &4 :: y x2
 [9] __primitive.assert 17 &8 :: i? x1
-[10] __primitive.add 2 &4 :: i x3
+[10] __primitive.add 2 &4 :: i x2
 [11] __primitive.bitand &1 &4 :: i x1
 [12] __primitive.eq 11 13 :: y x1
 [13] val 0 :: i x1
@@ -1940,20 +1940,16 @@ ___ tests.collatz_r0 (2 -> 1) x4 rec ___
 [17] tests.collatz_r0 10 14 :: i x1
 [18] return [9] -> 27
 [19] __primitive.bitand &1 &4 :: i x1
-[20] __primitive.eq 19 &4 :: y x2
-[21] __primitive.assert &24 &20 :: i? x1
+[20] __primitive.eq 19 &4 :: y x1
+[21] __primitive.assert 24 20 :: i? x1
 [22] __primitive.mul 1 23 :: i x1
 [23] val 3 :: i x1
-[24] __primitive.add 22 4 :: i x2
+[24] __primitive.add 22 4 :: i x1
 [25] tests.collatz_r0 10 21 :: i x1
 [26] __primitive.assert 25 8 :: i x1
-[27] return [26] -> 31
-[28] __primitive.assert 24 20 :: i? x1
-[29] tests.collatz_r0 10 28 :: i x1
-[30] __primitive.assert 29 8 :: i x1
-[31] return [30]
+[27] return [26]
 
-___ tests.collatz_step (1 -> 1) x3 ___
+___ tests.collatz_step (1 -> 1) x2 ___
 [1] var :: ?i x4
 [2] __primitive.bitand &1 &3 :: i x1
 [3] val 1 :: i x4
@@ -1965,13 +1961,11 @@ ___ tests.collatz_step (1 -> 1) x3 ___
 [9] return [6] -> 16
 [10] __primitive.mul &1 11 :: i x1
 [11] val 3 :: i x1
-[12] __primitive.add 10 &3 :: i x2
+[12] __primitive.add 10 &3 :: i x1
 [13] __primitive.bitand 1 &3 :: i x1
-[14] __primitive.eq 13 3 :: y x2
-[15] __primitive.assert &12 &14 :: i? x1
-[16] return [15] -> 18
-[17] __primitive.assert 12 14 :: i? x1
-[18] return [17]
+[14] __primitive.eq 13 3 :: y x1
+[15] __primitive.assert 12 14 :: i? x1
+[16] return [15]
 
 ___ tests.compose_alt (1 -> 1) x2 ___
 [1] var :: ?l x1
@@ -2015,7 +2009,7 @@ ___ tests.decel (1 -> 1) ___
 [3] tests.decel_r0 2 1 :: i x1
 [4] return [3]
 
-___ tests.decel_r0 (2 -> 1) x4 rec ___
+___ tests.decel_r0 (2 -> 1) x3 rec ___
 [1] var :: ?*i x6
 [2] var :: ?*i x2
 [3] __primitive.gt &1 &4 :: y x1
@@ -2023,27 +2017,23 @@ ___ tests.decel_r0 (2 -> 1) x4 rec ___
 [5] __primitive.not 3 :: y x1
 [6] __primitive.assert &2 5 :: i? x1
 [7] return [6] -> 16
-[8] __primitive.gt &1 &4 :: y x3
+[8] __primitive.gt &1 &4 :: y x2
 [9] __primitive.assert 15 &8 :: i? x1
-[10] __primitive.add 2 &4 :: i x3
+[10] __primitive.add 2 &4 :: i x2
 [11] __primitive.lte &1 &12 :: y x1
 [12] val 5 :: i x3
 [13] __primitive.assert 14 11 :: i? x1
 [14] __primitive.sub 1 4 :: i x1
 [15] tests.decel_r0 10 13 :: i x1
 [16] return [9] -> 22
-[17] __primitive.gt &1 &12 :: y x2
-[18] __primitive.assert &19 &17 :: i? x1
-[19] __primitive.sub 1 12 :: i x2
+[17] __primitive.gt &1 &12 :: y x1
+[18] __primitive.assert 19 17 :: i? x1
+[19] __primitive.sub 1 12 :: i x1
 [20] tests.decel_r0 10 18 :: i x1
 [21] __primitive.assert 20 8 :: i x1
-[22] return [21] -> 26
-[23] __primitive.assert 19 17 :: i? x1
-[24] tests.decel_r0 10 23 :: i x1
-[25] __primitive.assert 24 8 :: i x1
-[26] return [25]
+[22] return [21]
 
-___ tests.decel_step (1 -> 1) x3 ___
+___ tests.decel_step (1 -> 1) x2 ___
 [1] var :: ?i x4
 [2] __primitive.lte &1 &3 :: y x1
 [3] val 5 :: i x3
@@ -2051,12 +2041,10 @@ ___ tests.decel_step (1 -> 1) x3 ___
 [5] __primitive.sub 1 6 :: i x1
 [6] val 1 :: i x1
 [7] return [4] -> 11
-[8] __primitive.sub &1 &3 :: i x2
-[9] __primitive.gt 1 3 :: y x2
-[10] __primitive.assert &8 &9 :: i? x1
-[11] return [10] -> 13
-[12] __primitive.assert 8 9 :: i? x1
-[13] return [12]
+[8] __primitive.sub &1 &3 :: i x1
+[9] __primitive.gt 1 3 :: y x1
+[10] __primitive.assert 8 9 :: i? x1
+[11] return [10]
 
 ___ tests.default_max (2 -> 1) x2 ___
 [1] var :: ?i x2
@@ -2317,17 +2305,16 @@ ___ tests.fact (1 -> 1) x2 rec ___
 [10] __primitive.mul 1 9 :: i x1
 [11] return [7]
 
-___ tests.failthru (3 -> 2) x3 ___
+___ tests.failthru (3 -> 2) x2 ___
 [1] var :: ?l x1
 [2] var :: ?a x3
 [3] var :: ?a x2
 [4] __primitive.ap &3 &2 1 -> 5 6 :: v? x2
-[5] __primitive.dep 4 :: a x2
-[6] __primitive.dep 4 :: a x2
+[5] __primitive.dep 4 :: a x1
+[6] __primitive.dep 4 :: a x1
 [7] return [5 6] -> 9
 [8] __primitive.otherwise &2 3 :: a x1
-[9] return [8 2] -> 10
-[10] return [5 6]
+[9] return [8 2]
 
 ___ tests.fib (1 -> 1) x2 rec ___
 [1] var :: ?*i x4
@@ -2887,10 +2874,10 @@ ___ tests.test_ap21 (3 -> 1) ___
 [5] __primitive.dep 4 :: a x1
 [6] return [5]
 
-___ tests.vifte_collatz (1 -> 1) x6 rec ___
+___ tests.vifte_collatz (1 -> 1) x3 rec ___
 [1] var :: ?*i x5
 [2] __primitive.bitand &1 &3 :: i x1
-[3] val 1 :: i x7
+[3] val 1 :: i x6
 [4] __primitive.eq 2 &3 :: y x1
 [5] __primitive.assert 8 4 :: i? x2
 [6] __primitive.mul &1 7 :: i x1
@@ -2904,38 +2891,22 @@ ___ tests.vifte_collatz (1 -> 1) x6 rec ___
 [14] __primitive.bitand &1 &3 :: i x1
 [15] __primitive.eq 14 16 :: y x1
 [16] val 0 :: i x1
-[17] __primitive.assert 18 15 :: i? x6
+[17] __primitive.assert 18 15 :: i? x2
 [18] __primitive.div &1 19 :: i? x1
 [19] val 2 :: i x1
-[20] __primitive.gt &17 &3 :: y x2
-[21] __primitive.assert &17 &20 :: i? x3
+[20] __primitive.gt &17 3 :: y x1
+[21] __primitive.assert 17 20 :: i? x3
 [22] __primitive.seq 23 &21 :: v x1
 [23] tests.vifte_collatz 21 :: v x1
-[24] return [22] -> 28
-[25] __primitive.assert &17 20 :: i? x3
-[26] __primitive.seq 27 &25 :: v x1
-[27] tests.vifte_collatz 25 :: v x1
-[28] return [26] -> 33
-[29] __primitive.gt &17 3 :: y x2
-[30] __primitive.assert &17 &29 :: i? x3
-[31] __primitive.seq 32 &30 :: v x1
-[32] tests.vifte_collatz 30 :: v x1
-[33] return [31] -> 37
-[34] __primitive.assert 17 29 :: i? x3
-[35] __primitive.seq 36 &34 :: v x1
-[36] tests.vifte_collatz 34 :: v x1
-[37] return [35] -> 43
-[38] __primitive.otherwise 10 1 :: i x1
-[39] __primitive.otherwise 21 38 :: i x1
-[40] __primitive.otherwise 25 39 :: i x1
-[41] __primitive.otherwise 30 40 :: i x1
-[42] __primitive.otherwise 34 41 :: i x1
-[43] return [42]
+[24] return [22] -> 27
+[25] __primitive.otherwise 10 1 :: i x1
+[26] __primitive.otherwise 21 25 :: i x1
+[27] return [26]
 
-___ tests.vifte_collatz_step (1 -> 1) x5 ___
+___ tests.vifte_collatz_step (1 -> 1) x2 ___
 [1] var :: ?i x4
 [2] __primitive.bitand &1 &3 :: i x1
-[3] val 1 :: i x7
+[3] val 1 :: i x6
 [4] __primitive.eq 2 &3 :: y x1
 [5] __primitive.assert 8 4 :: i? x2
 [6] __primitive.mul &1 7 :: i x1
@@ -2947,19 +2918,12 @@ ___ tests.vifte_collatz_step (1 -> 1) x5 ___
 [12] __primitive.bitand &1 &3 :: i x1
 [13] __primitive.eq 12 14 :: y x1
 [14] val 0 :: i x1
-[15] __primitive.assert 16 13 :: i? x6
+[15] __primitive.assert 16 13 :: i? x2
 [16] __primitive.div 1 17 :: i? x1
 [17] val 2 :: i x1
-[18] __primitive.gt &15 &3 :: y x2
-[19] __primitive.assert &15 &18 :: i? x1
-[20] return [19] -> 22
-[21] __primitive.assert &15 18 :: i? x1
-[22] return [21] -> 25
-[23] __primitive.gt &15 3 :: y x2
-[24] __primitive.assert &15 &23 :: i? x1
-[25] return [24] -> 27
-[26] __primitive.assert 15 23 :: i? x1
-[27] return [26]
+[18] __primitive.gt &15 3 :: y x1
+[19] __primitive.assert 15 18 :: i? x1
+[20] return [19]
 
 ___ tests.vifte_quote (1 -> 1) x2 ___
 [1] var :: ?i x3

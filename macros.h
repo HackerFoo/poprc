@@ -273,6 +273,7 @@
 
 #define CHECK_DELAY()                           \
   do {                                          \
+    if(c->alt) mark_split(c);                   \
     if(rsp) goto abort;                         \
   } while(0)
 

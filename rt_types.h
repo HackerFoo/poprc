@@ -101,6 +101,7 @@ struct __attribute__((packed)) tr {
 };
 
 #define FLAG_expr (expr, EXPR)
+#define EXPR_SPLIT     0x01
 #define EXPR_NEEDS_ARG 0x02
 #define EXPR_RECURSIVE 0x04
 #define EXPR_TRACE     0x08
@@ -123,6 +124,7 @@ struct __attribute__((packed)) expr {
 
 // value flags
 #define FLAG_value (value, VALUE)
+#define VALUE_SPLIT      0x01
 #define VALUE_IMMEDIATE  0x02
 #define VALUE_DEP        0x04
 #define VALUE_CHANGES    0x08

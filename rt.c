@@ -188,6 +188,7 @@ cell_t *dup_list_alt(cell_t *c, csize_t n, cell_t *b) {
 
 // Lift alternates from c->value.ptr[n] to c
 void split_ptr(cell_t *c, csize_t n) {
+  if(FLAG(*c, value, SPLIT)) return;
   cell_t
     *a = c->value.ptr[n],
     *p = c,
@@ -256,6 +257,20 @@ bool is_delayed(const cell_t *c) {
   return !is_value(c) && FLAG(*c, expr, DELAYED);
 }
 
+bool is_split(const cell_t *c) {
+  return is_value(c) ?
+    FLAG(*c, value, SPLIT) :
+    FLAG(*c, expr, SPLIT);
+}
+
+void mark_split(cell_t *c) {
+  if(is_value(c)) {
+    FLAG_SET(*c, value, SPLIT);
+  } else {
+    FLAG_SET(*c, expr, SPLIT);
+  }
+}
+
 // Reduce *cp with type t
 response reduce(cell_t **cp, context_t *ctx) {
   const bool marked = is_marked(*cp);
@@ -278,6 +293,10 @@ response reduce(cell_t **cp, context_t *ctx) {
       ctx->retry = false;
       if(marked) *cp = mark_ptr(c); // *** is the right pointer being marked?
       return r;
+    }
+    if(r == FAIL && is_split(ctx->up->src)) {
+      drop(c);
+      break;
     }
   }
 
