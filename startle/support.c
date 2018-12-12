@@ -911,3 +911,24 @@ TEST(ring_buffer) {
   PRINT(8);
   return 0;
 }
+
+const char *seg_find(seg_t haystack, seg_t needle) {
+  if(needle.n > haystack.n) return NULL;
+  if(needle.n == 0) return haystack.s;
+  const char *end = haystack.s + (haystack.n - needle.n + 1);
+  const char *p = haystack.s;
+  while(p < end) {
+    if(memcmp(p, needle.s, needle.n) == 0) return p;
+    p++;
+  }
+  return NULL;
+}
+
+TEST(seg_find) {
+  seg_t hello = SEG("Hello. My name is Inigo Montoya. You killed my father. Prepare to die.");
+  seg_t father = SEG("father");
+  seg_t mother = SEG("mother");
+  if(!seg_find(hello, father)) return -1;
+  if(seg_find(hello, mother)) return -2;
+  return 0;
+}

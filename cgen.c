@@ -209,6 +209,10 @@ void gen_instruction(cell_t *e, cell_t *c) {
     gen_assert(e, c);
   } else if(c->op == OP_dep) {
     // don't generate anything
+  } else if(c->op == OP_seq) {
+    gen_alias(e, c, 0, "seq");
+  } else if(c->op == OP_otherwise) {
+    gen_alias(e, c, 1, "otherwise");
   } else {
     gen_call(e, c);
   }
@@ -258,6 +262,16 @@ bool print_external_header(const char *str) {
   return sep != NULL;
 }
 
+void gen_alias(cell_t *e, cell_t *c, int i, const char *comment) {
+  int lhs = c - e;
+  type_t t = trace_type(c);
+  int a = tr_index(c->expr.arg[i]);
+  printf("  #define %s%d %s%d // %s\n",
+         cname(t), lhs,
+         cname(trace_type(&e[a])), a,
+         comment);
+}
+
 void gen_call(cell_t *e, cell_t *c) {
   if(FLAG(*c, trace, TRACED)) return;
   int lhs = c - e;
@@ -281,7 +295,7 @@ void gen_call(cell_t *e, cell_t *c) {
 
     // jump to the beginning
     printf("  goto entry;\n");
-  } else if(!ONEOF(c->op, OP_seq)) {
+  } else {
     csize_t
       in = closure_in(c),
       out = closure_out(c),
@@ -460,7 +474,7 @@ void gen_assert(cell_t *e, cell_t *c) {
 void undef_asserts(cell_t *e) {
   FOR_TRACE(c, e) {
     type_t t = trace_type(c);
-    if(c->op == OP_assert && t != T_BOTTOM) {
+    if(ONEOF(c->op, OP_assert, OP_seq, OP_otherwise) && t != T_BOTTOM) {
       printf("#undef %s%d\n", cname(t), (int)(c - e));
     }
   }

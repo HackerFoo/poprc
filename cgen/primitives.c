@@ -155,6 +155,7 @@ TEST(arr_shift) {
 #define __primitive_eq_str_ySS __primitive_eq_str_yss
 #define __primitive_eq_str_ySs __primitive_eq_str_yss
 #define __primitive_read_yyiS __primitive_read_yyis
+#define __primitive_strsplit_sSsS __primitive_strsplit_ssss
 
 #endif
 
@@ -271,11 +272,21 @@ symbol_t __primitive_write_yys(symbol_t io, seg_t str) {
   return io;
 }
 
+static MAKE_RING_BUFFER(unread_rb, 1024);
+
+symbol_t __primitive_unread_yys(symbol_t io, seg_t str) {
+  rb_write(unread_rb, str.s, str.n);
+  return io;
+}
+
 symbol_t __primitive_read_yyis(symbol_t io, unsigned int size, seg_t *str) {
-  ssize_t r = read(STDIN_FILENO, string_buffer, min(sizeof(string_buffer), size));
-  if(r > 0) {
+  size = min(sizeof(string_buffer) - 1, size);
+  size_t old = rb_read(unread_rb, string_buffer, size);
+  ssize_t new = read(STDIN_FILENO, string_buffer + old, size - old);
+  size_t read_size = old + max(0, new); // TODO handle errors
+  if(read_size > 0) {
     str->s = string_buffer;
-    str->n = r;
+    str->n = read_size;
   } else {
     str->s = NULL;
     str->n = 0;
@@ -310,4 +321,12 @@ seg_t __primitive_strcat_sss(seg_t a, seg_t b) {
     .s = s,
     .n = a.n + b.n
   };
+}
+
+bool __primitive_strsplit_ssss(seg_t in, seg_t delim, seg_t *pre, seg_t *post) {
+  const char *s = seg_find(in, delim);
+  if(!s) return true;
+  *pre = (seg_t)  { .s = in.s,        .n = s - in.s };
+  *post = (seg_t) { .s = s + delim.n, .n = in.n - pre->n - delim.n };
+  return false;
 }

@@ -356,7 +356,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
 
   // handle returns
   // HACK: only allocate alt ids when compiling
-  bool tracing = trace_current_entry() != NULL;
+  bool tracing = trace_current_entry() != NULL || !entry->entry.rec;
   uint8_t alt_n = tracing ? int_log2(entry->entry.alts) : 0;
   uint8_t alt_id = new_alt_id(alt_n);
   unsigned int branch = 0;
@@ -854,7 +854,15 @@ bool is_input(cell_t *v) {
 bool all_dynamic(cell_t *entry, cell_t *c) {
   int in = entry->entry.in;
   assert_error(in == closure_in(c));
-  if(!entry->entry.rec) return false;
+  if(!entry->entry.rec) {
+    if(entry->entry.alts == 1) return false;
+    COUNTUP(i, in) {
+      if(ONEOF(entry[i+1].value.type, T_LIST, T_ANY)) {
+        return false;
+      }
+    }
+    return true;
+  }
   COUNTUP(i, in) {
     if(NOT_FLAG(entry[i+1], value, CHANGES)) {
       int a = REVI(i);

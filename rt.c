@@ -558,6 +558,7 @@ response abort_op(response rsp, cell_t **cp, context_t *ctx) {
       return rsp;
     }
     assert_error(!is_marked(c));
+    WATCH(c, "abort_op");
     cell_t *alt = ref(c->alt);
     if(c->n && ctx->t == T_ANY && !ctx->expected) { // HACK this should be more sophisticated
       TRAVERSE(c, in) {
@@ -993,10 +994,11 @@ void default_io_unread(seg_t s) {
 seg_t default_io_read(size_t size) {
   size = min(sizeof(input_buf) - 1, size);
   size_t old = rb_read(unread_rb, input_buf, size);
-  ssize_t r = read(STDIN_FILENO, input_buf + old, size - old);
-  if(r >= 0) {
-    input_buf[old + r] = '\0';
-    return (seg_t) { .s = input_buf, .n = old + r };
+  ssize_t new = read(STDIN_FILENO, input_buf + old, size - old);
+  size_t read_size = old + max(0, new); // TODO handle errors
+  if(read_size > 0) {
+    input_buf[read_size] = '\0';
+    return (seg_t) { .s = input_buf, .n = read_size };
   } else {
     return (seg_t) { .s = NULL, .n = 0 };
   }

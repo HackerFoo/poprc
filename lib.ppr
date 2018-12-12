@@ -142,6 +142,8 @@ pull5: pull4 pull
 pull6: pull5 pull
 pull7: pull6 pull
 
+get2: pull2 drop swap
+
 tail: popr drop
 tail2: tail tail
 
@@ -292,6 +294,9 @@ implies: swap not or
 __ A B default -> A, or B if A fails
 default: [dup] dip12 otherwise |
 
+otherwise2: __ a0 a1 b0 b1
+  [] ap20 otherwise otherwise pull2 drop swap
+
 vifte: [swap] dip22 otherwise dup swap2 otherwise |
 
 valid: True False vifte
@@ -340,11 +345,13 @@ module io:
 imports:
   module stack
   module control
+  module logic
 
-__ IO str
-input_loop:
-  [1 read] dip12 swap __ IO str ch
-    ["\n" =s]
-    [dup [++ input_loop] dip32 "\n" =s not] | ap31! ap02 swap2 drop
+__ IO buf
+getline_loop:
+  [1024 read] dip12 swap ++ [] ap20 dup __ [IO str] x2
+    [getline_loop] . swap __ no newline
+    ["\n" strsplit swap [unread] dip21 dup] . __ newline
+    popr -swap2 swap vifte get2
 
-input: "" input_loop
+getline: "" getline_loop

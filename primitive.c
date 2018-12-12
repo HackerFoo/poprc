@@ -872,15 +872,16 @@ OP(write) {
 
   if(c->alt) {
     drop(c->alt);
-    c->alt = 0;
+    c->alt = NULL;
   }
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   if(is_var(p) || is_var(q)) {
     res = var(T_SYMBOL, c);
+    res->value.alt_set = ctx->alt_set;
   } else if(p->value.integer == SYM_IO) {
     io->write(value_seg(q));
-    res = ref(p);
+    res = mod_alt(ref(p), NULL, ctx->alt_set);
   } else {
     ABORT(FAIL);
   }
@@ -908,15 +909,16 @@ OP(unread) {
 
   if(c->alt) {
     drop(c->alt);
-    c->alt = 0;
+    c->alt = NULL;
   }
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   if(is_var(p) || is_var(q)) {
     res = var(T_SYMBOL, c);
+    res->value.alt_set = ctx->alt_set;
   } else if(p->value.integer == SYM_IO) {
     io->unread(value_seg(q));
-    res = ref(p);
+    res = mod_alt(ref(p), NULL, ctx->alt_set);
   } else {
     ABORT(FAIL);
   }
