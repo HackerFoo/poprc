@@ -129,7 +129,6 @@ TEST(arr_shift) {
 #define __primitive_shiftl_iii(x, y) x << y
 #define __primitive_shiftr_iii(x, y) x >> y
 #define __primitive_complement_ii(x) ~x
-#define __primitive_otherwise(bottom, x) (x)
 
 // aliases
 #define __primitive_ap01_lLi __primitive_ap01
