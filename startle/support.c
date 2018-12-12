@@ -844,8 +844,15 @@ bool eq_seg(seg_t a, seg_t b) {
 #if INTERFACE
 typedef struct ring_buffer {
   size_t head, tail, size;
-  char *data;
+  char data[0];
 } ring_buffer_t;
+
+#define MAKE_RING_BUFFER(name, _size)           \
+  ring_buffer_t *name = (ring_buffer_t *)       \
+    &(struct {                                  \
+      ring_buffer_t hdr;                        \
+      char data[_size];                         \
+    }) {{ .size = _size }, {0}}
 #endif
 
 size_t rb_available(const ring_buffer_t *rb) {
@@ -886,20 +893,17 @@ size_t rb_read(ring_buffer_t *rb, char *dst, size_t size) {
   return size;
 }
 
-#define WRITE(str) rb_write(&rb, (str), sizeof(str)-1)
+#define WRITE(str) rb_write(rb, (str), sizeof(str)-1)
 #define PRINT(n)                                                \
   do {                                                          \
-    size_t _size = rb_read(&rb, out, min(sizeof(out), (n)));    \
+    size_t _size = rb_read(rb, out, min(sizeof(out), (n)));     \
     printf("%.*s\n", (int)_size, out);                          \
   } while(0)
 
 TEST(ring_buffer) {
-  char buf[8];
   char out[8];
-  ring_buffer_t rb = {
-    .size = sizeof(buf),
-    .data = buf
-  };
+  MAKE_RING_BUFFER(rb, 8);
+
   WRITE("hello");
   PRINT(2);
   PRINT(2);

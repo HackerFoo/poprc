@@ -984,20 +984,15 @@ bool is_linear(context_t *ctx) {
 }
 
 static char input_buf[1024];
-static char unread_data[1024];
-static ring_buffer_t unread_rb = {
-  .size = sizeof(unread_data),
-  .data = unread_data
-};
-
+static MAKE_RING_BUFFER(unread_rb, 1024);
 
 void default_io_unread(seg_t s) {
-  rb_write(&unread_rb, s.s, s.n);
+  rb_write(unread_rb, s.s, s.n);
 }
 
 seg_t default_io_read(size_t size) {
   size = min(sizeof(input_buf) - 1, size);
-  size_t old = rb_read(&unread_rb, input_buf, size);
+  size_t old = rb_read(unread_rb, input_buf, size);
   ssize_t r = read(STDIN_FILENO, input_buf + old, size - old);
   if(r >= 0) {
     input_buf[old + r] = '\0';
