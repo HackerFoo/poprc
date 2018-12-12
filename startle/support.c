@@ -840,3 +840,70 @@ TEST(print_escaped_string) {
 bool eq_seg(seg_t a, seg_t b) {
   return a.n == b.n && memcmp(a.s, b.s, a.n) == 0;
 }
+
+#if INTERFACE
+typedef struct ring_buffer {
+  size_t head, tail, size;
+  char *data;
+} ring_buffer_t;
+#endif
+
+size_t rb_available(const ring_buffer_t *rb) {
+  return (rb->size + rb->head - rb->tail) % rb->size;
+}
+
+size_t rb_capacity(const ring_buffer_t *rb) {
+  return rb->size - rb_available(rb) - 1;
+}
+
+size_t rb_write(ring_buffer_t *rb, const char *src, size_t size) {
+  size = min(size, rb_capacity(rb));
+  size_t right = rb->size - rb->head;
+  if(size <= right) {
+    memcpy(&rb->data[rb->head], src, size);
+    rb->head += size;
+  } else {
+    memcpy(&rb->data[rb->head], src, right);
+    size_t left = size - right;
+    memcpy(&rb->data[0], src + right, left);
+    rb->head = left;
+  }
+  return size;
+}
+
+size_t rb_read(ring_buffer_t *rb, char *dst, size_t size) {
+  size = min(size, rb_available(rb));
+  size_t right = rb->size - rb->tail;
+  if(size <= right) {
+    memcpy(dst, &rb->data[rb->tail], size);
+    rb->tail += size;
+  } else {
+    memcpy(dst, &rb->data[rb->tail], right);
+    size_t left = size - right;
+    memcpy(dst + right, &rb->data[0], left);
+    rb->tail = left;
+  }
+  return size;
+}
+
+#define WRITE(str) rb_write(&rb, (str), sizeof(str)-1)
+#define PRINT(n)                                                \
+  do {                                                          \
+    size_t _size = rb_read(&rb, out, min(sizeof(out), (n)));    \
+    printf("%.*s\n", (int)_size, out);                          \
+  } while(0)
+
+TEST(ring_buffer) {
+  char buf[8];
+  char out[8];
+  ring_buffer_t rb = {
+    .size = sizeof(buf),
+    .data = buf
+  };
+  WRITE("hello");
+  PRINT(2);
+  PRINT(2);
+  WRITE(" world!");
+  PRINT(8);
+  return 0;
+}

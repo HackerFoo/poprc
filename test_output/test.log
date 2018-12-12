@@ -235,6 +235,11 @@ prim_to_string => 0
 @ print_escaped_string
 test\n\\string\bG\0stuff
 print_escaped_string => 0
+@ ring_buffer
+he
+ll
+o world
+ring_buffer => 0
 @ rotate
 {{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}}
 {{1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}, {0, 0}}

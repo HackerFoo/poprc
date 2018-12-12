@@ -984,12 +984,24 @@ bool is_linear(context_t *ctx) {
 }
 
 static char input_buf[1024];
+static char unread_data[1024];
+static ring_buffer_t unread_rb = {
+  .size = sizeof(unread_data),
+  .data = unread_data
+};
+
+
+void default_io_unread(seg_t s) {
+  rb_write(&unread_rb, s.s, s.n);
+}
 
 seg_t default_io_read(size_t size) {
-  ssize_t r = read(STDIN_FILENO, input_buf, min(sizeof(input_buf) - 1, size));
-  if(r > 0) {
-    input_buf[r] = '\0';
-    return (seg_t) { .s = input_buf, .n = r };
+  size = min(sizeof(input_buf) - 1, size);
+  size_t old = rb_read(&unread_rb, input_buf, size);
+  ssize_t r = read(STDIN_FILENO, input_buf + old, size - old);
+  if(r >= 0) {
+    input_buf[old + r] = '\0';
+    return (seg_t) { .s = input_buf, .n = old + r };
   } else {
     return (seg_t) { .s = NULL, .n = 0 };
   }
@@ -1001,7 +1013,8 @@ void default_io_write(seg_t s) {
 
 const io_t default_io = {
   .read = default_io_read,
-  .write = default_io_write
+  .write = default_io_write,
+  .unread = default_io_unread
 };
 
 const io_t *io = &default_io;

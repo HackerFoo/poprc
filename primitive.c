@@ -892,6 +892,42 @@ OP(write) {
   return abort_op(rsp, cp, ctx);
 }
 
+// TODO merge this with 'write'
+WORD("unread", unread, 2, 1)
+OP(unread) {
+  cell_t *res = 0;
+  PRE(unread);
+
+  CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
+
+  CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_IO)));
+  CHECK(reduce_arg(c, 1, &CTX(string)));
+  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+  CHECK_DELAY();
+  clear_flags(c);
+
+  if(c->alt) {
+    drop(c->alt);
+    c->alt = 0;
+  }
+
+  cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
+  if(is_var(p) || is_var(q)) {
+    res = var(T_SYMBOL, c);
+  } else if(p->value.integer == SYM_IO) {
+    io->unread(value_seg(q));
+    res = ref(p);
+  } else {
+    ABORT(FAIL);
+  }
+  add_conditions(res, p, q);
+  store_reduced(cp, res);
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, ctx);
+}
+
 WORD("read", read, 2, 2)
 OP(read) {
   cell_t *res = 0;

@@ -284,7 +284,7 @@ cell_t *make_unescaped_string(seg_t s) {
 
 cell_t *make_string(seg_t s) {
   cell_t *c = alloc_string(s.n);
-  memcpy(c->value.str, s.s, s.n);
+  if(s.n) memcpy(c->value.str, s.s, s.n);
   return c;
 }
 

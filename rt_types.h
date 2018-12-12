@@ -329,6 +329,7 @@ void breakpoint();
 typedef struct {
   seg_t (*read)(size_t);
   void (*write)(seg_t);
+  void (*unread)(seg_t);
 } io_t;
 
 #endif
