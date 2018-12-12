@@ -847,13 +847,22 @@ typedef struct ring_buffer {
   char data[0];
 } ring_buffer_t;
 
+#define APPEND_DATA_TO(_type, _size)            \
+  struct {                                      \
+    _type hdr;                                  \
+    char data[_size];                           \
+  }
+
 #define MAKE_RING_BUFFER(name, _size)           \
   ring_buffer_t *name = (ring_buffer_t *)       \
-    &(struct {                                  \
-      ring_buffer_t hdr;                        \
-      char data[_size];                         \
-    }) {{ .size = _size }, {0}}
+    &(APPEND_DATA_TO(ring_buffer_t, _size))     \
+  {{ .size = _size }, {0}}
 #endif
+
+TEST(append_data_to) {
+  APPEND_DATA_TO(ring_buffer_t, 1) x;
+  return x.data == x.hdr.data ? 0 : -1;
+}
 
 size_t rb_available(const ring_buffer_t *rb) {
   return (rb->size + rb->head - rb->tail) % rb->size;
