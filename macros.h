@@ -88,6 +88,13 @@
         p < _end;                                       \
         p++)
 
+#define TRAVERSE_const_args(c)                          \
+  if(!is_value(c))                                      \
+    for(cell_t *const *p = closure_next_arg_const(c),   \
+          *const *_end = &c->expr.arg[closure_args(c)]; \
+        p < _end;                                       \
+        p++)
+
 #define TRAVERSE_in(c)                          \
   if(!is_value(c))                              \
     for(cell_t **p = closure_next_arg(c),       \

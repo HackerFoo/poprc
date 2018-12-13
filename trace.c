@@ -77,6 +77,29 @@ typedef intptr_t trace_index_t;
       c -= c->trace.prev_cells)
 #define FOR_TRACE_REV_2(c, e) FOR_TRACE_REV_3(c, e, (e)->entry.len - ((e) + 1)->trace.prev_cells + 1)
 #define FOR_TRACE_REV(...) DISPATCH(FOR_TRACE_REV, __VA_ARGS__)
+
+/* const versions */
+
+// cell_t *c ranges from start to end
+#define FOR_TRACE_CONST_3(c, e, n)              \
+  for(const cell_t                              \
+        *_entry = (e),                          \
+        *c = _entry + (n);                      \
+      c - _entry - 1 < _entry->entry.len;       \
+      c += calculate_cells(c->size))
+#define FOR_TRACE_CONST_2(c, e) FOR_TRACE_CONST_3(c, e, 1)
+#define FOR_TRACE_CONST(...) DISPATCH(FOR_TRACE_CONST, __VA_ARGS__)
+
+// cell_t *c ranges from end to start
+#define FOR_TRACE_CONST_REV_3(c, e, n)          \
+  for(const cell_t                              \
+        *_entry = (e),                          \
+        *c = _entry + (n);                      \
+      c > _entry && c->trace.prev_cells;        \
+      c -= c->trace.prev_cells)
+#define FOR_TRACE_CONST_REV_2(c, e) FOR_TRACE_CONST_REV_3(c, e, (e)->entry.len - ((e) + 1)->trace.prev_cells + 1)
+#define FOR_TRACE_CONST_REV(...) DISPATCH(FOR_TRACE_CONST_REV, __VA_ARGS__)
+
 #endif
 
 bool is_trace_cell(void const *p) {
@@ -252,8 +275,8 @@ cell_t *index_tr(int index) {
   return x.ptr;
 }
 
-int tr_index(cell_t *c) {
-  return ((tr) { .ptr = c }).index;
+int tr_index(const cell_t *c) {
+  return ((tr) { .ptr = (cell_t *)c }).index;
 }
 
 cell_t *entry_tr(int entry) {
@@ -262,20 +285,20 @@ cell_t *entry_tr(int entry) {
   return x.ptr;
 }
 
-int tr_entry(cell_t *c) {
-  return ((tr) { .ptr = c }).entry;
+int tr_entry(const cell_t *c) {
+  return ((tr) { .ptr = (cell_t *)c }).entry;
 }
 
-void tr_set_flags(cell_t **cp, uint8_t flags) {
+void tr_set_flags(cell_t *const *cp, uint8_t flags) {
   ((tr *)cp)->flags = flags;
 }
 
-bool tr_flags(cell_t *c, uint8_t flags) {
+bool tr_flags(const cell_t *c, uint8_t flags) {
   tr *x = (tr *)&c;
   return !(~(x->flags) & flags);
 }
 
-void tr_set_index(cell_t **cp, int index) {
+void tr_set_index(cell_t *const *cp, int index) {
   ((tr *)cp)->index = index;
 }
 
@@ -1204,7 +1227,7 @@ void add_conditions_var_3(cell_t *res, cell_t *t, cell_t *a0) {
 #define add_conditions_var(...) DISPATCH(add_conditions_var, __VA_ARGS__)
 #endif
 
-int trace_entry_size(cell_t *e) {
+int trace_entry_size(const cell_t *e) {
   return e->entry.len + 1;
 }
 

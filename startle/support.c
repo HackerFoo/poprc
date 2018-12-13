@@ -941,3 +941,7 @@ TEST(seg_find) {
   if(seg_find(hello, mother)) return -2;
   return 0;
 }
+
+char capitalize(char c) {
+  return INRANGE(c, 'a', 'z') ? c - ('a' - 'A') : c;
+}

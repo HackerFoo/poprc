@@ -808,19 +808,19 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
 
 // decode a pointer to an index and return a trace pointer
 static
-cell_t *tref(cell_t *entry, cell_t *c) {
+const cell_t *tref(const cell_t *entry, const cell_t *c) {
   int i = tr_index(c);
   return i <= 0 ? NULL : &entry[i];
 }
 
 // get the return type
-type_t trace_type(cell_t *c) {
+type_t trace_type(const cell_t *c) {
   assert_error(c);
   return is_value(c) ? c->value.type : c->trace.type;
 }
 
 // resolve types in each return in e starting at c, storing the resulting types in t
-void resolve_types(cell_t *e, type_t *t) {
+void resolve_types(const cell_t *e, type_t *t) {
   csize_t out = e->entry.out;
 
   COUNTUP(i, out) {
@@ -828,8 +828,8 @@ void resolve_types(cell_t *e, type_t *t) {
   }
 
   // find first return
-  cell_t *p = NULL;
-  FOR_TRACE(tc, e) {
+  const cell_t *p = NULL;
+  FOR_TRACE_CONST(tc, e) {
     if(trace_type(tc) == T_RETURN) {
       p = tc;
       break;
@@ -894,7 +894,7 @@ void last_use_mark(cell_t *entry, cell_t **p) {
   }
 }
 
-bool is_return(cell_t *c) {
+bool is_return(const cell_t *c) {
   return is_value(c) && c->value.type == T_RETURN;
 }
 

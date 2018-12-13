@@ -510,6 +510,10 @@ cell_t *closure_next(cell_t *c) {
   return c + closure_cells(c);
 }
 
+const cell_t *closure_next_const(const cell_t *c) {
+  return c + closure_cells(c);
+}
+
 // used to get consistent allocations
 void alloc_to(size_t n) {
   if(n < LENGTH(cells) &&
