@@ -139,10 +139,6 @@ void gen_next_block(const cell_t *e, const cell_t *c) {
 }
 
 void gen_body(const cell_t *e) {
-  FOR_TRACE_CONST(c, e) {
-    if(is_var(c)) continue;
-    gen_decl(e, c);
-  }
   printf("\nentry: {\n");
   bool skip = false;
   FOR_TRACE_CONST(c, e) {
@@ -178,22 +174,36 @@ void gen_return(const cell_t *e, const cell_t *l) {
   printf("  return %s%d;\n", cname(trace_type(&e[ires])), ires);
 }
 
-void gen_decl(const cell_t *e, const cell_t *c) {
-  int i = c - e;
-  type_t t = trace_type(c);
-  if(!ONEOF(t, T_RETURN, T_BOTTOM) &&
-     !gen_is_aliased(c)) {
-    if(c->op == OP_value) {
-      if(NOT_FLAG(*c, value, IMMEDIATE)) {
-        printf("  const %s%s%d = ", ctype(t), cname(t), i);
-        gen_value_rhs(c);
+void gen_decls(const cell_t *e) {
+  // T_BOTTOM is (ab)used to indicate a new line needs to be started
+  type_t last_type = T_BOTTOM;
+  FOR_TRACE_CONST(c, e) {
+    if(is_var(c)) continue;
+    int i = c - e;
+    type_t t = trace_type(c);
+    if(!ONEOF(t, T_RETURN, T_BOTTOM) &&
+       !gen_is_aliased(c)) {
+      if(c->op == OP_value) {
+        if(NOT_FLAG(*c, value, IMMEDIATE)) {
+          if(last_type != T_BOTTOM) printf(";\n");
+          printf("  const %s%s%d = ", ctype(t), cname(t), i);
+          gen_value_rhs(c);
+          last_type = T_BOTTOM;
+        }
+      } else if(c->n ||
+                is_dep(c) ||
+                FLAG(*c, expr, PARTIAL)) {
+        if(last_type == t) {
+          printf(", %s%d", cname(t), i);
+        } else {
+          if(last_type != T_BOTTOM) printf(";\n");
+          printf("  %s%s%d", ctype(t), cname(t), i);
+          last_type = t;
+        }
       }
-    } else if(c->n ||
-              is_dep(c) ||
-              FLAG(*c, expr, PARTIAL)) {
-      printf("  %s%s%d;\n", ctype(t), cname(t), i);
     }
   }
+  if(last_type != T_BOTTOM) printf(";\n");
 }
 
 bool gen_skip(const cell_t *c) {
@@ -455,6 +465,7 @@ void gen_function(cell_t *e) {
 
   gen_function_signature(e);
   printf("\n{\n");
+  gen_decls(e);
   gen_body(e);
   printf("}\n");
   printf("} // end %s_%s\n", e->module_name, e->word_name);
