@@ -349,9 +349,9 @@ imports:
 
 __ IO buf
 getline_loop:
-  [1024 read] dip12 swap ++ [] ap20 dup __ [IO str] x2
-    [getline_loop] . swap __ no newline
-    ["\n" strsplit swap [unread] dip21 dup] . __ newline
+  [1024 read] dip12 swap [] ap30 dup __ [IO buf str] x2
+    [++ getline_loop] . swap __ no newline
+    ["\n" strsplit swap [++ unread] dip31 dup] . __ newline
     popr -swap2 swap vifte get2
 
 getline: "" getline_loop
