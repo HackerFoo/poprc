@@ -79,7 +79,7 @@ char capitalize(char c) {
 
 // print a suffix to select the mode of some primitives
 void print_type_suffix(cell_t *entry, cell_t *c) {
-  if(ONEOF(c->op, OP_otherwise, OP_assert, OP_exec)) return;
+  if(ONEOF(c->op, OP_assert, OP_exec)) return;
   printf("_%c", type_char(trace_type(c)));
   TRAVERSE(c, args) {
     char ch;
@@ -199,6 +199,10 @@ void gen_decl(cell_t *e, cell_t *c) {
   }
 }
 
+bool no_gen(const cell_t *c) {
+  return ONEOF(c->op, OP_dep, OP_seq, OP_otherwise);
+}
+
 void gen_instruction(cell_t *e, cell_t *c) {
   if(trace_type(c) == T_RETURN) {
     gen_return(e, c);
@@ -207,7 +211,7 @@ void gen_instruction(cell_t *e, cell_t *c) {
     // gen_value(e, c);
   } else if(c->op == OP_assert) {
     gen_assert(e, c);
-  } else if(ONEOF(c->op, OP_dep, OP_seq, OP_otherwise)) {
+  } else if(no_gen(c)) {
     // don't generate anything
   } else {
     gen_call(e, c);
@@ -220,8 +224,7 @@ bool last_call(cell_t *e, cell_t *c) {
   FOR_TRACE(p, e, c - e) {
     if(trace_type(p) == T_RETURN) {
       return true;
-    } else if(p->op != OP_dep &&
-              p->op != OP_assert) {
+    } else if(!no_gen(p)) {
       break;
     }
   }
