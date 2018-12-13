@@ -134,31 +134,41 @@ void gen_function_signatures(cell_t *e) {
   }
 }
 
+void next_block(cell_t *e, cell_t *c) {
+  cell_t *end = e + e->entry.len;
+  cell_t *next = closure_next(c);
+  if(next <= end) {
+    printf("}\n\nblock%d: {\n", (int)(next - e));
+  }
+}
+
 void gen_body(cell_t *e) {
   FOR_TRACE(c, e) {
     if(is_var(c)) continue;
     gen_decl(e, c);
   }
   printf("\nentry: {\n");
+  bool skip = false;
   FOR_TRACE(c, e) {
-    if(is_var(c)) continue;
-    gen_instruction(e, c);
-    FLAG_CLEAR(*c, trace, TRACED);
+    if(!skip && !is_var(c)) {
+      skip = gen_instruction(e, c);
+    }
+    if(is_return(c)) {
+      skip = false;
+      next_block(e, c);
+    }
   }
 }
 
 void gen_return(cell_t *e, cell_t *l) {
-  cell_t *end = e + e->entry.len;
   csize_t out_n = list_size(l);
   int ires = cgen_index(e, l->value.ptr[out_n - 1]);
-
-  if(FLAG(*l, trace, TRACED)) goto end;
 
   // skip if T_BOTTOM
   COUNTDOWN(i, out_n) {
     int ai = cgen_index(e, l->value.ptr[i]);
     type_t t = trace_type(&e[ai]);
-    if(t == T_BOTTOM) goto end;
+    if(t == T_BOTTOM) return;
   }
 
   COUNTDOWN(i, out_n-1) {
@@ -170,14 +180,6 @@ void gen_return(cell_t *e, cell_t *l) {
            n, (int)i, n, (int)i, n, ai);
   }
   printf("  return %s%d;\n", cname(trace_type(&e[ires])), ires);
-
-end:
-  {
-    cell_t *next = closure_next(l);
-    if(closure_next(l) <= end) {
-      printf("}\n\nblock%d: {\n", (int)(next - e));
-    }
-  }
 }
 
 void gen_decl(cell_t *e, cell_t *c) {
@@ -203,20 +205,6 @@ bool no_gen(const cell_t *c) {
   return ONEOF(c->op, OP_dep, OP_seq, OP_otherwise);
 }
 
-void gen_instruction(cell_t *e, cell_t *c) {
-  if(trace_type(c) == T_RETURN) {
-    gen_return(e, c);
-  } else if(c->op == OP_value) {
-    // values are already declared
-  } else if(c->op == OP_assert) {
-    gen_assert(e, c);
-  } else if(no_gen(c)) {
-    // don't generate anything
-  } else {
-    gen_call(e, c);
-  }
-}
-
 static
 bool last_call(cell_t *e, cell_t *c) {
   c = closure_next(c);
@@ -230,12 +218,22 @@ bool last_call(cell_t *e, cell_t *c) {
   return false;
 }
 
-void skip_to_next_block(cell_t *e, cell_t *c) {
-  c = closure_next(c);
-  FOR_TRACE(p, e, c - e) {
-    FLAG_SET(*p, trace, TRACED);
-    if(trace_type(p) == T_RETURN) break;
+bool gen_instruction(cell_t *e, cell_t *c) {
+  if(trace_type(c) == T_RETURN) {
+    gen_return(e, c);
+  } else if(c->op == OP_value) {
+    // values are already declared
+  } else if(c->op == OP_assert) {
+    gen_assert(e, c);
+  } else if(no_gen(c)) {
+    // don't generate anything
+  } else if(get_entry(c) == e && last_call(e, c)) {
+    gen_tail_call(e, c);
+    return true;
+  } else {
+    gen_call(e, c);
   }
+  return false;
 }
 
 const char *external_name(const char *str) {
@@ -280,120 +278,117 @@ int cgen_index(cell_t *e, cell_t *c) {
   return 0;
 }
 
+void gen_tail_call(cell_t *e, cell_t *c) {
+  csize_t in = closure_in(c);
+  printf("\n  // tail call\n");
+
+  // overwrite function arguments with new values
+  COUNTUP(i, in) {
+    int a = cgen_index(e, c->expr.arg[i]);
+    printf("  %s%d = %s%d;\n",
+           cname(trace_type(&e[in - i])),
+           (int)(in - i),
+           cname(trace_type(&e[a])), a);
+  };
+
+  // jump to the beginning
+  printf("  goto entry;\n");
+}
+
 void gen_call(cell_t *e, cell_t *c) {
-  if(FLAG(*c, trace, TRACED)) return;
   int lhs = c - e;
   char *sep = "";
   const char *module_name, *word_name;
 
-  if(get_entry(c) == e && last_call(e, c)) {
-    // this is a tail call
-    skip_to_next_block(e, c);
-    csize_t in = closure_in(c);
-    printf("\n  // tail call\n");
+  csize_t
+    in = closure_in(c),
+    out = closure_out(c),
+    n = closure_args(c),
+    start_out = n - closure_out(c);
 
-    // overwrite function arguments with new values
-    COUNTUP(i, in) {
-      int a = cgen_index(e, c->expr.arg[i]);
-      printf("  %s%d = %s%d;\n",
-             cname(trace_type(&e[in - i])),
-             (int)(in - i),
-             cname(trace_type(&e[a])), a);
-    };
+  trace_get_name(c, &module_name, &word_name);
+  type_t t = trace_type(c);
+  bool partial = FLAG(*c, expr, PARTIAL);
+  int next_block = 0;
+  if(partial) {
 
-    // jump to the beginning
-    printf("  goto entry;\n");
-  } else {
-    csize_t
-      in = closure_in(c),
-      out = closure_out(c),
-      n = closure_args(c),
-      start_out = n - closure_out(c);
-
-    trace_get_name(c, &module_name, &word_name);
-    type_t t = trace_type(c);
-    bool partial = FLAG(*c, expr, PARTIAL);
-    int next_block = 0;
-    if(partial) {
-
-      // find next_block
-      FOR_TRACE(p, e, closure_next(c) - e) {
-        if(trace_type(p) == T_RETURN) {
-          int size = calculate_cells(p->size);
-          if(e->entry.len + 1 - (p-e) > size) { // if this isn't the last return
-            next_block = p - e + size;
-          }
-          break;
+    // find next_block
+    FOR_TRACE(p, e, closure_next(c) - e) {
+      if(trace_type(p) == T_RETURN) {
+        int size = calculate_cells(p->size);
+        if(e->entry.len + 1 - (p-e) > size) { // if this isn't the last return
+          next_block = p - e + size;
         }
+        break;
       }
+    }
 
-      if(next_block) {
-        printf("  if(");
-      } else {
-        printf("  assert_error(!");
-      }
+    if(next_block) {
+      printf("  if(");
     } else {
-      if(trace_type(c) == T_BOTTOM) {
-        printf("  ");
-      } else {
-        printf("  %s%s%d = ", c->n ? "" : ctype(t), cname(t), lhs);
-      }
+      printf("  assert_error(!");
     }
-    if(c->op == OP_external) {
-      cell_t *name = &e[cgen_index(e, c->expr.arg[closure_in(c) - 1])];
-      assert_error(is_value(name) &&
-                   !is_var(name) &&
-                   name->value.type == T_STRING,
-                   "external name must be an immediate string");
-      printf("%s", external_name(name->value.str));
-      in--;
+  } else {
+    if(trace_type(c) == T_BOTTOM) {
+      printf("  ");
     } else {
-      printf("%s_%s", module_name, word_name);
+      printf("  %s%s%d = ", c->n ? "" : ctype(t), cname(t), lhs);
     }
-    if(ONEOF(c->op, OP_ap, OP_compose)) {
-      assert_error(in >= 1);
-      printf("%d%d", in-1, out);
-    } else if(ONEOF(c->op, OP_quote, OP_pushr)) {
-      assert_error(in >= 1 && out == 0);
-      printf("%d", in-1);
-    }
-    if(c->op != OP_external) print_type_suffix(e, c);
-    printf("(");
+  }
+  if(c->op == OP_external) {
+    cell_t *name = &e[cgen_index(e, c->expr.arg[closure_in(c) - 1])];
+    assert_error(is_value(name) &&
+                 !is_var(name) &&
+                 name->value.type == T_STRING,
+                 "external name must be an immediate string");
+    printf("%s", external_name(name->value.str));
+    in--;
+  } else {
+    printf("%s_%s", module_name, word_name);
+  }
+  if(ONEOF(c->op, OP_ap, OP_compose)) {
+    assert_error(in >= 1);
+    printf("%d%d", in-1, out);
+  } else if(ONEOF(c->op, OP_quote, OP_pushr)) {
+    assert_error(in >= 1 && out == 0);
+    printf("%d", in-1);
+  }
+  if(c->op != OP_external) print_type_suffix(e, c);
+  printf("(");
 
-    COUNTUP(i, in) {
-      int a = cgen_index(e, c->expr.arg[i]);
-      printf("%s%s%d", sep, cname(trace_type(&e[a])), a);
-      sep = ", ";
-    };
+  COUNTUP(i, in) {
+    int a = cgen_index(e, c->expr.arg[i]);
+    printf("%s%s%d", sep, cname(trace_type(&e[a])), a);
+    sep = ", ";
+  };
 
-    if(partial) {
-      if(trace_type(c) == T_BOTTOM) {
-        printf("%sNULL", sep);
-      } else {
-        printf("%s&%s%d", sep, cname(t), lhs);
-      }
-      sep = ", ";
-    }
-
-    RANGEUP(i, start_out, n) {
-      int a = cgen_index(e, c->expr.arg[i]);
-      if(a <= 0) {
-        printf("%sNULL", sep);
-      } else {
-        printf("%s&%s%d", sep, cname(trace_type(&e[a])), a);
-      }
-      sep = ", ";
-    }
-
-    if(partial) {
-      if(next_block) {
-        printf(")) goto block%d;\n", next_block);
-      } else {
-        printf("));\n");
-      }
+  if(partial) {
+    if(trace_type(c) == T_BOTTOM) {
+      printf("%sNULL", sep);
     } else {
-      printf(");\n");
+      printf("%s&%s%d", sep, cname(t), lhs);
     }
+    sep = ", ";
+  }
+
+  RANGEUP(i, start_out, n) {
+    int a = cgen_index(e, c->expr.arg[i]);
+    if(a <= 0) {
+      printf("%sNULL", sep);
+    } else {
+      printf("%s&%s%d", sep, cname(trace_type(&e[a])), a);
+    }
+    sep = ", ";
+  }
+
+  if(partial) {
+    if(next_block) {
+      printf(")) goto block%d;\n", next_block);
+    } else {
+      printf("));\n");
+    }
+  } else {
+    printf(");\n");
   }
 }
 
@@ -421,23 +416,7 @@ void gen_value_rhs(cell_t *c) {
   }
 }
 
-// print instructions that have been delayed (skipped)
-void gen_skipped(cell_t *e, int start_after, int until) {
-  if(start_after > until) {
-    FOR_TRACE(c, e, start_after) {
-      type_t t = trace_type(c);
-      if(t == T_RETURN) break;
-      TRAVERSE(c, in) {
-        if(*p && cgen_index(e, *p) == until) return;
-      }
-      gen_instruction(e, c);
-      FLAG_SET(*c, trace, TRACED);
-    }
-  }
-}
-
 void gen_assert(cell_t *e, cell_t *c) {
-  if(FLAG(*c, trace, TRACED)) return;
   int iq = cgen_index(e, c->expr.arg[1]);
   cell_t *ret = NULL;
   cell_t *end = e + trace_entry_size(e);
