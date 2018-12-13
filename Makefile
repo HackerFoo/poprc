@@ -47,10 +47,6 @@ endif
 	LDFLAGS += -rdynamic
 endif
 
-ifneq ($(UNAME_O),Android)
-	BACKTRACE = -DBACKTRACE
-endif
-
 ifeq ($(findstring emcc, $(CC)),emcc)
 	CFLAGS = -Wall -DEMSCRIPTEN -s ALIASING_FUNCTION_POINTERS=0
 	USE_LINENOISE=n
@@ -66,28 +62,28 @@ endif
 
 ifeq ($(BUILD),debug)
 	OPT_FLAG = -O0
-	CFLAGS += -g $(OPT_FLAG) $(SANITIZE) $(BACKTRACE)
-	CXXFLAGS += -g $(OPT_FLAG) $(SANITIZE) $(BACKTRACE)
+	CFLAGS += -g $(OPT_FLAG) $(SANITIZE)
+	CXXFLAGS += -g $(OPT_FLAG) $(SANITIZE)
 	LIBS += $(SANITIZE)
 endif
 
 ifeq ($(BUILD),debugger)
 	OPT_FLAG = -O0
-	CFLAGS += -g $(OPT_FLAG) $(SANITIZE) $(BACKTRACE)
-	CXXFLAGS += -g $(OPT_FLAG) $(SANITIZE) $(BACKTRACE)
+	CFLAGS += -g $(OPT_FLAG) $(SANITIZE)
+	CXXFLAGS += -g $(OPT_FLAG) $(SANITIZE)
 	LIBS += $(SANITIZE)
 	USE_LINENOISE = n
 	USE_READLINE = n
 endif
 
 ifeq ($(BUILD),release)
-	CFLAGS += -DNDEBUG $(OPT_FLAG) $(BACKTRACE)
-	CXXFLAGS += -DNDEBUG $(OPT_FLAG) $(BACKTRACE)
+	CFLAGS += -DNDEBUG $(OPT_FLAG)
+	CXXFLAGS += -DNDEBUG $(OPT_FLAG)
 endif
 
 ifeq ($(BUILD),release-with-asserts)
-	CFLAGS += $(OPT_FLAG) $(BACKTRACE)
-	CXXFLAGS += $(OPT_FLAG) $(BACKTRACE)
+	CFLAGS += $(OPT_FLAG)
+	CXXFLAGS += $(OPT_FLAG)
 endif
 
 ifeq ($(BUILD),profile)
