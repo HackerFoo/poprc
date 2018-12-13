@@ -208,7 +208,6 @@ void gen_instruction(cell_t *e, cell_t *c) {
     gen_return(e, c);
   } else if(c->op == OP_value) {
     // values are already declared
-    // gen_value(e, c);
   } else if(c->op == OP_assert) {
     gen_assert(e, c);
   } else if(no_gen(c)) {
@@ -420,12 +419,6 @@ void gen_value_rhs(cell_t *c) {
   default:
     assert_error(false); // TODO add more types
   }
-}
-
-void gen_value(cell_t *e, cell_t *c) {
-  type_t t = trace_type(c);
-  printf("  %s%d = ", cname(t), (int)(c - e));
-  gen_value_rhs(c);
 }
 
 // print instructions that have been delayed (skipped)
