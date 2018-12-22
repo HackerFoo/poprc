@@ -271,7 +271,7 @@ symbol_t __primitive_write_yys(symbol_t io, seg_t str) {
   return io;
 }
 
-static MAKE_RING_BUFFER(unread_rb, 1024);
+static ring_buffer_t *unread_rb = RING_BUFFER(1024);
 
 symbol_t __primitive_unread_yys(symbol_t io, seg_t str) {
   rb_write(unread_rb, str.s, str.n);

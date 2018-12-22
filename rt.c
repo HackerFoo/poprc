@@ -985,7 +985,7 @@ bool is_linear(context_t *ctx) {
 }
 
 static char input_buf[1024];
-static MAKE_RING_BUFFER(unread_rb, 1024);
+static ring_buffer_t *unread_rb = RING_BUFFER(1024);
 
 void default_io_unread(seg_t s) {
   rb_write(unread_rb, s.s, s.n);

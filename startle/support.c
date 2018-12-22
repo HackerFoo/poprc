@@ -853,10 +853,10 @@ typedef struct ring_buffer {
     char data[_size];                           \
   }
 
-#define MAKE_RING_BUFFER(name, _size)           \
-  ring_buffer_t *name = (ring_buffer_t *)       \
-    &(APPEND_DATA_TO(ring_buffer_t, _size))     \
-  {{ .size = _size }, {0}}
+#define RING_BUFFER(_size)                      \
+  ((ring_buffer_t *)                            \
+   &(APPEND_DATA_TO(ring_buffer_t, _size))      \
+  {{ .size = _size }, {0}})
 #endif
 
 TEST(append_data_to) {
@@ -911,7 +911,7 @@ size_t rb_read(ring_buffer_t *rb, char *dst, size_t size) {
 
 TEST(ring_buffer) {
   char out[8];
-  MAKE_RING_BUFFER(rb, 8);
+  ring_buffer_t *rb = RING_BUFFER(8);
 
   WRITE("hello");
   PRINT(2);
