@@ -25,6 +25,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include "startle/types.h"
 #include "startle/macros.h"
 #include "startle/error.h"
 #include "startle/log.h"

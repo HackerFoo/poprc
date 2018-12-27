@@ -25,8 +25,8 @@ comments => 0
 i = 0
 i = 1
 i = 2
-[37;44mBREAKPOINT[0m [37;41m!!![0m startle/error.c:231: test_error: Assertion `i < 3' failed: Don't worry, it's okay. [38;5;8mpshx[0m
-[37;44mTEST[0m [37;41m!!![0m startle/error.c:231: test_error: Assertion `i < 3' failed: Don't worry, it's okay. [38;5;8mpshx[0m
+[37;44mBREAKPOINT[0m [37;41m!!![0m startle/error.c:232: test_error: Assertion `i < 3' failed: Don't worry, it's okay. [38;5;8mdnxx[0m
+[37;44mTEST[0m [37;41m!!![0m startle/error.c:232: test_error: Assertion `i < 3' failed: Don't worry, it's okay. [38;5;8mdnxx[0m
 error => 0
 @ escape_string
 test\n\\string\bG\0stuff\x1b

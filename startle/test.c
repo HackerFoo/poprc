@@ -31,17 +31,22 @@
  *  @brief Unit testing
  */
 
+typedef struct test_entry {
+  char *name;
+  int (*run)();
+} test_entry_t;
+
 #define TEST__ITEM(name) extern int test_##name();
 #include "test_list.h"
 #undef TEST__ITEM
 
-#define TEST__ITEM(name)                                 \
-  {                                                      \
-    .first = (uintptr_t)#name,                           \
-    .second = (uintptr_t)&test_##name                    \
+#define TEST__ITEM(_name)   \
+  {                         \
+    .name = #_name,         \
+    .run = &test_##_name    \
   },
 
-pair_t tests[] = {
+static test_entry_t tests[] = {
 #include "test_list.h"
 };
 
@@ -51,13 +56,11 @@ pair_t tests[] = {
 int run_test(seg_t name) {
   int fail = 0;
   FOREACH(i, tests) {
-    pair_t *entry = &tests[i];
-    char *entry_name = (char *)entry->first;
-    int (*entry_func)() = (int (*)())entry->second;
-    if(strncmp(entry_name, name.s, name.n) == 0) {
-      printf("@ %s\n", entry_name);
-      int result = entry_func();
-      printf("%s => %d\n", entry_name, result);
+    test_entry_t *entry = &tests[i];
+    if(strncmp(entry->name, name.s, name.n) == 0) {
+      printf("@ %s\n", entry->name);
+      int result = entry->run();
+      printf("%s => %d\n", entry->name, result);
       if(result && !fail) fail = result;
     }
   }
