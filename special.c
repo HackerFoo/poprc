@@ -64,12 +64,11 @@ OP(value) {
       c->value.type = ctx->t;
       trace_update(c, c);
     }
-    if(ctx->t == T_LIST &&
-       is_function(c)) {
-      placeholder_extend(cp, ctx->in, ctx->out);
+    if(ctx->t == T_LIST) {
+      placeholder_extend(cp, ctx->s, false);
     }
   } else if(is_row_list(c)) {
-    placeholder_extend(cp, ctx->in, ctx->out);
+    placeholder_extend(cp, ctx->s, false);
   } else if(c->pos) {
     if(is_list(c) && !is_empty_list(c)) {
       TRAVERSE(c, ptrs) {
@@ -131,30 +130,26 @@ bool is_value(cell_t const *c) {
   return c && c->op == OP_value;
 }
 
-void placeholder_extend(cell_t **lp, int in, int out) {
+void placeholder_extend(cell_t **lp, qsize_t s, bool wrap_var) {
   cell_t *l = *lp;
   assert_error(l->value.type == T_LIST);
-  if(in == 0 && out == 0) return;
+  if(s.in == 0 && s.out == 0 && !wrap_var) return;
   if(is_var(l)) {
-    cell_t *ex = trace_extension(l, in, out);
-    if(!ex) ex = var_create_list(l, in, out, 0);
+    cell_t *ex = trace_extension(l, s.in, s.out);
+    if(!ex) ex = var_create_list(l, s.in, s.out, 0);
     *lp = ex;
     return;
   }
   if(!is_row_list(l)) return;
-  csize_t
-    f_in = function_in(l),
-    f_out = function_out(l, false),
-    d_in = in - min(in, f_in),
-    d_out = out - min(out, f_out);
-  if(d_in == 0 && d_out == 0) return;
+  qsize_t ds = csub_size(s, quote_size(l, false));
+  if(ds.in == 0 && ds.out == 0) return;
   cell_t **left = leftmost_row(&l);
   if(!left) return;
   // HACK need to map_assert after extending
   if((*left)->op == OP_assert) force(left);
   cell_t *f = *left;
   if(!(is_function(f) || is_placeholder(f))) return;
-  cell_t *ph = func(OP_placeholder, d_in + 1, d_out + 1);
+  cell_t *ph = func(OP_placeholder, ds.in + 1, ds.out + 1);
 
   if(l->n) {
     l->n--;
@@ -163,22 +158,22 @@ void placeholder_extend(cell_t **lp, int in, int out) {
     left = leftmost_row(&l);
     f = *left;
   }
-  LOG("placeholder_extend: (%d, %d) %C -> %C", in, out, *lp, l);
+  LOG("placeholder_extend: (%d, %d) %C -> %C", s.in, s.out, *lp, l);
 
-  if(d_out) {
-    cell_t *l_exp = make_list(d_out + 1);
+  if(ds.out) {
+    cell_t *l_exp = make_list(ds.out + 1);
     l_exp->value.flags = VALUE_ROW;
-    COUNTUP(i, d_out) {
+    COUNTUP(i, ds.out) {
       cell_t *d = dep(ph);
       l_exp->value.ptr[i] = d;
       arg(ph, d);
     }
     *left = l_exp;
-    left = &l_exp->value.ptr[d_out];
+    left = &l_exp->value.ptr[ds.out];
   }
 
   arg(ph, f);
-  refn(ph, d_out);
+  refn(ph, ds.out);
   *left = ph;
   *lp = l;
 }

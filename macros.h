@@ -175,8 +175,8 @@
 #endif
 
 #define is_marked(p) (((uintptr_t)(p) & (MARK_BIT)) != 0)
-#define mark_ptr(p) ((void *)((uintptr_t)(p) | (MARK_BIT)))
-#define clear_ptr(p) ((void *)((uintptr_t)(p) & ~(MARK_BIT)))
+#define mark_ptr(p) ((cell_t *)((uintptr_t)(p) | (MARK_BIT)))
+#define clear_ptr(p) ((cell_t *)((uintptr_t)(p) & ~(MARK_BIT)))
 
 #define CELL_INDEX(x) (int)((x) - cells)
 #define TRACE_INDEX(x) (int)((x) - trace_cells)

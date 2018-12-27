@@ -1,5 +1,8 @@
 #+TITLE: PoprC Notes
 
+* placeholder
+extendable version of ap/compose: byte_compile.c:425
+build ap/compose tree instead
 * IO streams
 IO a b ++ write ==> IO a write b write
 IO read "\n" strsplit ==> ...

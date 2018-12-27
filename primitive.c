@@ -717,18 +717,6 @@ OP(dup) {
   return RETRY;
 }
 
-// outputs required from the left operand given the rignt operand
-csize_t function_compose_out(cell_t *c, csize_t arg_in, csize_t out) {
-  c = clear_ptr(c);
-  return csub(function_in(c) + csub(out, function_out(c, true)), arg_in);
-}
-
-// inputs required from the right operand given the left operand
-csize_t function_compose_in(cell_t *c, csize_t req_in, csize_t arg_in, bool row) {
-  c = clear_ptr(c);
-  return csub(req_in, function_in(c)) + function_out(c, row) + arg_in;
-}
-
 static
 response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   CONTEXT("%s: %C", row ? "compose" : "ap", *cp);
@@ -742,27 +730,41 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
 
   cell_t *p = NULL;
   cell_t *res = NULL;
-  int pos = c->pos ? c->pos : ((cell_t *)clear_ptr(c->expr.arg[in]))->pos;
+  int pos = c->pos ? c->pos : clear_ptr(c->expr.arg[in])->pos;
+
+  // conservative guesses for the sizes of `a` and `b`
+  qsize_t
+    cs = {ctx->s.in, ctx->s.out + out},
+    bs = {cs.in + arg_in, cs.out},
+    as = {cs.in, cs.in};
 
   if(row) {
-    CHECK(reduce_arg(c, 0, &CTX(list, ctx->in, 0)));
+    // assume no outputs here
+    CHECK(reduce_arg(c, 0, &CTX(list, as.in, 0)));
     CHECK_DELAY();
     p = clear_ptr(c->expr.arg[0]);
+    as = quote_size(p, false);
   }
-  CHECK(reduce_arg(c, in,
-                   &CTX(list,
-                        function_compose_in(p, out ? 0 : ctx->in, arg_in, false /*_1_*/),
-                        ctx->out + out)));
+
+  bs = compose_size_b(arg_in, as, cs);
+  CHECK(reduce_arg(c, in, &CTX(list,
+                               out ? arg_in : bs.in, // only account for known inputs when there are outputs
+                               bs.out)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
   clear_flags(c);
+  bs = quote_size(c->expr.arg[in], false);
   if(row) {
-    placeholder_extend(&c->expr.arg[0], ctx->in, function_compose_out(c->expr.arg[in], arg_in, ctx->out + out));
+    placeholder_extend(&c->expr.arg[0], compose_size_a(arg_in, bs, cs), false);
     p = clear_ptr(c->expr.arg[0]);
+    as = quote_size(p, true); // *** why?
   }
   cell_t **q = &c->expr.arg[in];
-  placeholder_extend(q, function_compose_in(p, ctx->in, arg_in, true /*_1_*/), ctx->out + out);
-  // *** _1_ don't know if/why this works
+  placeholder_extend(q, compose_size_b(arg_in, as, cs), true);
+  bs = quote_size(*q, false);
+  cs = compose_size_c(arg_in, as, bs);
+
+  assert_error(!is_var(*q));
 
   reverse_ptrs((void **)c->expr.arg, in);
   list_iterator_t it = {

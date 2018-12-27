@@ -276,7 +276,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
   COUNTUP(i, in) {
     cell_t *p = &entry[i + 1];
     cell_t *a = c->expr.arg[REVI(i)];
-    assert_error(is_var(p));
+    assert_error(is_var(p), "%d", i);
     if(p->n + 1 == 0) {
       drop(a);
     } else {
@@ -603,15 +603,15 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
   PRE(exec_wrap, "%s 0x%x #wrap", entry->word_name, (*cp)->expr.flags);
   LOG_UNLESS(entry->entry.out == 1, "out = %d #unify-multiout", entry->entry.out);
 
-  assert_error(ctx->out < sizeof(wrap.dep_mask) * 8);
-  wrap.dep_mask = (1 << ctx->out) - 1;
+  assert_error(ctx->s.out < sizeof(wrap.dep_mask) * 8);
+  wrap.dep_mask = (1 << ctx->s.out) - 1;
   int dropped = 0;
   context_t *top = NULL;
   if(ctx->t == T_LIST) {
-    cell_t *deps[ctx->out];
-    top = collect_ap_deps(ctx->up, deps, ctx->out);
+    cell_t *deps[ctx->s.out];
+    top = collect_ap_deps(ctx->up, deps, ctx->s.out);
     if(top) {
-      COUNTUP(i, ctx->out) {
+      COUNTUP(i, ctx->s.out) {
         if(!deps[i]) {
           wrap.dep_mask &= ~(1 << i);
           dropped++;
@@ -647,8 +647,8 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
 
   // eliminate intermediate list
   if(ctx->t == T_LIST) {
-    l = unwrap(l, wrap.dep_mask, ctx->out, dropped);
-    new_entry->entry.out += ctx->out - 1 - dropped;
+    l = unwrap(l, wrap.dep_mask, ctx->s.out, dropped);
+    new_entry->entry.out += ctx->s.out - 1 - dropped;
   }
 
   // IDEA break here?
@@ -666,7 +666,7 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
   drop(c);
 
   if(top) {
-    trace_drop_return(new_entry, ctx->out, wrap.dep_mask);
+    trace_drop_return(new_entry, ctx->s.out, wrap.dep_mask);
   }
   trace_final_pass(new_entry);
   trace_end_entry(new_entry);
@@ -683,7 +683,7 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
 
   // build list expected by caller
   if(ctx->t == T_LIST) {
-    trace_reduction(p, wrap_vars(&res, p, wrap.dep_mask, ctx->out));
+    trace_reduction(p, wrap_vars(&res, p, wrap.dep_mask, ctx->s.out));
   }
 
   // handle deps
@@ -720,7 +720,7 @@ response exec_list(cell_t **cp, context_t *ctx) {
   cell_t *res;
   csize_t
     in = closure_in(c),
-    out = ctx->out - 1,
+    out = ctx->s.out - 1,
     n = in + out;
 
   // if ctx->t == T_LIST, need to wrap here
@@ -728,7 +728,7 @@ response exec_list(cell_t **cp, context_t *ctx) {
   c = expand(c, out);
   FLAG_SET(*c, expr, NO_UNIFY);
   c->expr.out = out;
-  res = make_list(ctx->out);
+  res = make_list(ctx->s.out);
   res->value.ptr[out] = c;
   COUNTUP(i, out) {
     cell_t *d = dep(ref(c));

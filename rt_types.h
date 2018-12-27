@@ -65,13 +65,17 @@ typedef intptr_t val_t;
 #pragma clang diagnostic ignored "-Wgnu-empty-initializer"
 #endif
 
+typedef struct qsize {
+  csize_t in, out;
+} qsize_t;
+
 struct context {
   context_t *up;
   cell_t *src;
   val_t expected_value;
   alt_set_t alt_set;
   int priority;
-  csize_t in, out;
+  qsize_t s;
   type_t t;
   uint8_t pos;
   bool retry;

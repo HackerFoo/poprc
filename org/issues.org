@@ -60,6 +60,7 @@ assert also works this way
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
+** TODO add trace ring buffer for ref/drop to quickly find source of memory problems
 ** TODO Document different uses of cell_t fields
 ** TODO look at logic to trace ap vs. compose (tests.ap_loop4)
 - compMN = apM0 . ap0N

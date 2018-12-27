@@ -259,6 +259,7 @@ bool is_delayed(const cell_t *c) {
 }
 
 bool is_split(const cell_t *c) {
+  if(!c) return false; // ***
   return is_value(c) ?
     FLAG(*c, value, SPLIT) :
     FLAG(*c, expr, SPLIT);
@@ -878,7 +879,7 @@ uint8_t new_alt_id(unsigned int n) {
   .inv = ctx->inv
 #define CTX(type, ...) CONCAT(CTX_, type)(__VA_ARGS__)
 #define CTX_list(_in, _out) \
-  ((context_t) { .t = T_LIST, .in = _in, .out = _out, CTX_INHERIT})
+  ((context_t) { .t = T_LIST, .s = { .in = _in, .out = _out }, CTX_INHERIT})
 #define CTX_t_1(_t)                                                     \
   ((context_t) { .t = _t, CTX_INHERIT, .expected = false })
 #define CTX_t_2(_t, _expected_val)                                          \
@@ -894,7 +895,7 @@ uint8_t new_alt_id(unsigned int n) {
 #define CTX_return() \
   ((context_t) { .t = T_RETURN })
 #define CTX_INV(invert) ctx->expected, (ctx->expected ? invert(ctx->expected_value) : 0)
-#define CTX_UP ((context_t) { .t = ctx->t, .in = ctx->in, .out = ctx->out, CTX_INHERIT})
+#define CTX_UP ((context_t) { .t = ctx->t, .s = { .in = ctx->s.in, .out = ctx->s.out }, CTX_INHERIT})
 #endif
 
 // default 'ctx' for CTX(...) to inherit
@@ -1033,4 +1034,60 @@ bool should_delay(context_t *ctx, int priority) {
   return ctx->priority == PRIORITY_SIMPLIFY ?
     ONEOF(priority, PRIORITY_VAR, PRIORITY_EXEC_SELF):
     ctx->priority < priority;
+}
+
+// b.in > a.out
+//   c.in = a.in + b.in - a.out
+//   c.out = b.out
+// b.in < a.out
+//   c.in = a.in
+//   c.out = b.out + a.out - b.in
+
+qsize_t compose_size_c(csize_t n, qsize_t a, qsize_t b) {
+  a.out += n;
+  return (qsize_t) {
+    .in  = a.in  + csub(b.in, a.out),
+    .out = b.out + csub(a.out, b.in)
+  };
+}
+
+// solve for the size of a in: a b . ==> c
+qsize_t compose_size_a(csize_t n, qsize_t b, qsize_t c) {
+  return (qsize_t) {
+    .in = c.in,
+    .out = csub(b.in + csub(c.out, b.out), n)
+  };
+}
+
+// solve for the size of b in: a b . ==> c
+qsize_t compose_size_b(csize_t n, qsize_t a, qsize_t c) {
+  return (qsize_t) {
+    .in = a.out + n + csub(c.in, a.in),
+    .out = c.out
+  };
+}
+
+TEST(compose_size) {
+  COUNTUP(c_in, 4) {
+    COUNTUP(c_out, 4) {
+      COUNTUP(n, 4) {
+        qsize_t
+          c = { .in = c_in, .out = c_out },
+          a = { .in = c_in & ~1, .out = c_out & ~1 },
+          b = compose_size_b(n, a, c);
+        a = compose_size_a(n, b, c);
+        c = compose_size_c(n, a, b);
+        LOG("%d -> %d (%d) %d -> %d ===> %d -> %d", a.in, a.out, n, b.in, b.out, c.in, c.out);
+        if(c.in != c_in || c.out != c_out) return -1;
+      }
+    }
+  }
+  return 0;
+}
+
+qsize_t csub_size(qsize_t a, qsize_t b) {
+  return (qsize_t) {
+    .in  = csub(a.in,  b.in),
+    .out = csub(a.out, b.out)
+  };
 }

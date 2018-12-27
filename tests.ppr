@@ -371,3 +371,9 @@ hello:
 ext_cos: float_t "@math.h:cos" external float_t
 
 __ f10: [] [1] | ap12 swap2 drop
+
+__ [1 [2]] ==> [[1] 2]
+f11: popr pushl
+
+either_test:
+  [] swap . . head

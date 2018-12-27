@@ -460,3 +460,10 @@ TEST(function_in) {
   drop(l);
   return in == 2 ? 0 : -1;
 }
+
+qsize_t quote_size(cell_t *c, bool row) {
+  return (qsize_t) {
+    .in = function_in(c),
+    .out = function_out(c, row)
+  };
+}
