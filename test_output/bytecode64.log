@@ -2727,6 +2727,15 @@ ___ tests.pct (2 -> 1) ___
 [8] __primitive.mul_float 2 6 :: d x1
 [9] return [8]
 
+___ tests.popar (2 -> 4) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] __primitive.ap 1 -> 4 :: l? x2
+[4] __primitive.dep 3 :: a x1
+[5] __primitive.ap 2 -> 6 :: l? x2
+[6] __primitive.dep 5 :: a x1
+[7] return [5 3 6 4]
+
 ___ tests.popr_quote_compose (1 -> 1) ___
 [1] var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
@@ -2906,6 +2915,15 @@ ___ tests.stream_q0 (1 -> 1) ___
 [5] [] :: l x1
 [6] return [4]
 
+___ tests.sum3 (3 -> 1) ___
+[1] var :: ?a x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] __primitive.quote 3 2 1 :: l x1
+[5] algorithm.sum_r0 6 4 :: i x1
+[6] val 0 :: i x1
+[7] return [5]
+
 ___ tests.sum_times2 (2 -> 1) ___
 [1] var :: ?i x1
 [2] var :: ?y x1
@@ -3059,4 +3077,32 @@ ___ tests.while_length_r0 (2 -> 1) rec ___
 [5] __primitive.ap 1 -> X :: l? x1
 [6] tests.while_length_r0 3 5 :: v x1
 [7] return [6]
+
+___ tests.zip (3 -> 1) ___
+[1] var :: ?a x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] tests.zip_r0 3 2 1 :: a x1
+[5] return [4]
+
+___ tests.zip_r0 (3 -> 1) ___
+[1] var :: ?a x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] __primitive.quote 3 2 1 5 :: a x1
+[5] [] :: l x1
+[6] return [4]
+
+___ tests.zip1 (4 -> 4) ___
+[1] var :: ?l x1
+[2] var :: ?l x2
+[3] var :: ?l x1
+[4] var :: ?l x1
+[5] __primitive.ap 4 -> 6 :: l? x2
+[6] __primitive.dep 5 :: a x1
+[7] __primitive.ap 3 -> 8 :: l? x2
+[8] __primitive.dep 7 :: a x1
+[9] __primitive.ap 6 8 &2 :: l x1
+[10] __primitive.compose 9 1 :: l x1
+[11] return [5 7 2 10]
 

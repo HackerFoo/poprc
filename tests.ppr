@@ -370,6 +370,18 @@ ext_cos: float_t "@math.h:cos" external float_t
 
 __ f10: [] [1] | ap12 swap2 drop
 
+sum3: [] ap30 sum
+
+__ [a] [b] [f] [acc]
+
+popar: [popr] dip12 popr [swap] dip22
+zip1:
+  [dup] dip12 . swap pushr __ stuff f into both ends of acc
+    [popar] dip24 ap20 __ pull from a & b into acc
+    popr swap __ pull f back out
+
+zip: [[]] ap30 [zip1] while
+
 __ [1 [2]] ==> [[1] 2]
 f11: popr pushl
 
