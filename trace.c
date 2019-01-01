@@ -513,7 +513,7 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
 
   if(tc->op == OP_external) { // a little HACKy
     cell_t *name = &entry[tr_index(tc->expr.arg[closure_in(tc) - 1])];
-    if(!name->n && is_value(name)) FLAG_SET(*name, value, IMMEDIATE);
+    if(!name->n && is_value(name)) FLAG_SET(*name, trace, IMMEDIATE);
   }
 
   // encode outputs
@@ -659,7 +659,7 @@ uint8_t trace_recursive_changes(cell_t *entry) {
           assert_error(is_var(a));
           cnt++;
           // mark variables that change during recursion
-          FLAG_SET(*a, value, CHANGES);
+          FLAG_SET(*a, trace, CHANGES);
         }
       }
 

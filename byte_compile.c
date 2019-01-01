@@ -106,6 +106,7 @@ void print_bytecode(cell_t *entry) {
         }
         printf("]");
       } else if(is_var(c)) { // variable
+        if(FLAG(*c, trace, CHANGES)) printf(" changing");
         printf(" var");
       } else { // value
         print_value(c);
@@ -708,7 +709,7 @@ void move_changing_values(cell_t *entry, cell_t *c) {
   cell_t *expanding = c->expr.arg[closure_in(c)];
   TRAVERSE(c, in) {
     int i = expanding->entry.in - (p - c->expr.arg);
-    if(FLAG(expanding[i], value, CHANGES)) {
+    if(FLAG(expanding[i], trace, CHANGES)) {
       set_pos_for_values(*p, entry);
     }
   }

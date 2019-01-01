@@ -41,7 +41,8 @@ typedef enum __attribute__((packed)) type_t {
   T_RETURN, /**< a list of return values, trace ONLY */
   T_FLOAT,
   T_MODULE, /**< module definition ONLY */
-  T_BOTTOM /**< the uninhabited type */
+  T_BOTTOM, /**< the uninhabited type */
+  T_FAIL // TODO use T_BOTTOM
 } type_t;
 
 typedef struct cell cell_t;
@@ -128,13 +129,12 @@ struct __attribute__((packed)) expr {
 
 // value flags
 #define FLAG_value (value, VALUE)
-#define VALUE_SPLIT      0x01
-#define VALUE_IMMEDIATE  0x02
-#define VALUE_DEP        0x04
-#define VALUE_CHANGES    0x08
-#define VALUE_ROW        0x10
-#define VALUE_TRACED     0x20
-#define VALUE_FAIL       0x40
+#define VALUE_TRACED     0x02
+#define VALUE_SPLIT      0x04
+#define VALUE_DEP        0x08
+#define VALUE_LOCAL      0x10
+#define VALUE_LINEAR     0x20
+#define VALUE_ROW        0x40
 #define VALUE_VAR        0x80
 
 // trace flags
@@ -142,6 +142,8 @@ struct __attribute__((packed)) expr {
 #define TRACE_INCOMPLETE 0x01
 #define TRACE_TRACED     0x02
 #define TRACE_USED       0x04
+#define TRACE_IMMEDIATE  0x08
+#define TRACE_CHANGES    0x10
 
 /* reduced value */
 struct __attribute__((packed)) value {

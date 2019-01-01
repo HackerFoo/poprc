@@ -61,7 +61,9 @@ cell_t fail_cell = {
   .op = OP_value,
   .size = 1,
   .n = PERSISTENT,
-  .value.flags = VALUE_FAIL
+  .value = {
+    .type = T_FAIL
+  }
 };
 
 cell_t nil_cell = {
@@ -366,8 +368,14 @@ cell_t *refn(cell_t *c, refcount_t n) {
   return c;
 }
 
+bool has_type(cell_t const *c, int t) {
+  return c &&
+    c->op == OP_value &&
+    c->value.type == t;
+}
+
 bool is_fail(cell_t const *c) {
-  return is_value(c) && FLAG(*c, value, FAIL) != 0;
+  return has_type(c, T_FAIL);
 }
 
 bool is_any(cell_t const *c) {

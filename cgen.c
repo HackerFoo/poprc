@@ -184,7 +184,7 @@ void gen_decls(const cell_t *e) {
     if(!ONEOF(t, T_RETURN, T_BOTTOM) &&
        !gen_is_aliased(c)) {
       if(c->op == OP_value) {
-        if(NOT_FLAG(*c, value, IMMEDIATE)) {
+        if(NOT_FLAG(*c, trace, IMMEDIATE)) {
           if(last_type != T_BOTTOM) printf(";\n");
           printf("  const %s%s%d = ", ctype(t), cname(t), i);
           gen_value_rhs(c);

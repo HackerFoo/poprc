@@ -389,12 +389,6 @@ void print_int(val_t x) {
   }
 }
 
-bool has_type(cell_t const *c, int t) {
-  return c &&
-    c->op == OP_value &&
-    c->value.type == t;
-}
-
 void show_int(cell_t const *c) {
   assert_error(has_type(c, T_INT));
   print_int(c->value.integer);
@@ -574,11 +568,12 @@ char *show_type(type_t t) {
 char *show_type_all(const cell_t *c) {
   const static char *type_flag_name[] = {
     "VAR",
-    "FAIL",
-    "TRACED",
     "ROW",
-    "CHANGES",
-    "DEP"
+    "LINEAR",
+    "LOCAL",
+    "DEP",
+    "SPLIT",
+    "TRACED"
   };
   static char buf[64];
   char *p = buf;
@@ -603,6 +598,7 @@ char type_char(type_t t) {
   case T_RETURN: return 'r';
   case T_FLOAT:  return 'd';
   case T_BOTTOM: return 'v';
+  case T_FAIL:   return 'f';
   case T_MODULE: return 'e';
   }
   return 'x';
@@ -612,11 +608,9 @@ char type_char(type_t t) {
 char *show_type_all_short(const cell_t *c) {
   const static char type_flag_char[] = {
     '?',
-    '!',
-    '.',
     '@',
-    '*',
-    '^'
+    '!',
+    '.'
   };
   static char buf[LENGTH(type_flag_char) + 1];
 

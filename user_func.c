@@ -864,7 +864,7 @@ bool all_dynamic(cell_t *entry, cell_t *c) {
     return true;
   }
   COUNTUP(i, in) {
-    if(NOT_FLAG(entry[i+1], value, CHANGES)) {
+    if(NOT_FLAG(entry[i+1], trace, CHANGES)) {
       int a = REVI(i);
       force(&c->expr.arg[a]); // HACK
       if(!is_input(c->expr.arg[a])) {

@@ -46,9 +46,7 @@ OP(value) {
   }
 
   // TODO move this check out - ctx shouldn't cause a FAIL
-  CHECK_IF(FLAG(*c, value, FAIL) ||
-           !check_type(ctx->t, c->value.type),
-           FAIL);
+  CHECK_IF(!check_type(ctx->t, c->value.type), FAIL);
 
   if(ctx->expected && !is_var(c) &&
      ctx->expected_value != c->value.integer) {

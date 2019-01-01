@@ -520,7 +520,7 @@ void store_fail(cell_t *c, cell_t *alt) {
   closure_shrink(c, 1);
   memset(&c->value, 0, sizeof(c->value));
   c->op = OP_value;
-  FLAG_SET(*c, value, FAIL);
+  c->value.type = T_FAIL;
   c->alt = alt;
 }
 
@@ -575,7 +575,7 @@ response abort_op(response rsp, cell_t **cp, context_t *ctx) {
       closure_shrink(c, 1);
       memset(&c->value, 0, sizeof(c->value));
       c->op = OP_value;
-      c->value.flags = VALUE_FAIL;
+      c->value.type = T_FAIL;
     }
     drop(c);
     *cp = alt;
@@ -907,10 +907,11 @@ context_t *ctx_pos(context_t *ctx, uint8_t pos) {
 }
 
 bool check_type(uint8_t requested, uint8_t expected) {
-  if(expected != T_ANY &&
-     !ONEOF(requested, T_ANY,
-                       T_BOTTOM,
-                       expected)) {
+  if(expected == T_FAIL ||
+     (expected != T_ANY &&
+      !ONEOF(requested, T_ANY,
+                        T_BOTTOM,
+            expected))) {
     LOG("check_type: requested %d, but expected %d", requested, expected);
     return false;
   }
