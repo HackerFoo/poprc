@@ -40,6 +40,7 @@ typedef enum __attribute__((packed)) type_t {
   T_STRING,
   T_RETURN, /**< a list of return values, trace ONLY */
   T_FLOAT,
+  T_OPAQUE,
   T_MODULE, /**< module definition ONLY */
   T_BOTTOM, /**< the uninhabited type */
   T_FAIL // TODO use T_BOTTOM

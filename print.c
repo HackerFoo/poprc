@@ -519,6 +519,8 @@ void show_one(cell_t const *c) {
     show_int(c);
   } else if(has_type(c, T_FLOAT)) {
     show_float(c);
+  } else if(has_type(c, T_OPAQUE)) {
+    printf("#");
   } else if(has_type(c, T_STRING)) {
     show_string(c);
   } else if(has_type(c, T_LIST)) {
@@ -557,6 +559,7 @@ char *show_type(type_t t) {
   _case(T_STRING);
   _case(T_RETURN);
   _case(T_FLOAT);
+  _case(T_OPAQUE);
   _case(T_BOTTOM);
   _case(T_MODULE);
   default: return "???";
@@ -597,6 +600,7 @@ char type_char(type_t t) {
   case T_STRING: return 's';
   case T_RETURN: return 'r';
   case T_FLOAT:  return 'd';
+  case T_OPAQUE: return 'o';
   case T_BOTTOM: return 'v';
   case T_FAIL:   return 'f';
   case T_MODULE: return 'e';

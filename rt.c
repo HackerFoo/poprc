@@ -892,8 +892,8 @@ uint8_t new_alt_id(unsigned int n) {
 #define CTX_float(...) CTX_t(T_FLOAT, ##__VA_ARGS__)
 #define CTX_symbol(...) CTX_t(T_SYMBOL, ##__VA_ARGS__)
 #define CTX_string(...) CTX_t(T_STRING, ##__VA_ARGS__)
-#define CTX_return() \
-  ((context_t) { .t = T_RETURN })
+#define CTX_opaque() ((context_t) { .t = T_OPAQUE })
+#define CTX_return() ((context_t) { .t = T_RETURN })
 #define CTX_INV(invert) ctx->expected, (ctx->expected ? invert(ctx->expected_value) : 0)
 #define CTX_UP ((context_t) { .t = ctx->t, .s = { .in = ctx->s.in, .out = ctx->s.out }, CTX_INHERIT})
 #endif

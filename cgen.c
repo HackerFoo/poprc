@@ -51,6 +51,7 @@ const char *ctype(type_t t) {
     [T_MAP]      = "map_t ",
     [T_STRING]   = "seg_t ",
     [T_FLOAT]    = "double ",
+    [T_OPAQUE]   = "void *",
     [T_BOTTOM]   = "void ",
   };
   assert_error(t < LENGTH(table));
@@ -67,6 +68,7 @@ const char *cname(type_t t) {
     [T_MAP]      = "map",
     [T_STRING]   = "str",
     [T_FLOAT]    = "flt",
+    [T_OPAQUE]   = "ptr",
     [T_BOTTOM]   = "bot"
   };
   assert_error(t < LENGTH(table));
