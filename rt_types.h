@@ -159,6 +159,7 @@ struct __attribute__((packed)) value {
         double flt;     /* float */
         char str[0];    /* string */
         cell_t *ptr[2]; /* list */
+        void *opaque;   /* opaque */
       };
     };
     pair_t map[1]; /* map */
@@ -332,11 +333,5 @@ typedef struct list_iterator {
 void breakpoint();
 
 #define COMMAND(name, desc) void command_##name(UNUSED cell_t *rest)
-
-typedef struct {
-  seg_t (*read)(size_t);
-  void (*write)(seg_t);
-  void (*unread)(seg_t);
-} io_t;
 
 #endif

@@ -219,6 +219,8 @@ some.modules:
   module two
   module three
 parse_def => 0
+@ parse_file_prefix
+parse_file_prefix => 0
 @ parse_module
 Loaded modules (a, b)
 module a:
@@ -255,6 +257,8 @@ ring_buffer => 0
 rotate => 0
 @ seg_find
 seg_find => 0
+@ seg_find_char
+seg_find_char => 0
 @ seg_trim
 trimmed: "hi"
 seg_trim => 0

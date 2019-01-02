@@ -1200,6 +1200,16 @@ void add_conditions_3(cell_t *res, cell_t *a0, cell_t *a1) {
   }
 }
 
+void add_conditions_4(cell_t *res, cell_t *a0, cell_t *a1, cell_t *a2) {
+  cell_t **v = &res->value.var;
+  if(!is_var(res)) {
+    *v = concatenate_conditions(*v,
+           concatenate_conditions(value_condition(a0),
+             concatenate_conditions(value_condition(a1),
+                                    value_condition(a2))));
+  }
+}
+
 void add_conditions_from_array(cell_t *res, cell_t **a, unsigned int n) {
   cell_t **v = &res->value.var;
   if(!is_var(res) && n) {

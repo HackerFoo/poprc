@@ -942,6 +942,24 @@ TEST(seg_find) {
   return 0;
 }
 
+const char *seg_find_char(seg_t haystack, char needle) {
+  if(haystack.n == 0) return NULL;
+  const char *end = seg_end(haystack);
+  const char *p = haystack.s;
+  while(p < end) {
+    if(*p == needle) return p;
+    p++;
+  }
+  return NULL;
+}
+
+TEST(seg_find_char) {
+  seg_t hello = SEG("hello");
+  if(!seg_find_char(hello, 'l')) return -1;
+  if(seg_find_char(hello, '!')) return -2;
+  return 0;
+}
+
 char capitalize(char c) {
   return INRANGE(c, 'a', 'z') ? c - ('a' - 'A') : c;
 }

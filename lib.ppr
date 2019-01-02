@@ -347,11 +347,15 @@ imports:
   module control
   module logic
 
+read_std: "stream,in:std" open read [close] dip21
+write_std: ["stream,out:std" open] dip12 write close
+unread_std: ["stream,in:std" open] dip12 unread close
+
 __ IO buf
 getline_loop:
-  [1024 read] dip12 swap [] ap30 dup __ [IO buf str] x2
+  [read_std] dip12 swap [] ap30 dup __ [IO buf str] x2
     [++ getline_loop] . swap __ no newline
-    ["\n" strsplit swap [++ unread] dip31 dup] . __ newline
+    ["\n" strsplit swap [++ unread_std] dip31 dup] . __ newline
     popr -swap2 swap vifte get2
 
 getline: "" getline_loop

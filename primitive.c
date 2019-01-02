@@ -859,118 +859,6 @@ OP(pushr) {
   return RETRY;
 }
 
-WORD("write", write, 2, 1)
-OP(write) {
-  cell_t *res = 0;
-  PRE(write);
-
-  CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
-
-  CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_IO)));
-  CHECK(reduce_arg(c, 1, &CTX(string)));
-  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
-  CHECK_DELAY();
-  clear_flags(c);
-
-  if(c->alt) {
-    drop(c->alt);
-    c->alt = NULL;
-  }
-
-  cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
-  if(is_var(p) || is_var(q)) {
-    res = var(T_SYMBOL, c);
-    res->value.alt_set = ctx->alt_set;
-  } else if(p->value.integer == SYM_IO) {
-    io->write(value_seg(q));
-    res = mod_alt(ref(p), NULL, ctx->alt_set);
-  } else {
-    ABORT(FAIL);
-  }
-  add_conditions(res, p, q);
-  store_reduced(cp, res);
-  return SUCCESS;
-
- abort:
-  return abort_op(rsp, cp, ctx);
-}
-
-// TODO merge this with 'write'
-WORD("unread", unread, 2, 1)
-OP(unread) {
-  cell_t *res = 0;
-  PRE(unread);
-
-  CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
-
-  CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_IO)));
-  CHECK(reduce_arg(c, 1, &CTX(string)));
-  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
-  CHECK_DELAY();
-  clear_flags(c);
-
-  if(c->alt) {
-    drop(c->alt);
-    c->alt = NULL;
-  }
-
-  cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
-  if(is_var(p) || is_var(q)) {
-    res = var(T_SYMBOL, c);
-    res->value.alt_set = ctx->alt_set;
-  } else if(p->value.integer == SYM_IO) {
-    io->unread(value_seg(q));
-    res = mod_alt(ref(p), NULL, ctx->alt_set);
-  } else {
-    ABORT(FAIL);
-  }
-  add_conditions(res, p, q);
-  store_reduced(cp, res);
-  return SUCCESS;
-
- abort:
-  return abort_op(rsp, cp, ctx);
-}
-
-WORD("read", read, 2, 2)
-OP(read) {
-  cell_t *res = 0;
-  PRE(read);
-
-  CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
-
-  CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_IO)));
-  CHECK(reduce_arg(c, 1, &CTX(int)));
-  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
-  CHECK_DELAY();
-  clear_flags(c);
-
-  if(c->alt) {
-    drop(c->alt);
-    c->alt = 0;
-  }
-
-  cell_t *p = c->expr.arg[0];
-  cell_t *q = c->expr.arg[1];
-  if(is_var(p) || is_var(q)) {
-    res = var(T_SYMBOL, c);
-    store_dep_var(c, res, 2, T_STRING, ctx->alt_set);
-  } else if(p->value.integer == SYM_IO &&
-            q->value.integer >= 0) {
-    seg_t s = io->read(q->value.integer);
-    store_lazy_dep(c->expr.arg[2], make_string(s), 0);
-    res = ref(p);
-  } else {
-    ABORT(FAIL);
-  }
-  add_conditions(res, p, q);
-  store_reduced(cp, res);
-  return SUCCESS;
-
- abort:
-  return abort_op(rsp, cp, ctx);
-}
-
 bool is_list_var(cell_t *c) {
   return is_row_list(c) && is_placeholder(c->value.ptr[0]);
 }
@@ -1260,3 +1148,7 @@ OP(partial) {
   FLAG_SET(**cp, expr, PARTIAL);
   return RETRY;
 }
+
+/* Local Variables: */
+/* eval: (add-to-list 'imenu-generic-expression '("Operator" "^.*OP(\\([a-z_]+\\)).*$" 1)) */
+/* End: */

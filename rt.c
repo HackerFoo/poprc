@@ -28,6 +28,7 @@
 #include "cells.h"
 #include "rt.h"
 #include "primitive.h"
+#include "io.h"
 #include "special.h"
 #include "eval.h"
 #include "print.h"
@@ -887,12 +888,12 @@ uint8_t new_alt_id(unsigned int n) {
 #define CTX_t_3(_t, _expected, _expected_val)                            \
   ((context_t) { .t = _t, CTX_INHERIT, .expected = _expected, .expected_value = _expected_val })
 #define CTX_t(...) DISPATCH(CTX_t, __VA_ARGS__)
-#define CTX_any(...) CTX_t(T_ANY, ##__VA_ARGS__)
+#define CTX_any() CTX_t(T_ANY)
 #define CTX_int(...) CTX_t(T_INT, ##__VA_ARGS__)
 #define CTX_float(...) CTX_t(T_FLOAT, ##__VA_ARGS__)
 #define CTX_symbol(...) CTX_t(T_SYMBOL, ##__VA_ARGS__)
 #define CTX_string(...) CTX_t(T_STRING, ##__VA_ARGS__)
-#define CTX_opaque() ((context_t) { .t = T_OPAQUE })
+#define CTX_opaque() CTX_t(T_OPAQUE)
 #define CTX_return() ((context_t) { .t = T_RETURN })
 #define CTX_INV(invert) ctx->expected, (ctx->expected ? invert(ctx->expected_value) : 0)
 #define CTX_UP ((context_t) { .t = ctx->t, .s = { .in = ctx->s.in, .out = ctx->s.out }, CTX_INHERIT})
@@ -960,6 +961,15 @@ cell_t *build21(op op, cell_t *i0, cell_t *i1) {
   return c;
 }
 
+cell_t *build31(op op, cell_t *i0, cell_t *i1, cell_t *i2) {
+  cell_t *c = closure_alloc(3);
+  c->op = op;
+  c->expr.arg[0] = i0;
+  c->expr.arg[1] = i1;
+  c->expr.arg[2] = i2;
+  return c;
+}
+
 cell_t *build12(op op, cell_t *i0, cell_t **o1) {
   cell_t *c = closure_alloc(2);
   c->op = op;
@@ -977,6 +987,26 @@ cell_t *build22(op op, cell_t *i0, cell_t *i1, cell_t **o1) {
   return c;
 }
 
+cell_t *build32(op op, cell_t *i0, cell_t *i1, cell_t *i2, cell_t **o1) {
+  cell_t *c = closure_alloc(4);
+  c->op = op;
+  c->expr.arg[0] = i0;
+  c->expr.arg[1] = i1;
+  c->expr.arg[2] = i2;
+  c->expr.arg[3] = *o1 = dep(ref(c));
+  return c;
+}
+
+cell_t *build23(op op, cell_t *i0, cell_t *i1, cell_t **o1, cell_t **o2) {
+  cell_t *c = closure_alloc(4);
+  c->op = op;
+  c->expr.arg[0] = i0;
+  c->expr.arg[1] = i1;
+  c->expr.arg[2] = *o1 = dep(ref(c));
+  c->expr.arg[3] = *o2 = dep(ref(c));
+  return c;
+}
+
 // cache value in context on the way up?
 bool is_linear(context_t *ctx) {
   while(ctx) {
@@ -985,38 +1015,6 @@ bool is_linear(context_t *ctx) {
   }
   return true;
 }
-
-static char input_buf[1024];
-static ring_buffer_t *unread_rb = RING_BUFFER(1024);
-
-void default_io_unread(seg_t s) {
-  rb_write(unread_rb, s.s, s.n);
-}
-
-seg_t default_io_read(size_t size) {
-  size = min(sizeof(input_buf) - 1, size);
-  size_t old = rb_read(unread_rb, input_buf, size);
-  ssize_t new = read(STDIN_FILENO, input_buf + old, size - old);
-  size_t read_size = old + max(0, new); // TODO handle errors
-  if(read_size > 0) {
-    input_buf[read_size] = '\0';
-    return (seg_t) { .s = input_buf, .n = read_size };
-  } else {
-    return (seg_t) { .s = NULL, .n = 0 };
-  }
-}
-
-void default_io_write(seg_t s) {
-  write(STDOUT_FILENO, s.s, s.n);
-}
-
-const io_t default_io = {
-  .read = default_io_read,
-  .write = default_io_write,
-  .unread = default_io_unread
-};
-
-const io_t *io = &default_io;
 
 #if INTERFACE
 enum priority {

@@ -120,6 +120,12 @@ cell_t *float_val(double x) {
   return c;
 }
 
+cell_t *make_opaque(void *p) {
+  cell_t *c = make_val(T_OPAQUE);
+  c->value.opaque = p;
+  return c;
+}
+
 cell_t *symbol(val_t sym) {
   return val(T_SYMBOL, sym);
 }
