@@ -176,25 +176,39 @@ void gen_return(const cell_t *e, const cell_t *l) {
   printf("  return %s%d;\n", cname(trace_type(&e[ires])), ires);
 }
 
-void gen_decls(const cell_t *e) {
+void gen_decls(cell_t *e) {
+  FOR_TRACE(c, e) {
+    if(is_var(c)) continue;
+    type_t t = trace_type(c);
+    if(!ONEOF(t, T_RETURN, T_BOTTOM)) {
+      if(c->op == OP_value) {
+        if(NOT_FLAG(*c, trace, IMMEDIATE)) {
+          FLAG_SET(*c, trace, DECL);
+        }
+      } else if(c->n ||
+                is_dep(c) ||
+                FLAG(*c, expr, PARTIAL)) {
+        int x = cgen_lookup(e, c);
+        if(x) {
+          FLAG_SET(e[x], trace, DECL);
+        }
+      }
+    }
+  }
+
   // T_BOTTOM is (ab)used to indicate a new line needs to be started
   type_t last_type = T_BOTTOM;
   FOR_TRACE_CONST(c, e) {
     if(is_var(c)) continue;
     int i = c - e;
     type_t t = trace_type(c);
-    if(!ONEOF(t, T_RETURN, T_BOTTOM) &&
-       !gen_is_aliased(c)) {
+    if(FLAG(*c, trace, DECL)) {
       if(c->op == OP_value) {
-        if(NOT_FLAG(*c, trace, IMMEDIATE)) {
-          if(last_type != T_BOTTOM) printf(";\n");
-          printf("  const %s%s%d = ", ctype(t), cname(t), i);
-          gen_value_rhs(c);
-          last_type = T_BOTTOM;
-        }
-      } else if(c->n ||
-                is_dep(c) ||
-                FLAG(*c, expr, PARTIAL)) {
+        if(last_type != T_BOTTOM) printf(";\n");
+        printf("  const %s%s%d = ", ctype(t), cname(t), i);
+        gen_value_rhs(c);
+        last_type = T_BOTTOM;
+      } else {
         if(last_type == t) {
           printf(", %s%d", cname(t), i);
         } else {
@@ -205,6 +219,7 @@ void gen_decls(const cell_t *e) {
       }
     }
   }
+
   if(last_type != T_BOTTOM) printf(";\n");
 }
 
@@ -262,24 +277,26 @@ bool gen_is_aliased(const cell_t *c) {
   return ONEOF(c->op, OP_seq, OP_assert, OP_otherwise);
 }
 
-int cgen_index(const cell_t *e, const cell_t *c) {
+int cgen_lookup(const cell_t *e, const cell_t *c) {
   LOOP(e->entry.len) {
-    int a = tr_index(c);
-    const cell_t *p = &e[a];
-    switch(p->op) {
+    switch(c->op) {
     case OP_seq:
     case OP_assert:
-      c = p->expr.arg[0];
+      c = &e[tr_index(c->expr.arg[0])];
       break;
     case OP_otherwise:
-      c = p->expr.arg[1];
+      c = &e[tr_index(c->expr.arg[1])];
       break;
     default:
-      return a;
+      return c - e;
     }
   }
   assert_error(false);
   return 0;
+}
+
+int cgen_index(const cell_t *e, const cell_t *a) {
+  return cgen_lookup(e, &e[tr_index(a)]);
 }
 
 void gen_tail_call(const cell_t *e, const cell_t *c) {
@@ -340,7 +357,7 @@ void gen_call(const cell_t *e, const cell_t *c) {
     if(trace_type(c) == T_BOTTOM) {
       printf("  ");
     } else {
-      printf("  %s%s%d = ", c->n ? "" : ctype(t), cname(t), lhs);
+      printf("  %s%s%d = ", FLAG(*c, trace, DECL) ? "" : ctype(t), cname(t), lhs);
     }
   }
   if(c->op == OP_external) {

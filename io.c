@@ -127,6 +127,8 @@ const io_t default_io = {
 
 const io_t *io = &default_io;
 
+#define WARN_ALT(op) LOG_WHEN(c->alt, MARK("WARN") " IO (" #op ") with alt")
+
 WORD("open", open, 2, 2)
 OP(open) {
   cell_t *res = 0;
@@ -140,10 +142,7 @@ OP(open) {
   CHECK_DELAY();
   clear_flags(c);
 
-  if(c->alt) {
-    drop(c->alt);
-    c->alt = 0;
-  }
+  WARN_ALT(open);
 
   cell_t *p = c->expr.arg[0];
   cell_t *q = c->expr.arg[1];
@@ -155,7 +154,7 @@ OP(open) {
     void *h = io->open(value_seg(q));
     if(h) {
       store_lazy_dep(c->expr.arg[2], make_opaque(h), ctx->alt_set);
-      res = mod_alt(ref(p), NULL, ctx->alt_set);
+      res = mod_alt(ref(p), c->alt, ctx->alt_set);
     } else {
       ABORT(FAIL);
     }
@@ -183,10 +182,7 @@ OP(close) {
   CHECK_DELAY();
   clear_flags(c);
 
-  if(c->alt) {
-    drop(c->alt);
-    c->alt = NULL;
-  }
+  WARN_ALT(close);
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   if(is_var(p) || is_var(q)) {
@@ -194,7 +190,7 @@ OP(close) {
     res->value.alt_set = ctx->alt_set;
   } else if(p->value.integer == SYM_IO) {
     io->close(q->value.opaque);
-    res = mod_alt(ref(p), NULL, ctx->alt_set);
+    res = mod_alt(ref(p), c->alt, ctx->alt_set);
   } else {
     ABORT(FAIL);
   }
@@ -221,10 +217,7 @@ OP(write) {
   CHECK_DELAY();
   clear_flags(c);
 
-  if(c->alt) {
-    drop(c->alt);
-    c->alt = NULL;
-  }
+  WARN_ALT(write);
 
   cell_t
     *p = c->expr.arg[0],
@@ -236,8 +229,8 @@ OP(write) {
     store_dep_var(c, res, 3, T_OPAQUE, ctx->alt_set);
   } else if(p->value.integer == SYM_IO) {
     io->write((file_t *)q->value.opaque, value_seg(r));
-    res = mod_alt(ref(p), NULL, ctx->alt_set);
-    store_lazy_dep(c->expr.arg[3], ref(q), 0);
+    res = mod_alt(ref(p), c->alt, ctx->alt_set);
+    store_lazy_dep(c->expr.arg[3], ref(q), ctx->alt_set);
   } else {
     ABORT(FAIL);
   }
@@ -265,10 +258,7 @@ OP(unread) {
   CHECK_DELAY();
   clear_flags(c);
 
-  if(c->alt) {
-    drop(c->alt);
-    c->alt = NULL;
-  }
+  WARN_ALT(unread);
 
   cell_t
     *p = c->expr.arg[0],
@@ -280,8 +270,8 @@ OP(unread) {
     store_dep_var(c, res, 3, T_OPAQUE, ctx->alt_set);
   } else if(p->value.integer == SYM_IO) {
     io->unread(q->value.opaque, value_seg(r));
-    res = mod_alt(ref(p), NULL, ctx->alt_set);
-    store_lazy_dep(c->expr.arg[3], ref(q), 0);
+    res = mod_alt(ref(p), c->alt, ctx->alt_set);
+    store_lazy_dep(c->expr.arg[3], ref(q), ctx->alt_set);
   } else {
     ABORT(FAIL);
   }
@@ -306,10 +296,7 @@ OP(read) {
   CHECK_DELAY();
   clear_flags(c);
 
-  if(c->alt) {
-    drop(c->alt);
-    c->alt = 0;
-  }
+  WARN_ALT(read);
 
   cell_t *p = c->expr.arg[0];
   cell_t *q = c->expr.arg[1];
@@ -320,9 +307,9 @@ OP(read) {
     store_dep_var(c, res, 3, T_STRING, ctx->alt_set);
   } else if(p->value.integer == SYM_IO) {
     seg_t s = io->read((file_t *)q->value.opaque);
-    store_lazy_dep(c->expr.arg[2], ref(q), 0);
-    store_lazy_dep(c->expr.arg[3], make_string(s), 0);
-    res = mod_alt(ref(p), NULL, ctx->alt_set);
+    store_lazy_dep(c->expr.arg[2], ref(q), ctx->alt_set);
+    store_lazy_dep(c->expr.arg[3], make_string(s), ctx->alt_set);
+    res = mod_alt(ref(p), c->alt, ctx->alt_set);
   } else {
     ABORT(FAIL);
   }
