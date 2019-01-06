@@ -9,7 +9,7 @@
 #include "startle/support.h"
 #include "startle/error.h"
 #include "startle/log.h"
-#include "io_core.h"
+#include "io.h"
 #include "cgen/primitives.h"
 
 static int mem[256];
