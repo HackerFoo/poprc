@@ -15,8 +15,10 @@
     along with PoprC.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include "rt_types.h"
 
 #include "startle/error.h"
@@ -97,4 +99,76 @@ TEST(parse_file_prefix) {
   if(flags != (FILE_IN | FILE_OUT)) return -1;
   if(segcmp("test.txt", name) != 0) return -2;
   return 0;
+}
+
+void io_unread(file_t *file, seg_t s) {
+  assert_error(file->buffer);
+  rb_write(file->buffer, s.s, s.n);
+}
+
+seg_t io_read(file_t *file) {
+  static char input_buf[INPUT_BUFFER_SIZE]; // ***
+  assert_error(file->buffer);
+  const size_t size = min(file->buffer->size, sizeof(input_buf) - 1);
+  size_t old = rb_read(file->buffer, input_buf, size);
+  ssize_t new = read(file->descriptor, input_buf + old, size - old);
+  size_t read_size = old + max(0, new); // TODO handle errors
+  if(read_size > 0) {
+    input_buf[read_size] = '\0';
+    return (seg_t) { .s = input_buf, .n = read_size };
+  } else {
+    return (seg_t) { .s = NULL, .n = 0 };
+  }
+}
+
+void io_write(file_t *file, seg_t s) {
+  write(file->descriptor, s.s, s.n);
+}
+
+file_t *io_open(seg_t name) {
+  uint8_t flags = parse_file_prefix(&name);
+  if(FLAG_(flags, FILE_STREAM)) {
+    if(segcmp("std", name) == 0) {
+      switch(flags) {
+      case FILE_STREAM | FILE_IN:
+        return &stream_stdin;
+        break;
+      case FILE_STREAM | FILE_OUT:
+        return &stream_stdout;
+        break;
+      }
+    }
+    assert_error(false, "unknown stream");
+    return NULL;
+  } else {
+    char cname[name.n + 1];
+    memcpy(cname, name.s, name.n);
+    cname[name.n] = '\0';
+    int open_flags = 0;
+    switch(flags & (FILE_IN | FILE_OUT)) {
+    case FILE_IN: open_flags = O_RDONLY; break;
+    case FILE_OUT: open_flags = O_WRONLY; break;
+    case FILE_IN | FILE_OUT: open_flags = O_RDWR; break;
+    default: assert_error(false); break;
+    }
+    int fd = open(cname, open_flags);
+    if(fd < 0) {
+      return NULL;
+    } else {
+      file_t *file = malloc(sizeof(file_t));
+      file->name = name;
+      file->buffer = alloc_ring_buffer(INPUT_BUFFER_SIZE);
+      file->descriptor = fd;
+      file->flags = flags;
+      return file;
+    }
+  }
+}
+
+void io_close(file_t *file) {
+  if(file && !FLAG_(file->flags, FILE_STREAM)) {
+    close(file->descriptor);
+    free(file->buffer);
+    free(file);
+  }
 }

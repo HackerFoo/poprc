@@ -269,88 +269,31 @@ TEST(prim_to_string) {
 }
 
 symbol_t __primitive_open_yyso(symbol_t io, seg_t name, void **fo) {
-  uint8_t flags = parse_file_prefix(&name);
-  if(FLAG_(flags, FILE_STREAM)) {
-    if(segcmp("std", name) == 0) {
-      switch(flags) {
-      case FILE_STREAM | FILE_IN:
-        *fo = &stream_stdin;
-        return io;
-        break;
-      case FILE_STREAM | FILE_OUT:
-        *fo = &stream_stdout;
-        return io;
-        break;
-      }
-    }
-    assert_error(false, "unknown stream");
-    *fo = NULL;
-    return io;
-  } else {
-    char cname[name.n + 1];
-    memcpy(cname, name.s, name.n);
-    cname[name.n] = '\0';
-    int open_flags = 0;
-    switch(flags & (FILE_IN | FILE_OUT)) {
-    case FILE_IN: open_flags = O_RDONLY; break;
-    case FILE_OUT: open_flags = O_WRONLY; break;
-    case FILE_IN | FILE_OUT: open_flags = O_RDWR; break;
-    default: assert_error(false); break;
-    }
-    int fd = open(cname, open_flags);
-    if(fd < 0) {
-      assert_error(false, "open error");
-      *fo = NULL;
-      return io;
-    } else {
-      file_t *file = malloc(sizeof(file_t));
-      file->name = name;
-      file->buffer = alloc_ring_buffer(INPUT_BUFFER_SIZE);
-      file->descriptor = fd;
-      file->flags = flags;
-      *fo = file;
-      return io;
-    }
-  }
+  file_t *f = io_open(name);
+  assert_error(f, "open error");
+  *fo = f;
+  return io;
 }
 
 symbol_t __primitive_close_yyo(symbol_t io, void *fi) {
-  file_t *f = (file_t *)fi;
-  if(f && !FLAG_(f->flags, FILE_STREAM)) {
-    close(f->descriptor);
-    free(f->buffer);
-    free(f);
-  }
+  io_close((file_t *)fi);
   return io;
 }
 
 symbol_t __primitive_write_yyoso(symbol_t io, void *fi, seg_t str, void **fo) {
-  file_t *f = (file_t *)fi;
-  write(f->descriptor, str.s, str.n);
+  io_write((file_t *)fi, str);
   *fo = fi;
   return io;
 }
 
 symbol_t __primitive_unread_yyoso(symbol_t io, void *fi, seg_t str, void **fo) {
-  file_t *f = (file_t *)fi;
-  rb_write(f->buffer, str.s, str.n);
+  io_unread((file_t *)fi, str);
   *fo = fi;
   return io;
 }
 
 symbol_t __primitive_read_yyoos(symbol_t io, void *fi, void **fo, seg_t *str) {
-  file_t *f = (file_t *)fi;
-  size_t size = min(f->buffer->size, sizeof(string_buffer) - 1);
-  size_t old = rb_read(f->buffer, string_buffer, size);
-  ssize_t new = read(f->descriptor, string_buffer + old, size - old);
-  size_t read_size = old + max(0, new); // TODO handle errors
-  if(read_size > 0) {
-    str->s = string_buffer;
-    str->n = read_size;
-  } else {
-    str->s = NULL;
-    str->n = 0;
-  }
+  *str = io_read((file_t *)fi);
   *fo = fi;
   return io;
 }
