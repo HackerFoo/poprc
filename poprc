@@ -19,7 +19,7 @@ OUT=`./eval -ident $1`
 DIR=poprc_out
 
 BUILDDIR="build/clang/release-with-asserts"
-RT="${BUILDDIR}/cgen/primitives.o ${BUILDDIR}/startle/support.o ${BUILDDIR}/startle/error.o ${BUILDDIR}/startle/log.o"
+RT="${BUILDDIR}/cgen/primitives.o ${BUILDDIR}/io_core.o ${BUILDDIR}/startle/support.o ${BUILDDIR}/startle/error.o ${BUILDDIR}/startle/log.o"
 
 make -s .gen/cgen/primitives.h
 make -s ${RT} CC=clang BUILD=release-with-asserts

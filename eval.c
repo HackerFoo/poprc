@@ -51,6 +51,7 @@
 #include "trace.h"
 #include "git_log.h"
 #include "log_tree.h"
+#include "io_core.h"
 #include "io.h"
 #include "irc.h"
 

@@ -28,6 +28,7 @@
 #include "cells.h"
 #include "rt.h"
 #include "primitive.h"
+#include "io_core.h"
 #include "io.h"
 #include "special.h"
 #include "eval.h"

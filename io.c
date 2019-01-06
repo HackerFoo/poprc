@@ -16,7 +16,6 @@
 */
 
 #include <string.h>
-#include <math.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -28,29 +27,12 @@
 
 #include "cells.h"
 #include "rt.h"
-#include "primitive.h"
 #include "special.h"
-#include "print.h"
 #include "trace.h"
-#include "list.h"
-#include "parse.h"
-#include "builders.h"
-#include "lex.h"
+#include "io_core.h"
 #include "io.h"
 
 #if INTERFACE
-
-struct ring_buffer;
-#define FILE_IN     0x01
-#define FILE_OUT    0x02
-#define FILE_STREAM 0x80
-
-typedef struct {
-  seg_t name;
-  struct ring_buffer *buffer;
-  int descriptor;
-  uint8_t flags;
-} file_t;
 
 typedef struct {
   file_t *(*open)   (seg_t);
@@ -62,29 +44,7 @@ typedef struct {
 
 #endif
 
-#define INPUT_BUFFER_SIZE 1024
 static char input_buf[INPUT_BUFFER_SIZE]; // ***
-
-file_t stream_stdin = {
-  .name = SEG("stdin"),
-  .buffer = RING_BUFFER(INPUT_BUFFER_SIZE),
-  .descriptor = STDIN_FILENO,
-  .flags = FILE_IN | FILE_STREAM
-};
-
-file_t stream_stdout = {
-  .name = SEG("stdout"),
-  .buffer = NULL,
-  .descriptor = STDOUT_FILENO,
-  .flags = FILE_OUT | FILE_STREAM
-};
-
-static
-ring_buffer_t *alloc_ring_buffer(int size) {
-  ring_buffer_t *rb = malloc(sizeof(ring_buffer_t) + size);
-  rb->size = size;
-  return rb;
-}
 
 void default_io_unread(file_t *file, seg_t s) {
   assert_error(file->buffer);
@@ -107,42 +67,6 @@ seg_t default_io_read(file_t *file) {
 
 void default_io_write(file_t *file, seg_t s) {
   write(file->descriptor, s.s, s.n);
-}
-
-uint8_t parse_file_prefix(seg_t *name) {
-  uint8_t flags = 0;
-  const char *end = seg_find_char(*name, ':');
-  if(end) {
-    const char *next, *p = name->s;
-    do {
-      next = seg_find_char((seg_t) { .s = p, .n = end - p }, ',');
-      seg_t s = { .s = p,
-                  .n = (next ? next : end) - p };
-      if(segcmp("in", s) == 0) {
-        flags |= FILE_IN;
-      } else if(segcmp("out", s) == 0) {
-        flags |= FILE_OUT;
-      } else if(segcmp("stream", s) == 0) {
-        flags |= FILE_STREAM;
-      }
-      if(next) {
-        p = next + 1;
-      }
-    } while(next);
-    *name = (seg_t) {
-      .s = end + 1,
-      .n = seg_end(*name) - (end + 1)
-    };
-  }
-  return flags;
-}
-
-TEST(parse_file_prefix) {
-  seg_t name = SEG("in,out:test.txt");
-  uint8_t flags = parse_file_prefix(&name);
-  if(flags != (FILE_IN | FILE_OUT)) return -1;
-  if(segcmp("test.txt", name) != 0) return -2;
-  return 0;
 }
 
 file_t *default_io_open(seg_t name) {

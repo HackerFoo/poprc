@@ -36,6 +36,7 @@
 #include "parse.h"
 #include "builders.h"
 #include "lex.h"
+#include "io_core.h"
 #include "io.h"
 #include "eval.h"
 #include "irc.h"
