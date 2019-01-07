@@ -147,6 +147,7 @@ void print_bytecode(cell_t *entry) {
       if(FLAG(*c, expr, PARTIAL)) printf("?");
       printf(" x%d", c->n + 1);
     }
+    if(FLAG(*c, trace, MULTI_ALT)) printf(".");
     if(!is_value(c) && FLAG(*c, expr, TRACE)) {
       printf(" [TRACING]");
     }
@@ -462,6 +463,7 @@ void trace_final_pass(cell_t *entry) {
     condense(entry);
     move_vars(entry);
     last_use_analysis(entry);
+    multi_alt_analysis(entry);
   }
   FOR_TRACE(p, entry) {
     if(p->op == OP_exec) {
@@ -470,6 +472,7 @@ void trace_final_pass(cell_t *entry) {
         condense(e);
         move_vars(e);
         last_use_analysis(e);
+        multi_alt_analysis(e);
       }
     }
   }
@@ -925,6 +928,7 @@ void last_use_mark_cell(cell_t *entry, cell_t *c) {
   }
 }
 
+// TODO similar to count_deps()
 bool no_direct_reference(cell_t *c) {
   unsigned int n = c->n + 1;
   if(!n) return true;
@@ -958,6 +962,43 @@ void last_use_analysis(cell_t *entry) {
 
     if(!partial) {
       last_use_mark_cell(entry, c);
+    }
+  }
+}
+
+static
+bool mark_multi_alt(cell_t *entry, cell_t *c, int last_return) {
+  bool res = true;
+  if(!is_expr(c)) return true;
+  int i = c - entry;
+  switch(c->op) {
+  case OP_seq:
+  case OP_assert:
+    res &= mark_multi_alt(entry, &entry[tr_index(c->expr.arg[0])], last_return);
+    break;
+  case OP_otherwise:
+    res &= mark_multi_alt(entry, &entry[tr_index(c->expr.arg[1])], last_return);
+    break;
+  default:
+    TRAVERSE(c, in) {
+      res &= mark_multi_alt(entry, &entry[tr_index(*p)], last_return);
+    }
+    break;
+  }
+  if(res && i < last_return) FLAG_SET(*c, trace, MULTI_ALT);
+
+  // recurse past partial functions, but don't mark dependent functions
+  if(FLAG(*c, expr, PARTIAL)) return false;
+  return res;
+}
+
+void multi_alt_analysis(cell_t *entry) {
+  int last_return = 0;
+  FOR_TRACE(c, entry) {
+    if(is_return(c)) {
+      last_return = c - entry;
+    } else {
+      mark_multi_alt(entry, c, last_return);
     }
   }
 }

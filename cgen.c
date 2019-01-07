@@ -145,7 +145,7 @@ void gen_body(const cell_t *e) {
   bool skip = false;
   FOR_TRACE_CONST(c, e) {
     if(!skip && !is_var(c)) {
-      skip = gen_instruction(e, c);
+      skip = gen_instruction(e, c, 0);
     }
     if(is_return(c)) {
       skip = false;
@@ -185,7 +185,7 @@ void gen_decls(cell_t *e) {
         if(NOT_FLAG(*c, trace, IMMEDIATE)) {
           FLAG_SET(*c, trace, DECL);
         }
-      } else if(c->n ||
+      } else if(c->n > count_deps(c) ||
                 is_dep(c) ||
                 FLAG(*c, expr, PARTIAL)) {
         int x = cgen_lookup(e, c);
@@ -239,15 +239,15 @@ bool last_call(const cell_t *e, const cell_t *c) {
 }
 
 // returns true if the rest of the block should be skipped
-bool gen_instruction(const cell_t *e, const cell_t *c) {
-  if(is_return(c))         { gen_return(e, c);    } else
+bool gen_instruction(const cell_t *e, const cell_t *c, int depth) {
+  if(is_return(c))         { gen_return(e, c);        } else
   if(gen_skip(c) ||
-     is_value(c))          { /* nothing */        } else
-  if(c->op == OP_assert)   { gen_assert(e, c);    } else
+     is_value(c))          { /* nothing */            } else
+  if(c->op == OP_assert)   { gen_assert(e, c, depth); } else
   if(get_entry(c) == e &&
      last_call(e, c))      { gen_tail_call(e, c);
-                             return true;         } else
-                           { gen_call(e, c);      }
+                             return true;             } else
+                           { gen_call(e, c, depth);   }
   return false;
 }
 
@@ -331,7 +331,50 @@ int find_next_block(const cell_t *e, const cell_t *c) {
   return 0;
 }
 
-void gen_call(const cell_t *e, const cell_t *c) {
+bool arg_in_range(const cell_t *e, const cell_t *c, int low, int high) {
+  TRAVERSE(c, const, in) {
+    int x = cgen_index(e, *p);
+    if(INRANGE(x, low, high) &&
+       NOT_FLAG(e[x], trace, MULTI_ALT)) return true;
+  }
+  return false;
+}
+
+int find_next_possible_block(const cell_t *e, const cell_t *c) {
+  int low = c - e, high = low;
+  bool skip = true;
+  FOR_TRACE_CONST(p, e, closure_next_const(c) - e) {
+    if(gen_is_aliased(p)) continue;
+    if(is_return(p)) {
+      if(skip) {
+        skip = false;
+        high = p - e;
+      } else {
+        // TODO check return arguments also
+        p = &e[high];
+        int size = calculate_cells(p->size);
+        if(e->entry.len + 1 - (p-e) > size) { // if this isn't the last return
+          return p - e + size;
+        } else {
+          return 0;
+        }
+      }
+    } else if(!skip &&
+              arg_in_range(e, p, low, high)) {
+      skip = true;
+    }
+  }
+  return 0;  
+}
+
+static
+void gen_indent(int depth) {
+  LOOP(depth) {
+    printf("  ");
+  }
+}
+
+void gen_call(const cell_t *e, const cell_t *c, int depth) {
   int lhs = c - e;
   char *sep = "";
   const char *module_name, *word_name;
@@ -346,8 +389,9 @@ void gen_call(const cell_t *e, const cell_t *c) {
   type_t t = trace_type(c);
   bool partial = FLAG(*c, expr, PARTIAL);
   int next_block = 0;
+  gen_indent(depth);
   if(partial) {
-    next_block = find_next_block(e, c);
+    next_block = find_next_possible_block(e, c);
     if(next_block) {
       printf("  if(");
     } else {
@@ -406,7 +450,20 @@ void gen_call(const cell_t *e, const cell_t *c) {
 
   if(partial) {
     if(next_block) {
-      printf(")) goto block%d;\n", next_block);
+      printf(")) {\n");
+      // handle instructions that can't be skipped
+      FOR_TRACE_CONST(p, e, closure_next_const(c) - e) {
+        if(is_return(p)) break;
+        if(FLAG(*p, trace, MULTI_ALT)) {
+          gen_instruction(e, p, depth + 1);
+        }
+      }
+
+      // jump to next block
+      gen_indent(depth + 1);
+      printf("  goto block%d;\n", next_block);
+      gen_indent(depth);
+      printf("  }\n");
     } else {
       printf("));\n");
     }
@@ -439,7 +496,7 @@ void gen_value_rhs(const cell_t *c) {
   }
 }
 
-void gen_assert(const cell_t *e, const cell_t *c) {
+void gen_assert(const cell_t *e, const cell_t *c, int depth) {
   int iq = cgen_index(e, c->expr.arg[1]);
   const cell_t *ret = NULL;
   const cell_t *end = e + trace_entry_size(e);
@@ -455,6 +512,7 @@ void gen_assert(const cell_t *e, const cell_t *c) {
     }
     if(ret) {
       const cell_t *next = ret + closure_cells(ret);
+      gen_indent(depth);
       if(next < end) {
         printf("  if(!%s%d)", cname(trace_type(&e[iq])), iq);
         printf(" goto block%d; // assert\n", (int)(next - e));
