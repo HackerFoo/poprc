@@ -49,6 +49,13 @@ struct {
   seg_t password;
 } irc;
 
+file_t stream_irc = {
+  .name = SEG("irc"),
+  .buffer = RING_BUFFER(INPUT_BUFFER_SIZE),
+  .descriptor = 0,
+  .flags = FILE_IN | FILE_OUT | FILE_STREAM
+};
+
 COMMAND(ircpass, "IRC password") {
   if(rest) {
     irc.password = tok_seg(rest);
@@ -118,7 +125,7 @@ void irc_action(const char *msg) {
 
 void run_eval_irc() {
   error_t error;
-  seg_t s = irc_io_read(NULL);
+  seg_t s = irc_io_read(&stream_irc);
   while(s.s) {
     if(catch_error(&error, true)) {
       irc_action("scowls");
@@ -127,8 +134,16 @@ void run_eval_irc() {
     } else {
       irc_action("overlooks this");
     }
-    s = irc_io_read(NULL);
+    s = irc_io_read(&stream_irc);
   }
+}
+
+file_t *irc_io_open(UNUSED seg_t name) {
+  return &stream_irc;
+}
+
+void irc_io_close(UNUSED file_t *file) {
+
 }
 
 seg_t irc_io_read_with_prompt(file_t *file) {
@@ -136,11 +151,15 @@ seg_t irc_io_read_with_prompt(file_t *file) {
   return irc_io_read(file);
 }
 
-seg_t irc_io_read(UNUSED file_t *file) {
+seg_t irc_io_read(file_t *file) {
+  if(rb_available(file->buffer)) {
+    return (seg_t) {
+      .s = line_buffer,
+      .n = rb_read(file->buffer, line_buffer, sizeof(line_buffer))
+    };
+  }
   char *line;
-  while((line = fgets(line_buffer, sizeof(line_buffer), stdin))) {
-    if(!(replace_char(line, '\r', '\0') ||
-         replace_char(line, '\n', '\0'))) continue;
+  while((line = fgets(line_buffer, sizeof(line_buffer) - 1, stdin))) {
     if(*line == ':') SKIP_PAST(line, ' ');
     if(STRING_IS(line, "PRIVMSG")) {
       SKIP(line, ' ');
@@ -193,5 +212,8 @@ void irc_io_write(UNUSED file_t *file, seg_t s) {
 
 const io_t irc_io = {
   .read = irc_io_read_with_prompt,
-  .write = irc_io_write
+  .write = irc_io_write,
+  .unread = io_unread,
+  .open = irc_io_open,
+  .close = irc_io_close
 };
