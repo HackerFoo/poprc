@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <time.h>
 #include "rt_types.h"
 
 #include "startle/error.h"
@@ -79,6 +80,28 @@ COMMAND(irc, "IRC bot mode") {
   }
 }
 
+#define PERIOD_LENGTH_SEC (60)
+#define PERIOD_MAX_COUNT (5)
+
+bool too_fast(int incr) {
+  static time_t period = 0;
+  static int count = 0;
+
+  time_t now = time(NULL) / PERIOD_LENGTH_SEC;
+  if(now > period) {
+    period = now;
+    count = 0;
+  }
+
+  if(count + incr >= PERIOD_MAX_COUNT) {
+    count = PERIOD_MAX_COUNT;
+    return true;
+  } else {
+    count += incr;
+    return false;
+  }
+}
+
 void irc_connect() {
   char *username = getenv("LOGNAME");
   if(irc.password.n) {
@@ -128,13 +151,22 @@ void run_eval_irc() {
   seg_t s = irc_io_read(&stream_irc);
   while(s.s) {
     if(catch_error(&error, true)) {
-      irc_action("scowls");
-    } else if(eval(irc_prefix, lex(s.s, seg_end(s)))) {
-      fflush(stdout);
+      if(too_fast(0)) {
+        irc_action("is tired, takes a nap");
+      } else {
+        irc_action("scowls");
+      }
     } else {
-      irc_action("overlooks this");
+      assert_error(!too_fast(1));
+      if(eval(irc_prefix, lex(s.s, seg_end(s)))) {
+        fflush(stdout);
+      } else {
+        irc_action("overlooks this");
+      }
     }
-    s = irc_io_read(&stream_irc);
+    do {
+      s = irc_io_read(&stream_irc);
+    } while(too_fast(0));
   }
 }
 
@@ -189,6 +221,7 @@ seg_t irc_io_read(file_t *file) {
 // - strips non-printable characters
 // - only prints non-empty lines
 void irc_io_write(UNUSED file_t *file, seg_t s) {
+  assert_error(!too_fast(1));
   const char *p = s.s;
   bool new_line = true;
   LOOP(s.n) {
