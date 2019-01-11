@@ -298,7 +298,7 @@ calc_step:
     ["/"    =s [[/]    .] dip11 !] |
     ["gcd"  =s [[gcd]  .] dip11 !] |
     ["^"    =s [[^]    .] dip11 !] |
-    ["fib"  =s [[fib]  .] dip11 !] |
+    ["fib"  =s [[fibl] .] dip11 !] |
     ["fact" =s [[fact] .] dip11 !] |
     ["len"  =s [dup length pushr] dip11 !] |
     ["sum"  =s [sum quote] dip11 !] |
