@@ -147,7 +147,7 @@ void print_bytecode(cell_t *entry) {
       if(FLAG(*c, expr, PARTIAL)) printf("?");
       printf(" x%d", c->n + 1);
     }
-    if(FLAG(*c, trace, MULTI_ALT)) printf(".");
+    if(FLAG(*c, trace, NO_SKIP)) printf(".");
     if(!is_value(c) && FLAG(*c, expr, TRACE)) {
       printf(" [TRACING]");
     }
@@ -463,7 +463,7 @@ void trace_final_pass(cell_t *entry) {
     condense(entry);
     move_vars(entry);
     last_use_analysis(entry);
-    multi_alt_analysis(entry);
+    no_skip_analysis(entry);
   }
   FOR_TRACE(p, entry) {
     if(p->op == OP_exec) {
@@ -472,7 +472,7 @@ void trace_final_pass(cell_t *entry) {
         condense(e);
         move_vars(e);
         last_use_analysis(e);
-        multi_alt_analysis(e);
+        no_skip_analysis(e);
       }
     }
   }
@@ -966,39 +966,61 @@ void last_use_analysis(cell_t *entry) {
   }
 }
 
+// Recursively mark dependencies in a previous branch, breaking the dependency chain
+// at a partial. Direct dependencies on that partial are not marked.
+// TODO optimize
 static
-bool mark_multi_alt(cell_t *entry, cell_t *c, int last_return) {
+bool mark_no_skip(cell_t *entry, cell_t *c, int last_return, int last_partial) {
   bool res = true;
-  if(!is_expr(c)) return true;
   int i = c - entry;
+  if(!is_expr(c) || i < last_partial) return true;
+  if(i < last_return && last_partial == 0) {
+    // look for last partial before this
+    FOR_TRACE_REV(p, entry, i) {
+      if(FLAG(*p, expr, PARTIAL)) {
+        last_partial = p - entry;
+        break;
+      }
+    }
+
+    // return if none is found
+    if(last_partial == 0) return true;
+  }
+
+  if(i == last_partial) {
+    last_partial = 0;
+    res = false;
+  }
+
+  // mark dependencies
   switch(c->op) {
   case OP_seq:
   case OP_assert:
-    res &= mark_multi_alt(entry, &entry[tr_index(c->expr.arg[0])], last_return);
+    res &= mark_no_skip(entry, &entry[tr_index(c->expr.arg[0])], last_return, last_partial);
     break;
   case OP_otherwise:
-    res &= mark_multi_alt(entry, &entry[tr_index(c->expr.arg[1])], last_return);
+    res &= mark_no_skip(entry, &entry[tr_index(c->expr.arg[1])], last_return, last_partial);
     break;
   default:
     TRAVERSE(c, in) {
-      res &= mark_multi_alt(entry, &entry[tr_index(*p)], last_return);
+      res &= mark_no_skip(entry, &entry[tr_index(*p)], last_return, last_partial);
     }
     break;
   }
-  if(res && i < last_return) FLAG_SET(*c, trace, MULTI_ALT);
 
-  // recurse past partial functions, but don't mark dependent functions
-  if(FLAG(*c, expr, PARTIAL)) return false;
+  if(res && i < last_return) FLAG_SET(*c, trace, NO_SKIP);
   return res;
 }
 
-void multi_alt_analysis(cell_t *entry) {
+// mark instructions that can't be skipped on failure
+// used in cgen
+void no_skip_analysis(cell_t *entry) {
   int last_return = 0;
   FOR_TRACE(c, entry) {
     if(is_return(c)) {
       last_return = c - entry;
     } else {
-      mark_multi_alt(entry, c, last_return);
+      mark_no_skip(entry, c, last_return, 0);
     }
   }
 }

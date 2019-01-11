@@ -21,6 +21,7 @@ static char string_buffer[64];
 #if INTERFACE
 typedef int symbol_t;
 typedef int any_t;
+typedef void *opaque_t;
 
 typedef struct array {
   unsigned int capacity,

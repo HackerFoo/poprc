@@ -142,7 +142,8 @@ pull5: pull4 pull
 pull6: pull5 pull
 pull7: pull6 pull
 
-get2: pull2 drop swap
+get2: ap02 swap2 drop
+get3: ap03 swap3 drop
 
 tail: popr drop
 tail2: tail tail
@@ -351,11 +352,13 @@ read_std: "stream,in:std" open read [close] dip21
 write_std: ["stream,out:std" open] dip12 write close
 unread_std: ["stream,in:std" open] dip12 unread close
 
-__ IO buf
+__ IO h buf
 getline_loop:
-  [read_std] dip12 swap [] ap30 dup __ [IO buf str] x2
+  [read] dip23 swap [] ap40 dup __ [IO h buf str] x2
     [++ getline_loop] . swap __ no newline
-    ["\n" strsplit swap [++ unread_std] dip31 dup] . __ newline
-    popr -swap2 swap vifte get2
+    ["\n" strsplit swap [++ unread] dip42 dup] . __ newline
+    popr -swap2 swap vifte get3
 
 getline: "" getline_loop
+
+getline_std: "stream,in:std" open getline [close] dip21

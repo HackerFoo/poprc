@@ -273,7 +273,7 @@ f8: . $
 __ linear time version of `fib`
 fibl: [0 1] [[tuck +] .] swap2 1- times head
 
-push_input: [getline] dip12 pushl
+push_input: [getline_std] dip12 pushl
 
 input_times: [] ap31 [[push_input] .] swap times
 
@@ -282,8 +282,8 @@ __ sum_times: [] swap input_times [<-str] map sum
 __ maptest: [1] [] map head
 
 quote_str: "'" swap ++ "'" ++
-sum_times2: swap [0] pushl [[[getline <-str] dip12 +] .] swap2 times head
-sum_times2v: swap [0] pushl [[[getline dup [quote_str write_std] dip21 <-str] dip12 +] .] swap2 times head
+sum_times2: swap [0] pushl [[[getline_std <-str] dip12 +] .] swap2 times head
+sum_times2v: swap [0] pushl [[[getline_std dup [quote_str write_std] dip21 <-str] dip12 +] .] swap2 times head
 
 spaces: [" " strsplit swap "" =s !] ["" =s not] iterate True swap "" =s ! False default
 
@@ -322,10 +322,8 @@ calc_step_push:
     ["1"    =s [[1]    .] dip11 !]
     ["+"    =s [[+]    .] dip11 !] | ap21 nip
 
-__ calc: [[0]] ap10 [[dup [head ->str print getline] dip22 swap calc_step_push] .] [head valid] iterate
-
 calc_loop:
-  top swap [int_t ->str "\n" ++ write_std getline] dip22 swap  __ IO [s] "t"
+  top swap [int_t ->str "\n" ++ write_std getline_std] dip22 swap  __ IO [s] "t"
     calc_step top -swap2 over              __ "t" IO [s] IO
     [calc_loop] dip21 vifte
 
@@ -365,7 +363,7 @@ f9: | 3 default
 
 hello:
   "What's your name? " write_std
-    getline
+    getline_std
     "Hello " swap ++ "!\n" ++ write_std
 
 ext_cos: float_t "@math.h:cos" external float_t

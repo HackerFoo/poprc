@@ -51,7 +51,7 @@ const char *ctype(type_t t) {
     [T_MAP]      = "map_t ",
     [T_STRING]   = "seg_t ",
     [T_FLOAT]    = "double ",
-    [T_OPAQUE]   = "void *",
+    [T_OPAQUE]   = "opaque_t ",
     [T_BOTTOM]   = "void ",
   };
   assert_error(t < LENGTH(table));
@@ -170,8 +170,9 @@ void gen_return(const cell_t *e, const cell_t *l) {
     const cell_t *a = &e[ai];
     type_t t = trace_type(a);
     const char *n = cname(t);
+    int output = REVI(i);
     printf("  if(out_%s%d) *out_%s%d = %s%d;\n",
-           n, (int)i, n, (int)i, n, ai);
+           n, output, n, output, n, ai);
   }
   printf("  return %s%d;\n", cname(trace_type(&e[ires])), ires);
 }
@@ -335,7 +336,7 @@ bool arg_in_range(const cell_t *e, const cell_t *c, int low, int high) {
   TRAVERSE(c, const, in) {
     int x = cgen_index(e, *p);
     if(INRANGE(x, low, high) &&
-       NOT_FLAG(e[x], trace, MULTI_ALT)) return true;
+       NOT_FLAG(e[x], trace, NO_SKIP)) return true;
   }
   return false;
 }
@@ -451,11 +452,14 @@ void gen_call(const cell_t *e, const cell_t *c, int depth) {
   if(partial) {
     if(next_block) {
       printf(")) {\n");
-      // handle instructions that can't be skipped
+      // run instructions that can't be skipped
       FOR_TRACE_CONST(p, e, closure_next_const(c) - e) {
         if(is_return(p)) break;
-        if(FLAG(*p, trace, MULTI_ALT)) {
+        if(FLAG(*p, trace, NO_SKIP)) {
           gen_instruction(e, p, depth + 1);
+        }
+        if(FLAG(*p, expr, PARTIAL)) { // ***
+          break;
         }
       }
 

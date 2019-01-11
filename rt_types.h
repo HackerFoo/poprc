@@ -146,7 +146,7 @@ struct __attribute__((packed)) expr {
 #define TRACE_IMMEDIATE  0x08
 #define TRACE_CHANGES    0x10
 #define TRACE_DECL       0x20
-#define TRACE_MULTI_ALT  0x40
+#define TRACE_NO_SKIP    0x40
 
 /* reduced value */
 struct __attribute__((packed)) value {
