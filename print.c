@@ -649,6 +649,10 @@ FORMAT(function, 'O') {
   printf("%s", op_name(i));
 }
 
+FORMAT(type, 't') {
+  printf("%s", show_type(i));
+}
+
 static char *show_base[] = {
   [BASE_DEC] = "decimal",
   [BASE_HEX] = "hexadecimal"

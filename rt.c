@@ -908,13 +908,13 @@ context_t *ctx_pos(context_t *ctx, uint8_t pos) {
   return ctx;
 }
 
-bool check_type(uint8_t requested, uint8_t expected) {
+bool check_type(type_t requested, type_t expected) {
   if(expected == T_FAIL ||
      (expected != T_ANY &&
       !ONEOF(requested, T_ANY,
                         T_BOTTOM,
             expected))) {
-    LOG("check_type: requested %d, but expected %d", requested, expected);
+    LOG("check_type: requested %t, but expected %t", requested, expected);
     return false;
   }
   return true;

@@ -91,7 +91,7 @@ split_at:
   [[] swap] ap20
     [[[movr] dip22 1-] .]
     [head 0 >]
-    iterate tail pull2 drop swap
+    iterate tail get2
 
 __ index operator
 __ [f] index -> x
@@ -144,6 +144,10 @@ pull7: pull6 pull
 
 get2: ap02 swap2 drop
 get3: ap03 swap3 drop
+get4: ap04 swap4 drop
+get5: ap05 swap5 drop
+get6: ap06 swap6 drop
+get7: ap07 swap7 drop
 
 tail: popr drop
 tail2: tail tail
@@ -251,7 +255,7 @@ __ a [f b] -> fa if b, otherwise a
 ifdo: dup [dup] swap . [[drop] dip21 not] . | ap12 swap2 drop !
 
 __ a b -> a b [a b]
-in2: [] ap20 dup [ap02 swap2 drop] dip12
+in2: [] ap20 dup [get2] dip12
 
 __ a [fn] [test] -> apply fn to a while a [test] $ is True
 iterate:
@@ -296,7 +300,7 @@ __ A B default -> A, or B if A fails
 default: [dup] dip12 otherwise |
 
 otherwise2: __ a0 a1 b0 b1
-  [] ap20 otherwise otherwise pull2 drop swap
+  [] ap20 otherwise otherwise get2
 
 vifte: [swap] dip22 otherwise dup swap2 otherwise |
 
@@ -324,7 +328,7 @@ __ x power -> x*x power/2
 reduce_power: [dup *] [1 >>b] para
 
 __ acc x power -> acc' x^2 power/2
-power_step: in2 [acc_odd_power] dip31 ap02 swap2 drop reduce_power
+power_step: in2 [acc_odd_power] dip31 get2 reduce_power
 
 __ raise to integer power using binary exponentiation
 ^:
@@ -355,10 +359,17 @@ unread_std: ["stream,in:std" open] dip12 unread close
 __ IO h buf
 getline_loop:
   [read] dip23 swap [] ap40 dup __ [IO h buf str] x2
-    [++ getline_loop] . swap __ no newline
+    __ no newline
+    [dup "" =s __ test for empty read
+      [drop] __ return buf
+      [++ getline_loop] ifte ap43 swap3 drop] . swap __ continue
     ["\n" strsplit swap [++ unread] dip42 dup] . __ newline
     popr -swap2 swap vifte get3
 
 getline: "" getline_loop
 
 getline_std: "stream,in:std" open getline [close] dip21
+
+__ IO h
+is_eof:
+  read dup [unread] dip32 "" =s

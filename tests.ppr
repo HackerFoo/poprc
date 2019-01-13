@@ -45,7 +45,7 @@ __ apply a quote to two inputs yielding a single output
 test_ap21: pushl pushl head
 
 __ apply a quote to a single input yielding two outputs
-test_ap12: pushl pull2 drop swap
+test_ap12: pushl get2
 
 __ this expands forever because laziness expands backwards; assert must be *later* than recursive call
 __ dec: [dup 5 <= !] [dup 5 > ! 1- dec] | pushl popr swap drop
@@ -147,7 +147,7 @@ drop_loop3:
   [] ap30
     [[1-] .]
     [head 0 >]
-    iterate tail pull2 drop swap
+    iterate tail get2
 
 drop_loop4:
   [] ap40
@@ -170,7 +170,7 @@ drop_loop6:
 collatz_step:
   [dup 2/ swap even]
     [dup 3* 1+ swap odd]
-    | pushl pull2 drop swap!
+    | pushl get2!
 
 collatz:
   0 swap [] ap20
@@ -181,7 +181,7 @@ collatz:
 decel_step:
   [dup 1- swap 5<=]
     [dup 5- swap 5>]
-    | pushl pull2 drop swap!
+    | pushl get2!
 
 decel:
   0 swap [] ap20

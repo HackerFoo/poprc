@@ -171,6 +171,8 @@ endif
 #DIFF_TEST := diff -u -F '^@ '
 DIFF_TEST := diff -U 3
 
+POPR_SRC := lib.ppr tests.ppr gen_ed.ppr
+
 print-%:
 	@echo $* = $($*)
 
@@ -223,7 +225,7 @@ test: eval
 	./eval -test | $(DIFF_TEST) test_output/test.log -
 	./eval -echo < tests.txt | $(DIFF_TEST) test_output/tests.txt.log -
 	./eval -lo lib.ppr -im -echo < lib_tests.txt | $(DIFF_TEST) test_output/lib_tests.txt.log -
-	./eval -lo lib.ppr tests.ppr -bc | $(DIFF_TEST) test_output/bytecode`./eval -bits -q`.log -
+	./eval -lo $(POPR_SRC) -bc | $(DIFF_TEST) test_output/bytecode`./eval -bits -q`.log -
 
 test_output/test.log: eval
 	@mkdir -p test_output
@@ -237,13 +239,13 @@ test_output/lib_tests.txt.log: eval lib_tests.txt
 	@mkdir -p test_output
 	./eval -lo lib.ppr -im -echo < lib_tests.txt > $@
 
-test_output/bytecode32.log: eval lib.ppr tests.ppr
+test_output/bytecode32.log: eval $(POPR_SRC)
 	@mkdir -p test_output
-	if [[ `./eval -bits` = 32 ]]; then ./eval -lo lib.ppr tests.ppr -bc > $@; fi
+	if [[ `./eval -bits` = 32 ]]; then ./eval -lo $(POPR_SRC) -bc > $@; fi
 
-test_output/bytecode64.log: eval lib.ppr tests.ppr
+test_output/bytecode64.log: eval $(POPR_SRC)
 	@mkdir -p test_output
-	if [[ `./eval -bits` = 64 ]]; then ./eval -lo lib.ppr tests.ppr -bc > $@; fi
+	if [[ `./eval -bits` = 64 ]]; then ./eval -lo $(POPR_SRC) -bc > $@; fi
 
 .PHONY: test_output
 test_output: test_output/test.log test_output/tests.txt.log test_output/lib_tests.txt.log test_output/bytecode32.log test_output/bytecode64.log
@@ -280,7 +282,7 @@ graph: eval
 .PHONY: profile
 profile:
 	make BUILD=profile test
-	CPUPROFILE=eval_prof.out CPUPROFILE_FREQUENCY=10000 ./eval -lo lib.ppr tests.ppr -im -ev $(PROFILE_EXPRESSION) -st -q
+	CPUPROFILE=eval_prof.out CPUPROFILE_FREQUENCY=10000 ./eval -lo $(POPR_SRC) -im -ev $(PROFILE_EXPRESSION) -st -q
 	$(PPROF) --pdf eval eval_prof.out > eval_prof.pdf
 
 .PHONY: dbg

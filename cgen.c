@@ -232,6 +232,11 @@ static
 bool last_call(const cell_t *e, const cell_t *c) {
   c = closure_next_const(c);
   FOR_TRACE_CONST(p, e, c - e) {
+    if(p->op == OP_assert &&
+       set_member(cgen_index(e, p->expr.arg[1]),
+                  assert_set, LENGTH(assert_set))) {
+      continue;
+    }
     if(!gen_skip(p)) {
       return is_return(p);
     }

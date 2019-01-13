@@ -1,0 +1,33 @@
+__, Copyright 2012-2019 Dustin DeWeese
+  | This file is part of PoprC.
+  |
+  |  PoprC is free software: you can redistribute it and/or modify
+  |  it under the terms of the GNU General Public License as published by
+  |  the Free Software Foundation, either version 3 of the License, or
+  |  (at your option) any later version.
+  |
+  |  PoprC is distributed in the hope that it will be useful,
+  |  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  |  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  |  GNU General Public License for more details.
+  |
+  |  You should have received a copy of the GNU General Public License
+  |  along with PoprC.  If not, see <http://www.gnu.org/licenses/>.
+  |______________________________________________________________________
+
+module gen_ed:
+
+imports:
+  module list
+  module stack
+  module control
+  module num
+  module logic
+  module algorithm
+  module io
+
+__ doesn't work yet
+count_lines:
+  [0] ap20 __ IO h cnt
+    [[[getline drop] dip22 1+] . ]
+    [[drop is_eof not] . head] iterate get3

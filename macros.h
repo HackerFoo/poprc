@@ -321,4 +321,10 @@
     if(rule_##name(ctx)) return RETRY;          \
   } while(0)
 
+#ifdef __APPLE__
+#define CONSTANT __attribute__((section("__TEXT,__text")))
+#else
+#define CONSTANT __attribute__((section(".text")))
+#endif
+
 #endif

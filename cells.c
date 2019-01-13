@@ -57,7 +57,7 @@ static cell_t *uninitialized_cells;
 static cell_t *uninitialized_cells_end;
 
 // Predefined failure cell
-cell_t fail_cell = {
+CONSTANT cell_t fail_cell = {
   .op = OP_value,
   .size = 1,
   .n = PERSISTENT,
@@ -66,7 +66,7 @@ cell_t fail_cell = {
   }
 };
 
-cell_t nil_cell = {
+CONSTANT cell_t nil_cell = {
   .op = OP_value,
   .size = VALUE_OFFSET(ptr),
   .n = PERSISTENT,

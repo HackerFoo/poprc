@@ -124,6 +124,7 @@ cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) 
   } else if(is_var(pattern)) {
     // found a binding
     assert_error(!pattern->alt);
+    assert_error(c->n != PERSISTENT);
     if(entry) {
       switch_entry(entry, pattern);
     } else {
