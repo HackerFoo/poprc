@@ -248,7 +248,9 @@ response op_call(op op, cell_t **cp, context_t *ctx) {
 
 cell_t *fill_incomplete(cell_t *c) {
   if(!closure_is_ready(c)) {
-    LOG("fill_incomplete: closure not ready %C", c);
+    const char *module_name, *word_name;
+    get_name(c, &module_name, &word_name);
+    LOG("fill_incomplete: closure not ready %C (%s.%s)", c, module_name, word_name);
     do {
       c = arg_nd(c, &fail_cell, c);
     } while(!closure_is_ready(c));
@@ -280,6 +282,8 @@ response reduce(cell_t **cp, context_t *ctx) {
   const bool marked = is_marked(*cp);
   *cp = clear_ptr(*cp);
   cell_t *c = *cp;
+  const char *module_name, *word_name;
+  get_name(c, &module_name, &word_name); // debug
 
   while(c) {
     assert_error(is_closure(c));
@@ -291,7 +295,7 @@ response reduce(cell_t **cp, context_t *ctx) {
     // prevent infinite loops when debugging
     assert_counter(LENGTH(cells));
 
-    LOG_WHEN(!*cp, MARK("FAIL") ": %O %C @abort", op, c);
+    LOG_WHEN(!*cp, MARK("FAIL") ": %O %C (%s.%s) @abort", op, c, module_name, word_name);
     c = *cp;
     if(r <= DELAY || (r == RETRY && ctx->retry)) {
       ctx->retry = false;

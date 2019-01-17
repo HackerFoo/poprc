@@ -26,8 +26,29 @@ imports:
   module algorithm
   module io
 
-__ doesn't work yet
+dupu: [dup] dip12
+
+__ a [fn] [test]
+iterate_linear:
+  swap [dup [ap12 swap2 drop] dip22] dip23 swap __ a' bool [fn] [test]
+    [[dup [$] dip21] dip22 iterate_linear] ap20 __ a' bool [[fn] $ [fn] [test] iterate_linear]
+    [] ifte $
+
+il_test: [3+] [dup 10<] iterate_linear
+
+do_linear: [$keep] dip22 iterate_linear
+
+dl_test: [3+] [dup 10<] do_linear
+dl_test2: [] pushl [[3+].] [[dup 10<]. popr] do_linear head
+dl_test3:
+  [""] ap20
+    [[[read] dip23 swap].]
+    [[dup [++] dip21 "" =s not]. popr]
+    do_linear get3
+
+__ breaks for s/iterate/do/
 count_lines:
   [0] ap20 __ IO h cnt
-    [[[getline drop] dip22 1+] . ]
-    [[drop is_eof not] . head] iterate get3
+    [[[getline drop] dip22 1+].]
+    [[[is_eof] dip23 swap not]. popr]
+    iterate_linear get3

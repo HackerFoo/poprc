@@ -34,7 +34,7 @@
 #include "macros.h"
 
 // to catch errors that result in large allocations
-#define MAX_ALLOC_SIZE 128
+#define MAX_ALLOC_SIZE 1024
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wgnu-empty-initializer"

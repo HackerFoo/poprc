@@ -562,6 +562,7 @@ char *show_type(type_t t) {
   _case(T_OPAQUE);
   _case(T_BOTTOM);
   _case(T_MODULE);
+  _case(T_FAIL);
   default: return "???";
   }
 #undef _case

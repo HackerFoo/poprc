@@ -879,6 +879,7 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
     int x = trace_alloc(entry, size);
     cell_t *tc = &entry[x];
     tc->op = row ? OP_pushr : OP_quote;
+    tc->trace.type = T_LIST;
     int n = size;
 
     cell_t **p;
