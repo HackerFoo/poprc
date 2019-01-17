@@ -481,6 +481,7 @@ void trace_final_pass(cell_t *entry) {
 // add an entry and all sub-entries to a module
 static
 void store_entries(cell_t *entry, cell_t *module) {
+  assert_error(module_name(module) == entry->module_name);
   module_set(module, string_seg(entry->word_name), entry);
   FOR_TRACE(c, entry) {
     if(c->op != OP_exec) continue;
@@ -497,7 +498,7 @@ cell_t *compile_entry(seg_t name, cell_t *module) {
   cell_t *ctx = get_module(string_seg(entry->module_name)); // switch context module for words from other modules
   if(pre_compile_word(entry, ctx, &in, &out) &&
      compile_word(&entry, name, ctx, in, out)) {
-    store_entries(entry, module);
+    store_entries(entry, ctx);
     return entry;
   } else {
     return NULL;

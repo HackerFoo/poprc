@@ -489,13 +489,6 @@ ___ control.fork (3 -> 2) ___
 [7] __primitive.dep 6 :: a x1
 [8] return [7 5]
 
-___ stack.get2 (1 -> 2) ___
-[1] var :: ?l x1
-[2] __primitive.ap 1 -> 4 3 :: v? x2
-[3] __primitive.dep 2 :: a x1
-[4] __primitive.dep 2 :: a x1
-[5] return [4 3]
-
 ___ control.if (3 -> 1) ___
 [1] var :: ?l x1
 [2] var :: ?l x1
@@ -577,11 +570,6 @@ ___ control.maybe (3 -> 1) x2 ___
 [21] __primitive.dep 20 :: a x1
 [22] return [21]
 
-___ stack.nip (2 -> 1) ___
-[1] var :: ?a x1
-[2] var :: ?v x0
-[3] return [1]
-
 ___ control.para (4 -> 2) ___
 [1] var :: ?l x1
 [2] var :: ?l x1
@@ -599,22 +587,6 @@ ___ control.peek (2 -> 2) ___
 [3] __primitive.ap &2 1 -> 4 :: v? x1
 [4] __primitive.dep 3 :: a x1
 [5] return [2 4]
-
-___ stack.swap3 (4 -> 4) ___
-[1] var :: ?a x1
-[2] var :: ?a x1
-[3] var :: ?a x1
-[4] var :: ?a x1
-[5] return [3 2 1 4]
-
-___ stack.swap5 (6 -> 6) ___
-[1] var :: ?a x1
-[2] var :: ?a x1
-[3] var :: ?a x1
-[4] var :: ?a x1
-[5] var :: ?a x1
-[6] var :: ?a x1
-[7] return [5 4 3 2 1 6]
 
 ___ control.times (3 -> 1) ___
 [1] var :: ?i x1
@@ -700,14 +672,6 @@ ___ gen_ed.count_lines_r0 (3 -> 3) x2 rec ___
 [28] __primitive.dep 24 :: i x1
 [29] __primitive.assert 28 17 :: i x1
 [30] return [18 27 29]
-
-___ stack.get3 (1 -> 3) ___
-[1] var :: ?l x1
-[2] __primitive.ap 1 -> 5 4 3 :: v? x3
-[3] __primitive.dep 2 :: a x1
-[4] __primitive.dep 2 :: a x1
-[5] __primitive.dep 2 :: a x1
-[6] return [5 4 3]
 
 ___ io.getline (2 -> 3) ___
 [1] var :: ?o x1
@@ -937,6 +901,20 @@ ___ list.foldr_r0 (3 -> 1) x2 rec ___
 [11] __primitive.otherwise 5 1 :: l x1
 [12] return [11]
 
+___ list.foldr_r0 (3 -> 1) x2 rec ___
+[1] changing var :: ?a x2
+[2] changing var :: ?l x1
+[3] var :: ?l x2
+[4] __primitive.ap 2 -> 5 :: l? x2
+[5] __primitive.dep 4 :: a x3
+[6] __primitive.seq 9 &5 :: v x1
+[7] __primitive.ap &5 &1 &3 -> 8 :: v? x1
+[8] __primitive.dep 7 :: a x1
+[9] list.foldr_r0 3 4 8 :: v x1
+[10] return [6] -> 12
+[11] __primitive.otherwise 5 1 :: l x1
+[12] return [11]
+
 ___ list.foldr_step (3 -> 3) ___
 [1] var :: ?a x1
 [2] var :: ?l x1
@@ -1052,13 +1030,6 @@ ___ list.movr (2 -> 2) ___
 [5] __primitive.ap 4 1 :: l x1
 [6] return [3 5]
 
-___ stack.over3 (4 -> 5) ___
-[1] var :: ?a x1
-[2] var :: ?a x1
-[3] var :: ?a x1
-[4] var :: ?a x2
-[5] return [&4 3 2 1 4]
-
 ___ list.pushif (3 -> 1) x2 ___
 [1] var :: ?l x1
 [2] var :: ?l x2
@@ -1107,15 +1078,6 @@ ___ list.top (1 -> 2) ___
 [2] __primitive.ap &1 -> 3 :: v? x1
 [3] __primitive.dep 2 :: a x1
 [4] return [1 3]
-
-___ logic.valid (1 -> 1) x2 ___
-[1] var :: ?a x2
-[2] __primitive.seq 3 1 :: y x1
-[3] val True :: y x1
-[4] return [2] -> 7
-[5] __primitive.otherwise 1 6 :: y x1
-[6] val False :: y x1
-[7] return [5]
 
 ___ logic.and (2 -> 1) x2 ___
 [1] var :: ?y x2
@@ -1257,20 +1219,6 @@ ___ stack.-swap6 (7 -> 7) ___
 [6] var :: ?a x1
 [7] var :: ?a x1
 [8] return [1 7 6 5 4 3 2]
-
-___ control.dip44 (6 -> 5) ___
-[1] var :: ?l x1
-[2] var :: ?a x1
-[3] var :: ?a x1
-[4] var :: ?a x1
-[5] var :: ?a x1
-[6] var :: ?a x1
-[7] __primitive.ap 6 5 4 3 1 -> 12 11 10 9 :: v x4
-[9] __primitive.dep 7 :: a x1
-[10] __primitive.dep 7 :: a x1
-[11] __primitive.dep 7 :: a x1
-[12] __primitive.dep 7 :: a x1
-[13] return [12 11 10 9 2]
 
 ___ stack.dup2 (2 -> 4) ___
 [1] var :: ?a x2
