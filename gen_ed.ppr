@@ -52,3 +52,8 @@ count_lines:
     [[[getline drop] dip22 1+].]
     [[[is_eof] dip23 swap not]. popr]
     iterate_linear get3
+
+count_lines_test:
+  getline_std "in:" swap ++
+    open count_lines [close] dip21
+    ->str write_std

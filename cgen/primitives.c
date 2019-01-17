@@ -14,7 +14,7 @@
 
 static int mem[256];
 static int *mem_ptr = mem;
-static char strings[1024];
+static char strings[1 << 22]; // ***
 static char *strings_ptr = strings;
 static char string_buffer[64];
 
@@ -47,7 +47,9 @@ array arr_alloc(unsigned int n) {
 }
 
 char *string_alloc(unsigned int n) {
-  assert_error(strings_ptr - strings + n <= (int)LENGTH(strings), "out of mem");
+  assert_error(strings_ptr - strings + n <= (int)LENGTH(strings),
+               "out of mem (%d requested, %d available)",
+               n, *(&strings+1) - strings_ptr);
   char *s = strings_ptr;
   strings_ptr += n;
   return s;

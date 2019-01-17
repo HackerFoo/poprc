@@ -672,6 +672,34 @@ ___ gen_ed.count_lines_r0 (3 -> 3) x2 rec ___
 [28] __primitive.assert 27 8 :: i x1
 [29] return [17 26 28]
 
+___ gen_ed.count_lines_test (1 -> 1) ___
+[1] var :: ?y x1
+[2] __primitive.open 1 3 -> 4 :: y x2
+[3] val "stream,in:std" :: s x1
+[4] __primitive.dep 2 :: o x1
+[5] io.getline_loop 2 4 7 -> 8 10 :: y x3
+[7] val "" :: s x1
+[8] __primitive.dep 5 :: o x1
+[9] __primitive.close 5 8 :: y x1
+[10] __primitive.dep 5 :: s x1
+[11] __primitive.strcat 12 10 :: s x1
+[12] val "in:" :: s x1
+[13] __primitive.open 9 11 -> 14 :: y x2
+[14] __primitive.dep 13 :: o x1
+[15] gen_ed.count_lines_r0 13 14 17 -> 18 23 :: y x3
+[17] val 0 :: i x1
+[18] __primitive.dep 15 :: o x1
+[19] __primitive.close 15 18 :: y x1
+[20] __primitive.open 19 21 -> 22 :: y x2
+[21] val "stream,out:std" :: s x1
+[22] __primitive.dep 20 :: o x1
+[23] __primitive.dep 15 :: i x1
+[24] __primitive.to_string 23 :: s x1
+[25] __primitive.write 20 22 24 -> 26 :: y x2
+[26] __primitive.dep 25 :: o x1
+[27] __primitive.close 25 26 :: y x1
+[28] return [27]
+
 ___ gen_ed.dl_test (1 -> 1) ___
 [1] var :: ?i x1
 [2] __primitive.add 1 3 :: i x1

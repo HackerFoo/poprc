@@ -457,16 +457,8 @@ void gen_call(const cell_t *e, const cell_t *c, int depth) {
   if(partial) {
     if(next_block) {
       printf(")) {\n");
-      // run instructions that can't be skipped
-      FOR_TRACE_CONST(p, e, closure_next_const(c) - e) {
-        if(is_return(p)) break;
-        if(FLAG(*p, trace, NO_SKIP)) {
-          gen_instruction(e, p, depth + 1);
-        }
-        if(FLAG(*p, expr, PARTIAL)) { // ***
-          break;
-        }
-      }
+
+      gen_noskip(e, c, depth + 1);
 
       // jump to next block
       gen_indent(depth + 1);
@@ -505,6 +497,19 @@ void gen_value_rhs(const cell_t *c) {
   }
 }
 
+// generate instructions that can't be skipped
+void gen_noskip(const cell_t *e, const cell_t *c, int depth) {
+  FOR_TRACE_CONST(p, e, closure_next_const(c) - e) {
+    if(is_return(p)) break;
+    if(FLAG(*p, trace, NO_SKIP)) {
+      gen_instruction(e, p, depth);
+    }
+    if(FLAG(*p, expr, PARTIAL)) { // ***
+      break;
+    }
+  }
+}
+
 void gen_assert(const cell_t *e, const cell_t *c, int depth) {
   int iq = cgen_index(e, c->expr.arg[1]);
   const cell_t *ret = NULL;
@@ -521,11 +526,15 @@ void gen_assert(const cell_t *e, const cell_t *c, int depth) {
     }
     if(ret) {
       const cell_t *next = ret + closure_cells(ret);
-      gen_indent(depth);
       if(next < end) {
-        printf("  if(!%s%d)", cname(trace_type(&e[iq])), iq);
-        printf(" goto block%d; // assert\n", (int)(next - e));
+        gen_indent(depth);
+        printf("  if(!%s%d) { // assert\n", cname(trace_type(&e[iq])), iq);
+        gen_noskip(e, c, depth + 1);
+        gen_indent(depth);
+        printf("    goto block%d;\n", (int)(next - e));
+        printf("  }\n");
       } else {
+        gen_indent(depth);
         printf("  assert_error(%s%d);\n", cname(trace_type(&e[iq])), iq);
       }
     }
@@ -559,7 +568,7 @@ void gen_function(cell_t *e) {
   FOR_TRACE(c, e) {
     if(c->op == OP_exec && c->trace.type != T_BOTTOM) {
       cell_t *x = get_entry(c);
-      if(x != e && e->op != OP_null) {
+      if(x != e && x->op == OP_null) {
         printf("\n");
         gen_function(x);
       }
