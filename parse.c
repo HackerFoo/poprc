@@ -470,8 +470,12 @@ cell_t *array_to_list(cell_t **a, csize_t n) {
   return l;
 }
 
-#define MAX_ARGS 64
 cell_t *parse_expr(const cell_t **l, cell_t *module, cell_t *entry) {
+  return parse_subexpr(l, module, entry, 0);
+}
+
+#define MAX_ARGS 64
+cell_t *parse_subexpr(const cell_t **l, cell_t *module, cell_t *entry, int depth) {
   cell_t *arg_stack[MAX_ARGS]; // TODO use allocated storage
   cell_t *ph = NULL;
   unsigned int n = 0;
@@ -575,10 +579,15 @@ cell_t *parse_expr(const cell_t **l, cell_t *module, cell_t *entry) {
       if(seg.n == 1) {
         switch(*seg.s) {
         case ']':
-          goto done;
+          if(depth) {
+            goto done;
+          } else {
+            LOG("parse failure, mismatched closing bracket");
+            goto fail;
+          }
         case '[':
         {
-          cell_t *c = parse_expr(l, module, entry);
+          cell_t *c = parse_subexpr(l, module, entry, depth + 1);
           if(c) {
             assert_throw(n < MAX_ARGS);
             arg_stack[n++] = c;
@@ -601,6 +610,11 @@ cell_t *parse_expr(const cell_t **l, cell_t *module, cell_t *entry) {
     default:
       break;
     }
+  }
+
+  if(depth) {
+    LOG("parse failure, missing closing bracket");
+    goto fail;
   }
 
 done:
