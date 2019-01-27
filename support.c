@@ -30,6 +30,8 @@
 #include "startle/error.h"
 #include "startle/log.h"
 #include "startle/support.h"
+#include "startle/stats_types.h"
+#include "startle/stats.h"
 
 /** @file
  *  @brief Generally useful functions
@@ -194,18 +196,33 @@ pair_t *find(pair_t *array, size_t size, uintptr_t key) {
 /** Like `find`, but find the last match.
  * O(log n) time.
  */
-pair_t *find_last(pair_t *array, size_t size, uintptr_t key) {
+pair_t *find_last(pair_t *array, size_t size, uintptr_t key, size_t *est) {
   size_t low = 0, high = size;
+  size_t pivot = est ? *est : low + ((high - low + 1) / 2);
   while(high > low + 1) {
-    const size_t pivot = low + ((high - low + 1) / 2);
+    COUNTER(find_last, 1);
+    if(high - low <= 0) {
+      size_t l = low;
+      low = high - 1;
+      RANGEUP(i, l + 1, high) {
+        uintptr_t k = array[i].first;
+        if(k > key) {
+          low = i - 1;
+          break;
+        }
+      }
+      break;
+    }
     const uintptr_t pivot_key = array[pivot].first;
     if(pivot_key <= key) {
       low = pivot;
     } else {
       high = pivot;
     }
+    pivot = low + ((high - low + 1) / 2);
   }
   pair_t *p = &array[low];
+  if(est) *est = low;
   return p->first == key ? p : NULL;
 }
 
@@ -285,8 +302,7 @@ seg_t seg_after(seg_t s, char c) {
 
 /** Create a string segment from a C string. */
 seg_t string_seg(const char *str) {
-  seg_t seg = {str, strlen(str)};
-  return seg;
+  return (seg_t) {str, str ? strlen(str) : 0};
 }
 
 /** Look up the string segment key in a sorted table.
@@ -635,4 +651,332 @@ uintptr_t nonzero_hash(const char *str, size_t len)
     hash = hash * 33 + (unsigned char)*str++;
   }
   return hash ? hash : -1;
+}
+
+int ctz(uintptr_t x) {
+  return x ? __builtin_ctzll(x) : 0;
+}
+
+int next_bit(uintptr_t *mask) {
+  if(*mask) {
+    int res = __builtin_ctzll(*mask);
+    *mask &= ~(1 << res);
+    return res;
+  } else {
+    return -1;
+  }
+}
+
+char *replace_char(char *s, char c_old, char c_new) {
+  char *r = strchr(s, c_old);
+  if(r) *r = c_new;
+  return r;
+}
+
+bool is_whitespace(char c) {
+  return ONEOF(c, ' ', '\n', '\r', '\t');
+}
+
+seg_t seg_trim(seg_t s) {
+  while(s.n && is_whitespace(*s.s)) {
+    s.n--;
+    s.s++;
+  }
+  const char *e = seg_end(s) - 1;
+  while(s.n && is_whitespace(*e)) {
+    e--;
+    s.n--;
+  }
+  return s;
+}
+
+TEST(seg_trim) {
+  seg_t s = string_seg(" \t  hi    \n");
+  s = seg_trim(s);
+  printf("trimmed: \"%.*s\"\n", (int)s.n, s.s);
+  return strncmp("hi", s.s, s.n) == 0 ? 0 : -1;
+}
+
+int digit_value(char c) {
+  if(INRANGE(c, '0', '9')) {
+    return c - '0';
+  } else if(INRANGE(c, 'A', 'Z')) {
+    return c - 'A' + 10;
+  } else if(INRANGE(c, 'a', 'z')) {
+    return c - 'a' + 10;
+  } else {
+    return -1;
+  }
+}
+
+char digit(int n) {
+  if(!INRANGE(n, 0, 35)) return '?';
+  if(n <= 9) return '0' + n;
+  return 'a' + (n - 10);
+}
+
+int strnum(const char *s, size_t n, int base) {
+  if(!INRANGE(base, 1, 36)) return -1;
+  int v = 0;
+  LOOP(n) {
+    if(*s == '\0') break;
+    int d = digit_value(*s++);
+    if(!INRANGE(d, 0, base - 1)) return -1;
+    v = v * base + d;
+  }
+  return v;
+}
+
+TEST(strnum) {
+  if(strnum("1234", 3, 8) != 0123) return -1;
+  if(strnum("80", 2, 8) != -1) return -2;
+  if(strnum("cAFe", 4, 16) != 0xcafe) return -3;
+  return 0;
+}
+
+size_t unescape_string(char *dst, size_t n, seg_t str) {
+  char *d = dst;
+  const char
+    *s = str.s,
+    *s_end = seg_end(str),
+    *d_end = d + n;
+  while(*s && s < s_end && d < d_end) {
+    if(s[0] == '\\' && s + 1 < s_end) {
+      switch(s[1]) {
+      case '\'': *d++ = '\''; break;
+      case '\"': *d++ = '\"'; break;
+      case '\\': *d++ = '\\'; break;
+      case '0':  *d++ = '\0'; break; // just handle \0
+      case '?':  *d++ = '?';  break;
+      case 'a':  *d++ = '\a'; break;
+      case 'b':  *d++ = '\b'; break;
+      case 'f':  *d++ = '\f'; break;
+      case 'n':  *d++ = '\n'; break;
+      case 'r':  *d++ = '\r'; break;
+      case 't':  *d++ = '\t'; break;
+      case 'v':  *d++ = '\v'; break;
+      case 'x': {
+        if(s + 3 >= s_end) goto copy_char;
+        int v = strnum(s + 2, 2, 16);
+        if(v < 0) goto copy_char;
+        *d++ = v;
+        s += 4;
+      } continue;
+        // TODO Unicode
+      default:
+        goto copy_char;
+      }
+      s += 2;
+    } else {
+    copy_char:
+      *d++ = *s++;
+    }
+  }
+  if(d < d_end) *d = '\0';
+  return d - dst;
+}
+
+TEST(unescape_string) {
+  char out[32];
+  seg_t escaped = SEG("test\\n\\\\string\\bG\\x21\\0stuff");
+  seg_t unescaped = SEG("test\n\\string\bG\x21\0stuff");
+  unescape_string(out, sizeof(out), escaped);
+  printf("%s\n", out);
+  return segcmp(out, unescaped) == 0 ? 0 : -1;
+}
+
+size_t escape_string(char *dst, size_t n, seg_t str) {
+  char *d = dst;
+  const char
+    *s = str.s,
+    *s_end = seg_end(str),
+    *d_end = d + n;
+  while(s < s_end && d < d_end) {
+    char c = *s++;
+    if(INRANGE(c, 32, 126) && c != '\\') {
+      *d++ = c;
+    } else {
+      if(d + 1 >= d_end) break;
+      switch(c) {
+      case '\'':
+      case '\"':
+      case '\\':
+        break;
+      case '\0': c = '0'; break;
+      case '\a': c = 'a'; break;
+      case '\b': c = 'b'; break;
+      case '\f': c = 'f'; break;
+      case '\n': c = 'n'; break;
+      case '\r': c = 'r'; break;
+      case '\t': c = 't'; break;
+      case '\v': c = 'v'; break;
+      default:
+        if(d + 3 >= d_end) break;
+        *d++ = '\\';
+        *d++ = 'x';
+        *d++ = digit(c >> 4);
+        *d++ = digit(c & 0x0f);
+        continue;
+      };
+      *d++ = '\\';
+      *d++ = c;
+    }
+  }
+  if(d < d_end) *d = '\0';
+  return d - dst;
+}
+
+TEST(escape_string) {
+  char out[32];
+  seg_t escaped = SEG("test\\n\\\\string\\bG\\0stuff\\x1b");
+  seg_t unescaped = SEG("test\n\\string\bG\0stuff\x1b");
+  escape_string(out, sizeof(out), unescaped);
+  printf("%s\n", out);
+  return segcmp(out, escaped) == 0 ? 0 : -1;
+}
+
+void print_escaped_string(seg_t str) {
+  char buf[64];
+  while(str.n > 16) {
+    escape_string(buf, sizeof(buf), (seg_t) { .s = str.s, .n = 16 });
+    printf("%s", buf);
+    str.s += 16;
+    str.n -= 16;
+  }
+  escape_string(buf, sizeof(buf), str);
+  printf("%s", buf);
+}
+
+TEST(print_escaped_string) {
+  seg_t unescaped = SEG("test\n\\string\bG\0stuff");
+  print_escaped_string(unescaped);
+  printf("\n");
+  return 0;
+}
+
+bool eq_seg(seg_t a, seg_t b) {
+  return a.n == b.n && memcmp(a.s, b.s, a.n) == 0;
+}
+
+#if INTERFACE
+typedef struct ring_buffer {
+  size_t head, tail, size;
+  char data[0];
+} ring_buffer_t;
+
+#define APPEND_DATA_TO(_type, _size)            \
+  struct {                                      \
+    _type hdr;                                  \
+    char data[_size];                           \
+  }
+
+#define RING_BUFFER(_size)                      \
+  ((ring_buffer_t *)                            \
+   &(APPEND_DATA_TO(ring_buffer_t, _size))      \
+  {{ .size = _size }, {0}})
+#endif
+
+TEST(append_data_to) {
+  APPEND_DATA_TO(ring_buffer_t, 1) x;
+  return x.data == x.hdr.data ? 0 : -1;
+}
+
+size_t rb_available(const ring_buffer_t *rb) {
+  return (rb->size + rb->head - rb->tail) % rb->size;
+}
+
+size_t rb_capacity(const ring_buffer_t *rb) {
+  return rb->size - rb_available(rb) - 1;
+}
+
+size_t rb_write(ring_buffer_t *rb, const char *src, size_t size) {
+  size = min(size, rb_capacity(rb));
+  size_t right = rb->size - rb->head;
+  if(size <= right) {
+    memcpy(&rb->data[rb->head], src, size);
+    rb->head += size;
+  } else {
+    memcpy(&rb->data[rb->head], src, right);
+    size_t left = size - right;
+    memcpy(&rb->data[0], src + right, left);
+    rb->head = left;
+  }
+  return size;
+}
+
+size_t rb_read(ring_buffer_t *rb, char *dst, size_t size) {
+  size = min(size, rb_available(rb));
+  size_t right = rb->size - rb->tail;
+  if(size <= right) {
+    memcpy(dst, &rb->data[rb->tail], size);
+    rb->tail += size;
+  } else {
+    memcpy(dst, &rb->data[rb->tail], right);
+    size_t left = size - right;
+    memcpy(dst + right, &rb->data[0], left);
+    rb->tail = left;
+  }
+  return size;
+}
+
+#define WRITE(str) rb_write(rb, (str), sizeof(str)-1)
+#define PRINT(n)                                                \
+  do {                                                          \
+    size_t _size = rb_read(rb, out, min(sizeof(out), (n)));     \
+    printf("%.*s\n", (int)_size, out);                          \
+  } while(0)
+
+TEST(ring_buffer) {
+  char out[8];
+  ring_buffer_t *rb = RING_BUFFER(8);
+
+  WRITE("hello");
+  PRINT(2);
+  PRINT(2);
+  WRITE(" world!");
+  PRINT(8);
+  return 0;
+}
+
+const char *seg_find(seg_t haystack, seg_t needle) {
+  if(needle.n > haystack.n) return NULL;
+  if(needle.n == 0) return haystack.s;
+  const char *end = haystack.s + (haystack.n - needle.n + 1);
+  const char *p = haystack.s;
+  while(p < end) {
+    if(memcmp(p, needle.s, needle.n) == 0) return p;
+    p++;
+  }
+  return NULL;
+}
+
+TEST(seg_find) {
+  seg_t hello = SEG("Hello. My name is Inigo Montoya. You killed my father. Prepare to die.");
+  seg_t father = SEG("father");
+  seg_t mother = SEG("mother");
+  if(!seg_find(hello, father)) return -1;
+  if(seg_find(hello, mother)) return -2;
+  return 0;
+}
+
+const char *seg_find_char(seg_t haystack, char needle) {
+  if(haystack.n == 0) return NULL;
+  const char *end = seg_end(haystack);
+  const char *p = haystack.s;
+  while(p < end) {
+    if(*p == needle) return p;
+    p++;
+  }
+  return NULL;
+}
+
+TEST(seg_find_char) {
+  seg_t hello = SEG("hello");
+  if(!seg_find_char(hello, 'l')) return -1;
+  if(seg_find_char(hello, '!')) return -2;
+  return 0;
+}
+
+char capitalize(char c) {
+  return INRANGE(c, 'a', 'z') ? c - ('a' - 'A') : c;
 }

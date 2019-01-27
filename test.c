@@ -31,33 +31,36 @@
  *  @brief Unit testing
  */
 
-#define TEST_ITEM(name) extern int test_##name();
-#include "test_list.h"
-#undef TEST_ITEM
+typedef struct test_entry {
+  char *name;
+  int (*run)();
+} test_entry_t;
 
-#define TEST_ITEM(name)                                  \
-  {                                                      \
-    .first = (uintptr_t)#name,                           \
-    .second = (uintptr_t)&test_##name                    \
+#define TEST__ITEM(name) extern int test_##name();
+#include "test_list.h"
+#undef TEST__ITEM
+
+#define TEST__ITEM(_name)   \
+  {                         \
+    .name = #_name,         \
+    .run = &test_##_name    \
   },
 
-pair_t tests[] = {
+static test_entry_t tests[] = {
 #include "test_list.h"
 };
 
-#undef TEST_ITEM
+#undef TEST__ITEM
 
 /** Run all tests matching the name. */
 int run_test(seg_t name) {
   int fail = 0;
   FOREACH(i, tests) {
-    pair_t *entry = &tests[i];
-    char *entry_name = (char *)entry->first;
-    int (*entry_func)() = (int (*)())entry->second;
-    if(strncmp(entry_name, name.s, name.n) == 0) {
-      printf("@ %s\n", entry_name);
-      int result = entry_func();
-      printf("%s => %d\n", entry_name, result);
+    test_entry_t *entry = &tests[i];
+    if(strncmp(entry->name, name.s, name.n) == 0) {
+      printf("@ %s\n", entry->name);
+      int result = entry->run();
+      printf("%s => %d\n", entry->name, result);
       if(result && !fail) fail = result;
     }
   }
@@ -91,11 +94,41 @@ TEST(loops) {
     }
     putchar('\n');
   }
+
+  RANGEUP(i, 3, 7) {
+    printf("range up: i = %d, REVI(i) = %d\n", (int)i, (int)REVI(i));
+  }
+  RANGEDOWN(i, 3, 7) {
+    printf("range down: i = %d, REVI(i) = %d\n", (int)i, (int)REVI(i));
+  }
   /** [loops] */
   return 0;
 }
 
+TEST(formask) {
+  unsigned int mask = 0x11af;
+  unsigned int prev_mask = (mask << 1) + 1;
+  FORMASK(i, j, 0x11af) {
+    printf("%d, %d\n", (int)i, (int)j);
+    if((prev_mask - (__mask << (__z + 1))) != 1) return -1;
+    prev_mask = __mask;
+  }
+  return 0;
+}
+
+TEST(next_bit) {
+  uintptr_t mask = 0x11af, m = mask;
+  while(m) {
+    int x = next_bit(&m);
+    if(x < 0) return -1;
+    mask &= ~(1 << x);
+    printf("bit = %d\n", x);
+  }
+  return mask ? -2 : 0;
+}
+
 /** [macro_dispatch] */
+
 #define TEST_0() printf("TEST_0()\n")
 #define TEST_1(x0) printf("TEST_1(" x0 ")\n")
 #define TEST_2(x0, x1) printf("TEST_2(" x0 ", " x1 ")\n")
@@ -106,4 +139,45 @@ TEST(macro_dispatch) {
   DISPATCH(TEST, "1", "2");
   return 0;
 }
+
 /** [macro_dispatch] */
+
+TEST(inrange) {
+  if(!INRANGE(1, -3, 3)) return -1;
+  if(!INRANGE(12, -3, 3, 10, 20)) return -2;
+  if(!INRANGE(42, -3, 3, 10, 20, 40, 100)) return -3;
+  return 0;
+}
+
+TEST(oneof) {
+  if(!ONEOF(1, 1)) return -1;
+  if(!ONEOF(2, 1, 2)) return -2;
+  if(!ONEOF(3, 1, 2, 3)) return -3;
+  return 0;
+}
+
+static int shadow_x = 1;
+TEST(shadow) {
+  if(shadow_x != 1) return -1;
+  SHADOW(shadow_x, 2) {
+    if(shadow_x != 2) return -2;
+    SHADOW(shadow_x, 3) {
+      if(shadow_x != 3) return -3;
+    }
+    if(shadow_x != 2) return -4;
+  }
+  if(shadow_x != 1) return -5;
+  return 0;
+}
+
+TEST(macro_math) {
+  if(min(3, 4) != 3) return -1;
+  if(max(3, 4) != 4) return -2;
+  if(DIV_UP(4, 3) != 2) return -3;
+  if(DIV_UP(3, 3) != 1) return -4;
+  if(csub(3, 4) != 0) return -5;
+  if(csub(4, 3) != 1) return -6;
+  if(SNAP_UP(1, 3) != 3) return -7;
+  if(SNAP_UP(3, 3) != 3) return -8;
+  return 0;
+}

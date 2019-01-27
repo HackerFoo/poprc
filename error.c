@@ -25,9 +25,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include "startle/types.h"
 #include "startle/macros.h"
 #include "startle/error.h"
 #include "startle/log.h"
+
+static bool breakpoint_disabled = false;
 
 #if INTERFACE
 #include <setjmp.h>
@@ -46,6 +49,7 @@ typedef enum error_type_e {
 typedef struct {
   jmp_buf env;
   error_type_t type;
+  bool quiet;
 } error_t;
 
 #define assert_msg(...) DISPATCH(assert_msg, ##__VA_ARGS__)
@@ -73,7 +77,7 @@ typedef struct {
   } while(0)
 
 /** Assert an assumption.
- * Throw an unexpect error if the condition is violated, logging the following arguments.
+ * Throw an unexpected error if the condition is violated, logging the following arguments.
  */
 #ifdef NDEBUG
 #define assert_error(...) ((void)0)
@@ -90,26 +94,105 @@ typedef struct {
     }                                                   \
   } while(0)
 
+/** Run following code and then throw if the condition is violated. */
+#ifdef NDEBUG
+#define on_assert_error(...) if(0)
+#else
+#define on_assert_error(...) _on_assert_error(__VA_ARGS__)
+#endif
+
+/* Some explanation:
+ *
+ * This:
+ * for(; !cond; throw_error()) {
+ *   ...
+ * }
+ *
+ * Is equivalent to this:
+ * if(!cond) {
+ *   ...
+ *   throw_error();
+ * }
+ *
+ * There will be no looping since throw_error() will longjmp out at the end.
+ */
+#define _on_assert_error(cond, ...)                     \
+  for(;!(cond);                                         \
+      ({throw_error(ERROR_TYPE_UNEXPECTED,              \
+                    assert_msg(cond, ##__VA_ARGS__),    \
+                    ##__VA_ARGS__);}))
+
+
+/** Warn when an assumption doesn't hold.
+ * If the condition is violated, log the following arguments and print them.
+ */
+#ifdef NDEBUG
+#define assert_warn(...) ((void)0)
+#else
+#define assert_warn(...) _assert_warn(__VA_ARGS__)
+#endif
+
+#define _assert_warn(cond, ...)                 \
+  do {                                          \
+    if(!(cond)) {                               \
+      LOG(MARK("WARN") " "                      \
+          assert_msg(cond, ##__VA_ARGS__)       \
+          DROP(__VA_ARGS__));                   \
+      breakpoint();                             \
+    }                                           \
+  } while(0)
+
 /** Throw an unexpected error after being called `n` times.
  * A quick way to prevent unexpected infinite/long loops.
  * `n` should be some really large number, because this counter
  * cannot be reset.
  */
-#define assert_counter(n)                                               \
-  do {                                                                  \
-    static int counter = n;                                             \
-    if(!counter--) {                                                    \
-      counter = n;                                                      \
-      throw_error(ERROR_TYPE_UNEXPECTED,                                \
-                  "Assertion counter exhausted.");                      \
-    }                                                                   \
+#ifdef NDEBUG
+#define assert_counter(n) ((void)0)
+#else
+#define assert_counter(n) _assert_counter(n)
+#endif
+
+#define _assert_counter(n)                                               \
+  do {                                                                   \
+    static unsigned int *counter = NULL;                                 \
+    if(!counter) counter = alloc_counter();                              \
+    if(*counter > (n)) {                                                 \
+      throw_error(ERROR_TYPE_UNEXPECTED,                                 \
+                  "Assertion counter exhausted: %d > " #n, X, *counter); \
+    }                                                                    \
+    (*counter)++;                                                        \
   } while(0)
+
+#ifdef NDEBUG
+#define assert_op(op, x, y) ((void)0)
+#else
+#define assert_op(op, x, y)                                     \
+  do {                                                          \
+    __typeof__(x) _x = (x);                                     \
+    __typeof__(y) _y = (y);                                     \
+    if(!(_x op _y)) {                                           \
+      throw_error(ERROR_TYPE_UNEXPECTED,                        \
+                  "Assertion `" #x " " #op " " #y               \
+                  "' failed: %d, %d", X, (int)_x, (int)_y);     \
+    }                                                           \
+  } while(0)
+#endif
+
+#define assert_eq(x, y)  assert_op(==, x, y)
+#define assert_neq(x, y) assert_op(!=, x, y)
+#define assert_lt(x, y)  assert_op(<,  x, y)
+#define assert_le(x, y)  assert_op(<=, x, y)
+#define assert_gt(x, y)  assert_op(>,  x, y)
+#define assert_ge(x, y)  assert_op(>=, x, y)
 
 /** Catch errors.
  * `e` is a pointer to an `error_t` that will be set after an error.
  * @snippet error.c error
  */
-#define catch_error(e) (current_error = (e), !!setjmp((e)->env))
+#define catch_error_1(e) catch_error_2(e, false)
+#define catch_error_2(e, q) (current_error = (e), current_error->quiet = (q), !!setjmp((e)->env))
+#define catch_error(...) DISPATCH(catch_error, __VA_ARGS__)
 
 /** Throw an error of a particular type.
  * Returns the error type and logs the following arguments.
@@ -161,7 +244,24 @@ void breakpoint_hook() {}
 
 /** Convenient place to set a breakpoint for debugger integration. */
 void breakpoint() {
-  printf(NOTE("BREAKPOINT") " ");
-  print_last_log_msg();
-  breakpoint_hook();
+  if(breakpoint_disabled) return;
+  SHADOW(breakpoint_disabled, true) { // avoid error loops
+    if(!maybe_get(current_error, quiet, false)) {
+      print_context(5);
+      printf(NOTE("BREAKPOINT") " ");
+      print_last_log_msg();
+    }
+    breakpoint_hook();
+  }
+}
+
+static unsigned int counters[8] = {0};
+static unsigned int counters_n = 0;
+
+unsigned int *alloc_counter() {
+  assert_error(counters_n < LENGTH(counters));
+  return &counters[counters_n++];
+}
+void reset_counters() {
+  zero(counters);
 }

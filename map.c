@@ -29,6 +29,8 @@
 #include "startle/log.h"
 #include "startle/support.h"
 #include "startle/map.h"
+#include "startle/stats_types.h"
+#include "startle/stats.h"
 
 /** @file
  *  @brief Zero space overhead maps
@@ -63,6 +65,8 @@ size_t scan(pair_t *start, pair_t *end, uintptr_t key, cmp_t cmp) {
 
 /** Swap two non-overlapping blocks of `n` pairs. */
 void swap_block(pair_t *a, pair_t *b, size_t n) {
+  if(a == b) return;
+  COUNTER(swap, n);
   while(n--) {
     swap(a++, b++);
   }
@@ -71,6 +75,7 @@ void swap_block(pair_t *a, pair_t *b, size_t n) {
 /** Reverse `n` pairs. */
 void reverse(pair_t *a, size_t n) {
   size_t m = n / 2;
+  COUNTER(swap, m);
   pair_t *b = a + n;
   while(m--) swap(a++, --b);
 }
@@ -107,6 +112,16 @@ void rotate(pair_t *a, pair_t *b, size_t n) {
 }
 */
 
+size_t isqrt(size_t x) {
+  if(x < 2) return x;
+  size_t a = x / 2, b;
+  b = x / a; a = (a + b) / 2;
+  b = x / a; a = (a + b) / 2;
+  b = x / a; a = (a + b) / 2;
+  b = x / a; a = (a + b) / 2;
+  return a;
+}
+
 #if(DEBUG)
 static
 bool is_ordered(pair_t *x, size_t r, size_t n, cmp_t cmp) {
@@ -133,9 +148,11 @@ bool is_ordered(pair_t *x, size_t r, size_t n, cmp_t cmp) {
  * @n number of pairs in the array
  * @param cmp key comparison function.
  */
-static
 void merge(pair_t *arr, pair_t *b, size_t n, cmp_t cmp) {
-#if(DEBUG)
+  if(GET_COUNTER(merge_depth) == 0) {
+    COUNTER(merge, n);
+  }
+#if DEBUG
   printf("merge ");
   print_pairs(arr, n);
 #endif
@@ -148,7 +165,7 @@ void merge(pair_t *arr, pair_t *b, size_t n, cmp_t cmp) {
     *end = arr + n;
 
   while(a < b) {
-#if(DEBUG)
+#if DEBUG
     printf("\n");
     print_pairs(arr, a-arr);
     printf("a[%" PRIuPTR "]: ", a-arr);
@@ -169,24 +186,53 @@ void merge(pair_t *arr, pair_t *b, size_t n, cmp_t cmp) {
       if(b_run) { // choose minimum copying to preserve queue
         swap_block(a, b, b_run); // swap the run into the output replacing a block of 'a'
         // |== output b_left ==|== a_right ==|== q a_left ==|== b_right ==|
-        if((ptrdiff_t)b_run >= h - q) {
+        size_t swaps;
+        if((ptrdiff_t)b_run >= min(b - h, h - q)) {
           // rotate h back to q
           // leave new items on end
           rotate(q, h, b - q);
+          swaps = b - q;
           h = q;
           // ==|== q a_left ==|==
           //   ^-- h
         } else {
           // rotate h over new items
-          rotate(h, b, b_run + (b - h));
-          h += b_run;
+          // push b_run
+          // swaps: b_run + min(b - h, h - q), avg. b_run + q size / 2
+          if(b - h < h - q) {
+            // move right side
+            rotate(h, b, b_run + (b - h));
+            swaps = b_run + (b - h);
+            h += b_run;
+          } else {
+            // swap left side
+            swap_block(q, b, b_run);
+            rotate(q, q + b_run, h - q);
+            swaps = b_run + h - q;
+          }
+
           // ==|== q_left a_left q_right ==|==
           //                    ^-- h
         }
         b += b_run;
         a += b_run;
+
+        // re-balance
+        if(swaps > (1 << 7) &&
+           swaps > isqrt(b - q) / 2) {
+
+          rotate(q, h, b - q);
+          h = q;
+
+          COUNTER(merge_depth, 1);
+          merge(q, b, end - q, cmp);
+          b = q;
+          COUNTER(merge_depth, -1);
+          COUNTER_MAX(merge_depth_max, GET_COUNTER(merge_depth));
+        }
       } else { // b >= h
         swap(a++, h++);
+        COUNTER(swap, 1);
         if(h >= b) { // queue wrap around
           h = q;
         }
@@ -195,6 +241,7 @@ void merge(pair_t *arr, pair_t *b, size_t n, cmp_t cmp) {
       // empty queue
       if(b < end && cmp(b->first, a->first)) {
         swap(a++, b++);
+        COUNTER(swap, 1);
       } else {
         a++;
       }
@@ -211,7 +258,6 @@ void merge(pair_t *arr, pair_t *b, size_t n, cmp_t cmp) {
 }
 
 /** Direct key comparison. */
-static
 bool key_cmp(uintptr_t a, uintptr_t b) {
   return a < b;
 }
@@ -220,6 +266,412 @@ bool key_cmp(uintptr_t a, uintptr_t b) {
 static
 bool string_cmp(uintptr_t a, uintptr_t b) {
   return strcmp((char *)a, (char *)b) < 0;
+}
+
+void merge_left_short(pair_t *a, pair_t *b, size_t n, cmp_t cmp) {
+  pair_t *end = a + n;
+  while(a < b && b < end) {
+    pair_t *x = b;
+    while(x < end && cmp(x->first, a->first)) x++;
+
+    // all [b...x) < a[0];
+    rotate(a, b, x - a);
+    a += x - b + 1;
+    b = x;
+  }
+}
+
+TEST(merge_left_short) {
+  pair_t arr[] =
+    {{1,1}, {3,3}, {6,6},
+     {0,0}, {2,2}, {4,4},
+     {5,5}, {7,7}, {8,8}};
+  merge_left_short(arr, arr + 3, 9, key_cmp);
+  print_pairs(arr, LENGTH(arr));
+  FOREACH(i, arr) {
+    if(i != arr[i].first) return -1;
+  }
+  return 0;
+}
+
+void merge_right_short(pair_t *a, pair_t *b, size_t n, cmp_t cmp) {
+  if(n <= 1 || a >= b) return;
+  pair_t *end = a + n;
+  while(a < b && b < end) {
+    pair_t *x = b, *last = end - 1;
+    while(x > a && cmp(last->first, x[-1].first)) x--;
+
+    // all [x...b) > last
+    rotate(x, b, end - x);
+    size_t r = b - x;
+    b -= r;
+    end -= r + 1;
+  }
+}
+
+TEST(merge_right_short) {
+  pair_t arr[] =
+    {{1, 1}, {2, 2}, {3, 3},
+     {4, 4}, {5, 5}, {6, 6},
+     {0, 0}, {7, 7}, {8, 8}};
+  merge_right_short(arr, arr + 6, 9, key_cmp);
+  print_pairs(arr, LENGTH(arr));
+  FOREACH(i, arr) {
+    if(i != arr[i].first) return -1;
+  }
+  return 0;
+}
+
+#define NEXT(x, r)                              \
+  ({                                            \
+    LET(__px, &(x));                            \
+    LET(__x, *__px);                            \
+    LET(__xn, __x + 1);                         \
+    *__px = __xn < r##_end ? __xn: r;           \
+    __x;                                        \
+  })
+
+// preserves, but scrambles, the buffer
+void merge_with_buffer(pair_t *a, pair_t *b, size_t n, cmp_t cmp, pair_t *buf) {
+  pair_t
+    *const a_end = b,
+    *const b_end = a + n,
+    *const buf_end = buf + min(a_end - a, b_end - b),
+    *h = buf,
+    *t = buf;
+  size_t buf_n = 0;
+  while(a < a_end && b < b_end) {
+    if(!buf_n || cmp(b->first, t->first)) {
+      if(cmp(b->first, a->first)) {
+        swap(a, b);
+        if(b < b_end - 1) {
+          swap(b++, NEXT(h, buf)); // b
+          buf_n++;
+        }
+      }
+    } else { // h > t
+      if(!cmp(a->first, t->first)) {
+        swap(a, t);
+        swap(NEXT(h, buf), NEXT(t, buf));
+      }
+    }
+    a++;
+  }
+  if(a == a_end) {
+    while(b < b_end) {
+      if(buf_n && !cmp(b->first, t->first)) {
+        swap(a, NEXT(t, buf));
+        buf_n--;
+      } else {
+        swap(a, b++);
+      }
+      a++;
+    }
+  } else {
+    while(a < a_end) {
+      if(buf_n && !cmp(a->first, t->first)) {
+        swap(a, t);
+        swap(NEXT(h, buf), NEXT(t, buf));
+      }
+      a++;
+    }
+  }
+  while(buf_n) {
+    swap(a++, NEXT(t, buf));
+    buf_n--;
+  }
+}
+
+TEST(merge_with_buffer) {
+  pair_t arr[] =
+    {{0,0}, {4,4}, {8,8},
+     {1,1}, {2,2}, {3,3},
+     {5,5}, {6,6}, {7,7}};
+  pair_t buf[3];
+  memset(buf, -1, sizeof(buf));
+  merge_with_buffer(arr, arr+3, 9, key_cmp, buf);
+  print_pairs(arr, LENGTH(arr));
+  FOREACH(i, arr) {
+    if(i != arr[i].first) return -1;
+  }
+  return 0;
+}
+
+TEST(merge_with_buffer2) {
+  pair_t arr[] = {{11, 11}, {3, 3}, {8, 8}, {10, 10}};
+  pair_t buf[4];
+  memset(buf, -1, sizeof(buf));
+  merge_with_buffer(arr, arr+1, 4, key_cmp, buf);
+  print_pairs(arr, LENGTH(arr));
+  FOREACH(i, arr) {
+    if(i != arr[i].first) return -1;
+  }
+  return 0;
+}
+
+// on return, *pa points to unmerged elements, and *pbuffer points to the location of the buffer
+// returns number of merged elements
+size_t merge_into_buffer(pair_t **pbuffer, pair_t **pa, pair_t *b, size_t n, cmp_t cmp) {
+  pair_t
+    *buffer = *pbuffer,
+    *a = *pa;
+  size_t
+    buffer_n = a - buffer,
+    a_n = b - a,
+    b_n = n - buffer_n - a_n;
+
+  assert_ge(buffer_n, min(a_n, b_n));
+  while(a_n) {
+    if(b_n && cmp(b->first, a->first)) {
+      swap(buffer++, b++);
+      b_n--;
+    } else {
+      swap(buffer++, a++);
+      a_n--;
+    }
+  }
+  *pbuffer = buffer;
+  *pa = b;
+  return n - b_n - buffer_n;
+}
+
+TEST(merge_into_buffer) {
+  pair_t arr[20];
+  zero(arr);
+  pair_t
+    *buffer = arr,
+    *a = buffer + 5,
+    *b = a + 10,
+    *end = arr + LENGTH(arr);
+  test_pairs(a, 15, 10, 42);
+  size_t n = merge_into_buffer(&buffer, &a, b, LENGTH(arr), key_cmp);
+  printf("L: "); print_pairs(arr, n);
+  printf("R: "); print_pairs(a, end - a);
+  return 0;
+}
+
+// overwrites the buffer
+void merge_with_buffer_fast(pair_t *a, pair_t *b, size_t n, cmp_t cmp, pair_t *buf) {
+  pair_t
+    *const a_end = b,
+    *const b_end = a + n,
+    *const buf_end = buf + min(a_end - a, b_end - b),
+    *h = buf,
+    *t = buf;
+  while(a < a_end && b < b_end) {
+    if(h == t || cmp(b->first, t->first)) {
+      if(cmp(b->first, a->first)) {
+        if(b < b_end - 1) {
+          *NEXT(h, buf) = *a;
+          *a = *b++;
+        } else {
+          swap(a, b);
+        }
+      }
+    } else { // h > t
+      if(!cmp(a->first, t->first)) {
+        *NEXT(h, buf) = *a;
+        *a = *NEXT(t, buf);
+      }
+    }
+    a++;
+  }
+  if(a == a_end) {
+    while(b < b_end) {
+      if(h != t && !cmp(b->first, t->first)) {
+        *a = *NEXT(t, buf);
+      } else {
+        *a = *b++;
+      }
+      a++;
+    }
+  } else {
+    while(a < a_end) {
+      if(h != t && !cmp(a->first, t->first)) {
+        *NEXT(h, buf) = *a;
+        *a = *NEXT(t, buf);
+      }
+      a++;
+    }
+  }
+  while(t != h) {
+    *a++ = *NEXT(t, buf);
+  }
+}
+
+TEST(merge_with_buffer_fast) {
+  pair_t arr[] =
+    {{2, 2}, {4, 4}, {5, 5},
+     {6, 6}, {7, 7}, {8, 8},
+     {0, 0}, {1, 1}, {3, 3}};
+  pair_t buf[3];
+  memset(buf, -1, sizeof(buf));
+  merge_with_buffer_fast(arr, arr+6, 9, key_cmp, buf);
+  print_pairs(arr, LENGTH(arr));
+  FOREACH(i, arr) {
+    if(i != arr[i].first) return -1;
+  }
+  return 0;
+}
+
+void bubble_sort(pair_t *arr, size_t n, cmp_t cmp) {
+  COUNTUP(i, n-1) {
+    COUNTUP(j, n-i-1) {
+      if(cmp(arr[j+1].first, arr[j].first)) {
+        swap(&arr[j], &arr[j+1]);
+      }
+    }
+  }
+}
+
+bool is_ordered(pair_t *arr, size_t n, cmp_t cmp) {
+  COUNTUP(i, n-1) {
+    if(cmp(arr[i+1].first, arr[i].first)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+#define BLOCK(i) min(n, bs * (i))
+#define BLOCK_LAST(i) (BLOCK((i) + 1) - 1)
+#define CHECK_BLOCKS(name)                                      \
+  do {                                                          \
+    COUNTUP(i, n_blocks) {                                      \
+      pair_t *bl = &a[BLOCK(i)];                                \
+      if(abs(bl - buffer) < bs) continue;                       \
+      on_assert_error(is_ordered(bl, bs, cmp)) {                \
+        printf("OUT OF ORDER @ " #name " BLOCK(%d): ", i);      \
+        print_pairs(bl, bs);                                    \
+      }                                                         \
+    }                                                           \
+  } while(0)
+
+// Huang, Bing-Chao & Langston, Michael. (1988). Practical In-Place Merging.
+// Communications of the ACM. 31. 348-352. 10.1145/42392.42403.
+// http://www.akira.ruc.dk/~keld/teaching/algoritmedesign_f04/Artikler/04/Huang88.pdf
+// NOTE: slower than merge
+void merge_huang88(pair_t *arr, pair_t *b, size_t n, cmp_t cmp) {
+  size_t
+    bs = isqrt(n),
+    offset = (b - arr) % bs,
+    n_blocks = (n - offset) / bs,
+    tail = n - (bs * n_blocks) - offset;
+  pair_t
+    *end = arr + n,
+    *a = arr + offset; // first full block
+
+  if(b - arr < (ptrdiff_t)(bs + offset)) {
+    merge_left_short(arr, b, n, cmp);
+    return;
+  }
+
+  if(end - b < (ptrdiff_t)bs) {
+    merge_right_short(arr, b, n, cmp);
+    return;
+  }
+
+  // find top bs elements
+  pair_t *top_a = b, *top_b = end;
+  LOOP(bs) {
+    if(cmp(top_a[-1].first, top_b[-1].first)) {
+      top_b--;
+    } else {
+      top_a--;
+    }
+  }
+
+  // handle last block
+  // swap top_b into last block of a (buffer)
+  pair_t *buffer = b - bs;
+  swap_block(buffer, top_b, end - top_b);
+
+  // merge the last few elements
+  merge_with_buffer(end - bs - tail, top_b, bs + tail, cmp, buffer);
+
+  // handle first block
+  if(offset) {
+    pair_t *p = buffer + (bs - offset);
+    swap_block(arr, p, offset);
+    merge_with_buffer(p, b, bs + offset, cmp, arr);
+    swap_block(arr, p, offset);
+  }
+
+  // move buffer to the first block
+  swap_block(&a[BLOCK(0)], buffer, bs);
+  buffer = &a[BLOCK(0)];
+
+  // selection sort on sqrt(n) blocks of size sqrt(n)
+  // comparing the last item in the block
+  RANGEUP(i, 1, n_blocks) {
+    // find minimum in remaining blocks
+    size_t min = i;
+    uintptr_t min_key = a[BLOCK_LAST(min)].first;
+    RANGEUP(j, i + 1, n_blocks) {
+      uintptr_t key = a[BLOCK_LAST(j)].first;
+      if(cmp(key, min_key)) {
+        min = j;
+        min_key = key;
+      }
+    }
+    if(min > i) swap_block(&a[BLOCK(i)], &a[BLOCK(min)], bs);
+  }
+
+  pair_t *p = &a[BLOCK(1)];
+  RANGEUP(i, 2, n_blocks + !!tail) {
+    pair_t *b = &a[BLOCK(i)];
+    size_t size = min((ptrdiff_t)bs, end - b);
+    if(cmp(b->first, b[-1].first)) {
+      merge_into_buffer(&buffer, &p, b, (b + size) - buffer, cmp);
+    }
+  }
+
+  bubble_sort(buffer, bs, cmp);
+  rotate(buffer, p, end - buffer);
+  assert_error(is_ordered(arr, n, cmp));
+}
+
+void test_pairs(pair_t *arr, size_t n, size_t a, unsigned int s) {
+  const uint32_t k = (1ul << 31) - 1;
+  COUNTUP(i, n) arr[i] = (pair_t) {i, i};
+  COUNTUP(i, n - 1) { // shuffle
+    s = (s * k) % (n - i);
+    swap(&arr[i], &arr[s]);
+  }
+  quicksort(arr, a);
+  quicksort(arr + a, n - a);
+}
+
+TEST(merge_huang88) {
+  pair_t arr[16];
+  const int b = 7;
+  test_pairs(arr, LENGTH(arr), b, 0);
+  print_pairs(arr, LENGTH(arr));
+  merge_huang88(arr, arr + b, LENGTH(arr), key_cmp);
+  print_pairs(arr, LENGTH(arr));
+  FOREACH(i, arr) {
+    if(arr[i].first != i) return -1;
+  }
+  return 0;
+}
+
+TEST(merge_huang88b) {
+  pair_t arr[] = {{16, 16},
+    {17, 17}, {18, 18}, {19, 19}, {20, 20}, {21, 21},
+    {22, 22}, {23, 23}, {24, 24}, {25, 25}, {26, 26},
+    {27, 27}, {28, 28}, {29, 29}, {30, 30}, {31, 31},
+    {0, 0},   {1, 1},   {2, 2},   {3, 3},   {4, 4},
+    {5, 5},   {6, 6},   {7, 7},   {8, 8},   {9, 9},
+    {10, 10}, {11, 11}, {12, 12}, {13, 13}, {14, 14},
+    {15, 15}};
+  const int b = 16;
+  print_pairs(arr, LENGTH(arr));
+  merge_huang88(arr, arr + b, LENGTH(arr), key_cmp);
+  print_pairs(arr, LENGTH(arr));
+  FOREACH(i, arr) {
+    if(arr[i].first != i) return -1;
+  }
+  return 0;
 }
 
 #define MERGE_TEST(arr)                                                 \
@@ -285,11 +737,17 @@ static
 void map_sort(map_t map, uintptr_t bit, cmp_t cmp) {
   uintptr_t cnt = *map_cnt(map);
   pair_t *elems = map_elems(map);
+  pair_t *buf = &elems[cnt];
+  size_t buf_size = map_size(map) - cnt;
   if(!cnt || cnt & 1) return;
   uintptr_t x = (cnt - 1) & ~(bit - 1);
   while(x & bit) {
     x &= ~bit;
-    merge(&elems[x], &elems[x+bit], bit << 1, cmp);
+    if(0&&bit <= buf_size) {
+      merge_with_buffer_fast(&elems[x], &elems[x+bit], bit << 1, cmp, buf);
+    } else {
+      merge(&elems[x], &elems[x+bit], bit << 1, cmp);
+    }
     bit <<= 1;
   }
 }
@@ -300,9 +758,15 @@ void _map_sort_full(map_t map, cmp_t cmp) {
     cnt = *map_cnt(map),
     x = cnt & ~(1 << __builtin_ctz(cnt));
   pair_t *elems = map_elems(map);
+  pair_t *buf = &elems[cnt];
+  size_t buf_size = map_size(map) - cnt;
   while(x) {
     uintptr_t y = x & ~(1 << __builtin_ctz(x));
-    merge(&elems[y], &elems[x], cnt - y, cmp);
+    if(min(x - y, cnt - x) <= buf_size) {
+      merge_with_buffer_fast(&elems[y], &elems[x], cnt - y, cmp, buf);
+    } else {
+      merge(&elems[y], &elems[x], cnt - y, cmp);
+    }
     x = y;
   }
 }
@@ -508,15 +972,40 @@ pair_t *map_find(map_t map, uintptr_t key) {
   uintptr_t x = *map_cnt(map);
   pair_t *elems = map_elems(map);
   pair_t *result = NULL;
-  uintptr_t bit = 1;
+  uintptr_t bit = 1ll << int_log2(x);
+  uintptr_t a = 0;
+  size_t est = bit >> 1;
   while(x) {
     if(x & bit) {
       x &= ~bit;
-      if((result = find_last(&elems[x], bit, key))) break;
+      if((result = find_last(&elems[a], bit, key, &est))) break;
+      a += bit;
     }
+    est >>= 1;
+    bit >>= 1;
+  }
+  return result;
+}
+
+pair_t *map_find_recent(map_t map, uintptr_t key) {
+  uintptr_t x = *map_cnt(map);
+  pair_t *elems = map_elems(map);
+  pair_t *result = NULL;
+  uintptr_t bit = 1;
+  size_t est = 1;
+  while(x) {
+    if(x & bit) {
+      x &= ~bit;
+      if((result = find_last(&elems[x], bit, key, &est))) break;
+    }
+    est = (est << 1) + 1;
     bit <<= 1;
   }
   return result;
+}
+
+pair_t *map_find_sorted(map_t map, uintptr_t key) {
+  return find_last(map_elems(map), *map_cnt(map), key, NULL);
 }
 
 /** Return the value for a key in a map.
@@ -761,4 +1250,10 @@ bool check_map(map_t map, cmp_t cmp) {
     bit <<= 1;
   }
   return true;
+}
+
+map_t alloc_map(uintptr_t size) {
+  map_t map = (map_t)malloc(sizeof(pair_t) * (size + 1));
+  map[0] = (pair_t) {size, 0};
+  return map;
 }

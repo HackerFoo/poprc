@@ -48,6 +48,7 @@
 #define _STRINGIFY(x) #x
 #define STRINGIFY(x) _STRINGIFY(x)
 
+#define LET(x, y) __typeof__(y) x = (y)
 
 
 // SIZES & OFFSETS ________________________________________
@@ -71,10 +72,13 @@
 // ITERATION MACROS ________________________________________
 
 /** Iterate `i` from `lower` up to `upper-1`. */
-#define RANGEUP(i, lower, upper) for(size_t i = (lower), __upper = (upper); i < __upper; i++)
+#define RANGEUP(i, lower, upper) for(size_t i = (lower), __lower = (lower), __upper = ((void) __lower, (upper)); i < __upper; i++)
 
 /** Iterate `i` from `upper-1` down to `lower`. */
-#define RANGEDOWN(i, lower, upper) for(size_t i = (upper), __lower = (lower); i-- > __lower; )
+#define RANGEDOWN(i, lower, upper) for(size_t i = (upper), __upper = (upper), __lower = ((void) __upper, (lower)); i-- > __lower; )
+
+/** Iterator over the same range in reverse order. */
+#define REVI(i) (__upper - 1 - (i) + __lower)
 
 /** Iterate `i` from `n-1` to `0`.
  * @snippet test.c loops
@@ -92,6 +96,11 @@
 
 /** Iterate `i` over each index of map `m`. */
 #define FORMAP(i, m) for(size_t i = 1; i <= *map_cnt(m); i++)
+
+#define FORMASK(i, j, mask)                                     \
+  for(uintptr_t i = 0, j = 0, __z = 0, __mask = (mask); __mask; \
+      __mask >>= 1,                                             \
+        __z = ctz(__mask), j += __z + 1, i++, __mask >>= __z)
 
 // DATA STRUCTURES ________________________________________
 
@@ -130,7 +139,7 @@
  */
 #define LIST_ADD(f, l, v)                       \
   ({                                            \
-    __typeof__(v) __v = (v);                    \
+    LET(__v, v);                                \
     *(l) = __v;                                 \
     (l) = &__v->f;                              \
   })
@@ -142,8 +151,8 @@
  */
 #define CONS(f, l, v)                           \
   ({                                            \
-    __typeof__(l) __l = (l);                    \
-    __typeof__(v) __v = (v);                    \
+    LET(__l, l);                                \
+    LET(__v, v);                                \
     __v->f = *__l;                              \
     *__l = __v;                                 \
   })
@@ -154,25 +163,114 @@
 
 #define min(a, b)                               \
   ({                                            \
-    __typeof__(a) __a = (a);                    \
-    __typeof__(b) __b = (b);                    \
+    LET(__a, a);                                \
+    LET(__b, b);                                \
     __a <= __b ? __a : __b;                     \
   })
 
 #define max(a, b)                               \
   ({                                            \
-    __typeof__(a) __a = (a);                    \
-    __typeof__(b) __b = (b);                    \
+    LET(__a, a);                                \
+    LET(__b, b);                                \
     __a >= __b ? __a : __b;                     \
   })
 
 /** Non-negative saturating subtraction. */
 #define csub(a, b)                              \
   ({                                            \
-    __typeof__(a) _a = (a);                     \
-    __typeof__(b) _b = (b);                     \
-    _b > _a ? 0 : _a - _b;                      \
+    LET(__a, a);                                \
+    LET(__b, b);                                \
+    __b > __a ? 0 : __a - __b;                  \
   })
+
+/** Integer division rounding up. */
+#define DIV_UP(n, d)                            \
+  ({                                            \
+    LET(__d, d);                                \
+    (__d - 1 + (n)) / __d;                      \
+  })
+
+#define INRANGE_3(x, lo0, hi0)                  \
+  ({                                            \
+    LET(__x, x);                                \
+    __x >= (lo0) && __x <= (hi0);               \
+  })
+
+#define INRANGE_5(x, lo0, hi0, lo1, hi1)        \
+  ({                                            \
+    LET(__x, x);                                \
+    (__x >= (lo0) && __x <= (hi0))              \
+      || (__x >= (lo1) && __x <= (hi1));        \
+  })
+
+#define INRANGE_7(x, lo0, hi0, lo1, hi1, lo2, hi2)      \
+  ({                                                    \
+    LET(__x, x);                                        \
+    (__x >= (lo0) && __x <= (hi0))                      \
+      || (__x >= (lo1) && __x <= (hi1))                 \
+      || (__x >= (lo2) && __x <= (hi2));                \
+  })
+
+#define INRANGE(...) DISPATCH(INRANGE, __VA_ARGS__)
+
+#define ONEOF_2(x, y0)                          \
+    ((x) == (y0))
+
+#define ONEOF_3(x, y0, y1)                      \
+  ({                                            \
+    LET(__x, x);                                \
+    __x == (y0)                                 \
+      || __x == (y1);                           \
+  })
+
+#define ONEOF_4(x, y0, y1, y2)                  \
+  ({                                            \
+    LET(__x, x);                                \
+    __x == (y0)                                 \
+      || __x == (y1)                            \
+      || __x == (y2);                           \
+  })
+
+#define ONEOF_5(x, y0, y1, y2, y3)              \
+  ({                                            \
+    LET(__x, x);                                \
+    __x == (y0)                                 \
+      || __x == (y1)                            \
+      || __x == (y2)                            \
+      || __x == (y3);                           \
+  })
+
+#define ONEOF_6(x, y0, y1, y2, y3, y4)          \
+  ({                                            \
+    LET(__x, x);                                \
+    __x == (y0)                                 \
+      || __x == (y1)                            \
+      || __x == (y2)                            \
+      || __x == (y3)                            \
+      || __x == (y4);                           \
+  })
+
+#define ONEOF_7(x, y0, y1, y2, y3, y4, y5)      \
+  ({                                            \
+    LET(__x, x);                                \
+    __x == (y0)                                 \
+      || __x == (y1)                            \
+      || __x == (y2)                            \
+      || __x == (y3)                            \
+      || __x == (y4)                            \
+      || __x == (y5);                           \
+  })
+
+#define ONEOF(...) DISPATCH(ONEOF, __VA_ARGS__)
+
+#define SNAP_UP(x, d)                           \
+  ({                                            \
+    LET(__x, x);                                \
+    LET(__d, d);                                \
+    LET(__m, __x % __d);                        \
+    __m ? __x + __d - __m : __x;                \
+  })
+
 
 
 // UM... OTHER STUFF ________________________________________
@@ -185,15 +283,24 @@
  */
 #define show(x) printf(#x " = %d\n", (int)(x))
 
+#define FLAG_(x, flag) (((x) & (flag)) != 0)
+#define FLAG_FIELD(s, t) ((s).GET(0, CONCAT(FLAG_, t)).flags)
+#define FLAG_BIT(flag, t) CONCAT(CONCAT(GET(1, CONCAT(FLAG_, t)), _), flag)
+
 /** Return `true` if the flag is set. */
-#define FLAG(s, flag) (((s).flags & (flag)) != 0)
+#define FLAG(s, t, flag) FLAG_(FLAG_FIELD(s, t), FLAG_BIT(flag, t))
 
 /** Return `true` if the flag is NOT set. */
-#define NOT_FLAG(s, flag) (((s).flags & (flag)) == 0)
+#define NOT_FLAG(s, t, flag) (!FLAG(s, t, flag))
 
-#define FLAG_SET(s, flag) ((s).flags |= (flag))
-#define FLAG_CLEAR(s, flag) ((s).flags &= ~(flag))
-#define FLAG_SET_TO(s, flag, val) ((val) ? FLAG_SET(s, flag) : FLAG_CLEAR(s, flag))
+#define FLAG_SET_(x, flag) ((x) |= (flag))
+#define FLAG_SET(s, t, flag) FLAG_SET_(FLAG_FIELD(s, t), FLAG_BIT(flag, t))
+
+#define FLAG_CLEAR_(x, flag) ((x) &= ~(flag))
+#define FLAG_CLEAR(s, t, flag) FLAG_CLEAR_(FLAG_FIELD(s, t), FLAG_BIT(flag, t))
+
+#define FLAG_SET_TO_(x, flag, val) ((val) ? FLAG_SET_(x, flag) : FLAG_CLEAR_(x, flag))
+#define FLAG_SET_TO(s, t, flag, val) FLAG_SET_TO_(FLAG_FIELD(s, t), FLAG_BIT(flag, t), val)
 
 /** Shift elements in the array to the right. */
 #define ARRAY_SHIFTR(array, offset, length) memmove(&(array) + (offset), &(array), (length) * sizeof(array))
@@ -246,5 +353,28 @@
 
 /** Define a new format string specifier (for logging). */
 #define FORMAT(name, c) void format_##name(intptr_t i)
+
+/** Call `f` for each of the following arguments. */
+#define EACH_2(f, x0) f(x0)
+#define EACH_3(f, x0, x1) f(x0); f(x1)
+#define EACH_4(f, x0, x1, x2) f(x0); f(x1); f(x2)
+#define EACH_5(f, x0, x1, x2) f(x0); f(x1); f(x2); f(x3)
+#define EACH(...) \
+  do {                                          \
+    DISPATCH(EACH, __VA_ARGS__);                \
+  } while(0)
+
+/** Reassign a variable for the duration of the following block. */
+#define SHADOW(var, val)                        \
+  for(const __typeof__(var) __tmp = (var),      \
+        *__tmpp = (((var) = (val)), &__tmp);    \
+      __tmpp;                                   \
+      ((var) = __tmp), __tmpp = NULL)
+
+#define maybe_get(s, f, d)                      \
+  ({                                            \
+    LET(__s, s);                                \
+    __s && __s->f ? __s->f : (d);               \
+  })
 
 #endif
