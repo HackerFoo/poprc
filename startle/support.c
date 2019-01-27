@@ -30,6 +30,8 @@
 #include "startle/error.h"
 #include "startle/log.h"
 #include "startle/support.h"
+#include "startle/stats_types.h"
+#include "startle/stats.h"
 
 /** @file
  *  @brief Generally useful functions
@@ -194,18 +196,33 @@ pair_t *find(pair_t *array, size_t size, uintptr_t key) {
 /** Like `find`, but find the last match.
  * O(log n) time.
  */
-pair_t *find_last(pair_t *array, size_t size, uintptr_t key) {
+pair_t *find_last(pair_t *array, size_t size, uintptr_t key, size_t *est) {
   size_t low = 0, high = size;
+  size_t pivot = est ? *est : low + ((high - low + 1) / 2);
   while(high > low + 1) {
-    const size_t pivot = low + ((high - low + 1) / 2);
+    COUNTER(find_last, 1);
+    if(high - low <= 0) {
+      size_t l = low;
+      low = high - 1;
+      RANGEUP(i, l + 1, high) {
+        uintptr_t k = array[i].first;
+        if(k > key) {
+          low = i - 1;
+          break;
+        }
+      }
+      break;
+    }
     const uintptr_t pivot_key = array[pivot].first;
     if(pivot_key <= key) {
       low = pivot;
     } else {
       high = pivot;
     }
+    pivot = low + ((high - low + 1) / 2);
   }
   pair_t *p = &array[low];
+  if(est) *est = low;
   return p->first == key ? p : NULL;
 }
 
