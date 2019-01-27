@@ -111,7 +111,7 @@ SRC := $(wildcard *.c) $(wildcard startle/*.c) $(wildcard cgen/*.c)
 OBJS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SRC))
 EMCC_OBJS := $(patsubst %.c, build/emcc/$(BUILD)/%.o, $(SRC))
 DEPS := $(patsubst %.c, $(BUILD_DIR)/%.d, $(SRC))
-LISTS := command format op test word
+LISTS := command format op test word counter
 GEN := $(patsubst %.c, .gen/%.h, $(SRC)) $(patsubst %, .gen/%_list.h, $(LISTS))
 DOT := $(wildcard *.dot)
 DOTSVG := $(patsubst %.dot, $(DIAGRAMS)/%.svg, $(DOT))
@@ -124,7 +124,7 @@ fast:
 	make -j all
 
 .PHONY: all
-all: test
+all: gen test
 
 # prevent makeheaders from trying to generate this
 LOCAL_HEADERS := ./linenoise/linenoise.h
