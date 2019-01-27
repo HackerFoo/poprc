@@ -180,6 +180,22 @@ arr6: {{0, 0}, {0, 1}, {1, 0}, {1, 1}, {2, 0}, {2, 1}, {3, 0}, {3, 1}, {4, 0}, {
 arr7: {{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}, {6, 0}, {7, 0}, {8, 0}, {9, 0}, {10, 0}, {11, 0}, {12, 0}, {13, 0}, {14, 0}, {15, 0}}
 arr8: {{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 1}, {6, 0}, {7, 1}, {8, 1}, {9, 0}, {10, 1}, {11, 1}, {12, 0}, {13, 1}, {14, 1}, {15, 1}}
 merge => 0
+@ merge_huang88
+merge_huang88 => 0
+@ merge_huang88b
+merge_huang88b => 0
+@ merge_into_buffer
+merge_into_buffer => 0
+@ merge_left_short
+merge_left_short => 0
+@ merge_right_short
+merge_right_short => 0
+@ merge_with_buffer
+merge_with_buffer => 0
+@ merge_with_buffer2
+merge_with_buffer2 => 0
+@ merge_with_buffer_fast
+merge_with_buffer_fast => 0
 @ mmap_file
 Copyright 2012-2018 Dustin DeWeese
 mmap_file => 0

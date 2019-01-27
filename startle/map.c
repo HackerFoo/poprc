@@ -24,12 +24,12 @@
 #include <inttypes.h>
 
 #include "startle/types.h"
+#include "startle/stats_types.h"
 #include "startle/macros.h"
 #include "startle/error.h"
 #include "startle/log.h"
 #include "startle/support.h"
 #include "startle/map.h"
-#include "startle/stats_types.h"
 #include "startle/stats.h"
 
 /** @file
@@ -287,10 +287,7 @@ TEST(merge_left_short) {
      {0,0}, {2,2}, {4,4},
      {5,5}, {7,7}, {8,8}};
   merge_left_short(arr, arr + 3, 9, key_cmp);
-  print_pairs(arr, LENGTH(arr));
-  FOREACH(i, arr) {
-    if(i != arr[i].first) return -1;
-  }
+  if(!is_ordered(arr, LENGTH(arr), key_cmp)) return -1;
   return 0;
 }
 
@@ -315,10 +312,7 @@ TEST(merge_right_short) {
      {4, 4}, {5, 5}, {6, 6},
      {0, 0}, {7, 7}, {8, 8}};
   merge_right_short(arr, arr + 6, 9, key_cmp);
-  print_pairs(arr, LENGTH(arr));
-  FOREACH(i, arr) {
-    if(i != arr[i].first) return -1;
-  }
+  if(!is_ordered(arr, LENGTH(arr), key_cmp)) return -1;
   return 0;
 }
 
@@ -390,10 +384,7 @@ TEST(merge_with_buffer) {
   pair_t buf[3];
   memset(buf, -1, sizeof(buf));
   merge_with_buffer(arr, arr+3, 9, key_cmp, buf);
-  print_pairs(arr, LENGTH(arr));
-  FOREACH(i, arr) {
-    if(i != arr[i].first) return -1;
-  }
+  if(!is_ordered(arr, LENGTH(arr), key_cmp)) return -1;
   return 0;
 }
 
@@ -402,10 +393,7 @@ TEST(merge_with_buffer2) {
   pair_t buf[4];
   memset(buf, -1, sizeof(buf));
   merge_with_buffer(arr, arr+1, 4, key_cmp, buf);
-  print_pairs(arr, LENGTH(arr));
-  FOREACH(i, arr) {
-    if(i != arr[i].first) return -1;
-  }
+  if(!is_ordered(arr, LENGTH(arr), key_cmp)) return -1;
   return 0;
 }
 
@@ -445,8 +433,8 @@ TEST(merge_into_buffer) {
     *end = arr + LENGTH(arr);
   test_pairs(a, 15, 10, 42);
   size_t n = merge_into_buffer(&buffer, &a, b, LENGTH(arr), key_cmp);
-  printf("L: "); print_pairs(arr, n);
-  printf("R: "); print_pairs(a, end - a);
+  if(!is_ordered(arr, n, key_cmp)) return -1;
+  if(!is_ordered(a, end - a, key_cmp)) return -2;
   return 0;
 }
 
@@ -507,10 +495,7 @@ TEST(merge_with_buffer_fast) {
   pair_t buf[3];
   memset(buf, -1, sizeof(buf));
   merge_with_buffer_fast(arr, arr+6, 9, key_cmp, buf);
-  print_pairs(arr, LENGTH(arr));
-  FOREACH(i, arr) {
-    if(i != arr[i].first) return -1;
-  }
+  if(!is_ordered(arr, LENGTH(arr), key_cmp)) return -1;
   return 0;
 }
 
@@ -646,12 +631,8 @@ TEST(merge_huang88) {
   pair_t arr[16];
   const int b = 7;
   test_pairs(arr, LENGTH(arr), b, 0);
-  print_pairs(arr, LENGTH(arr));
   merge_huang88(arr, arr + b, LENGTH(arr), key_cmp);
-  print_pairs(arr, LENGTH(arr));
-  FOREACH(i, arr) {
-    if(arr[i].first != i) return -1;
-  }
+  if(!is_ordered(arr, LENGTH(arr), key_cmp)) return -1;
   return 0;
 }
 
@@ -665,12 +646,8 @@ TEST(merge_huang88b) {
     {10, 10}, {11, 11}, {12, 12}, {13, 13}, {14, 14},
     {15, 15}};
   const int b = 16;
-  print_pairs(arr, LENGTH(arr));
   merge_huang88(arr, arr + b, LENGTH(arr), key_cmp);
-  print_pairs(arr, LENGTH(arr));
-  FOREACH(i, arr) {
-    if(arr[i].first != i) return -1;
-  }
+  if(!is_ordered(arr, LENGTH(arr), key_cmp)) return -1;
   return 0;
 }
 
