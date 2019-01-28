@@ -720,7 +720,7 @@ void map_sort(map_t map, uintptr_t bit, cmp_t cmp) {
   uintptr_t x = (cnt - 1) & ~(bit - 1);
   while(x & bit) {
     x &= ~bit;
-    if(0&&bit <= buf_size) {
+    if(bit <= buf_size) {
       merge_with_buffer_fast(&elems[x], &elems[x+bit], bit << 1, cmp, buf);
     } else {
       merge(&elems[x], &elems[x+bit], bit << 1, cmp);
