@@ -322,3 +322,7 @@ clean-dot:
 	rm -rf diagrams
 	rm -f $(DIAGRAMS_FILE)
 	rm -f *.dot
+
+.PHONY: wc
+wc:
+	wc -l {cgen,startle}/*.[ch] *.[ch] | sort -nr
