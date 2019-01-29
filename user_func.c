@@ -798,7 +798,7 @@ response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
       if(is_placeholder(left)) {
         cell_t *f = left->expr.arg[closure_in(left) - 1];
         if(is_var(f)) {
-          switch_entry(entry, f);
+          switch_entry(parent_entry, f);
         }
       }
       CHECK(func_list(ap, WITH(&CTX(return), priority, PRIORITY_TOP)));

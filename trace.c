@@ -131,6 +131,8 @@ cell_t *entry_from_number(int n) {
   return &trace_cells[n];
 }
 
+// trace_block_map[i] points to the last entry in the previous block,
+// or the start of the block, which is the first entry of the block
 static
 void trace_update_block_map(cell_t *entry) {
   cell_t *e = entry, *ne = trace_entry_next(e);
@@ -223,6 +225,7 @@ cell_t *var_entry(cell_t *v) {
   for(cell_t *e = block_first_entry(v);
       e < trace_ptr;
       e = trace_entry_next(e)) {
+    assert_error(e->n == PERSISTENT);
     if(entry_has(e, v)) return e;
   }
   return NULL;
@@ -340,6 +343,7 @@ int trace_lookup_value_linear(cell_t *entry, const cell_t *c) {
 // Change the active entry, and add to the list if needed.
 void switch_entry(cell_t *entry, cell_t *r) {
   CONTEXT("switch_entry %s %C", entry->word_name, r);
+  assert_error(NOT_FLAG(*entry, entry, COMPLETE));
   assert_error(is_var(r));
   if(!get_var(entry, r)) {
     if(entry->entry.parent)
@@ -401,6 +405,7 @@ int trace_alloc(cell_t *entry, csize_t args) {
     LOG(MARK("WARN") " NULL entry");
     return -1;
   }
+  assert_error(NOT_FLAG(*entry, entry, COMPLETE));
   int index = entry->entry.len + 1;
   size_t size = calculate_cells(args);
   entry->entry.len += size;
@@ -460,6 +465,7 @@ int trace_value(cell_t *entry, cell_t *v) {
 static
 void trace_store_expr(cell_t *c, const cell_t *r) {
   cell_t *entry = var_entry(r->value.var);
+  assert_error(entry);
   cell_t *tc = r->value.var;
   if(!tc) return;
   type_t t = r->value.type;
