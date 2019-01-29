@@ -173,8 +173,8 @@ typedef struct {
     __typeof__(y) _y = (y);                                     \
     if(!(_x op _y)) {                                           \
       throw_error(ERROR_TYPE_UNEXPECTED,                        \
-                  "Assertion `" #x " " #op " " #y               \
-                  "' failed: %d, %d", X, (int)_x, (int)_y);     \
+                  "Assertion `" #x "' [%d] " #op " `" #y        \
+                  "' [%d] failed.", X, (int)_x, (int)_y);       \
     }                                                           \
   } while(0)
 #endif
