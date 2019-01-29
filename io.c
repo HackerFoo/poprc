@@ -147,11 +147,11 @@ file_t *io_open(seg_t name) {
     int open_flags = 0;
     switch(flags & (FILE_IN | FILE_OUT)) {
     case FILE_IN: open_flags = O_RDONLY; break;
-    case FILE_OUT: open_flags = O_WRONLY; break;
-    case FILE_IN | FILE_OUT: open_flags = O_RDWR; break;
+    case FILE_OUT: open_flags = O_WRONLY | O_CREAT; break;
+    case FILE_IN | FILE_OUT: open_flags = O_RDWR | O_CREAT; break;
     default: assert_error(false); break;
     }
-    int fd = open(cname, open_flags);
+    int fd = open(cname, open_flags, 0666);
     if(fd < 0) {
       return NULL;
     } else {
