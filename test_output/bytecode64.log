@@ -825,6 +825,152 @@ ___ gen_ed.iterate_linear (3 -> 1) x2 rec ___
 [13] gen_ed.iterate_linear 12 2 1 :: l x1
 [14] return [10]
 
+___ gen_ed.read_list (2 -> 3) ___
+[1] var :: ?o x1
+[2] var :: ?y x1
+[3] [] :: l x1
+[4] gen_ed.read_list_r0 2 1 3 -> 7 6 :: y x3
+[6] __primitive.dep 4 :: a x1
+[7] __primitive.dep 4 :: a x1
+[8] return [4 7 6]
+
+___ gen_ed.read_list_r0 (3 -> 3) x2 rec ___
+[1] changing var :: ?l x2
+[2] changing var :: ?o x1
+[3] changing var :: ?y x1
+[4] __primitive.read 3 2 -> 11 5 :: y x3
+[5] __primitive.dep 4 :: s x2
+[6] __primitive.eq_str &5 &7 :: y x1
+[7] val "" :: s x2
+[8] __primitive.not 6 :: y x4
+[9] __primitive.not &8 :: y x3
+[10] __primitive.assert &1 &9 :: l? x1
+[11] __primitive.dep 4 :: o x1.
+[12] __primitive.unread 4 11 5 -> 13 :: y x3.
+[13] __primitive.dep 12 :: o x2.
+[14] __primitive.assert 13 &9 :: o x1
+[15] __primitive.assert 12 9 :: y x1
+[16] return [15 14 10] -> 29
+[17] __primitive.assert 23 &8 :: y? x1
+[18] io.getline_loop 12 13 7 -> 20 21 :: y x3
+[20] __primitive.dep 18 :: o x1
+[21] __primitive.dep 18 :: s x1
+[22] __primitive.ap 21 1 :: l x1
+[23] gen_ed.read_list_r0 18 20 22 -> 25 27 :: y x3
+[25] __primitive.dep 23 :: o x1
+[26] __primitive.assert 25 &8 :: o x1
+[27] __primitive.dep 23 :: l x1
+[28] __primitive.assert 27 8 :: l x1
+[29] return [17 26 28]
+
+___ gen_ed.reverse_list (3 -> 3) ___
+[1] var :: ?o x1
+[2] var :: ?o x1
+[3] var :: ?y x1
+[4] gen_ed.read_list_r0 3 2 &6 -> 11 7 :: y x3
+[6] [] :: l x2
+[7] __primitive.dep 4 :: l x1
+[8] list.reverse_r0 6 7 :: l x1
+[9] gen_ed.write_list_r0 4 1 8 -> 10 :: y x2
+[10] __primitive.dep 9 :: o x1
+[11] __primitive.dep 4 :: o x1
+[12] return [9 11 10]
+
+___ gen_ed.sum_lines (2 -> 3) ___
+[1] var :: ?o x1
+[2] var :: ?y x1
+[3] val 0 :: i x1
+[4] gen_ed.sum_lines_r0 2 1 3 -> 7 6 :: y x3
+[6] __primitive.dep 4 :: a x1
+[7] __primitive.dep 4 :: a x1
+[8] return [4 7 6]
+
+___ gen_ed.sum_lines_r0 (3 -> 3) x2 rec ___
+[1] changing var :: ?i x2
+[2] changing var :: ?o x1
+[3] changing var :: ?y x1
+[4] __primitive.read 3 2 -> 11 5 :: y x3
+[5] __primitive.dep 4 :: s x2
+[6] __primitive.eq_str &5 &7 :: y x1
+[7] val "" :: s x2
+[8] __primitive.not 6 :: y x4
+[9] __primitive.not &8 :: y x3
+[10] __primitive.assert &1 &9 :: i? x1
+[11] __primitive.dep 4 :: o x1.
+[12] __primitive.unread 4 11 5 -> 13 :: y x3.
+[13] __primitive.dep 12 :: o x2.
+[14] __primitive.assert 13 &9 :: o x1
+[15] __primitive.assert 12 9 :: y x1
+[16] return [15 14 10] -> 30
+[17] __primitive.assert 24 &8 :: y? x1
+[18] io.getline_loop 12 13 7 -> 20 21 :: y x3
+[20] __primitive.dep 18 :: o x1
+[21] __primitive.dep 18 :: s x1
+[22] __primitive.from_string 21 :: i? x1
+[23] __primitive.add 22 1 :: i x1
+[24] gen_ed.sum_lines_r0 18 20 23 -> 26 28 :: y x3
+[26] __primitive.dep 24 :: o x1
+[27] __primitive.assert 26 &8 :: o x1
+[28] __primitive.dep 24 :: i x1
+[29] __primitive.assert 28 8 :: i x1
+[30] return [17 27 29]
+
+___ gen_ed.sum_lines_test (1 -> 1) ___
+[1] var :: ?y x1
+[2] __primitive.open 1 3 -> 4 :: y x2
+[3] val "stream,in:std" :: s x1
+[4] __primitive.dep 2 :: o x1
+[5] io.getline_loop 2 4 7 -> 8 10 :: y x3
+[7] val "" :: s x1
+[8] __primitive.dep 5 :: o x1
+[9] __primitive.close 5 8 :: y x1
+[10] __primitive.dep 5 :: s x1
+[11] __primitive.strcat 12 10 :: s x1
+[12] val "in:" :: s x1
+[13] __primitive.open 9 11 -> 14 :: y x2
+[14] __primitive.dep 13 :: o x1
+[15] gen_ed.sum_lines_r0 13 14 17 -> 18 23 :: y x3
+[17] val 0 :: i x1
+[18] __primitive.dep 15 :: o x1
+[19] __primitive.close 15 18 :: y x1
+[20] __primitive.open 19 21 -> 22 :: y x2
+[21] val "stream,out:std" :: s x1
+[22] __primitive.dep 20 :: o x1
+[23] __primitive.dep 15 :: i x1
+[24] __primitive.to_string 23 :: s x1
+[25] __primitive.write 20 22 24 -> 26 :: y x2
+[26] __primitive.dep 25 :: o x1
+[27] __primitive.close 25 26 :: y x1
+[28] return [27]
+
+___ gen_ed.write_list (3 -> 2) ___
+[1] var :: ?l x1
+[2] var :: ?o x1
+[3] var :: ?y x1
+[4] gen_ed.write_list_r0 3 2 1 -> 5 :: y x2
+[5] __primitive.dep 4 :: a x1
+[6] return [4 5]
+
+___ gen_ed.write_list_r0 (3 -> 2) x2 rec ___
+[1] changing var :: ?l x1
+[2] changing var :: ?o x2
+[3] changing var :: ?y x2
+[4] __primitive.ap 1 -> 5 :: l? x2
+[5] __primitive.dep 4 :: s x4
+[6] __primitive.seq 13 &5 :: v x2
+[7] __primitive.write &3 &2 &5 -> 8 :: y x2
+[8] __primitive.dep 7 :: o x1
+[9] __primitive.write 7 8 10 -> 11 :: y x2
+[10] val "\n" :: s x1
+[11] __primitive.dep 9 :: o x1
+[12] gen_ed.write_list_r0 9 11 4 -> 13 :: v x2
+[13] __primitive.dep 12 :: v x1
+[14] __primitive.otherwise &5 2 :: o x1
+[15] __primitive.otherwise 5 3 :: y x1
+[16] return [15 14] -> 18
+[17] __primitive.seq 12 &6 :: v x1
+[18] return [17 6]
+
 ___ io.getline (2 -> 3) ___
 [1] var :: ?o x1
 [2] var :: ?y x1
@@ -1195,6 +1341,36 @@ ___ list.pushif (3 -> 1) x2 ___
 [10] __primitive.ap 3 2 :: l x1
 [11] return [9]
 
+___ list.reverse (1 -> 1) ___
+[1] var :: ?l x1
+[2] [] :: l x1
+[3] list.reverse_r0 2 1 :: l x1
+[4] return [3]
+
+___ list.reverse_r0 (2 -> 1) x2 rec ___
+[1] changing var :: ?l x1
+[2] changing var :: ?l x2
+[3] __primitive.ap 1 -> 4 :: l? x2
+[4] __primitive.dep 3 :: a x3
+[5] __primitive.seq 7 &4 :: v x1
+[6] __primitive.pushr 2 4 :: l x1
+[7] list.reverse_r0 6 3 :: v x1
+[8] return [5] -> 10
+[9] __primitive.otherwise 4 2 :: l x1
+[10] return [9]
+
+___ list.reverse_r0 (2 -> 1) x2 rec ___
+[1] changing var :: ?l x1
+[2] changing var :: ?l x2
+[3] __primitive.ap 1 -> 4 :: l? x2
+[4] __primitive.dep 3 :: a x3
+[5] __primitive.seq 7 &4 :: v x1
+[6] __primitive.pushr 2 4 :: l x1
+[7] list.reverse_r0 6 3 :: v x1
+[8] return [5] -> 10
+[9] __primitive.otherwise 4 2 :: l x1
+[10] return [9]
+
 ___ list.split_at (2 -> 2) ___
 [1] var :: ?i x1
 [2] var :: ?l x1
@@ -1376,6 +1552,27 @@ ___ stack.dup2 (2 -> 4) ___
 [1] var :: ?a x2
 [2] var :: ?a x2
 [3] return [&2 &1 2 1]
+
+___ stack.exch2 (3 -> 3) ___
+[1] var :: ?a x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] return [1 2 3]
+
+___ stack.exch3 (4 -> 4) ___
+[1] var :: ?a x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] var :: ?a x1
+[5] return [1 3 2 4]
+
+___ stack.exch4 (5 -> 5) ___
+[1] var :: ?a x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] var :: ?a x1
+[5] var :: ?a x1
+[6] return [1 4 3 2 5]
 
 ___ stack.get2 (1 -> 2) ___
 [1] var :: ?l x1
@@ -3028,6 +3225,22 @@ ___ tests.quote_str (1 -> 1) ___
 [3] val "'" :: s x2
 [4] __primitive.strcat 2 3 :: s x1
 [5] return [4]
+
+___ tests.reverse_reverse (1 -> 1) ___
+[1] var :: ?a x1
+[2] list.reverse_r0 &3 1 :: l x1
+[3] [] :: l x2
+[4] list.reverse_r0 3 2 :: l x1
+[5] return [4]
+
+___ tests.rpr (2 -> 1) ___
+[1] var :: ?a x1
+[2] var :: ?a x1
+[3] list.reverse_r0 &4 1 :: l x1
+[4] [] :: l x2
+[5] __primitive.ap 2 3 :: l x1
+[6] list.reverse_r0 4 5 :: l x1
+[7] return [6]
 
 ___ tests.spaces (1 -> 1) x2 ___
 [1] var :: ?s x1

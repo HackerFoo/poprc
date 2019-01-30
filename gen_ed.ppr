@@ -57,3 +57,32 @@ count_lines_test:
   getline_std "in:" swap ++
     open count_lines [close] dip21
     ->str write_std
+
+sum_lines:
+  [0] ap20 __ IO h cnt
+    [[[getline <-str] dip23 +].]
+    [[[is_eof] dip23 swap not]. popr]
+    iterate_linear get3
+
+sum_lines_test:
+  getline_std "in:" swap ++
+    open sum_lines [close] dip21
+    ->str write_std
+
+read_list:
+  [[]] ap20 __ IO h cnt
+    [[[getline] dip23 pushl].]
+    [[[is_eof] dip23 swap not]. popr]
+    iterate_linear get3
+
+write_list:
+  [] ap30
+    [[pull [write "\n" write] dip32].]
+    [[dup head valid]. popr]
+    iterate_linear tail get2
+
+__ IO in_stream out_stream
+reverse_list:
+  [read_list reverse] dip23
+    exch2 [write_list] dip32
+    swap

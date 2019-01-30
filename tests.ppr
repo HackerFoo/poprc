@@ -387,3 +387,10 @@ f11: popr pushl
 
 either_test:
   [] swap . . head
+
+__ doesn't work if inlined
+reverse_reverse: reverse reverse
+
+rpr: reverse pushl reverse
+
+__ quote_reverse: quote [] [swap pushr] foldr

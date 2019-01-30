@@ -128,6 +128,8 @@ filter_step: dup [[[popr] dip12] dip23 pushif] dip32
 __ a n listdup --> [a... x n]
 listdup: [] -swap2 [swap pushl] pushl swap times
 
+reverse: [] [swap pushr] foldr
+
 module stack:
 
 imports:
@@ -181,6 +183,10 @@ __ x_2 ... x_n x_1 -> x_1 x_2 ... x_n
 -swap4: swap4 swap4 swap4 swap4
 -swap5: swap5 swap5 swap5 swap5 swap5
 -swap6: swap6 swap6 swap6 swap6 swap6 swap6
+
+exch2: swap2 swap -swap2
+exch3: swap3 swap -swap3
+exch4: swap4 swap -swap4
 
 module control:
 
