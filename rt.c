@@ -574,6 +574,7 @@ response abort_op(response rsp, cell_t **cp, context_t *ctx) {
       TRAVERSE(c, out) {
         cell_t *d = *p;
         if(d && is_dep(d)) {
+          assert_error(c == d->expr.arg[0]);
           drop(c);
           store_fail(d, d->alt);
         }

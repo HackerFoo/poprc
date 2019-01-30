@@ -790,7 +790,7 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   }
   unique(&res);
   drop(res->alt);
-  res->alt = c->alt;
+  res->alt = take(&c->alt);
   res->value.alt_set = ctx->alt_set;
   //res->pos = pos; // ***
   add_conditions(res, p, *q);
@@ -801,7 +801,7 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
     if(d) {
       if(!x) {
         drop(l);
-        LOG("null quote output");
+        LOG("null quote output: arg[%d] = %C", n-1-i, d);
         ABORT(FAIL);
       }
       mark_pos(*x, pos);

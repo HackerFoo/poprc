@@ -337,6 +337,7 @@ OP(dep) {
  abort:
   remove_root(&p);
   drop(p);
+  ASSERT_REF();
   return abort_op(rsp, cp, ctx);
 }
 
