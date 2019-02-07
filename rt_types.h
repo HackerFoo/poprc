@@ -222,11 +222,11 @@ typedef enum char_class_t {
 
 
 // define the op enum
-#define OP__ITEM(name) \
+#define OP__ITEM(file, line, name)              \
   OP_##name,
 
 typedef enum __attribute__((packed)) op {
-  OP__ITEM(null)
+  OP__ITEM(FILEBASE, __LINE__, null)
   #include "op_list.h"
   OP_COUNT
 } op;

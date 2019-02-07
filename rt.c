@@ -236,7 +236,7 @@ void clear_flags(cell_t *c) {
 static
 response op_call(op op, cell_t **cp, context_t *ctx) {
   switch(op) {
-#define OP__ITEM(name) \
+#define OP__ITEM(file, line, name)                      \
     case OP_##name: return func_##name(cp, ctx);
 #include "op_list.h"
 #undef OP__ITEM

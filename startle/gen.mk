@@ -11,7 +11,10 @@ SHELL := bash
 .gen/%_list.h.new: NAME=$(shell echo $(notdir $*) | tr a-z A-Z)
 .gen/%_list.h.new: $(SRC)
 	@mkdir -p $(dir $@)
-	sed -E -n -e 's/^ *'"$(NAME)"'(_[A-Z][A-Z_]*)?\((.*)\).*/'"$(NAME)\1__ITEM"'( \2 )/p' $(SRC) | sed -e 's/,/ , /g' | LC_ALL=C sort -u -k 2,2 > $@
+	grep -n "$(NAME)" $(SRC) | \
+	  sed -e 'h;s/\(.*\):.*/\1/;y/\//_/;G;s/\n.*:/:/' | \
+	  sed -E -n -e 's/^(.*)\.c:(.*): *'"$(NAME)"'(_[A-Z][A-Z_]*)?\((.*)\).*/'"$(NAME)\3__ITEM"'(\1, \2, \4)/p' | \
+	  LC_ALL=C sort -t ',' -u -k 3,3 > $@
 
 # store the current git commit
 .gen/git_log.h.new: LOG = $(shell git log -1 --oneline)

@@ -36,14 +36,14 @@ typedef struct test_entry {
   int (*run)();
 } test_entry_t;
 
-#define TEST__ITEM(name) extern int test_##name();
+#define TEST__ITEM(file, line, name) extern int test_##name();
 #include "test_list.h"
 #undef TEST__ITEM
 
-#define TEST__ITEM(_name)   \
-  {                         \
-    .name = #_name,         \
-    .run = &test_##_name    \
+#define TEST__ITEM(_file, _line, _name)         \
+  {                             \
+    .name = #_name,             \
+    .run = &test_##_name        \
   },
 
 static test_entry_t tests[] = {

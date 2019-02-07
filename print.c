@@ -88,9 +88,9 @@ char const *entry_function_name(cell_t *e) {
   return s;
 }
 
-#define OP__ITEM(name) #name,
+#define OP__ITEM(file, line, name) #name,
 static const char *_op_name[] = {
-  OP__ITEM(null)
+  OP__ITEM(BASENAME, __LINE__, null)
 #include "op_list.h"
 };
 

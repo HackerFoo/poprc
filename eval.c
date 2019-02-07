@@ -398,7 +398,7 @@ void run_eval(bool echo) {
   }
 }
 
-#define COMMAND__ITEM(name, desc)                        \
+#define COMMAND__ITEM(file, line, name, desc)            \
   {                                                      \
     .first = (uintptr_t)#name,                           \
     .second = (uintptr_t)&command_##name                 \
@@ -408,7 +408,7 @@ static pair_t commands[] = {
 };
 #undef COMMAND__ITEM
 
-#define COMMAND__ITEM(name, desc)                        \
+#define COMMAND__ITEM(file, line, name, desc)            \
   {                                                      \
     .first = (uintptr_t)#name,                           \
     .second = (uintptr_t)desc                            \

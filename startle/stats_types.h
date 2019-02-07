@@ -18,8 +18,8 @@
 #ifndef __STATS_TYPES__
 #define __STATS_TYPES__
 
-#define COUNTER__ITEM(name, _) long long int name;
-#define COUNTER_MAX__ITEM(name, _) long long int name;
+#define COUNTER__ITEM(file, line, name, _) long long int name;
+#define COUNTER_MAX__ITEM(file, line, name, _) long long int name;
 typedef struct stats_counter {
 #include "counter_list.h"
 } stats_counter;

@@ -34,8 +34,8 @@
 #include "list.h"
 #include "trace.h"
 
-#define WORD_ALIAS__ITEM(__name, __func, __in, __out, __builder) \
-  WORD__ITEM(__name, __func, __in, __out)
+#define WORD_ALIAS__ITEM(__file, __line, __name, __func, __in, __out, __builder) \
+  WORD__ITEM(__file, __line, __name, __func, __in, __out)
 
 // count the number of words
 #define WORD__ITEM(...) CONCAT(anon, __LINE__),
@@ -45,7 +45,7 @@ enum word_count {
 };
 #undef WORD__ITEM
 
-#define WORD__ITEM(__name, __func, __in, __out)          \
+#define WORD__ITEM(__file, __line, __name, __func, __in, __out) \
   {                                                      \
     .first = (uintptr_t)__name,                          \
     .second = (uintptr_t)&(cell_t) {                     \

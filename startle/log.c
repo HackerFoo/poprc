@@ -32,7 +32,7 @@
  */
 
 
-#define FORMAT__ITEM(name, c) \
+#define FORMAT__ITEM(file, line, name, c)             \
   void format_##name(intptr_t) __attribute__((weak)); \
   void format_##name(intptr_t x) { printf("?0x%lx", x); }
 #include "format_list.h"
@@ -174,7 +174,7 @@ unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
           break;
 #define CASE(c, cast, fmt)                      \
         CASE_PRINT(c, printf(fmt, cast(x)))
-#define FORMAT__ITEM(name, c) CASE_PRINT(c, format_##name(x))
+#define FORMAT__ITEM(file, line, name, c) CASE_PRINT(c, format_##name(x))
 #include "format_list.h"
 #undef FORMAT__ITEM
         CASE('d', (int), "%d");

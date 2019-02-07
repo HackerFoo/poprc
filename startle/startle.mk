@@ -26,6 +26,6 @@ $(GEN_LOCAL_HEADERS): .gen/%.h: %.h
 # compile
 $(BUILD_DIR)/%.o: %.c $(BUILD_DIR)/%.d
 	@echo $*.o
-	$(CC) -c $(CFLAGS) $*.c -o $(BUILD_DIR)/$*.o
+	$(CC) -c $(CFLAGS) -DFILEBASE=$(subst /,_,$*) $*.c -o $(BUILD_DIR)/$*.o
 
 .SECONDARY: $(GEN)
