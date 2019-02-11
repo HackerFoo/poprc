@@ -717,6 +717,15 @@ OP(dup) {
   return RETRY;
 }
 
+// L M... R compMN --->
+// L [M...] . R . ap0N ---> (pushr)
+// [L: M...] R . ap0N ---> (actual implementation)
+// [L: M... R ?? -> N...] ap0N ---> (placeholder)
+// [L: M... R ??] N...
+// Notes:
+//  - ?? mirrors ap/comp
+//  - ?? remains in the list, only deps are removed
+//  - will this handle incomplete L?
 static
 response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   CONTEXT("%s: %C", row ? "compose" : "ap", *cp);
@@ -760,7 +769,7 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
     as = quote_size(p, true); // *** why?
   }
   cell_t **q = &c->expr.arg[in];
-  placeholder_extend(q, compose_size_b(arg_in, as, cs), true);
+  placeholder_extend(q, compose_size_b(arg_in, as, cs), row);
   bs = quote_size(*q, false);
   cs = compose_size_c(arg_in, as, bs);
 

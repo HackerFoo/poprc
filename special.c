@@ -140,7 +140,7 @@ void placeholder_extend(cell_t **lp, qsize_t s, bool wrap_var) {
   if(s.in == 0 && s.out == 0 && !wrap_var) return;
   if(is_var(l)) {
     cell_t *ex = trace_extension(l, s.in, s.out);
-    if(!ex) ex = var_create_list(l, s.in, s.out, 0);
+    if(!ex) ex = var_create_list(l, s.in, s.out, 0, wrap_var);
     *lp = ex;
     return;
   }
@@ -185,7 +185,7 @@ void placeholder_extend(cell_t **lp, qsize_t s, bool wrap_var) {
 cell_t *var_create(type_t t, cell_t *tc, int in, int out) {
   cell_t *v = var_create_nonlist(t, tc);
   return t == T_LIST && (in || out) ?
-    var_create_list(v, in, out, 0) :
+    var_create_list(v, in, out, 0, false) :
     v;
 }
 
@@ -200,7 +200,7 @@ cell_t *var_create_nonlist(type_t t, cell_t *tc) {
   return c;
 }
 
-cell_t *var_create_list(cell_t *f, int in, int out, int shift) {
+cell_t *var_create_list(cell_t *f, int in, int out, int shift, bool row) {
   cell_t *c = make_list(out + shift + 1);
   cell_t *ph = func(OP_placeholder, in + 1, out + 1);
   cell_t **a = &c->value.ptr[shift];
@@ -213,6 +213,7 @@ cell_t *var_create_list(cell_t *f, int in, int out, int shift) {
   refn(ph, out);
   a[out] = ph;
   c->value.flags = VALUE_ROW;
+  if(row) FLAG_SET(*ph, expr, ROW);
   return c;
 }
 
@@ -350,6 +351,7 @@ bool is_dep(cell_t const *c) {
 }
 
 // this shouldn't reduced directly, but is called through reduce_partial from func_dep
+// see func_compose_ap
 WORD("??", placeholder, 0, 1)
 OP(placeholder) {
   PRE(placeholder);

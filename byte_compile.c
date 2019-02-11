@@ -426,9 +426,7 @@ void trace_final_pass(cell_t *entry) {
     if(FLAG(*p, trace, INCOMPLETE)) {
       if(p->op == OP_placeholder) { // convert a placeholder to ap or compose
         FLAG_CLEAR(*p, trace, INCOMPLETE);
-        trace_index_t left = tr_index(p->expr.arg[0]);
-        assert_error(left >= 0);
-        if(closure_in(p) > 1 && trace_type(&entry[left]) == T_LIST) {
+        if(closure_in(p) > 1 && FLAG(*p, expr, ROW)) {
           p->op = OP_compose;
         } else {
           p->op = OP_ap;
@@ -769,13 +767,17 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
   CONTEXT_LOG("compiling %C to quote %s", l, e->word_name);
 
   // conversion
-  csize_t len = function_out(l, true);
-  cell_t *ph = func(OP_placeholder, len + 1, 1);
-  arg(ph, empty_list());
+  bool add_nil = !is_placeholder(l->value.ptr[0]);
+  csize_t len = function_out(l, true) + add_nil;
+  cell_t *ph = func(OP_placeholder, len, 1);
+  if(add_nil) arg(ph, empty_list());
   cell_t **p;
   FORLIST(p, l, true) {
     LOG("arg %C %C", ph, *p);
     arg(ph, ref(*p));
+  }
+  if(is_row_list(l)) { // ***
+    FLAG_SET(*ph, expr, ROW);
   }
 
   EACH(fake_drop, l, ph);

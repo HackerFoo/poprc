@@ -109,11 +109,12 @@ struct __attribute__((packed)) tr {
 #define FLAG_expr (expr, EXPR)
 #define EXPR_SPLIT     0x01
 #define EXPR_NEEDS_ARG 0x02
-#define EXPR_RECURSIVE 0x04
-#define EXPR_TRACE     0x08
-#define EXPR_NO_UNIFY  0x10
-#define EXPR_DELAYED   0x20
-#define EXPR_PARTIAL   0x40
+#define EXPR_TRACE     0x04
+#define EXPR_DELAYED   0x08
+#define EXPR_PARTIAL   0x10
+#define EXPR_RECURSIVE 0x20 // exec
+#define EXPR_NO_UNIFY  0x40 // exec
+#define EXPR_ROW       0x80 // placeholder
 
 /* unevaluated expression */
 struct __attribute__((packed)) expr {
