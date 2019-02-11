@@ -13,6 +13,9 @@ Compile to direct C when possible
 **** closure_set_ready
 **** split_args
 * major
+** DONE placeholder should mirror compNM
+- [left] N... [right]
+- apNM: [] N... [right]
 ** TODO push cases in from `otherwise` to avoid seq
 - if handling all cases without knowledge is allowed, it's easy to build `seq`
 - switching always forces an argument, which is okay as long as it requires knowing the structure
@@ -62,12 +65,13 @@ assert also works this way
 * minor
 ** TODO add trace ring buffer for ref/drop to quickly find source of memory problems
 ** TODO Document different uses of cell_t fields
-** TODO look at logic to trace ap vs. compose (tests.ap_loop4)
+** DONE look at logic to trace ap vs. compose (tests.ap_loop4)
 - compMN = apM0 . ap0N
 - apMN = [] ... compMN
 - broken:
   - [1+] 2 3 [+] comp20
   - [] 1 2 [+] comp21
+  - [] 1 [id] comp11
 ** TODO hash function definitions
 ** TODO [id] popr drop ==> [], should fail
 ** DONE propagate drops in to loop returns to avoid building values to drop (tests.f7c)

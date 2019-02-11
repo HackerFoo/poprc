@@ -117,6 +117,24 @@ ___ algorithm.sum_r0 (2 -> 1) x2 rec ___
 [9] __primitive.otherwise 4 2 :: i x1
 [10] return [9]
 
+___ control.!! (3 -> 2) ___
+[1] var :: ?y x2
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] __primitive.assert 2 &1 :: l? x1
+[5] __primitive.assert 3 1 :: a x1
+[6] return [5 4]
+
+___ control.!!! (4 -> 3) ___
+[1] var :: ?y x3
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] var :: ?a x1
+[5] __primitive.assert 2 &1 :: l? x1
+[6] __primitive.assert 3 &1 :: a x1
+[7] __primitive.assert 4 1 :: a x1
+[8] return [7 6 5]
+
 ___ control.$ (2 -> 1) ___
 [1] var :: ?l x1
 [2] var :: ?a x1
@@ -1076,7 +1094,7 @@ ___ io.write_std (2 -> 1) ___
 [8] __primitive.close 6 7 :: y x1
 [9] return [8]
 
-___ list.!! (2 -> 1) ___
+___ list.@ (2 -> 1) ___
 [1] var :: ?i x1
 [2] var :: ?a x1
 [3] list.dropl_r0 2 1 :: l x1
@@ -1310,6 +1328,79 @@ ___ list.map_r0 (3 -> 1) x2 rec ___
 [11] __primitive.otherwise 5 2 :: l x1
 [12] return [11]
 
+___ list.merge (2 -> 1) ___
+[1] var :: ?a x1
+[2] var :: ?a x1
+[3] list.merge_loop 2 1 4 :: l x1
+[4] [] :: l x1
+[5] return [3]
+
+___ list.merge_loop (3 -> 1) x4 rec ___
+[1] changing var :: ?l x4
+[2] changing var :: ?l x5
+[3] changing var :: ?l x3
+[4] __primitive.ap &3 -> 5 :: l? x2
+[5] __primitive.dep 4 :: i x3
+[6] __primitive.ap &2 -> 7 :: v? x1
+[7] __primitive.dep 6 :: i x1
+[8] __primitive.lte &5 7 :: y x4
+[9] __primitive.assert 4 &8 :: l? x1
+[10] __primitive.assert &2 &8 :: l? x1
+[11] __primitive.assert &5 &8 :: i? x2
+[12] __primitive.seq 13 &11 :: l x1
+[13] __primitive.ap 11 1 :: l x1
+[14] list.merge_loop 9 10 12 :: v x1
+[15] return [14] -> 25
+[16] __primitive.not 8 :: y x3
+[17] __primitive.assert 19 &16 :: a? x2
+[18] __primitive.ap &2 -> 19 :: l? x2
+[19] __primitive.dep 18 :: a x1
+[20] __primitive.seq 23 &17 :: l x1
+[21] __primitive.assert 18 &16 :: l? x1
+[22] __primitive.assert &3 16 :: l? x1
+[23] __primitive.ap 17 1 :: l x1
+[24] list.merge_loop 22 21 20 :: v x1
+[25] return [24] -> 28
+[26] __primitive.otherwise 5 27 :: l x1
+[27] list.merge_loop_q0 1 2 :: l x1
+[28] return [26] -> 33
+[29] __primitive.ap 2 -> 30 :: v? x1
+[30] __primitive.dep 29 :: a x1
+[31] __primitive.otherwise 30 32 :: l x1
+[32] list.merge_loop_q0 1 3 :: l x1
+[33] return [31]
+
+___ list.merge_loop_q0 (2 -> 1) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] __primitive.compose 1 2 :: l x1
+[4] return [3]
+
+___ list.merge_step (3 -> 3) x2 ___
+[1] var :: ?l x2
+[2] var :: ?l x3
+[3] var :: ?l x2
+[4] __primitive.ap &3 -> 5 :: l? x2
+[5] __primitive.dep 4 :: i x2
+[6] __primitive.ap &2 -> 7 :: v? x1
+[7] __primitive.dep 6 :: i x1
+[8] __primitive.lte &5 7 :: y x4
+[9] __primitive.assert 5 &8 :: i? x2
+[10] __primitive.seq 13 &9 :: l x1
+[11] __primitive.assert &2 &8 :: l? x1
+[12] __primitive.assert 4 &8 :: l? x1
+[13] __primitive.ap 9 1 :: l x1
+[14] return [12 11 10] -> 23
+[15] __primitive.not 8 :: y x3
+[16] __primitive.assert 3 &15 :: l? x1
+[17] __primitive.assert 19 &15 :: l? x1
+[18] __primitive.assert 20 15 :: a? x2
+[19] __primitive.ap 2 -> 20 :: l? x2
+[20] __primitive.dep 19 :: a x1
+[21] __primitive.seq 22 &18 :: l x1
+[22] __primitive.ap 18 1 :: l x1
+[23] return [16 17 21]
+
 ___ list.mov_ap (3 -> 3) ___
 [1] var :: ?l x2
 [2] var :: ?l x1
@@ -1328,6 +1419,35 @@ ___ list.movr (2 -> 2) ___
 [5] __primitive.ap 4 1 :: l x1
 [6] return [3 5]
 
+___ list.pop_min (2 -> 3) x2 ___
+[1] var :: ?l x3
+[2] var :: ?l x2
+[3] __primitive.ap &2 -> 4 :: l? x2
+[4] __primitive.dep 3 :: i x2
+[5] __primitive.ap &1 -> 6 :: v? x1
+[6] __primitive.dep 5 :: i x1
+[7] __primitive.lte &4 6 :: y x4
+[8] __primitive.assert 4 &7 :: l? x1
+[9] __primitive.assert 1 &7 :: l x1
+[10] __primitive.assert 3 7 :: l x1
+[11] return [10 9 8] -> 18
+[12] __primitive.not 7 :: y x3
+[13] __primitive.assert 2 &12 :: l? x1
+[14] __primitive.ap 1 -> 15 :: l? x2
+[15] __primitive.dep 14 :: a x1
+[16] __primitive.assert 15 &12 :: a x1
+[17] __primitive.assert 14 12 :: l x1
+[18] return [13 17 16]
+
+___ list.pop_par (2 -> 4) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] __primitive.ap 1 -> 4 :: l? x2
+[4] __primitive.dep 3 :: a x1
+[5] __primitive.ap 2 -> 6 :: l? x2
+[6] __primitive.dep 5 :: a x1
+[7] return [5 3 6 4]
+
 ___ list.pushif (3 -> 1) x2 ___
 [1] var :: ?l x1
 [2] var :: ?l x2
@@ -1340,6 +1460,13 @@ ___ list.pushif (3 -> 1) x2 ___
 [9] __primitive.assert 10 5 :: l? x1
 [10] __primitive.ap 3 2 :: l x1
 [11] return [9]
+
+___ list.pushl_seq (2 -> 1) ___
+[1] var :: ?l x1
+[2] var :: ?a x2
+[3] __primitive.seq 4 &2 :: l x1
+[4] __primitive.ap 2 1 :: l x1
+[5] return [3]
 
 ___ list.reverse (1 -> 1) ___
 [1] var :: ?l x1
@@ -1406,6 +1533,15 @@ ___ list.top (1 -> 2) ___
 [2] __primitive.ap &1 -> 3 :: v? x1
 [3] __primitive.dep 2 :: a x1
 [4] return [1 3]
+
+___ list.top_par (2 -> 4) ___
+[1] var :: ?l x2
+[2] var :: ?l x2
+[3] __primitive.ap &1 -> 4 :: v? x1
+[4] __primitive.dep 3 :: a x1
+[5] __primitive.ap &2 -> 6 :: v? x1
+[6] __primitive.dep 5 :: a x1
+[7] return [2 1 6 4]
 
 ___ logic.and (2 -> 1) x2 ___
 [1] var :: ?y x2
@@ -1907,6 +2043,32 @@ ___ tests.ap_loop4_r0 (2 -> 1) rec ___
 [7] __primitive.dep 6 :: a x1
 [8] tests.ap_loop4_r0 2 7 :: v x1
 [9] return [8]
+
+___ tests.asq (2 -> 2) ___
+[1] var :: ?y x2
+[2] var :: ?l x1
+[3] __primitive.assert &5 &1 :: l? x1
+[4] __primitive.ap 1 2 -> 5 :: l? x2
+[5] __primitive.dep 4 :: a x2
+[6] __primitive.pushr 4 5 :: l x1
+[7] return [6 3]
+
+___ tests.asq2 (1 -> 1) ___
+[1] var :: ?l x1
+[2] __primitive.ap 1 -> 3 :: l? x2
+[3] __primitive.dep 2 :: y x2
+[4] __primitive.assert 5 &3 :: l? x1
+[5] __primitive.ap 3 2 :: l x1
+[6] return [4]
+
+___ tests.asq2_loop (1 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] __primitive.ap 1 -> 3 :: l? x2
+[3] __primitive.dep 2 :: y x2
+[4] __primitive.assert 5 &3 :: l? x1
+[5] __primitive.ap 3 2 :: l x1
+[6] tests.asq2_loop 4 :: v x1
+[7] return [6]
 
 ___ tests.assert_nready (2 -> 1) ___
 [1] var :: ?y x1

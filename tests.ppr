@@ -394,3 +394,9 @@ reverse_reverse: reverse reverse
 rpr: reverse pushl reverse
 
 __ quote_reverse: quote [] [swap pushr] foldr
+
+asq: dup [swap pushl] dip21 ! dup head
+
+__ drops the assert
+asq2: dup head [popr swap pushl] dip11 !
+asq2_loop: asq2 asq2_loop

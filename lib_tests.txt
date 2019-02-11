@@ -14,10 +14,12 @@ __ list
 [1 2 3] 0 [+] foldl
 [1 2 3] 2 dropl
 [1 2 3] 1 split_at
-[4 5 6] 1!!
+[4 5 6] 1@
 [4 5 6] [3-] map
 [4 5 6] [odd] filter
 3 4 listdup
+[1 2 3] reverse
+[4 2] [3 1] merge
 
 __ stack
 [1] pull

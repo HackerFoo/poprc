@@ -95,7 +95,7 @@ split_at:
 
 __ index operator
 __ [f] index -> x
-!!: dropl head
+@: dropl head
 
 __ a [a -> a] -> [a]
 iteratel: [dup [peek] dip22 iteratel swap] ap20
@@ -129,6 +129,30 @@ __ a n listdup --> [a... x n]
 listdup: [] -swap2 [swap pushl] pushl swap times
 
 reverse: [] [swap pushr] foldr
+
+__ [... a] [... b] pop_par --> [...] [...] a b
+pop_par: [popr] dip12 popr [swap] dip22
+top_par: [top] dip12 top [swap] dip22
+
+__ pop the smaller integer from two lists
+pop_min:
+  [top_par <=] ap20
+    [[[popr] dip12 swap] dip23] __ a <= b
+    [[popr] dip12 not] | . popr! get3 __ a > b
+
+pushl_seq: over seq pushl
+
+__ [a] [b] [acc]
+merge_step: [pop_min] dip23 pushl_seq
+
+__ [a] [b] [acc]
+merge_loop:
+  [] ap30 dup
+    [] [[swap] dip22] | . __ [[a] [b] [acc]] | [[b] [a] [acc]]
+    [. [head] dip11 otherwise] . swap
+    [merge_step merge_loop] . | head
+
+merge: [] merge_loop
 
 module stack:
 
@@ -291,6 +315,8 @@ either:
   [Right =:= !] swap . swap
     [Left =:= !] swap . | . head
 
+!!: [[] ap20] dip21! get2
+!!!: [[] ap30] dip31! get3
 
 module logic:
 
