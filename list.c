@@ -29,6 +29,7 @@
 #include "user_func.h"
 #include "list.h"
 #include "builders.h"
+#include "trace.h"
 
 cell_t *empty_list() {
   return make_list(0);
@@ -69,7 +70,6 @@ bool is_function(cell_t const *c) {
 
 
 // not really a func
-#define MAX_RETURN_VALUES 64
 response func_list(cell_t **cp, context_t *ctx) {
   PRE(list);
   if(c->priority) {
@@ -94,6 +94,7 @@ response func_list(cell_t **cp, context_t *ctx) {
   CHECK_DELAY();
   TRAVERSE(c, ptrs) {
     *p = clear_ptr(*p);
+    add_conditions_var(*p, value_condition(c)); // *** modifies *p
   }
   if(n && is_row_list(c) && is_list(c->value.ptr[n-1])) {
     CHECK(func_list(&c->value.ptr[n-1], ctx_pos(&CTX(any), ctx->pos)));
@@ -216,14 +217,14 @@ csize_t list_remaining_size(list_iterator_t it, bool count_last_row) {
     cell_t **rp = &it.array[it.size];
     reduce_quote(rp); // ***
     if(is_list(*rp)) {
-      n += it.size;
+      n += it.size - it.index;
       it = list_begin(it.array[it.size]);
     } else {
       it.size += !!count_last_row;
       break;
     }
   }
-  return n + it.size - min(it.size, it.index);
+  return n + csub(it.size, it.index);
 }
 
 static
@@ -269,7 +270,7 @@ void collapse_row(cell_t **cp) {
   if(is_row_list(l) &&
      list_size(l) == 1 &&
      closure_is_ready(p = l->value.ptr[0])) {
-    if(1 || l->value.var) {
+    if(1 || l->value.var) { // ***
       *cp = build_seq(ref(p), l);
     } else {
       *cp = CUT(l, value.ptr[0]);

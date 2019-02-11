@@ -442,6 +442,7 @@ void show_list_elements(cell_t const *c) {
   }
   if(is_row_list(c)) {
     show_list_elements(c->value.ptr[--n]);
+    if(!n) return;
   }
   show_one(c->value.ptr[n-1]);
   COUNTDOWN(i, n-1) {

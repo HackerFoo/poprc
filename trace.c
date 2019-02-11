@@ -588,6 +588,7 @@ cell_t *trace_partial(op op, int n, cell_t *p) {
 }
 
 void apply_condition(cell_t *c, int *x) {
+  assert_error(is_value(c));
   if(c->value.var) {
     cell_t *entry = var_entry(c->value.var);
     cell_t *t = concatenate_conditions(c->value.var, &entry[*x]);
@@ -916,6 +917,7 @@ int trace_return(cell_t *entry, cell_t *c_) {
   cell_t **p;
   FORLIST(p, c, true) {
     trace_index_t x;
+    assert_error(is_value(*p));
     if(is_var(*p)) {
       switch_entry(entry, *p);
       x = var_index(entry, (*p)->value.var);
@@ -988,6 +990,8 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
     cell_t **p = cp;
     bool delay = false;
     CONTEXT("priority = %d", priority);
+
+  loop_start:
     while(*p) {
       CONTEXT("branch %d: %C", alts, *p);
       response rsp = func_list(p, WITH(ctx, priority, priority));
@@ -1002,7 +1006,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
       cell_t **a;
       FORLIST(a, *p, true) {
         collapse_row(a);
-        force(a); // ***
+        if(force(a) != SUCCESS) goto loop_start; // ***
         if(is_value(*a) &&
            !is_list(*a) &&
            !is_var(*a)) { // TODO deps?
@@ -1113,7 +1117,7 @@ FORMAT(trace_cell, 'T') {
   printf("[%d]", var_index(entry, tc));
 }
 
-/* condiitons */
+/* conditions */
 
 // assert & otherwise form lists that can be concatenated
 // TODO use refcounting to avoid destructive concatenation

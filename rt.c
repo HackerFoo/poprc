@@ -41,7 +41,7 @@
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
 
-cell_t **rt_roots[31];
+cell_t **rt_roots[257];
 const size_t rt_roots_n = LENGTH(rt_roots);
 
 static cell_t *watched_cells[4] = {0};
@@ -420,7 +420,9 @@ cell_t *compose(list_iterator_t it, cell_t *b) {
     cell_t **bp = &(*ll)->value.ptr[offset];
     WHILELIST(x, it, true) {
       *bp++ = ref(*x);
+      remaining_a--;
     }
+    assert_eq(remaining_a, 0);
     if(it.row) FLAG_SET(**ll, value, ROW);
   }
 

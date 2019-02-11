@@ -1977,13 +1977,13 @@ ___ tests.calc (1 -> 1) ___
 [5] return [4]
 
 ___ tests.calc_loop (2 -> 1) x15 rec ___
-[1] changing var :: ?l x13
+[1] changing var :: ?l x10
 [2] changing var :: ?y x1
 [3] __primitive.open 2 4 -> 5 :: y x2
 [4] val "stream,out:std" :: s x1
 [5] __primitive.dep 3 :: o x1
-[6] __primitive.ap &1 -> 7 :: l? x4
-[7] __primitive.dep 6 :: i x6
+[6] __primitive.ap &1 -> 7 :: l? x3
+[7] __primitive.dep 6 :: i x3
 [8] __primitive.to_string &7 :: s x1
 [9] __primitive.strcat 8 10 :: s x1
 [10] val "\n" :: s x1
@@ -2003,149 +2003,164 @@ ___ tests.calc_loop (2 -> 1) x15 rec ___
 [25] __primitive.close 17 24 :: y x15.
 [26] __primitive.pushr 1 22 :: l x1
 [27] tests.calc_loop 25 26 :: v x1
-[28] return [23] -> 39
-[29] __primitive.eq_str &21 30 :: y x1
+[28] return [23] -> 40
+[29] __primitive.eq_str &21 30 :: y x2
 [30] val "+" :: s x1
-[31] __primitive.assert &35 29 :: i? x2
+[31] __primitive.assert 35 &29 :: i? x3
 [32] __primitive.ap &1 -> 33 34 :: l? x3
 [33] __primitive.dep 32 :: i x1
 [34] __primitive.dep 32 :: i x1
-[35] __primitive.add 33 34 :: i x2
-[36] __primitive.seq 38 31 :: v x1
-[37] __primitive.pushr 32 35 :: l x1
-[38] tests.calc_loop 25 37 :: v x1
-[39] return [36] -> 50
-[40] __primitive.eq_str &21 41 :: y x1
-[41] val "-" :: s x1
-[42] __primitive.assert &46 40 :: i? x2
-[43] __primitive.ap &1 -> 44 45 :: l? x3
-[44] __primitive.dep 43 :: i x1
-[45] __primitive.dep 43 :: i x1
-[46] __primitive.sub 44 45 :: i x2
-[47] __primitive.seq 49 42 :: v x1
-[48] __primitive.pushr 43 46 :: l x1
-[49] tests.calc_loop 25 48 :: v x1
-[50] return [47] -> 61
-[51] __primitive.eq_str &21 52 :: y x1
-[52] val "*" :: s x1
-[53] __primitive.assert &57 51 :: i? x2
-[54] __primitive.ap &1 -> 55 56 :: l? x3
-[55] __primitive.dep 54 :: i x1
-[56] __primitive.dep 54 :: i x1
-[57] __primitive.mul 55 56 :: i x2
-[58] __primitive.seq 60 53 :: v x1
-[59] __primitive.pushr 54 57 :: l x1
-[60] tests.calc_loop 25 59 :: v x1
-[61] return [58] -> 72
-[62] __primitive.eq_str &21 63 :: y x1
-[63] val "/" :: s x1
-[64] __primitive.assert &68 62 :: i? x2
-[65] __primitive.ap &1 -> 66 67 :: l? x3
-[66] __primitive.dep 65 :: i x1
-[67] __primitive.dep 65 :: i x1
-[68] __primitive.div 66 67 :: i? x2
-[69] __primitive.seq 71 64 :: v x1
-[70] __primitive.pushr 65 68 :: l x1
-[71] tests.calc_loop 25 70 :: v x1
-[72] return [69] -> 83
-[73] __primitive.eq_str &21 74 :: y x1
-[74] val "gcd" :: s x1
-[75] __primitive.assert &79 73 :: i? x2
-[76] __primitive.ap &1 -> 78 77 :: l? x3
-[77] __primitive.dep 76 :: i x1
-[78] __primitive.dep 76 :: i x1
-[79] algorithm.gcd_r0 78 77 :: i x2
-[80] __primitive.seq 82 75 :: v x1
-[81] __primitive.pushr 76 79 :: l x1
-[82] tests.calc_loop 25 81 :: v x1
-[83] return [80] -> 95
-[84] __primitive.eq_str &21 85 :: y x1
-[85] val "^" :: s x1
-[86] __primitive.assert &90 84 :: i? x2
-[87] __primitive.ap &1 -> 89 88 :: l? x3
-[88] __primitive.dep 87 :: i x1
-[89] __primitive.dep 87 :: i x1
-[90] algorithm.__caret___r0 91 89 88 :: i x2
-[91] val 1 :: i x3
-[92] __primitive.seq 94 86 :: v x1
-[93] __primitive.pushr 87 90 :: l x1
-[94] tests.calc_loop 25 93 :: v x1
-[95] return [92] -> 105
-[96] __primitive.eq_str &21 97 :: y x1
-[97] val "fib" :: s x1
-[98] __primitive.assert &100 96 :: i? x2
-[99] __primitive.sub 7 &91 :: i x1
-[100] tests.fibl_r0 99 101 91 :: i x2
-[101] val 0 :: i x3
-[102] __primitive.seq 104 98 :: v x1
-[103] __primitive.pushr 6 100 :: l x1
-[104] tests.calc_loop 25 103 :: v x1
-[105] return [102] -> 113
-[106] __primitive.eq_str &21 107 :: y x1
-[107] val "fact" :: s x1
-[108] __primitive.assert &109 106 :: i? x2
-[109] tests.fact 7 :: i x2
-[110] __primitive.seq 112 108 :: v x1
-[111] __primitive.pushr 6 109 :: l x1
-[112] tests.calc_loop 25 111 :: v x1
-[113] return [110] -> 121
-[114] __primitive.eq_str &21 115 :: y x1
-[115] val "len" :: s x1
-[116] __primitive.assert &117 114 :: i? x2
-[117] list.length_r0 101 &1 :: i x2
-[118] __primitive.seq 120 116 :: v x1
-[119] __primitive.pushr 1 117 :: l x1
+[35] __primitive.add 33 34 :: i x1
+[36] __primitive.seq 39 &31 :: v x1
+[37] __primitive.assert 32 29 :: l x1
+[38] __primitive.pushr 37 31 :: l x1
+[39] tests.calc_loop 25 38 :: v x1
+[40] return [36] -> 52
+[41] __primitive.eq_str &21 42 :: y x2
+[42] val "-" :: s x1
+[43] __primitive.assert 47 &41 :: i? x3
+[44] __primitive.ap &1 -> 45 46 :: l? x3
+[45] __primitive.dep 44 :: i x1
+[46] __primitive.dep 44 :: i x1
+[47] __primitive.sub 45 46 :: i x1
+[48] __primitive.seq 51 &43 :: v x1
+[49] __primitive.assert 44 41 :: l x1
+[50] __primitive.pushr 49 43 :: l x1
+[51] tests.calc_loop 25 50 :: v x1
+[52] return [48] -> 64
+[53] __primitive.eq_str &21 54 :: y x2
+[54] val "*" :: s x1
+[55] __primitive.assert 59 &53 :: i? x3
+[56] __primitive.ap &1 -> 57 58 :: l? x3
+[57] __primitive.dep 56 :: i x1
+[58] __primitive.dep 56 :: i x1
+[59] __primitive.mul 57 58 :: i x1
+[60] __primitive.seq 63 &55 :: v x1
+[61] __primitive.assert 56 53 :: l x1
+[62] __primitive.pushr 61 55 :: l x1
+[63] tests.calc_loop 25 62 :: v x1
+[64] return [60] -> 76
+[65] __primitive.eq_str &21 66 :: y x2
+[66] val "/" :: s x1
+[67] __primitive.assert 71 &65 :: i? x3
+[68] __primitive.ap &1 -> 69 70 :: l? x3
+[69] __primitive.dep 68 :: i x1
+[70] __primitive.dep 68 :: i x1
+[71] __primitive.div 69 70 :: i? x1
+[72] __primitive.seq 75 &67 :: v x1
+[73] __primitive.assert 68 65 :: l x1
+[74] __primitive.pushr 73 67 :: l x1
+[75] tests.calc_loop 25 74 :: v x1
+[76] return [72] -> 88
+[77] __primitive.eq_str &21 78 :: y x2
+[78] val "gcd" :: s x1
+[79] __primitive.assert 83 &77 :: i? x3
+[80] __primitive.ap &1 -> 82 81 :: l? x3
+[81] __primitive.dep 80 :: i x1
+[82] __primitive.dep 80 :: i x1
+[83] algorithm.gcd_r0 82 81 :: i x1
+[84] __primitive.seq 87 &79 :: v x1
+[85] __primitive.assert 80 77 :: l x1
+[86] __primitive.pushr 85 79 :: l x1
+[87] tests.calc_loop 25 86 :: v x1
+[88] return [84] -> 101
+[89] __primitive.eq_str &21 90 :: y x2
+[90] val "^" :: s x1
+[91] __primitive.assert 95 &89 :: i? x3
+[92] __primitive.ap &1 -> 94 93 :: l? x3
+[93] __primitive.dep 92 :: i x1
+[94] __primitive.dep 92 :: i x1
+[95] algorithm.__caret___r0 96 94 93 :: i x1
+[96] val 1 :: i x3
+[97] __primitive.seq 100 &91 :: v x1
+[98] __primitive.assert 92 89 :: l x1
+[99] __primitive.pushr 98 91 :: l x1
+[100] tests.calc_loop 25 99 :: v x1
+[101] return [97] -> 112
+[102] __primitive.eq_str &21 103 :: y x2
+[103] val "fib" :: s x1
+[104] __primitive.assert 106 &102 :: i? x3
+[105] __primitive.sub 7 &96 :: i x1
+[106] tests.fibl_r0 105 107 96 :: i x1
+[107] val 0 :: i x3
+[108] __primitive.seq 111 &104 :: v x1
+[109] __primitive.assert 6 102 :: l x1
+[110] __primitive.pushr 109 104 :: l x1
+[111] tests.calc_loop 25 110 :: v x1
+[112] return [108] -> 121
+[113] __primitive.eq_str &21 114 :: y x2
+[114] val "fact" :: s x1
+[115] __primitive.assert 116 &113 :: i? x3
+[116] tests.fact 7 :: i x1
+[117] __primitive.seq 120 &115 :: v x1
+[118] __primitive.assert 6 113 :: l x1
+[119] __primitive.pushr 118 115 :: l x1
 [120] tests.calc_loop 25 119 :: v x1
-[121] return [118] -> 129
-[122] __primitive.eq_str &21 123 :: y x1
-[123] val "sum" :: s x1
-[124] __primitive.assert &125 122 :: i? x2
-[125] algorithm.sum_r0 101 1 :: i x2
-[126] __primitive.seq 128 124 :: v x1
-[127] __primitive.quote 125 :: l x1
-[128] tests.calc_loop 25 127 :: v x1
-[129] return [126] -> 139
-[130] __primitive.eq_str &21 131 :: y x1
-[131] val "swap" :: s x1
-[132] __primitive.assert &134 130 :: l? x2
-[133] __primitive.ap &1 -> 134 136 :: l? x3
-[134] __primitive.dep 133 :: a x2
-[135] __primitive.seq 138 132 :: v x1
-[136] __primitive.dep 133 :: a x1
-[137] __primitive.pushr 133 136 134 :: l x1
-[138] tests.calc_loop 25 137 :: v x1
-[139] return [135] -> 146
-[140] __primitive.eq_str &21 141 :: y x1
-[141] val "dup" :: s x1
-[142] __primitive.assert &7 140 :: i? x2
-[143] __primitive.seq 145 142 :: v x1
-[144] __primitive.pushr 6 &7 7 :: l x1
-[145] tests.calc_loop 25 144 :: v x1
-[146] return [143] -> 155
-[147] __primitive.eq_str 21 148 :: y x1
-[148] val "drop" :: s x1
-[149] __primitive.assert &151 147 :: l? x2
-[150] __primitive.ap 1 -> 151 X :: l? x2
-[151] __primitive.dep 150 :: a x2
-[152] __primitive.seq 154 149 :: v x1
-[153] __primitive.pushr 150 151 :: l x1
-[154] tests.calc_loop 25 153 :: v x1
-[155] return [152] -> 170
-[156] __primitive.otherwise 22 25 :: y x1
-[157] __primitive.otherwise 31 156 :: y x1
-[158] __primitive.otherwise 42 157 :: y x1
-[159] __primitive.otherwise 53 158 :: y x1
-[160] __primitive.otherwise 64 159 :: y x1
-[161] __primitive.otherwise 75 160 :: y x1
-[162] __primitive.otherwise 86 161 :: y x1
-[163] __primitive.otherwise 98 162 :: y x1
-[164] __primitive.otherwise 108 163 :: y x1
-[165] __primitive.otherwise 116 164 :: y x1
-[166] __primitive.otherwise 124 165 :: y x1
-[167] __primitive.otherwise 132 166 :: y x1
-[168] __primitive.otherwise 142 167 :: y x1
-[169] __primitive.otherwise 149 168 :: y x1
-[170] return [169]
+[121] return [117] -> 130
+[122] __primitive.eq_str &21 123 :: y x2
+[123] val "len" :: s x1
+[124] __primitive.assert 125 &122 :: i? x3
+[125] list.length_r0 107 &1 :: i x1
+[126] __primitive.seq 129 &124 :: v x1
+[127] __primitive.assert 1 122 :: l x5.
+[128] __primitive.pushr 127 124 :: l x1
+[129] tests.calc_loop 25 128 :: v x1
+[130] return [126] -> 138
+[131] __primitive.eq_str &21 132 :: y x1
+[132] val "sum" :: s x1
+[133] __primitive.assert 134 131 :: i? x3
+[134] algorithm.sum_r0 107 127 :: i x1
+[135] __primitive.seq 137 &133 :: v x1
+[136] __primitive.quote 133 :: l x1
+[137] tests.calc_loop 25 136 :: v x1
+[138] return [135] -> 150
+[139] __primitive.eq_str &21 140 :: y x3
+[140] val "swap" :: s x1
+[141] __primitive.assert 143 &139 :: l? x3
+[142] __primitive.ap &127 -> 143 145 :: l? x3
+[143] __primitive.dep 142 :: a x1
+[144] __primitive.seq 149 &141 :: v x1
+[145] __primitive.dep 142 :: a x1
+[146] __primitive.assert 145 &139 :: a x1
+[147] __primitive.assert 142 139 :: l x1
+[148] __primitive.pushr 147 146 141 :: l x1
+[149] tests.calc_loop 25 148 :: v x1
+[150] return [144] -> 160
+[151] __primitive.eq_str &21 152 :: y x2
+[152] val "dup" :: s x1
+[153] __primitive.assert 155 &151 :: l? x4
+[154] __primitive.ap &127 -> 155 :: l? x2
+[155] __primitive.dep 154 :: a x1
+[156] __primitive.seq 159 &153 :: v x1
+[157] __primitive.assert 154 151 :: l x1
+[158] __primitive.pushr 157 &153 153 :: l x1
+[159] tests.calc_loop 25 158 :: v x1
+[160] return [156] -> 170
+[161] __primitive.eq_str 21 162 :: y x2
+[162] val "drop" :: s x1
+[163] __primitive.assert 165 &161 :: l? x3
+[164] __primitive.ap 127 -> 165 X :: l? x2
+[165] __primitive.dep 164 :: a x1
+[166] __primitive.seq 169 &163 :: v x1
+[167] __primitive.assert 164 161 :: l x1
+[168] __primitive.pushr 167 163 :: l x1
+[169] tests.calc_loop 25 168 :: v x1
+[170] return [166] -> 185
+[171] __primitive.otherwise 22 25 :: y x1
+[172] __primitive.otherwise 31 171 :: y x1
+[173] __primitive.otherwise 43 172 :: y x1
+[174] __primitive.otherwise 55 173 :: y x1
+[175] __primitive.otherwise 67 174 :: y x1
+[176] __primitive.otherwise 79 175 :: y x1
+[177] __primitive.otherwise 91 176 :: y x1
+[178] __primitive.otherwise 104 177 :: y x1
+[179] __primitive.otherwise 115 178 :: y x1
+[180] __primitive.otherwise 124 179 :: y x1
+[181] __primitive.otherwise 133 180 :: y x1
+[182] __primitive.otherwise 141 181 :: y x1
+[183] __primitive.otherwise 153 182 :: y x1
+[184] __primitive.otherwise 163 183 :: y x1
+[185] return [184]
 
 ___ tests.calc_step (2 -> 1) x14 ___
 [1] var :: ?s x1

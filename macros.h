@@ -327,4 +327,11 @@
 #define CONSTANT __attribute__((section(".text")))
 #endif
 
+#define DO_PRAGMA(x) _Pragma (#x)
+#define PRAGMA_MESSAGE(x) DO_PRAGMA(message (x))
+
+// Override a condition with a warning
+#define DEBUG_TRUE ({PRAGMA_MESSAGE("DEBUG_TRUE"); 1;}) ||
+#define DEBUG_FALSE ({PRAGMA_MESSAGE("DEBUG_FALSE"); 0;}) &&
+
 #endif
