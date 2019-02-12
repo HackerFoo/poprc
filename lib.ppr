@@ -182,6 +182,7 @@ rev3: [] ap30 pull3 drop
 
 __ a b -> b
 nip: swap drop
+nip2: swap2 drop
 
 __ a b  -> b a b
 tuck: [] ap20 dup . pull3 drop
@@ -258,6 +259,8 @@ dip55: swap pushr ap56 swap6 drop
 __ a [f] -> fa
 $: ap11 nip
 $$: ap21 nip
+$-: ap12 nip2
+$$-: ap22 nip2
 
 __ a [f] -> fa [f]
 $keep: dup [$] dip21
@@ -286,6 +289,7 @@ ifdo: dup [dup] swap . [[drop] dip21 not] . | ap12 swap2 drop !
 
 __ a b -> a b [a b]
 in2: [] ap20 dup [get2] dip12
+in3: [] ap30 dup [get3] dip13
 
 __ a [fn] [test] -> apply fn to a while a [test] $ is True
 iterate:
@@ -317,6 +321,18 @@ either:
 
 !!: [[] ap20] dip21! get2
 !!!: [[] ap30] dip31! get3
+
+__ x [split] [f] [combine] diamond -> x'
+__              .-> f -.
+__ x -> split -<        >-> combine -> x'
+__              '-> f -'
+diamond: [[$-] dip22 both] dip32 $$
+
+__ x [split] [f] [combine] bitree -> x'
+bitree:
+  over3 over2 $ __ f x -> x'
+    [in3 [bitree]. quote dip11 diamond] dip41 __ diamond bitree
+    default
 
 module logic:
 

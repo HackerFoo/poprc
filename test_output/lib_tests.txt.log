@@ -175,6 +175,8 @@ False A B ifte
   10
 [1 Right] [10*] [2+] either
   3
+5 [dup dup 2/ dup [-] dip21 swap2 1 > !!] [->str] [["+" ++] dip11 ++] bitree
+  "1+1+1+1+1"
 __ logic
 False False or
   False
