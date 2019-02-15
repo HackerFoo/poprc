@@ -120,6 +120,7 @@ look for word in parent module, parent imports, context module, context imports,
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
+** TODO `_[\n__ blah\n` doesn't parse correctly
 ** DONE f: [id]
 ** DONE f: [id] swap .
 ** DONE ladd: [1+ ladd] [dup] dip12 pushl

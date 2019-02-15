@@ -795,3 +795,7 @@ COMMAND(op, "set a watched op") {
     set_watched_op(OP_null);
   }
 }
+
+COMMAND(cl, "clear log") {
+  log_init();
+}

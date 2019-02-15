@@ -912,7 +912,7 @@ OP(exec) {
     cell_t *res = exec_expand(c, entry);
 
     if(FLAG(*entry, entry, TRACE)) {
-      printf("TRACE: %s.%s", entry->module_name, entry->word_name);
+      printf(NOTE("TRACE") " %s.%s", entry->module_name, entry->word_name);
       TRAVERSE(c, in) {
         putchar(' ');
         show_one(*p);

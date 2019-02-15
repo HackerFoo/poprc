@@ -446,10 +446,11 @@ int trace_copy(cell_t *entry, const cell_t *c) {
 void trace_arg(cell_t *tc, int n, cell_t *a) {
   assert_error(is_var(a));
   cell_t **p = &tc->expr.arg[n];
+  cell_t *entry = var_entry(tc);
   if(!*p) {
-    cell_t *v = a->value.var;
-    *p = index_tr(var_index(NULL, v));
-    v->n++;
+    int x = var_index(entry, a->value.var);
+    *p = index_tr(x);
+    entry[x].n++;
   }
   trace_set_type(tc, a->value.type);
 }
@@ -789,7 +790,7 @@ void trace_reduction(cell_t *c, cell_t *r) {
   if(!is_var(r)) {
     // print tracing information for a reduction
     if(FLAG(*c, expr, TRACE)) {
-      printf("TRACE: %s", op_name(c->op));
+      printf(NOTE("TRACE") " %s", op_name(c->op));
       TRAVERSE(c, in) {
         putchar(' ');
         show_one(*p);

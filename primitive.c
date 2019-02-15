@@ -535,7 +535,7 @@ OP(seq) {
     p_var = is_var(p);
 
     if(p_var) {
-      tc = trace_partial(OP_seq, 1, p);
+      tc = trace_partial(OP_seq, 1, p); // drop on abort?
     }
   }
   CHECK(reduce_arg(c, 0, &CTX_UP));

@@ -476,22 +476,25 @@ bool is_printable(cell_t const *c) {
 }
 
 void show_func(cell_t const *c) {
-  assert_error(!is_dep(c) && !closure_out(c));
-  bool first = true;
-  TRAVERSE(c, const_in) {
-    if(*p) {
-      if(!first) putchar(' ');
-      first = false;
-      show_one(*p);
+  if(!is_dep(c) && !closure_out(c)) {
+    bool first = true;
+    TRAVERSE(c, const_in) {
+      if(*p) {
+        if(!first) putchar(' ');
+        first = false;
+        show_one(*p);
+      }
     }
-  }
-  if(!first) putchar(' ');
-  if(c->op == OP_exec) {
-    const char *module_name = NULL, *word_name = NULL;
-    get_name(c, &module_name, &word_name);
-    printf("%s.%s", module_name, word_name);
+    if(!first) putchar(' ');
+    if(c->op == OP_exec) {
+      const char *module_name = NULL, *word_name = NULL;
+      get_name(c, &module_name, &word_name);
+      printf("%s.%s", module_name, word_name);
+    } else {
+      printf("%s", function_token(c));
+    }
   } else {
-    printf("%s", function_token(c));
+    printf("...");
   }
 }
 
