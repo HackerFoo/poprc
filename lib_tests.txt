@@ -20,6 +20,7 @@ __ list
 3 4 listdup
 [1 2 3] reverse
 [4 2] [3 1] merge
+[5 3 4 1 2] sort
 
 __ stack
 [1] pull

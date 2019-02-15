@@ -154,6 +154,32 @@ merge_loop:
 
 merge: [] merge_loop
 
+half_rem: dup 2/ dup [-] dip21
+
+_[ broken
+
+__ split_list: [half_rem [dup [split_at] dip22] dip23 -swap2 []ap20 [[] ap20] dip21]. get2 
+split_list: half_rem [dup [split_at] dip22] dip23 -swap2
+
+sort:
+  dup length []ap20
+    [get2 dup [split_list []ap20 [[]ap20] dip21] dip22 1 > !!] __ split
+    [tail head] __ strip off the length
+    [merge] __ combine
+    bitree
+
+]_
+
+split_list: dup length dup [2/ split_at] dip22
+
+seq_list: dup True [seq] foldr seq
+
+sort:
+  [split_list 1 > !!] __ split
+    [] __ transform
+    [merge seq_list _hack_ ] __ combine
+    bitree
+
 module stack:
 
 imports:
@@ -333,6 +359,8 @@ bitree:
   over3 over2 $ __ f x -> x'
     [in3 [bitree]. quote dip11 diamond] dip41 __ diamond bitree
     default
+
+seq2: [[]ap20] dip21 seq get2
 
 module logic:
 
