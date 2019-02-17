@@ -180,6 +180,14 @@ sort:
     [merge seq_list _hack_ ] __ combine
     bitree
 
+__ [list] key
+assoc_step: [popr get2] dip13 =s
+
+assoc:
+  tuck assoc_step
+    [!]
+    [[drop swap assoc] dip31 not!] | ap41 nip
+
 module stack:
 
 imports:

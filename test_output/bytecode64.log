@@ -1168,6 +1168,33 @@ ___ list.@ (2 -> 1) ___
 [5] __primitive.dep 4 :: a x1
 [6] return [5]
 
+___ list.assoc (2 -> 1) x2 rec ___
+[1] var :: ?s x2
+[2] changing var :: ?l x1
+[3] __primitive.ap 2 -> 4 :: l? x2
+[4] __primitive.dep 3 :: l x1
+[5] __primitive.ap 4 -> 9 6 :: v? x2
+[6] __primitive.dep 5 :: s x1
+[7] __primitive.eq_str 6 &1 :: y x2
+[8] __primitive.assert 9 &7 :: a? x1
+[9] __primitive.dep 5 :: a x1
+[10] return [8] -> 14
+[11] __primitive.not 7 :: y x1
+[12] __primitive.assert 13 11 :: a? x1
+[13] list.assoc 3 1 :: a x1
+[14] return [12]
+
+___ list.assoc_step (2 -> 3) ___
+[1] var :: ?s x1
+[2] var :: ?l x1
+[3] __primitive.ap 2 -> 4 :: l? x2
+[4] __primitive.dep 3 :: l x1
+[5] __primitive.ap 4 -> 8 6 :: v? x2
+[6] __primitive.dep 5 :: s x1
+[7] __primitive.eq_str 6 1 :: y x1
+[8] __primitive.dep 5 :: a x1
+[9] return [3 8 7]
+
 ___ list.dropl (2 -> 1) ___
 [1] var :: ?i x1
 [2] var :: ?l x1

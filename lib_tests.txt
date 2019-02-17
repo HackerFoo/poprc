@@ -21,6 +21,8 @@ __ list
 [1 2 3] reverse
 [4 2] [3 1] merge
 [5 3 4 1 2] sort
+[[2 "a"] [3 "b"]] "a" assoc
+[[2 "a"] [3 "b"]] "b" assoc
 
 __ stack
 [1] pull
