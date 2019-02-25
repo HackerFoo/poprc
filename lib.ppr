@@ -117,13 +117,13 @@ pushif:
 
 __ [l] [p] filter -> [..x..] such that for all x, x p == True
 filter:
-  [[] swap] ap20
-    [[filter_step] .]
-    [tail2 popr valid]
+  [[[]] pushl] dip11
+    [[filter_step] pushl .] pushl
+    [tail head head valid]
     iterate tail head
 
 __ [.. a] [b ..] [p] --> [..] [a b ..] if a p, otherwise [..] [b ..]
-filter_step: dup [[[popr] dip12] dip23 pushif] dip32
+filter_step: [[popr] dip12] dip23 pushif
 
 __ a n listdup --> [a... x n]
 listdup: [] -swap2 [swap pushl] pushl swap times
@@ -188,6 +188,8 @@ assoc:
   tuck assoc_step
     [!]
     [[drop swap assoc] dip31 not!] | ap41 nip
+
+__ remove: [head] swap [=s not] pushl . filter
 
 module stack:
 
