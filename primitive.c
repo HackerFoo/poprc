@@ -485,8 +485,10 @@ OP(assert) {
     p = clear_ptr(c->expr.arg[1]);
     p_var = is_var(p);
 
-    CHECK_IF(!p_var &&
-             p->value.integer != SYM_True, FAIL);
+    if(!p_var && p->value.integer != SYM_True) {
+      LOG_WHEN(p->value.var, "symbolic assert fail %C", p);
+      ABORT(FAIL);
+    }
 
     if(p_var) {
       tc = trace_partial(OP_assert, 1, p);
@@ -816,7 +818,7 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
       mark_pos(*x, pos);
       cell_t *seq_x = build_seq(ref(*x), ref(res));
       store_lazy_dep(d, seq_x, ctx->alt_set);
-      LOG_WHEN(res->alt, MARK("WARN") " alt seq dep %C <- %C #condition", d, seq_x);
+      LOG_WHEN(res->alt, "popr from alt quote %C <- %C #condition", d, seq_x);
       d->pos = pos; // ***
     }
   }

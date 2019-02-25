@@ -141,7 +141,10 @@ cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) 
       assert_eq(list_size(c), list_size(pattern));
       COUNTUP(i, list_size(pattern)) {
         cell_t **a = &c->value.ptr[i];
-        if(closure_is_ready(*a)) simplify(a);
+        if(closure_is_ready(*a)) {
+          simplify(a); // *** should this should be done at a higher level?
+          LOG_WHEN((*a)->alt, MARK("WARN") " bind drops alt %C -> %C", *a, (*a)->alt);
+        }
         tail = bind_pattern(entry,
                             *a,
                             pattern->value.ptr[i],
@@ -202,7 +205,7 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry, context_t *ctx) {
   if(!is_value(c) &&
      FLAG(*c, expr, NO_UNIFY)) return true;
 
-  assert_eq(in, closure_in(pat));
+  assert_eq(in, closure_in(pat)); // TODO skip over non-changing args
 
   LOG_WHEN(out != 0, TODO " unify_convert %d: out(%d) != 0 @unify-multiout", c-cells, out);
 
