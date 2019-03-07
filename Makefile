@@ -124,7 +124,7 @@ fast:
 	make -j all
 
 .PHONY: all
-all: gen test
+all: test
 
 # prevent makeheaders from trying to generate this
 LOCAL_HEADERS := ./linenoise/linenoise.h
@@ -177,7 +177,7 @@ print-%:
 	@echo $* = $($*)
 
 .PHONY: eval
-eval: $(BUILD_DIR)/eval
+eval: gen $(BUILD_DIR)/eval
 	ln -fs $(BUILD_DIR)/eval $@
 
 # link
@@ -185,7 +185,7 @@ $(BUILD_DIR)/eval: $(OBJS)
 	$(CC) $(OBJS) $(LDFLAGS) $(LIBS) -o $@
 
 # Emscripten
-js/eval.js js/eval.wasm:
+js/eval.js js/eval.wasm: gen
 	@mkdir -p js
 	make CC=emcc $(EMCC_OBJS)
 	emcc $(EMCC_OBJS) -o js/eval.js \
