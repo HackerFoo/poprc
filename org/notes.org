@@ -1,5 +1,9 @@
 #+TITLE: PoprC Notes
 
+* split/alts
+no alts on exprs
+instead, pass split alts up ctx
+alt nodes get id on first reduction? or creation.
 * placeholder
 extendable version of ap/compose: byte_compile.c:425
 build ap/compose tree instead

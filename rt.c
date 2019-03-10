@@ -38,6 +38,10 @@
 #include "user_func.h"
 #include "tags.h"
 
+#if INTERFACE
+#define MAX_ALTS 256
+#endif
+
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
 
@@ -102,13 +106,14 @@ void rt_init() {
 }
 
 // Duplicate c to c->alt and return it
-cell_t *dup_alt(cell_t *c, csize_t n, cell_t *b) {
+void dup_alt(cell_t *c, csize_t n, cell_t *b) {
   csize_t
     in = closure_in(c),
     out = closure_out(c),
     args = closure_args(c);
   assert_error(n < in);
   cell_t *a = copy(c);
+  c->alt = a;
 
   // ref args
   COUNTUP(i, in) {
@@ -117,46 +122,87 @@ cell_t *dup_alt(cell_t *c, csize_t n, cell_t *b) {
 
   // update deps
   RANGEUP(i, args - out, args) {
-    if(c->expr.arg[i]) {
-      a->expr.arg[i] = dep(ref(a));
-      c->expr.arg[i]->alt = conc_alt(a->expr.arg[i], c->expr.arg[i]->alt);
+    cell_t
+      **dp = &c->expr.arg[i],
+      *d = *dp;
+    if(d) {
+      // convert d to id
+      *dp = copy(d);
+      d->op = OP_id;
+      d->expr.arg[0] = *dp;
+      d->expr.alt_set = 0;
+
+      // create a dep for `a`
+      cell_t *da = dep(ref(a));
+      a->expr.arg[i] = da;
+
+      // make it the alt for d
+      d->alt = da;
     }
   }
 
   a->expr.arg[n] = b;
-  c->alt = a;
-  return a;
+}
+
+cell_t *idify(cell_t *c) {
+  cell_t *n = copy(c);
+  n->alt = NULL;
+  closure_shrink(c, 1);
+  c->op = OP_id;
+  c->size = 1;
+  c->expr.flags = 0;
+  c->expr.out = 0;
+  c->expr.alt_set = 0;
+  c->expr.arg[0] = ref(n);
+  drop(c);
+  return n;
+}
+
+// make *cp refer to an individual without breaking anything
+cell_t *drop_alt(cell_t *c) {
+  assert_error(!is_dep(c));
+  if(!c->n) {
+    drop(c->alt);
+    c->alt = NULL;
+    return c;
+  } else if(is_value(c)) {
+    cell_t *n = copy(c);
+    n->alt = NULL;
+    if(is_list(n)) {
+      TRAVERSE_REF(n, ptrs);
+    }
+    drop(c);
+    return n;
+  } else {
+    cell_t *n = idify(c);
+
+    // *** not sure this is correct
+    TRAVERSE(n, out) {
+      cell_t *d = *p;
+      if(d) {
+        d->expr.arg[0] = n;
+      }
+    }
+    return n;
+  }
 }
 
 // Lift alternates from c->arg[n] to c
 void split_arg(cell_t *c, csize_t n) {
-  cell_t
-    *a = c->expr.arg[n],
-    *p = c,
-    **pa;
-  if(!a || is_marked(a) || !a->alt) return;
-  do {
-    pa = &p->expr.arg[n];
-    if(*pa == a) {
+  cell_t *a = c->expr.arg[n];
+  if(!a || !a->alt) return;
+  refcount_t an = 0;
+  FOLLOW(p, c, alt) an += (p->expr.arg[n] == a);
+  cell_t *alt = refn(a->alt, an);
+  dropn(a, an-1);
+  cell_t *a1 = refn(drop_alt(a), an-1);
+  FOLLOW(p, c, alt) {
+    if(p->expr.arg[n] == a) {
       // insert a copy with the alt arg
-      p = dup_alt(p, n, ref(a->alt))->alt;
-      // mark the arg
-      *pa = mark_ptr(a);
-    } else p = p->alt;
-  } while(p);
-  if(!a->n) {
-    drop(a->alt);
-    a->alt = NULL;
-  }
-}
-
-void split_expr(cell_t *c) {
-  csize_t in = closure_in(c);
-  COUNTUP(i, in) {
-    split_arg(c, i);
-  }
-  TRAVERSE(c, in) {
-    *p = clear_ptr(*p);
+      dup_alt(p, n, alt);
+      p->expr.arg[n] = a1;
+      p = p->alt;
+    }
   }
 }
 
@@ -166,18 +212,19 @@ response reduce_arg(cell_t *c,
                 context_t *ctx) {
   cell_t **ap = &c->expr.arg[n];
   response r = reduce(ap, ctx);
-  cell_t *a = clear_ptr(*ap);
+  cell_t *a = *ap;
   if(r == SUCCESS) ctx->up->alt_set |= a->value.alt_set;
   if(r <= DELAY) split_arg(c, n);
   return r;
 }
 
 // Duplicate c to c->alt and return it
-cell_t *dup_list_alt(cell_t *c, csize_t n, cell_t *b) {
+void dup_list_alt(cell_t *c, csize_t n, cell_t *b) {
   csize_t in = list_size(c);
   assert_error(n < in);
   cell_t *a = copy(c);
   a->priority = 0;
+  c->alt = a;
 
   // ref args
   COUNTUP(i, in) {
@@ -185,30 +232,25 @@ cell_t *dup_list_alt(cell_t *c, csize_t n, cell_t *b) {
   }
 
   a->value.ptr[n] = b;
-  c->alt = a;
-  return a;
 }
 
 // Lift alternates from c->value.ptr[n] to c
 void split_ptr(cell_t *c, csize_t n) {
   if(FLAG(*c, value, SPLIT)) return;
-  cell_t
-    *a = c->value.ptr[n],
-    *p = c,
-    **pa;
-  if(!a || is_marked(a) || !a->alt) return;
-  do {
-    pa = &p->value.ptr[n];
-    if(*pa == a) {
+  cell_t *a = c->value.ptr[n];
+  if(!a || !a->alt) return;
+  refcount_t an = 0;
+  FOLLOW(p, c, alt) an += (p->value.ptr[n] == a);
+  cell_t *alt = refn(a->alt, an);
+  dropn(a, an-1);
+  cell_t *a1 = refn(drop_alt(a), an-1);
+  FOLLOW(p, c, alt) {
+    if(p->value.ptr[n] == a) {
       // insert a copy with the alt arg
-      p = dup_list_alt(p, n, ref((*pa)->alt))->alt;
-      // mark the arg
-      *pa = mark_ptr(*pa);
-    } else p = p->alt;
-  } while(p);
-  if(!a->n) {
-    drop(a->alt);
-    a->alt = NULL;
+      dup_list_alt(p, n, alt);
+      p->value.ptr[n] = a1;
+      p = p->alt;
+    }
   }
 }
 
@@ -220,17 +262,10 @@ response reduce_ptr(cell_t *c,
   assert_error(is_list(c));
   cell_t **ap = &c->value.ptr[n];
   response r = reduce(ap, ctx);
-  cell_t *a = clear_ptr(*ap);
+  cell_t *a = *ap;
   if(r == SUCCESS) ctx->up->alt_set |= a->value.alt_set;
   if(r <= DELAY) split_ptr(c, n);
   return r;
-}
-
-// Clear the flags bits in args
-void clear_flags(cell_t *c) {
-  TRAVERSE(c, in) {
-    *p = clear_ptr(*p);
-  }
 }
 
 static
@@ -279,8 +314,6 @@ void mark_split(cell_t *c) {
 
 // Reduce *cp with type t
 response reduce(cell_t **cp, context_t *ctx) {
-  const bool marked = is_marked(*cp);
-  *cp = clear_ptr(*cp);
   cell_t *c = *cp;
   const char *module_name, *word_name;
   get_name(c, &module_name, &word_name); // debug
@@ -299,7 +332,6 @@ response reduce(cell_t **cp, context_t *ctx) {
     c = *cp;
     if(r <= DELAY || (r == RETRY && ctx->retry)) {
       ctx->retry = false;
-      if(marked) *cp = mark_ptr(c); // *** is the right pointer being marked?
       return r;
     }
     if(r == FAIL && is_split(ctx->up->src)) {
@@ -566,7 +598,6 @@ response abort_op(response rsp, cell_t **cp, context_t *ctx) {
       *cp = NULL;
       return rsp;
     }
-    assert_error(!is_marked(c));
     WATCH(c, "abort_op");
     cell_t *alt = ref(c->alt);
     if(c->n && ctx->t == T_ANY && !ctx->expected) { // HACK this should be more sophisticated
@@ -595,7 +626,6 @@ response abort_op(response rsp, cell_t **cp, context_t *ctx) {
 
 void store_reduced(cell_t **cp, cell_t *r) {
   cell_t *c = *cp;
-  assert_error(!is_marked(c));
   r->op = OP_value;
   trace_reduction(c, r);
   drop_multi(c->expr.arg, closure_in(c));
@@ -617,9 +647,9 @@ void store_reduced(cell_t **cp, cell_t *r) {
 cell_t *conc_alt(cell_t *a, cell_t *b) {
   if(!a) return b;
   if(!b) return a;
-  cell_t *p = a, *r;
-  while((r = p->alt)) p = r;
-  p->alt = b;
+  cell_t **p = &a->alt;
+  while(*p) p = &(*p)->alt;
+  *p = b;
   return a;
 }
 
@@ -632,7 +662,7 @@ void check_tmps() {
       /*
       if(p->tmp) {
         printf("<<%d %d>>\n", i, (int)p->tmp);
-        drop(clear_ptr(p->tmp));
+        drop(p->tmp);
         p->tmp = 0;
       }
       */
@@ -683,7 +713,6 @@ cell_t *add_copy_to_list(cell_t *c, cell_t **l) {
 /* u => subtree is unique, exp => to be expanded */
 static
 bool mutate_sweep(cell_t *r, cell_t **l) {
-  r = clear_ptr(r);
   if(!is_closure(r) || r->n == PERSISTENT) return false;
   if(r->tmp) return true;
 
@@ -757,7 +786,6 @@ cell_t *mutate(cell_t **cp, cell_t **rp) {
 
 bool check_deps(cell_t *c) {
   bool ret = true;
-  c = clear_ptr(c);
   if(c && is_cell(c)) {
     TRAVERSE(c, out) {
       cell_t *x = *p;
@@ -865,6 +893,7 @@ void store_lazy_and_update_deps(cell_t **cp, cell_t *r, alt_set_t alt_set) {
 
 void store_lazy_dep(cell_t *d, cell_t *r, alt_set_t alt_set) {
   if(d) {
+    assert_error(!d->alt);
     drop(d->expr.arg[0]);
     d->op = OP_id;
     d->size = 1;

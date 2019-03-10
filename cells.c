@@ -360,7 +360,6 @@ cell_t *ref(cell_t *c) {
 }
 
 cell_t *refn(cell_t *c, refcount_t n) {
-  c = clear_ptr(c);
   if(c && c->n != PERSISTENT) {
     assert_error(is_closure(c));
     c->n += n;
@@ -383,7 +382,6 @@ bool is_any(cell_t const *c) {
 }
 
 void dropn(cell_t *c, refcount_t n) {
-  c = clear_ptr(c);
   if(!is_cell(c) || c->n == PERSISTENT) return;
   assert_error(is_closure(c));
   if(n > c->n) {
@@ -422,7 +420,6 @@ void drop_multi(cell_t **a, csize_t n) {
 }
 
 void fake_drop(cell_t *c) {
-  c = clear_ptr(c);
   if(!is_cell(c) || c->n == PERSISTENT) return;
   assert_error(~c->n && is_closure(c));
   if(!c->n) {
@@ -434,7 +431,6 @@ void fake_drop(cell_t *c) {
 }
 
 void fake_undrop(cell_t *c) {
-  c = clear_ptr(c);
   if(!is_cell(c) || c->n == PERSISTENT) return;
   assert_error(is_closure(c));
   if(!++c->n) {
@@ -575,7 +571,6 @@ bool leak_test() {
 
 static
 cell_t **flatten(cell_t *c, cell_t **tail) {
-  c = clear_ptr(c);
   if(c && !c->tmp && tail != &c->tmp && c->n != PERSISTENT) {
     LIST_ADD(tmp, tail, c);
     TRAVERSE(c, alt, in, ptrs) {
@@ -601,7 +596,7 @@ static
 void assert_ref_dec(cell_t *c) {
   while(c) {
     TRAVERSE(c, alt, in, ptrs) {
-      cell_t *x = clear_ptr(*p);
+      cell_t *x = *p;
       if(x && x->n != PERSISTENT) --x->n;
     }
     c = c->tmp;
@@ -612,7 +607,7 @@ static
 void assert_ref_inc(cell_t *c) {
   while(c) {
     TRAVERSE(c, alt, in, ptrs) {
-      cell_t *x = clear_ptr(*p);
+      cell_t *x = *p;
       if(x && x->n != PERSISTENT) ++x->n;
     }
     c = c->tmp;

@@ -135,6 +135,7 @@ pop_par: [popr] dip12 popr [swap] dip22
 top_par: [top] dip12 top [swap] dip22
 
 __ pop the smaller integer from two lists
+__ NOTE why does this compile slow?
 pop_min:
   [top_par <=] ap20
     [[[popr] dip12 swap] dip23] __ a <= b

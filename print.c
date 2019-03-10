@@ -80,6 +80,10 @@ char const *show_alt_set(uintptr_t as) {
   return out;
 }
 
+FORMAT(alt_set, 'S') {
+  printf("%s", show_alt_set(i));
+}
+
 // only valid on primitives
 char const *entry_function_name(cell_t *e) {
   if(is_user_func(e)) return NULL;
@@ -208,7 +212,6 @@ void print_cell_pointer(FILE *f, const char *pre, cell_t *p) {
 }
 
 void graph_cell(FILE *f, cell_t const *c) {
-  c = clear_ptr(c);
   if(!is_closure(c) || !is_cell(c)) return;
   int node = CELL_INDEX(c);
   int border = check_bit(marked, node) ? 4 : 0;
@@ -339,7 +342,7 @@ void graph_cell(FILE *f, cell_t const *c) {
 
   /* print edges */
   if(is_cell(c->alt)) {
-    cell_t *alt = clear_ptr(c->alt);
+    cell_t *alt = c->alt;
     fprintf(f, "node%d:alt -> node%d:top [color=white];\n",
             node, CELL_INDEX(alt));
     graph_cell(f, c->alt);
@@ -358,7 +361,7 @@ void graph_cell(FILE *f, cell_t const *c) {
   } else {
     csize_t start_out = closure_args(c) - closure_out(c);
     COUNTUP(i, start_out) {
-      cell_t *arg = clear_ptr(c->expr.arg[i]);
+      cell_t *arg = c->expr.arg[i];
       if(is_cell(arg)) {
         fprintf(f, "node%d:arg%d -> node%d:top [color=white];\n",
                 node, (unsigned int)i, CELL_INDEX(arg));
@@ -366,7 +369,7 @@ void graph_cell(FILE *f, cell_t const *c) {
       }
     }
     RANGEUP(i, start_out, n) {
-      cell_t *arg = clear_ptr(c->expr.arg[i]);
+      cell_t *arg = c->expr.arg[i];
       if(is_cell(arg)) {
         fprintf(f, "node%d:arg%d -> node%d:top [color=gray50];\n",
                 node, (unsigned int)i, CELL_INDEX(arg));

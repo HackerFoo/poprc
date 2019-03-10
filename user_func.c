@@ -109,7 +109,6 @@ void print_word_pattern(cell_t *word) {
 // build a binding list by applying the pattern to c
 // TODO add reduction back in
 cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) {
-  c = clear_ptr(c);
   assert_error(c);
   CONTEXT("bind_pattern %s %C %C @barrier", strfield(entry, word_name), c, pattern);
   if(!pattern || !tail) return NULL;
@@ -783,12 +782,11 @@ response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
     COUNTUP(i, in) {
       CHECK(reduce_arg(c, i, &CTX(t, in_types[i])));
       CHECK_IF(as_conflict(ctx->alt_set), FAIL);
-      cell_t *a = clear_ptr(c->expr.arg[i]);
+      cell_t *a = c->expr.arg[i];
       LOG_WHEN(a->alt, "split %C[%d] = %C #exec_split", c, i, a);
     }
   }
   CHECK_DELAY();
-  clear_flags(c);
 
   // HACK force lists
   COUNTUP(i, in) {
@@ -818,7 +816,7 @@ response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
   if(mask == 0) mask = (1 << entry_out) - 1;
   {
     int j = next_bit(&mask);
-    assert_error(j >= 0);
+    assert_error(j >= 0, "not enough bits in dep_mask");
     type_t t = rtypes[j];
     if(t == T_ANY) {
       t = ctx->t;
@@ -834,7 +832,7 @@ response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
       assert_error(d->expr.arg[0] == c);
       drop(c);
       int j = next_bit(&mask);
-      assert_error(j >= 0);
+      assert_error(j >= 0, "not enough bits in dep_mask; maybe dangling dep references? %C", d);
       type_t t = rtypes[j];
       store_dep(d, res->value.var, i + in + 1, t, ctx->alt_set);
     }

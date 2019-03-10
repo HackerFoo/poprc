@@ -226,7 +226,7 @@ cell_t *var_create_with_entry(type_t t, cell_t *entry, csize_t size) {
 cell_t *infer_entry(cell_t *c, uint8_t pos) {
   assert_error(c);
   TRAVERSE(c, in) {
-    cell_t *a = clear_ptr(*p);
+    cell_t *a = *p;
     if(a && is_var(a)) {
       // inherit entry with highest pos
       int ep = entry_pos(var_entry(a->value.var));
@@ -320,6 +320,7 @@ bool is_dep_of(cell_t *d, cell_t *c) {
 /* todo: propagate types here */
 OP(dep) {
   PRE(dep);
+  assert_error(!c->alt);
   int pos = c->pos;
   /* rely on another cell for reduction */
   /* don't need to drop arg, handled by other function */
@@ -370,7 +371,6 @@ OP(placeholder) {
     CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   }
   CHECK_DELAY();
-  clear_flags(c);
 
   // compose X [] --> X
   if(in == 2 &&

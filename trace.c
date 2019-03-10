@@ -306,7 +306,7 @@ void tr_set_index(cell_t *const *cp, int index) {
 }
 
 TEST(trace_encode) {
-  return tr_index(index_tr(0x5ac3)) == 0x5ac3 ? 0 : -1; 
+  return tr_index(index_tr(0x5ac3)) == 0x5ac3 ? 0 : -1;
 }
 
 bool equal_value(const cell_t *a, const cell_t *b) {
@@ -511,7 +511,6 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
   TRAVERSE(tc, in) {
     cell_t *a = *p;
     if(a) {
-      assert_error(!is_marked(a));
       int x = trace_value(entry, a);
       *p = index_tr(x);
       if(x >= 0) entry[x].n++;

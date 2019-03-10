@@ -93,7 +93,6 @@ response func_list(cell_t **cp, context_t *ctx) {
   log_ptrs(c);
   CHECK_DELAY();
   TRAVERSE(c, ptrs) {
-    *p = clear_ptr(*p);
     add_conditions_var(*p, value_condition(c)); // *** modifies *p
   }
   if(n && is_row_list(c) && is_list(c->value.ptr[n-1])) {
@@ -111,7 +110,7 @@ response func_list(cell_t **cp, context_t *ctx) {
 void log_ptrs(cell_t *c) {
   CONTEXT_LOG("log_ptrs for %C", c);
   COUNTUP(i, list_size(c)) {
-    cell_t *a = clear_ptr(c->value.ptr[i]);
+    cell_t *a = c->value.ptr[i];
     if(is_value(a)) {
       LOG("ptr[%d] = %C", i, a);
     } else {

@@ -167,17 +167,6 @@
    c->expr.arg[z]->value.alt_set)
 #define AS_UNION(c, ...) DISPATCH(AS_UNION, c, ##__VA_ARGS__)
 
-// marking
-#ifdef EMSCRIPTEN
-#define MARK_BIT (1<<31)
-#else
-#define MARK_BIT 2
-#endif
-
-#define is_marked(p) (((uintptr_t)(p) & (MARK_BIT)) != 0)
-#define mark_ptr(p) ((cell_t *)((uintptr_t)(p) | (MARK_BIT)))
-#define clear_ptr(p) ((cell_t *)((uintptr_t)(p) & ~(MARK_BIT)))
-
 #define CELL_INDEX(x) (int)((x) - cells)
 #define TRACE_INDEX(x) (int)((x) - trace_cells)
 #define TRACE_VAR_INDEX(x) (int)((x) - trace_cur)
@@ -186,7 +175,6 @@
   UNUSED response rsp = SUCCESS;                \
   cell_t *c = ctx->src = *cp;                   \
   ctx->alt_set = 0;                             \
-  assert_error(!is_marked(c));                  \
   WATCH(c, #func)
 
 #define PRE_1(func)                             \

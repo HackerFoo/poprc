@@ -400,3 +400,5 @@ asq: dup [swap pushl] dip21 ! dup head
 __ drops the assert
 asq2: dup head [popr swap pushl] dip11 !
 asq2_loop: asq2 asq2_loop
+
+pop_min_test: [] ap20 [] [not] | . popr! head

@@ -78,7 +78,6 @@ response func_op2(cell_t **cp, context_t *ctx, int arg_type, int res_type, val_t
   CHECK(reduce_arg(c, 1, &CTX(t, arg_type)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
-  clear_flags(c);
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   CHECK_IF(nonzero && !is_var(q) && q->value.integer == 0, FAIL); // TODO assert this for variables
@@ -102,7 +101,6 @@ response func_op1(cell_t **cp, context_t *ctx, int arg_type, int res_type, val_t
 
   CHECK(reduce_arg(c, 0, &CTX(t, arg_type, CTX_INV(inv_op))));
   CHECK_DELAY();
-  clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
   res = _op1(c, res_type, op, p);
@@ -135,7 +133,6 @@ response func_op2_float(cell_t **cp, context_t *ctx, double (*op)(double, double
   CHECK(reduce_arg(c, 1, &CTX(float)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
-  clear_flags(c);
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   CHECK_IF(nonzero && !is_var(q) && q->value.flt == 0.0, FAIL); // TODO assert this for variables
@@ -160,7 +157,6 @@ response func_op1_float(cell_t **cp, context_t *ctx, double (*op)(double)) {
 
   CHECK(reduce_arg(c, 0, &CTX(float)));
   CHECK_DELAY();
-  clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
   res = is_var(p) ? var(T_FLOAT, c) : _op1_float(op, p);
@@ -181,8 +177,8 @@ response func_eq_op(cell_t **cp, context_t *ctx, type_t type) {
   CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
 
   cell_t
-    *p = clear_ptr(c->expr.arg[0]),
-    *q = clear_ptr(c->expr.arg[1]);
+    *p = c->expr.arg[0],
+    *q = c->expr.arg[1];
   bool expect_eq = ctx->expected && ctx->expected_value == SYM_True;
   if(expect_eq && is_value(p)) {
     CHECK(reduce_arg(c, 0, &CTX(t, type)));
@@ -196,7 +192,6 @@ response func_eq_op(cell_t **cp, context_t *ctx, type_t type) {
   }
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
-  clear_flags(c);
 
   p = c->expr.arg[0];
   q = c->expr.arg[1];
@@ -390,7 +385,6 @@ OP(to_float) {
 
   CHECK(reduce_arg(c, 0, &CTX(int)));
   CHECK_DELAY();
-  clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
   if(is_var(p)) {
@@ -418,7 +412,6 @@ OP(trunc) {
 
   CHECK(reduce_arg(c, 0, &CTX(float)));
   CHECK_DELAY();
-  clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
   if(is_var(p)) {
@@ -440,7 +433,7 @@ OP(trunc) {
 cell_t *set_alt(cell_t *c, alt_set_t as, cell_t *alt) {
   if(!c) return NULL;
   if(!as && !alt) return c;
-  if(!c->n) {
+  if(!c->n && !is_dep(c)) {
     if(!as) {
       c->alt = conc_alt(alt, c->alt);
       return c;
@@ -482,7 +475,7 @@ OP(assert) {
   bool p_var = false;
   CHECK(reduce_arg(c, 1, &CTX(symbol, SYM_True)));
   if(rsp == SUCCESS) {
-    p = clear_ptr(c->expr.arg[1]);
+    p = c->expr.arg[1];
     p_var = is_var(p);
 
     if(!p_var && p->value.integer != SYM_True) {
@@ -497,7 +490,7 @@ OP(assert) {
   CHECK(reduce_arg(c, 0, &CTX_UP));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
-  clear_flags(c);
+
   cell_t **q = &c->expr.arg[0];
 
   if(p_var && is_var(*q)) {
@@ -533,7 +526,7 @@ OP(seq) {
   bool p_var = false;
   CHECK(reduce_arg(c, 1, &CTX(any))); // don't split arg here?
   if(rsp == SUCCESS) {
-    p = clear_ptr(c->expr.arg[1]);
+    p = c->expr.arg[1];
     p_var = is_var(p);
 
     if(p_var) {
@@ -543,7 +536,7 @@ OP(seq) {
   CHECK(reduce_arg(c, 0, &CTX_UP));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
-  clear_flags(c);
+
   cell_t **q = &c->expr.arg[0];
 
   if(p_var && is_var(*q)) {
@@ -570,7 +563,7 @@ bool rule_merge_otherwise(context_t *ctx) {
   if(ctx->inv) {
     cell_t *c = ctx->src;
     cell_t *p = ctx->up->src;
-    if(p->op == OP_otherwise && clear_ptr(p->expr.arg[0]) == c) {
+    if(p->op == OP_otherwise && p->expr.arg[0] == c) {
       LOG("rule match: merge_otherwise %C %C", p, c);
       p->op = OP_seq;
       p->expr.arg[0] = p->expr.arg[1];
@@ -617,7 +610,6 @@ OP(otherwise) {
 
   CHECK(reduce_arg(c, 1, &CTX_UP));
   CHECK_DELAY();
-  clear_flags(c);
 
   if(tc && is_var(*q)) {
     // propagate type
@@ -657,7 +649,7 @@ OP(id) {
     CHECK(reduce_arg(c, 0, &CTX_UP));
     CHECK_IF(as_conflict(ctx->alt_set), FAIL);
     CHECK_DELAY();
-    clear_flags(c);
+
     cell_t *res = mod_alt(ref(c->expr.arg[0]), c->alt, ctx->alt_set);
     mark_pos(res, pos);
     store_reduced(cp, res);
@@ -741,7 +733,7 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
 
   cell_t *p = NULL;
   cell_t *res = NULL;
-  int pos = c->pos ? c->pos : clear_ptr(c->expr.arg[in])->pos;
+  int pos = c->pos ? c->pos : c->expr.arg[in]->pos;
 
   // conservative guesses for the sizes of `a` and `b`
   qsize_t
@@ -753,7 +745,7 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
     // assume no outputs here
     CHECK(reduce_arg(c, 0, &CTX(list, as.in, 0)));
     CHECK_DELAY();
-    p = clear_ptr(c->expr.arg[0]);
+    p = c->expr.arg[0];
     as = quote_size(p, false);
   }
 
@@ -763,11 +755,11 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
                                bs.out)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
-  clear_flags(c);
+
   bs = quote_size(c->expr.arg[in], false);
   if(row) {
     placeholder_extend(&c->expr.arg[0], compose_size_a(arg_in, bs, cs), false);
-    p = clear_ptr(c->expr.arg[0]);
+    p = c->expr.arg[0];
     as = quote_size(p, true); // *** why?
   }
   cell_t **q = &c->expr.arg[in];
@@ -881,7 +873,6 @@ response func_type(cell_t **cp, context_t *ctx, uint8_t type) {
 
   CHECK(reduce_arg(c, 0, &CTX(t, type)));
   CHECK_DELAY();
-  clear_flags(c);
 
   *cp = mod_alt(ref(c->expr.arg[0]), ref(c->alt), 0);
   drop(c);
@@ -919,7 +910,6 @@ OP(strcat) {
   CHECK(reduce_arg(c, 1, &CTX(string)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
-  clear_flags(c);
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   if(is_var(p) || is_var(q)) {
@@ -948,7 +938,6 @@ OP(eq_str) {
   CHECK(reduce_arg(c, 1, &CTX(string)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
-  clear_flags(c);
 
   cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   if(is_var(p) || is_var(q)) {
@@ -983,7 +972,6 @@ OP(to_string) {
 
   CHECK(reduce_arg(c, 0, &CTX(any)));
   CHECK_DELAY();
-  clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
   if(is_var(p)) {
@@ -1015,7 +1003,6 @@ OP(from_string) {
 
   CHECK(reduce_arg(c, 0, &CTX(string)));
   CHECK_DELAY();
-  clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
   if(is_var(p)) {
@@ -1048,7 +1035,6 @@ OP(strsplit) {
   CHECK(reduce_arg(c, 0, &CTX(string)));
   CHECK(reduce_arg(c, 1, &CTX(string)));
   CHECK_DELAY();
-  clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
   cell_t *q = c->expr.arg[1];
@@ -1087,7 +1073,6 @@ OP(strtrim) {
 
   CHECK(reduce_arg(c, 0, &CTX(string)));
   CHECK_DELAY();
-  clear_flags(c);
 
   cell_t *p = c->expr.arg[0];
   if(is_var(p)) {
@@ -1116,7 +1101,7 @@ OP(external) {
 
   // get name, which must be a constant before code generation
   CHECK(reduce_arg(c, in - 1, &CTX(string)));
-  cell_t *name = clear_ptr(c->expr.arg[in - 1]);
+  cell_t *name = c->expr.arg[in - 1];
   if(!is_var(name) || name->value.var) {
     LOG("extern name must be a constant %C", c);
   }
@@ -1130,7 +1115,6 @@ OP(external) {
     CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   }
   CHECK_DELAY();
-  clear_flags(c);
 
   cell_t *res = var(ctx->t, c, ctx->pos);
   res->alt = c->alt;

@@ -3478,6 +3478,15 @@ ___ tests.pct (2 -> 1) ___
 [8] __primitive.mul_float 2 6 :: d x1
 [9] return [8]
 
+___ tests.pop_min_test (2 -> 1) x2 ___
+[1] var :: ?y x2
+[2] var :: ?a x2
+[3] __primitive.assert &2 &1 :: l? x1
+[4] return [3] -> 7
+[5] __primitive.not 1 :: y x1
+[6] __primitive.assert 2 5 :: l? x1
+[7] return [6]
+
 ___ tests.popar (2 -> 4) ___
 [1] var :: ?l x1
 [2] var :: ?l x1

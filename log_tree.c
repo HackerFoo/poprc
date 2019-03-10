@@ -34,7 +34,7 @@ static MAP(map, 255);
 static
 void fprint_arg(FILE *f, map_t map, cell_t *c) {
   if(c) {
-    pair_t *x = map_find(map, (uintptr_t)clear_ptr(c));
+    pair_t *x = map_find(map, (uintptr_t)c);
     if(x) {
       fprintf(f, " %d", (int)x->second);
     } else {
@@ -47,7 +47,6 @@ void fprint_arg(FILE *f, map_t map, cell_t *c) {
 
 static
 void fprint_tree(cell_t *c, map_t map, FILE *f) {
-  c = clear_ptr(c);
   if(!is_closure(c) || map_find(map, (uintptr_t)c)) return;
 
   // print subtree
@@ -66,7 +65,7 @@ void fprint_tree(cell_t *c, map_t map, FILE *f) {
       TRAVERSE(c, out) {
         if(*p) {
           int d = *map_cnt(map);
-          map_insert(map, (pair_t) {(uintptr_t)clear_ptr(*p), d});
+          map_insert(map, (pair_t) {(uintptr_t)*p, d});
           fprintf(f, " %d", d);
         }
       }

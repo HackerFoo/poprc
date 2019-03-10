@@ -63,7 +63,6 @@ OP(open) {
   CHECK(reduce_arg(c, 1, &CTX(string)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
-  clear_flags(c);
 
   WARN_ALT(open);
 
@@ -103,7 +102,6 @@ OP(close) {
   CHECK(reduce_arg(c, 1, &CTX(opaque)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
-  clear_flags(c);
 
   WARN_ALT(close);
 
@@ -138,7 +136,6 @@ OP(write) {
   CHECK(reduce_arg(c, 2, &CTX(string)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
-  clear_flags(c);
 
   WARN_ALT(write);
 
@@ -179,7 +176,6 @@ OP(unread) {
   CHECK(reduce_arg(c, 2, &CTX(string)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
-  clear_flags(c);
 
   WARN_ALT(unread);
 
@@ -217,7 +213,6 @@ OP(read) {
   CHECK(reduce_arg(c, 1, &CTX(opaque)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
-  clear_flags(c);
 
   WARN_ALT(read);
 
