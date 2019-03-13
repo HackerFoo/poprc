@@ -661,7 +661,6 @@ OP(id) {
   }
 
  abort:
-  FLAG_CLEAR(*c, expr, SPLIT); // ***
   return abort_op(rsp, cp, ctx);
 }
 

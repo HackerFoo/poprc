@@ -175,21 +175,31 @@ cell_t *drop_alt(cell_t *c) {
     return n;
   } else {
     cell_t *n = idify(c);
-
-    // *** not sure this is correct
     TRAVERSE(n, out) {
       cell_t *d = *p;
       if(d) {
-        d->expr.arg[0] = n;
+        d->expr.arg[0] = ref(n);
+        drop(c);
       }
     }
     return n;
   }
 }
 
+void drop_failed(cell_t **p) {
+  cell_t **s = p;
+  while(*p && is_fail(*p)) p = &(*p)->alt;
+  if(*p != *s) {
+    ref(*p);
+    drop(*s);
+    *s = *p;
+  }
+}
+
 // Lift alternates from c->arg[n] to c
 void split_arg(cell_t *c, csize_t n) {
   cell_t *a = c->expr.arg[n];
+  drop_failed(&a->alt);
   if(!a || !a->alt) return;
   refcount_t an = 0;
   FOLLOW(p, c, alt) an += (p->expr.arg[n] == a);
@@ -236,7 +246,6 @@ void dup_list_alt(cell_t *c, csize_t n, cell_t *b) {
 
 // Lift alternates from c->value.ptr[n] to c
 void split_ptr(cell_t *c, csize_t n) {
-  if(FLAG(*c, value, SPLIT)) return;
   cell_t *a = c->value.ptr[n];
   if(!a || !a->alt) return;
   refcount_t an = 0;
@@ -297,21 +306,6 @@ bool is_delayed(const cell_t *c) {
   return !is_value(c) && FLAG(*c, expr, DELAYED);
 }
 
-bool is_split(const cell_t *c) {
-  if(!c) return false; // ***
-  return is_value(c) ?
-    FLAG(*c, value, SPLIT) :
-    FLAG(*c, expr, SPLIT);
-}
-
-void mark_split(cell_t *c) {
-  if(is_value(c)) {
-    FLAG_SET(*c, value, SPLIT);
-  } else {
-    FLAG_SET(*c, expr, SPLIT);
-  }
-}
-
 // Reduce *cp with type t
 response reduce(cell_t **cp, context_t *ctx) {
   cell_t *c = *cp;
@@ -333,10 +327,6 @@ response reduce(cell_t **cp, context_t *ctx) {
     if(r <= DELAY || (r == RETRY && ctx->retry)) {
       ctx->retry = false;
       return r;
-    }
-    if(r == FAIL && is_split(ctx->up->src)) {
-      drop(c);
-      break;
     }
   }
 
@@ -863,32 +853,6 @@ void store_lazy(cell_t **cp, cell_t *r, alt_set_t alt_set) {
     else --c->n;
     *cp = r;
   }
-}
-
-void store_lazy_and_update_deps(cell_t **cp, cell_t *r, alt_set_t alt_set) {
-  cell_t *c = *cp;
-  refcount_t n = 0;
-  csize_t out_n = closure_out(c);
-  assert_error(closure_out(r) == out_n);
-  if(out_n) {
-    cell_t
-      **c_out = &c->expr.arg[closure_args(c) - out_n],
-      **r_out = &r->expr.arg[closure_args(r) - out_n];
-    COUNTUP(i, out_n) {
-      cell_t *d = c_out[i];
-      if(d) {
-        d->expr.arg[0] = r;
-        r_out[i] = d;
-        n++;
-      }
-    }
-
-    // update ref counts
-    refn(r, n);
-    assert_error(c->n >= n);
-    c->n -= n;
-  }
-  store_lazy(cp, r, alt_set);
 }
 
 void store_lazy_dep(cell_t *d, cell_t *r, alt_set_t alt_set) {

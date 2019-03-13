@@ -189,8 +189,42 @@ cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) 
   return tail;
 }
 
+static
+response exec_list(cell_t **cp, context_t *ctx) {
+  PRE_NO_CONTEXT(exec_list);
+
+  if(ctx->t != T_LIST || closure_out(c) != 0) {
+    return SUCCESS;
+  }
+
+  CONTEXT_LOG("exec_list %C", c);
+  cell_t *res;
+  csize_t
+    in = closure_in(c),
+    out = ctx->s.out - 1,
+    n = in + out;
+
+  // if ctx->t == T_LIST, need to wrap here
+  // move to func_exec; expand, wrap, and return the original function
+  cell_t *nc = expand(c, out);
+  nc->expr.out = out;
+  res = make_list(ctx->s.out);
+  res->value.ptr[out] = nc;
+  COUNTUP(i, out) {
+    cell_t *d = dep(ref(nc));
+    int j = n - i;
+    res->value.ptr[i] = d;
+    nc->expr.arg[j] = d;
+  }
+
+  LOG(TODO " fix condition %C @condition", res);
+
+  *cp = res;
+  return RETRY;
+}
+
 // unify c with pattern pat if possible, returning the unified result
-bool unify_exec(cell_t **cp, cell_t *parent_entry, context_t *ctx) {
+response unify_exec(cell_t **cp, cell_t *parent_entry, context_t *ctx) {
   PRE(unify_exec, "#wrap");
 
   csize_t
@@ -200,33 +234,39 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry, context_t *ctx) {
     *entry = c->expr.arg[in],
     *pat = entry->entry.wrap->initial;
 
-  if(!pat) return false;
-  if(!is_value(c) &&
-     FLAG(*c, expr, NO_UNIFY)) return true;
+  if(!pat) return FAIL;
+  if(!FLAG(*c, expr, NO_UNIFY)) {
+    assert_eq(in, closure_in(pat)); // TODO skip over non-changing args
 
-  assert_eq(in, closure_in(pat)); // TODO skip over non-changing args
+    LOG_WHEN(out != 0, TODO " unify_convert %d: out(%d) != 0 @unify-multiout", c-cells, out);
 
-  LOG_WHEN(out != 0, TODO " unify_convert %d: out(%d) != 0 @unify-multiout", c-cells, out);
-
-  cell_t
-    *vl = 0,
-    **tail = &vl;
-  COUNTUP(i, in) {
-    simplify(&c->expr.arg[i]); // FIX this can cause arg flips
-    tail = bind_pattern(NULL, c->expr.arg[i], pat->expr.arg[i], tail);
-    if(!tail) {
-      LOG("bind_pattern failed %C %C", c->expr.arg[i], pat->expr.arg[i]);
-      break;
+    cell_t
+      *vl = 0,
+      **tail = &vl;
+    COUNTUP(i, in) {
+      simplify(&c->expr.arg[i]); // FIX this can cause arg flips
+      tail = bind_pattern(NULL, c->expr.arg[i], pat->expr.arg[i], tail);
+      if(!tail) {
+        LOG("bind_pattern failed %C %C", c->expr.arg[i], pat->expr.arg[i]);
+        break;
+      }
     }
-  }
 
-  if(tail) {
+    if(!tail) {
+      FOLLOW(p, vl, tmp) {
+        drop(p);
+      }
+      clean_tmp(vl);
+      return FAIL;
+    }
+
     csize_t in = tmp_list_length(vl);
     cell_t *n = closure_alloc(in + out + 1);
     n->expr.out = out;
     n->op = OP_exec;
     n->expr.arg[in] = entry;
     FLAG_SET(*n, expr, RECURSIVE);
+    FLAG_SET(*n, expr, NO_UNIFY);
     int pos = 0;
 
     // TODO this list should be sorted first by the parent variable pos's
@@ -245,14 +285,34 @@ bool unify_exec(cell_t **cp, cell_t *parent_entry, context_t *ctx) {
       drop(*p);
     }
     store_lazy_and_update_deps(cp, n, 0);
-    return true;
-  } else {
-    FOLLOW(p, vl, tmp) {
-      drop(p);
-    }
-    clean_tmp(vl);
-    return false;
   }
+  return exec_list(cp, ctx);
+}
+
+void store_lazy_and_update_deps(cell_t **cp, cell_t *r, alt_set_t alt_set) {
+  cell_t *c = *cp;
+  refcount_t n = 0;
+  csize_t out_n = closure_out(c);
+  assert_error(closure_out(r) == out_n);
+  if(out_n) {
+    cell_t
+      **c_out = &c->expr.arg[closure_args(c) - out_n],
+      **r_out = &r->expr.arg[closure_args(r) - out_n];
+    COUNTUP(i, out_n) {
+      cell_t *d = c_out[i];
+      if(d) {
+        d->expr.arg[0] = r;
+        r_out[i] = d;
+        n++;
+      }
+    }
+
+    // update ref counts
+    refn(r, n);
+    assert_error(c->n >= n);
+    c->n -= n;
+  }
+  store_lazy(cp, r, alt_set);
 }
 
 static
@@ -712,41 +772,6 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
 }
 
 static
-response exec_list(cell_t **cp, context_t *ctx) {
-  PRE_NO_CONTEXT(exec_list);
-
-  if(ctx->t != T_LIST || closure_out(c) != 0) {
-    return SUCCESS;
-  }
-
-  CONTEXT_LOG("exec_list %C", c);
-  cell_t *res;
-  csize_t
-    in = closure_in(c),
-    out = ctx->s.out - 1,
-    n = in + out;
-
-  // if ctx->t == T_LIST, need to wrap here
-  // move to func_exec; expand, wrap, and return the original function
-  c = expand(c, out);
-  FLAG_SET(*c, expr, NO_UNIFY);
-  c->expr.out = out;
-  res = make_list(ctx->s.out);
-  res->value.ptr[out] = c;
-  COUNTUP(i, out) {
-    cell_t *d = dep(ref(c));
-    int j = n - i;
-    res->value.ptr[i] = d;
-    c->expr.arg[j] = d;
-  }
-
-  LOG(TODO " fix condition %C @condition", res);
-
-  *cp = res;
-  return RETRY;
-}
-
-static
 response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
   size_t in = closure_in(*cp);
   cell_t *entry = (*cp)->expr.arg[in];
@@ -890,13 +915,15 @@ OP(exec) {
     assert_error(parent_entry,
                  "incomplete entry can't be unified without "
                  "a parent entry %C @exec_split", c);
-    if(entry->entry.wrap && !unify_exec(cp, parent_entry, ctx)) {
-      LOG(MARK("WARN") " unify failed: %C %C",
-          *cp, entry->entry.wrap->initial);
-      ABORT(FAIL);
+    if(entry->entry.wrap) {
+      rsp = unify_exec(cp, parent_entry, ctx);
+      if(rsp == FAIL) {
+        LOG(MARK("WARN") " unify failed: %C %C",
+            *cp, entry->entry.wrap->initial);
+        ABORT(FAIL);
+      }
     }
-    return AND0(exec_list(cp, ctx),
-                func_exec_trace(cp, ctx, parent_entry));
+    return AND0(rsp, func_exec_trace(cp, ctx, parent_entry));
   } else if(parent_entry && all_dynamic(entry, c)) {
     return func_exec_trace(cp, ctx, parent_entry);
   } else if(parent_entry && entry->entry.rec) {

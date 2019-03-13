@@ -76,7 +76,8 @@ OP(value) {
       // *** probably shouldn't be calling trace functions directly here
       cell_t *entry = trace_expr_entry(c->pos);
       cell_t *parent = entry->entry.parent;
-      if(parent) {
+      cell_t *ve = c->value.var ? var_entry(c->value.var) : NULL;
+      if(entry != ve && parent) {
         LOG_WHEN(is_list(c), "nil %C", c);
         int v = trace_store_value(parent, c);
         cell_t *tc = trace_alloc_var(entry, c->value.type);

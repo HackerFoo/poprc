@@ -386,6 +386,10 @@ void dropn(cell_t *c, refcount_t n) {
   assert_error(is_closure(c));
   if(n > c->n) {
     cell_t *p;
+    LOG_WHEN(c->alt &&
+             !c->alt->n &&
+             c->alt->op != OP_value,
+             MARK("WARN") " unreduced alt %C -> %C", c, c->alt);
     TRAVERSE(c, alt, in, ptrs) {
       drop(*p);
     }
