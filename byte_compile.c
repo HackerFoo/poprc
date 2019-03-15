@@ -183,10 +183,12 @@ void print_bytecode(cell_t *entry) {
 void drop_trace(cell_t *entry, cell_t *tc) {
   if(tc->n <= 0) {
     LOG("drop %s[%d] %O", entry->word_name, tc-entry, tc->op);
-    TRAVERSE(tc, in, ptrs) {
-      int x = tr_index(*p);
-      if(x > 0) {
-        drop_trace(entry, &entry[x]);
+    if(tc->op) {
+      TRAVERSE(tc, in, ptrs) {
+        int x = tr_index(*p);
+        if(x > 0) {
+          drop_trace(entry, &entry[x]);
+        }
       }
     }
     tc->op = OP_null;

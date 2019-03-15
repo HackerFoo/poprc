@@ -523,6 +523,7 @@ OP(seq) {
   cell_t *res = NULL;
   cell_t *tc = NULL;
   cell_t *p = NULL;
+  cell_t *entry = NULL;
   bool p_var = false;
   CHECK(reduce_arg(c, 1, &CTX(any))); // don't split arg here?
   if(rsp == SUCCESS) {
@@ -531,6 +532,10 @@ OP(seq) {
 
     if(p_var) {
       tc = trace_partial(OP_seq, 1, p); // drop on abort?
+    } else if(p->value.var && !find_passthrough(p->value.var)) {
+      // reserve space
+      entry = var_entry(p->value.var);
+      tc = &entry[trace_alloc(entry, 2)];
     }
   }
   CHECK(reduce_arg(c, 0, &CTX_UP));
@@ -546,7 +551,16 @@ OP(seq) {
     res = take(q);
     unique(&res);
     drop(res->alt);
-    add_conditions_var(res, tc, p);
+    if(entry) {
+      if(res->value.var) { // *** messy
+        res->value.var = trace_seq_at(res->value.var, p->value.var, entry, tc);
+      } else {
+        res->value.var = p->value.var;
+        trace_drop(tc);
+      }
+    } else {
+      add_conditions_var(res, tc, p);
+    }
   }
   res->value.alt_set = ctx->alt_set;
   res->alt = c->alt;

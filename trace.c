@@ -1119,6 +1119,33 @@ FORMAT(trace_cell, 'T') {
 
 /* conditions */
 
+cell_t **passthrough_arg(cell_t *p) {
+  switch(p->op) {
+  case OP_assert:
+  case OP_seq:
+    return &p->expr.arg[0];
+    break;
+  case OP_otherwise:
+    return &p->expr.arg[1];
+    break;
+  default:
+    return NULL;
+  }
+}
+
+cell_t **find_passthrough(cell_t *p) {
+  if(!p) return NULL;
+  cell_t *entry = var_entry(p);
+  cell_t **a;
+  do {
+    a = passthrough_arg(p);
+    if(!a) return NULL;
+    if(!*a) return a;
+    p = &entry[tr_index(*a)];
+  } while(p);
+  return a;
+}
+
 // assert & otherwise form lists that can be concatenated
 // TODO use refcounting to avoid destructive concatenation
 cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
@@ -1166,9 +1193,13 @@ cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
 
 cell_t *trace_seq(cell_t *a, cell_t *b) {
   cell_t *entry = var_entry(a);
-  assert_error(entry_has(entry, b));
   int x = trace_alloc(entry, 2);
   cell_t *tc = &entry[x];
+  return trace_seq_at(a, b, entry, tc);
+}
+
+cell_t *trace_seq_at(cell_t *a, cell_t *b, cell_t *entry, cell_t *tc) {
+  assert_error(entry_has(entry, b));
   cell_t *p, *q;
   if(b->op == OP_assert) {
     p = a;
