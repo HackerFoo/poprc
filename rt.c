@@ -222,9 +222,10 @@ response reduce_arg(cell_t *c,
                 context_t *ctx) {
   cell_t **ap = &c->expr.arg[n];
   response r = reduce(ap, ctx);
-  cell_t *a = *ap;
-  if(r == SUCCESS) ctx->up->alt_set |= a->value.alt_set;
-  if(r <= DELAY) split_arg(c, n);
+  if(r <= DELAY) {
+    ctx->up->alt_set |= ctx->alt_set;
+    split_arg(c, n);
+  }
   return r;
 }
 
@@ -271,9 +272,10 @@ response reduce_ptr(cell_t *c,
   assert_error(is_list(c));
   cell_t **ap = &c->value.ptr[n];
   response r = reduce(ap, ctx);
-  cell_t *a = *ap;
-  if(r == SUCCESS) ctx->up->alt_set |= a->value.alt_set;
-  if(r <= DELAY) split_ptr(c, n);
+  if(r <= DELAY) {
+    ctx->up->alt_set |= ctx->alt_set;
+    split_ptr(c, n);
+  }
   return r;
 }
 
@@ -1020,11 +1022,11 @@ bool is_linear(context_t *ctx) {
 #if INTERFACE
 enum priority {
   PRIORITY_SIMPLIFY = 0,
-  PRIORITY_VAR = 1,
-  PRIORITY_ASSERT = 2,
-  PRIORITY_EXEC_SELF = 3,
-  PRIORITY_DELAY = 4,
-  PRIORITY_OTHERWISE = 5,
+  PRIORITY_VAR,
+  PRIORITY_ASSERT,
+  PRIORITY_DELAY,
+  PRIORITY_EXEC_SELF,
+  PRIORITY_OTHERWISE,
   PRIORITY_MAX
 };
 #define PRIORITY_TOP (PRIORITY_MAX - 1)

@@ -32,6 +32,7 @@
 OP(value) {
   PRE(value);
   stats.reduce_cnt--;
+  ctx->alt_set = c->value.alt_set;
   if(is_var(c)) CHECK_PRIORITY(PRIORITY_VAR);
 
   // promote integer constants to float constants
