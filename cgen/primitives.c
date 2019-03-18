@@ -161,6 +161,7 @@ TEST(arr_shift) {
 #define __primitive_read_yyooS __primitive_read_yyoos
 #define __primitive_strsplit_sSsS __primitive_strsplit_ssss
 #define __primitive_open_yySo __primitive_open_yyso
+#define __primitive_strcat_sSs __primitive_strcat_sss
 
 #endif
 
