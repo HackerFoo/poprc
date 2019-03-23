@@ -251,29 +251,40 @@
 #define AND0_5(a, b, c, d, e) AND0_4(a, b, c, AND0_2(d, e))
 #define AND0(...) DISPATCH(AND0, __VA_ARGS__)
 
+#define LOCATION() (location_t) { .file = CONCAT(FILE_ID_, FILEBASE), .line = __LINE__ }
+#define STORE_LOCATION() (ctx->loc = LOCATION())
+
 #define CHECK(x)                                \
   do {                                          \
     response __rsp = (x);                       \
     if(__rsp > rsp) rsp = __rsp;                \
-    if(__rsp > DELAY) goto abort;               \
+    if(__rsp > DELAY) {                         \
+      STORE_LOCATION();                         \
+      goto abort;                               \
+    }                                           \
   } while(0)
 
 #define CHECK_IF(x, v)                          \
   do {                                          \
     if(x) {                                     \
       rsp = (v);                                \
+      STORE_LOCATION();                         \
       goto abort;                               \
     }                                           \
   } while(0)
 
 #define CHECK_DELAY()                           \
   do {                                          \
-    if(rsp) goto abort;                         \
+    if(rsp) {                                   \
+      STORE_LOCATION();                         \
+      goto abort;                               \
+    }                                           \
   } while(0)
 
 #define ABORT(x)                                \
   do {                                          \
     rsp = (x);                                  \
+    STORE_LOCATION();                           \
     goto abort;                                 \
   } while(0)
 
@@ -299,6 +310,7 @@
       rsp = DELAY;                                              \
       if(c->op != OP_value) FLAG_SET(*c, expr, DELAYED);        \
       LOG("delay (priority %d) %C", ctx->priority, c);          \
+      STORE_LOCATION();                                         \
       goto abort;                                               \
     }                                                           \
   } while(0)

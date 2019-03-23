@@ -3,6 +3,7 @@
 -include $(OBJS:.o=.d)
 
 SHELL := bash
+COMMA := ,
 
 # collects NAME(...) macros into a sorted list of NAME__ITEM(...) in .gen/name_list.h
 # NAME can optionally be followed by more uppercase letters: NAME_MORE_WORDS(...)
@@ -25,6 +26,16 @@ SHELL := bash
 	else \
 		echo '#define GIT_LOG "$(LOG) [DIRTY]"' > $@; \
 	fi
+
+.PHONY: .gen/file_ids.h.new
+.gen/file_ids.h.new: SORTED_SRC := $(sort $(SRC))
+.gen/file_ids.h.new: QUOTED_SRC := $(foreach src, $(SORTED_SRC), \"$(src)\")
+.gen/file_ids.h.new:
+	@mkdir -p $(dir $@)
+	rm -f $@
+	for i in $(join $(addsuffix $(COMMA), $(subst /,_, $(basename $(SORTED_SRC)))), $(QUOTED_SRC)); do \
+		echo "FILE_ID($$i)" >> $@; \
+	done
 
 .gen/%-local.h.new: %.c startle/bin/makeheaders
 	@mkdir -p $(dir $@)

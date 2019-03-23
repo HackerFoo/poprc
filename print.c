@@ -661,6 +661,23 @@ FORMAT(type, 't') {
   printf("%s", show_type(i));
 }
 
+#define FILE_ID(id, str) [CONCAT(FILE_ID_, id)] = str,
+const char *file_names[FILE_ID_COUNT] = {
+  [0] = "*none*",
+  #include "file_ids.h"
+};
+#undef FILE_ID
+
+const char *show_file_id(file_id_t id) {
+  return file_names[id];
+}
+
+FORMAT(location, 'L') {
+  location_t loc;
+  loc.raw = i;
+  printf("%s:%u", show_file_id(loc.file), loc.line);
+}
+
 static char *show_base[] = {
   [BASE_DEC] = "decimal",
   [BASE_HEX] = "hexadecimal"

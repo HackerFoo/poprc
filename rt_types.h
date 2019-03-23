@@ -71,12 +71,37 @@ typedef struct qsize {
   csize_t in, out;
 } qsize_t;
 
+
+// define the file_id enum
+#define FILE_ID(id, str)                        \
+  FILE_ID_##id,
+
+typedef enum __attribute__((packed)) file_id {
+  FILE_ID_NONE = 0,
+  #include "file_ids.h"
+  FILE_ID_COUNT
+} file_id_t;
+
+typedef struct location {
+  union {
+    uintptr_t raw;
+    struct {
+      file_id_t file;
+      uint16_t line;
+    };
+  };
+} location_t;
+
+#undef FILE_ID
+static_assert(sizeof(location_t) == sizeof_field(location_t, raw), "location_t wrong size");
+
 struct context {
   context_t *up;
   cell_t *src;
   val_t expected_value;
   alt_set_t alt_set;
   int priority;
+  location_t loc;
   qsize_t s;
   type_t t;
   uint8_t pos;

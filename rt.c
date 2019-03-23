@@ -324,7 +324,8 @@ response reduce(cell_t **cp, context_t *ctx) {
     // prevent infinite loops when debugging
     assert_counter(LENGTH(cells));
 
-    LOG_WHEN(!*cp, MARK("FAIL") ": %O %C (%s.%s) @abort", op, c, module_name, word_name);
+    LOG_WHEN(!*cp, MARK("FAIL") ": %O %C (%s.%s) %L @abort",
+             op, c, module_name, word_name, ctx->loc.raw);
     c = *cp;
     if(r <= DELAY || (r == RETRY && ctx->retry)) {
       ctx->retry = false;
