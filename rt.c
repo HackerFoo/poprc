@@ -586,9 +586,15 @@ response abort_op(response rsp, cell_t **cp, context_t *ctx) { // CLEANUP
   return rsp;
 }
 
-void store_reduced(cell_t **cp, cell_t *r) { // CLEANUP
+void store_reduced(cell_t **cp, UNUSED context_t *ctx, cell_t *r) { // CLEANUP
   cell_t *c = *cp;
-  r->op = OP_value;
+  assert_error(is_value(r));
+  assert_error(!r->alt);
+  if(c->alt || ctx->alt_set) {
+    unique(&r);
+    r->alt = c->alt;
+    r->value.alt_set = ctx->alt_set;
+  }
   trace_reduction(c, r);
   TRAVERSE(c, in) drop(*p);
   csize_t size = is_closure(r) ? closure_cells(r) : 0;
@@ -778,10 +784,9 @@ void clean_tmp(cell_t *l) {
 
 cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) { // CLEANUP
   assert_error(is_value(c));
-  if(c->alt != alt ||
-     c->value.alt_set != alt_set) {
+  assert_error(!c->alt);
+  if(alt || c->value.alt_set != alt_set) {
     unique(&c);
-    drop(c->alt);
   }
   c->alt = alt;
   c->value.alt_set = alt_set;

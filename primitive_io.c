@@ -70,13 +70,12 @@ OP(open) {
 
   if(ANY(is_var, p, q)) {
     res = var(T_SYMBOL, c);
-    res->value.alt_set = ctx->alt_set;
     store_dep_var(c, res, 2, T_OPAQUE, ctx->alt_set);
   } else if(p->value.integer == SYM_IO) {
     void *h = io->open(value_seg(q));
     if(h) {
       store_lazy_dep(c->expr.arg[2], make_opaque(h), ctx->alt_set);
-      res = mod_alt(ref(p), c->alt, ctx->alt_set);
+      res = ref(p);
     } else {
       ABORT(FAIL);
     }
@@ -84,7 +83,7 @@ OP(open) {
     ABORT(FAIL);
   }
   add_conditions(res, p, q);
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:
@@ -108,15 +107,14 @@ OP(close) {
 
   if(ANY(is_var, p, q)) {
     res = var(T_SYMBOL, c);
-    res->value.alt_set = ctx->alt_set;
   } else if(p->value.integer == SYM_IO) {
     io->close(q->value.opaque);
-    res = mod_alt(ref(p), c->alt, ctx->alt_set);
+    res = ref(p);
   } else {
     ABORT(FAIL);
   }
   add_conditions(res, p, q);
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:
@@ -141,17 +139,16 @@ response write_op(cell_t **cp, context_t *ctx, void (*op)(file_t *, seg_t)) {
 
   if(ANY(is_var, p, q, r)) {
     res = var(T_SYMBOL, c);
-    res->value.alt_set = ctx->alt_set;
     store_dep_var(c, res, 3, T_OPAQUE, ctx->alt_set);
   } else if(p->value.integer == SYM_IO) {
     op((file_t *)q->value.opaque, value_seg(r));
-    res = mod_alt(ref(p), c->alt, ctx->alt_set);
+    res = ref(p);
     store_lazy_dep(c->expr.arg[3], ref(q), ctx->alt_set);
   } else {
     ABORT(FAIL);
   }
   add_conditions(res, p, q, r);
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:
@@ -186,19 +183,18 @@ OP(read) {
 
   if(ANY(is_var, p, q)) {
     res = var(T_SYMBOL, c);
-    res->value.alt_set = ctx->alt_set;
     store_dep_var(c, res, 2, T_OPAQUE, ctx->alt_set);
     store_dep_var(c, res, 3, T_STRING, ctx->alt_set);
   } else if(p->value.integer == SYM_IO) {
     seg_t s = io->read((file_t *)q->value.opaque);
     store_lazy_dep(c->expr.arg[2], ref(q), ctx->alt_set);
     store_lazy_dep(c->expr.arg[3], make_string(s), ctx->alt_set);
-    res = mod_alt(ref(p), c->alt, ctx->alt_set);
+    res = ref(p);
   } else {
     ABORT(FAIL);
   }
   add_conditions(res, p, q);
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:

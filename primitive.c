@@ -83,11 +83,9 @@ response func_op2(cell_t **cp, context_t *ctx, int arg_type, int res_type, val_t
 
   CHECK_IF(nonzero && !is_var(q) && q->value.integer == 0, FAIL); // TODO assert this for variables
   res = _op2(c, res_type, op, p, q);
-  res->alt = c->alt;
-  res->value.alt_set = ctx->alt_set;
-  add_conditions(res, p, q);
   if(nonzero) FLAG_SET(*c, expr, PARTIAL);
-  store_reduced(cp, res);
+  add_conditions(res, p, q);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:
@@ -105,10 +103,8 @@ response func_op1(cell_t **cp, context_t *ctx, int arg_type, int res_type, val_t
   ARGS(p);
 
   res = _op1(c, res_type, op, p);
-  res->alt = c->alt;
-  res->value.alt_set = ctx->alt_set;
   add_conditions(res, p);
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:
@@ -137,13 +133,10 @@ response func_op2_float(cell_t **cp, context_t *ctx, double (*op)(double, double
   ARGS(p, q);
 
   CHECK_IF(nonzero && !is_var(q) && q->value.flt == 0.0, FAIL); // TODO assert this for variables
-  res = ANY(is_var, p, q) ? var(ctx->t, c) : _op2_float(op, p, q);
-  res->value.type = T_FLOAT;
-  res->alt = c->alt;
-  res->value.alt_set = ctx->alt_set;
-  add_conditions(res, p, q);
+  res = ANY(is_var, p, q) ? var(T_FLOAT, c) : _op2_float(op, p, q);
   if(nonzero) FLAG_SET(*c, expr, PARTIAL);
-  store_reduced(cp, res);
+  add_conditions(res, p, q);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:
@@ -161,10 +154,8 @@ response func_op1_float(cell_t **cp, context_t *ctx, double (*op)(double)) {
   ARGS(p);
 
   res = is_var(p) ? var(T_FLOAT, c) : _op1_float(op, p);
-  res->alt = c->alt;
-  res->value.alt_set = ctx->alt_set;
   add_conditions(res, p);
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:
@@ -196,10 +187,8 @@ response func_eq_op(cell_t **cp, context_t *ctx, type_t type) {
   q = c->expr.arg[1];
 
   res = ANY(is_var, p, q) ? var(T_SYMBOL, c) : symbol(p->value.integer == q->value.integer);
-  res->alt = c->alt;
-  res->value.alt_set = ctx->alt_set;
   add_conditions(res, p, q);
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:
@@ -391,11 +380,8 @@ OP(to_float) {
   } else {
     res = float_val(p->value.integer);
   }
-  res->value.type = T_FLOAT;
-  res->alt = c->alt;
-  res->value.alt_set = ctx->alt_set;
   add_conditions(res, p);
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:
@@ -418,11 +404,8 @@ OP(trunc) {
   } else {
     res = int_val(p->value.flt);
   }
-  res->value.type = T_INT;
-  res->alt = c->alt;
-  res->value.alt_set = ctx->alt_set;
   add_conditions(res, p);
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:
@@ -502,11 +485,9 @@ OP(assert) {
     drop(res->alt);
     add_conditions_var(res, tc, p);
   }
-  res->value.alt_set = ctx->alt_set;
-  res->alt = c->alt;
 
   FLAG_SET(*c, expr, PARTIAL);
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:
@@ -562,10 +543,8 @@ OP(seq) {
       add_conditions_var(res, tc, p);
     }
   }
-  res->value.alt_set = ctx->alt_set;
-  res->alt = c->alt;
 
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:
@@ -642,11 +621,9 @@ OP(otherwise) {
     drop(res->alt);
     add_conditions_var(res, tc);
   }
-  res->value.alt_set = ctx->alt_set;
-  res->alt = c->alt;
 
   FLAG_SET(*c, expr, PARTIAL);
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
 abort:
@@ -664,9 +641,9 @@ OP(id) {
     CHECK_IF(as_conflict(ctx->alt_set), FAIL);
     CHECK_DELAY();
 
-    cell_t *res = mod_alt(ref(c->expr.arg[0]), c->alt, ctx->alt_set);
+    cell_t *res = ref(c->expr.arg[0]);
     mark_pos(res, pos);
-    store_reduced(cp, res);
+    store_reduced(cp, ctx, res);
     return SUCCESS;
   } else {
     *cp = CUT(c, expr.arg[0]);
@@ -804,12 +781,6 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
     LOOP(out) list_next(&end, false);
     res = list_rest(end);
   }
-  unique(&res);
-  drop(res->alt);
-  res->alt = take(&c->alt);
-  res->value.alt_set = ctx->alt_set;
-  //res->pos = pos; // ***
-  add_conditions(res, p, *q);
 
   COUNTUP(i, out) {
     cell_t **x = list_next(&it, false);
@@ -831,7 +802,8 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
 
   drop(l);
   if(out) FLAG_SET(*c, expr, PARTIAL);
-  store_reduced(cp, res);
+  add_conditions(res, p, *q);
+  store_reduced(cp, ctx, res);
   ASSERT_REF();
   return SUCCESS;
 
@@ -887,7 +859,7 @@ response func_type(cell_t **cp, context_t *ctx, uint8_t type) {
   CHECK(reduce_arg(c, 0, &CTX(t, type)));
   CHECK_DELAY();
 
-  *cp = mod_alt(ref(c->expr.arg[0]), ref(c->alt), 0);
+  *cp = mod_alt(ref(c->expr.arg[0]), ref(c->alt), ctx->alt_set);
   drop(c);
   return SUCCESS;
 
@@ -932,10 +904,8 @@ OP(strcat) {
   } else {
     res = make_strcat(value_seg(p), value_seg(q));
   }
-  res->alt = c->alt;
-  res->value.alt_set = ctx->alt_set;
   add_conditions(res, p, q);
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:
@@ -960,10 +930,8 @@ OP(eq_str) {
   } else {
     res = val(T_SYMBOL, eq_seg(value_seg(p), value_seg(q)));
   }
-  res->alt = c->alt;
-  res->value.alt_set = ctx->alt_set;
   add_conditions(res, p, q);
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:
@@ -998,11 +966,8 @@ OP(to_string) {
   } else {
     ABORT(FAIL);
   }
-  res->value.type = T_STRING;
-  res->alt = c->alt;
-  res->value.alt_set = ctx->alt_set;
   add_conditions(res, p);
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:
@@ -1028,12 +993,9 @@ OP(from_string) {
     CHECK_IF(!end || *end != '\0', FAIL);
     res = val(T_INT, x);
   }
-  res->value.type = T_INT;
-  res->alt = c->alt;
-  res->value.alt_set = ctx->alt_set;
-  add_conditions(res, p);
   FLAG_SET(*c, expr, PARTIAL);
-  store_reduced(cp, res);
+  add_conditions(res, p);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:
@@ -1066,12 +1028,9 @@ OP(strsplit) {
                                         .n = strlen(s + needle_len)}),
                    0);
   }
-  res->value.type = T_STRING;
-  res->alt = c->alt;
-  res->value.alt_set = ctx->alt_set;
-  add_conditions(res, p, q);
   FLAG_SET(*c, expr, PARTIAL);
-  store_reduced(cp, res);
+  add_conditions(res, p, q);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:
@@ -1094,11 +1053,8 @@ OP(strtrim) {
   } else {
     res = make_string(seg_trim(string_seg(p->value.str)));
   }
-  res->value.type = T_STRING;
-  res->alt = c->alt;
-  res->value.alt_set = ctx->alt_set;
   add_conditions(res, p);
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:
@@ -1131,8 +1087,6 @@ OP(external) {
   CHECK_DELAY();
 
   cell_t *res = var(ctx->t, c, ctx->pos);
-  res->alt = c->alt;
-  res->value.alt_set = ctx->alt_set;
   RANGEUP(i, in, n) {
     cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {
@@ -1142,7 +1096,7 @@ OP(external) {
     }
   }
   add_conditions_from_array(res, c->expr.arg, in);
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   ASSERT_REF();
   return SUCCESS;
 

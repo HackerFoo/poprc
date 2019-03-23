@@ -766,7 +766,7 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
 
   *cp = p;
   add_conditions_from_array(res, p->expr.arg, in);
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 }
 
@@ -862,11 +862,8 @@ response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
     }
   }
 
-  res->value.alt_set = ctx->alt_set;
-  res->alt = c->alt;
-
   add_conditions_from_array(res, c->expr.arg, in);
-  store_reduced(cp, res);
+  store_reduced(cp, ctx, res);
   return SUCCESS;
 
  abort:

@@ -379,13 +379,11 @@ OP(placeholder) {
      is_list(c->expr.arg[1]) &&
      list_size(c->expr.arg[1]) == 0 &&
      is_function(c->expr.arg[0])) {
-    store_reduced(cp, mod_alt(ref(c->expr.arg[0]), c->alt, ctx->alt_set));
+    store_reduced(cp, ctx, ref(c->expr.arg[0]));
     return SUCCESS;
   }
 
   cell_t *res = var(T_LIST, c, ctx->pos);
-  res->alt = c->alt;
-  res->value.alt_set = ctx->alt_set;
   RANGEUP(i, in, n) { // CLEANUP abstract for external op
     cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {
@@ -394,9 +392,9 @@ OP(placeholder) {
       LOG("dropped placeholder[%C] output", c);
     }
   }
-  add_conditions_from_array(res, c->expr.arg, in);
   if(c->expr.out) FLAG_SET(*c, expr, PARTIAL);
-  store_reduced(cp, res);
+  add_conditions_from_array(res, c->expr.arg, in);
+  store_reduced(cp, ctx, res);
   ASSERT_REF();
   return SUCCESS;
 
