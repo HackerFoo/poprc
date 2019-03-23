@@ -359,10 +359,13 @@
 #define EACH_3(f, x0, x1) f(x0); f(x1)
 #define EACH_4(f, x0, x1, x2) f(x0); f(x1); f(x2)
 #define EACH_5(f, x0, x1, x2) f(x0); f(x1); f(x2); f(x3)
-#define EACH(...) \
-  do {                                          \
-    DISPATCH(EACH, __VA_ARGS__);                \
-  } while(0)
+#define EACH(...) DISPATCH(EACH, __VA_ARGS__)
+
+#define ANY_2(f, x0) f(x0)
+#define ANY_3(f, x0, x1) (f(x0) || f(x1))
+#define ANY_4(f, x0, x1, x2) (f(x0) || f(x1) || f(x2))
+#define ANY_5(f, x0, x1, x2) (f(x0) || f(x1) || f(x2) || f(x3))
+#define ANY(...) DISPATCH(ANY, __VA_ARGS__)
 
 /** Reassign a variable for the duration of the following block. */
 #define SHADOW(var, val)                        \

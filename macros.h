@@ -332,4 +332,10 @@
 #define DEBUG_TRUE ({PRAGMA_MESSAGE("DEBUG_TRUE"); 1;}) ||
 #define DEBUG_FALSE ({PRAGMA_MESSAGE("DEBUG_FALSE"); 0;}) &&
 
+#define __ARGS(p, n) *p = c->expr.arg[n]
+#define ARGS_1(p) cell_t __ARGS(p, 0)
+#define ARGS_2(p, q) ARGS_1(p), __ARGS(q, 1)
+#define ARGS_3(p, q, r) ARGS_2(p, q), __ARGS(r, 2)
+#define ARGS(...) DISPATCH(ARGS, __VA_ARGS__)
+
 #endif

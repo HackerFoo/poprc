@@ -63,13 +63,12 @@ OP(open) {
   CHECK(reduce_arg(c, 1, &CTX(string)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
+  ARGS(p, q);
 
   // CLEANUP merge with read op
   WARN_ALT(open);
 
-  cell_t *p = c->expr.arg[0];
-  cell_t *q = c->expr.arg[1];
-  if(is_var(p) || is_var(q)) {
+  if(ANY(is_var, p, q)) {
     res = var(T_SYMBOL, c);
     res->value.alt_set = ctx->alt_set;
     store_dep_var(c, res, 2, T_OPAQUE, ctx->alt_set);
@@ -103,11 +102,11 @@ OP(close) {
   CHECK(reduce_arg(c, 1, &CTX(opaque)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
+  ARGS(p, q);
 
   WARN_ALT(close);
 
-  cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
-  if(is_var(p) || is_var(q)) {
+  if(ANY(is_var, p, q)) {
     res = var(T_SYMBOL, c);
     res->value.alt_set = ctx->alt_set;
   } else if(p->value.integer == SYM_IO) {
@@ -124,8 +123,7 @@ OP(close) {
   return abort_op(rsp, cp, ctx);
 }
 
-WORD("write", write, 3, 2)
-OP(write) {
+response write_op(cell_t **cp, context_t *ctx, void (*op)(file_t *, seg_t)) {
   cell_t *res = 0;
   PRE(write);
 
@@ -137,19 +135,16 @@ OP(write) {
   CHECK(reduce_arg(c, 2, &CTX(string)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
+  ARGS(p, q, r);
 
   WARN_ALT(write);
 
-  cell_t
-    *p = c->expr.arg[0],
-    *q = c->expr.arg[1],
-    *r = c->expr.arg[2];
-  if(is_var(p) || is_var(q) || is_var(r)) {
+  if(ANY(is_var, p, q, r)) {
     res = var(T_SYMBOL, c);
     res->value.alt_set = ctx->alt_set;
     store_dep_var(c, res, 3, T_OPAQUE, ctx->alt_set);
   } else if(p->value.integer == SYM_IO) {
-    io->write((file_t *)q->value.opaque, value_seg(r));
+    op((file_t *)q->value.opaque, value_seg(r));
     res = mod_alt(ref(p), c->alt, ctx->alt_set);
     store_lazy_dep(c->expr.arg[3], ref(q), ctx->alt_set);
   } else {
@@ -163,44 +158,14 @@ OP(write) {
   return abort_op(rsp, cp, ctx);
 }
 
-// CLEANUP merge this with 'write'
+WORD("write", write, 3, 2)
+OP(write) {
+  return write_op(cp, ctx, io->write);
+}
+
 WORD("unread", unread, 3, 2)
 OP(unread) {
-  cell_t *res = 0;
-  PRE(unread);
-
-  CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
-
-  CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_IO)));
-  CHECK(reduce_arg(c, 1, &CTX(opaque)));
-  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
-  CHECK(reduce_arg(c, 2, &CTX(string)));
-  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
-  CHECK_DELAY();
-
-  WARN_ALT(unread);
-
-  cell_t
-    *p = c->expr.arg[0],
-    *q = c->expr.arg[1],
-    *r = c->expr.arg[2];
-  if(is_var(p) || is_var(q) || is_var(r)) {
-    res = var(T_SYMBOL, c);
-    res->value.alt_set = ctx->alt_set;
-    store_dep_var(c, res, 3, T_OPAQUE, ctx->alt_set);
-  } else if(p->value.integer == SYM_IO) {
-    io->unread(q->value.opaque, value_seg(r));
-    res = mod_alt(ref(p), c->alt, ctx->alt_set);
-    store_lazy_dep(c->expr.arg[3], ref(q), ctx->alt_set);
-  } else {
-    ABORT(FAIL);
-  }
-  add_conditions(res, p, q, r);
-  store_reduced(cp, res);
-  return SUCCESS;
-
- abort:
-  return abort_op(rsp, cp, ctx);
+  return write_op(cp, ctx, io->unread);
 }
 
 WORD("read", read, 2, 3)
@@ -214,13 +179,12 @@ OP(read) {
   CHECK(reduce_arg(c, 1, &CTX(opaque)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
+  ARGS(p, q);
 
   // CLEANUP merge with open & close op
   WARN_ALT(read);
 
-  cell_t *p = c->expr.arg[0];
-  cell_t *q = c->expr.arg[1];
-  if(is_var(p) || is_var(q)) {
+  if(ANY(is_var, p, q)) {
     res = var(T_SYMBOL, c);
     res->value.alt_set = ctx->alt_set;
     store_dep_var(c, res, 2, T_OPAQUE, ctx->alt_set);

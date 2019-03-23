@@ -52,7 +52,7 @@
     '-----------------------------------------------*/
 
 cell_t *_op2(cell_t *c, uint8_t t, val_t (*op)(val_t, val_t), cell_t *x, cell_t *y) {
-  if(is_var(x) || is_var(y)) {
+  if(ANY(is_var, x, y)) {
     return var(t, c);
   } else {
     return val(t, op(x->value.integer,
@@ -79,8 +79,8 @@ response func_op2(cell_t **cp, context_t *ctx, int arg_type, int res_type, val_t
   CHECK(reduce_arg(c, 1, &CTX(t, arg_type)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
+  ARGS(p, q);
 
-  cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   CHECK_IF(nonzero && !is_var(q) && q->value.integer == 0, FAIL); // TODO assert this for variables
   res = _op2(c, res_type, op, p, q);
   res->alt = c->alt;
@@ -102,8 +102,8 @@ response func_op1(cell_t **cp, context_t *ctx, int arg_type, int res_type, val_t
 
   CHECK(reduce_arg(c, 0, &CTX(t, arg_type, CTX_INV(inv_op))));
   CHECK_DELAY();
+  ARGS(p);
 
-  cell_t *p = c->expr.arg[0];
   res = _op1(c, res_type, op, p);
   res->alt = c->alt;
   res->value.alt_set = ctx->alt_set;
@@ -134,10 +134,10 @@ response func_op2_float(cell_t **cp, context_t *ctx, double (*op)(double, double
   CHECK(reduce_arg(c, 1, &CTX(float)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
+  ARGS(p, q);
 
-  cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
   CHECK_IF(nonzero && !is_var(q) && q->value.flt == 0.0, FAIL); // TODO assert this for variables
-  res = is_var(p) || is_var(q) ? var(ctx->t, c) : _op2_float(op, p, q);
+  res = ANY(is_var, p, q) ? var(ctx->t, c) : _op2_float(op, p, q);
   res->value.type = T_FLOAT;
   res->alt = c->alt;
   res->value.alt_set = ctx->alt_set;
@@ -158,8 +158,8 @@ response func_op1_float(cell_t **cp, context_t *ctx, double (*op)(double)) {
 
   CHECK(reduce_arg(c, 0, &CTX(float)));
   CHECK_DELAY();
+  ARGS(p);
 
-  cell_t *p = c->expr.arg[0];
   res = is_var(p) ? var(T_FLOAT, c) : _op1_float(op, p);
   res->alt = c->alt;
   res->value.alt_set = ctx->alt_set;
@@ -176,10 +176,8 @@ response func_eq_op(cell_t **cp, context_t *ctx, type_t type) {
   PRE(eq_op);
 
   CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
+  ARGS(p, q);
 
-  cell_t
-    *p = c->expr.arg[0],
-    *q = c->expr.arg[1];
   bool expect_eq = ctx->expected && ctx->expected_value == SYM_True;
   if(expect_eq && is_value(p)) {
     CHECK(reduce_arg(c, 0, &CTX(t, type)));
@@ -197,7 +195,7 @@ response func_eq_op(cell_t **cp, context_t *ctx, type_t type) {
   p = c->expr.arg[0];
   q = c->expr.arg[1];
 
-  res = is_var(p) || is_var(q) ? var(T_SYMBOL, c) : symbol(p->value.integer == q->value.integer);
+  res = ANY(is_var, p, q) ? var(T_SYMBOL, c) : symbol(p->value.integer == q->value.integer);
   res->alt = c->alt;
   res->value.alt_set = ctx->alt_set;
   add_conditions(res, p, q);
@@ -386,8 +384,8 @@ OP(to_float) {
 
   CHECK(reduce_arg(c, 0, &CTX(int)));
   CHECK_DELAY();
+  ARGS(p);
 
-  cell_t *p = c->expr.arg[0];
   if(is_var(p)) {
     res = var(T_FLOAT, c);
   } else {
@@ -413,8 +411,8 @@ OP(trunc) {
 
   CHECK(reduce_arg(c, 0, &CTX(float)));
   CHECK_DELAY();
+  ARGS(p);
 
-  cell_t *p = c->expr.arg[0];
   if(is_var(p)) {
     res = var(T_INT, c);
   } else {
@@ -927,9 +925,9 @@ OP(strcat) {
   CHECK(reduce_arg(c, 1, &CTX(string)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
+  ARGS(p, q);
 
-  cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
-  if(is_var(p) || is_var(q)) {
+  if(ANY(is_var, p, q)) {
     res = var(T_STRING, c);
   } else {
     res = make_strcat(value_seg(p), value_seg(q));
@@ -955,9 +953,9 @@ OP(eq_str) {
   CHECK(reduce_arg(c, 1, &CTX(string)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
+  ARGS(p, q);
 
-  cell_t *p = c->expr.arg[0], *q = c->expr.arg[1];
-  if(is_var(p) || is_var(q)) {
+  if(ANY(is_var, p, q)) {
     res = var(T_SYMBOL, c);
   } else {
     res = val(T_SYMBOL, eq_seg(value_seg(p), value_seg(q)));
@@ -989,8 +987,8 @@ OP(to_string) {
 
   CHECK(reduce_arg(c, 0, &CTX(any)));
   CHECK_DELAY();
+  ARGS(p);
 
-  cell_t *p = c->expr.arg[0];
   if(is_var(p)) {
     res = var(T_STRING, c);
   } else if(p->value.type == T_INT) {
@@ -1020,8 +1018,8 @@ OP(from_string) {
 
   CHECK(reduce_arg(c, 0, &CTX(string)));
   CHECK_DELAY();
+  ARGS(p);
 
-  cell_t *p = c->expr.arg[0];
   if(is_var(p)) {
     res = var(T_INT, c);
   } else {
@@ -1052,9 +1050,8 @@ OP(strsplit) {
   CHECK(reduce_arg(c, 0, &CTX(string)));
   CHECK(reduce_arg(c, 1, &CTX(string)));
   CHECK_DELAY();
+  ARGS(p, q);
 
-  cell_t *p = c->expr.arg[0];
-  cell_t *q = c->expr.arg[1];
   if(is_var(p)) {
     res = var(T_STRING, c);
     store_dep_var(c, res, 2, T_STRING, ctx->alt_set);
@@ -1090,8 +1087,8 @@ OP(strtrim) {
 
   CHECK(reduce_arg(c, 0, &CTX(string)));
   CHECK_DELAY();
+  ARGS(p);
 
-  cell_t *p = c->expr.arg[0];
   if(is_var(p)) {
     res = var(T_STRING, c);
   } else {
