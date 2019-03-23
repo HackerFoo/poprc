@@ -57,7 +57,7 @@ cell_t *row_quote(cell_t *x) {
 }
 
 bool is_list(cell_t const *c) {
-  return c && is_value(c) && !is_var(c) && c->value.type == T_LIST;
+  return c && is_value(c) && !is_var(c) && ONEOF(c->value.type, T_LIST, T_RETURN);
 }
 
 bool is_row_list(cell_t const *c) {

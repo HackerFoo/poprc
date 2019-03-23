@@ -403,7 +403,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
     }
 
     TRAVERSE(t, alt, args, ptrs) {
-      if(p != t_entry && *p) {
+      if(*p) {
         trace_index_t x = tr_index(*p);
         *p = map_cell(entry, x);
       }

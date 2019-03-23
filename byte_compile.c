@@ -201,7 +201,6 @@ void drop_trace(cell_t *entry, cell_t *tc) {
   }
 }
 
-// CLEANUP merge with move_vars and trace_replace_arg
 static
 void condense(cell_t *entry) {
   if(entry->entry.len == 0) return;
@@ -248,26 +247,11 @@ void condense(cell_t *entry) {
   // update references
   FOR_TRACE(tc, entry) {
     if(tc->op) {
-      cell_t **e = is_user_func(tc) ? &tc->expr.arg[closure_in(tc)] : NULL;
-      if(is_value(tc) &&
-         tc->value.type == T_RETURN) {
-        COUNTUP(i, list_size(tc)) {
-          cell_t **p = &tc->value.ptr[i];
-          int x = tr_index(*p);
-          if(x > 0) {
-            tr_set_index(p, tr_index(entry[x].alt));
-            assert_error(tr_index(*p) > 0);
-          }
-        }
-      } else {
-        TRAVERSE(tc, args, ptrs) {
-          if(p != e) {
-            int x = tr_index(*p);
-            if(x > 0) {
-              tr_set_index(p, tr_index(entry[x].alt));
-              assert_error(tr_index(*p) > 0, "at %s[%d]", entry->word_name, tc-entry);
-            }
-          }
+      TRAVERSE(tc, args, ptrs) {
+        int x = tr_index(*p);
+        if(x > 0) {
+          tr_set_index(p, tr_index(entry[x].alt));
+          assert_error(tr_index(*p) > 0, "at %s[%d]", entry->word_name, tc-entry);
         }
       }
     }
@@ -301,19 +285,8 @@ static
 void trace_replace_arg(cell_t *entry, int old, int new) {
   FOR_TRACE(tc, entry) {
     if(tc->op) {
-      cell_t **e = is_user_func(tc) ? &tc->expr.arg[closure_in(tc)] : NULL;
-      if(is_value(tc) &&
-         tc->value.type == T_RETURN) {
-        COUNTUP(i, list_size(tc)) {
-          cell_t **p = &tc->value.ptr[i];
-          if(tr_index(*p) == old) *p = index_tr(new);
-        }
-      } else {
-        TRAVERSE(tc, args, ptrs) {
-          if(p != e) {
-            if(tr_index(*p) == old) *p = index_tr(new);
-          }
-        }
+      TRAVERSE(tc, args, ptrs) {
+        if(tr_index(*p) == old) *p = index_tr(new);
       }
     }
   }

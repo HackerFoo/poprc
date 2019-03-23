@@ -1020,3 +1020,30 @@ qsize_t csub_size(qsize_t a, qsize_t b) {
     .out = csub(a.out, b.out)
   };
 }
+
+TEST(traverse_args) {
+  RANGEUP(in, 1, 3) {
+    RANGEUP(out, 1, 3) {
+      printf("in = %d, out = %d\n", (int)in, (int)out);
+      cell_t *c = ready_func(OP_exec, in, out);
+      c->alt = (cell_t *)1;
+      COUNTUP(i, closure_args(c)) {
+        c->expr.arg[i] = (cell_t *)((i + 1) * 10);
+      }
+      TRAVERSE(c, alt, ptrs, args) {
+        printf("alt,ptrs,args %d\n", (int)*p);
+      }
+      TRAVERSE(c, args, ptrs) {
+        printf("args, ptrs %d\n", (int)*p);
+      }
+      TRAVERSE(c, args) {
+        printf("args %d\n", (int)*p);
+      }
+      TRAVERSE(c, const, args) {
+        printf("const args %d\n", (int)*p);
+      }
+      closure_free(c);
+    }
+  }
+  return 0;
+}

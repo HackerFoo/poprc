@@ -311,6 +311,32 @@ tag: 20116 = good
 tag => 0
 @ trace_encode
 trace_encode => 0
+@ traverse_args
+in = 1, out = 1
+alt,ptrs,args 1
+in = 1, out = 2
+alt,ptrs,args 1
+alt,ptrs,args 20
+args, ptrs 20
+args 20
+const args 20
+in = 2, out = 1
+alt,ptrs,args 1
+alt,ptrs,args 10
+args, ptrs 10
+args 10
+const args 10
+in = 2, out = 2
+alt,ptrs,args 1
+alt,ptrs,args 10
+alt,ptrs,args 30
+args, ptrs 10
+args, ptrs 30
+args 10
+args 30
+const args 10
+const args 30
+traverse_args => 0
 @ unescape_string
 test
 \stringG!

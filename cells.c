@@ -324,12 +324,27 @@ csize_t closure_next_child(cell_t const *c) {
   return !closure_is_ready(c) && is_offset(c->expr.arg[0]) ? (intptr_t)c->expr.arg[0] : 0;
 }
 
+csize_t closure_next_user_child(cell_t const *c) {
+  csize_t i = closure_next_child(c);
+  if(is_user_func(c) &&
+     i == c->size - c->expr.out - 1) i++;
+  return i;
+}
+
 cell_t **closure_next_arg(cell_t *c) {
   return &c->expr.arg[closure_next_child(c)];
 }
 
+cell_t **closure_next_user_arg(cell_t *c) {
+  return &c->expr.arg[closure_next_user_child(c)];
+}
+
 cell_t *const *closure_next_arg_const(const cell_t *c) {
   return &c->expr.arg[closure_next_child(c)];
+}
+
+cell_t *const *closure_next_user_arg_const(const cell_t *c) {
+  return &c->expr.arg[closure_next_user_child(c)];
 }
 
 cell_t *copy(cell_t const *c) {
