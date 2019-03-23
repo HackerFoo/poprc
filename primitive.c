@@ -68,6 +68,7 @@ cell_t *_op1(cell_t *c, uint8_t t, val_t (*op)(val_t), cell_t *x) {
   }
 }
 
+// CLEANUP merge with func_op2_float
 response func_op2(cell_t **cp, context_t *ctx, int arg_type, int res_type, val_t (*op)(val_t, val_t), bool nonzero) {
   cell_t *res = 0;
   PRE(op2);
@@ -516,6 +517,7 @@ OP(assert) {
 
 // for internal use
 // very similar to assert
+// CLEANUP merge with assert
 WORD("seq", seq, 2, 1)
 OP(seq) {
   PRE(seq);
@@ -912,6 +914,8 @@ OP(float_t) {
   return func_type(cp, ctx, T_FLOAT);
 }
 
+// CLEANUP merge some string ops
+
 WORD("++", strcat, 2, 1)
 OP(strcat) {
   cell_t *res = 0;
@@ -1119,7 +1123,7 @@ OP(external) {
     LOG("extern name must be a constant %C", c);
   }
 
-  COUNTUP(i, in - 1) {
+  COUNTUP(i, in - 1) { // CLEANUP abstract for placeholder op
     if(i == 0 && io) {
       CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_IO)));
     } else {

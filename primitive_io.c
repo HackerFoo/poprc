@@ -64,6 +64,7 @@ OP(open) {
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
 
+  // CLEANUP merge with read op
   WARN_ALT(open);
 
   cell_t *p = c->expr.arg[0];
@@ -162,7 +163,7 @@ OP(write) {
   return abort_op(rsp, cp, ctx);
 }
 
-// TODO merge this with 'write'
+// CLEANUP merge this with 'write'
 WORD("unread", unread, 3, 2)
 OP(unread) {
   cell_t *res = 0;
@@ -214,6 +215,7 @@ OP(read) {
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
 
+  // CLEANUP merge with open & close op
   WARN_ALT(read);
 
   cell_t *p = c->expr.arg[0];

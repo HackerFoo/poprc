@@ -624,6 +624,7 @@ COMMAND(bits, "number of bits in a pointer") {
   if(command_line) quit = true;
 }
 
+// CLEANUP merge with parse and bc_in commands
 COMMAND(lex, "lex and print the arguments") {
   char *line_raw, *line;
   while((line_raw = fgets(line_buffer, sizeof(line_buffer), stdin)))

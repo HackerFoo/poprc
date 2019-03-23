@@ -197,6 +197,7 @@ void drop_trace(cell_t *entry, cell_t *tc) {
   }
 }
 
+// CLEANUP merge with move_vars and trace_replace_arg
 static
 void condense(cell_t *entry) {
   if(entry->entry.len == 0) return;

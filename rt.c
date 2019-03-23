@@ -117,6 +117,7 @@ cell_t *forward(cell_t *c, cell_t *a, cell_t *alt) {
 }
 
 // Duplicate c to c->alt and return it
+static
 void dup_alt(cell_t *c, csize_t n, cell_t *b) {
   csize_t
     in = closure_in(c),
@@ -147,6 +148,25 @@ void dup_alt(cell_t *c, csize_t n, cell_t *b) {
   a->expr.arg[n] = b;
 }
 
+// Duplicate c to c->alt and return it
+static
+void dup_list_alt(cell_t *c, csize_t arg, cell_t *b) {
+  assert_ge(arg, VALUE_OFFSET(ptr));
+  csize_t n = arg - VALUE_OFFSET(ptr);
+  csize_t in = list_size(c);
+  assert_lt(n, in);
+  cell_t *a = copy(c);
+  a->priority = 0;
+  c->alt = a;
+
+  // ref args
+  COUNTUP(i, in) {
+    if(i != n) ref(a->value.ptr[i]);
+  }
+
+  a->value.ptr[n] = b;
+}
+
 cell_t *idify(cell_t *c) { // CLEANUP
   cell_t *n = copy(c);
   n->alt = NULL;
@@ -157,6 +177,7 @@ cell_t *idify(cell_t *c) { // CLEANUP
 }
 
 // make *cp refer to an individual without breaking anything
+static
 cell_t *drop_alt(cell_t *c) {
   assert_error(!is_dep(c));
   if(!c->n) {
@@ -185,7 +206,9 @@ void drop_failed(cell_t **p) { // CLEANUP
 }
 
 // Lift alternates from c->arg[n] to c
-void split_arg(cell_t *c, csize_t n) {
+static
+void split_arg(cell_t *c, csize_t n,
+               void (*dup_alt)(cell_t *, csize_t, cell_t *)) {
   cell_t *a = c->expr.arg[n];
   drop_failed(&a->alt);
   if(!a || !a->alt) return;
@@ -212,44 +235,9 @@ response reduce_arg(cell_t *c,
   response r = reduce(ap, ctx);
   if(r <= DELAY) {
     ctx->up->alt_set |= ctx->alt_set;
-    split_arg(c, n);
+    split_arg(c, n, dup_alt);
   }
   return r;
-}
-
-// Duplicate c to c->alt and return it
-void dup_list_alt(cell_t *c, csize_t n, cell_t *b) {
-  csize_t in = list_size(c);
-  assert_error(n < in);
-  cell_t *a = copy(c);
-  a->priority = 0;
-  c->alt = a;
-
-  // ref args
-  COUNTUP(i, in) {
-    if(i != n) ref(a->value.ptr[i]);
-  }
-
-  a->value.ptr[n] = b;
-}
-
-// Lift alternates from c->value.ptr[n] to c
-void split_ptr(cell_t *c, csize_t n) {
-  cell_t *a = c->value.ptr[n];
-  if(!a || !a->alt) return;
-  refcount_t an = 0;
-  FOLLOW(p, c, alt) an += (p->value.ptr[n] == a);
-  cell_t *alt = refn(a->alt, an);
-  dropn(a, an-1);
-  cell_t *a1 = refn(drop_alt(a), an-1);
-  FOLLOW(p, c, alt) {
-    if(p->value.ptr[n] == a) {
-      // insert a copy with the alt arg
-      dup_list_alt(p, n, alt);
-      p->value.ptr[n] = a1;
-      p = p->alt;
-    }
-  }
 }
 
 // Reduce then split c->arg[n]
@@ -262,7 +250,7 @@ response reduce_ptr(cell_t *c,
   response r = reduce(ap, ctx);
   if(r <= DELAY) {
     ctx->up->alt_set |= ctx->alt_set;
-    split_ptr(c, n);
+    split_arg(c, n + VALUE_OFFSET(ptr), dup_list_alt);
   }
   return r;
 }
@@ -290,10 +278,6 @@ cell_t *fill_incomplete(cell_t *c) {
     } while(!closure_is_ready(c));
   }
   return c;
-}
-
-bool is_delayed(const cell_t *c) {
-  return !is_value(c) && FLAG(*c, expr, DELAYED);
 }
 
 // Reduce *cp with type t

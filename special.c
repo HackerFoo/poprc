@@ -386,7 +386,7 @@ OP(placeholder) {
   cell_t *res = var(T_LIST, c, ctx->pos);
   res->alt = c->alt;
   res->value.alt_set = ctx->alt_set;
-  RANGEUP(i, in, n) {
+  RANGEUP(i, in, n) { // CLEANUP abstract for external op
     cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {
       store_dep_var(c, res, i, T_ANY, ctx->alt_set);
