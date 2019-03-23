@@ -361,6 +361,12 @@ cell_t *refn(cell_t *c, refcount_t n) {
   return c;
 }
 
+cell_t *refmove(cell_t *src, cell_t *dst, refcount_t n) {
+  refn(dst, n);
+  dropn(src, n);
+  return dst;
+}
+
 bool has_type(cell_t const *c, int t) {
   return c &&
     c->op == OP_value &&
@@ -409,12 +415,6 @@ void dropn(cell_t *c, refcount_t n) {
 
 void drop(cell_t *c) {
   dropn(c, 1);
-}
-
-void drop_multi(cell_t **a, csize_t n) {
-  LOOP(n) {
-    drop(*a++);
-  }
 }
 
 void fake_drop(cell_t *c) {

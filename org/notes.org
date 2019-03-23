@@ -4,6 +4,13 @@
 expand, mod_alt, idify, unique, etc.
 find_passthrough, concatenate_conditions
 seq, assert, otherwise ops
+
+1. copy & forward
+2. update deps
+3. expand
+4. count deps
+5. replace
+6. copy if needed
 * split/alts
 no alts on exprs
 instead, pass split alts up ctx
