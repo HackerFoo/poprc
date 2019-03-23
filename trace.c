@@ -1054,9 +1054,6 @@ cell_t *trace_alloc_var(cell_t *entry, type_t t) {
   tc->value.type = t;
   tc->value.flags = VALUE_VAR;
   tc->pos = ++entry->entry.in;
-  if(tc->pos != x) {
-    FLAG_SET(*entry, entry, MOV_VARS);
-  }
   return tc;
 }
 

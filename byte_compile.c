@@ -191,7 +191,11 @@ void drop_trace(cell_t *entry, cell_t *tc) {
         }
       }
     }
-    tc->op = OP_null;
+    if(is_var(tc)) {
+      tc->n = ~0;
+    } else {
+      tc->op = OP_null;
+    }
   } else {
     tc->n--;
   }
@@ -202,7 +206,10 @@ static
 void condense(cell_t *entry) {
   if(entry->entry.len == 0) return;
   cell_t *ret = NULL;
-  int idx = 1;
+  csize_t in = entry->entry.in;
+  cell_t *vars = get_trace_ptr(in);
+  int nvars = 0;
+  int idx = 1 + in;
 
   // drop unreferenced instructions
   FOR_TRACE(tc, entry) {
@@ -214,17 +221,29 @@ void condense(cell_t *entry) {
   // calculate mapping
   FOR_TRACE(tc, entry) {
     if(tc->op) {
-      if(is_value(tc) && tc->value.type == T_RETURN) {
+      if(is_var(tc)) {
+        // move variables out into temporary space
+        assert_error(tc->pos);
+        nvars++;
+        memcpy(&vars[tc->pos-1], tc, sizeof(cell_t));
+        tc->op = OP_null;
+        tc->alt = index_tr(tc->pos);
+        LOG_WHEN(tc->pos != tc-entry, "move var %d -> %d", tc-entry, tc->pos);
+      } else if(is_return(tc)) {
         if(ret) ret->alt = index_tr(idx);
         ret = tc;
+        idx += calculate_cells(tc->size);
       } else {
         tc->alt = index_tr(idx);
+        idx += calculate_cells(tc->size);
       }
-      idx += calculate_cells(tc->size);
     } else {
       LOG("collapse %d", tc-entry);
     }
   }
+
+  csize_t len = idx - 1;
+  assert_error(nvars == entry->entry.in);
 
   // update references
   FOR_TRACE(tc, entry) {
@@ -270,91 +289,12 @@ void condense(cell_t *entry) {
       idx += s;
     }
   }
-  entry->entry.len = idx - 1;
-}
-
-// TODO optimize
-static
-void move_vars(cell_t *entry) {
-  if(NOT_FLAG(*entry, entry, MOV_VARS) ||
-     entry->entry.len == 0) return;
-  cell_t *ret = NULL;
-  csize_t in = entry->entry.in;
-  csize_t len = entry->entry.len;
-  cell_t *vars = get_trace_ptr(in);
-  int idx = 1 + in;
-  int nvars = 0;
-
-  CONTEXT("move_vars for %s", entry->word_name);
-
-  // calculate mapping
-  FOR_TRACE(p, entry) {
-    if(!is_var(p)) {
-      if(is_value(p) && p->value.type == T_RETURN) {
-        if(ret) ret->alt = index_tr(idx);
-        ret = p;
-      } else {
-        LOG_WHEN(idx != p-entry, "move %d -> %d", p-entry, idx);
-        p->alt = index_tr(idx);
-      }
-      idx += calculate_cells(p->size);
-    } else {
-      assert_error(p->pos);
-      nvars++;
-      int i = p->pos - 1;
-      memcpy(&vars[i], p, sizeof(cell_t));
-      p->op = OP_null;
-      p->alt = index_tr(p->pos);
-      LOG_WHEN(i + 1 != p-entry, "move var %d -> %d", p-entry, p->pos);
-    }
-  }
-
-  assert_error(nvars == entry->entry.in);
-
-  // update references
-  FOR_TRACE(tc, entry) {
-    if(tc->op) {
-      cell_t **e = is_user_func(tc) ? &tc->expr.arg[closure_in(tc)] : NULL;
-      if(is_value(tc) &&
-         tc->value.type == T_RETURN) {
-        COUNTUP(i, list_size(tc)) {
-          cell_t **p = &tc->value.ptr[i];
-          int x = tr_index(*p);
-          if(x > 0) *p = entry[x].alt;
-        }
-      } else {
-        TRAVERSE(tc, args, ptrs) {
-          if(p != e) {
-            int x = tr_index(*p);
-            if(x > 0) *p = entry[x].alt;
-          }
-        }
-      }
-    }
-  }
-  // condense
-  idx = 1;
-  FOR_TRACE(p, entry) {
-    if(p->op) {
-      csize_t s = calculate_cells(p->size);
-      if(!(is_value(p) && p->value.type == T_RETURN)) {
-        p->alt = NULL;
-      }
-      if(idx < p - entry) {
-        cell_t *n = &entry[idx];
-        memmove(n, p, s * sizeof(cell_t));
-        memset(n + s, 0, (p - n) * sizeof(cell_t));
-        p = n;
-      }
-      idx += s;
-    }
-  }
 
   // prepend vars
   memmove(&entry[in + 1], &entry[1], (len - in) * sizeof(cell_t));
   memcpy(&entry[1], vars, in * sizeof(cell_t));
   memset(vars, 0, in * sizeof(cell_t));
-  FLAG_CLEAR(*entry, entry, MOV_VARS);
+  entry->entry.len = len;
 }
 
 static
@@ -462,7 +402,6 @@ void trace_final_pass(cell_t *entry) {
   if(NOT_FLAG(*entry, entry, QUOTE) &&
     TWEAK(true, "to disable condense/move_vars in %s", entry->word_name)) {
     condense(entry);
-    move_vars(entry);
     last_use_analysis(entry);
     no_skip_analysis(entry);
   }
@@ -471,7 +410,6 @@ void trace_final_pass(cell_t *entry) {
       cell_t *e = get_entry(p);
       if(FLAG(*e, entry, QUOTE)) {
         condense(e);
-        move_vars(e);
         last_use_analysis(e);
         no_skip_analysis(e);
       }

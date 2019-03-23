@@ -3553,8 +3553,9 @@ ___ tests.pushl2 (3 -> 1) ___
 
 ___ tests.pushl_assert (2 -> 1) ___
 [1] var :: ?a x1
-[2] __primitive.quote 1 :: l x1
-[3] return [2]
+[2] var :: ?v x0
+[3] __primitive.quote 1 :: l x1
+[4] return [3]
 
 ___ tests.pushl_swap_assert (3 -> 1) ___
 [1] var :: ?l x1

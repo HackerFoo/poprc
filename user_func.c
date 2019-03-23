@@ -520,7 +520,6 @@ void reassign_input_order(cell_t *entry) {
                  entry->word_name, tn-entry, p);
     if(tn->pos != pos) {
       tn->pos = pos;
-      FLAG_SET(*entry, entry, MOV_VARS);
     }
     pos++;
   }

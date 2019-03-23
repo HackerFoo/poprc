@@ -244,7 +244,9 @@ cell_t *closure_alloc_cells(csize_t size) {
    / sizeof(cell_t))
 
 csize_t calculate_cells(csize_t n) {
-  return n <= 3 ? 1 : calc_size(expr.arg, n); // TODO calculate 3 at compile time
+  const csize_t args_in_first_cell =
+    (sizeof(cell_t) - offsetof(cell_t, expr.arg)) / sizeof(cell_t *);
+  return n <= args_in_first_cell ? 1 : calc_size(expr.arg, n);
 }
 
 csize_t calculate_list_size(csize_t n) {
