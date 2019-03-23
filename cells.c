@@ -339,13 +339,7 @@ cell_t *copy(cell_t const *c) {
   return new_c;
 }
 
-cell_t *copy_ref(cell_t const *c) {
-  cell_t *nc = copy(c);
-  TRAVERSE_REF(nc, alt, in, ptrs);
-  return nc;
-}
-
-cell_t *copy_expand(cell_t const *c, csize_t s) {
+cell_t *copy_expand(cell_t const *c, csize_t s) { // CLEANUP
   csize_t n = closure_args(c);
   csize_t new_size = calculate_cells(n + s);
   cell_t *new_c = closure_alloc_cells(new_size);
@@ -418,7 +412,7 @@ void drop(cell_t *c) {
 }
 
 void drop_multi(cell_t **a, csize_t n) {
-  COUNTUP(i, n) {
+  LOOP(n) {
     drop(*a++);
   }
 }
@@ -671,7 +665,7 @@ cell_t *take(cell_t **cp) {
   return r;
 }
 
-void unique(cell_t **cp) {
+void unique(cell_t **cp) { // CLEANUP
   cell_t *c = *cp;
   if(c->n) {
     if(c->n != PERSISTENT) --c->n;
@@ -681,7 +675,7 @@ void unique(cell_t **cp) {
   }
 }
 
-bool out_used(const cell_t *c, int ix) {
+bool out_used(const cell_t *c, int ix) { // CLEANUP dep
   int n = closure_args(c);
   int out = closure_out(c);
   assert_error(ix <= out);
@@ -697,7 +691,7 @@ bool out_used(const cell_t *c, int ix) {
   }
 }
 
-int count_out_used(const cell_t *c) {
+int count_out_used(const cell_t *c) { // CLEANUP dep
   int n = closure_args(c);
   int out = closure_out(c);
   cell_t *const *out_arg = &c->expr.arg[n - out];

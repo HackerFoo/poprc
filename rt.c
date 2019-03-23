@@ -126,7 +126,7 @@ void dup_alt(cell_t *c, csize_t n, cell_t *b) {
       **dp = &c->expr.arg[i],
       *d = *dp;
     if(d) {
-      // convert d to id
+      // convert d to id CLEANUP
       *dp = copy(d);
       d->op = OP_id;
       d->expr.arg[0] = *dp;
@@ -144,7 +144,7 @@ void dup_alt(cell_t *c, csize_t n, cell_t *b) {
   a->expr.arg[n] = b;
 }
 
-cell_t *idify(cell_t *c) {
+cell_t *idify(cell_t *c) { // CLEANUP
   cell_t *n = copy(c);
   n->alt = NULL;
   closure_shrink(c, 1);
@@ -175,7 +175,7 @@ cell_t *drop_alt(cell_t *c) {
     return n;
   } else {
     cell_t *n = idify(c);
-    TRAVERSE(n, out) {
+    TRAVERSE(n, out) { // CLEANUP
       cell_t *d = *p;
       if(d) {
         d->expr.arg[0] = ref(n);
@@ -186,7 +186,7 @@ cell_t *drop_alt(cell_t *c) {
   }
 }
 
-void drop_failed(cell_t **p) {
+void drop_failed(cell_t **p) { // CLEANUP
   cell_t **s = p;
   while(*p && is_fail(*p)) p = &(*p)->alt;
   if(*p != *s) {
@@ -363,7 +363,7 @@ response reduce_one(cell_t **cp, context_t *ctx) {
 
 // TODO clean up these expand functions
 
-cell_t *expand(cell_t *c, csize_t s) {
+cell_t *expand(cell_t *c, csize_t s) { // CLEANUP
   if(!c) return 0;
   csize_t n = closure_args(c);
   csize_t cn_p = calculate_cells(n);
@@ -383,7 +383,7 @@ cell_t *expand(cell_t *c, csize_t s) {
   }
 }
 
-void update_deps(cell_t *c) {
+void update_deps(cell_t *c) { // CLEANUP
   TRAVERSE(c, out) {
     cell_t *d = *p;
     if(d) {
@@ -393,7 +393,7 @@ void update_deps(cell_t *c) {
   }
 }
 
-csize_t count_deps(cell_t *c) {
+csize_t count_deps(cell_t *c) { // CLEANUP merge
   csize_t deps = 0;
   TRAVERSE(c, out) {
     if(*p) deps++;
@@ -402,7 +402,7 @@ csize_t count_deps(cell_t *c) {
 }
 
 // add more outputs
-cell_t *expand_deps(cell_t *c, csize_t s) {
+cell_t *expand_deps(cell_t *c, csize_t s) { // CLEANUP
   csize_t deps = count_deps(c);
   c->n -= deps;
   assert_error(!c->n);
@@ -465,14 +465,12 @@ cell_t *ready_func(op op, csize_t in, csize_t out) {
 }
 
 cell_t *func(op op, csize_t in, csize_t out) {
-  assert_error(out > 0);
   csize_t args = in + out - 1;
-  cell_t *c = closure_alloc(args);
-  c->expr.out = out - 1;
-  c->expr.flags = 0;
-  c->op = op;
-  if(args) c->expr.arg[0] = (cell_t *)(intptr_t)(args - 1);
-  closure_set_ready(c, !args);
+  cell_t *c = ready_func(op, in, out);
+  if(args) {
+    c->expr.arg[0] = (cell_t *)(intptr_t)(args - 1);
+    closure_set_ready(c, false);
+  }
   return c;
 }
 
@@ -540,7 +538,7 @@ loop:
     clean_tmp(l);
     p->expr.arg[i] = a;
     if(closure_is_ready(a)) {
-        update_ready(c, a);
+      update_ready(c, a);
     }
   } else {
     p = p->expr.arg[i];
@@ -549,7 +547,7 @@ loop:
   return r;
 }
 
-void store_fail(cell_t *c, cell_t *alt) {
+void store_fail(cell_t *c, cell_t *alt) { // CLEANUP
   closure_shrink(c, 1);
   memset(&c->value, 0, sizeof(c->value));
   c->op = OP_value;
@@ -557,7 +555,7 @@ void store_fail(cell_t *c, cell_t *alt) {
   c->alt = alt;
 }
 
-void store_dep(cell_t *c, cell_t *tc, csize_t pos, type_t t, alt_set_t alt_set) {
+void store_dep(cell_t *c, cell_t *tc, csize_t pos, type_t t, alt_set_t alt_set) { // CLEANUP
   cell_t v = {
     .op = OP_value,
     .n = c->n,
@@ -584,7 +582,7 @@ void store_dep_var(cell_t *c, cell_t *res, csize_t pos, type_t t, alt_set_t alt_
   }
 }
 
-response abort_op(response rsp, cell_t **cp, context_t *ctx) {
+response abort_op(response rsp, cell_t **cp, context_t *ctx) { // CLEANUP
   cell_t *c = *cp;
   if(rsp == FAIL) {
     if(!is_cell(c)) {
@@ -617,7 +615,7 @@ response abort_op(response rsp, cell_t **cp, context_t *ctx) {
   return rsp;
 }
 
-void store_reduced(cell_t **cp, cell_t *r) {
+void store_reduced(cell_t **cp, cell_t *r) { // CLEANUP
   cell_t *c = *cp;
   r->op = OP_value;
   trace_reduction(c, r);
@@ -644,25 +642,6 @@ cell_t *conc_alt(cell_t *a, cell_t *b) {
   while(*p) p = &(*p)->alt;
   *p = b;
   return a;
-}
-
-void check_tmps() {
-  size_t i = 0;
-  cell_t *p;
-  while(i < LENGTH(cells)) {
-    p = &cells[i];
-    if(is_closure(p)) {
-      /*
-      if(p->tmp) {
-        printf("<<%d %d>>\n", i, (int)p->tmp);
-        drop(p->tmp);
-        p->tmp = 0;
-      }
-      */
-      assert_error(!p->tmp);
-      i += closure_cells(p);
-    } else ++i;
-  }
 }
 
 /* replace references in r with corresponding tmp references */
@@ -826,7 +805,7 @@ void clean_tmp(cell_t *l) {
   }
 }
 
-cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
+cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) { // CLEANUP
   assert_error(is_value(c));
   if(c->alt != alt ||
      c->value.alt_set != alt_set) {
@@ -838,7 +817,7 @@ cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) {
   return c;
 }
 
-void store_lazy(cell_t **cp, cell_t *r, alt_set_t alt_set) {
+void store_lazy(cell_t **cp, cell_t *r, alt_set_t alt_set) { // CLEANUP
   cell_t *c = *cp;
   if(c->n || alt_set || c->pos) {
     closure_shrink(c, 1); // *** does not drop arguments first
@@ -858,7 +837,7 @@ void store_lazy(cell_t **cp, cell_t *r, alt_set_t alt_set) {
   }
 }
 
-void store_lazy_dep(cell_t *d, cell_t *r, alt_set_t alt_set) {
+void store_lazy_dep(cell_t *d, cell_t *r, alt_set_t alt_set) { // CLEAUP
   if(d) {
     assert_error(!d->alt);
     drop(d->expr.arg[0]);
@@ -921,27 +900,6 @@ bool check_type(type_t requested, type_t expected) {
     return false;
   }
   return true;
-}
-
-// assert on overlapping alts
-// c->alt->...->alt = a
-void assert_alt(cell_t *c, cell_t *a) {
-#ifdef NDEBUG
-  (void)c;
-  (void)a;
-#else
-  if(!is_value(a)) return;
-  alt_set_t alt_set = a->value.alt_set;
-  FOLLOW(p, c, alt) {
-    if(p == a) break;
-    assert_error(as_conflict(p->value.alt_set | alt_set),
-                 "overlapping alts %C %C @exec_split", p, a);
-  }
-#endif
-}
-
-response fail_if(bool x) {
-  return x ? FAIL : SUCCESS;
 }
 
 cell_t *build01(op op) {

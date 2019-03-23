@@ -220,6 +220,8 @@ void dedup_entry(cell_t **e) {
   }
 }
 
+// CLEANUP bundle var and entry, no more ints
+
 cell_t *var_entry(cell_t *v) {
   assert_error(is_trace_cell(v));
   for(cell_t *e = block_first_entry(v);
@@ -1002,7 +1004,7 @@ unsigned int trace_reduce(cell_t *entry, cell_t **cp) {
       }
       // TODO handle rotating alts
       if(rsp != SUCCESS) continue;
-      if(!delay) assert_alt(*cp, *p); // O(alts^2)
+
       cell_t **a;
       FORLIST(a, *p, true) {
         collapse_row(a);

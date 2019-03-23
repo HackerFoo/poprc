@@ -1,5 +1,9 @@
 #+TITLE: PoprC Notes
 
+* cleanup
+expand, mod_alt, idify, unique, etc.
+find_passthrough, concatenate_conditions
+seq, assert, otherwise ops
 * split/alts
 no alts on exprs
 instead, pass split alts up ctx
