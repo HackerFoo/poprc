@@ -622,8 +622,8 @@ TEST(log_context) {
 /** [log_context] */
 
 #if INTERFACE
-typedef char tag_t[4];
-#define FORMAT_TAG "%.4s"
+typedef char tag_t[5];
+#define FORMAT_TAG "%.5s"
 #endif
 
 char to_tag_char(int x) {
@@ -685,9 +685,11 @@ TEST(spread_gather_bits) {
 }
 
 // modular multiplicative inverses
-const unsigned int tag_factor = 510199;
-const unsigned int tag_factor_inverse = 96455;
-const unsigned int tag_mask = 0x7ffff;
+// 3 + (5 << 5) + (7 << 10) + (11 << 15) + (13 << 20)
+const unsigned int tag_factor = 13999267;
+const unsigned int tag_factor_inverse = 10221323;
+#define TAG_BITS (sizeof(tag_t) * 5 - 1)
+const unsigned int tag_mask = (1 << TAG_BITS) - 1;
 
 /** Write log tag for the given value.
  * @snippet log.c tag
@@ -719,11 +721,11 @@ int read_tag(const tag_t tag) {
 
 TEST(tag) {
   /** [tag] */
-  tag_t tag = "good";
+  tag_t tag = "great";
   int x = read_tag(tag);
   write_tag(tag, x);
   printf("tag: %d = " FORMAT_TAG "\n", x, tag);
-  return strncmp("good", tag, sizeof(tag)) == 0 ? 0 : -1;
+  return strncmp("great", tag, sizeof(tag)) == 0 ? 0 : -1;
   /** [tag] */
 }
 
