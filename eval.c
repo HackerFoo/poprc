@@ -624,72 +624,58 @@ COMMAND(bits, "number of bits in a pointer") {
   if(command_line) quit = true;
 }
 
-// CLEANUP merge with parse and bc_in commands
-COMMAND(lex, "lex and print the arguments") {
-  char *line_raw, *line;
-  while((line_raw = fgets(line_buffer, sizeof(line_buffer), stdin)))
+void for_each_line(void (*f)(cell_t *, unsigned int)) {
+  unsigned int n = 0;
+  char *line;
+  while((line = fgets(line_buffer, sizeof(line_buffer), stdin)))
   {
-    char *p = line_raw;
+    char *p = line;
     while(*p && *p != '\n') ++p;
     *p = 0;
-    if(line_raw[0] == '\0') {
-      continue;
-    }
-    line = line_raw;
-
+    if(line[0] == '\0') continue;
     cell_t *l = lex(line, 0);
-    if(l) print_toks(l);
-    free_toks(l);
+    if(l) {
+      f(l, n++);
+      free_toks(l);
+    }
   }
+}
+
+static
+void print_toks_line(cell_t *l, UNUSED unsigned int n) {
+  print_toks(l);
+}
+
+COMMAND(lex, "lex and print the arguments") {
+  for_each_line(print_toks_line);
   quit = true;
+}
+
+static
+void parse_and_print_line(cell_t *l, UNUSED unsigned int n) {
+  cell_t *c = parse_expr((const cell_t **)&l, eval_module(), NULL);
+  if(c) {
+    show_list_elements(c);
+    drop(c);
+    putchar('\n');
+  }
 }
 
 COMMAND(parse, "parse and print input lines") {
-  char *line_raw, *line;
-  while((line_raw = fgets(line_buffer, sizeof(line_buffer), stdin)))
-  {
-    char *p = line_raw;
-    while(*p && *p != '\n') ++p;
-    *p = 0;
-    if(line_raw[0] == '\0') {
-      continue;
-    }
-    line = line_raw;
-
-    cell_t *l = lex(line, 0), *l0 = l;
-    cell_t *c = parse_expr((const cell_t **)&l, eval_module(), NULL);
-    free_toks(l0);
-    if(c) {
-      show_list_elements(c);
-      drop(c);
-      putchar('\n');
-    }
-  }
+  for_each_line(parse_and_print_line);
   quit = true;
 }
 
-COMMAND(bc_in, "print bytecode for each line") {
-  char *line_raw, *line;
-  char name_buf[128];
-  unsigned int n = 0;
-  while((line_raw = fgets(line_buffer, sizeof(line_buffer), stdin)))
-  {
-    char *p = line_raw;
-    while(*p && *p != '\n') ++p;
-    *p = 0;
-    if(line_raw[0] == '\0') {
-      continue;
-    }
-    line = line_raw;
+static
+void print_bytecode_line(cell_t *l, unsigned int n) {
+  char name_buf[8];
+  snprintf(name_buf, sizeof(name_buf), "fn%d", n++);
+  cell_t *e = parse_eval_def(string_seg(name_buf), l);
+  print_bytecode(e);
+}
 
-    cell_t *l = lex(line, 0);
-    if(l) {
-      sprintf(name_buf, "fn%d", n++);
-      cell_t *e = parse_eval_def(string_seg(name_buf), l);
-      free_toks(l);
-      print_bytecode(e);
-    }
-  }
+COMMAND(bc_in, "print bytecode for each line") {
+  for_each_line(print_bytecode_line);
   quit = true;
 }
 
