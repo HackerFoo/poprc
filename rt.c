@@ -167,7 +167,7 @@ void dup_list_alt(cell_t *c, csize_t arg, cell_t *b) {
   a->value.ptr[n] = b;
 }
 
-cell_t *idify(cell_t *c) { // CLEANUP
+cell_t *idify(cell_t *c) {
   cell_t *n = copy(c);
   n->alt = NULL;
   forward(c, ref(n), c->alt);
@@ -195,7 +195,7 @@ cell_t *drop_alt(cell_t *c) {
   }
 }
 
-void drop_failed(cell_t **p) { // CLEANUP
+void drop_failed(cell_t **p) {
   cell_t **s = p;
   while(*p && is_fail(*p)) p = &(*p)->alt;
   if(*p != *s) {
@@ -355,7 +355,7 @@ cell_t *expand(cell_t *c, csize_t s) { // CLEANUP
   }
 }
 
-unsigned int update_deps(cell_t *c) { // CLEANUP
+unsigned int update_deps(cell_t *c) {
   csize_t deps = 0;
   TRAVERSE(c, out) {
     cell_t *d = *p;
@@ -368,12 +368,16 @@ unsigned int update_deps(cell_t *c) { // CLEANUP
   return deps;
 }
 
-csize_t count_deps(cell_t *c) { // CLEANUP merge
+csize_t count_deps(cell_t *c) {
   csize_t deps = 0;
   TRAVERSE(c, out) {
     if(*p) deps++;
   }
   return deps;
+}
+
+refcount_t direct_refs(cell_t *c) {
+  return csub(c->n + 1, count_deps(c));
 }
 
 // add more outputs
@@ -555,7 +559,7 @@ void store_dep_var(cell_t *c, cell_t *res, csize_t pos, type_t t, alt_set_t alt_
   }
 }
 
-response abort_op(response rsp, cell_t **cp, context_t *ctx) { // CLEANUP
+response abort_op(response rsp, cell_t **cp, context_t *ctx) {
   cell_t *c = *cp;
   if(rsp == FAIL) {
     if(!is_cell(c)) {
@@ -570,14 +574,11 @@ response abort_op(response rsp, cell_t **cp, context_t *ctx) { // CLEANUP
         cell_t *d = *p;
         if(d && is_dep(d)) {
           assert_error(c == d->expr.arg[0]);
-          drop(c); // CLEANUP
+          drop(c);
           store_fail(d, d->alt);
         }
       }
-      closure_shrink(c, 1);
-      memset(&c->value, 0, sizeof(c->value));
-      c->op = OP_value;
-      c->value.type = T_FAIL;
+      store_fail(c, alt);
     }
     drop(c);
     *cp = alt;
@@ -780,17 +781,6 @@ void clean_tmp(cell_t *l) {
     assert_error(~l->n);
     l = next;
   }
-}
-
-cell_t *mod_alt(cell_t *c, cell_t *alt, alt_set_t alt_set) { // CLEANUP
-  assert_error(is_value(c));
-  assert_error(!c->alt);
-  if(alt || c->value.alt_set != alt_set) {
-    unique(&c);
-  }
-  c->alt = alt;
-  c->value.alt_set = alt_set;
-  return c;
 }
 
 void store_lazy(cell_t **cp, cell_t *r, alt_set_t alt_set) { // CLEANUP

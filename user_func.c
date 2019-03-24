@@ -757,8 +757,7 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
       if(d && is_dep(d)) {
         assert_error(d->expr.arg[0] == c);
         drop(c);
-        uint8_t t = rtypes[i+1];
-        store_dep(d, tc, i + in + 1, t, 0);
+        store_dep(d, tc, i + in + 1, rtypes[i+1], 0);
         p->expr.arg[in + 1 + i] = d;
       }
     }

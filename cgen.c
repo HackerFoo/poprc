@@ -186,7 +186,7 @@ void gen_decls(cell_t *e) {
         if(NOT_FLAG(*c, trace, IMMEDIATE)) {
           FLAG_SET(*c, trace, DECL);
         }
-      } else if(c->n > count_deps(c) ||
+      } else if(direct_refs(c) > 1 ||
                 is_dep(c) ||
                 FLAG(*c, expr, PARTIAL)) {
         int x = cgen_lookup(e, c);

@@ -845,16 +845,6 @@ void last_use_mark_cell(cell_t *entry, cell_t *c) {
   }
 }
 
-// TODO similar to count_deps()
-bool no_direct_reference(cell_t *c) {
-  unsigned int n = c->n + 1;
-  if(!n) return true;
-  TRAVERSE(c, out) {
-    if(*p && !--n) return true;
-  }
-  return false;
-}
-
 void last_use_analysis(cell_t *entry) {
   set_prev_cells(entry);
   clear_used(entry);
@@ -862,7 +852,7 @@ void last_use_analysis(cell_t *entry) {
   // calls and returns
   FOR_TRACE_REV(c, entry) {
     last_use_mark_cell(entry, c);
-    if(!is_return(c) && !is_dep(c) && no_direct_reference(c)) {
+    if(!is_return(c) && !is_dep(c) && !direct_refs(c)) {
       trace_set_type(c, T_BOTTOM);
     }
   }

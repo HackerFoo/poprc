@@ -359,7 +359,10 @@ WORD("??", placeholder, 0, 1)
 OP(placeholder) {
   PRE(placeholder);
   CHECK_IF(!check_type(ctx->t, T_LIST), FAIL);
-  csize_t in = closure_in(c), n = closure_args(c);
+  csize_t
+    in = closure_in(c),
+    out = closure_out(c),
+    n = closure_args(c);
 
   if(n == 1) {
     *cp = CUT(c, expr.arg[0]);
@@ -367,7 +370,8 @@ OP(placeholder) {
   }
 
   assert_error(in >= 1);
-  CHECK(reduce_arg(c, in - 1, &CTX(list, 0, 0))); // *** should use ctx
+  CHECK(reduce_arg(c, in - 1, &CTX(list, csub(ctx->s.in, in),
+                                         csub(ctx->s.out, out))));
   COUNTUP(i, in - 1) {
     CHECK(reduce_arg(c, i, &CTX(any)));
     CHECK_IF(as_conflict(ctx->alt_set), FAIL);
@@ -384,7 +388,7 @@ OP(placeholder) {
   }
 
   cell_t *res = var(T_LIST, c, ctx->pos);
-  RANGEUP(i, in, n) { // CLEANUP abstract for external op
+  RANGEUP(i, in, n) {
     cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {
       store_dep_var(c, res, i, T_ANY, ctx->alt_set);

@@ -496,7 +496,6 @@ OP(assert) {
 
 // for internal use
 // very similar to assert
-// CLEANUP merge with assert
 WORD("seq", seq, 2, 1)
 OP(seq) {
   PRE(seq);
@@ -859,8 +858,7 @@ response func_type(cell_t **cp, context_t *ctx, uint8_t type) {
   CHECK(reduce_arg(c, 0, &CTX(t, type)));
   CHECK_DELAY();
 
-  *cp = mod_alt(ref(c->expr.arg[0]), ref(c->alt), ctx->alt_set);
-  drop(c);
+  store_reduced(cp, ctx, ref(c->expr.arg[0]));
   return SUCCESS;
 
  abort:
@@ -883,8 +881,6 @@ WORD("float_t", float_t, 1, 1)
 OP(float_t) {
   return func_type(cp, ctx, T_FLOAT);
 }
-
-// CLEANUP merge some string ops
 
 WORD("++", strcat, 2, 1)
 OP(strcat) {
@@ -1076,7 +1072,7 @@ OP(external) {
     LOG("extern name must be a constant %C", c);
   }
 
-  COUNTUP(i, in - 1) { // CLEANUP abstract for placeholder op
+  COUNTUP(i, in - 1) {
     if(i == 0 && io) {
       CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_IO)));
     } else {
