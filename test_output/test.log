@@ -74,31 +74,31 @@ _check_list_remaining_size: 0 + 1 = 1
 _check_list_remaining_size: 1 + 0 = 1
 list_remaining_size => 0
 @ log
-startle/log.c:483: test 1 + 2 = 3 [38;5;8mnlhfd[0m
-startle/log.c:484: WAZZUP d00d [38;5;8mc2d3p[0m
-startle/log.c:485: [123] [38;5;8mnosdv[0m
+startle/log.c:479: test 1 + 2 = 3 [38;5;8mnlhfd[0m
+startle/log.c:480: WAZZUP d00d [38;5;8mc2d3p[0m
+startle/log.c:481: [123] [38;5;8mnosdv[0m
 log => 0
 @ log_context
 __ print_context() __
-startle/log.c:591: A 1
-  startle/log.c:579: B 0
+startle/log.c:587: A 1
+  startle/log.c:575: B 0
 __ end print_context() __
 __ print_context() __
-startle/log.c:607: D 42
-  startle/log.c:598: E 42
+startle/log.c:603: D 42
+  startle/log.c:594: E 42
 __ end print_context() __
-startle/log.c:591: A 2
-  startle/log.c:593: (a) nonzero x [38;5;8mibvpj[0m
-startle/log.c:591: A 1
-  startle/log.c:579: B 0
-    startle/log.c:580: (b) zero x [38;5;8mifan5[0m
-    startle/log.c:582: printing context [38;5;8mfqhs8[0m
-  startle/log.c:593: (a) nonzero x [38;5;8magv7e[0m
-startle/log.c:574: C 3 [38;5;8mk7ehk[0m
-startle/log.c:607: D 42 [38;5;8mc83wt[0m
-  startle/log.c:598: E 42 [38;5;8mnvia3[0m
-    startle/log.c:599: printing context [38;5;8milwk9[0m
-  startle/log.c:609: exiting d [38;5;8mdcevf[0m
+startle/log.c:587: A 2
+  startle/log.c:589: (a) nonzero x [38;5;8mibvpj[0m
+startle/log.c:587: A 1
+  startle/log.c:575: B 0
+    startle/log.c:576: (b) zero x [38;5;8mifan5[0m
+    startle/log.c:578: printing context [38;5;8mfqhs8[0m
+  startle/log.c:589: (a) nonzero x [38;5;8magv7e[0m
+startle/log.c:570: C 3 [38;5;8mk7ehk[0m
+startle/log.c:603: D 42 [38;5;8mc83wt[0m
+  startle/log.c:594: E 42 [38;5;8mnvia3[0m
+    startle/log.c:595: printing context [38;5;8milwk9[0m
+  startle/log.c:605: exiting d [38;5;8mdcevf[0m
 log_context => 0
 @ lookup
 The total for 5 grapes at $0.50 each is $2.50.

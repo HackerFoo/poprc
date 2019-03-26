@@ -1113,7 +1113,7 @@ FORMAT(trace_cell, 'T') {
   cell_t *tc = (cell_t *)i;
   cell_t *entry = var_entry(tc);
   format_entry_short((val_t)entry);
-  printf("[%d]", var_index(entry, tc));
+  if(entry) printf("[%d]", var_index(entry, tc));
 }
 
 /* conditions */
