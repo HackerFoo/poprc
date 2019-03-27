@@ -83,6 +83,13 @@
       p++)
 #define TRAVERSE_ptrs_in(c) TRAVERSE_in_ptrs(c)
 
+#define TRAVERSE_const_in_ptrs(c)                                       \
+  for(cell_t *const *p = is_value(c) ? c->value.ptr : closure_next_arg_const(c), \
+        *const *_end = is_value(c) ? (is_list(c) ? &c->value.ptr[list_size(c)] : p) : &c->expr.arg[closure_in(c)]; \
+      p < _end;                                                         \
+      p++)
+#define TRAVERSE_const_ptrs_in(c) TRAVERSE_const_in_ptrs(c)
+
 #define TRAVERSE_args(c)                                                \
   if(!is_value(c))                                                      \
     for(cell_t **p = closure_next_user_arg(c),                          \
@@ -117,6 +124,13 @@
   if(!is_value(c))                                                      \
     for(cell_t **p = &c->expr.arg[closure_args(c) - closure_out(c)],    \
           **_end = &c->expr.arg[closure_args(c)];                       \
+        p < _end;                                                       \
+        p++)
+
+#define TRAVERSE_const_out(c)                                           \
+  if(!is_value(c))                                                      \
+    for(cell_t *const *p = &c->expr.arg[closure_args(c) - closure_out(c)], \
+          *const *_end = &c->expr.arg[closure_args(c)];                 \
         p < _end;                                                       \
         p++)
 

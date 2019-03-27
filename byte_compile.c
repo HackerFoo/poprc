@@ -69,7 +69,13 @@ static void print_value(const cell_t *c) {
 }
 
 // print bytecode for entry e
-void print_bytecode(cell_t *entry) {
+static uint16_t hashes[1024];
+void print_bytecode(cell_t *entry, bool tags) {
+  if(entry->entry.len > sizeof(hashes)) tags = false;
+  if(tags) {
+    zero(hashes);
+    hash_entry(entry, hashes);
+  }
   // word info (top line)
   printf("___ %s.%s (%d -> %d)",
          entry->module_name, entry->word_name,
@@ -153,9 +159,14 @@ void print_bytecode(cell_t *entry) {
     }
     if(t > entry->entry.in &&
        c->n + 1 == 0) {
-      printf(" <-- WARNING: zero refcount\n");
+      printf(" <-- WARNING: zero refcount");
     } else if(is_dep(c) && !c->expr.arg[0]) {
-      printf(" <-- WARNING: broken dep\n");
+      printf(" <-- WARNING: broken dep");
+    }
+    if(tags) {
+      tag_t tag;
+      write_tag(tag, hashes[t-1]);
+      printf(" " FADE(FORMAT_TAG) "\n", tag);
     } else {
       printf("\n");
     }
@@ -167,7 +178,7 @@ void print_bytecode(cell_t *entry) {
       cell_t *e = get_entry(c);
       if(e->entry.parent == entry && !e->op) {
         printf("\n");
-        print_bytecode(e);
+        print_bytecode(e, tags);
         e->op = OP_value;
       }
     }
@@ -939,7 +950,7 @@ COMMAND(bc, "print bytecode for a word, or all") {
     cell_t *e = entry_from_token(rest);
     if(e) {
       printf("\n");
-      print_bytecode(e);
+      print_bytecode(e, true);
     }
   } else {
     print_all_bytecode();
@@ -982,4 +993,60 @@ COMMAND(trace, "trace an instruction") {
 
 COMMAND(bt, "break on trace") {
   break_on_trace = true;
+}
+
+static
+csize_t dep_pos(const cell_t *entry,
+                const cell_t *tc) {
+  const cell_t *src = &entry[tr_index(tc->expr.arg[0])];
+  int index = tc - entry;
+  int pos = 1;
+  TRAVERSE(src, const, out) {
+    if(tr_index(*p) == index) {
+      return pos;
+    } else {
+      pos++;
+    }
+  }
+  return 0;
+}
+
+#define HASH(l, x) (hash = (hash * 1021 + (uint32_t)(l)) * 1979 + (uint32_t)(x))
+uint32_t hash_trace_cell(cell_t *entry, cell_t *tc, uint16_t *arr) {
+  int idx = tc - entry - 1;
+  assert_error(INRANGE(idx, 0, entry->entry.len));
+  if(arr && arr[idx]) return arr[idx];
+  uint32_t hash = 1;
+  if(!tc || !tc->op) {
+    HASH('n', 1);
+    goto end;
+  }
+
+  if(is_value(tc) && !is_list(tc)) {
+    if(is_var(tc)) {
+      HASH('v', tc->pos);
+    } else if(ONEOF(tc->value.type, T_INT, T_SYMBOL)) {
+      HASH('i', tc->value.integer);
+    }
+    HASH('t', tc->value.type);
+    goto end;
+  }
+  TRAVERSE(tc, in, ptrs) {
+    HASH('a', hash_trace_cell(entry, &entry[tr_index(*p)], arr));
+  }
+  if(is_dep(tc)) {
+    HASH('d', dep_pos(entry, tc));
+  }
+  HASH('o', tc->op);
+  if(!is_value(tc)) HASH('O', closure_out(tc));
+end:
+  if(arr) arr[idx] = hash;
+  return hash;
+}
+#undef HASH
+
+void hash_entry(cell_t *entry, uint16_t *arr) {
+  FOR_TRACE(c, entry) {
+    hash_trace_cell(entry, c, arr);
+  }
 }

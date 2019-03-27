@@ -671,7 +671,7 @@ void print_bytecode_line(cell_t *l, unsigned int n) {
   char name_buf[8];
   snprintf(name_buf, sizeof(name_buf), "fn%d", n++);
   cell_t *e = parse_eval_def(string_seg(name_buf), l);
-  print_bytecode(e);
+  print_bytecode(e, false);
 }
 
 COMMAND(bc_in, "print bytecode for each line") {
