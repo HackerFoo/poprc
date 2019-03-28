@@ -1218,6 +1218,9 @@ cell_t *trace_seq_at(cell_t *a, cell_t *b, cell_t *entry, cell_t *tc) {
   p->n++;
   tc->expr.arg[1] = index_tr(var_index(entry, q));
   q->n++;
+  LOG("trace_seq_at %s[%d] <- %O %d %d %H",
+      entry->word_name, tc-entry, tc->op, p-entry, q-entry,
+      hash_trace_cell(entry, tc, NULL));
   return tc;
 }
 
