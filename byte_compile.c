@@ -69,9 +69,9 @@ static void print_value(const cell_t *c) {
 }
 
 // print bytecode for entry e
-static uint16_t hashes[1024];
+static uint32_t hashes[1024];
 void print_bytecode(cell_t *entry, bool tags) {
-  if(entry->entry.len > sizeof(hashes)) tags = false;
+  if(entry->entry.len > LENGTH(hashes)) tags = false;
   if(tags) {
     zero(hashes);
     hash_entry(entry, hashes);
@@ -1012,15 +1012,17 @@ csize_t dep_pos(const cell_t *entry,
 }
 
 #define HASH(l, x) (hash = (hash * 1021 + (uint32_t)(l)) * 1979 + (uint32_t)(x))
-uint32_t hash_trace_cell(cell_t *entry, cell_t *tc, uint16_t *arr) {
-  int idx = tc - entry - 1;
-  assert_error(INRANGE(idx, 0, entry->entry.len));
-  if(arr && arr[idx]) return arr[idx];
+uint32_t hash_trace_cell(cell_t *entry, cell_t *tc, uint32_t *arr) {
   uint32_t hash = 1;
-  if(!tc || !tc->op) {
+  int idx = tc - entry - 1;
+
+  if(!tc || !tc->op ||
+     !INRANGE(idx, 0, entry->entry.len)) {
     HASH('n', 1);
-    goto end;
+    return hash;
   }
+
+  if(arr && arr[idx]) return arr[idx];
 
   if(is_value(tc) && !is_list(tc)) {
     if(is_var(tc)) {
@@ -1045,8 +1047,14 @@ end:
 }
 #undef HASH
 
-void hash_entry(cell_t *entry, uint16_t *arr) {
+void hash_entry(cell_t *entry, uint32_t *arr) {
   FOR_TRACE(c, entry) {
     hash_trace_cell(entry, c, arr);
   }
+}
+
+FORMAT(tag, 'H') {
+  tag_t tag;
+  write_tag(tag, i);
+  printf(FORMAT_TAG, tag);
 }

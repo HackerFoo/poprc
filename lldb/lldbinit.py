@@ -47,7 +47,7 @@ def plog(debugger, command, result, dict):
 def bc(debugger, command, result, dict):
     args = shlex.split(command)
     if len(args) > 0:
-        dbgcall("p print_bytecode(&trace_cells[{}])".format(args[0]))
+        dbgcall("p print_bytecode(&trace_cells[{}], 1)".format(args[0]))
 
 def pt(debugger, command, result, dict):
     args = shlex.split(command)
