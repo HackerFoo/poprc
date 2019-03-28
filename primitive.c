@@ -550,16 +550,18 @@ OP(seq) {
   return abort_op(rsp, cp, ctx);
 }
 
-// merge two otherwise's into a seq
-bool rule_merge_otherwise(context_t *ctx) {
+// merge two unless's into a seq
+// X Y Z unless unless --> X Z seq
+// ** what if Y fails?
+bool rule_merge_unless(context_t *ctx) {
   if(ctx->inv) {
     cell_t *c = ctx->src;
     cell_t *p = ctx->up->src;
-    if(p->op == OP_otherwise && p->expr.arg[0] == c) {
-      LOG("rule match: merge_otherwise %C %C", p, c);
+    if(p->op == OP_unless && p->expr.arg[1] == c) {
+      LOG("rule match: merge_unless %C %C", p, c);
       p->op = OP_seq;
-      p->expr.arg[0] = p->expr.arg[1];
-      p->expr.arg[1] = ref(c->expr.arg[0]);
+      //p->expr.arg[1] = p->expr.arg[0];
+      p->expr.arg[1] = ref(c->expr.arg[1]);
       drop(c);
       ctx->retry = true;
       return true;
@@ -570,11 +572,11 @@ bool rule_merge_otherwise(context_t *ctx) {
 
 // very similar to assert
 // TODO merge common code
-WORD("otherwise", otherwise, 2, 1)
-OP(otherwise) {
-  PRE(otherwise);
-  RULE(merge_otherwise);
-  CHECK_PRIORITY(PRIORITY_OTHERWISE);
+WORD("unless", unless, 2, 1)
+OP(unless) {
+  PRE(unless);
+  RULE(merge_unless);
+  CHECK_PRIORITY(PRIORITY_UNLESS);
 
   cell_t *res = NULL;
   cell_t *tc = NULL, *tp = NULL;
@@ -582,40 +584,40 @@ OP(otherwise) {
   // reduce each alt
   cell_t **p = &c->expr.arg[0];
   cell_t **q = &c->expr.arg[1];
-  while(*p) {
-    response rsp0 = reduce(p, WITH(&CTX(any), inv, !ctx->inv));
+  while(*q) {
+    response rsp0 = reduce(q, WITH(&CTX(any), inv, !ctx->inv));
     CHECK_IF(rsp0 == RETRY, RETRY);
     if(rsp0 == DELAY) {
       rsp = DELAY;
     } else {
-      CHECK_IF(!is_var(*p) &&
-               !(*p)->value.var &&
+      CHECK_IF(!is_var(*q) &&
+               !(*q)->value.var &&
                rsp0 != FAIL, FAIL);
       if(rsp0 != FAIL) {
-        tc = concatenate_conditions(trace_partial(OP_otherwise, 0, *p), tc);
+        tc = concatenate_conditions(trace_partial(OP_unless, 1, *q), tc);
         if(!tp) tp = tc;
       }
     }
 
-    p = &(*p)->alt;
+    q = &(*q)->alt;
   }
 
-  CHECK(reduce_arg(c, 1, &CTX_UP));
+  CHECK(reduce_arg(c, 0, &CTX_UP));
   CHECK_DELAY();
 
-  if(tc && is_var(*q)) {
+  if(tc && is_var(*p)) {
     // propagate type
     cell_t *entry = var_entry(tc);
-    for(cell_t *p = tc; p != tp;
-        p = &entry[tr_index(p->expr.arg[1])]) {
-      trace_set_type(p, (*q)->value.type);
+    for(cell_t *x = tc; x != tp;
+        x = &entry[tr_index(x->expr.arg[0])]) {
+      trace_set_type(x, (*p)->value.type);
     }
 
-    res = var_create((*q)->value.type, tc, 0, 0);
-    trace_arg(tp, 1, *q);
+    res = var_create((*p)->value.type, tc, 0, 0);
+    trace_arg(tp, 0, *p);
   } else {
-    // handle is_var(*q)?
-    res = take(q);
+    // handle is_var(*p)?
+    res = take(p);
     unique(&res);
     drop(res->alt);
     add_conditions_var(res, tc);
@@ -627,6 +629,16 @@ OP(otherwise) {
 
 abort:
   return abort_op(rsp, cp, ctx);
+}
+
+WORD("otherwise", otherwise, 2, 1)
+OP(otherwise) {
+  cell_t *c = *cp;
+  cell_t *p = c->expr.arg[0];
+  c->expr.arg[0] = c->expr.arg[1];
+  c->expr.arg[1] = p;
+  c->op = OP_unless;
+  return RETRY;
 }
 
 WORD("id", id, 1, 1)

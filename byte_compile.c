@@ -911,19 +911,12 @@ bool mark_no_skip(cell_t *entry, cell_t *c, int last_return, int last_partial) {
   }
 
   // mark dependencies
-  switch(c->op) {
-  case OP_seq:
-  case OP_assert:
+  if(ONEOF(c->op, OP_seq, OP_assert, OP_unless)) {
     res &= mark_no_skip(entry, &entry[tr_index(c->expr.arg[0])], last_return, last_partial);
-    break;
-  case OP_otherwise:
-    res &= mark_no_skip(entry, &entry[tr_index(c->expr.arg[1])], last_return, last_partial);
-    break;
-  default:
+  } else {
     TRAVERSE(c, in) {
       res &= mark_no_skip(entry, &entry[tr_index(*p)], last_return, last_partial);
     }
-    break;
   }
 
   if(res && i < last_return) FLAG_SET(*c, trace, NO_SKIP);

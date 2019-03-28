@@ -569,12 +569,12 @@ void trace_store_row_assert(cell_t *c, cell_t *r) {
   t->trace.type = T_LIST;
 }
 
-// for otherwise and assert
+// for unless and assert
 cell_t *trace_partial(op op, int n, cell_t *p) {
   CONTEXT_LOG("trace_partial %O, arg[%d] = %C", op, n, p);
   cell_t *entry = var_entry(p->value.var);
   int a = is_var(p) ? var_index(entry, p->value.var) :
-    op == OP_otherwise && p->value.var ? trace_store_something(entry, &p->value.var) : // (*)
+    op == OP_unless && p->value.var ? trace_store_something(entry, &p->value.var) : // (*)
     trace_store_value(entry, p);
   // (*) Because the value will be discarded, just use Something
   int x = trace_alloc(entry, 2);
@@ -1119,17 +1119,7 @@ FORMAT(trace_cell, 'T') {
 /* conditions */
 
 cell_t **passthrough_arg(cell_t *p) {
-  switch(p->op) {
-  case OP_assert:
-  case OP_seq:
-    return &p->expr.arg[0];
-    break;
-  case OP_otherwise:
-    return &p->expr.arg[1];
-    break;
-  default:
-    return NULL;
-  }
+  return ONEOF(p->op, OP_assert, OP_seq, OP_unless) ? &p->expr.arg[0] : NULL;
 }
 
 cell_t **find_passthrough(cell_t *p) {
@@ -1145,7 +1135,7 @@ cell_t **find_passthrough(cell_t *p) {
   return a;
 }
 
-// assert & otherwise form lists that can be concatenated
+// assert & unless form lists that can be concatenated
 // TODO use refcounting to avoid destructive concatenation
 cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
   if(a == NULL) return b;
@@ -1160,15 +1150,13 @@ cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
   // find the end of a
   while(p != b) {
     switch(p->op) {
+    case OP_unless:
+      LOG_WHEN(tr_index(p->expr.arg[1]) == bi,
+               "duplicate arg for unless: %s %d <- %d",
+               entry->word_name, p-entry, b-entry);
     case OP_assert:
     case OP_seq:
       arg = &p->expr.arg[0];
-      break;
-    case OP_otherwise:
-      arg = &p->expr.arg[1];
-      LOG_WHEN(tr_index(p->expr.arg[0]) == bi,
-               "duplicate arg for otherwise: %s %d <- %d",
-               entry->word_name, p-entry, b-entry);
       break;
     default:
       LOG("trace_seq: %s %d ... %d <- %d",
@@ -1199,27 +1187,19 @@ cell_t *trace_seq(cell_t *a, cell_t *b) {
 
 cell_t *trace_seq_at(cell_t *a, cell_t *b, cell_t *entry, cell_t *tc) {
   assert_error(entry_has(entry, b));
-  cell_t *p, *q;
-  if(b->op == OP_assert) {
-    p = a;
-    q = &entry[tr_index(b->expr.arg[1])];
-    tc->op = OP_assert;
-  } else if(b->op == OP_otherwise) {
-    p = &entry[tr_index(b->expr.arg[0])];
-    q = a;
-    tc->op = OP_otherwise;
+  if(ONEOF(b->op, OP_assert, OP_unless)) {
+    tc->op = b->op;
+    b = &entry[tr_index(b->expr.arg[1])];
   } else {
-    p = a;
-    q = b;
     tc->op = OP_seq;
   }
   tc->pos = 0;
-  tc->expr.arg[0] = index_tr(var_index(entry, p));
-  p->n++;
-  tc->expr.arg[1] = index_tr(var_index(entry, q));
-  q->n++;
+  tc->expr.arg[0] = index_tr(var_index(entry, a));
+  a->n++;
+  tc->expr.arg[1] = index_tr(var_index(entry, b));
+  b->n++;
   LOG("trace_seq_at %s[%d] <- %O %d %d %H",
-      entry->word_name, tc-entry, tc->op, p-entry, q-entry,
+      entry->word_name, tc-entry, tc->op, a-entry, b-entry,
       hash_trace_cell(entry, tc, NULL));
   return tc;
 }

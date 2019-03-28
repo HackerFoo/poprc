@@ -114,7 +114,7 @@ ___ algorithm.sum_r0 (2 -> 1) x2 rec ___
 [6] __primitive.add 4 2 :: i x1
 [7] algorithm.sum_r0 6 3 :: v x1
 [8] return [5] -> 10
-[9] __primitive.otherwise 4 2 :: i x1
+[9] __primitive.unless 2 4 :: i x1
 [10] return [9]
 
 ___ control.!! (3 -> 2) ___
@@ -194,7 +194,7 @@ ___ control.bitree (4 -> 1) x2 rec ___
 [10] __primitive.ap 7 9 1 -> 11 :: v? x1
 [11] __primitive.dep 10 :: a x2
 [12] return [11] -> 16
-[13] __primitive.otherwise 11 15 :: a x1
+[13] __primitive.unless 15 11 :: a x1
 [14] __primitive.ap 4 2 -> 15 :: v? x1
 [15] __primitive.dep 14 :: a x1
 [16] return [13]
@@ -715,7 +715,7 @@ ___ control.while (2 -> 1) x2 rec ___
 [5] __primitive.seq 6 &4 :: v x1
 [6] control.while 4 1 :: v x1
 [7] return [5] -> 9
-[8] __primitive.otherwise 4 2 :: a x1
+[8] __primitive.unless 2 4 :: a x1
 [9] return [8]
 
 ___ gen_ed.count_lines (2 -> 3) ___
@@ -1049,8 +1049,8 @@ ___ gen_ed.write_list_r0 (3 -> 2) x2 rec ___
 [11] __primitive.dep 9 :: o x1
 [12] gen_ed.write_list_r0 9 11 4 -> 13 :: v x2
 [13] __primitive.dep 12 :: v x1
-[14] __primitive.otherwise &5 2 :: o x1
-[15] __primitive.otherwise 5 3 :: y x1
+[14] __primitive.unless 2 &5 :: o x1
+[15] __primitive.unless 3 5 :: y x1
 [16] return [15 14] -> 18
 [17] __primitive.seq 12 &6 :: v x1
 [18] return [17 6]
@@ -1081,24 +1081,24 @@ ___ io.getline_loop (3 -> 3) x3 rec ___
 [14] __primitive.dep 13 :: o x1
 [15] __primitive.seq 13 &8 :: y x1
 [16] return [15 9 8] -> 37
-[17] __primitive.otherwise &6 21 :: y x1
+[17] __primitive.unless 21 &6 :: y x1
 [18] __primitive.eq_str &5 19 :: y x4
 [19] val "" :: s x1
 [20] __primitive.not &18 :: y x3
 [21] __primitive.assert 23 &20 :: y? x1
 [22] __primitive.strcat &1 5 :: s x1
 [23] io.getline_loop &4 &10 22 -> 29 34 :: y x3
-[25] __primitive.otherwise &6 26 :: y x1
+[25] __primitive.unless 26 &6 :: y x1
 [26] __primitive.assert 4 &18 :: y? x1
-[27] __primitive.otherwise &6 28 :: o x1
+[27] __primitive.unless 28 &6 :: o x1
 [28] __primitive.assert 29 &20 :: o x1
 [29] __primitive.dep 23 :: o x1
-[30] __primitive.otherwise &6 31 :: o x1
+[30] __primitive.unless 31 &6 :: o x1
 [31] __primitive.assert 10 &18 :: o x1
-[32] __primitive.otherwise &6 33 :: s x1
+[32] __primitive.unless 33 &6 :: s x1
 [33] __primitive.assert 34 20 :: s x1
 [34] __primitive.dep 23 :: s x1
-[35] __primitive.otherwise 6 36 :: s x1
+[35] __primitive.unless 36 6 :: s x1
 [36] __primitive.assert 1 18 :: s x1
 [37] return [17 27 32] -> 38
 [38] return [25 30 35]
@@ -1242,7 +1242,7 @@ ___ list.filter_r0 (3 -> 1) x3 rec ___
 [15] __primitive.ap 5 1 :: l x1
 [16] list.filter_r0 3 4 13 :: v x1
 [17] return [14] -> 19
-[18] __primitive.otherwise 5 2 :: l x1
+[18] __primitive.unless 2 5 :: l x1
 [19] return [18]
 
 ___ list.filter_step (3 -> 2) x2 ___
@@ -1281,7 +1281,7 @@ ___ list.foldl_r0 (3 -> 1) x2 rec ___
 [8] __primitive.compose 7 1 :: l x1
 [9] list.foldl_r0 3 4 8 :: v x1
 [10] return [6] -> 12
-[11] __primitive.otherwise 5 1 :: l x1
+[11] __primitive.unless 1 5 :: l x1
 [12] return [11]
 
 ___ list.foldl_step (3 -> 3) ___
@@ -1312,7 +1312,7 @@ ___ list.foldr_r0 (3 -> 1) x2 rec ___
 [8] __primitive.dep 7 :: a x1
 [9] list.foldr_r0 3 4 8 :: v x1
 [10] return [6] -> 12
-[11] __primitive.otherwise 5 1 :: l x1
+[11] __primitive.unless 1 5 :: l x1
 [12] return [11]
 
 ___ list.foldr_r0 (3 -> 1) x2 rec ___
@@ -1326,7 +1326,7 @@ ___ list.foldr_r0 (3 -> 1) x2 rec ___
 [8] __primitive.dep 7 :: a x1
 [9] list.foldr_r0 3 4 8 :: v x1
 [10] return [6] -> 12
-[11] __primitive.otherwise 5 1 :: l x1
+[11] __primitive.unless 1 5 :: l x1
 [12] return [11]
 
 ___ list.foldr_step (3 -> 3) ___
@@ -1385,7 +1385,7 @@ ___ list.length_r0 (2 -> 1) x2 rec ___
 [7] val 1 :: i x1
 [8] list.length_r0 6 3 :: v x1
 [9] return [5] -> 11
-[10] __primitive.otherwise 4 2 :: i x1
+[10] __primitive.unless 2 4 :: i x1
 [11] return [10]
 
 ___ list.listdup (2 -> 1) ___
@@ -1430,7 +1430,7 @@ ___ list.map_r0 (3 -> 1) x2 rec ___
 [8] __primitive.compose 7 2 :: l x1
 [9] list.map_r0 4 8 1 :: v x1
 [10] return [6] -> 12
-[11] __primitive.otherwise 5 2 :: l x1
+[11] __primitive.unless 2 5 :: l x1
 [12] return [11]
 
 ___ list.merge (2 -> 1) ___
@@ -1466,12 +1466,12 @@ ___ list.merge_loop (3 -> 1) x4 rec ___
 [23] __primitive.ap 17 1 :: l x1
 [24] list.merge_loop 22 21 20 :: v x1
 [25] return [24] -> 28
-[26] __primitive.otherwise 5 27 :: l x1
+[26] __primitive.unless 27 5 :: l x1
 [27] list.merge_loop_q0 1 2 :: l x1
 [28] return [26] -> 33
 [29] __primitive.ap 2 -> 30 :: v? x1
 [30] __primitive.dep 29 :: a x1
-[31] __primitive.otherwise 30 32 :: l x1
+[31] __primitive.unless 32 30 :: l x1
 [32] list.merge_loop_q0 1 3 :: l x1
 [33] return [31]
 
@@ -1588,7 +1588,7 @@ ___ list.reverse_r0 (2 -> 1) x2 rec ___
 [6] __primitive.pushr 2 4 :: l x1
 [7] list.reverse_r0 6 3 :: v x1
 [8] return [5] -> 10
-[9] __primitive.otherwise 4 2 :: l x1
+[9] __primitive.unless 2 4 :: l x1
 [10] return [9]
 
 ___ list.reverse_r0 (2 -> 1) x2 rec ___
@@ -1600,7 +1600,7 @@ ___ list.reverse_r0 (2 -> 1) x2 rec ___
 [6] __primitive.pushr 2 4 :: l x1
 [7] list.reverse_r0 6 3 :: v x1
 [8] return [5] -> 10
-[9] __primitive.otherwise 4 2 :: l x1
+[9] __primitive.unless 2 4 :: l x1
 [10] return [9]
 
 ___ list.seq_list (1 -> 1) ___
@@ -1619,7 +1619,7 @@ ___ list.seq_list_r0 (2 -> 1) x2 rec ___
 [6] __primitive.seq 4 2 :: y x1
 [7] list.seq_list_r0 6 3 :: v x1
 [8] return [5] -> 10
-[9] __primitive.otherwise 4 2 :: y x1
+[9] __primitive.unless 2 4 :: y x1
 [10] return [9]
 
 ___ list.sort (1 -> 1) ___
@@ -1649,7 +1649,7 @@ ___ list.sort_r0 (2 -> 1) x2 rec ___
 [18] val True :: y x1
 [19] __primitive.seq 16 17 :: l x2
 [20] return [19] -> 24
-[21] __primitive.otherwise 19 23 :: a x1
+[21] __primitive.unless 23 19 :: a x1
 [22] __primitive.ap 1 2 -> 23 :: v? x1
 [23] __primitive.dep 22 :: a x1
 [24] return [21]
@@ -1724,7 +1724,7 @@ ___ logic.default (2 -> 1) x2 ___
 [1] var :: ?a x1
 [2] var :: ?a x2
 [3] return [2] -> 5
-[4] __primitive.otherwise 2 1 :: a x1
+[4] __primitive.unless 1 2 :: a x1
 [5] return [4]
 
 ___ logic.implies (2 -> 1) x2 ___
@@ -1753,9 +1753,9 @@ ___ logic.otherwise2 (4 -> 2) ___
 [2] var :: ?a x1
 [3] var :: ?a x1
 [4] var :: ?a x2
-[5] __primitive.otherwise &4 6 :: l x1
-[6] __primitive.otherwise 3 1 :: l x1
-[7] __primitive.otherwise 4 2 :: a x1
+[5] __primitive.unless 6 &4 :: l x1
+[6] __primitive.unless 1 3 :: l x1
+[7] __primitive.unless 2 4 :: a x1
 [8] return [7 5]
 
 ___ logic.valid (1 -> 1) x2 ___
@@ -1763,7 +1763,7 @@ ___ logic.valid (1 -> 1) x2 ___
 [2] __primitive.seq 3 1 :: y x1
 [3] val True :: y x1
 [4] return [2] -> 7
-[5] __primitive.otherwise 1 6 :: y x1
+[5] __primitive.unless 6 1 :: y x1
 [6] val False :: y x1
 [7] return [5]
 
@@ -1773,7 +1773,7 @@ ___ logic.vifte (3 -> 1) x2 ___
 [3] var :: ?a x2
 [4] __primitive.seq 2 3 :: a x1
 [5] return [4] -> 7
-[6] __primitive.otherwise 3 1 :: a x1
+[6] __primitive.unless 1 3 :: a x1
 [7] return [6]
 
 ___ num.even (1 -> 1) ___
@@ -2256,7 +2256,7 @@ ___ tests.assert_otherwise_quote (2 -> 1) ___
 [2] var :: ?a x1
 [3] __primitive.assert 4 1 :: l? x1
 [4] val Something :: y x1
-[5] __primitive.otherwise 3 2 :: a x1
+[5] __primitive.unless 2 3 :: a x1
 [6] return [5]
 
 ___ tests.assert_seq (2 -> 1) ___
@@ -2481,20 +2481,20 @@ ___ tests.calc_loop (2 -> 1) x15 rec ___
 [168] __primitive.pushr 167 163 :: l x1
 [169] tests.calc_loop 25 168 :: v x1
 [170] return [166] -> 185
-[171] __primitive.otherwise 22 25 :: y x1
-[172] __primitive.otherwise 31 171 :: y x1
-[173] __primitive.otherwise 43 172 :: y x1
-[174] __primitive.otherwise 55 173 :: y x1
-[175] __primitive.otherwise 67 174 :: y x1
-[176] __primitive.otherwise 79 175 :: y x1
-[177] __primitive.otherwise 91 176 :: y x1
-[178] __primitive.otherwise 104 177 :: y x1
-[179] __primitive.otherwise 115 178 :: y x1
-[180] __primitive.otherwise 124 179 :: y x1
-[181] __primitive.otherwise 133 180 :: y x1
-[182] __primitive.otherwise 141 181 :: y x1
-[183] __primitive.otherwise 153 182 :: y x1
-[184] __primitive.otherwise 163 183 :: y x1
+[171] __primitive.unless 25 22 :: y x1
+[172] __primitive.unless 171 31 :: y x1
+[173] __primitive.unless 172 43 :: y x1
+[174] __primitive.unless 173 55 :: y x1
+[175] __primitive.unless 174 67 :: y x1
+[176] __primitive.unless 175 79 :: y x1
+[177] __primitive.unless 176 91 :: y x1
+[178] __primitive.unless 177 104 :: y x1
+[179] __primitive.unless 178 115 :: y x1
+[180] __primitive.unless 179 124 :: y x1
+[181] __primitive.unless 180 133 :: y x1
+[182] __primitive.unless 181 141 :: y x1
+[183] __primitive.unless 182 153 :: y x1
+[184] __primitive.unless 183 163 :: y x1
 [185] return [184]
 
 ___ tests.calc_step (2 -> 1) x14 ___
@@ -2887,7 +2887,7 @@ ___ tests.default_max (2 -> 1) x2 ___
 [3] __primitive.lt &2 &1 :: y x1
 [4] __primitive.assert 1 3 :: i? x2
 [5] return [4] -> 7
-[6] __primitive.otherwise 4 2 :: i x1
+[6] __primitive.unless 2 4 :: i x1
 [7] return [6]
 
 ___ tests.del (0 -> 1) x2 ___
@@ -3136,8 +3136,8 @@ ___ tests.f9 (2 -> 1) x3 ___
 [2] var :: ?a x2
 [3] return [2] -> 4
 [4] return [1] -> 8
-[5] __primitive.otherwise 2 7 :: a x1
-[6] __primitive.otherwise 1 5 :: i x1
+[5] __primitive.unless 7 2 :: a x1
+[6] __primitive.unless 5 1 :: i x1
 [7] val 3 :: i x1
 [8] return [6]
 
@@ -3162,7 +3162,7 @@ ___ tests.failthru (3 -> 2) x2 ___
 [5] __primitive.dep 4 :: a x1
 [6] __primitive.dep 4 :: a x1
 [7] return [6 5] -> 9
-[8] __primitive.otherwise &2 3 :: a x1
+[8] __primitive.unless 3 &2 :: a x1
 [9] return [8 2]
 
 ___ tests.fib (1 -> 1) x2 rec ___
@@ -3450,25 +3450,25 @@ ___ tests.oseq (2 -> 1) ___
 
 ___ tests.ow_assert (1 -> 1) ___
 [1] var :: ?a x1
-[2] __primitive.otherwise 1 3 :: y x1
+[2] __primitive.unless 3 1 :: y x1
 [3] val True :: y x1
 [4] return [2]
 
 ___ tests.ow_assert2 (2 -> 1) ___
 [1] var :: ?a x1
 [2] var :: ?a x1
-[3] __primitive.otherwise 1 2 :: y x1
+[3] __primitive.unless 2 1 :: y x1
 [4] return [3]
 
 ___ tests.ow_assert3 (2 -> 1) ___
 [1] var :: ?a x1
 [2] var :: ?a x1
-[3] __primitive.otherwise 1 2 :: y x1
+[3] __primitive.unless 2 1 :: y x1
 [4] return [3]
 
 ___ tests.ow_not (1 -> 1) ___
 [1] var :: ?a x1
-[2] __primitive.otherwise 1 3 :: y x1
+[2] __primitive.unless 3 1 :: y x1
 [3] val True :: y x1
 [4] return [2]
 
@@ -3612,7 +3612,7 @@ ___ tests.spaces (1 -> 1) x2 ___
 [7] return [5] -> 12
 [8] val Something :: y x1
 [9] __primitive.assert 8 3 :: y x1
-[10] __primitive.otherwise 9 11 :: y x1
+[10] __primitive.unless 11 9 :: y x1
 [11] val False :: y x1
 [12] return [10]
 
@@ -3810,7 +3810,7 @@ ___ tests.vifte_collatz (1 -> 1) x2 rec ___
 [3] __primitive.seq 4 &2 :: v x1
 [4] tests.vifte_collatz 2 :: v x1
 [5] return [3] -> 7
-[6] __primitive.otherwise 2 1 :: i x1
+[6] __primitive.unless 1 2 :: i x1
 [7] return [6]
 
 ___ tests.vifte_collatz_step (1 -> 1) x2 ___
@@ -3841,7 +3841,7 @@ ___ tests.vifte_quote (1 -> 1) x2 ___
 [3] __primitive.add 1 4 :: i x1
 [4] val 1 :: i x1
 [5] return [2] -> 8
-[6] __primitive.otherwise 1 7 :: i x1
+[6] __primitive.unless 7 1 :: i x1
 [7] val 0 :: i x1
 [8] return [6]
 

@@ -225,7 +225,7 @@ void gen_decls(cell_t *e) {
 }
 
 bool gen_skip(const cell_t *c) {
-  return ONEOF(c->op, OP_dep, OP_seq, OP_otherwise);
+  return ONEOF(c->op, OP_dep, OP_seq, OP_unless);
 }
 
 static
@@ -280,20 +280,14 @@ bool print_external_header(const char *str) {
 }
 
 bool gen_is_aliased(const cell_t *c) {
-  return ONEOF(c->op, OP_seq, OP_assert, OP_otherwise);
+  return ONEOF(c->op, OP_seq, OP_assert, OP_unless);
 }
 
 int cgen_lookup(const cell_t *e, const cell_t *c) {
   LOOP(e->entry.len) {
-    switch(c->op) {
-    case OP_seq:
-    case OP_assert:
+    if(ONEOF(c->op, OP_seq, OP_assert, OP_unless)) {
       c = &e[tr_index(c->expr.arg[0])];
-      break;
-    case OP_otherwise:
-      c = &e[tr_index(c->expr.arg[1])];
-      break;
-    default:
+    } else {
       return c - e;
     }
   }
