@@ -120,7 +120,7 @@ filter:
   [[[]] pushl] dip11
     [[filter_step] pushl .] pushl
     [tail head head valid]
-    iterate tail head
+    iterate head
 
 __ [.. a] [b ..] [p] --> [..] [a b ..] if a p, otherwise [..] [b ..]
 filter_step: [[popr] dip12] dip23 pushif

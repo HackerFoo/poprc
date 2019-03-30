@@ -32,6 +32,7 @@ __ list
 [4 5 6] [3-] map
   [4 3 - 5 3 - 6 3 -]
 [4 5 6] [odd] filter
+  [5]
 3 4 listdup
   [4 4 4]
 [1 2 3] reverse

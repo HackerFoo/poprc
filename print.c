@@ -104,7 +104,10 @@ char const *op_name(op op) {
 }
 
 void get_name(const cell_t *c, const char **module_name, const char **word_name) {
-  if(is_user_func(c)) {
+  if(!c) {
+    *module_name = "null";
+    *word_name = "null";
+  } else if(is_user_func(c)) {
     cell_t *e = c->expr.arg[closure_in(c)];
     if(is_trace_cell(e)) {
       *module_name = e->module_name;

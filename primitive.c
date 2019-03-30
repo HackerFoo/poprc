@@ -467,6 +467,8 @@ OP(assert) {
 
     if(q_var) {
       tc = trace_partial(OP_assert, 1, q);
+    } else {
+      reserve_condition(&q->value.var);
     }
   }
   CHECK(reduce_arg(c, 0, &CTX_UP));
@@ -503,7 +505,6 @@ OP(seq) {
   cell_t *res = NULL;
   cell_t *tc = NULL;
   cell_t *q = NULL;
-  cell_t *entry = NULL;
   bool q_var = false;
   CHECK(reduce_arg(c, 1, &CTX(any))); // don't split arg here?
   if(rsp == SUCCESS) {
@@ -512,10 +513,8 @@ OP(seq) {
 
     if(q_var) {
       tc = trace_partial(OP_seq, 1, q); // drop on abort?
-    } else if(q->value.var && !find_passthrough(q->value.var)) {
-      // reserve space
-      entry = var_entry(q->value.var);
-      tc = &entry[trace_alloc(entry, 2)];
+    } else {
+      reserve_condition(&q->value.var);
     }
   }
   CHECK(reduce_arg(c, 0, &CTX_UP));
@@ -531,16 +530,7 @@ OP(seq) {
     res = take(p);
     unique(&res);
     drop(res->alt);
-    if(entry) {
-      if(res->value.var) { // *** messy
-        res->value.var = trace_seq_at(res->value.var, q->value.var, entry, tc);
-      } else {
-        res->value.var = q->value.var;
-        trace_drop(tc);
-      }
-    } else {
-      add_conditions_var(res, tc, q);
-    }
+    add_conditions_var(res, tc, q);
   }
 
   store_reduced(cp, ctx, res);

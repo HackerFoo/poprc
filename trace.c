@@ -1118,21 +1118,30 @@ FORMAT(trace_cell, 'T') {
 
 /* conditions */
 
-cell_t **passthrough_arg(cell_t *p) {
-  return ONEOF(p->op, OP_assert, OP_seq, OP_unless) ? &p->expr.arg[0] : NULL;
+int copy_conditions(cell_t *entry, int i, int v) {
+  if(!i || i == v) return v;
+  cell_t *tc = &entry[i];
+  if(!ONEOF(tc->op, OP_assert, OP_seq, OP_unless)) return v;
+  int a = tr_index(tc->expr.arg[0]);
+  int an = copy_conditions(entry, a, v);
+  if(a == an) return i;
+  int x = i;
+  if(a) {
+    x = trace_copy(entry, tc);
+    entry[x].n = ~0;
+    entry[tr_index(tc->expr.arg[1])].n++;
+  }
+  entry[x].expr.arg[0] = index_tr(an);
+  if(an) entry[an].n++;
+  LOG("copy condition in %s: %d -> %d", entry->word_name, i, x);
+  return x;
 }
 
-cell_t **find_passthrough(cell_t *p) {
-  if(!p) return NULL;
-  cell_t *entry = var_entry(p);
-  cell_t **a;
-  do {
-    a = passthrough_arg(p);
-    if(!a) return NULL;
-    if(!*a) return a;
-    p = &entry[tr_index(*a)];
-  } while(p);
-  return a;
+void reserve_condition(cell_t **p) {
+  if(*p) {
+    cell_t *entry = var_entry(*p);
+    *p = &entry[copy_conditions(entry, var_index(entry, *p), 0)];
+  }
 }
 
 // assert & unless form lists that can be concatenated
@@ -1140,68 +1149,14 @@ cell_t **find_passthrough(cell_t *p) {
 cell_t *concatenate_conditions(cell_t *a, cell_t *b) {
   if(a == NULL) return b;
   if(b == NULL) return a;
-  cell_t **arg = NULL;
   cell_t *entry = var_entry(a);
   b = var_for_entry(entry, b);
   assert_error(b, "%s %d %d", entry->word_name, a-entry, b-entry);
-  cell_t *p = a;
   int bi = var_index(entry, b);
-
-  // find the end of a
-  while(p != b) {
-    switch(p->op) {
-    case OP_unless:
-      LOG_WHEN(tr_index(p->expr.arg[1]) == bi,
-               "duplicate arg for unless: %s %d <- %d",
-               entry->word_name, p-entry, b-entry);
-    case OP_assert:
-    case OP_seq:
-      arg = &p->expr.arg[0];
-      break;
-    default:
-      LOG("trace_seq: %s %d ... %d <- %d",
-          entry->word_name,
-          a-entry, p-entry, b-entry);
-      return trace_seq(b, a);
-    }
-    if(*arg) {
-      p = &entry[tr_index(*arg)];
-      assert_error(p != a, "loop");
-    } else { // found empty arg
-      LOG("condition %s %d ... %d %O arg <- %d",
-          entry->word_name, a-entry, p-entry, p->op, b-entry);
-      *arg = index_tr(bi);
-      b->n++;
-      return a;
-    }
-  }
-  return a;
-}
-
-cell_t *trace_seq(cell_t *a, cell_t *b) {
-  cell_t *entry = var_entry(a);
-  int x = trace_alloc(entry, 2);
-  cell_t *tc = &entry[x];
-  return trace_seq_at(a, b, entry, tc);
-}
-
-cell_t *trace_seq_at(cell_t *a, cell_t *b, cell_t *entry, cell_t *tc) {
-  assert_error(entry_has(entry, b));
-  if(ONEOF(b->op, OP_assert, OP_unless)) {
-    tc->op = b->op;
-    b = &entry[tr_index(b->expr.arg[1])];
-  } else {
-    tc->op = OP_seq;
-  }
-  tc->pos = 0;
-  tc->expr.arg[0] = index_tr(var_index(entry, a));
-  a->n++;
-  tc->expr.arg[1] = index_tr(var_index(entry, b));
-  b->n++;
-  LOG("trace_seq_at %s[%d] <- %O %d %d %H",
-      entry->word_name, tc-entry, tc->op, a-entry, b-entry,
-      hash_trace_cell(entry, tc, NULL));
-  return tc;
+  cell_t *an = &entry[copy_conditions(entry, var_index(entry, a), bi)];
+  LOG("condition %s %d ... %d %O arg <- %d",
+      entry->word_name, a-entry, an-entry, an->op, b-entry);
+  return an;
 }
 
 cell_t *value_condition(cell_t *a) {

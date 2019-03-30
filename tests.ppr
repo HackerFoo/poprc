@@ -402,3 +402,6 @@ asq2: dup head [popr swap pushl] dip11 !
 asq2_loop: asq2 asq2_loop
 
 pop_min_test: [] ap20 [] [not] | . popr! head
+
+__ shouldn't chain seqs
+f12: 1 swap seq 2 3 | +
