@@ -453,37 +453,37 @@ OP(assert) {
 
   cell_t *res = NULL;
   cell_t *tc = NULL;
-  cell_t *p = NULL;
-  bool p_var = false;
+  cell_t *q = NULL;
+  bool q_var = false;
   CHECK(reduce_arg(c, 1, &CTX(symbol, SYM_True)));
   if(rsp == SUCCESS) {
-    p = c->expr.arg[1];
-    p_var = is_var(p);
+    q = c->expr.arg[1];
+    q_var = is_var(q);
 
-    if(!p_var && p->value.integer != SYM_True) {
-      LOG_WHEN(p->value.var, "symbolic assert fail %C", p);
+    if(!q_var && q->value.integer != SYM_True) {
+      LOG_WHEN(q->value.var, "symbolic assert fail %C", q);
       ABORT(FAIL);
     }
 
-    if(p_var) {
-      tc = trace_partial(OP_assert, 1, p);
+    if(q_var) {
+      tc = trace_partial(OP_assert, 1, q);
     }
   }
   CHECK(reduce_arg(c, 0, &CTX_UP));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
 
-  cell_t **q = &c->expr.arg[0];
+  cell_t **p = &c->expr.arg[0];
 
-  if(p_var && is_var(*q)) {
-    res = var_create((*q)->value.type, tc, 0, 0);
-    trace_arg(tc, 0, *q);
+  if(q_var && is_var(*p)) {
+    res = var_create((*p)->value.type, tc, 0, 0);
+    trace_arg(tc, 0, *p);
   } else {
-    // handle is_var(*q)?
-    res = take(q);
+    // handle is_var(*p)?
+    res = take(p);
     unique(&res);
     drop(res->alt);
-    add_conditions_var(res, tc, p);
+    add_conditions_var(res, tc, q);
   }
 
   FLAG_SET(*c, expr, PARTIAL);
@@ -502,19 +502,19 @@ OP(seq) {
 
   cell_t *res = NULL;
   cell_t *tc = NULL;
-  cell_t *p = NULL;
+  cell_t *q = NULL;
   cell_t *entry = NULL;
-  bool p_var = false;
+  bool q_var = false;
   CHECK(reduce_arg(c, 1, &CTX(any))); // don't split arg here?
   if(rsp == SUCCESS) {
-    p = c->expr.arg[1];
-    p_var = is_var(p);
+    q = c->expr.arg[1];
+    q_var = is_var(q);
 
-    if(p_var) {
-      tc = trace_partial(OP_seq, 1, p); // drop on abort?
-    } else if(p->value.var && !find_passthrough(p->value.var)) {
+    if(q_var) {
+      tc = trace_partial(OP_seq, 1, q); // drop on abort?
+    } else if(q->value.var && !find_passthrough(q->value.var)) {
       // reserve space
-      entry = var_entry(p->value.var);
+      entry = var_entry(q->value.var);
       tc = &entry[trace_alloc(entry, 2)];
     }
   }
@@ -522,24 +522,24 @@ OP(seq) {
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
 
-  cell_t **q = &c->expr.arg[0];
+  cell_t **p = &c->expr.arg[0];
 
-  if(p_var && is_var(*q)) {
-    res = var_create((*q)->value.type, tc, 0, 0);
-    trace_arg(tc, 0, *q);
+  if(q_var && is_var(*p)) {
+    res = var_create((*p)->value.type, tc, 0, 0);
+    trace_arg(tc, 0, *p);
   } else {
-    res = take(q);
+    res = take(p);
     unique(&res);
     drop(res->alt);
     if(entry) {
       if(res->value.var) { // *** messy
-        res->value.var = trace_seq_at(res->value.var, p->value.var, entry, tc);
+        res->value.var = trace_seq_at(res->value.var, q->value.var, entry, tc);
       } else {
-        res->value.var = p->value.var;
+        res->value.var = q->value.var;
         trace_drop(tc);
       }
     } else {
-      add_conditions_var(res, tc, p);
+      add_conditions_var(res, tc, q);
     }
   }
 
