@@ -69,6 +69,7 @@ static bool quiet = false;
 static bool will_eval_commands = true;
 static bool eval_commands = true;
 static bool allow_io = true;
+static int reduction_limit = 5;
 
 char line_buffer[1024];
 
@@ -528,11 +529,27 @@ bool eval_command_string(char *start, char *end) {
   return ret;
 }
 
-void reduce_root(cell_t **cp) {
-  rt_init();
-  insert_root(cp);
-  reduce_list(cp);
-  remove_root(cp);
+static
+bool can_reduce(cell_t *l) {
+  return
+    is_list(l) &&
+    list_size(l) > 0 &&
+    (is_value(l->value.ptr[0]) ||
+     closure_is_ready(l->value.ptr[0]));
+}
+
+void reduce_root(cell_t **cp, int limit) {
+  if(limit > 0) {
+    insert_root(cp);
+    reduce_list(cp);
+    if(*cp) {
+      cell_t **p;
+      FORLIST(p, *cp, true) {
+        if(can_reduce(*p)) reduce_root(p, limit - 1);
+      }
+    }
+    remove_root(cp);
+  }
 }
 
 cell_t *eval_module() {
@@ -550,7 +567,8 @@ bool eval(const char *prefix, const cell_t *p) {
     if(left && !closure_is_ready(left)) {
       if(!quiet) printf("incomplete expression\n");
     } else {
-      reduce_root(&c);
+      rt_init();
+      reduce_root(&c, reduction_limit);
       if(c) {
         ASSERT_REF();
         success = true;
@@ -785,4 +803,13 @@ COMMAND(op, "set a watched op") {
 
 COMMAND(cl, "clear log") {
   log_init();
+}
+
+COMMAND(limit, "set reduction limit") {
+  if(match_class(rest, CC_NUMERIC, 0, 64)) {
+    reduction_limit = clamp(1, 100, parse_num(rest));
+    printf("reduction limit set to %d\n", reduction_limit);
+  } else {
+    printf("reduction limit is %d\n", reduction_limit);
+  }
 }

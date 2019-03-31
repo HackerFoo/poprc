@@ -175,6 +175,16 @@
     __a >= __b ? __a : __b;                     \
   })
 
+#define clamp(lo, hi, x)                        \
+  ({                                            \
+    LET(__x, x);                                \
+    LET(__lo, lo);                              \
+    LET(__hi, hi);                              \
+    __x > __hi ? __hi :                         \
+      __x < __lo ? __lo :                       \
+      __x;                                      \
+  })
+
 /** Non-negative saturating subtraction. */
 #define csub(a, b)                              \
   ({                                            \
