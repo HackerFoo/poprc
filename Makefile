@@ -4,7 +4,7 @@ SHELL := bash
 ROOT := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 
 # defaults
-BUILD ?= debug
+BUILD ?= release-with-asserts
 
 ifeq ($(BUILD),release)
 	USE_LINENOISE ?= y
@@ -96,6 +96,10 @@ ifeq ($(BUILD),gprof)
 	CFLAGS += -DNDEBUG -pg $(OPT_FLAG)
 	CXXFLAGS += -DNDEBUG -pg $(OPT_FLAG)
 	LDFLAGS += -pg
+endif
+
+ifeq ($(PREFIX),)
+	PREFIX := /usr/local
 endif
 
 INCLUDE += -I.gen
@@ -326,3 +330,10 @@ clean-dot:
 .PHONY: wc
 wc:
 	wc -l {cgen,startle}/*.[ch] *.[ch] | sort -nr
+
+.PHONY: install
+install:
+	install -d $(PREFIX)/share/poprc/
+	install -d $(PREFIX)/bin/
+	install -m 644 *.ppr $(PREFIX)/share/poprc/
+	install -T eval $(PREFIX)/bin/poprc
