@@ -15,6 +15,7 @@
     along with PoprC.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define _GNU_SOURCE
 #include "rt_types.h"
 #include <time.h>
 #include <string.h>
@@ -62,6 +63,12 @@
 #include <emscripten.h>
 #endif
 
+#ifndef PREFIX
+#define PREFIX "/usr/local"
+#endif
+
+#define HISTORY_FILE ".poprc_history"
+
 bool quit = false;
 bool command_line = false;
 
@@ -73,6 +80,7 @@ static bool will_eval_commands = true;
 static bool eval_commands = true;
 static bool allow_io = true;
 static int reduction_limit = 5;
+const char *history_path = NULL;
 
 char line_buffer[1024];
 
@@ -169,6 +177,11 @@ void crash_handler(int sig, UNUSED siginfo_t *info, UNUSED void *ctx) {
   throw_error(ERROR_TYPE_UNEXPECTED, "%s", _, strsignal(sig));
 }
 
+const char *strip_dir(const char *path) {
+  const char *s = strrchr(path, '/');
+  return s ? s + 1 : path;
+}
+
 int main(int argc, char **argv) {
   struct sigaction sa;
   sa.sa_flags = SA_SIGINFO;
@@ -199,6 +212,10 @@ int main(int argc, char **argv) {
   cells_init();
   parse_init();
   module_init();
+  char *home = getenv("HOME");
+  if(home) {
+    asprintf((char **)&history_path, "%s/" HISTORY_FILE, home);
+  }
 
   command_line = true;
   bool quit = false;
@@ -206,30 +223,38 @@ int main(int argc, char **argv) {
   quiet = !tty;
   cell_t *parsed_args = NULL;
 
-  if(argc > 1) {
+  if(argc >= 1) {
+    const char *exec_name = strip_dir(argv[0]);
     char *args = arguments(argc - 1, argv + 1), *a = args;
     // printf("__ arguments __\n%s", a);
 
-    // lex the arguments
-    cell_t **next = &parsed_args;
-    while(*a) {
-      char *e = strchr(a, '\n');
-      *e = '\0'; // HACKy (fix load_file instead)
-      *next = lex(a, e);
-      next = &(*next)->alt;
-      a = e + 1;
+    if(strcmp(exec_name, "popr") == 0) {
+      eval_command_string(":ld " PREFIX "/share/poprc", 0);
+      eval_command_string(":import", 0);
     }
 
-    // run the commands
-    alloc_to(64); // keep allocations consistent regardless of args
-    cell_t *p = parsed_args;
-    while(p) {
-      quit = !eval_command(p) || quit;
-      free_toks(p);
-      p = p->alt;
-    }
+    if(args) {
+      // lex the arguments
+      cell_t **next = &parsed_args;
+      while(*a) {
+        char *e = strchr(a, '\n');
+        *e = '\0'; // HACKy (fix load_file instead)
+        *next = lex(a, e);
+        next = &(*next)->alt;
+        a = e + 1;
+      }
 
-    free(args);
+      // run the commands
+      alloc_to(64); // keep allocations consistent regardless of args
+      cell_t *p = parsed_args;
+      while(p) {
+        quit = !eval_command(p) || quit;
+        free_toks(p);
+        p = p->alt;
+      }
+
+      free(args);
+    }
   }
 
   eval_commands = will_eval_commands;
@@ -243,6 +268,7 @@ int main(int argc, char **argv) {
      !leak_test()) {
     make_graph_all("leaks.dot");
   }
+  free((void *)history_path);
   return 0;
 }
 #else // EMSCRIPTEN
@@ -356,13 +382,11 @@ static void initialize_readline()
 
 #endif
 
-#define HISTORY_FILE ".poprc_history"
-
 void run_eval(bool echo) {
   char *line_raw, *line;
 #ifdef USE_LINENOISE
   //linenoiseSetCompletionCallback(completion);
-  linenoiseHistoryLoad(HISTORY_FILE);
+  if(history_path) linenoiseHistoryLoad(history_path);
   while((line_raw = linenoise(": ")))
 #elif USE_READLINE
   initialize_readline();
@@ -386,7 +410,7 @@ void run_eval(bool echo) {
     if(tty) {
 #if defined(USE_LINENOISE)
       linenoiseHistoryAdd(line);
-      linenoiseHistorySave(HISTORY_FILE);
+      if(history_path) linenoiseHistorySave(history_path);
 #elif defined(USE_READLINE)
       add_history(line);
 #endif

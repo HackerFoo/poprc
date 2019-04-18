@@ -335,5 +335,6 @@ wc:
 install:
 	install -d $(PREFIX)/share/poprc/
 	install -d $(PREFIX)/bin/
-	install -m 644 *.ppr $(PREFIX)/share/poprc/
-	install -T eval $(PREFIX)/bin/poprc
+	install -m 644 $(POPR_SRC) $(PREFIX)/share/poprc/
+	install eval $(PREFIX)/bin/poprc
+	ln -sf $(PREFIX)/bin/poprc $(PREFIX)/bin/popr

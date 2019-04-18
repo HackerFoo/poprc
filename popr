@@ -1,13 +1,1 @@
-#!/bin/bash
-
-POPRC_ROOT=$HOME/src/poprc
-
-pushd $POPRC_ROOT > /dev/null
-
-if [ ! -f eval ]; then
-    make BUILD=release-with-asserts
-fi
-
-./eval -lo *.ppr -im
-
-popd > /dev/null
+eval
