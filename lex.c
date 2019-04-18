@@ -97,3 +97,21 @@ uintptr_t tok_indent(const cell_t *c) {
   assert_error(c->tok_list.location >= c->tok_list.line);
   return c->tok_list.location - c->tok_list.line;
 }
+
+size_t read_to_ws(cell_t **rest, char *buf, size_t size) {
+  cell_t *c = *rest;
+  if(!c) return 0;
+  char
+    *start = buf,
+    *p = start,
+    *end = buf + size;
+  seg_t s;
+  do {
+    s = tok_seg(c);
+    p += seg_read(s, p, end - p);
+    c = c->tok_list.next;
+  } while(c && p < end &&
+          !is_whitespace(s.s[s.n]));
+  *rest = c;
+  return p - start;
+}

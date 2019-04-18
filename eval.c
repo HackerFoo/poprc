@@ -441,9 +441,8 @@ COMMAND(modules, "print all modules") {
 COMMAND(load, "load given file(s)") {
   char buf[64];
   while(rest) {
-    seg_read(tok_seg(rest), buf, sizeof(buf));
+    read_to_ws(&rest, buf, sizeof(buf));
     load_file(buf);
-    rest = rest->tok_list.next;
   }
 }
 
@@ -596,11 +595,17 @@ static struct mmfile files[16] = {};
 size_t files_cnt = 0;
 
 bool load_file(const char *path) {
-  if(files_cnt >= LENGTH(files)) return false;
+  if(files_cnt >= LENGTH(files)) {
+    if(!quiet) printf("Can't load any more files.\n");
+    return false;
+  }
   struct mmfile *f = &files[files_cnt++];
   f->path = path;
   f->read_only = true;
-  if(!mmap_file(f)) return false;
+  if(!mmap_file(f)) {
+    if(!quiet) printf("Failed to open \"%s\"\n", path);
+    return false;
+  }
 
   cell_t *toks = lex(f->data, f->data + f->size);
   cell_t *e = NULL;
