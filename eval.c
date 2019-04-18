@@ -22,6 +22,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #if defined(USE_READLINE)
 #include <readline/readline.h>
@@ -442,7 +445,15 @@ COMMAND(load, "load given file(s)") {
   char buf[64];
   while(rest) {
     read_to_ws(&rest, buf, sizeof(buf));
-    load_file(buf);
+    load_file(0, buf);
+  }
+}
+
+COMMAND(ld, "load given dir(s)") {
+  char buf[64];
+  while(rest) {
+    read_to_ws(&rest, buf, sizeof(buf));
+    load_dir(buf);
   }
 }
 
@@ -594,12 +605,13 @@ bool get_arity(const cell_t *p, csize_t *in, csize_t *out, cell_t *module) {
 static struct mmfile files[16] = {};
 size_t files_cnt = 0;
 
-bool load_file(const char *path) {
+bool load_file(int dirfd, const char *path) {
   if(files_cnt >= LENGTH(files)) {
     if(!quiet) printf("Can't load any more files.\n");
     return false;
   }
   struct mmfile *f = &files[files_cnt++];
+  f->dirfd = dirfd;
   f->path = path;
   f->read_only = true;
   if(!mmap_file(f)) {
@@ -632,6 +644,23 @@ bool load_file(const char *path) {
   }
   free_toks(toks);
   return true;
+}
+
+const char extension[4] = ".ppr";
+bool load_dir(const char *path) {
+  DIR *dir = opendir(path);
+  if(!dir) return false;
+  int dfd = dirfd(dir);
+  bool res = true;
+  struct dirent *ent;
+  while((ent = readdir(dir))) {
+    size_t len = strlen(ent->d_name);
+    if(len >= sizeof(extension) &&
+       strncmp(ent->d_name + len - sizeof(extension), extension, sizeof(extension)) == 0) {
+      res &= load_file(dfd, ent->d_name);
+    }
+  }
+  return res;
 }
 
 bool unload_files() {

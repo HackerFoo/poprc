@@ -387,6 +387,7 @@ void *lookup_linear(void *table, size_t width, size_t rows, seg_t key_seg) {
 
 #if INTERFACE
 struct mmfile {
+  int dirfd; /**< Directory file descriptor */
   const char *path; /**< File path */
   int fd; /**< File descriptor */
   size_t size; /**< Size in bytes, set by mmap_file */
@@ -402,7 +403,7 @@ struct mmfile {
  * @snippet support.c mmap_file
  */
 bool mmap_file(struct mmfile *f) {
-  f->fd = open(f->path, f->read_only ? O_RDONLY : O_RDWR);
+  f->fd = openat(f->dirfd ? f->dirfd : AT_FDCWD, f->path, f->read_only ? O_RDONLY : O_RDWR);
   if(f->fd < 0) return false;
   struct stat file_info;
   if(fstat(f->fd, &file_info) < 0) return false;
