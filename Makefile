@@ -123,7 +123,7 @@ DOTSVG := $(patsubst %.dot, $(DIAGRAMS)/%.svg, $(DOT))
 PROFILE_EXPRESSION := '426 [0 1] [[dup2 + 0xffff &b] .] swap2 1- times head'
 PPROF := ~/go/bin/pprof
 
-CFLAGS += -DPREFIX="\"$(PREFIX)\""
+CFLAGS += -DPREFIX="\"$(PREFIX)\"" $(EXTRA_CFLAGS)
 
 .PHONY: fast
 fast:

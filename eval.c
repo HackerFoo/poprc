@@ -370,7 +370,7 @@ static char **completion(char *buf, UNUSED int start, UNUSED int end)
 */
 static void initialize_readline()
 {
-  rl_readline_name = "Poprc";
+  rl_readline_name = "PoprC";
   /*
 #if defined(__clang__)
   rl_attempted_completion_function = (CPPFunction *)completion;
@@ -383,48 +383,80 @@ static void initialize_readline()
 #endif
 
 void run_eval(bool echo) {
-  char *line_raw, *line;
-#ifdef USE_LINENOISE
-  //linenoiseSetCompletionCallback(completion);
-  if(history_path) linenoiseHistoryLoad(history_path);
-  while((line_raw = linenoise(": ")))
-#elif USE_READLINE
-  initialize_readline();
-  while((line_raw = readline(": ")))
-#else
+#if defined(USE_READLINE)
+  if(tty) {
+    run_eval_readline(echo);
+    return;
+  }
+#elif defined(USE_LINENOISE)
+  if(tty) {
+    run_eval_linenoise(echo);
+    return;
+  }
+#endif
+  char *line;
   while(tty && printf(": "),
-        (line_raw = fgets(line_buffer, sizeof(line_buffer), stdin)))
-#endif
+        (line = fgets(line_buffer, sizeof(line_buffer), stdin)))
   {
-#ifdef RAW_LINE
-    replace_char(line_raw, '\n', '\0');
-#endif
-    if(line_raw[0] == '\0') {
-#ifndef RAW_LINE
-      free(line_raw);
-#endif
+    replace_char(line, '\n', '\0');
+    if(line[0] == '\0') {
       continue;
-    }
-    line = line_raw;
-
-    if(tty) {
-#if defined(USE_LINENOISE)
-      linenoiseHistoryAdd(line);
-      if(history_path) linenoiseHistorySave(history_path);
-#elif defined(USE_READLINE)
-      add_history(line);
-#endif
     }
 
     if(echo) puts(line);
     bool run = eval_command_string(line, 0);
 
-#ifndef RAW_LINE
-    free(line_raw);
-#endif
     if(!run || !eval_commands) break;
   }
 }
+
+#ifdef USE_LINENOISE
+void run_eval_linenoise(bool echo) {
+  char *line;
+  //linenoiseSetCompletionCallback(completion);
+  if(history_path) linenoiseHistoryLoad(history_path);
+  while((line = linenoise(": ")))
+  {
+    if(line[0] == '\0') {
+      free(line);
+      continue;
+    }
+
+    linenoiseHistoryAdd(line);
+    if(history_path) linenoiseHistorySave(history_path);
+
+    if(echo) puts(line);
+    bool run = eval_command_string(line, 0);
+
+    free(line);
+    if(!run || !eval_commands) break;
+  }
+}
+#endif
+
+#ifdef USE_READLINE
+void run_eval_readline(bool echo) {
+  char *line;
+  initialize_readline();
+  read_history(history_path);
+  while((line = readline(": ")))
+  {
+    if(line[0] == '\0') {
+      free(line);
+      continue;
+    }
+
+    add_history(line);
+    write_history(history_path);
+
+    if(echo) puts(line);
+    bool run = eval_command_string(line, 0);
+
+    free(line);
+    if(!run || !eval_commands) break;
+  }
+}
+#endif
 
 #define COMMAND__ITEM(file, line, name, desc)            \
   {                                                      \
