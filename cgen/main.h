@@ -20,6 +20,7 @@
       print_last_log_msg();                     \
       return -error.type;                       \
     }                                           \
+    init_primitives();                          \
     fn(SYM_IO);                                 \
     return 0;                                   \
   }
