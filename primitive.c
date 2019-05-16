@@ -279,6 +279,11 @@ OP(atan2) {
   return func_op2_float(cp, ctx, atan2, false);
 }
 
+WORD("sqrt", sqrt, 1, 1)
+OP(sqrt) {
+  return func_op1_float(cp, ctx, sqrt);
+}
+
 WORD("&b", bitand, 2, 1)
 val_t bitand_op(val_t x, val_t y) { return x & y; }
 OP(bitand) {
