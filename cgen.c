@@ -42,6 +42,7 @@
 static uintptr_t assert_set[67];
 
 // table of corresponding C types
+static
 const char *ctype(type_t t) {
   static const char *table[] = {
     [T_ANY]      = "any_t ",
@@ -140,6 +141,7 @@ void gen_next_block(const cell_t *e, const cell_t *c) {
   }
 }
 
+static
 void gen_body(const cell_t *e) {
   printf("\nentry: {\n");
   bool skip = false;
@@ -154,6 +156,7 @@ void gen_body(const cell_t *e) {
   }
 }
 
+static
 void gen_return(const cell_t *e, const cell_t *l) {
   csize_t out_n = list_size(l);
   int ires = cgen_index(e, l->value.ptr[out_n - 1]);
@@ -177,6 +180,32 @@ void gen_return(const cell_t *e, const cell_t *l) {
   printf("  return %s%d;\n", cname(trace_type(&e[ires])), ires);
 }
 
+// print the RHS to initialize a value
+static
+void gen_value_rhs(const cell_t *c) {
+  type_t t = trace_type(c);
+  switch(t) {
+  case T_INT:
+  case T_SYMBOL:
+    printf("%d;\n", (int)c->value.integer);
+    break;
+  case T_STRING: {
+    seg_t str = value_seg(c);
+    printf("{ .s = \"");
+    print_escaped_string(str);
+    printf("\", .n = %d };\n", (int)str.n);
+    break;
+  }
+  case T_LIST:
+    assert_error(list_size(c) == 0);
+    printf("arr_new();\n");
+    break;
+  default:
+    assert_error(false); // TODO add more types
+  }
+}
+
+static
 void gen_decls(cell_t *e) {
   FOR_TRACE(c, e) {
     if(is_var(c)) continue;
@@ -228,7 +257,6 @@ bool gen_skip(const cell_t *c) {
   return ONEOF(c->op, OP_dep, OP_seq, OP_unless);
 }
 
-static
 bool last_call(const cell_t *e, const cell_t *c) {
   c = closure_next_const(c);
   FOR_TRACE_CONST(p, e, c - e) {
@@ -367,7 +395,6 @@ int find_next_possible_block(const cell_t *e, const cell_t *c) {
   return 0;  
 }
 
-static
 void gen_indent(int depth) {
   LOOP(depth) {
     printf("  ");
@@ -464,30 +491,6 @@ void gen_call(const cell_t *e, const cell_t *c, int depth) {
     }
   } else {
     printf(");\n");
-  }
-}
-
-// print the RHS to initialize a value
-void gen_value_rhs(const cell_t *c) {
-  type_t t = trace_type(c);
-  switch(t) {
-  case T_INT:
-  case T_SYMBOL:
-    printf("%d;\n", (int)c->value.integer);
-    break;
-  case T_STRING: {
-    seg_t str = value_seg(c);
-    printf("{ .s = \"");
-    print_escaped_string(str);
-    printf("\", .n = %d };\n", (int)str.n);
-    break;
-  }
-  case T_LIST:
-    assert_error(list_size(c) == 0);
-    printf("arr_new();\n");
-    break;
-  default:
-    assert_error(false); // TODO add more types
   }
 }
 

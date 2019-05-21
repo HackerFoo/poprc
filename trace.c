@@ -715,6 +715,20 @@ void trace_end_entry(cell_t *e) {
   e->pos = 0;
   FLAG_SET(*e, entry, COMPLETE);
   e->entry.rec = trace_recursive_changes(e);
+
+  // mark functions that use recursive functions
+  if(e->entry.rec) {
+    FLAG_SET(*e, entry, SYNC);
+  } else {
+    FOR_TRACE_CONST(c, e) {
+      if(is_user_func(c)) {
+        cell_t *entry = get_entry(c);
+        if(entry && (entry->entry.rec || FLAG(*entry, entry, SYNC))) {
+          FLAG_SET(*e, entry, SYNC);
+        }
+      }
+    }
+  }
 }
 
 cell_t *trace_current_entry() {

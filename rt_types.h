@@ -207,6 +207,7 @@ struct __attribute__((packed)) mem {
 #define FLAG_entry (entry, ENTRY)
 #define ENTRY_PRIMITIVE 0x01
 #define ENTRY_TRACE     0x02
+#define ENTRY_SYNC      0x04
 #define ENTRY_QUOTE     0x08
 #define ENTRY_PARTIAL   0x10
 #define ENTRY_BLOCK     0x40

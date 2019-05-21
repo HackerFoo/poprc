@@ -1,0 +1,73 @@
+* gcd in bytecode
+
+___ algorithm.gcd (2 -> 1) ___
+[1] var :: ?i x1
+[2] var :: ?i x1
+[3] algorithm.gcd_r0 2 1 :: i x1
+[4] return [3]
+
+___ algorithm.gcd_r0 (2 -> 1) x2 rec ___
+[1] changing var :: ?i x4
+[2] changing var :: ?i x2
+[3] __primitive.neq &1 &4 :: y x1
+[4] val 0 :: i x2
+[5] __primitive.not 3 :: y x1
+[6] __primitive.assert &2 5 :: i? x1
+[7] return [6] -> 12
+[8] __primitive.neq &1 4 :: y x1
+[9] __primitive.assert 11 8 :: i? x1
+[10] __primitive.mod 2 &1 :: i? x1
+[11] algorithm.gcd_r0 1 10 :: i x1
+[12] return [9]
+
+* gcd in C
+#+BEGIN_SRC c
+int algorithm_gcd(int int2, int int1);
+int algorithm_gcd_r0(int int2, int int1);
+
+int algorithm_gcd(int int2, int int1)
+{
+
+entry: {
+  int int3 = algorithm_gcd_r0(int2, int1);
+  return int3;
+}
+} // end algorithm_gcd
+
+int algorithm_gcd_r0(int int2, int int1)
+{
+  const int int4 = 0;
+  int int10, int11;
+
+entry: {
+  symbol_t sym3 = __primitive_neq_yii(int1, int4);
+  symbol_t sym5 = __primitive_not_yy(sym3);
+  if(!sym5) { // assert
+    goto block8;
+  }
+  return int2;
+}
+
+block8: {
+  symbol_t sym8 = __primitive_neq_yii(int1, int4);
+  assert_error(sym8);
+  assert_error(!__primitive_mod_iii(int2, int1, &int10));
+
+  // tail call
+  int2 = int1;
+  int1 = int10;
+  goto entry;
+}
+} // end algorithm_gcd_r0
+#+END_SRC
+
+* gcd in Verilog
+#BEGIN_SRC verilog
+module algorithm_gcd_r0 (
+  input int2,
+  input int1,
+  output reg out0
+);
+
+endmodule
+#END_SRC

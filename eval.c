@@ -58,6 +58,7 @@
 #include "io.h"
 #include "primitive_io.h"
 #include "irc.h"
+#include "vlgen.h"
 
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
