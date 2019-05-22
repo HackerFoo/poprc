@@ -388,6 +388,7 @@ void trace_final_pass(cell_t *entry) {
     condense(entry);
     last_use_analysis(entry);
     no_skip_analysis(entry);
+    mark_tail_calls(entry);
   }
   FOR_TRACE(p, entry) {
     if(p->op == OP_exec) {
@@ -396,6 +397,7 @@ void trace_final_pass(cell_t *entry) {
         condense(e);
         last_use_analysis(e);
         no_skip_analysis(e);
+        mark_tail_calls(e);
       }
     }
   }
@@ -881,6 +883,17 @@ void last_use_analysis(cell_t *entry) {
     if(!partial) {
       last_use_mark_cell(entry, c);
     }
+  }
+}
+
+void mark_tail_calls(cell_t *entry) {
+  bool self_call = false;
+  FOR_TRACE(c, entry) {
+    if(is_return(c) && self_call) {
+      FLAG_SET(*c, trace, TAIL_CALL);
+    }
+    self_call = is_user_func(c) &&
+      get_entry(c) == entry;
   }
 }
 

@@ -8,8 +8,8 @@ module tests_fibl_tb;
    reg clk;
    reg `intT a;
    wire `intT b;
-   reg  reset;
-   wire busy;
+   reg  read;
+   wire write;
 
    always begin
       #1 clk = !clk;
@@ -19,19 +19,18 @@ module tests_fibl_tb;
       $dumpfile("tests_fibl_tb.vcd");
       $dumpvars(0, tests_fibl_tb);
 
-      a         = 21;
+      a    = 21;
+      clk  = 0;
+      read = 1;
 
-      clk       = 0;
-      reset     = 1;
-
-      #5;
-      reset     = 0;
+      #3;
+      read = 0;
 
       #200;
       $display("b = %b (%d)", b, b);
       $finish;
    end
 
-   tests_fibl tests_fibl(clk, reset, a, b, busy);
+   tests_fibl tests_fibl(clk, read, a, b, write);
 
 endmodule // tests_fibl_tb
