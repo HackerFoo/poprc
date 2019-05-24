@@ -20,6 +20,7 @@ endmodule
 `primitive_op2(eq, ==, `intT, `symT, yii)
 `primitive_op2(neq, !=, `intT, `symT, yii)
 `primitive_op2(mod, %, `intT, `intT, iii)
+`primitive_op2(div, /, `intT, `intT, iii)
 `primitive_op1(not, !, `symT, `symT, yy)
 `primitive_op2(mul, *, `intT, `intT, iii)
 `primitive_op2(add, +, `intT, `intT, iii)

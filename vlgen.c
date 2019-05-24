@@ -233,12 +233,14 @@ void gen_outputs(const cell_t *e, const cell_t *r0, const type_t *rtypes) {
     type_t t = rtypes[i];
     printf("  assign %s%d_out = ", cname(t), (int)i);
     const cell_t *r_prev = NULL;
+    int block = 1;
     while(NOT_FLAG(*r, trace, TAIL_CALL)) {
       if(r_prev) {
         printf("%sblock%d_cond ? %s%d :\n    ",
-               sep, (int)(r_prev - e),
+               sep, block,
                cname(t), cgen_index(e, r_prev->value.ptr[i]));
         sep = "    ";
+        block = (r - e) + calculate_cells(r->size);
       }
       r_prev = r;
       if(!r->alt) break;

@@ -10,6 +10,9 @@ all: $(patsubst %_tb.v, %_tb.vcd, $(wildcard *_tb.v))
 tests_fibl.v: ../lib.ppr ../tests.ppr ../eval
 	(cd ..; ./eval -lo lib.ppr tests.ppr -cv tests.fibl) > $@
 
+tests_collatz.v: ../lib.ppr ../tests.ppr ../eval
+	(cd ..; ./eval -lo lib.ppr tests.ppr -cv tests.collatz) > $@
+
 algorithm_gcd.v: ../lib.ppr ../eval
 	(cd ..; ./eval -lo lib.ppr -cv algorithm.gcd) > $@
 
@@ -18,4 +21,4 @@ algorithm_gcd.v: ../lib.ppr ../eval
 
 .PHONY: clean
 clean:
-	rm -f *.vvp *.vcd tests_fibl.v algorithm_gcd.v
+	rm -f *.vvp *.vcd tests_fibl.v tests_collatz.v algorithm_gcd.v
