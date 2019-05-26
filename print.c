@@ -47,7 +47,8 @@ static BITSET_INDEX(marked, cells);
 
 static enum {
   BASE_DEC = 0,
-  BASE_HEX
+  BASE_HEX,
+  BASE_BIN
 } display_base = BASE_DEC;
 
 void mark_cell(cell_t *c) {
@@ -382,11 +383,30 @@ void graph_cell(FILE *f, cell_t const *c) {
   }
 }
 
+#define VAL_BITS (sizeof(val_t) * 8)
+static
+void print_binary(val_t x) {
+  char bits[VAL_BITS];
+  int n = 0;
+  int s = 1;
+  COUNTDOWN(i, VAL_BITS) {
+    bits[i] = x & 1 ? '1' : '0';
+    x >>= 1;
+    n++;
+    if(!x && s == n) break;
+    if(n > s) s *= 2;
+  }
+  printf("%.*s", n, bits + (VAL_BITS - n));
+}
+
 static
 void print_int(val_t x) {
   switch(display_base) {
   case BASE_HEX:
     printf("0x%" PRIxPTR, x);
+    break;
+  case BASE_BIN:
+    print_binary(x);
     break;
   case BASE_DEC:
   default:
@@ -683,7 +703,8 @@ FORMAT(location, 'L') {
 
 static char *show_base[] = {
   [BASE_DEC] = "decimal",
-  [BASE_HEX] = "hexadecimal"
+  [BASE_HEX] = "hexadecimal",
+  [BASE_BIN] = "binary"
 };
 
 COMMAND(base, "set numeric base for display") {
@@ -693,6 +714,8 @@ COMMAND(base, "set numeric base for display") {
       display_base = BASE_DEC;
     } else if(segcmp("hex", base) == 0) {
       display_base = BASE_HEX;
+    } else if(segcmp("bin", base) == 0) {
+      display_base = BASE_BIN;
     } else {
       printf("Unknown base\n");
     }
