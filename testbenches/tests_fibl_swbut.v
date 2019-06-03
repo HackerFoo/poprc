@@ -10,42 +10,41 @@ module top(
 );
 
    reg  `intT  a;
-   wire  `intT  a_in = in[4:0];
+   wire  `intD  a_in = in[4:0];
    wire  `intT  b;
-   reg          read;
+   wire         read;
    wire         write;
    reg [26:0]   div;
 
-   assign out = b;
+   assign out = b`intD;
    initial div = 0;
 
    always @(posedge clk) begin
       if(in[15]) begin
          div <= div + 1;
          if(div == 0) begin
-            if(a == 24) begin
-               a <= 0;
+            if(a`intD == 24) begin
+               a`intD <= 0;
             end
             else begin
-               a <= a + 1;
+               a`intD <= a`intD + 1;
             end
-            `set(read);
+            `set(a`intR);
          end
          else begin
-            `reset(read);
+            `reset(a`intR);
          end // else: !if(div == 0)
       end
       else if(a != a_in && a_in <= 24)
          begin
-            a <= a_in;
-            `set(read);
+            a <= `read(`intN, a_in);
          end
       else
          begin
-            `reset(read);
+            `reset(a`intR);
          end
    end // always @ (posedge clk)
 
-   tests_fibl fibl(clk, read, a, b, write);
+   tests_fibl fibl(clk, a, b);
 
 endmodule // top

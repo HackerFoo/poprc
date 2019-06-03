@@ -9,8 +9,6 @@ module algorithm_gcd_tb;
    reg `intT a;
    reg `intT b;
    wire `intT c;
-   reg  read;
-   wire write;
 
    always begin
       #1 clk = !clk;
@@ -24,16 +22,18 @@ module algorithm_gcd_tb;
       b         = 35;
 
       clk       = 0;
-      read     = 1;
+      a`intR    = `true;
+      b`intR    = `true;
 
       #5;
-      read     = 0;
+      a`intR    = `false;
+      b`intR    = `false;
 
       #20;
       $display("c = %b (%d)", c, c);
       $finish;
    end
 
-   algorithm_gcd gcd(clk, read, a, b, c, write);
+   algorithm_gcd gcd(clk, a, b, c);
 
 endmodule // gcd_tb

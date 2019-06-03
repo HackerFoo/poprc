@@ -8,8 +8,6 @@ module tests_collatz_tb;
    reg clk;
    reg `intT a;
    wire `intT b;
-   reg  read;
-   wire write;
 
    always begin
       #1 clk = !clk;
@@ -19,18 +17,17 @@ module tests_collatz_tb;
       $dumpfile("tests_collatz_tb.vcd");
       $dumpvars(0, tests_collatz_tb);
 
-      a    = 27;
+      a    = `read(`intN, 27);
       clk  = 0;
-      read = 1;
 
       #3;
-      read = 0;
+      a`intR = `false;
 
       #300;
       $display("b = %b (%d)", b, b);
       $finish;
    end
 
-   tests_collatz tests_collatz(clk, read, a, b, write);
+   tests_collatz tests_collatz(clk, a, b);
 
 endmodule // tests_collatz_tb

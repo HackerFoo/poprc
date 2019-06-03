@@ -16,6 +16,9 @@ print-%:
 %_tb.vcd: %_tb.vvp
 	vvp $<
 
+stream_tb.vvp: stream_tb.v ../vlgen/primitives.v
+	iverilog -o $@ -I../vlgen $<
+
 %_tb.vvp: %_tb.v %.v
 	iverilog -o $@ -I../vlgen $<
 

@@ -14,24 +14,22 @@ module top(
    wire  `intT  a_in = in[7:0];
    wire  `intT  b_in = in[15:8];
    wire  `intT  c;
-   reg          read;
-   wire         write;
 
-   assign out = {read, write, 6'b0000000, c};
+   assign out = {a`intR, b`intR, c`intR, 5'd0, c`intD};
 
    always @(posedge clk) begin
-      if(a != a_in || b != b_in)
+      if(a`intD != a_in || b`intD != b_in)
          begin
-            a <= a_in;
-            b <= b_in;
-            `set(read);
+            a <= `read(`intN, a_in);
+            b <= `read(`intN, b_in);
          end
       else
          begin
-            `reset(read);
+            `reset(a`intR);
+            `reset(b`intR);
          end
    end // always @ (posedge clk)
 
-   algorithm_gcd gcd(clk, read, a, b, c, write);
+   algorithm_gcd gcd(clk, a, b, c);
 
 endmodule // top

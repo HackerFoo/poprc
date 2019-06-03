@@ -10,10 +10,8 @@ module top(
 );
 
    reg  `intT  a;
-   wire  `intT  a_in = {13'h0, in[14:0]};
+   wire  `intD  a_in = {12'h0, in[14:0]};
    wire  `intT  b;
-   reg          read;
-   wire         write;
    reg [26:0]   div;
    reg          busy = 1'b0;
    reg [14:0]   out_reg;
@@ -28,28 +26,27 @@ module top(
          `reset(busy);
       end
       if(busy) begin
-         if(read) begin
-            `reset(read);
+         if(a`intR) begin
+            `reset(a`intR);
          end
       end
       else if(!busy) begin
          if(in[15]) begin
             div <= div + 1;
             if(div[26:12] == in[14:0]) begin
-               a <= a + 1;
+               a`intD <= a`intD + 1;
                div <= 0;
-               `set(read);
+               `set(a`intR);
                `set(busy);
             end
          end
          else if(a != a_in) begin
-            a <= a_in;
-            `set(read);
+            a <= read(`intN, a_in);
             `set(busy);
          end
       end
    end
 
-   tests_collatz collatz(clk, read, a, b, write);
+   tests_collatz collatz(clk, a, b);
 
 endmodule // top

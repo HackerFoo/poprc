@@ -431,6 +431,7 @@ void gen_call(const cell_t *e, const cell_t *c, int depth) {
       printf("  %s%s%d = ", FLAG(*c, trace, DECL) ? "" : ctype(t), cname(t), lhs);
     }
   }
+  // abstract to print_function
   if(c->op == OP_external) {
     const cell_t *name = &e[cgen_index(e, c->expr.arg[closure_in(c) - 1])];
     assert_error(is_string(name) && !is_var(name),
