@@ -707,6 +707,28 @@ cell_t *trace_start_entry(cell_t *parent, csize_t out) {
   return e;
 }
 
+void hw_analysis(cell_t *e) {
+  // mark functions that use recursive functions
+  if(e->entry.rec) {
+    FLAG_SET(*e, entry, SYNC);
+  } else {
+    FOR_TRACE_CONST(c, e) {
+      if(is_user_func(c)) {
+        cell_t *entry = get_entry(c);
+        if(!entry) continue;
+        if(entry->entry.rec || FLAG(*entry, entry, SYNC)) {
+          FLAG_SET(*e, entry, SYNC);
+        }
+        if(FLAG(*entry, entry, RAM)) {
+          FLAG_SET(*e, entry, RAM);
+        }
+      } else if(c->op == OP_ap) {
+        FLAG_SET(*e, entry, RAM);
+      }
+    }
+  }
+}
+
 // finish tracing
 void trace_end_entry(cell_t *e) {
   e->entry.wrap = NULL;
@@ -715,20 +737,7 @@ void trace_end_entry(cell_t *e) {
   e->pos = 0;
   FLAG_SET(*e, entry, COMPLETE);
   e->entry.rec = trace_recursive_changes(e);
-
-  // mark functions that use recursive functions
-  if(e->entry.rec) {
-    FLAG_SET(*e, entry, SYNC);
-  } else {
-    FOR_TRACE_CONST(c, e) {
-      if(is_user_func(c)) {
-        cell_t *entry = get_entry(c);
-        if(entry && (entry->entry.rec || FLAG(*entry, entry, SYNC))) {
-          FLAG_SET(*e, entry, SYNC);
-        }
-      }
-    }
-  }
+  hw_analysis(e);
 }
 
 cell_t *trace_current_entry() {

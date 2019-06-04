@@ -211,6 +211,7 @@ struct __attribute__((packed)) mem {
 #define ENTRY_SYNC      0x04
 #define ENTRY_QUOTE     0x08
 #define ENTRY_PARTIAL   0x10
+#define ENTRY_RAM       0x20
 #define ENTRY_BLOCK     0x40
 #define ENTRY_COMPLETE  0x80
 
