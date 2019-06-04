@@ -44,57 +44,37 @@ endmodule
 module __primitive_ap01_lli(
   input  clk,
   input  `intT stream_in,
-  output reg `intT stream_out,
-  output reg `intT data0_out
+  output `intT stream_out,
+  output `intT data0_out
 );
 
-    initial begin
-        stream_out = 0;
-        data0_out = 0;
-    end
+    reg  `intT data0 = 0;
+
+    assign stream_out = {data0`intR, stream_in`intD};
+    assign data0_out = data0;
 
     always @(posedge clk) begin
-        if(stream_in`intR) begin
-            data0_out <= stream_in;
-        end
-        else if(data0_out`intR) begin
-            stream_out <= {`true, stream_in`intD};
-            `reset(data0_out`intR);
-        end
-        else begin
-            stream_out <= stream_in;
-        end
+        data0 <= stream_in;
     end
 endmodule
 
 module __primitive_ap02_llii(
   input  clk,
   input  `intT stream_in,
-  output reg `intT stream_out,
-  output reg `intT data1_out,
-  output reg `intT data0_out
+  output `intT stream_out,
+  output `intT data1_out,
+  output `intT data0_out
 );
 
-    initial begin
-        stream_out = 0;
-        data1_out = 0;
-        data0_out = 0;
-    end
+    reg  `intT data1 = 0;
+    reg  `intT data0 = 0;
+
+    assign stream_out = {data0`intR, stream_in`intD};
+    assign data1_out = {data0`intR, data1`intD};
+    assign data0_out = data0;
 
     always @(posedge clk) begin
-        if(stream_in`intR) begin
-            data1_out <= {`true, stream_in`intD};
-        end
-        else if(data1_out`intR && !data0_out`intR) begin
-            data0_out <= {`true, stream_in`intD};
-        end
-        else if(data0_out`intR) begin
-            stream_out <= {`true, stream_in`intD};
-            `reset(data1_out`intR);
-            `reset(data0_out`intR);
-        end
-        else begin
-            stream_out <= stream_in;
-        end
+        data1 <= stream_in;
+        data0 <= data1;
     end
 endmodule

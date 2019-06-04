@@ -46,7 +46,7 @@ const char *vltype(type_t t) {
   static const char *table[] = {
     [T_ANY]      = "any",
     [T_INT]      = "int",
-    [T_LIST]     = "stream",
+    [T_LIST]     = "int", // for now
     [T_SYMBOL]   = "sym",
     [T_MAP]      = "map",
     [T_STRING]   = "string",

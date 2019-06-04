@@ -1,10 +1,10 @@
 module algorithm_sum (
   input clk,
-  input `streamT lst1_in,
+  input `intT lst1_in,
   output `intT int0_out
 );
 
-  wire `streamT lst1 = lst1_in;
+  wire `intT lst1 = lst1_in;
   localparam `intT int2 = `read(`intN, 0);
   wire `intT int3;
 
@@ -20,26 +20,27 @@ endmodule
 module algorithm_sum_r0 (
   input clk,
   input `intT int2_in,
-  input `streamT lst1_in,
+  input `intT lst1_in,
   output `intT int0_out
 );
 
   reg active = 1'b0;
   wire read = int2_in`intR
-    & lst1_in`streamR;
+       & lst1_in`intR;
 
-  reg `streamT lst1;
   reg `intT int2;
-  wire `streamT lst3;
+  wire `intT lst3;
   wire `intT int4;
   wire `intT int6;
   wire `intT int9;
 
+  wire `intT lst1 = {lst1_in`intR | lst3`intR, lst1_in`intD};
+
   // block1:
-  __primitive_ap_lli inst3(lst1, lst3, int4);
+  __primitive_ap01_lli inst3(clk, lst1, lst3, int4);
   __primitive_add_iii inst6(int4, int2, int6);
 
-  wire block1_cond = 1'b1;
+  wire block1_cond = ! (& int4);
   wire block9_cond = !block1_cond;
 
   wire ready = block9_cond;
@@ -47,7 +48,6 @@ module algorithm_sum_r0 (
 
   always @(posedge clk) begin
     if(read) begin
-      lst1 <= lst1_in;
       int2 <= int2_in;
       `set(active);
     end
@@ -55,9 +55,8 @@ module algorithm_sum_r0 (
        `reset(active);
     end
     else begin
-      if(`true) begin
+      if(block1_cond) begin
         int2 <= int6;
-        lst1 <= lst3;
       end
     end
   end

@@ -4,7 +4,7 @@
 
 module stream_tb;
 
-   parameter chained = `true;
+   parameter chained = `false;
 
    reg clk;
    reg `intT sIn;
@@ -27,8 +27,6 @@ module stream_tb;
       sIn`intR = `false;
       #8;
       sIn`intR = `true;
-      #2;
-      sIn`intR = `false;
 
       #10;
       $finish;
@@ -41,7 +39,7 @@ module stream_tb;
                 dOut1, dOut1`intD, dOut0, dOut0`intD);
    end
 
-   if(chained) begin
+   if(!chained) begin
        __primitive_ap02_llii ap02(clk, sIn, sOut, dOut1, dOut0);
    end
    else begin
@@ -50,4 +48,4 @@ module stream_tb;
        __primitive_ap01_lli apB(clk, s, sOut, dOut0);
    end
 
-endmodule // gcd_tb
+endmodule
