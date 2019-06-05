@@ -26,4 +26,6 @@
 `define set(x) x <= `true
 `define reset(x) x <= `false
 
+`define valid(x) (! (& int4))
+
 `endif

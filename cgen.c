@@ -401,18 +401,46 @@ void gen_indent(int depth) {
   }
 }
 
+bool is_external(const cell_t *c) {
+  return c->op == OP_external;
+}
+
+void print_function_name(const cell_t *e, const cell_t *c) {
+  if(is_external(c)) {
+    const cell_t *name = &e[cgen_index(e, c->expr.arg[closure_in(c) - 1])];
+    assert_error(is_string(name) && !is_var(name),
+                 "external name must be an immediate string");
+    printf("%s", external_name(name->value.str));
+  } else {
+    const char *module_name, *word_name;
+    trace_get_name(c, &module_name, &word_name);
+    printf("%s_%s", module_name, word_name);
+  }
+  csize_t
+    in = closure_in(c),
+    out = closure_out(c);
+  if(ONEOF(c->op, OP_ap, OP_compose)) {
+    assert_error(in >= 1);
+    printf("%d%d", in-1, out);
+  } else if(ONEOF(c->op, OP_quote, OP_pushr)) {
+    assert_error(in >= 1 && out == 0);
+    printf("%d", in-1);
+  }
+  if(!is_external(c)) {
+    print_type_suffix(e, c);
+  }
+}
+
 void gen_call(const cell_t *e, const cell_t *c, int depth) {
   int lhs = c - e;
   char *sep = "";
-  const char *module_name, *word_name;
 
   csize_t
-    in = closure_in(c),
+    in = closure_in(c) - is_external(c),
     out = closure_out(c),
     n = closure_args(c),
     start_out = n - closure_out(c);
 
-  trace_get_name(c, &module_name, &word_name);
   type_t t = trace_type(c);
   bool partial = FLAG(*c, expr, PARTIAL);
   int next_block = 0;
@@ -431,24 +459,7 @@ void gen_call(const cell_t *e, const cell_t *c, int depth) {
       printf("  %s%s%d = ", FLAG(*c, trace, DECL) ? "" : ctype(t), cname(t), lhs);
     }
   }
-  // abstract to print_function
-  if(c->op == OP_external) {
-    const cell_t *name = &e[cgen_index(e, c->expr.arg[closure_in(c) - 1])];
-    assert_error(is_string(name) && !is_var(name),
-                 "external name must be an immediate string");
-    printf("%s", external_name(name->value.str));
-    in--;
-  } else {
-    printf("%s_%s", module_name, word_name);
-  }
-  if(ONEOF(c->op, OP_ap, OP_compose)) {
-    assert_error(in >= 1);
-    printf("%d%d", in-1, out);
-  } else if(ONEOF(c->op, OP_quote, OP_pushr)) {
-    assert_error(in >= 1 && out == 0);
-    printf("%d", in-1);
-  }
-  if(c->op != OP_external) print_type_suffix(e, c);
+  print_function_name(e, c);
   printf("(");
 
   COUNTUP(i, in) {

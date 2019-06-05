@@ -115,7 +115,7 @@ void gen_decls(cell_t *e) {
       const cell_t *a = &p[i];
       type_t t = trace_type(a);
       printf("%s%s%d_in`%sR", sep, cname(t), (int)i + 1, vltype(t));
-      sep = "\n    & ";
+      sep = "\n            & ";
     }
     printf(";\n\n");
   }
@@ -125,7 +125,7 @@ void gen_decls(cell_t *e) {
     if(ONEOF(t, T_BOTTOM, T_RETURN)) continue;
     if(is_var(c)) {
       if(e->entry.rec) {
-        printf("  reg `%sT %s%d;\n", vltype(t), cname(t), (int)i);
+        printf("  %s `%sT %s%d;\n", t == T_LIST ? "wire" : "reg", vltype(t), cname(t), (int)i);
       } else {
         printf("  wire `%sT %s%d = %s%d_in;\n", vltype(t), cname(t), (int)i, cname(t), (int)i);
       }
@@ -154,11 +154,11 @@ void gen_instance(const cell_t *e, const cell_t *c) {
 
   trace_get_name(c, &module_name, &word_name);
   type_t t = trace_type(c);
-  printf("  %s_%s", module_name, word_name);
-  if(c->op != OP_external) print_type_suffix(e, c);
+  printf("  ");
+  print_function_name(e, c);
   printf(" inst%d(", inst);
 
-  if(sync) printf("clk, ");
+  if(sync || c->op == OP_ap) printf("clk, ");
 
   COUNTUP(i, in) {
     int a = cgen_index(e, c->expr.arg[i]);
@@ -225,6 +225,12 @@ void gen_conditions(const cell_t *e) {
       int ai = cgen_index(e, c->expr.arg[1]);
       printf("%s%s%d", sep, cname(trace_type(&e[ai])), ai);
       sep = " && ";
+    } else if(c->op == OP_ap) {
+      TRAVERSE(c, const, out) {
+        int ai = cgen_index(e, *p);
+        printf("`%svalid(%s%d)", sep, cname(trace_type(&e[ai])), ai);
+        sep = " && ";
+      }
     }
   }
 }
@@ -265,36 +271,31 @@ void gen_ready(const cell_t *e, const cell_t *r0) {
   printf("  wire ready = ");
   const cell_t *r = r0;
   int block = 1;
-  while(NOT_FLAG(*r, trace, TAIL_CALL)) {
-    printf("%sblock%d_cond", sep, block);
+  do {
+    if(NOT_FLAG(*r, trace, TAIL_CALL)) {
+      printf("%sblock%d_cond", sep, block);
+      sep = " || ";
+    }
     block = (r - e) + calculate_cells(r->size);
-    sep = " || ";
-    if(!r->alt) break;
     r = &e[tr_index(r->alt)];
-  }
+  } while(r > e);
   printf(";\n"
          "  wire write = active && ready;\n");
 }
 
 static
-void gen_loop(const cell_t *e, const cell_t *l, int start, const cell_t *tail_call) {
+void gen_loop(const cell_t *e, const cell_t *l, int block, const cell_t *tail_call) {
   csize_t in = e->entry.in;
-  printf("      if(");
-  const char *sep = "";
-  FOR_TRACE_CONST(c, e, start) {
-    if(c->op == OP_assert) {
-      int ai = cgen_index(e, c->expr.arg[1]);
-      printf("%s%s%d", sep, cname(trace_type(&e[ai])), ai);
-      sep = " && ";
-    }
-    if(c >= l) break;
-  }
-  printf(") begin\n");
+  printf("      if(block%d_cond) begin\n", block);
   COUNTUP(i, in) {
     int a = cgen_index(e, tail_call->expr.arg[i]);
-    printf("        %s%d <= %s%d;\n",
-           cname(trace_type(&e[in - i])), (int)(in - i),
-           cname(trace_type(&e[a])), a);
+    type_t t = trace_type(&e[a]);
+    assert_error(trace_type(&e[in - i]) == t);
+    if(t != T_LIST) {
+      printf("        %s%d <= %s%d;\n",
+             cname(t), (int)(in - i),
+             cname(t), a);
+    }
   }
   printf("      end\n");
 }
@@ -307,7 +308,7 @@ void gen_loops(cell_t *e) {
     if(!is_var(c)) break;
     int i = c - e;
     type_t t = trace_type(c);
-    printf("      %s%d <= %s%d_in;\n", cname(t), i, cname(t), i);
+    if(t != T_LIST) printf("      %s%d <= %s%d_in;\n", cname(t), i, cname(t), i);
   }
   printf("      `set(active);\n"
          "    end\n"
@@ -328,6 +329,49 @@ void gen_loops(cell_t *e) {
   }
   printf("    end\n"
          "  end\n");
+}
+
+static
+void gen_stream_loop(const cell_t *e, const cell_t *l, int block, const cell_t *tail_call) {
+  csize_t in = e->entry.in;
+  printf("      if(block%d_cond) begin\n", block);
+  COUNTUP(i, in) {
+    int a = cgen_index(e, tail_call->expr.arg[i]);
+    type_t t = trace_type(&e[a]);
+    assert_error(trace_type(&e[in - i]) == t);
+    if(t != T_LIST) {
+      printf("        %s%d <= %s%d;\n",
+             cname(t), (int)(in - i),
+             cname(t), a);
+    }
+  }
+  printf("      end\n");
+}
+
+static
+void gen_stream_loops(cell_t *e) {
+  csize_t in = e->entry.in;
+  COUNTUP(i, in) {
+    int id = in - i;
+    if(trace_type(&e[in - i]) != T_LIST) continue;
+    printf("  assign lst%d = {lst%d_in`intR", id, id);
+    int start = 1;
+    const cell_t *tail_call = NULL;
+    FOR_TRACE_CONST(c, e) {
+      if(is_return(c)) {
+        if(tail_call) {
+          int a = cgen_index(e, tail_call->expr.arg[i]);
+          assert_error(trace_type(&e[a]) == T_LIST);
+          printf(" | lst%d`intR", a);
+        }
+        start = (c - e) + calculate_cells(c->size);
+        tail_call = NULL;
+      } else if(get_entry(c) == e) {
+        tail_call = c;
+      }
+    }
+    printf(", lst%d_in`intD};\n", id);
+  }
 }
 
 static
@@ -353,6 +397,8 @@ void gen_module(cell_t *e) {
     gen_ready(e, r0);
     printf("\n");
     gen_loops(e);
+    printf("\n");
+    gen_stream_loops(e);
     printf("\n");
   }
   gen_outputs(e, r0, rtypes);
