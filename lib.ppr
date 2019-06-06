@@ -425,6 +425,9 @@ __ raise to integer power using binary exponentiation
     iterate tail2 head
 
 sum: 0 [+] foldr
+sumf: 0.0 [+f] foldr
+
+avgf: dup sumf swap length ->f swap /f
 
 __ decreasing list from initial element
 __ ERROR: user_func.c:424: flat_call: Assertion `tn->pos' failed

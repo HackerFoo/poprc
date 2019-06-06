@@ -39,6 +39,16 @@ ___ algorithm.acc_odd_power (3 -> 1) x2 ___
 [13] __primitive.assert 3 12 :: i? x1
 [14] return [13]
 
+___ algorithm.avgf (1 -> 1) ___
+[1] var :: ?a x2
+[2] list.length_r0 3 &1 :: i x1
+[3] val 0 :: i x1
+[4] __primitive.to_float 2 :: d x1
+[5] algorithm.sumf_r0 6 1 :: d x1
+[6] val 0 :: d x1
+[7] __primitive.div_float 4 5 :: d? x1
+[8] return [7]
+
 ___ algorithm.gcd (2 -> 1) ___
 [1] var :: ?i x1
 [2] var :: ?i x1
@@ -115,6 +125,24 @@ ___ algorithm.sum_r0 (2 -> 1) x2 rec ___
 [7] algorithm.sum_r0 6 3 :: v x1
 [8] return [5] -> 10
 [9] __primitive.unless 2 4 :: i x1
+[10] return [9]
+
+___ algorithm.sumf (1 -> 1) ___
+[1] var :: ?l x1
+[2] val 0 :: d x1
+[3] algorithm.sumf_r0 2 1 :: d x1
+[4] return [3]
+
+___ algorithm.sumf_r0 (2 -> 1) x2 rec ___
+[1] changing var :: ?l x1
+[2] changing var :: ?d x2
+[3] __primitive.ap 1 -> 4 :: l? x2
+[4] __primitive.dep 3 :: d x3
+[5] __primitive.seq 7 &4 :: v x1
+[6] __primitive.add_float 4 2 :: d x1
+[7] algorithm.sumf_r0 6 3 :: v x1
+[8] return [5] -> 10
+[9] __primitive.unless 2 4 :: d x1
 [10] return [9]
 
 ___ control.!! (3 -> 2) ___
@@ -1389,6 +1417,19 @@ ___ list.length (1 -> 1) ___
 [2] val 0 :: i x1
 [3] list.length_r0 2 1 :: i x1
 [4] return [3]
+
+___ list.length_r0 (2 -> 1) x2 rec ___
+[1] changing var :: ?l x1
+[2] changing var :: ?i x2
+[3] __primitive.ap 1 -> 4 :: l? x2
+[4] __primitive.dep 3 :: a x2
+[5] __primitive.seq 8 4 :: v x1
+[6] __primitive.add 2 7 :: i x1
+[7] val 1 :: i x1
+[8] list.length_r0 6 3 :: v x1
+[9] return [5] -> 11
+[10] __primitive.unless 2 4 :: i x1
+[11] return [10]
 
 ___ list.length_r0 (2 -> 1) x2 rec ___
 [1] changing var :: ?l x1

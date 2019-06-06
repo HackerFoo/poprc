@@ -65,6 +65,7 @@ assert also works this way
 ** DONE add primitive apNM operator
 ** CANCELED need a separate arity pass for placeholders?
 * minor
+** TODO duplicated list.length_r0 in bytecode output
 ** TODO stable log ids
 - file + line number enum for msg id e.g. enum { trace_997, ... }
 - log id = msg id + hash of args
