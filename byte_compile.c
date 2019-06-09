@@ -336,6 +336,14 @@ void trace_drop_return(cell_t *entry, int out, uintptr_t dep_mask) {
   entry->entry.out = used;
 }
 
+static
+void condense_and_analyze(cell_t *entry) {
+  condense(entry);
+  last_use_analysis(entry);
+  no_skip_analysis(entry);
+  mark_tail_calls(entry);
+}
+
 // runs after reduction to finish functions marked incomplete
 void trace_final_pass(cell_t *entry) {
   // replace alts with trace cells
@@ -385,19 +393,13 @@ void trace_final_pass(cell_t *entry) {
   }
   if(NOT_FLAG(*entry, entry, QUOTE) &&
     TWEAK(true, "to disable condense/move_vars in %s", entry->word_name)) {
-    condense(entry);
-    last_use_analysis(entry);
-    no_skip_analysis(entry);
-    mark_tail_calls(entry);
+    condense_and_analyze(entry);
   }
   FOR_TRACE(p, entry) {
     if(p->op == OP_exec) {
       cell_t *e = get_entry(p);
       if(FLAG(*e, entry, QUOTE)) {
-        condense(e);
-        last_use_analysis(e);
-        no_skip_analysis(e);
-        mark_tail_calls(e);
+        condense_and_analyze(e);
       }
     }
   }
