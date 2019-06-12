@@ -41,12 +41,12 @@ ___ algorithm.acc_odd_power (3 -> 1) x2 ___
 
 ___ algorithm.avgf (1 -> 1) ___
 [1] var :: ?a x2
-[2] list.length_r0 3 &1 :: i x1
-[3] val 0 :: i x1
-[4] __primitive.to_float 2 :: d x1
-[5] algorithm.sumf_r0 6 1 :: d x1
-[6] val 0 :: d x1
-[7] __primitive.div_float 4 5 :: d? x1
+[2] algorithm.sumf_r0 3 &1 :: d x1
+[3] val 0 :: d x1
+[4] list.length_r0 5 1 :: i x1
+[5] val 0 :: i x1
+[6] __primitive.to_float 4 :: d x1
+[7] __primitive.div_float 2 6 :: d? x1
 [8] return [7]
 
 ___ algorithm.gcd (2 -> 1) ___
