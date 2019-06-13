@@ -889,13 +889,21 @@ void last_use_analysis(cell_t *entry) {
 }
 
 void mark_tail_calls(cell_t *entry) {
-  bool self_call = false;
+  cell_t *tail_call = NULL;
   FOR_TRACE(c, entry) {
-    if(is_return(c) && self_call) {
+    if(ONEOF(c->op, OP_seq, OP_assert, OP_unless)) continue;
+    if(is_return(c) && tail_call) {
       FLAG_SET(*c, trace, TAIL_CALL);
+      FLAG_SET(*tail_call, trace, TAIL_CALL);
+      tail_call = NULL;
+      continue;
     }
-    self_call = is_user_func(c) &&
-      get_entry(c) == entry;
+    if(is_user_func(c) &&
+       get_entry(c) == entry) {
+      tail_call = c;
+      continue;
+    }
+    tail_call = NULL;
   }
 }
 
