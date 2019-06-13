@@ -4,32 +4,34 @@
 `include "algorithm_gcd.v"
 
 module top(
-  input clk,
-  input [15:0]  in,
-  output [15:0] out
-);
+           input         clk,
+           input [15:0]  in,
+           output [15:0] out
+           );
 
-   reg  `intT  a;
-   reg  `intT  b;
-   wire  `intT  a_in = in[7:0];
-   wire  `intT  b_in = in[15:8];
-   wire  `intT  c;
+    reg                  `intT  a;
+    reg                  `intT  b;
+    wire                 `intT  a_in = in[7:0];
+    wire                 `intT  b_in = in[15:8];
+    wire                 `intT  c;
+    reg                  in_valid;
+    wire                 out_valid;
 
-   assign out = {a`intR, b`intR, c`intR, 5'd0, c`intD};
+    assign out = {in_valid, out_valid, 6'd0, c};
 
-   always @(posedge clk) begin
-      if(a`intD != a_in || b`intD != b_in)
-         begin
-            a <= `read(`intN, a_in);
-            b <= `read(`intN, b_in);
-         end
-      else
-         begin
-            `reset(a`intR);
-            `reset(b`intR);
-         end
-   end // always @ (posedge clk)
+    always @(posedge clk) begin
+        if(a != a_in || b != b_in)
+          begin
+              a <= a_in;
+              b <= b_in;
+              `set(in_valid);
+          end
+        else
+          begin
+              `reset(in_valid);
+          end
+    end
 
-   algorithm_gcd gcd(clk, a, b, c);
+    algorithm_gcd gcd(`sync_top, .in0(a), .in1(b), .out0(c));
 
-endmodule // top
+endmodule

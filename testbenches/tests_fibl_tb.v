@@ -8,6 +8,8 @@ module tests_fibl_tb;
    reg clk;
    reg `intT a;
    wire `intT b;
+   reg  in_valid;
+   wire out_valid;
 
    always begin
       #1 clk = !clk;
@@ -17,17 +19,18 @@ module tests_fibl_tb;
       $dumpfile("tests_fibl_tb.vcd");
       $dumpvars(0, tests_fibl_tb);
 
-      a    = `read(`intN, 21);
+      a    = 21;
+      in_valid = `true;
       clk  = 0;
 
       #3;
-      a`intR = `false;
+      in_valid = `false;
 
       #200;
       $display("b = %b (%d)", b, b);
       $finish;
    end
 
-   tests_fibl tests_fibl(clk, a, b);
+   tests_fibl tests_fibl(`sync_top, .in0(a), .out0(b));
 
 endmodule // tests_fibl_tb

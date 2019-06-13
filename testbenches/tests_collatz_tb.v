@@ -5,29 +5,32 @@
 
 module tests_collatz_tb;
 
-   reg clk;
-   reg `intT a;
-   wire `intT b;
+    reg clk;
+    reg `intT a;
+    wire `intT b;
+    reg  in_valid;
+    wire out_valid;
 
-   always begin
-      #1 clk = !clk;
-   end
+    always begin
+        #1 clk = !clk;
+    end
 
-   initial begin
-      $dumpfile("tests_collatz_tb.vcd");
-      $dumpvars(0, tests_collatz_tb);
+    initial begin
+        $dumpfile("tests_collatz_tb.vcd");
+        $dumpvars(0, tests_collatz_tb);
 
-      a    = `read(`intN, 27);
-      clk  = 0;
+        a    = 27;
+        in_valid = `true;
+        clk  = 0;
 
-      #3;
-      a`intR = `false;
+        #3;
+        in_valid = `false;
 
-      #300;
-      $display("b = %b (%d)", b, b);
-      $finish;
-   end
+        #300;
+        $display("b = %b (%d)", b, b);
+        $finish;
+    end
 
-   tests_collatz tests_collatz(clk, a, b);
+    tests_collatz tests_collatz(`sync_top, .in0(a), .out0(b));
 
 endmodule // tests_collatz_tb

@@ -4,49 +4,50 @@
 `include "tests_collatz.v"
 
 module top(
-  input clk,
-  input [15:0]  in,
-  output [15:0] out
-);
+           input         clk,
+           input [15:0]  in,
+           output [15:0] out
+           );
 
-   reg  `intT  a;
-   wire  `intD  a_in = {12'h0, in[14:0]};
-   wire  `intT  b;
-   reg [26:0]   div;
-   reg          busy = 1'b0;
-   reg [14:0]   out_reg;
+    reg                  `intT  a;
+    wire                 `intT  a_in = {12'h0, in[14:0]};
+    wire                 `intT  b;
+    reg [26:0]           div = 0;
+    reg [14:0]           out_reg = 0;
+    reg                  busy = 0;
+    reg                  in_valid = 0;
+    wire                 out_valid;
 
-   initial div       = 0;
-   initial out_reg   = 0;
-   assign out = {busy, out_reg};
+    assign out = {busy, out_reg};
 
-   always @(posedge clk) begin
-      if(write) begin
-         out_reg <= b[14:0];
-         `reset(busy);
-      end
-      if(busy) begin
-         if(a`intR) begin
-            `reset(a`intR);
-         end
-      end
-      else if(!busy) begin
-         if(in[15]) begin
-            div <= div + 1;
-            if(div[26:12] == in[14:0]) begin
-               a`intD <= a`intD + 1;
-               div <= 0;
-               `set(a`intR);
-               `set(busy);
+    always @(posedge clk) begin
+        if(out_valid) begin
+            out_reg <= b[14:0];
+            `reset(busy);
+        end
+        if(busy) begin
+            if(in_valid) begin
+                `reset(in_valid);
             end
-         end
-         else if(a != a_in) begin
-            a <= read(`intN, a_in);
-            `set(busy);
-         end
-      end
-   end
+        end
+        else if(!busy) begin
+            if(in[15]) begin
+                div <= div + 1;
+                if(div[26:12] == in[14:0]) begin
+                    a <= a + 1;
+                    div <= 0;
+                    `set(in_valid);
+                    `set(busy);
+                end
+            end
+            else if(a != a_in) begin
+                a <= a_in;
+                `set(in_valid);
+                `set(busy);
+            end
+        end
+    end
 
-   tests_collatz collatz(clk, a, b);
+    tests_collatz collatz(`sync_top, .in0(a), .out0(b));
 
-endmodule // top
+endmodule

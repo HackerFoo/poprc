@@ -1,0 +1,2 @@
+* Vivado wand/wor
+set_param synth.elaboration.rodinMoreOptions "rt::set_parameter compatibilityMode true"

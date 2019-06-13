@@ -4,47 +4,47 @@
 `include "tests_fibl.v"
 
 module top(
-  input clk,
-  input [15:0]  in,
-  output [15:0] out
-);
+           input         clk,
+           input [15:0]  in,
+           output [15:0] out
+           );
 
-   reg  `intT  a;
-   wire  `intD  a_in = in[4:0];
-   wire  `intT  b;
-   wire         read;
-   wire         write;
-   reg [26:0]   div;
+    reg                  `intT  a = 0;
+    wire                 `intT  a_in = in[4:0];
+    wire                 `intT  b;
+    reg [26:0]           div = 0;
+    reg                  in_valid = 0;
+    wire                 out_valid;
 
-   assign out = b`intD;
-   initial div = 0;
+    assign out = b;
 
-   always @(posedge clk) begin
-      if(in[15]) begin
-         div <= div + 1;
-         if(div == 0) begin
-            if(a`intD == 24) begin
-               a`intD <= 0;
+    always @(posedge clk) begin
+        if(in[15]) begin
+            div <= div + 1;
+            if(div == 0) begin
+                if(a == 24) begin
+                    a <= 0;
+                end
+                else begin
+                    a <= a + 1;
+                end
+                `set(in_valid);
             end
             else begin
-               a`intD <= a`intD + 1;
+                `reset(in_valid);
             end
-            `set(a`intR);
-         end
-         else begin
-            `reset(a`intR);
-         end // else: !if(div == 0)
-      end
-      else if(a != a_in && a_in <= 24)
-         begin
-            a <= `read(`intN, a_in);
-         end
-      else
-         begin
-            `reset(a`intR);
-         end
-   end // always @ (posedge clk)
+        end
+        else if(a != a_in && a_in <= 24)
+          begin
+              a <= a_in;
+              `set(in_valid);
+          end
+        else
+          begin
+              `reset(in_valid);
+          end
+    end
 
-   tests_fibl fibl(clk, a, b);
+    tests_fibl fibl(`sync_top, .in0(a), .out0(b));
 
-endmodule // top
+endmodule

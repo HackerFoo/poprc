@@ -4,48 +4,55 @@
 
 module stream_tb;
 
-   parameter chained = `false;
+    parameter chained = `false;
 
-   reg clk;
-   reg `intT sIn;
-   wire `intT sOut;
-   wire `intT dOut1;
-   wire `intT dOut0;
+    reg clk;
+    `reg(stream, sIn);
+    `wire(stream, sOut);
+    `wire(int, dOut1);
+    `wire(int, dOut2);
+    localparam in_valid = `false; // doesn't matter
+    wor out_valid;
 
-   always begin
-      #1 clk = !clk;
-   end
+    always begin
+        #1 clk = !clk;
+    end
 
-   initial begin
-      $dumpfile("stream_tb.vcd");
-      $dumpvars(0, stream_tb);
+    initial begin
+        $dumpfile("stream_tb.vcd");
+        $dumpvars(0, stream_tb);
 
-      sIn       = `read(`intN, 1);
-      clk       = 0;
+        sIn       = 1;
+        clk       = 0;
+        sIn_valid = `true;
 
-      #2;
-      sIn`intR = `false;
-      #8;
-      sIn`intR = `true;
+        #2;
+        sIn_valid = `false;
+        #8;
+        sIn_valid = `true;
 
-      #10;
-      $finish;
-   end
+        #10;
+        $finish;
+    end
 
-   always @(posedge clk) begin
-       sIn <= sIn + 1;
-       $display("sIn = %b (%d), sOut = %b (%d), dOut1 = %b (%d), dOut0 = %b (%d)",
-                sIn, sIn`intD, sOut, sOut`intD,
-                dOut1, dOut1`intD, dOut0, dOut0`intD);
-   end
+    always @(posedge clk) begin
+        sIn <= sIn + 1;
+        $display("sIn = %b (%d), sOut = %b (%d), dOut1 = %b (%d), dOut2 = %b (%d), out_valid = %b, sOut_valid = %b",
+                 sIn, sIn, sOut, sOut,
+                 dOut1, dOut1, dOut2, dOut2,
+                 out_valid, sOut_valid);
+    end
 
-   if(!chained) begin
-       __primitive_ap02_llii ap02(clk, sIn, sOut, dOut1, dOut0);
-   end
-   else begin
-       wire `intT s;
-       __primitive_ap01_lli apA(clk, sIn, s, dOut1);
-       __primitive_ap01_lli apB(clk, s, sOut, dOut0);
-   end
+    if(!chained) begin
+        __primitive_ap02_llii ap02(`sync_top, `in(stream, 0, sIn),
+                                              `out(stream, 0, sOut),
+                                              `out(int, 1, dOut1),
+                                              `out(int, 2, dOut2));
+    end
+    else begin
+        `wire(stream, s);
+        __primitive_ap01_lli apA(`sync_top, `in(stream, 0, sIn), `out(stream, 0, s), `out(int, 1, dOut1));
+        __primitive_ap01_lli apB(`sync_top, `in(stream, 0, s), `out(stream, 0, sOut), `out(int, 1, dOut2));
+    end
 
 endmodule

@@ -9,7 +9,7 @@ FUNCTION_SRCS = $(foreach target, $(FUNCTIONS), $(shell ../eval -ident $(target)
 $(foreach target, $(FUNCTIONS), $(eval $(shell ../eval -ident $(target)).v:FUNCTION=$(target)))
 
 .PHONY: all
-all: $(patsubst %_tb.v, %_tb.vcd, $(wildcard *_tb.v))
+all: $(patsubst %_tb.v, %_tb.vcd, $(wildcard *_tb.v)) $(patsubst %, proc/%, $(wildcard *_swbut.v)) 
 
 print-%:
 	@echo $* = $($*)
@@ -17,10 +17,16 @@ print-%:
 %_tb.vcd: %_tb.vvp
 	vvp $<
 
-stream_tb.vvp: stream_tb.v $(COMMON)
+proc/%.v: %.v
+	@mkdir -p proc
+	vppreproc -I../vlgen $< > $@
+
+.PRECIOUS: proc/%.v
+
+stream_tb.vvp: proc/stream_tb.v $(COMMON)
 	iverilog -o $@ -I../vlgen $<
 
-%_tb.vvp: %_tb.v %.v $(COMMON)
+%_tb.vvp: proc/%_tb.v %.v $(COMMON)
 	iverilog -o $@ -I../vlgen $<
 
 $(FUNCTION_SRCS): ../lib.ppr ../tests.ppr ../eval
@@ -32,3 +38,4 @@ $(FUNCTION_SRCS): ../lib.ppr ../tests.ppr ../eval
 .PHONY: clean
 clean:
 	rm -f *.vvp *.vcd $(FUNCTION_SRCS)
+	rm -rf proc
