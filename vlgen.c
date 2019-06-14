@@ -113,7 +113,8 @@ void gen_decls(cell_t *e) {
   if(e->entry.rec) {
     printf("  reg active = `false;\n"
            "  wand valid = `true;\n"
-           "  assign out_valid = active & valid;\n\n");
+           "  assign out_valid = active & valid;\n"
+           "  assign in_ready = valid;\n\n");
   }
   FOR_TRACE_CONST(c, e) {
     int i = c - e;
@@ -185,7 +186,8 @@ void gen_body(cell_t *e) {
         }
         if(block_start) {
           printf("\n  `define block block%d\n"
-                 "    wand block%d_valid;\n", block, block);
+                 "    wand block%d_valid = `true;\n"
+                 "    wand block%d_ready = `true;\n", block, block, block);
           block_start = false;
         }
         if(c->op == OP_assert) {
@@ -261,7 +263,7 @@ void gen_loops(cell_t *e) {
   printf("      `set(active);\n"
          "    end\n"
          "    else if(valid) begin\n"
-         "       `reset(active);\n"
+         "       if(out_ready) `reset(active);\n"
          "    end\n"
          "    else begin\n");
   int start = 1;

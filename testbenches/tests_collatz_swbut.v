@@ -15,8 +15,7 @@ module top(
     reg [26:0]           div = 0;
     reg [14:0]           out_reg = 0;
     reg                  busy = 0;
-    reg                  in_valid = 0;
-    wire                 out_valid;
+    `top_sync
 
     assign out = {busy, out_reg};
 
@@ -48,6 +47,6 @@ module top(
         end
     end
 
-    tests_collatz collatz(`sync_top, .in0(a), .out0(b));
+    tests_collatz collatz(`sync, .in0(a), .out0(b));
 
 endmodule

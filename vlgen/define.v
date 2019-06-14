@@ -18,8 +18,14 @@
   output out_valid, input out_ready
 
 `define id(x) x
-`define sync .clk(clk), .in_valid(in_valid), .out_valid(`id(`block)``_valid), .in_ready(), .out_ready()
-`define sync_top .clk(clk), .in_valid(in_valid), .out_valid(out_valid), .in_ready(), .out_ready()
+`define top_sync \
+  reg in_valid; \
+  wand top_valid = `true; \
+  wand top_ready = `true; \
+  reg out_ready; \
+  `define block top
+
+`define sync .clk(clk), .in_valid(in_valid), .out_valid(`id(`block)``_valid), .in_ready(`id(`block)``_ready), .out_ready(out_ready)
 `define input(type, index) `input_``type(index)
 `define output(type, index) `output_``type(index)
 `define define_simple_input(type) `define input_``type``(index) input `type``T `id(in)``index
@@ -52,18 +58,18 @@
 
 `define input_stream(index) input `intT in``index, input in``index``_valid, output in``index``_ready
 `define output_stream(index) output `intT out``index, output out``index``_valid, input out``index``_ready
-`define in_stream(index, name) .in``index(name), .in``index``_valid(name``_valid), .in``index``_ready()
-`define out_stream(index, name) .out``index(name), .out``index``_valid(name``_valid), .out``index``_ready()
-`define alias_stream(name, other) wire `intT name = other; wire name``_valid = other``_valid; wire name``_ready = other``_ready
+`define in_stream(index, name) .in``index(name), .in``index``_valid(name``_valid), .in``index``_ready(name``_ready)
+`define out_stream(index, name) .out``index(name), .out``index``_valid(name``_valid), .out``index``_ready(name``_ready)
+`define alias_stream(name, other) wire `intT name = other; wire name``_valid = other``_valid; wand name``_ready = `true; assign other``_ready = name``_ready
 `define variable_stream(name, in) wire `intT name = in; wor name``_valid = in``_valid; wire name``_ready = in``_ready
-`define wire_stream(name) wire `intT name; wire name``_valid; wire name``_ready
-`define reg_stream(name) reg `intT name; reg name``_valid; reg name``_ready
+`define wire_stream(name) wire `intT name; wire name``_valid; wand name``_ready = `true
+`define reg_stream(name) reg `intT name; reg name``_valid; wand name``_ready = `true
 
 `define true 1'b1
 `define false 1'b0
 
 `define assert(x) assign `id(`block)``_valid = (x)
-`define tail_call assign valid = ~ `id(`block)``_valid
+`define tail_call assign valid = ~`id(`block)``_valid & `id(`block)``_ready
 
 `define set(x) x <= `true
 `define reset(x) x <= `false

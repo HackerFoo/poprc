@@ -14,8 +14,7 @@ module top(
     wire                 `intT  a_in = in[7:0];
     wire                 `intT  b_in = in[15:8];
     wire                 `intT  c;
-    reg                  in_valid;
-    wire                 out_valid;
+    `top_sync
 
     assign out = {in_valid, out_valid, 6'd0, c};
 
@@ -32,6 +31,6 @@ module top(
           end
     end
 
-    algorithm_gcd gcd(`sync_top, .in0(a), .in1(b), .out0(c));
+    algorithm_gcd gcd(`sync, .in0(a), .in1(b), .out0(c));
 
 endmodule

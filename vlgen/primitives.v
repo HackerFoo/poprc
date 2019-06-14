@@ -52,6 +52,8 @@ module __primitive_ap01_lli(
     assign out0_valid = done;
     assign out_valid = in0_valid & `valid(in0);
 
+    // TODO ready logic
+
     always @(posedge clk) begin
         done <= in0_valid;
     end
@@ -68,6 +70,8 @@ module __primitive_ap02_llii(
 
     reg done = 0;
     reg  `intT data2 = 0; reg data2_valid = 0;
+
+    // TODO ready logic
 
     assign out0 = in0;
     assign out1 = in0;

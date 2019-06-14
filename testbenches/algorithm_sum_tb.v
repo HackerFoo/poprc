@@ -8,8 +8,7 @@ module algorithm_sum_tb;
     reg clk;
     `reg(stream, sIn);
     `wire(int, sum);
-    reg in_valid;
-    wire out_valid;
+    `top_sync
 
     always begin
         #1 clk = !clk;
@@ -22,6 +21,7 @@ module algorithm_sum_tb;
         sIn     = 0;
         clk     = 0;
         in_valid = `true;
+        out_ready = `true;
         sIn_valid = `false;
 
         #2; sIn = 1; in_valid = `false; sIn_valid = `true;
@@ -33,6 +33,6 @@ module algorithm_sum_tb;
         $finish;
     end
 
-    algorithm_sum sum_inst(`sync_top, `in(stream, 0, sIn), `out(int, 0, sum));
+    algorithm_sum sum_inst(`sync, `in(stream, 0, sIn), `out(int, 0, sum));
 
 endmodule

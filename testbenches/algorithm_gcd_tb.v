@@ -9,8 +9,7 @@ module algorithm_gcd_tb;
    reg `intT a;
    reg `intT b;
    wire `intT c;
-   reg in_valid;
-   wire out_valid;
+   `top_sync
 
    always begin
       #1 clk = !clk;
@@ -25,6 +24,7 @@ module algorithm_gcd_tb;
 
       clk       = 0;
       in_valid  = `true;
+      out_ready = `true;
 
       #5;
       in_valid   = `false;
@@ -34,6 +34,6 @@ module algorithm_gcd_tb;
       $finish;
    end
 
-   algorithm_gcd gcd(`sync_top, .in0(a), .in1(b), .out0(c));
+   algorithm_gcd gcd(`sync, .in0(a), .in1(b), .out0(c));
 
 endmodule // gcd_tb

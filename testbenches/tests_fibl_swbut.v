@@ -13,10 +13,10 @@ module top(
     wire                 `intT  a_in = in[4:0];
     wire                 `intT  b;
     reg [26:0]           div = 0;
-    reg                  in_valid = 0;
-    wire                 out_valid;
+    `top_sync
 
     assign out = b;
+    initial out_ready = `true;
 
     always @(posedge clk) begin
         if(in[15]) begin
@@ -45,6 +45,6 @@ module top(
           end
     end
 
-    tests_fibl fibl(`sync_top, .in0(a), .out0(b));
+    tests_fibl fibl(`sync, .in0(a), .out0(b));
 
 endmodule
