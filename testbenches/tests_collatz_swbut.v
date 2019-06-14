@@ -14,36 +14,32 @@ module top(
     wire                 `intT  b;
     reg [26:0]           div = 0;
     reg [14:0]           out_reg = 0;
-    reg                  busy = 0;
     `top_sync
 
-    assign out = {busy, out_reg};
+    assign out = {~top_ready, b[14:0]};
+    initial out_ready = `true;
+    initial in_valid = `false;
 
     always @(posedge clk) begin
-        if(out_valid) begin
+        if(top_valid) begin // TODO fix ready/valid
             out_reg <= b[14:0];
-            `reset(busy);
         end
-        if(busy) begin
-            if(in_valid) begin
-                `reset(in_valid);
-            end
-        end
-        else if(!busy) begin
+        else /*if(top_ready)*/ begin
             if(in[15]) begin
                 div <= div + 1;
                 if(div[26:12] == in[14:0]) begin
                     a <= a + 1;
                     div <= 0;
                     `set(in_valid);
-                    `set(busy);
                 end
             end
             else if(a != a_in) begin
                 a <= a_in;
                 `set(in_valid);
-                `set(busy);
             end
+        end
+        if(in_valid) begin
+           `reset(in_valid);
         end
     end
 

@@ -16,7 +16,8 @@ module top(
     wire                 `intT  c;
     `top_sync
 
-    assign out = {in_valid, out_valid, 6'd0, c};
+    assign out = {in_valid, top_valid, top_ready, 5'd0, c};
+    initial out_ready = `true;
 
     always @(posedge clk) begin
         if(a != a_in || b != b_in)
