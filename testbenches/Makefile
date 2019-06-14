@@ -12,7 +12,8 @@ all: $(patsubst %, $(BUILD)/preprocessed/%, $(wildcard *_swbut.v))
 # set FUNCTION for each target in FUNCTION_SRCS
 .PHONY: function_vars
 function_vars: ../eval
-	$(foreach target, $(FUNCTIONS), $(eval $(BUILD)/gen/$(shell ../eval -ident $(target)).v:FUNCTION=$(target)))
+	$(foreach target, $(FUNCTIONS), \
+	  $(eval $(BUILD)/gen/$(shell ../eval -ident $(target)).v:FUNCTION=$(target)))
 
 print-%:
 	@echo $* = $($*)
@@ -24,21 +25,13 @@ $(BUILD)/vcd/%_tb.vcd: $(BUILD)/vvp/%_tb.vvp
 	@mkdir -p $(dir $@)
 	cd $(dir $@) && vvp $(abspath $<)
 
-$(BUILD)/preprocessed/stream_tb.v: stream_tb.v $(COMMON)
+# add generated files as prerequisites for *_tb.v and *_swbut.v
+$(foreach suf, tb swbut, \
+  $(foreach target, $(wildcard *_$(suf).v), \
+    $(eval $(BUILD)/preprocessed/$(target): $(patsubst %_$(suf).v, $(BUILD)/gen/%.v, $(target)))))
+$(BUILD)/preprocessed/%.v: %.v $(COMMON)
 	@mkdir -p $(dir $@)
 	iverilog -o - -E $(INCLUDE) $< | sed '/^\s*$$/d' > $@
-
-$(BUILD)/preprocessed/%_tb.v: %_tb.v $(BUILD)/gen/%.v $(COMMON)
-	@mkdir -p $(dir $@)
-	iverilog -o - -E $(INCLUDE) $< | sed '/^\s*$$/d' > $@
-
-$(BUILD)/preprocessed/%_swbut.v: %_swbut.v $(BUILD)/gen/%.v $(COMMON)
-	@mkdir -p $(dir $@)
-	iverilog -o - -E $(INCLUDE) $< | sed '/^\s*$$/d' > $@
-
-$(BUILD)/vvp/stream_tb.vvp: $(BUILD)/preprocessed/stream_tb.v
-	@mkdir -p $(dir $@)
-	iverilog -o $@ $(INCLUDE) $<
 
 $(BUILD)/vvp/%_tb.vvp: $(BUILD)/preprocessed/%_tb.v
 	@mkdir -p $(dir $@)
@@ -46,7 +39,10 @@ $(BUILD)/vvp/%_tb.vvp: $(BUILD)/preprocessed/%_tb.v
 
 $(BUILD)/gen/%.v: function_vars ../lib.ppr ../tests.ppr ../eval
 	@mkdir -p $(dir $@)
-	(cd ..; ./eval -lo lib.ppr tests.ppr -cv $(FUNCTION)) > $@
+	@if [ "$(FUNCTION)" ]; then \
+	  echo "generating $(FUNCTION)"; \
+          (cd ..; ./eval -lo lib.ppr tests.ppr -cv $(FUNCTION)) > $@; \
+        fi
 
 ../eval:
 	make -C ..
