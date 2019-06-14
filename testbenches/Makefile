@@ -2,34 +2,50 @@
 FUNCTIONS = tests.fibl tests.collatz algorithm.gcd algorithm.sum
 COMMON = ../vlgen/primitives.v ../vlgen/define.v
 
-# use eval to get file names for each function
-FUNCTION_SRCS = $(foreach target, $(FUNCTIONS), $(shell ../eval -ident $(target)).v)
-
-# set FUNCTION for each target in FUNCTION_SRCS
-$(foreach target, $(FUNCTIONS), $(eval $(shell ../eval -ident $(target)).v:FUNCTION=$(target)))
+BUILD = build
+INCLUDE = -I../vlgen -I$(BUILD)/gen
 
 .PHONY: all
-all: $(patsubst %_tb.v, %_tb.vcd, $(wildcard *_tb.v)) $(patsubst %, proc/%, $(wildcard *_swbut.v)) 
+all: $(patsubst %_tb.v, $(BUILD)/vcd/%_tb.vcd, $(wildcard *_tb.v))
+all: $(patsubst %, $(BUILD)/preprocessed/%, $(wildcard *_swbut.v))
+
+# set FUNCTION for each target in FUNCTION_SRCS
+.PHONY: function_vars
+function_vars: ../eval
+	$(foreach target, $(FUNCTIONS), $(eval $(BUILD)/gen/$(shell ../eval -ident $(target)).v:FUNCTION=$(target)))
 
 print-%:
 	@echo $* = $($*)
 
-%_tb.vcd: %_tb.vvp
-	vvp $<
+# keep intermediate files
+.SECONDARY:
 
-proc/%.v: %.v
-	@mkdir -p proc
-	vppreproc -I../vlgen $< > $@
+$(BUILD)/vcd/%_tb.vcd: $(BUILD)/vvp/%_tb.vvp
+	@mkdir -p $(dir $@)
+	cd $(dir $@) && vvp $(abspath $<)
 
-.PRECIOUS: proc/%.v
+$(BUILD)/preprocessed/stream_tb.v: stream_tb.v $(COMMON)
+	@mkdir -p $(dir $@)
+	iverilog -o - -E $(INCLUDE) $< | sed '/^\s*$$/d' > $@
 
-stream_tb.vvp: proc/stream_tb.v $(COMMON)
-	iverilog -o $@ -I../vlgen $<
+$(BUILD)/preprocessed/%_tb.v: %_tb.v $(BUILD)/gen/%.v $(COMMON)
+	@mkdir -p $(dir $@)
+	iverilog -o - -E $(INCLUDE) $< | sed '/^\s*$$/d' > $@
 
-%_tb.vvp: proc/%_tb.v %.v $(COMMON)
-	iverilog -o $@ -I../vlgen $<
+$(BUILD)/preprocessed/%_swbut.v: %_swbut.v $(BUILD)/gen/%.v $(COMMON)
+	@mkdir -p $(dir $@)
+	iverilog -o - -E $(INCLUDE) $< | sed '/^\s*$$/d' > $@
 
-$(FUNCTION_SRCS): ../lib.ppr ../tests.ppr ../eval
+$(BUILD)/vvp/stream_tb.vvp: $(BUILD)/preprocessed/stream_tb.v
+	@mkdir -p $(dir $@)
+	iverilog -o $@ $(INCLUDE) $<
+
+$(BUILD)/vvp/%_tb.vvp: $(BUILD)/preprocessed/%_tb.v
+	@mkdir -p $(dir $@)
+	iverilog -o $@ $(INCLUDE) $<
+
+$(BUILD)/gen/%.v: function_vars ../lib.ppr ../tests.ppr ../eval
+	@mkdir -p $(dir $@)
 	(cd ..; ./eval -lo lib.ppr tests.ppr -cv $(FUNCTION)) > $@
 
 ../eval:
@@ -37,5 +53,4 @@ $(FUNCTION_SRCS): ../lib.ppr ../tests.ppr ../eval
 
 .PHONY: clean
 clean:
-	rm -f *.vvp *.vcd $(FUNCTION_SRCS)
-	rm -rf proc
+	rm -rf $(BUILD)
