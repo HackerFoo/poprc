@@ -9,22 +9,22 @@ module top(
            output [15:0] out
            );
 
-    reg                  `intT  a;
+    reg                  `intT  a = 0;
     wire                 `intT  a_in = {12'h0, in[14:0]};
     wire                 `intT  b;
     reg [26:0]           div = 0;
     reg [14:0]           out_reg = 0;
     `top_sync
 
-    assign out = {~top_ready, b[14:0]};
+    assign out = {~top_ready, out_reg};
     initial out_ready = `true;
     initial in_valid = `false;
 
     always @(posedge clk) begin
-        if(top_valid) begin // TODO fix ready/valid
+        if(top_valid) begin
             out_reg <= b[14:0];
         end
-        else /*if(top_ready)*/ begin
+        else if(top_ready) begin
             if(in[15]) begin
                 div <= div + 1;
                 if(div[26:12] == in[14:0]) begin
@@ -44,5 +44,7 @@ module top(
     end
 
     `inst_sync(tests_collatz, collatz)(`sync, .in0(a), .out0(b));
+   assign top_valid = top_collatz_valid;
+   assign top_ready = top_collatz_ready;
 
 endmodule

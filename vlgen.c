@@ -62,11 +62,10 @@ static
 void gen_module_interface(const cell_t *e, const type_t *rtypes) {
   const cell_t *p = e + 1;
   csize_t out_n = e->entry.out;
-  bool sync = FLAG(*e, entry, SYNC);
 
   printf("module %s_%s (\n", e->module_name, e->word_name);
   char *sep = "";
-  if(sync) {
+  if(FLAG(*e, entry, SYNC)) {
     printf("  `sync_ports");
     sep = ",\n";
   }
@@ -260,33 +259,46 @@ void gen_outputs(const cell_t *e, const cell_t *r0, const type_t *rtypes) {
 
 static
 void gen_valid_ready(const cell_t *e, const cell_t *r0) {
-  printf("  reg active = `false;\n");
+  const char *sep;
+  int block;
+  if(e->entry.rec) {
+    printf("  reg active = `false;\n");
+    printf("  wire not_valid = ");
+    sep = "";
+    block = 1;
+    for(const cell_t *r = r0; r > e; r = &e[tr_index(r->alt)]) {
+      if(FLAG(*r, trace, TAIL_CALL)) {
+        printf("%sblock%d_valid", sep, block);
+        sep = " | ";
+      }
+      block = (r - e) + calculate_cells(r->size);
+    }
+    if(!sep[0]) printf("`false");
+    printf(";\n");
+  }
 
   // valid
-  printf("  wire valid = ");
-  const char *sep = "";
-  int block = 1;
+  printf("  wire valid = %s(", e->entry.rec ? "!not_valid & " : "");
+  sep = "";
+  block = 1;
   for(const cell_t *r = r0; r > e; r = &e[tr_index(r->alt)]) {
-    if(FLAG(*r, trace, TAIL_CALL)) {
-      printf("%s!block%d_valid", sep, block);
-      sep = " & ";
+    if(NOT_FLAG(*r, trace, TAIL_CALL)) {
+      printf("%sblock%d_valid", sep, block);
+      sep = " | ";
     }
     block = (r - e) + calculate_cells(r->size);
   }
   if(!sep[0]) printf("`true");
-  printf(";\n"
-         "  assign out_valid = active & valid;\n");
+  printf(");\n"
+         "  assign out_valid = %svalid;\n", e->entry.rec ? "active & " : "");
 
   // ready
-  printf("  assign in_ready = ");
-  sep = "";
+  printf("  assign in_ready = %s", e->entry.rec ? "!active" : "`true");
   block = 1;
   for(const cell_t *r = r0; r > e; r = &e[tr_index(r->alt)]) {
-    printf("%sblock%d_ready", sep, block);
-    sep = " & ";
+    printf(" & block%d_ready", block);
     block = (r - e) + calculate_cells(r->size);
   }
-  if(!sep[0]) printf("`true");
   printf(";\n");
 }
 
@@ -386,9 +398,11 @@ void gen_module(cell_t *e) {
   gen_decls(e);
   gen_body(e);
   printf("\n");
-  if(e->entry.rec) {
+  if(FLAG(*e, entry, SYNC)) {
     gen_valid_ready(e, r0);
     printf("\n");
+  }
+  if(e->entry.rec) {
     gen_loops(e);
     printf("\n");
     gen_stream_loops(e);

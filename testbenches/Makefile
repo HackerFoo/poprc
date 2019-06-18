@@ -26,7 +26,7 @@ $(BUILD)/vcd/%_tb.vcd: $(BUILD)/vvp/%_tb.vvp
 	cd $(dir $@) && vvp $(abspath $<)
 
 # add generated files as prerequisites for *_tb.v and *_swbut.v
-$(foreach suf, tb swbut, \
+$(foreach suf, tb swbut swbut_tb, \
   $(foreach target, $(wildcard *_$(suf).v), \
     $(eval $(BUILD)/preprocessed/$(target): $(patsubst %_$(suf).v, $(BUILD)/gen/%.v, $(target)))))
 $(BUILD)/preprocessed/%.v: %.v $(COMMON)
