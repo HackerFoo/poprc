@@ -31,6 +31,6 @@ module tests_collatz_tb;
         $finish;
     end
 
-    tests_collatz tests_collatz(`sync, .in0(a), .out0(b));
+    `inst_sync(tests_collatz, tests_collatz)(`sync, .in0(a), .out0(b));
 
 endmodule // tests_collatz_tb

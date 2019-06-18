@@ -43,6 +43,6 @@ module top(
         end
     end
 
-    tests_collatz collatz(`sync, .in0(a), .out0(b));
+    `inst_sync(tests_collatz, collatz)(`sync, .in0(a), .out0(b));
 
 endmodule

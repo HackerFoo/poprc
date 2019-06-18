@@ -33,6 +33,6 @@ module algorithm_sum_tb;
         $finish;
     end
 
-    algorithm_sum sum_inst(`sync, `in(stream, 0, sIn), `out(int, 0, sum));
+    `inst_sync(algorithm_sum, sum_inst)(`sync, `in(stream, 0, sIn), `out(int, 0, sum));
 
 endmodule

@@ -45,6 +45,6 @@ module top(
           end
     end
 
-    tests_fibl fibl(`sync, .in0(a), .out0(b));
+    `inst_sync(tests_fibl, fibl)(`sync, .in0(a), .out0(b));
 
 endmodule

@@ -31,6 +31,6 @@ module tests_fibl_tb;
       $finish;
    end
 
-   tests_fibl tests_fibl(`sync, .in0(a), .out0(b));
+   `inst_sync(tests_fibl, tests_fibl)(`sync, .in0(a), .out0(b));
 
 endmodule // tests_fibl_tb

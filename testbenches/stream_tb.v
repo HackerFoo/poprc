@@ -44,15 +44,18 @@ module stream_tb;
     end
 
     if(!chained) begin
-        __primitive_ap02_llii ap02(`sync, `in(stream, 0, sIn),
-                                          `out(stream, 0, sOut),
-                                          `out(int, 1, dOut1),
-                                          `out(int, 2, dOut2));
+        `inst_sync(__primitive_ap02_llii, ap02)(`sync,
+                                                `in(stream, 0, sIn),
+                                                `out(stream, 0, sOut),
+                                                `out(int, 1, dOut1),
+                                                `out(int, 2, dOut2));
+        assign top_valid = top_ap02_valid;
     end
     else begin
         `wire(stream, s);
-        __primitive_ap01_lli apA(`sync, `in(stream, 0, sIn), `out(stream, 0, s), `out(int, 1, dOut1));
-        __primitive_ap01_lli apB(`sync, `in(stream, 0, s), `out(stream, 0, sOut), `out(int, 1, dOut2));
+        `inst_sync(__primitive_ap01_lli, apA)(`sync, `in(stream, 0, sIn), `out(stream, 0, s), `out(int, 1, dOut1));
+        `inst_sync(__primitive_ap01_lli, apB)(`sync, `in(stream, 0, s), `out(stream, 0, sOut), `out(int, 1, dOut2));
+        assign top_valid = top_apA_valid | top_apB_valid;
     end
 
 endmodule

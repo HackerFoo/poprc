@@ -32,6 +32,6 @@ module top(
           end
     end
 
-    algorithm_gcd gcd(`sync, .in0(a), .in1(b), .out0(c));
+    `inst_sync(algorithm_gcd, gcd)(`sync, .in0(a), .in1(b), .out0(c));
 
 endmodule
