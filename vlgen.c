@@ -351,16 +351,18 @@ void gen_loops(cell_t *e) {
 }
 
 static
-void gen_stream_loops(cell_t *e) {
+bool gen_stream_loops(cell_t *e) {
   const csize_t in = e->entry.in;
   const cell_t *tail_call;
   const char *sep;
   int start;
+  bool not_empty = false;
   COUNTUP(i, in) {
     if(trace_type(&e[in - i]) != T_LIST) continue;
     sep = "";
     tail_call = NULL;
     start = 1;
+    not_empty = true;
     printf("  assign lst%d_loop = ", (int)(in - i));
     FOR_TRACE_CONST(c, e) {
       if(is_return(c)) {
@@ -379,6 +381,7 @@ void gen_stream_loops(cell_t *e) {
     if(!sep[0]) printf("`false");
     printf(";\n");
   }
+  return not_empty;
 }
 
 static
@@ -405,8 +408,9 @@ void gen_module(cell_t *e) {
   if(e->entry.rec) {
     gen_loops(e);
     printf("\n");
-    gen_stream_loops(e);
-    printf("\n");
+    if(gen_stream_loops(e)) {
+      printf("\n");
+    }
   }
   gen_outputs(e, r0, rtypes);
   printf("\nendmodule\n");
