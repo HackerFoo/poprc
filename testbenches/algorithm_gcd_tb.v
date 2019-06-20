@@ -12,7 +12,7 @@ module algorithm_gcd_tb;
    `top_sync
 
    always begin
-      #1 clk = !clk;
+      #0.5 clk = !clk;
    end
 
    initial begin
@@ -26,10 +26,10 @@ module algorithm_gcd_tb;
       in_valid  = `true;
       out_ready = `true;
 
-      #5;
+      #1;
       in_valid   = `false;
 
-      #20;
+      #10;
       $display("c = %b (%d)", c, c);
       $finish;
    end

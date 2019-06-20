@@ -37,7 +37,7 @@ endmodule
 `primitive_op2(bitxor, ^, int, int, iii)
 
 // make these chainable to get ap0N
-// stream end signal should be in-band, just use 0 for now
+// stream end signal is in-band
 module __primitive_ap01_lli(
   `sync_ports,
   `input(stream, 0),
@@ -45,18 +45,13 @@ module __primitive_ap01_lli(
   `output(int, 1)
 );
 
-    reg done = 0;
-
     assign out0 = in0;
     assign out1 = in0;
-    assign out0_valid = done;
-    assign out_valid = in0_valid & `valid(in0);
+    assign out0_valid = in0_valid & ~in_valid;
+    assign out_valid = in0_valid & in_valid & `valid(in0);
 
-    // TODO ready logic
-
-    always @(posedge clk) begin
-        done <= in0_valid;
-    end
+    assign in_ready = in0_valid & in_valid;
+    assign in0_ready = `true; // TODO
 
 endmodule
 
@@ -68,20 +63,27 @@ module __primitive_ap02_llii(
   `output(int, 2)
 );
 
-    reg done = 0;
-    reg  `intT data2 = 0; reg data2_valid = 0;
+    reg done = `false;
+    reg  `intT data2 = `false; reg data2_valid = `false;
 
-    // TODO ready logic
+    assign in_ready = `true;
+    assign in0_ready = ~done | out0_ready;
 
     assign out0 = in0;
     assign out1 = in0;
     assign out2 = data2;
     assign out0_valid = done;
-    assign out_valid = data2_valid & `valid(in0) & `valid(data2);
+    assign out_valid = data2_valid & `valid(in0) & `valid(data2) & ~done;
 
     always @(posedge clk) begin
-        done <= data2_valid;
-        data2 <= in0;
-        data2_valid <= in0_valid;
+        if(in_valid) begin
+            `reset(data2_valid);
+            `reset(done);
+        end
+        else if(in0_valid) begin
+            done <= data2_valid;
+            data2 <= in0;
+            data2_valid <= in0_valid;
+        end
     end
 endmodule

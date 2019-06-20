@@ -11,7 +11,7 @@ module tests_fibl_tb;
    `top_sync
 
    always begin
-      #1 clk = !clk;
+      #0.5 clk = !clk;
    end
 
    initial begin
@@ -23,10 +23,10 @@ module tests_fibl_tb;
       out_ready = `true;
       clk  = 0;
 
-      #3;
+      #1;
       in_valid = `false;
 
-      #200;
+      #22;
       $display("b = %b (%d)", b, b);
       $finish;
    end

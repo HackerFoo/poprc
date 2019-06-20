@@ -11,7 +11,7 @@ module algorithm_sum_tb;
     `top_sync
 
     always begin
-        #1 clk = !clk;
+        #0.5 clk = !clk;
     end
 
     initial begin
@@ -22,13 +22,14 @@ module algorithm_sum_tb;
         clk     = 0;
         in_valid = `true;
         out_ready = `true;
-        sIn_valid = `false;
+        sIn_valid = `true;
 
-        #2; sIn = 1; in_valid = `false; sIn_valid = `true;
-        #2; sIn = 2; sIn_valid = `false;
-        #2; sIn = 3;
-        #2; sIn = 8'hff;
-        #10;
+        #1; sIn = 1; in_valid = `false; sIn_valid = `true;
+        #1; sIn = 2;
+        #1; sIn = 3;
+        #1; sIn = 8'hff;
+        #1; sIn_valid = `false;
+        #1;
         $display("sum = %b (%d)", sum, sum);
         $finish;
     end

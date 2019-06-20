@@ -9,8 +9,13 @@
  `define symN 1
 `endif
 
+`ifndef anyN
+ `define anyN `intN
+`endif
+
 `define intT [`intN-1:0]
 `define symT [`symN-1:0]
+`define anyT [`anyN-1:0]
 
 `define sync_ports \
   input clk, \
@@ -23,6 +28,7 @@
 
 `define top_sync \
   reg in_valid; \
+  wire active = in_valid; \
   wire top_valid; \
   wire top_ready; \
   reg out_ready; \
@@ -38,7 +44,7 @@
   wire `sync_wire(ready); \
   `inst(t, n)
 
-`define sync .clk(clk), .in_valid(in_valid), .out_valid(`sync_wire(valid)), .in_ready(`sync_wire(ready)), .out_ready(out_ready)
+`define sync .clk(clk), .in_valid(active), .out_valid(`sync_wire(valid)), .in_ready(`sync_wire(ready)), .out_ready(out_ready)
 `define input(type, index) `input_``type(index)
 `define output(type, index) `output_``type(index)
 `define define_simple_input(type) `define input_``type``(index) input `type``T `id(in)``index
@@ -77,8 +83,9 @@
 `define variable_stream(name, in) \
   wire `intT name = in; \
   reg name``_valid_reg; \
-  wire name``_valid = in``_valid | name``_loop; \
-  wire name``_ready = in``_ready
+  wire name``_valid = in``_valid; \
+  wire name``_ready; \
+  assign in``_ready = name``_ready
 `define wire_stream(name) wire `intT name; wire name``_valid; wire name``_ready
 `define reg_stream(name) reg `intT name; reg name``_valid; wire name``_ready
 

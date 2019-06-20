@@ -6,14 +6,14 @@ module tests_collatz_swbut_tb;
     wire [15:0] out;
 
     always begin
-        #1 clk = !clk;
+        #0.5 clk = !clk;
     end
 
     initial begin
         $dumpfile("tests_collatz_swbut_tb.vcd");
         $dumpvars(0, tests_collatz_swbut_tb);
 
-        #200000;
+        #100000;
         $finish;
     end
 

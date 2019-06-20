@@ -97,6 +97,11 @@ void gen_value_rhs(const cell_t *c) {
     printf("\"");
     break;
   }
+  case T_LIST: {
+    assert_eq(list_size(c), 0);
+    printf("0");
+    break;
+  }
   default:
     assert_error(false); // TODO add more types
   }
@@ -110,6 +115,11 @@ static bool is_sync(const cell_t *c) {
 
 static
 void gen_decls(cell_t *e) {
+  if(e->entry.rec) {
+    printf("  reg active = `false;\n");
+  } else if(FLAG(*e, entry, SYNC)) {
+    printf("  wire active = in_valid;\n");
+  }
   FOR_TRACE_CONST(c, e) {
     int i = c - e;
     type_t t = trace_type(c);
@@ -262,7 +272,6 @@ void gen_valid_ready(const cell_t *e, const cell_t *r0) {
   const char *sep;
   int block;
   if(e->entry.rec) {
-    printf("  reg active = `false;\n");
     printf("  wire not_valid = ");
     sep = "";
     block = 1;
@@ -322,7 +331,7 @@ void gen_loop(const cell_t *e, int block, const cell_t *tail_call) {
 static
 void gen_loops(cell_t *e) {
   printf("  always @(posedge clk) begin\n"
-         "    if(in_valid) begin\n");
+         "    if(in_valid & ~active) begin\n");
   FOR_TRACE_CONST(c, e) {
     if(!is_var(c)) break;
     int i = c - e;
@@ -351,40 +360,6 @@ void gen_loops(cell_t *e) {
 }
 
 static
-bool gen_stream_loops(cell_t *e) {
-  const csize_t in = e->entry.in;
-  const cell_t *tail_call;
-  const char *sep;
-  int start;
-  bool not_empty = false;
-  COUNTUP(i, in) {
-    if(trace_type(&e[in - i]) != T_LIST) continue;
-    sep = "";
-    tail_call = NULL;
-    start = 1;
-    not_empty = true;
-    printf("  assign lst%d_loop = ", (int)(in - i));
-    FOR_TRACE_CONST(c, e) {
-      if(is_return(c)) {
-        if(tail_call) {
-          int a = cgen_index(e, tail_call->expr.arg[i]);
-          assert_error(trace_type(&e[a]) == T_LIST);
-          printf("%slst%d_valid", sep, a);
-          sep = " | ";
-        }
-        start = (c - e) + calculate_cells(c->size);
-        tail_call = NULL;
-      } else if(get_entry(c) == e) {
-        tail_call = c;
-      }
-    }
-    if(!sep[0]) printf("`false");
-    printf(";\n");
-  }
-  return not_empty;
-}
-
-static
 void gen_module(cell_t *e) {
   e->op = OP_value;
   const cell_t *r0 = NULL;
@@ -408,9 +383,6 @@ void gen_module(cell_t *e) {
   if(e->entry.rec) {
     gen_loops(e);
     printf("\n");
-    if(gen_stream_loops(e)) {
-      printf("\n");
-    }
   }
   gen_outputs(e, r0, rtypes);
   printf("\nendmodule\n");

@@ -14,7 +14,7 @@ module stream_tb;
     `top_sync
 
     always begin
-        #1 clk = !clk;
+        #0.5 clk = !clk;
     end
 
     initial begin
@@ -24,14 +24,15 @@ module stream_tb;
         sIn       = 1;
         clk       = 0;
         sIn_valid = `true;
+        in_valid = `true;
         out_ready = `true;
 
-        #2;
-        sIn_valid = `false;
-        #8;
+        #1;
+        in_valid = `false;
+        #4;
         sIn_valid = `true;
 
-        #10;
+        #5;
         $finish;
     end
 
