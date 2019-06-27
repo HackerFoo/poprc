@@ -14,10 +14,7 @@ module top(
     wire                 `intT  a_in = in[7:0];
     wire                 `intT  b_in = in[15:8];
     wire                 `intT  c;
-    `top_sync
-
-    assign out = {in_valid, top_valid, top_ready, 5'd0, c};
-    initial out_ready = `true;
+    reg                  in_valid;
 
     always @(posedge clk) begin
         if(a != a_in || b != b_in)
@@ -32,6 +29,9 @@ module top(
           end
     end
 
-    `inst_sync(algorithm_gcd, gcd)(`sync, .in0(a), .in1(b), .out0(c));
+    wire gcd_in_ready;
+    `inst_sync(algorithm_gcd, gcd)(`sync(in_valid, `true), .in0(a), .in1(b), .out0(c));
+
+    assign out = {in_valid, gcd_out_valid, ~gcd_in_ready, 5'd0, c};
 
 endmodule

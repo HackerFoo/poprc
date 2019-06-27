@@ -8,7 +8,8 @@ module tests_collatz_tb;
     reg clk;
     reg `intT a;
     wire `intT b;
-    `top_sync
+    reg in_valid;
+    reg out_ready;
 
     always begin
         #0.5 clk = !clk;
@@ -31,6 +32,6 @@ module tests_collatz_tb;
         $finish;
     end
 
-    `inst_sync(tests_collatz, tests_collatz)(`sync, .in0(a), .out0(b));
+    `inst_sync(tests_collatz, tests_collatz)(`sync(in_valid, out_ready), .in0(a), .out0(b));
 
 endmodule // tests_collatz_tb

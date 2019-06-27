@@ -26,25 +26,39 @@
 
 `define concat_(a, b) `id(a)``_``b
 
-`define top_sync \
-  reg in_valid; \
-  wire active = in_valid; \
-  wire top_valid; \
-  wire top_ready; \
-  reg out_ready; \
-  `define block top
+`define rename(dst, src) wire src; assign dst = src
 
-`define sync_wire(name) `concat_(`concat_(`block, `current_inst), name)
+`define top_sync(ready) \
+  assign in_ready = ready
+
+`define loop_sync(ready) \
+  reg active = `false; \
+  assign in_ready = ~active & ready
+
+`define sync_wire(name) `concat_(`current_inst, name)
 
 `define inst(t, n) t n
 
+`define apply(f, x) `f x
+
 `define inst_sync(t, n) \
   `define current_inst n \
-  wire `sync_wire(valid); \
-  wire `sync_wire(ready); \
+  wire `sync_wire(out_valid); \
   `inst(t, n)
 
-`define sync .clk(clk), .in_valid(active), .out_valid(`sync_wire(valid)), .in_ready(`sync_wire(ready)), .out_ready(out_ready)
+`define start_block(name) \
+`define block name \
+
+`define end_block(name) \
+`undef block \
+
+`define sync(valid, ready) \
+  .clk(clk), \
+  .in_valid(valid), \
+  .out_valid(`sync_wire(out_valid)), \
+  .in_ready(`sync_wire(in_ready)), \
+  .out_ready(ready)
+
 `define input(type, index) `input_``type(index)
 `define output(type, index) `output_``type(index)
 `define define_simple_input(type) `define input_``type``(index) input `type``T `id(in)``index
@@ -61,6 +75,8 @@
 `define define_simple_wire(type) `define wire_``type(name) wire `type``T name
 `define reg(type, name) `reg_``type(name)
 `define define_simple_reg(type) `define reg_``type(name) reg `type``T name
+`define const(type, name, val) `const_``type(name, val)
+`define define_simple_const(type) `define const_``type(name, val) localparam `type``T name = val
 
 `define define_simple_type(type) \
   `define_simple_input(type) \
@@ -70,10 +86,12 @@
   `define_simple_alias(type) \
   `define_simple_variable(type) \
   `define_simple_wire(type) \
-  `define_simple_reg(type)
+  `define_simple_reg(type) \
+  `define_simple_const(type)
 
 `define_simple_type(int)
 `define_simple_type(sym)
+`define_simple_type(any)
 
 `define input_stream(index) input `intT in``index, input in``index``_valid, output in``index``_ready
 `define output_stream(index) output `intT out``index, output out``index``_valid, input out``index``_ready
@@ -84,17 +102,18 @@
   wire `intT name = in; \
   reg name``_valid_reg; \
   wire name``_valid = in``_valid; \
-  wire name``_ready; \
-  assign in``_ready = name``_ready
+  `rename(in``_ready, name``_ready)
 `define wire_stream(name) wire `intT name; wire name``_valid; wire name``_ready
 `define reg_stream(name) reg `intT name; reg name``_valid; wire name``_ready
+`define const_stream(name, val) localparam `intT name = val; localparam name``_valid = `true
 
 `define true 1'b1
 `define false 1'b0
+`define nil (~(`intN'd0))
 
 `define assert(n, x) \
   `define current_inst n \
-wire `sync_wire(valid) = (x)
+    wire `sync_wire(out_valid) = (x)
 
 `define set(x) x <= `true
 `define reset(x) x <= `false

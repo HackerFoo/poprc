@@ -437,7 +437,6 @@ void gen_call(const cell_t *e, const cell_t *c, int depth) {
 
   csize_t
     in = closure_in(c) - is_external(c),
-    out = closure_out(c),
     n = closure_args(c),
     start_out = n - closure_out(c);
 

@@ -9,7 +9,8 @@ module algorithm_gcd_tb;
    reg `intT a;
    reg `intT b;
    wire `intT c;
-   `top_sync
+   reg  in_valid;
+   reg  out_ready;
 
    always begin
       #0.5 clk = !clk;
@@ -34,6 +35,6 @@ module algorithm_gcd_tb;
       $finish;
    end
 
-   `inst_sync(algorithm_gcd, gcd)(`sync, .in0(a), .in1(b), .out0(c));
+   `inst_sync(algorithm_gcd, gcd)(`sync(in_valid, out_ready), .in0(a), .in1(b), .out0(c));
 
 endmodule // gcd_tb

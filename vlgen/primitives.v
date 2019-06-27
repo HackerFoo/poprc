@@ -51,7 +51,7 @@ module __primitive_ap01_lli(
     assign out_valid = in0_valid & in_valid & `valid(in0);
 
     assign in_ready = in0_valid & in_valid;
-    assign in0_ready = `true; // TODO
+    assign in0_ready = out_ready & (out0_ready | in_valid);
 
 endmodule
 
@@ -87,3 +87,50 @@ module __primitive_ap02_llii(
         end
     end
 endmodule
+
+module __primitive_ap20_liil(
+  `sync_ports,
+  `input(int, 0),
+  `input(int, 1),
+  `input(stream, 2),
+  `output(stream, 0)
+);
+
+    reg `intT data0 = 0; reg data0_valid = 0;
+    assign out0 = in_valid ? (data0_valid ? data0 : in1) : in2;
+    assign out0_valid = in_valid | data0_valid | in2_valid;
+    assign in2_ready = ~in_valid & ~data0_valid;
+    assign in_ready = ~data0_valid;
+    assign out_valid = `true;
+
+    always @(posedge clk) begin
+        if(in_valid) begin
+            data0 <= in0;
+            `set(data0_valid);
+        end
+        if(data0_valid) `reset(data0_valid);
+    end
+
+endmodule
+
+/*
+// implements a stack
+module __primitive_pushr1_lli(
+  `sync_ports,
+  `input(stream, 0),
+  `input(int, 1),
+  `output(stream, 0)
+);
+
+    reg [9:0] top = 0;
+
+    assign out0 = in0;
+
+    assign in0_ready = ~|top;
+    assign in_ready = ~&top;
+
+    always @(posedge clk) begin
+        // ...
+    end
+endmodule
+*/

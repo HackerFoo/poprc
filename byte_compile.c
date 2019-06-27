@@ -1074,3 +1074,58 @@ FORMAT(tag, 'H') {
   write_tag(tag, i);
   printf(FORMAT_TAG, tag);
 }
+
+size_t backrefs_size(const cell_t *entry) {
+  size_t n = entry->entry.len;
+  FOR_TRACE_CONST(c, entry) {
+    if(!is_return(c)) {
+      n += c->n + 1;
+    }
+  }
+  return n;
+}
+
+bool set_nonzero(uintptr_t *arr, size_t n, uintptr_t x) {
+  assert_error(x);
+  COUNTUP(i, n) {
+    if(!arr[i]) {
+      arr[i] = x;
+      return true;
+    }
+  }
+  return false;
+}
+
+size_t get_outputs(const cell_t *entry, const cell_t *c, uintptr_t const *const *backrefs, uintptr_t const **outputs) {
+  int i = c - entry;
+  assert_error(INRANGE(i, 1, entry->entry.len));
+  *outputs = backrefs[i - 1];
+  return entry[i].n + 1;
+}
+
+void build_backrefs(const cell_t *entry, uintptr_t **table, size_t size) {
+  uintptr_t **index = table;
+  uintptr_t *backref = (uintptr_t *)(table + entry->entry.len);
+  memset(table, 0, sizeof(*table) * size);
+
+  // build the index
+  FOR_TRACE_CONST(c, entry) {
+    if(!is_return(c)) {
+      index[c - entry - 1] = backref;
+      backref += c->n + 1;
+    } else {
+      index[c - entry - 1] = NULL;
+    }
+  }
+
+  assert_le((uintptr_t **)backref - table, (int)size);
+
+  // fill backrefs
+  FOR_TRACE_CONST(c, entry) {
+    TRAVERSE(c, const, in, ptrs) {
+      int x = tr_index(*p);
+      bool success = set_nonzero(index[x-1], entry[x].n + 1, c - entry);
+      assert_error(success);
+    }
+  }
+}

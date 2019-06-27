@@ -543,6 +543,17 @@ bool set_insert(uintptr_t x, uintptr_t *set, size_t size) {
   return false;
 }
 
+size_t squeeze(uintptr_t *set, size_t size) {
+  uintptr_t *end = set + size;
+  uintptr_t *r = set;
+  while(r < end && *r) r++;
+  uintptr_t *l = r;
+  while(r < end) {
+    if(*r) *l++ = *r;
+    r++;
+  }
+  return l - set;
+}
 
 /** Return if an item is in the set.
  * O(1) time.

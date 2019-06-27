@@ -19,4 +19,3 @@ module tests_collatz_swbut_tb;
 
     top top(.clk(clk), .in(in), .out(out));
 endmodule
-

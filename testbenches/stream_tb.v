@@ -11,7 +11,9 @@ module stream_tb;
     `wire(stream, sOut);
     `wire(int, dOut1);
     `wire(int, dOut2);
-    `top_sync
+     reg in_valid;
+     reg out_ready;
+     wire ap_valid;
 
     always begin
         #0.5 clk = !clk;
@@ -41,22 +43,24 @@ module stream_tb;
         $display("sIn = %b (%d), sOut = %b (%d), dOut1 = %b (%d), dOut2 = %b (%d), out_valid = %b, sOut_valid = %b",
                  sIn, sIn, sOut, sOut,
                  dOut1, dOut1, dOut2, dOut2,
-                 top_valid, sOut_valid);
+                 ap_valid, sOut_valid);
     end
 
     if(!chained) begin
-        `inst_sync(__primitive_ap02_llii, ap02)(`sync,
-                                                `in(stream, 0, sIn),
-                                                `out(stream, 0, sOut),
-                                                `out(int, 1, dOut1),
-                                                `out(int, 2, dOut2));
-        assign top_valid = top_ap02_valid;
+        `inst_sync(__primitive_ap02_llii, ap02)(
+                   `sync(in_valid, out_ready),
+                   `in(stream, 0, sIn),
+                   `out(stream, 0, sOut),
+                   `out(int, 1, dOut1),
+                   `out(int, 2, dOut2));
+        assign ap_valid = ap02_out_valid;
     end
     else begin
         `wire(stream, s);
-        `inst_sync(__primitive_ap01_lli, apA)(`sync, `in(stream, 0, sIn), `out(stream, 0, s), `out(int, 1, dOut1));
-        `inst_sync(__primitive_ap01_lli, apB)(`sync, `in(stream, 0, s), `out(stream, 0, sOut), `out(int, 1, dOut2));
-        assign top_valid = top_apA_valid | top_apB_valid;
+        wire apB_in_ready;
+        `inst_sync(__primitive_ap01_lli, apA)(`sync(in_valid, apB_in_ready), `in(stream, 0, sIn), `out(stream, 0, s), `out(int, 1, dOut1));
+        `inst_sync(__primitive_ap01_lli, apB)(`sync(apA_out_valid, out_ready), `in(stream, 0, s), `out(stream, 0, sOut), `out(int, 1, dOut2));
+        assign ap_valid = apA_out_valid | apB_out_valid;
     end
 
 endmodule

@@ -3111,6 +3111,24 @@ ___ tests.drop_loop6_r0 (2 -> 1) x2 rec ___
 [11] tests.drop_loop6_r0 2 10 :: i x1
 [12] return [9]
 
+___ tests.dup_map (1 -> 1) ___
+[1] var :: ?l x1
+[2] [] :: l x1
+[3] tests.dup_map_r0 2 1 :: l x1
+[4] return [3]
+
+___ tests.dup_map_r0 (2 -> 1) x2 rec ___
+[1] changing var :: ?l x1
+[2] changing var :: ?l x2
+[3] __primitive.ap 1 -> 4 :: l? x2
+[4] __primitive.dep 3 :: i x4
+[5] __primitive.seq 7 &4 :: v x1
+[6] __primitive.ap &4 4 2 :: l x1
+[7] tests.dup_map_r0 6 3 :: v x1
+[8] return [5] -> 10
+[9] __primitive.unless 2 4 :: l x1
+[10] return [9]
+
 ___ tests.either_test (2 -> 1) ___
 [1] var :: ?l x1
 [2] var :: ?v x0
