@@ -71,10 +71,11 @@ static void print_value(const cell_t *c) {
 // print bytecode for entry e
 static uint32_t hashes[1024];
 void print_bytecode(cell_t *entry, bool tags) {
+  uint32_t entry_hash = 0;
   if(entry->entry.len > LENGTH(hashes)) tags = false;
   if(tags) {
     zero(hashes);
-    hash_entry(entry, hashes);
+    entry_hash = hash_entry(entry, hashes);
   }
   // word info (top line)
   printf("___ %s.%s (%d -> %d)",
@@ -90,6 +91,12 @@ void print_bytecode(cell_t *entry, bool tags) {
   if(entry->entry.rec) {
     printf(" rec");
   }
+  if(tags) {
+    tag_t tag;
+    write_tag(tag, entry_hash);
+    printf(" " FADE("(hash: " FORMAT_TAG ")"), tag);
+  }
+
   printf(" ___\n");
 
   // body
@@ -1046,7 +1053,7 @@ uint32_t hash_trace_cell(cell_t *entry, cell_t *tc, uint32_t *arr) {
     } else if(ONEOF(tc->value.type, T_INT, T_SYMBOL)) {
       HASH('i', tc->value.integer);
     }
-    HASH('t', tc->value.type);
+    // HASH('t', tc->value.type);
     goto end;
   }
   TRAVERSE(tc, in, ptrs) {
@@ -1061,13 +1068,15 @@ end:
   if(arr) arr[idx] = hash;
   return hash;
 }
-#undef HASH
 
-void hash_entry(cell_t *entry, uint32_t *arr) {
+uint32_t hash_entry(cell_t *entry, uint32_t *arr) {
+  uint32_t hash = 1;
   FOR_TRACE(c, entry) {
-    hash_trace_cell(entry, c, arr);
+    HASH('c', hash_trace_cell(entry, c, arr));
   }
+  return hash;
 }
+#undef HASH
 
 FORMAT(tag, 'H') {
   tag_t tag;
