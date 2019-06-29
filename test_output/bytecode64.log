@@ -3704,6 +3704,16 @@ ___ tests.rpr (2 -> 1) ___
 [6] list.reverse_r0 4 5 :: l x1
 [7] return [6]
 
+___ tests.smap (2 -> 1) rec ___
+[1] var :: ?l x2
+[2] changing var :: ?l x1
+[3] __primitive.ap 2 -> 5 :: l? x2
+[4] tests.smap 3 &1 :: l x1
+[5] __primitive.dep 3 :: a x1
+[6] __primitive.ap 5 1 :: l x1
+[7] __primitive.compose 4 6 :: l x1
+[8] return [7]
+
 ___ tests.spaces (1 -> 1) x2 ___
 [1] var :: ?s x1
 [2] tests.spaces_r0 1 :: s x1
