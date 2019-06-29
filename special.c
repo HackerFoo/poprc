@@ -138,7 +138,7 @@ bool is_value(cell_t const *c) {
 
 void placeholder_extend(cell_t **lp, qsize_t s, bool wrap_var) {
   cell_t *l = *lp;
-  assert_error(l->value.type == T_LIST);
+  assert_error(l->value.type == T_LIST, "not a list, type of l (cells[%C]) is %t", l, l->value.type);
   if(s.in == 0 && s.out == 0 && !wrap_var) return;
   if(is_var(l)) {
     cell_t *ex = trace_extension(l, s.in, s.out);
@@ -363,11 +363,6 @@ OP(placeholder) {
     in = closure_in(c),
     out = closure_out(c),
     n = closure_args(c);
-
-  if(n == 1) {
-    *cp = CUT(c, expr.arg[0]);
-    return RETRY;
-  }
 
   assert_error(in >= 1);
   CHECK(reduce_arg(c, in - 1, &CTX(list, csub(ctx->s.in, in),

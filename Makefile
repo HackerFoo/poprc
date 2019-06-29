@@ -226,29 +226,32 @@ scan: clean
 	make $(BUILD_DIR)/linenoise.o
 	scan-build make
 
-.PHONY: test
-test: eval
-	./eval -test | $(DIFF_TEST) test_output/test.log -
-	./eval -echo < tests.txt | $(DIFF_TEST) test_output/tests.txt.log -
-	./eval -lo lib.ppr -im -echo < lib_tests.txt | $(DIFF_TEST) test_output/lib_tests.txt.log -
-	./eval -lo $(POPR_SRC) -bc | $(DIFF_TEST) test_output/bytecode`./eval -bits -q`.log -
+.PHONY: test test_test test_tests_txt test_lib_tests_txt test_bytecode
+test: test_test test_tests_txt test_lib_tests_txt test_bytecode
 
+test_test: eval
+	./eval -test | $(DIFF_TEST) test_output/test.log -
 test_output/test.log: eval
 	@mkdir -p test_output
 	./eval -test > $@
 
+test_tests_txt: eval
+	./eval -echo < tests.txt | $(DIFF_TEST) test_output/tests.txt.log -
 test_output/tests.txt.log: eval tests.txt
 	@mkdir -p test_output
 	./eval -echo < tests.txt > $@
 
+test_lib_tests_txt: eval
+	./eval -lo lib.ppr -im -echo < lib_tests.txt | $(DIFF_TEST) test_output/lib_tests.txt.log -
 test_output/lib_tests.txt.log: eval lib_tests.txt
 	@mkdir -p test_output
 	./eval -lo lib.ppr -im -echo < lib_tests.txt > $@
 
+test_bytecode: eval
+	./eval -lo $(POPR_SRC) -bc | $(DIFF_TEST) test_output/bytecode`./eval -bits -q`.log -
 test_output/bytecode32.log: eval $(POPR_SRC)
 	@mkdir -p test_output
 	if [[ `./eval -bits` = 32 ]]; then ./eval -lo $(POPR_SRC) -bc > $@; fi
-
 test_output/bytecode64.log: eval $(POPR_SRC)
 	@mkdir -p test_output
 	if [[ `./eval -bits` = 64 ]]; then ./eval -lo $(POPR_SRC) -bc > $@; fi

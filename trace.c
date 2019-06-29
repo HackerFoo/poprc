@@ -876,10 +876,20 @@ void trace_set_type(cell_t *tc, type_t t) {
   }
 }
 
+bool has_computation(const cell_t *c) {
+  if(!c || is_value(c)) return false;
+  if(!ONEOF(c->op, OP_placeholder, OP_seq)) return true;
+  TRAVERSE(c, const, in, alt) {
+    if(has_computation(*p)) return true;
+  }
+  return false;
+}
+
 bool reduced_list(cell_t *l) {
   cell_t **p;
   FORLIST(p, l, true) {
-    if(!is_value(*p)) {
+    simplify(p);
+    if(has_computation(*p)) {
       return false;
     }
   }
@@ -888,6 +898,7 @@ bool reduced_list(cell_t *l) {
 
 // store captured variables to be compiled into a quote
 int trace_build_quote(cell_t *entry, cell_t *l) {
+  LOG("trace_build_quote %E %C", entry, l);
   assert_error(is_list(l));
   if(is_empty_list(l)) return trace_store_value(entry, l);
   if(is_row_list(l) && // ***
@@ -906,20 +917,24 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
   // if there is no computation in the quote, convert to ap or compose
   if(reduced_list(l)) {
     LOG("all var list %C", l);
+    cell_t **p;
+    FORLIST(p, l, true) force(p);
     bool row = is_row_list(l);
     const int size = function_out(l, true);
     int x = trace_alloc(entry, size);
     cell_t *tc = &entry[x];
-    tc->op = row ? OP_pushr : OP_quote;
+    cell_t *p0 = l->value.ptr[0];
+    tc->op = row ? (is_var(p0) && p0->value.var->op == OP_placeholder ? OP_compose : OP_pushr) : OP_quote;
     tc->trace.type = T_LIST;
     int n = size;
 
-    cell_t **p;
     FORLIST(p, l, true) {
       int x = trace_value(entry, *p);
       tc->expr.arg[--n] = index_tr(x);
       entry[x].n++;
     }
+
+    apply_condition(l, &x);
     return x;
   }
 

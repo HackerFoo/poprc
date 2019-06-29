@@ -198,6 +198,7 @@ response exec_list(cell_t **cp, context_t *ctx) {
   }
 
   CONTEXT_LOG("exec_list %C", c);
+  assert_error(ctx->s.out);
   cell_t *res;
   csize_t
     in = closure_in(c),
@@ -841,7 +842,7 @@ response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
     int j = next_bit(&mask);
     assert_error(j >= 0, "not enough bits in dep_mask");
     type_t t = rtypes[j];
-    if(t == T_ANY) {
+    if(ONEOF(t, T_ANY, T_BOTTOM) && ctx->t != T_ANY) {
       t = ctx->t;
     }
     res = var(t, c, parent_entry->pos);

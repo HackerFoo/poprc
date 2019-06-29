@@ -60,6 +60,14 @@
       p = _n++)
 #define TRAVERSE_in_alt(c) TRAVERSE_alt_in(c)
 
+#define TRAVERSE_const_alt_in(c)                                        \
+  for(cell_t *const *p = &c->alt,                                       \
+        *const *_n = closure_next_arg_const(c),                         \
+        *const *_end = is_value(c) ? _n : &c->expr.arg[closure_in(c)];  \
+      p < _end;                                                         \
+      p = _n++)
+#define TRAVERSE_const_in_alt(c) TRAVERSE_const_alt_in(c)
+
 #define TRAVERSE_alt_ptrs(c)                                    \
   for(cell_t **p = &c->alt,                                     \
         **_n = c->value.ptr,                                    \
