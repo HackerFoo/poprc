@@ -904,3 +904,16 @@ COMMAND(limit, "set reduction limit") {
     printf("reduction limit is %d\n", reduction_limit);
   }
 }
+
+COMMAND(tag, "convert tag <-> hex") {
+  if(match_class(rest, CC_NUMERIC, 0, 64)) {
+    int x = parse_num(rest);
+    tag_t tag;
+    write_tag(tag, x);
+    printf(FORMAT_TAG " = 0x%x\n", tag, x);
+  } else if(match_log_tag(rest)) {
+    const char *tag = rest->tok_list.location;
+    int x = read_tag(tag);
+    printf(FORMAT_TAG " = 0x%x\n", tag, x);
+  }
+}
