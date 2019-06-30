@@ -652,12 +652,13 @@ static
 uint8_t trace_recursive_changes(cell_t *entry) {
   unsigned int changes = 0;
   const int en = entry_number(entry);
+  bool non_tail_call = false;
 
   FOR_TRACE(p, entry) {
-    csize_t in;
     if(p->op == OP_exec &&
-       tr_entry(p->expr.arg[in = closure_in(p)]) == en) {
+       tr_entry(p->expr.arg[closure_in(p)]) == en) {
       unsigned int cnt = 0;
+      csize_t in = closure_in(p);
       assert_error(in == entry->entry.in,
                    "incorrect self call arity at %s %d",
                    entry->word_name, p-entry);
@@ -673,11 +674,15 @@ uint8_t trace_recursive_changes(cell_t *entry) {
       }
 
       // if cnt == 0, a recusive call has been made without modifying any arguments
-      // so it will loop forever
-      assert_throw(cnt, "infinite recursion");
+      // so a tail call will loop forever without producing anything
+      non_tail_call |= NOT_FLAG(*p, trace, TAIL_CALL);
+      assert_throw(NOT_FLAG(*p, trace, TAIL_CALL) || cnt, "infinite tail recursion, tail call with constant args");
       if(cnt > changes) changes = cnt;
     }
   }
+
+  // if there's only one path, even if the arguments change, it will loop forever
+  assert_error(!changes || non_tail_call || entry->entry.alts > 1, "infinite tail recursion, single alt");
   return changes;
 }
 

@@ -2196,70 +2196,6 @@ ___ tests.altf_loop_r0 (2 -> 1) x3 rec ___
 [15] tests.altf_loop_r0 2 14 :: l x1
 [16] return [13]
 
-___ tests.ap_loop (2 -> 1) rec ___
-[1] var :: ?l x2
-[2] changing var :: ?a x1
-[3] __primitive.ap 2 &1 -> 4 :: v? x1
-[4] __primitive.dep 3 :: a x1
-[5] tests.ap_loop 4 1 :: v x1
-[6] return [5]
-
-___ tests.ap_loop1 (1 -> 1) ___
-[1] var :: ?i x1
-[2] tests.ap_loop1_r0 1 :: v x1
-[3] return [2]
-
-___ tests.ap_loop1_r0 (1 -> 1) rec ___
-[1] changing var :: ?i x1
-[2] __primitive.add 1 3 :: i x1
-[3] val 1 :: i x1
-[4] tests.ap_loop1_r0 2 :: v x1
-[5] return [4]
-
-___ tests.ap_loop2 (1 -> 1) ___
-[1] var :: ?l x1
-[2] tests.ap_loop2_r0 1 :: v x1
-[3] return [2]
-
-___ tests.ap_loop2_r0 (1 -> 1) rec ___
-[1] changing var :: ?l x1
-[2] __primitive.ap 1 -> 3 :: l? x2
-[3] __primitive.dep 2 :: i x1
-[4] __primitive.add 3 5 :: i x1
-[5] val 1 :: i x1
-[6] __primitive.pushr 2 4 :: l x1
-[7] tests.ap_loop2_r0 6 :: v x1
-[8] return [7]
-
-___ tests.ap_loop3 (1 -> 1) ___
-[1] var :: ?i x1
-[2] tests.ap_loop3_r0 1 :: v x1
-[3] return [2]
-
-___ tests.ap_loop3_r0 (1 -> 1) rec ___
-[1] changing var :: ?i x1
-[2] __primitive.add 1 3 :: i x1
-[3] val 1 :: i x1
-[4] tests.ap_loop3_r0 2 :: v x1
-[5] return [4]
-
-___ tests.ap_loop4 (1 -> 1) ___
-[1] var :: ?a x1
-[2] [] :: l x1
-[3] tests.ap_loop4_r0 2 1 :: v x1
-[4] return [3]
-
-___ tests.ap_loop4_r0 (2 -> 1) rec ___
-[1] changing var :: ?a x1
-[2] var :: ?l x2
-[3] __primitive.ap 4 &2 -> 5 :: v? x1
-[4] __primitive.quote 1 :: l x1
-[5] __primitive.dep 3 :: l x1
-[6] __primitive.ap 5 -> 7 :: v? x1
-[7] __primitive.dep 6 :: a x1
-[8] tests.ap_loop4_r0 2 7 :: v x1
-[9] return [8]
-
 ___ tests.asq (2 -> 2) ___
 [1] var :: ?y x3
 [2] var :: ?l x1
@@ -2277,15 +2213,6 @@ ___ tests.asq2 (1 -> 1) ___
 [4] __primitive.assert 5 &3 :: l? x1
 [5] __primitive.ap 3 2 :: l x1
 [6] return [4]
-
-___ tests.asq2_loop (1 -> 1) rec ___
-[1] changing var :: ?l x1
-[2] __primitive.ap 1 -> 3 :: l? x2
-[3] __primitive.dep 2 :: y x2
-[4] __primitive.assert 5 &3 :: l? x1
-[5] __primitive.ap 3 2 :: l x1
-[6] tests.asq2_loop 4 :: v x1
-[7] return [6]
 
 ___ tests.assert_nready (2 -> 1) ___
 [1] var :: ?y x1
@@ -2900,6 +2827,12 @@ ___ tests.count (1 -> 1) x2 rec ___
 [10] tests.count 8 :: i x1
 [11] __primitive.add 10 9 :: i x1
 [12] return [7]
+
+___ tests.cycle (1 -> 1) ___
+[1] var :: ?l x2
+[2] tests.cycle &1 :: v x1
+[3] __primitive.ap 2 1 :: l x1
+[4] return [3]
 
 ___ tests.dec (1 -> 1) x2 rec ___
 [1] changing var :: ?i x4
@@ -3671,16 +3604,6 @@ ___ tests.qdec (1 -> 1) x2 rec ___
 [13] tests.qdec 12 :: l x1
 [14] return [9]
 
-___ tests.qtest (1 -> 1) rec ___
-[1] changing var :: ?l x1
-[2] __primitive.ap 1 -> 3 :: l? x2
-[3] __primitive.dep 2 :: i x1
-[4] __primitive.add 3 5 :: i x1
-[5] val 1 :: i x1
-[6] __primitive.pushr 2 4 :: l x1
-[7] tests.qtest 6 :: v x1
-[8] return [7]
-
 ___ tests.quote_str (1 -> 1) ___
 [1] var :: ?s x1
 [2] __primitive.strcat &3 1 :: s x1
@@ -3956,21 +3879,6 @@ ___ tests.vifte_quote (1 -> 1) x2 ___
 [6] __primitive.unless 7 1 :: i x1
 [7] val 0 :: i x1
 [8] return [6]
-
-___ tests.while_length (1 -> 1) ___
-[1] var :: ?l x1
-[2] val 0 :: i x1
-[3] tests.while_length_r0 2 1 :: v x1
-[4] return [3]
-
-___ tests.while_length_r0 (2 -> 1) rec ___
-[1] changing var :: ?l x1
-[2] changing var :: ?i x1
-[3] __primitive.add 2 4 :: i x1
-[4] val 1 :: i x1
-[5] __primitive.ap 1 -> X :: l? x1
-[6] tests.while_length_r0 3 5 :: v x1
-[7] return [6]
 
 ___ tests.zip (3 -> 1) ___
 [1] var :: ?a x1

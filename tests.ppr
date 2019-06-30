@@ -59,7 +59,7 @@ count: [0 == 0 swap !] [dup 1- count 1+ swap 0 > !] | pushl head
 
 qdec: [dup head 5 <= !] [dup [1-] . qdec swap head 5 > !] | pushl head
 
-qtest: [1+] . qtest
+__ qtest: [1+] . qtest
 __ qtest2: [1+] swap . qtest2
 
 ___ these need fixed
@@ -112,10 +112,10 @@ it10: [] pushl [[1+] .] [head 10 <] iterate head
 br10: [] pushl [[1+] .] [head 10 <] [head] binrec
 it10b: [[1+] .] [head 10 <] iterate head
 
-ap_loop: dup [$] dip21 ap_loop
-ap_loop1: [1+] ap_loop
-ap_loop2: [[1+] .] ap_loop
-ap_loop3: [1+] swap swap ap_loop
+__ ap_loop: dup [$] dip21 ap_loop
+__ ap_loop1: [1+] ap_loop
+__ ap_loop2: [[1+] .] ap_loop
+__ ap_loop3: [1+] swap swap ap_loop
 
 __ ERROR: user_func.c:185: unify_exec: Assertion `in == closure_in(pat)' failed.
 __ alt_ap_loop: [dup | 1+] ap_loop
@@ -350,10 +350,12 @@ failthru: [drop tuck swap otherwise swap] [ap22] | ap32 swap2 drop
 __ fake seq using otherwise
 oseq: False False! otherwise swap otherwise
 
+__[
 while_length:
   [0 swap] pushl
     [[[1+] [tail] para] .]
     while tail head
+]__
 
 vifte_quote: dup [1+] [0] vifte $
 assert_otherwise_quote: [1] swap ! swap otherwise
@@ -399,7 +401,7 @@ asq: dup [swap pushl] dip21 ! dup head
 
 __ drops the assert
 asq2: dup head [popr swap pushl] dip11 !
-asq2_loop: asq2 asq2_loop
+__ asq2_loop: asq2 asq2_loop
 
 pop_min_test: [] ap20 [] [not] | . popr! head
 
@@ -414,3 +416,5 @@ smap:
     dup [.] dip21  __ [xs] [x f] [f]
     [smap] pushl swap __ [xs] [[f] map] [x f]
     [$] dip21 . __ [xs] [f] map x f]
+
+cycle: dup [cycle] pushl swap .
