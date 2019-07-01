@@ -821,7 +821,11 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
 WORD_ALIAS("pushl", ap, 2, 1, pushl)
 WORD_ALIAS("popr", ap, 1, 2, popr)
 OP(ap) {
-  return func_compose_ap(cp, ctx, false);
+  if(closure_args(*cp) == 1) {
+    return func_type(cp, ctx, T_LIST);
+  } else {
+    return func_compose_ap(cp, ctx, false);
+  }
 }
 
 WORD(".", compose, 2, 1)
@@ -887,6 +891,11 @@ OP(symbol_t) {
 WORD("float_t", float_t, 1, 1)
 OP(float_t) {
   return func_type(cp, ctx, T_FLOAT);
+}
+
+WORD("list_t", list_t, 1, 1)
+OP(list_t) {
+  return func_type(cp, ctx, T_LIST);
 }
 
 WORD("++", strcat, 2, 1)
