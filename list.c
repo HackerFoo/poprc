@@ -151,7 +151,7 @@ start:
     return &it->array[it->index++];
   } else if(it->row && it->index == it->size) {
     cell_t **rp = &it->array[it->size];
-    if(closure_is_ready(*rp)) reduce_quote(rp); // ***
+    // if(closure_is_ready(*rp)) reduce_quote(rp); // ***
     if(is_list(*rp)) { // ***
       *it = list_begin(*rp);
       goto start;
@@ -209,12 +209,14 @@ TEST(list_next) {
 
 // number of remaining elements
 // NOTE: will reduce all quotes
-csize_t list_remaining_size(list_iterator_t it, bool count_last_row) {
+csize_t list_remaining_size(list_iterator_t it, bool count_last_row, csize_t limit) {
   if(!it.array || it.index > it.size) return 0;
   csize_t n = 0;
   while(it.row) {
     cell_t **rp = &it.array[it.size];
-    reduce_quote(rp); // ***
+    if(!is_value(*rp) && n + it.size < limit) {
+      reduce_quote(rp); // ***
+    }
     if(is_list(*rp)) {
       n += it.size - it.index;
       it = list_begin(it.array[it.size]);
@@ -229,7 +231,7 @@ csize_t list_remaining_size(list_iterator_t it, bool count_last_row) {
 static
 bool _check_list_remaining_size(csize_t x, csize_t y) {
   cell_t *l = _test_list_add(x, y);
-  csize_t z = list_remaining_size(list_begin(l), false);
+  csize_t z = list_remaining_size(list_begin(l), false, 100);
   drop(l);
   printf("_check_list_remaining_size: %d + %d = %d\n", x, y, z);
   return x + y == z;
@@ -269,7 +271,7 @@ void collapse_row(cell_t **cp) {
   if(is_row_list(l) &&
      list_size(l) == 1 &&
      closure_is_ready(p = l->value.ptr[0])) {
-    if(1 || l->value.var) { // ***
+    if(l->value.var) {
       *cp = build_seq(ref(p), l);
     } else {
       *cp = CUT(l, value.ptr[0]);
@@ -377,13 +379,13 @@ bool is_empty_list(const cell_t *l) {
 csize_t function_out(const cell_t *l, bool include_row_var) {
   if(!l || !is_list(l)) return 0;
   list_iterator_t it = list_begin((cell_t *)l);
-  return list_remaining_size(it, include_row_var);
+  return list_remaining_size(it, include_row_var, 0); // ***
 }
 
 // find the leftmost list
 cell_t **left_list(cell_t **l) {
   while(is_row_list(*l)) {
-    cell_t **x = &(*l)->value.ptr[list_size(*l) - 1];
+    cell_t **x = left_elem(*l);
     if(!is_list(*x)) break;
     l = x;
   }
@@ -466,4 +468,8 @@ qsize_t quote_size(cell_t *c, bool row) {
     .in = function_in(c),
     .out = function_out(c, row)
   };
+}
+
+bool is_nil(cell_t *l) {
+  return is_list(l) && list_size(l) == 0;
 }

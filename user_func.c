@@ -193,7 +193,7 @@ static
 response exec_list(cell_t **cp, context_t *ctx) {
   PRE_NO_CONTEXT(exec_list);
 
-  if(ctx->t != T_LIST || closure_out(c) != 0) {
+  if(ctx->t != T_LIST || closure_out(c) != 0 || !ctx->s.out) {
     return SUCCESS;
   }
 

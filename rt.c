@@ -37,6 +37,7 @@
 #include "list.h"
 #include "user_func.h"
 #include "tags.h"
+#include "builders.h"
 
 #if INTERFACE
 #define MAX_ALTS 256
@@ -397,26 +398,36 @@ cell_t *expand_deps(cell_t *c, csize_t s) {
   return c;
 }
 
-cell_t *compose(list_iterator_t it, cell_t *b) {
+cell_t *compose(list_iterator_t it, cell_t *b, csize_t out) {
   cell_t **x;
-  csize_t b_in = function_in(b);
+  const csize_t b_in = function_in(b);
   if(b_in && (x = list_next(&it, true))) {
-    b_in--;
     cell_t **left = needs_arg(b);
     b = arg_nd(*left, ref(*x), b);
     // left is now safe for arg() because arg_nd() made necessary copies ***
-    while(b_in) {
-      b_in--;
+    LOOP(b_in - 1) {
       if(!(x = list_next(&it, true))) break;
       left = needs_arg(b); // ***
       arg(*left, ref(*x));
     }
   }
 
+  cell_t **ll = left_list(&b);
+  if(!b_in && it.row && is_row_list(*ll)) {
+    x = it.array;
+    cell_t **r = left_elem(*ll);
+    if(!is_placeholder(*r)) {
+      LOG("composing rows %C %C", *x, *r);
+      *r = build_compose(ref(*x), *r); // *** TODO nondestructive
+      return b;
+    }
+  }
+
   // prepend b with the remainder of a
-  int remaining_a = list_remaining_size(it, true);
+  insert_root(&b);
+  int remaining_a = list_remaining_size(it, true, max(1, out));
+  remove_root(&b);
   if(remaining_a) {
-    cell_t **ll = left_list(&b);
     csize_t offset = list_size(*ll);
     *ll = expand(*ll, remaining_a);
     cell_t **bp = &(*ll)->value.ptr[offset];
@@ -424,7 +435,7 @@ cell_t *compose(list_iterator_t it, cell_t *b) {
       *bp++ = ref(*x);
       remaining_a--;
     }
-    assert_eq(remaining_a, 0);
+    // assert_eq(remaining_a, 0);
     if(it.row) FLAG_SET(**ll, value, ROW);
   }
 

@@ -727,6 +727,8 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
     n = closure_args(c),
     out = closure_out(c);
 
+  assert_error(!row || in);
+
   cell_t *p = NULL;
   cell_t *res = NULL;
   int pos = c->pos ? c->pos : c->expr.arg[in]->pos;
@@ -734,26 +736,33 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   // conservative guesses for the sizes of `a` and `b`
   qsize_t
     cs = {ctx->s.in, ctx->s.out + out},
-    bs = {cs.in + arg_in, cs.out},
-    as = {cs.in, cs.in};
+    bs = {(row ? 0 : cs.in) + arg_in, cs.out},
+    as = {row ? cs.in : 0, 0};
 
-  if(row) {
-    // assume no outputs here
-    CHECK(reduce_arg(c, 0, &CTX(list, as.in, 0)));
+  if(row && is_list(c->expr.arg[0])) { // ***
+    as = quote_size(c->expr.arg[0], true);
+    bs = compose_size_b(arg_in, as, cs);
+  }
+
+  CHECK(reduce_arg(c, in, &CTX(list,
+                               out ? arg_in : bs.in, // only account for known inputs when there are outputs
+                               bs.out)));
+  bs = quote_size(c->expr.arg[in], false);
+  as = row ? compose_size_a(arg_in, bs, cs) : (qsize_t) {0, 0};
+
+  if(row && (as.in || as.out ||
+             is_value(c->expr.arg[0]) ||
+             (!arg_in && is_nil(c->expr.arg[in])))) {
+    CHECK(reduce_arg(c, 0, &CTX(list, as.in, as.out)));
     CHECK_DELAY();
     p = c->expr.arg[0];
     as = quote_size(p, false);
   }
 
-  bs = compose_size_b(arg_in, as, cs);
-  CHECK(reduce_arg(c, in, &CTX(list,
-                               out ? arg_in : bs.in, // only account for known inputs when there are outputs
-                               bs.out)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
 
-  bs = quote_size(c->expr.arg[in], false);
-  if(row) {
+  if(p) {
     placeholder_extend(&c->expr.arg[0], compose_size_a(arg_in, bs, cs), false);
     p = c->expr.arg[0];
     as = quote_size(p, true); // *** why?
@@ -774,13 +783,13 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
 
   // Maybe remove these?
   // *** prevent leaking outside variables into lists
-  if(row && !pos) pos = p->pos;
+  if(p && !pos) pos = p->pos;
   if(!pos) pos = (*q)->pos;
 
-  cell_t *l = compose(it, ref(*q)); // TODO prevent leaking outside variables
+  insert_root(q);
+  cell_t *l = compose(it, ref(*q), ctx->s.out + out); // TODO prevent leaking outside variables
   reverse_ptrs((void **)c->expr.arg, in);
 
-  insert_root(q);
   it = list_begin(l);
   {
     list_iterator_t end = it;
@@ -1121,6 +1130,18 @@ OP(partial) {
   // TODO check arg op and reference count
   *cp = CUT(*cp, expr.arg[0]);
   FLAG_SET(**cp, expr, PARTIAL);
+  return RETRY;
+}
+
+// for testing
+WORD("#row", row_id, 1, 1)
+OP(row_id) {
+  cell_t *c = *cp;
+  cell_t *l = make_list(1);
+  FLAG_SET(*l, value, ROW);
+  l->value.ptr[0] = ref(c->expr.arg[0]);
+  drop(c);
+  *cp = l;
   return RETRY;
 }
 

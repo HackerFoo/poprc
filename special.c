@@ -164,7 +164,9 @@ void placeholder_extend(cell_t **lp, qsize_t s, bool wrap_var) {
     left = leftmost_row(&l);
     f = *left;
   }
-  LOG("placeholder_extend: (%d, %d) %C -> %C", s.in, s.out, *lp, l);
+
+  // TODO replace placeholder when possible
+  LOG(MARK("WARN") " placeholder_extend: (%d, %d) %C -> %C", s.in, s.out, *lp, l);
 
   if(ds.out) {
     cell_t *l_exp = make_list(ds.out + 1);
@@ -382,13 +384,19 @@ OP(placeholder) {
     return SUCCESS;
   }
 
-  cell_t *res = var(T_LIST, c, ctx->pos);
-  RANGEUP(i, in, n) {
-    cell_t *d = c->expr.arg[i];
-    if(d && is_dep(d)) {
-      store_dep_var(c, res, i, T_ANY, ctx->alt_set);
-    } else {
-      LOG("dropped placeholder[%C] output", c);
+  cell_t *res;
+  if(n == 1) {
+    res = copy(c->expr.arg[0]);
+    FLAG_SET(*res, value, ROW);
+  } else {
+    res = var(T_LIST, c, ctx->pos);
+    RANGEUP(i, in, n) {
+      cell_t *d = c->expr.arg[i];
+      if(d && is_dep(d)) {
+        store_dep_var(c, res, i, T_ANY, ctx->alt_set);
+      } else {
+        LOG("dropped placeholder[%C] output", c);
+      }
     }
   }
   if(c->expr.out) FLAG_SET(*c, expr, PARTIAL);

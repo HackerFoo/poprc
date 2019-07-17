@@ -133,3 +133,7 @@ __ IO
 __ IO 5 read "Hello " swap ++ "\n" ++ write
 __ World
 __ [] [] | popr
+[A] False! [B] . popr swap drop
+  B
+[1] id [2] id [3] . .
+  [1 2 3]

@@ -257,7 +257,7 @@ ___ control.dip11 (3 -> 2) ___
 [1] var :: ?l x1
 [2] var :: ?a x1
 [3] var :: ?a x1
-[4] __primitive.ap 3 1 -> 5 :: v x1
+[4] __primitive.ap 3 1 -> 5 :: v? x1
 [5] __primitive.dep 4 :: a x1
 [6] return [5 2]
 
@@ -265,7 +265,7 @@ ___ control.dip12 (3 -> 3) ___
 [1] var :: ?l x1
 [2] var :: ?a x1
 [3] var :: ?a x1
-[4] __primitive.ap 3 1 -> 6 5 :: v x2
+[4] __primitive.ap 3 1 -> 6 5 :: v? x2
 [5] __primitive.dep 4 :: a x1
 [6] __primitive.dep 4 :: a x1
 [7] return [6 5 2]
@@ -274,7 +274,7 @@ ___ control.dip13 (3 -> 4) ___
 [1] var :: ?l x1
 [2] var :: ?a x1
 [3] var :: ?a x1
-[4] __primitive.ap 3 1 -> 7 6 5 :: v x3
+[4] __primitive.ap 3 1 -> 7 6 5 :: v? x3
 [5] __primitive.dep 4 :: a x1
 [6] __primitive.dep 4 :: a x1
 [7] __primitive.dep 4 :: a x1
@@ -284,7 +284,7 @@ ___ control.dip14 (3 -> 5) ___
 [1] var :: ?l x1
 [2] var :: ?a x1
 [3] var :: ?a x1
-[4] __primitive.ap 3 1 -> 9 8 7 6 :: v x4
+[4] __primitive.ap 3 1 -> 9 8 7 6 :: v? x4
 [6] __primitive.dep 4 :: a x1
 [7] __primitive.dep 4 :: a x1
 [8] __primitive.dep 4 :: a x1
@@ -295,7 +295,7 @@ ___ control.dip15 (3 -> 6) ___
 [1] var :: ?l x1
 [2] var :: ?a x1
 [3] var :: ?a x1
-[4] __primitive.ap 3 1 -> 10 9 8 7 6 :: v x5
+[4] __primitive.ap 3 1 -> 10 9 8 7 6 :: v? x5
 [6] __primitive.dep 4 :: a x1
 [7] __primitive.dep 4 :: a x1
 [8] __primitive.dep 4 :: a x1
@@ -308,7 +308,7 @@ ___ control.dip21 (4 -> 2) ___
 [2] var :: ?a x1
 [3] var :: ?a x1
 [4] var :: ?a x1
-[5] __primitive.ap 4 3 1 -> 6 :: v x1
+[5] __primitive.ap 4 3 1 -> 6 :: v? x1
 [6] __primitive.dep 5 :: a x1
 [7] return [6 2]
 
@@ -317,7 +317,7 @@ ___ control.dip22 (4 -> 3) ___
 [2] var :: ?a x1
 [3] var :: ?a x1
 [4] var :: ?a x1
-[5] __primitive.ap 4 3 1 -> 7 6 :: v x2
+[5] __primitive.ap 4 3 1 -> 7 6 :: v? x2
 [6] __primitive.dep 5 :: a x1
 [7] __primitive.dep 5 :: a x1
 [8] return [7 6 2]
@@ -327,7 +327,7 @@ ___ control.dip23 (4 -> 4) ___
 [2] var :: ?a x1
 [3] var :: ?a x1
 [4] var :: ?a x1
-[5] __primitive.ap 4 3 1 -> 9 8 7 :: v x3
+[5] __primitive.ap 4 3 1 -> 9 8 7 :: v? x3
 [7] __primitive.dep 5 :: a x1
 [8] __primitive.dep 5 :: a x1
 [9] __primitive.dep 5 :: a x1
@@ -338,7 +338,7 @@ ___ control.dip24 (4 -> 5) ___
 [2] var :: ?a x1
 [3] var :: ?a x1
 [4] var :: ?a x1
-[5] __primitive.ap 4 3 1 -> 10 9 8 7 :: v x4
+[5] __primitive.ap 4 3 1 -> 10 9 8 7 :: v? x4
 [7] __primitive.dep 5 :: a x1
 [8] __primitive.dep 5 :: a x1
 [9] __primitive.dep 5 :: a x1
@@ -350,7 +350,7 @@ ___ control.dip25 (4 -> 6) ___
 [2] var :: ?a x1
 [3] var :: ?a x1
 [4] var :: ?a x1
-[5] __primitive.ap 4 3 1 -> 11 10 9 8 7 :: v x5
+[5] __primitive.ap 4 3 1 -> 11 10 9 8 7 :: v? x5
 [7] __primitive.dep 5 :: a x1
 [8] __primitive.dep 5 :: a x1
 [9] __primitive.dep 5 :: a x1
@@ -364,7 +364,7 @@ ___ control.dip31 (5 -> 2) ___
 [3] var :: ?a x1
 [4] var :: ?a x1
 [5] var :: ?a x1
-[6] __primitive.ap 5 4 3 1 -> 7 :: v x1
+[6] __primitive.ap 5 4 3 1 -> 7 :: v? x1
 [7] __primitive.dep 6 :: a x1
 [8] return [7 2]
 
@@ -374,7 +374,7 @@ ___ control.dip32 (5 -> 3) ___
 [3] var :: ?a x1
 [4] var :: ?a x1
 [5] var :: ?a x1
-[6] __primitive.ap 5 4 3 1 -> 9 8 :: v x2
+[6] __primitive.ap 5 4 3 1 -> 9 8 :: v? x2
 [8] __primitive.dep 6 :: a x1
 [9] __primitive.dep 6 :: a x1
 [10] return [9 8 2]
@@ -385,7 +385,7 @@ ___ control.dip33 (5 -> 4) ___
 [3] var :: ?a x1
 [4] var :: ?a x1
 [5] var :: ?a x1
-[6] __primitive.ap 5 4 3 1 -> 10 9 8 :: v x3
+[6] __primitive.ap 5 4 3 1 -> 10 9 8 :: v? x3
 [8] __primitive.dep 6 :: a x1
 [9] __primitive.dep 6 :: a x1
 [10] __primitive.dep 6 :: a x1
@@ -397,7 +397,7 @@ ___ control.dip34 (5 -> 5) ___
 [3] var :: ?a x1
 [4] var :: ?a x1
 [5] var :: ?a x1
-[6] __primitive.ap 5 4 3 1 -> 11 10 9 8 :: v x4
+[6] __primitive.ap 5 4 3 1 -> 11 10 9 8 :: v? x4
 [8] __primitive.dep 6 :: a x1
 [9] __primitive.dep 6 :: a x1
 [10] __primitive.dep 6 :: a x1
@@ -410,7 +410,7 @@ ___ control.dip35 (5 -> 6) ___
 [3] var :: ?a x1
 [4] var :: ?a x1
 [5] var :: ?a x1
-[6] __primitive.ap 5 4 3 1 -> 12 11 10 9 8 :: v x5
+[6] __primitive.ap 5 4 3 1 -> 12 11 10 9 8 :: v? x5
 [8] __primitive.dep 6 :: a x1
 [9] __primitive.dep 6 :: a x1
 [10] __primitive.dep 6 :: a x1
@@ -425,7 +425,7 @@ ___ control.dip41 (6 -> 2) ___
 [4] var :: ?a x1
 [5] var :: ?a x1
 [6] var :: ?a x1
-[7] __primitive.ap 6 5 4 3 1 -> 9 :: v x1
+[7] __primitive.ap 6 5 4 3 1 -> 9 :: v? x1
 [9] __primitive.dep 7 :: a x1
 [10] return [9 2]
 
@@ -436,7 +436,7 @@ ___ control.dip42 (6 -> 3) ___
 [4] var :: ?a x1
 [5] var :: ?a x1
 [6] var :: ?a x1
-[7] __primitive.ap 6 5 4 3 1 -> 10 9 :: v x2
+[7] __primitive.ap 6 5 4 3 1 -> 10 9 :: v? x2
 [9] __primitive.dep 7 :: a x1
 [10] __primitive.dep 7 :: a x1
 [11] return [10 9 2]
@@ -448,7 +448,7 @@ ___ control.dip43 (6 -> 4) ___
 [4] var :: ?a x1
 [5] var :: ?a x1
 [6] var :: ?a x1
-[7] __primitive.ap 6 5 4 3 1 -> 11 10 9 :: v x3
+[7] __primitive.ap 6 5 4 3 1 -> 11 10 9 :: v? x3
 [9] __primitive.dep 7 :: a x1
 [10] __primitive.dep 7 :: a x1
 [11] __primitive.dep 7 :: a x1
@@ -461,7 +461,7 @@ ___ control.dip44 (6 -> 5) ___
 [4] var :: ?a x1
 [5] var :: ?a x1
 [6] var :: ?a x1
-[7] __primitive.ap 6 5 4 3 1 -> 12 11 10 9 :: v x4
+[7] __primitive.ap 6 5 4 3 1 -> 12 11 10 9 :: v? x4
 [9] __primitive.dep 7 :: a x1
 [10] __primitive.dep 7 :: a x1
 [11] __primitive.dep 7 :: a x1
@@ -475,7 +475,7 @@ ___ control.dip45 (6 -> 6) ___
 [4] var :: ?a x1
 [5] var :: ?a x1
 [6] var :: ?a x1
-[7] __primitive.ap 6 5 4 3 1 -> 13 12 11 10 9 :: v x5
+[7] __primitive.ap 6 5 4 3 1 -> 13 12 11 10 9 :: v? x5
 [9] __primitive.dep 7 :: a x1
 [10] __primitive.dep 7 :: a x1
 [11] __primitive.dep 7 :: a x1
@@ -491,7 +491,7 @@ ___ control.dip51 (7 -> 2) ___
 [5] var :: ?a x1
 [6] var :: ?a x1
 [7] var :: ?a x1
-[8] __primitive.ap 7 6 5 4 3 1 -> 10 :: v x1
+[8] __primitive.ap 7 6 5 4 3 1 -> 10 :: v? x1
 [10] __primitive.dep 8 :: a x1
 [11] return [10 2]
 
@@ -503,7 +503,7 @@ ___ control.dip52 (7 -> 3) ___
 [5] var :: ?a x1
 [6] var :: ?a x1
 [7] var :: ?a x1
-[8] __primitive.ap 7 6 5 4 3 1 -> 11 10 :: v x2
+[8] __primitive.ap 7 6 5 4 3 1 -> 11 10 :: v? x2
 [10] __primitive.dep 8 :: a x1
 [11] __primitive.dep 8 :: a x1
 [12] return [11 10 2]
@@ -516,7 +516,7 @@ ___ control.dip53 (7 -> 4) ___
 [5] var :: ?a x1
 [6] var :: ?a x1
 [7] var :: ?a x1
-[8] __primitive.ap 7 6 5 4 3 1 -> 12 11 10 :: v x3
+[8] __primitive.ap 7 6 5 4 3 1 -> 12 11 10 :: v? x3
 [10] __primitive.dep 8 :: a x1
 [11] __primitive.dep 8 :: a x1
 [12] __primitive.dep 8 :: a x1
@@ -530,7 +530,7 @@ ___ control.dip54 (7 -> 5) ___
 [5] var :: ?a x1
 [6] var :: ?a x1
 [7] var :: ?a x1
-[8] __primitive.ap 7 6 5 4 3 1 -> 13 12 11 10 :: v x4
+[8] __primitive.ap 7 6 5 4 3 1 -> 13 12 11 10 :: v? x4
 [10] __primitive.dep 8 :: a x1
 [11] __primitive.dep 8 :: a x1
 [12] __primitive.dep 8 :: a x1
@@ -545,7 +545,7 @@ ___ control.dip55 (7 -> 6) ___
 [5] var :: ?a x1
 [6] var :: ?a x1
 [7] var :: ?a x1
-[8] __primitive.ap 7 6 5 4 3 1 -> 14 13 12 11 10 :: v x5
+[8] __primitive.ap 7 6 5 4 3 1 -> 14 13 12 11 10 :: v? x5
 [10] __primitive.dep 8 :: a x1
 [11] __primitive.dep 8 :: a x1
 [12] __primitive.dep 8 :: a x1
@@ -605,7 +605,7 @@ ___ control.ifdo (2 -> 1) x2 ___
 [5] __primitive.assert 6 4 :: a? x1
 [6] __primitive.dep 3 :: a x1
 [7] return [5] -> 14
-[8] __primitive.ap &2 2 1 -> 10 X 11 :: v x2
+[8] __primitive.ap &2 2 1 -> 10 X 11 :: v? x2
 [10] __primitive.dep 8 :: a x1
 [11] __primitive.dep 8 :: y x1
 [12] __primitive.not 11 :: y x1
@@ -647,7 +647,7 @@ ___ control.iterate (3 -> 1) x2 rec ___
 [9] __primitive.assert &3 8 :: a? x1
 [10] return [9] -> 15
 [11] __primitive.assert 14 5 :: a? x1
-[12] __primitive.ap 3 &2 -> 13 :: v x1
+[12] __primitive.ap 3 &2 -> 13 :: v? x1
 [13] __primitive.dep 12 :: a x1
 [14] control.iterate 13 2 1 :: a x1
 [15] return [11]
@@ -656,9 +656,9 @@ ___ control.maybe (3 -> 1) x2 ___
 [1] var :: ?a x2
 [2] var :: ?a x2
 [3] var :: ?l x2
-[4] __primitive.ap &1 &2 &3 -> 6 19 15 :: v x3
+[4] __primitive.ap &1 &2 &3 -> 6 19 15 :: v? x3
 [6] __primitive.dep 4 :: l x1
-[7] __primitive.ap 1 2 3 -> 13 X 9 :: v x2
+[7] __primitive.ap 1 2 3 -> 13 X 9 :: v? x2
 [9] __primitive.dep 7 :: y x1
 [10] __primitive.eq_s 9 11 :: y x1
 [11] val Nothing :: y x1
@@ -1497,7 +1497,7 @@ ___ list.merge (2 -> 1) ___
 [5] return [3]
 
 ___ list.merge_loop (3 -> 1) x4 rec ___
-[1] changing var :: ?l x3
+[1] changing var :: ?l x4
 [2] changing var :: ?l x5
 [3] changing var :: ?l x3
 [4] __primitive.ap &3 -> 5 :: l? x2
@@ -1521,16 +1521,15 @@ ___ list.merge_loop (3 -> 1) x4 rec ___
 [22] __primitive.assert &3 16 :: l? x1
 [23] __primitive.ap 17 1 :: l x1
 [24] list.merge_loop 22 21 20 :: v x1
-[25] return [24] -> 29
-[26] __primitive.unless 28 5 :: l x1
-[27] __primitive.ap 1 :: l x2.
-[28] __primitive.compose 2 27 :: l x1
-[29] return [26] -> 34
-[30] __primitive.ap 2 -> 31 :: v? x1
-[31] __primitive.dep 30 :: a x1
-[32] __primitive.unless 33 31 :: l x1
-[33] __primitive.compose 3 27 :: l x1
-[34] return [32]
+[25] return [24] -> 28
+[26] __primitive.unless 27 5 :: l x1
+[27] __primitive.compose 2 1 :: l x1
+[28] return [26] -> 33
+[29] __primitive.ap 2 -> 30 :: v? x1
+[30] __primitive.dep 29 :: a x1
+[31] __primitive.unless 32 30 :: l x1
+[32] __primitive.compose 3 1 :: l x1
+[33] return [31]
 
 ___ list.merge_step (3 -> 3) x2 ___
 [1] var :: ?l x2
@@ -2829,10 +2828,16 @@ ___ tests.count (1 -> 1) x2 rec ___
 [12] return [7]
 
 ___ tests.cycle (1 -> 1) ___
+[1] var :: ?a x1
+[2] tests.cycle_q0 1 :: l x1
+[3] return [2]
+
+___ tests.cycle_q0 (1 -> 1) ___
 [1] var :: ?a x2
-[2] tests.cycle &1 :: l x1
-[3] __primitive.pushr 2 1 :: l x1
-[4] return [3]
+[2] tests.cycle &1 :: v x1
+[3] __primitive.compose 2 1 4 :: l x1
+[4] [] :: l x1
+[5] return [3]
 
 ___ tests.dec (1 -> 1) x2 rec ___
 [1] changing var :: ?i x4
@@ -3069,7 +3074,7 @@ ___ tests.dup_map_r0 (2 -> 1) x2 rec ___
 [3] __primitive.ap 1 -> 4 :: l? x2
 [4] __primitive.dep 3 :: i x4
 [5] __primitive.seq 7 &4 :: v x1
-[6] __primitive.ap &4 4 2 :: l x1
+[6] __primitive.compose &4 4 2 :: l x1
 [7] tests.dup_map_r0 6 3 :: v x1
 [8] return [5] -> 10
 [9] __primitive.unless 2 4 :: l x1
@@ -3621,12 +3626,11 @@ ___ tests.rpr (2 -> 1) ___
 ___ tests.smap (2 -> 1) rec ___
 [1] var :: ?l x2
 [2] changing var :: ?l x1
-[3] __primitive.ap 2 -> 5 :: l? x2
-[4] tests.smap 3 &1 :: l x1
-[5] __primitive.dep 3 :: a x1
-[6] __primitive.ap 5 1 :: l x1
-[7] __primitive.compose 4 6 :: l x1
-[8] return [7]
+[3] __primitive.ap 2 -> 4 :: l? x2
+[4] __primitive.dep 3 :: a x1
+[5] tests.smap 3 &1 :: v x1
+[6] __primitive.compose 5 4 1 :: l x1
+[7] return [6]
 
 ___ tests.spaces (1 -> 1) x2 ___
 [1] var :: ?s x1

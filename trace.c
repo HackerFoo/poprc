@@ -883,7 +883,7 @@ void trace_set_type(cell_t *tc, type_t t) {
 
 bool has_computation(const cell_t *c) {
   if(!c || is_value(c)) return false;
-  if(!ONEOF(c->op, OP_placeholder, OP_seq)) return true;
+  if(!ONEOF(c->op, OP_placeholder, OP_seq, OP_ap, OP_id)) return true;
   TRAVERSE(c, const, in, alt) {
     if(has_computation(*p)) return true;
   }
@@ -924,12 +924,20 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
     LOG("all var list %C", l);
     cell_t **p;
     FORLIST(p, l, true) force(p);
+    while(is_row_list(l) && list_size(l) == 1) l = l->value.ptr[0];
+    if(is_var(l)) {
+      switch_entry(entry, l);
+      return var_index(entry, l->value.var);
+    }
     bool row = is_row_list(l);
     const int size = function_out(l, true);
+    assert_error(!row || size > 1);
+    FORLIST(p, l, true) force(p); // ***
     int x = trace_alloc(entry, size);
     cell_t *tc = &entry[x];
     cell_t *p0 = l->value.ptr[0];
-    tc->op = row ? (is_var(p0) && p0->value.var->op == OP_placeholder ? OP_compose : OP_pushr) : OP_quote;
+    tc->op = row ? (is_var(p0) && FLAG(*p0, value, ROW) ? OP_compose :
+                    OP_pushr) : OP_quote;
     tc->trace.type = T_LIST;
     int n = size;
 
