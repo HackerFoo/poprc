@@ -15,6 +15,7 @@ def __lldb_init_module(debugger, internal_dict):
     dbgcall("command script add -f lldbinit.diff_trees diff-trees")
     dbgcall("breakpoint set --name breakpoint");
     dbgcall("breakpoint command add 1 --python-function lldbinit.breakpoint_hit");
+    dbgcall("command alias popr process launch -- -lo lib.ppr tests.ppr -im")
     return
 
 def dbgcall(command):

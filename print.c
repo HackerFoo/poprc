@@ -459,22 +459,24 @@ csize_t any_conflicts(cell_t const * const *p, csize_t size) {
   return 0;
 }
 
-void show_list_elements(cell_t const *c) {
+bool show_list_elements(cell_t const *c) {
   csize_t n = list_size(c);
-  if(!n) return;
+  if(!n) return false;
   if(!list_is_printable(c)) {
     printf("...");
-    return;
+    return true;
   }
   if(is_row_list(c)) {
-    show_list_elements(c->value.ptr[--n]);
-    if(!n) return;
+    bool out = show_list_elements(c->value.ptr[--n]);
+    if(!n) return out;
+    if(out) putchar(' ');
   }
   show_one(c->value.ptr[n-1]);
   COUNTDOWN(i, n-1) {
     putchar(' ');
     show_one(c->value.ptr[i]);
   }
+  return true;
 }
 
 void show_list(cell_t const *c) {

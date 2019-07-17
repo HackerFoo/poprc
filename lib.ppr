@@ -102,6 +102,7 @@ iteratel: [dup [peek] dip22 iteratel swap] ap20
 
 __ concat: [] [.] foldr
 
+__ [... x] [...] [f] mov_ap -> [...] [fx' ...] [f]
 mov_ap: dup -swap2 [. movr] dip32
 map:
   [[] swap] ap20
@@ -159,7 +160,7 @@ half_rem: dup 2/ dup [-] dip21
 
 _[ broken
 
-__ split_list: [half_rem [dup [split_at] dip22] dip23 -swap2 []ap20 [[] ap20] dip21]. get2 
+__ split_list: [half_rem [dup [split_at] dip22] dip23 -swap2 []ap20 [[] ap20] dip21]. get2
 split_list: half_rem [dup [split_at] dip22] dip23 -swap2
 
 sort:

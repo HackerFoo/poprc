@@ -13,6 +13,9 @@ Compile to direct C when possible
 **** closure_set_ready
 **** split_args
 * major
+** TODO implement tail recursion modulo X
+*** compose, ap
+*** addition, multiplication
 ** TODO check that alt is only used in exprs for chains, look at deps
 ** TODO fix list.filter
 ** DONE placeholder should mirror compNM

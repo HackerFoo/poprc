@@ -376,6 +376,7 @@ sum3: [] ap30 sum
 
 __ [a] [b] [f] [acc]
 
+_[
 popar: [popr] dip12 popr [swap] dip22
 zip1:
   [dup] dip12 . swap pushr __ stuff f into both ends of acc
@@ -383,6 +384,7 @@ zip1:
     popr swap __ pull f back out
 
 zip: [[]] ap30 [zip1] while
+]_
 
 __ [1 [2]] ==> [[1] 2]
 f11: popr pushl
@@ -417,4 +419,4 @@ smap:
     [smap] pushl swap __ [xs] [[f] map] [x f]
     [$] dip21 . __ [xs] [f] map x f]
 
-cycle: dup [cycle] pushl swap .
+cycle: dup [cycle]$ swap pushr

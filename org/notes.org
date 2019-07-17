@@ -1,5 +1,9 @@
 #+TITLE: PoprC Notes
 
+* need to split ready items in quotes
+- if second arg is ready, don't reduce first arg
+- [r . a] [b] . ==> [r] [a . b] .
+- chunky lists are compose chains
 * cleanup
 expand, mod_alt, idify, unique, etc.
 find_passthrough, concatenate_conditions

@@ -42,7 +42,7 @@ typedef enum __attribute__((packed)) type_t {
   T_FLOAT,
   T_OPAQUE,
   T_MODULE, /**< module definition ONLY */
-  T_BOTTOM, /**< the uninhabited type */
+  T_BOTTOM, /**< the uninhabited type, or unknown */
   T_FAIL // TODO use T_BOTTOM
 } type_t;
 
