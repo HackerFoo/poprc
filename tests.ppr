@@ -417,6 +417,6 @@ smap:
   [popr [] pushl] dip12 __ [xs] [x] [f]
     dup [.] dip21  __ [xs] [x f] [f]
     [smap] pushl swap __ [xs] [[f] map] [x f]
-    [$] dip21 . __ [xs] [f] map x f]
+    [$] dip21 . __ [[xs] [f] map . x f]
 
 cycle: dup [cycle]$ swap pushr

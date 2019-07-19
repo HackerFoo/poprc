@@ -881,10 +881,14 @@ void trace_set_type(cell_t *tc, type_t t) {
   }
 }
 
+// returns true if there's a function yet to be expanded (recursive) or a partial function
 bool has_computation(const cell_t *c) {
-  if(!c || is_value(c)) return false;
-  if(!ONEOF(c->op, OP_placeholder, OP_seq, OP_ap, OP_id)) return true;
-  TRAVERSE(c, const, in, alt) {
+  if(!c) return false;
+  if(is_value(c) && !is_list(c)) { // HACK simplify should be able to reduce through compose,
+    return is_fail(c);             // removing the need to examine lists.
+  }
+  if(ONEOF(c->op, OP_exec, OP_assert)) return true;
+  TRAVERSE(c, const, in, alt, ptrs) {
     if(has_computation(*p)) return true;
   }
   return false;

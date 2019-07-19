@@ -52,6 +52,18 @@
 #define TRAVERSE_ptrs_alt_in(c) TRAVERSE_alt_in_ptrs(c)
 #define TRAVERSE_ptrs_in_alt(c) TRAVERSE_alt_in_ptrs(c)
 
+#define TRAVERSE_const_alt_in_ptrs(c)                                         \
+  for(cell_t *const *p = &c->alt,                                             \
+        *const *_n = is_value(c) ? c->value.ptr : closure_next_arg_const(c),        \
+        *const *_end = is_value(c) ? (is_list(c) ? &c->value.ptr[list_size(c)] : _n) : &c->expr.arg[closure_in(c)]; \
+      p < _end;                                                         \
+      p = _n++)
+#define TRAVERSE_const_alt_ptrs_in(c) TRAVERSE_const_alt_in_ptrs(c)
+#define TRAVERSE_const_in_alt_ptrs(c) TRAVERSE_const_alt_in_ptrs(c)
+#define TRAVERSE_const_in_ptrs_alt(c) TRAVERSE_const_alt_in_ptrs(c)
+#define TRAVERSE_const_ptrs_alt_in(c) TRAVERSE_const_alt_in_ptrs(c)
+#define TRAVERSE_const_ptrs_in_alt(c) TRAVERSE_const_alt_in_ptrs(c)
+
 #define TRAVERSE_alt_in(c)                                              \
   for(cell_t **p = &c->alt,                                             \
         **_n = closure_next_arg(c),                                     \
@@ -149,10 +161,11 @@
         p < _end;                               \
         p++)
 
-#define CONCAT_ARGS_1(w)          w
-#define CONCAT_ARGS_2(w, x)       CONCAT_ARGS_1(CONCAT_UNDERSCORE(w, x))
-#define CONCAT_ARGS_3(w, x, y)    CONCAT_ARGS_2(CONCAT_UNDERSCORE(w, x), y)
-#define CONCAT_ARGS_4(w, x, y, z) CONCAT_ARGS_3(CONCAT_UNDERSCORE(w, x), y, z)
+#define CONCAT_ARGS_1(a)             a
+#define CONCAT_ARGS_2(a, b)          CONCAT_ARGS_1(CONCAT_UNDERSCORE(a, b))
+#define CONCAT_ARGS_3(a, b, c)       CONCAT_ARGS_2(CONCAT_UNDERSCORE(a, b), c)
+#define CONCAT_ARGS_4(a, b, c, d)    CONCAT_ARGS_3(CONCAT_UNDERSCORE(a, b), c, d)
+#define CONCAT_ARGS_5(a, b, c, d, e) CONCAT_ARGS_4(CONCAT_UNDERSCORE(a, b), c, d, e)
 #define CONCAT_ARGS(...) DISPATCH(CONCAT_ARGS, ##__VA_ARGS__)
 
 #define TRAVERSE(c, ...) CONCAT_ARGS(TRAVERSE, __VA_ARGS__)(c)

@@ -13,11 +13,12 @@ Compile to direct C when possible
 **** closure_set_ready
 **** split_args
 * major
-** TODO implement tail recursion modulo X
+** STARTED implement tail recursion modulo X
+*** TODO handle recursion modulo X in backends
 *** compose, ap
 *** addition, multiplication
 ** TODO check that alt is only used in exprs for chains, look at deps
-** TODO fix list.filter
+** DONE fix list.filter
 ** DONE placeholder should mirror compNM
 - [left] N... [right]
 - apNM: [] N... [right]
@@ -83,8 +84,8 @@ assert also works this way
   - [1+] 2 3 [+] comp20
   - [] 1 2 [+] comp21
   - [] 1 [id] comp11
-** TODO hash function definitions
-** TODO [id] popr drop ==> [], should fail
+** DONE hash function definitions
+** TODO [id] popr drop ==> [], should fail (should it?)
 ** DONE propagate drops in to loop returns to avoid building values to drop (tests.f7c)
 ** DONE handle nil the same as other non-list values in trace
 ** TODO need to review handling of pos
@@ -200,8 +201,8 @@ Creates a cycle that can't be freed
 :c f5 [] pushl rot rot | swap pushl popr swap popr swap drop dup rot > ! cut
 ** DONE :c f2 pushl pushl popr 1 + swap pushl popr swap popr swap drop +
 x y [z+] should be x + y + z + 1, gives 2y + 2z + 1
-** TODO :c f1 [] [] ifte pushl
-** STARTED :c loop dup 5 > [5- loop] [] ifte ap11 swap drop
+** DONE :bc f1: [] [] ifte pushl
+** DONE :bc loop: dup 5 > [5- loop] [] ifte ap11 swap drop
 - self/exec arity mismatch
 ** DONE smaller CELLS_SIZE breaks at module_lookup test
 ** DONE FIX: 0 [True =:=] [0 ==] | pushl popr swap drop
