@@ -2593,9 +2593,8 @@ ___ tests.calc_step_q0 (3 -> 1) ___
 [2] var :: ?i x1
 [3] var :: ?l x1
 [4] algorithm.gcd_r0 1 2 :: i x1
-[5] __primitive.compose 3 4 6 :: l x1
-[6] [] :: l x1
-[7] return [5]
+[5] __primitive.pushr 3 4 :: l x1
+[6] return [5]
 
 ___ tests.calc_step_q1 (3 -> 1) ___
 [1] var :: ?i x1
@@ -2603,9 +2602,8 @@ ___ tests.calc_step_q1 (3 -> 1) ___
 [3] var :: ?l x1
 [4] algorithm.__caret___r0 5 1 2 :: i x1
 [5] val 1 :: i x1
-[6] __primitive.compose 3 4 7 :: l x1
-[7] [] :: l x1
-[8] return [6]
+[6] __primitive.pushr 3 4 :: l x1
+[7] return [6]
 
 ___ tests.calc_step_q2 (2 -> 1) ___
 [1] var :: ?i x1
@@ -2613,25 +2611,22 @@ ___ tests.calc_step_q2 (2 -> 1) ___
 [3] tests.fibl_r0 1 4 5 :: i x1
 [4] val 0 :: i x1
 [5] val 1 :: i x1
-[6] __primitive.compose 2 3 7 :: l x1
-[7] [] :: l x1
-[8] return [6]
+[6] __primitive.pushr 2 3 :: l x1
+[7] return [6]
 
 ___ tests.calc_step_q3 (2 -> 1) ___
 [1] var :: ?i x1
 [2] var :: ?l x1
 [3] tests.fact 1 :: i x1
-[4] __primitive.compose 2 3 5 :: l x1
-[5] [] :: l x1
-[6] return [4]
+[4] __primitive.pushr 2 3 :: l x1
+[5] return [4]
 
 ___ tests.calc_step_q4 (1 -> 1) ___
 [1] var :: ?l x2
 [2] list.length_r0 3 &1 :: i x1
 [3] val 0 :: i x1
-[4] __primitive.compose 1 2 5 :: l x1
-[5] [] :: l x1
-[6] return [4]
+[4] __primitive.pushr 1 2 :: l x1
+[5] return [4]
 
 ___ tests.calc_step_q5 (1 -> 1) ___
 [1] var :: ?l x1
@@ -2759,9 +2754,8 @@ ___ tests.cycle (1 -> 1) ___
 ___ tests.cycle_q0 (1 -> 1) ___
 [1] var :: ?a x2
 [2] tests.cycle &1 :: v x1
-[3] __primitive.compose 2 1 4 :: l x1
-[4] [] :: l x1
-[5] return [3]
+[3] __primitive.pushr 2 1 :: l x1
+[4] return [3]
 
 ___ tests.dec (1 -> 1) x2 rec ___
 [1] changing var :: ?i x4

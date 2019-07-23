@@ -369,7 +369,16 @@ void trace_final_pass(cell_t *entry) {
       if(p->op == OP_placeholder) { // convert a placeholder to ap or compose
         FLAG_CLEAR(*p, trace, INCOMPLETE);
         if(closure_in(p) > 1 && FLAG(*p, expr, ROW)) {
-          p->op = OP_compose;
+          cell_t **right_arg = &p->expr.arg[closure_in(p)-1];
+          cell_t *l = &entry[tr_index(*right_arg)];
+          if(is_nil(l)) {
+            p->op = OP_pushr;
+            l->n--;
+            p->size--;
+            *right_arg = NULL;
+          } else {
+            p->op = OP_compose;
+          }
         } else {
           p->op = OP_ap;
         }
