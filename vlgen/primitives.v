@@ -88,6 +88,7 @@ module __primitive_ap02_llii(
     end
 endmodule
 
+// TODO stream should preempt other inputs
 module __primitive_ap20_liil(
   `sync_ports,
   `input(int, 0),
@@ -113,8 +114,6 @@ module __primitive_ap20_liil(
 
 endmodule
 
-/*
-// implements a stack
 module __primitive_pushr1_lli(
   `sync_ports,
   `input(stream, 0),
@@ -122,15 +121,10 @@ module __primitive_pushr1_lli(
   `output(stream, 0)
 );
 
-    reg [9:0] top = 0;
+    assign out0 = in_valid ? in1 : in0;
+    assign out0_valid = in_valid | in0_valid;
+    assign in0_ready = ~in_valid;
+    assign in_ready = out0_ready;
+    assign out_valid = `true;
 
-    assign out0 = in0;
-
-    assign in0_ready = ~|top;
-    assign in_ready = ~&top;
-
-    always @(posedge clk) begin
-        // ...
-    end
 endmodule
-*/
