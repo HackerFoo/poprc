@@ -376,3 +376,12 @@ body {
     width: 100%;
     height: 100%;
 }
+
+.resizer {
+    border: none
+}
+
+/* HACK to hide the MIME type error */
+.terminal-output > div:nth-child(2), .terminal-output > div:nth-child(3) {
+    display: none
+}
