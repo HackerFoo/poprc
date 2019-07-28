@@ -47,12 +47,14 @@ void fprint_arg(FILE *f, map_t map, cell_t *c) {
 
 static
 void fprint_tree(cell_t *c, map_t map, FILE *f) {
-  if(!is_closure(c) || map_find(map, (uintptr_t)c)) return;
+  if(!is_closure(c) || map_find(map, (uintptr_t)c) || c->tmp_val) return;
 
   // print subtree
+  c->tmp_val = ~c->tmp_val;
   TRAVERSE(c, in, ptrs) {
     fprint_tree(*p, map, f);
   }
+  c->tmp_val = ~c->tmp_val;
 
   int i = *map_cnt(map);
   map_insert(map, (pair_t) {(uintptr_t)c, i});

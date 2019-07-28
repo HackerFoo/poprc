@@ -105,6 +105,7 @@ struct context {
   qsize_t s;
   type_t t;
   uint8_t pos;
+  uint8_t depth;
   bool retry;
   bool expected;
   bool inv;

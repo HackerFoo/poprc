@@ -41,6 +41,7 @@
 
 #if INTERFACE
 #define MAX_ALTS 256
+#define MAX_CALL_DEPTH 255
 #endif
 
 // Counter of used alt ids
@@ -286,6 +287,7 @@ response reduce(cell_t **cp, context_t *ctx) {
   cell_t *c = *cp;
   const char *module_name, *word_name;
   get_name(c, &module_name, &word_name); // debug
+  assert_error(ctx->depth < MAX_CALL_DEPTH, "stack too deep %C", c);
 
   while(c) {
     assert_error(is_closure(c));
@@ -829,7 +831,9 @@ uint8_t new_alt_id(unsigned int n) {
 #define CTX_INHERIT                             \
   .priority = ctx->priority,                    \
   .up = ctx,                                    \
-  .inv = ctx->inv
+  .inv = ctx->inv,                              \
+  .depth = ctx->depth + 1
+
 #define CTX(type, ...) CONCAT(CTX_, type)(__VA_ARGS__)
 #define CTX_list(_in, _out) \
   ((context_t) { .t = T_LIST, .s = { .in = _in, .out = _out }, CTX_INHERIT})

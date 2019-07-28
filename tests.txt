@@ -106,3 +106,6 @@ __ [] [] | popr
 [A] False! [B] . popr swap drop
 
 [1] id [2] id [3] . .
+
+__ [1] id [2] . dup .
+__ [1] [. 2] id [3 B] . dup . .

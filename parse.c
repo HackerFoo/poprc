@@ -474,12 +474,15 @@ cell_t *parse_expr(const cell_t **l, cell_t *module, cell_t *entry) {
   return parse_subexpr(l, module, entry, 0);
 }
 
-#define MAX_ARGS 64
+#define MAX_ARGS 32
+#define MAX_PARSE_DEPTH 32
 cell_t *parse_subexpr(const cell_t **l, cell_t *module, cell_t *entry, int depth) {
   cell_t *arg_stack[MAX_ARGS]; // TODO use allocated storage
   cell_t *ph = NULL;
   unsigned int n = 0;
   const cell_t *t;
+
+  assert_error(depth < MAX_PARSE_DEPTH, "too many nested quotes");
 
   while((t = *l)) {
     *l = t->tok_list.next;

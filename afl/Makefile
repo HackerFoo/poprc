@@ -28,7 +28,7 @@ eval:
 	ln -s ../build/$(CC)/debug/eval .
 
 input: eval ../tests.txt
-	@mkdir input
+	@mkdir -p input
 	cd input && ../eval -lex < ../../tests.txt | split -l 1 - test_
 
 .PHONY: fuzz
