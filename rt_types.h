@@ -207,14 +207,15 @@ struct __attribute__((packed)) mem {
 };
 
 #define FLAG_entry (entry, ENTRY)
-#define ENTRY_PRIMITIVE 0x01
-#define ENTRY_TRACE     0x02
-#define ENTRY_SYNC      0x04
-#define ENTRY_QUOTE     0x08
-#define ENTRY_PARTIAL   0x10
-#define ENTRY_RAM       0x20
-#define ENTRY_BLOCK     0x40
-#define ENTRY_COMPLETE  0x80
+#define ENTRY_PRIMITIVE 0x0001
+#define ENTRY_TRACE     0x0002
+#define ENTRY_SYNC      0x0004
+#define ENTRY_QUOTE     0x0008
+#define ENTRY_PARTIAL   0x0010
+#define ENTRY_RAM       0x0020
+#define ENTRY_BLOCK     0x0040
+#define ENTRY_COMPLETE  0x0080
+#define ENTRY_RECURSIVE 0x0100
 
 typedef struct wrap_data {
   cell_t *initial;
@@ -224,7 +225,8 @@ typedef struct wrap_data {
 
 /* word entry */
 struct __attribute__((packed)) entry {
-  uint8_t rec, flags, alts, sub_id;
+  uint16_t flags;
+  uint8_t alts, sub_id;
   csize_t in, out, len;
   cell_t *parent;
   union {

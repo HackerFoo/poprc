@@ -123,7 +123,7 @@ void gen_decls(cell_t *e) {
     type_t t = trace_type(c);
     if(ONEOF(t, T_BOTTOM, T_RETURN)) continue;
     if(is_var(c)) {
-      const char *decl = e->entry.rec ? "variable" : "alias";
+      const char *decl = FLAG(*e, entry, RECURSIVE) ? "variable" : "alias";
       printf("  `%s(%s, %s%d, in%d);\n", decl, vltype(t), cname(t), i, e->entry.in - i);
     } else {
       if(c->op == OP_value) {
@@ -180,7 +180,7 @@ void gen_sync_disjoint_inputs(const cell_t *e, const cell_t *c) {
       if(set[i] <= e->entry.len) {
         printf("inst%d_out_valid", (int)set[i]);
       } else {
-        if(e->entry.rec) {
+        if(FLAG(*e, entry, RECURSIVE)) {
           printf("active");
         } else {
           printf("in_valid");
@@ -310,7 +310,7 @@ void gen_body(cell_t *e) {
   bool block_start = true;
   int block = 1;
   int block_sync_chain = 0;
-  if(e->entry.rec) {
+  if(FLAG(*e, entry, RECURSIVE)) {
     printf("\n  `loop_sync(");
     gen_sync_disjoint_outputs(e, e, backrefs);
     printf(");\n");
@@ -382,7 +382,7 @@ static
 void gen_valid_ready(const cell_t *e, const cell_t *r0) {
   const char *sep;
   int block;
-  if(e->entry.rec) {
+  if(FLAG(*e, entry, RECURSIVE)) {
     printf("  wire not_valid = ");
     sep = "";
     block = 1;
@@ -398,7 +398,7 @@ void gen_valid_ready(const cell_t *e, const cell_t *r0) {
   }
 
   // valid
-  printf("  wire valid = %s(", e->entry.rec ? "!not_valid & " : "");
+  printf("  wire valid = %s(", FLAG(*e, entry, RECURSIVE) ? "!not_valid & " : "");
   sep = "";
   block = 1;
   for(const cell_t *r = r0; r > e; r = &e[tr_index(r->alt)]) {
@@ -410,7 +410,7 @@ void gen_valid_ready(const cell_t *e, const cell_t *r0) {
   }
   if(!sep[0]) printf("`true");
   printf(");\n"
-         "  assign out_valid = %svalid;\n", e->entry.rec ? "active & " : "");
+         "  assign out_valid = %svalid;\n", FLAG(*e, entry, RECURSIVE) ? "active & " : "");
 }
 
 static
@@ -482,7 +482,7 @@ void gen_module(cell_t *e) {
     gen_valid_ready(e, r0);
     printf("\n");
   }
-  if(e->entry.rec) {
+  if(FLAG(*e, entry, RECURSIVE)) {
     gen_loops(e);
     printf("\n");
   }

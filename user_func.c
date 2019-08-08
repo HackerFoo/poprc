@@ -420,7 +420,7 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
 
   // handle returns
   // HACK: only allocate alt ids when compiling
-  bool tracing = trace_current_entry() != NULL || !entry->entry.rec;
+  bool tracing = trace_current_entry() != NULL || NOT_FLAG(*entry, entry, RECURSIVE);
   uint8_t alt_n = tracing ? int_log2(entry->entry.alts) : 0;
   uint8_t alt_id = new_alt_id(alt_n);
   unsigned int branch = 0;
@@ -877,7 +877,7 @@ bool is_input(cell_t *v) {
 bool all_dynamic(cell_t *entry, cell_t *c) {
   int in = entry->entry.in;
   assert_error(in == closure_in(c));
-  if(!entry->entry.rec) {
+  if(NOT_FLAG(*entry, entry, RECURSIVE)) {
     if(entry->entry.alts == 1) return false;
     COUNTUP(i, in) {
       if(ONEOF(entry[i+1].value.type, T_LIST, T_ANY)) {
@@ -922,7 +922,7 @@ OP(exec) {
     return AND0(rsp, func_exec_trace(cp, ctx, parent_entry));
   } else if(parent_entry && all_dynamic(entry, c)) {
     return func_exec_trace(cp, ctx, parent_entry);
-  } else if(parent_entry && entry->entry.rec) {
+  } else if(parent_entry && FLAG(*entry, entry, RECURSIVE)) {
     return func_exec_wrap(cp, ctx, parent_entry);
   } else {
     assert_counter(1000);

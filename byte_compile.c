@@ -88,7 +88,7 @@ void print_bytecode(cell_t *entry, bool tags) {
       printf(" x%d", entry->entry.alts);
     }
   }
-  if(entry->entry.rec) {
+  if(FLAG(*entry, entry, RECURSIVE)) {
     printf(" rec");
   }
   if(tags) {

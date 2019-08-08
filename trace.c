@@ -714,14 +714,14 @@ cell_t *trace_start_entry(cell_t *parent, csize_t out) {
 
 void hw_analysis(cell_t *e) {
   // mark functions that use recursive functions
-  if(e->entry.rec) {
+  if(FLAG(*e, entry, RECURSIVE)) {
     FLAG_SET(*e, entry, SYNC);
   } else {
     FOR_TRACE_CONST(c, e) {
       if(is_user_func(c)) {
         cell_t *entry = get_entry(c);
         if(!entry) continue;
-        if(entry->entry.rec || FLAG(*entry, entry, SYNC)) {
+        if(FLAG(*entry, entry, RECURSIVE) || FLAG(*entry, entry, SYNC)) {
           FLAG_SET(*e, entry, SYNC);
         }
         if(FLAG(*entry, entry, RAM)) {
@@ -741,7 +741,7 @@ void trace_end_entry(cell_t *e) {
   active_entries[--prev_entry_pos] = NULL;
   e->pos = 0;
   FLAG_SET(*e, entry, COMPLETE);
-  e->entry.rec = trace_recursive_changes(e);
+  FLAG_SET_TO(*e, entry, RECURSIVE, trace_recursive_changes(e));
   hw_analysis(e);
 }
 
