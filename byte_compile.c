@@ -131,6 +131,9 @@ void print_bytecode(cell_t *entry, bool tags) {
       if(!is_ret) printf(" x%d", c->n + 1);
     } else { // print a call
       const char *module_name = NULL, *word_name = NULL;
+      if(FLAG(*c, trace, JUMP)) {
+        printf(" jump");
+      }
       if(NOT_FLAG(*c, trace, INCOMPLETE)) {
         trace_get_name(c, &module_name, &word_name);
         printf(" %s.%s", module_name, word_name);
@@ -348,7 +351,7 @@ void condense_and_analyze(cell_t *entry) {
   condense(entry);
   last_use_analysis(entry);
   no_skip_analysis(entry);
-  mark_tail_calls(entry);
+  mark_jumps(entry);
 }
 
 // runs after reduction to finish functions marked incomplete
@@ -904,22 +907,21 @@ void last_use_analysis(cell_t *entry) {
   }
 }
 
-void mark_tail_calls(cell_t *entry) {
-  cell_t *tail_call = NULL;
+void mark_jumps(cell_t *entry) {
+  cell_t *jump = NULL;
   FOR_TRACE(c, entry) {
-    if(ONEOF(c->op, OP_seq, OP_assert, OP_unless)) continue;
-    if(is_return(c) && tail_call) {
-      FLAG_SET(*c, trace, TAIL_CALL);
-      FLAG_SET(*tail_call, trace, TAIL_CALL);
-      tail_call = NULL;
+    if(ONEOF(c->op, OP_seq, OP_assert, OP_unless, OP_pushr, OP_compose, OP_dep)) continue;
+    if(is_return(c) && jump) {
+      FLAG_SET(*c, trace, JUMP);
+      FLAG_SET(*jump, trace, JUMP);
+      jump = NULL;
       continue;
     }
-    if(is_user_func(c) &&
-       get_entry(c) == entry) {
-      tail_call = c;
+    if(is_user_func(c)) {
+      jump = c;
       continue;
     }
-    tail_call = NULL;
+    jump = NULL;
   }
 }
 
