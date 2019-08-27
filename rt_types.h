@@ -220,6 +220,7 @@ struct __attribute__((packed)) mem {
 typedef struct wrap_data {
   cell_t *initial;
   cell_t *expand;
+  cell_t *entry;
   uintptr_t dep_mask;
 } wrap_data;
 

@@ -317,7 +317,7 @@ void store_lazy_and_update_deps(cell_t **cp, cell_t *r, alt_set_t alt_set) {
 }
 
 static
-cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
+cell_t *exec_expand(cell_t *c) {
   size_t
     in = closure_in(c),
     out = closure_out(c),
@@ -400,7 +400,6 @@ cell_t *exec_expand(cell_t *c, cell_t *new_entry) {
     if(is_user_func(t)) {
       t_entry = &t->expr.arg[closure_in(t)];
       *t_entry = get_entry(t);
-      if(*t_entry == entry) *t_entry = new_entry;
     }
 
     TRAVERSE(t, alt, args, ptrs) {
@@ -625,7 +624,7 @@ cell_t *wrap_vars(cell_t **res, cell_t *p, uintptr_t dep_mask, csize_t out) {
 
 // expand a user function into a list of outputs
 static
-cell_t *expand_list(cell_t *entry, cell_t *c) {
+cell_t *expand_list(cell_t *c) {
   size_t out = closure_out(c);
   cell_t *l = make_list(out + 1);
   int n = out;
@@ -634,7 +633,7 @@ cell_t *expand_list(cell_t *entry, cell_t *c) {
     l->value.ptr[--n] = *p;
   }
   refn(c, out);
-  l->value.ptr[out] = exec_expand(c, entry); // deps will be in c ***
+  l->value.ptr[out] = exec_expand(c); // deps will be in c ***
   return l;
 }
 
@@ -666,6 +665,7 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
   PRE(exec_wrap, "%s 0x%x #wrap", entry->word_name, (*cp)->expr.flags);
   LOG_UNLESS(entry->entry.out == 1, "out = %d #unify-multiout", entry->entry.out);
 
+  wrap.entry = entry;
   assert_error(ctx->s.out < sizeof(wrap.dep_mask) * 8);
   wrap.dep_mask = (1 << ctx->s.out) - 1;
   int dropped = 0;
@@ -706,7 +706,7 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
   mark_barriers(new_entry, nc);
   wrap.expand = nc;
 
-  cell_t *l = expand_list(new_entry, nc);
+  cell_t *l = expand_list(nc);
 
   // eliminate intermediate list
   if(ctx->t == T_LIST) {
@@ -899,8 +899,16 @@ bool all_dynamic(cell_t *entry, cell_t *c) {
   return true;
 }
 
+static cell_t *substitute_entry(cell_t **entry) {
+  if(FLAG(**entry, entry, RECURSIVE)) {
+    cell_t *e = trace_wrap_entry(*entry);
+    if(e) *entry = e;
+  }
+  return *entry;
+}
+
 OP(exec) {
-  cell_t *entry = (*cp)->expr.arg[closure_in(*cp)];
+  cell_t *entry = substitute_entry(&(*cp)->expr.arg[closure_in(*cp)]);
   PRE(exec, "%s", entry->word_name);
 
   cell_t *parent_entry = trace_current_entry();
@@ -933,7 +941,7 @@ OP(exec) {
       }
       CHECK_DELAY();
     }
-    cell_t *res = exec_expand(c, entry);
+    cell_t *res = exec_expand(c);
 
     if(FLAG(*entry, entry, TRACE)) {
       printf(NOTE("TRACE") " %s.%s", entry->module_name, entry->word_name);

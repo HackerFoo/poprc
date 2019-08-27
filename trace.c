@@ -770,6 +770,17 @@ cell_t *trace_current_entry() {
   }
 }
 
+cell_t *trace_wrap_entry(cell_t *entry) {
+  COUNTDOWN(i, prev_entry_pos) {
+    cell_t *e = active_entries[i];
+    if(e->entry.wrap &&
+       e->entry.wrap->entry == entry) {
+      return e;
+    }
+  }
+  return NULL;
+}
+
 void trace_clear_alt(cell_t *entry) {
   FOR_TRACE(c, entry) {
     if(is_value(c) && c->value.type == T_RETURN) continue;
