@@ -412,13 +412,14 @@ f12: 1 swap seq 2 3 | +
 
 dup_map: [int_t dup] map
 
-__ [xs] [f] map -> [xs']
-smap:
-  [popr [] pushl] dip12 __ [xs] [x] [f]
-    dup [.] dip21  __ [xs] [x f] [f]
-    [smap] pushl swap __ [xs] [[f] map] [x f]
-    [$] dip21 . __ [[xs] [f] map . x f]
-
-smap_add1: [1+] smap
+map_add1: [1+] map
 
 cycle: int_t dup [cycle]$ swap pushr
+
+__ [... x] [...] [f] mov_ap -> [...] [fx' ...] [f]
+mov_ap: dup -swap2 [. movr] dip32
+old_map:
+  [[] swap] ap20
+    [[mov_ap] .]
+    [tail2 head popr valid]
+    iterate tail head

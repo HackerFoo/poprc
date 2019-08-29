@@ -102,13 +102,12 @@ iteratel: [dup [peek] dip22 iteratel swap] ap20
 
 __ concat: [] [.] foldr
 
-__ [... x] [...] [f] mov_ap -> [...] [fx' ...] [f]
-mov_ap: dup -swap2 [. movr] dip32
+__ [xs] [f] map -> [xs']
 map:
-  [[] swap] ap20
-    [[mov_ap] .]
-    [tail2 head popr valid]
-    iterate tail head
+  [popr [] pushl] dip12 __ [xs] [x] [f]
+    dup [.] dip21  __ [xs] [x f] [f]
+    [map] pushl swap __ [xs] [[f] map] [x f]
+    [$] dip21 . __ [[xs] [f] map . x f]
 
 __ a [b..] [p]
 pushif:
