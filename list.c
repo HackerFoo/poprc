@@ -75,7 +75,7 @@ response func_list(cell_t **cp, context_t *ctx) {
   if(c->priority) {
     CHECK_PRIORITY(c->priority);
 
-    // commit - force everything in this branch
+    // commit - force everything in this branch ***
     ctx->priority = PRIORITY_TOP;
     c->priority = 0;
   }
@@ -96,10 +96,15 @@ response func_list(cell_t **cp, context_t *ctx) {
     add_conditions_var(*p, value_condition(c)); // *** modifies *p
   }
   if(n && is_row_list(c) && is_list(c->value.ptr[n-1])) {
-    CHECK(func_list(&c->value.ptr[n-1], ctx_pos(&CTX(any), ctx->pos)));
+    response r = func_list(&c->value.ptr[n-1], ctx_pos(&CTX(any), ctx->pos));
+    if(r == FAIL) {
+      c->value.ptr[n-1] = &nil_cell;
+    } else {
+      CHECK(r);
+      ctx->alt_set |= c->value.ptr[n-1]->value.alt_set;
+      CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+    }
   }
-  ctx->alt_set |= c->value.ptr[n-1]->value.alt_set;
-  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   c->value.alt_set = ctx->alt_set;
   return SUCCESS;
 

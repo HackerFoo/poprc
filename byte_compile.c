@@ -670,7 +670,7 @@ void mark_quote_barriers(cell_t *entry, cell_t *c) {
   TRAVERSE(c, in) {
     cell_t *x = *p;
     if(!x) continue;
-    if(x->n >= 0) {
+    if(x->n >= 0 || x->pos) {
       LOG("quote barrier %s %C #barrier", entry->word_name, x);
       mark_pos(x, entry->pos);
     } else {

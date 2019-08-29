@@ -214,12 +214,12 @@ ___ control.bitree (4 -> 1) x2 rec ___
 [2] var :: ?l x3
 [3] var :: ?l x3
 [4] changing var :: ?a x2
-[5] __primitive.ap &4 &3 -> 6 8 :: v? x2
+[5] __primitive.ap &4 &3 -> 8 6 :: v? x2
 [6] __primitive.dep 5 :: a x1
 [7] control.bitree 6 &3 &2 &1 :: v x1
 [8] __primitive.dep 5 :: a x1
 [9] control.bitree 8 3 &2 &1 :: v x1
-[10] __primitive.ap 7 9 1 -> 11 :: v? x1
+[10] __primitive.ap 9 7 1 -> 11 :: v? x1
 [11] __primitive.dep 10 :: a x2
 [12] return [11] -> 16
 [13] __primitive.unless 15 11 :: a x1
@@ -242,14 +242,14 @@ ___ control.diamond (4 -> 1) ___
 [2] var :: ?l x2
 [3] var :: ?l x1
 [4] var :: ?a x1
-[5] __primitive.ap 4 3 -> 6 9 :: v? x2
+[5] __primitive.ap 4 3 -> 9 6 :: v? x2
 [6] __primitive.dep 5 :: a x1
 [7] __primitive.ap 6 &2 -> 8 :: v? x1
 [8] __primitive.dep 7 :: a x1
 [9] __primitive.dep 5 :: a x1
 [10] __primitive.ap 9 2 -> 11 :: v? x1
 [11] __primitive.dep 10 :: a x1
-[12] __primitive.ap 8 11 1 -> 13 :: v? x1
+[12] __primitive.ap 11 8 1 -> 13 :: v? x1
 [13] __primitive.dep 12 :: a x1
 [14] return [13]
 
@@ -3529,17 +3529,38 @@ ___ tests.rpr (2 -> 1) ___
 ___ tests.smap (2 -> 1) rec ___
 [1] var :: ?l x1
 [2] var :: ?l x1
-[3] jump tests.smap_q0 1 2 :: l x1
-[4] return [3]
+[3] __primitive.ap 2 -> 4 :: l? x2
+[4] __primitive.dep 3 :: a x1
+[5] jump tests.smap_q0 4 1 3 :: l x1
+[6] return [5]
 
-___ tests.smap_q0 (2 -> 1) ___
+___ tests.smap_q0 (3 -> 1) ___
 [1] var :: ?l x1
 [2] var :: ?l x2
-[3] __primitive.ap 1 -> 5 :: l? x2
-[4] jump tests.smap 3 &2 :: v x1
-[5] __primitive.dep 3 :: a x1
-[6] __primitive.compose 4 5 2 :: l x1
-[7] return [6]
+[3] var :: ?a x1
+[4] jump tests.smap 1 &2 :: v x1
+[5] __primitive.compose 4 3 2 :: l x1
+[6] return [5]
+
+___ tests.smap_add1 (1 -> 1) ___
+[1] var :: ?l x1
+[2] jump tests.smap_add1_r0 1 :: l x1
+[3] return [2]
+
+___ tests.smap_add1_r0 (1 -> 1) rec ___
+[1] var :: ?l x1
+[2] jump tests.smap_add1_r0_q0 1 :: l x1
+[3] return [2]
+
+___ tests.smap_add1_r0_q0 (1 -> 1) ___
+[1] var :: ?l x1
+[2] __primitive.ap 1 -> 3 :: l? x2
+[3] __primitive.dep 2 :: i x1
+[4] __primitive.add 3 5 :: i x1
+[5] val 1 :: i x1
+[6] jump tests.smap_add1_r0 2 :: v x1
+[7] __primitive.pushr 6 4 :: l x1
+[8] return [7]
 
 ___ tests.spaces (1 -> 1) x2 ___
 [1] var :: ?s x1

@@ -369,7 +369,7 @@ OP(placeholder) {
   assert_error(in >= 1);
   CHECK(reduce_arg(c, in - 1, &CTX(list, csub(ctx->s.in, in),
                                          csub(ctx->s.out, out))));
-  COUNTUP(i, in - 1) {
+  COUNTDOWN(i, in - 1) {
     CHECK(reduce_arg(c, i, &CTX(any)));
     CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   }

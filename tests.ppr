@@ -419,4 +419,6 @@ smap:
     [smap] pushl swap __ [xs] [[f] map] [x f]
     [$] dip21 . __ [[xs] [f] map . x f]
 
+smap_add1: [1+] smap
+
 cycle: int_t dup [cycle]$ swap pushr
