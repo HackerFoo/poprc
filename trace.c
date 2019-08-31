@@ -1404,3 +1404,10 @@ cell_t *trace_extension(cell_t *l, int in, int out) {
     return NULL;
   }
 }
+
+// *** temporary
+bool is_tail_call(const cell_t *entry, const cell_t *c) {
+  return
+    FLAG(*c, trace, JUMP) &&
+    FLAG(*entry, entry, RECURSIVE);
+}

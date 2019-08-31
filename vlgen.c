@@ -130,7 +130,7 @@ void gen_decls(cell_t *e) {
         printf("  `const(%s, %s%d, ", vltype(t), cname(t), i);
         gen_value_rhs(c);
         printf(");\n");
-      } else if(NOT_FLAG(*c, trace, JUMP)) {
+      } else if(!is_tail_call(e, c)) {
         if(is_sync(c)) {
           printf("  wire inst%d_in_ready;\n", i);
         }
@@ -146,7 +146,7 @@ void find_sync_inputs(const cell_t *e, const cell_t *c, uintptr_t *set, size_t s
     if(c->op == OP_assert && !depth) set_insert(c-e, set, size);
     c = &e[tr_index(c->expr.arg[0])];
   }
-  if(!depth && is_sync(c) && NOT_FLAG(*c, trace, JUMP)) {
+  if(!depth && is_sync(c) && !is_tail_call(e, c)) {
     set_insert(c-e, set, size);
   } else if(is_var(c)) {
     if(!depth) set_insert(e->entry.len+1, set, size);
@@ -200,7 +200,7 @@ void find_sync_outputs(const cell_t *e, const cell_t *c, uintptr_t *set, size_t 
   COUNTUP(i, n) {
     int oi = outs[i];
     const cell_t *out = &e[oi];
-    if(FLAG(*out, trace, JUMP)) {
+    if(is_tail_call(e, out)) {
       // stop
     } else if(is_return(out) || (is_sync(out))) {
       set_insert(oi, set, size);
@@ -363,7 +363,7 @@ void gen_outputs(const cell_t *e, const cell_t *r0, const type_t *rtypes) {
     const cell_t *r_prev = NULL;
     int block = 1;
     do {
-      if(NOT_FLAG(*r, trace, JUMP)) {
+      if(!is_tail_call(e, r)) {
         if(r_prev) {
           printf("\n      block%d_valid ? %s%d : ",
                  block, cname(t), cgen_index(e, r_prev->value.ptr[REVI(i)]));
@@ -387,7 +387,7 @@ void gen_valid_ready(const cell_t *e, const cell_t *r0) {
     sep = "";
     block = 1;
     for(const cell_t *r = r0; r > e; r = &e[tr_index(r->alt)]) {
-      if(FLAG(*r, trace, JUMP)) {
+      if(is_tail_call(e, r)) {
         printf("%sblock%d_valid", sep, block);
         sep = " | ";
       }
@@ -402,7 +402,7 @@ void gen_valid_ready(const cell_t *e, const cell_t *r0) {
   sep = "";
   block = 1;
   for(const cell_t *r = r0; r > e; r = &e[tr_index(r->alt)]) {
-    if(NOT_FLAG(*r, trace, JUMP)) {
+    if(!is_tail_call(e, r)) {
       printf("%sblock%d_valid", sep, block);
       sep = " | ";
     }
