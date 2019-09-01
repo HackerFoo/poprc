@@ -751,6 +751,18 @@ void hw_analysis(cell_t *e) {
   }
 }
 
+static
+bool has_outside_call(const cell_t *entry) {
+  FOR_TRACE_CONST(c, entry) {
+    if(!is_user_func(c)) continue;
+    const cell_t *e = get_entry(c);
+    FOLLOW(pe, entry, entry.parent) {
+      if(pe == e) return true;
+    }
+  }
+  return false;
+}
+
 // finish tracing
 void trace_end_entry(cell_t *e) {
   e->entry.wrap = NULL;
@@ -758,7 +770,11 @@ void trace_end_entry(cell_t *e) {
   active_entries[--prev_entry_pos] = NULL;
   e->pos = 0;
   FLAG_SET(*e, entry, COMPLETE);
-  FLAG_SET_TO(*e, entry, RECURSIVE, trace_recursive_changes(e));
+  if(FLAG(*e, entry, QUOTE)) {
+    FLAG_SET_TO(*e, entry, MUTUAL, has_outside_call(e));
+  } else {
+    FLAG_SET_TO(*e, entry, RECURSIVE, trace_recursive_changes(e));
+  }
   hw_analysis(e);
 }
 

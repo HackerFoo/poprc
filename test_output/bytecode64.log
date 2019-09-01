@@ -1403,7 +1403,7 @@ ___ list.iteratel (2 -> 1) rec ___
 [5] jump list.iteratel_q0 2 1 4 :: l x1
 [6] return [5]
 
-___ list.iteratel_q0 (3 -> 1) ___
+___ list.iteratel_q0 (3 -> 1) mut ___
 [1] var :: ?a x1
 [2] var :: ?l x1
 [3] var :: ?a x1
@@ -1476,7 +1476,7 @@ ___ list.map (2 -> 1) rec ___
 [5] jump list.map_q0 4 1 3 :: l x1
 [6] return [5]
 
-___ list.map_q0 (3 -> 1) ___
+___ list.map_q0 (3 -> 1) mut ___
 [1] var :: ?l x1
 [2] var :: ?l x2
 [3] var :: ?a x1
@@ -2234,7 +2234,7 @@ ___ tests.box (0 -> 1) rec ___
 [1] jump tests.box_q0 :: l x1
 [2] return [1]
 
-___ tests.box_q0 (0 -> 1) ___
+___ tests.box_q0 (0 -> 1) mut ___
 [1] tests.box :: v x1
 [2] __primitive.ap 1 3 :: l x1
 [3] [] :: l x1
@@ -2736,7 +2736,7 @@ ___ tests.cycle (1 -> 1) rec ___
 [2] jump tests.cycle_q0 1 :: l x1
 [3] return [2]
 
-___ tests.cycle_q0 (1 -> 1) ___
+___ tests.cycle_q0 (1 -> 1) mut ___
 [1] var :: ?i x2
 [2] jump tests.cycle &1 :: v x1
 [3] __primitive.pushr 2 1 :: l x1
@@ -2975,7 +2975,7 @@ ___ tests.dup_map_r0 (1 -> 1) rec ___
 [2] jump tests.dup_map_r0_q0 1 :: l x1
 [3] return [2]
 
-___ tests.dup_map_r0_q0 (1 -> 1) ___
+___ tests.dup_map_r0_q0 (1 -> 1) mut ___
 [1] var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: i x2
@@ -3387,7 +3387,7 @@ ___ tests.map_add1_r0 (1 -> 1) rec ___
 [2] jump tests.map_add1_r0_q0 1 :: l x1
 [3] return [2]
 
-___ tests.map_add1_r0_q0 (1 -> 1) ___
+___ tests.map_add1_r0_q0 (1 -> 1) mut ___
 [1] var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: i x1
@@ -3625,7 +3625,7 @@ ___ tests.stream (1 -> 2) rec ___
 [2] jump tests.stream_q0 &1 :: l x1
 [3] return [2 1]
 
-___ tests.stream_q0 (1 -> 1) ___
+___ tests.stream_q0 (1 -> 1) mut ___
 [1] var :: ?a x1
 [2] tests.stream 1 -> 3 :: v x2
 [3] __primitive.dep 2 :: v x1

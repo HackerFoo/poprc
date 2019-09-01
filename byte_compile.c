@@ -88,6 +88,9 @@ void print_bytecode(cell_t *entry, bool tags) {
       printf(" x%d", entry->entry.alts);
     }
   }
+  if(FLAG(*entry, entry, MUTUAL)) {
+    printf(" mut");
+  }
   if(FLAG(*entry, entry, RECURSIVE)) {
     printf(" rec");
   }

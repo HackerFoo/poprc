@@ -216,6 +216,7 @@ struct __attribute__((packed)) mem {
 #define ENTRY_BLOCK     0x0040
 #define ENTRY_COMPLETE  0x0080
 #define ENTRY_RECURSIVE 0x0100
+#define ENTRY_MUTUAL    0x0200
 
 typedef struct wrap_data {
   cell_t *initial;
