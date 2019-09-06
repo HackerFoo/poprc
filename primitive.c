@@ -1133,6 +1133,22 @@ OP(partial) {
   return RETRY;
 }
 
+// force inlining of a quote
+WORD("--inline", annotate_inline, 1, 1)
+OP(annotate_inline) {
+  PRE(annotate_inline);
+  CHECK(reduce_arg(c, 0, &CTX_UP));
+  CHECK_DELAY();
+
+  cell_t *res = ref(c->expr.arg[0]);
+  FLAG_SET(*res, value, INLINE);
+  store_reduced(cp, ctx, res);
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, ctx);
+}
+
 // for testing
 WORD("#row", row_id, 1, 1)
 OP(row_id) {

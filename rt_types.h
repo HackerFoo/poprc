@@ -156,6 +156,7 @@ struct __attribute__((packed)) expr {
 // value flags
 #define FLAG_value (value, VALUE)
 #define VALUE_TRACED     0x02
+#define VALUE_INLINE     0x04
 #define VALUE_DEP        0x08
 #define VALUE_LOCAL      0x10
 #define VALUE_LINEAR     0x20
@@ -207,16 +208,17 @@ struct __attribute__((packed)) mem {
 };
 
 #define FLAG_entry (entry, ENTRY)
-#define ENTRY_PRIMITIVE 0x0001
-#define ENTRY_TRACE     0x0002
-#define ENTRY_SYNC      0x0004
-#define ENTRY_QUOTE     0x0008
-#define ENTRY_PARTIAL   0x0010
-#define ENTRY_RAM       0x0020
-#define ENTRY_BLOCK     0x0040
-#define ENTRY_COMPLETE  0x0080
-#define ENTRY_RECURSIVE 0x0100
-#define ENTRY_MUTUAL    0x0200
+#define ENTRY_PRIMITIVE     0x0001
+#define ENTRY_TRACE         0x0002
+#define ENTRY_SYNC          0x0004
+#define ENTRY_QUOTE         0x0008
+#define ENTRY_PARTIAL       0x0010
+#define ENTRY_RAM           0x0020
+#define ENTRY_BLOCK         0x0040
+#define ENTRY_COMPLETE      0x0080
+#define ENTRY_RECURSIVE     0x0100
+#define ENTRY_MUTUAL        0x0200
+#define ENTRY_FORCED_INLINE 0x0400
 
 typedef struct wrap_data {
   cell_t *initial;

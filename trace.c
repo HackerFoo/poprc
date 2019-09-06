@@ -665,6 +665,7 @@ static
 bool trace_recursive_changes(cell_t *entry) {
   bool changes = false;
   bool non_tail_call = false;
+  bool forced_inline = FLAG(*entry, entry, FORCED_INLINE);
 
   FOR_TRACE(p, entry) {
     if(is_user_func(p)) {
@@ -689,7 +690,8 @@ bool trace_recursive_changes(cell_t *entry) {
         // if !branch_changes, a recusive call has been made without modifying any arguments
         // so a tail call will loop forever without producing anything
         non_tail_call |= NOT_FLAG(*p, trace, JUMP);
-        assert_throw(NOT_FLAG(*p, trace, JUMP) || branch_changes, "infinite tail recursion, tail call with constant args");
+        if(!forced_inline)
+          assert_throw(NOT_FLAG(*p, trace, JUMP) || branch_changes, "infinite tail recursion, tail call with constant args");
         changes = true;
       } else if(quote_has_call(pe, entry)) {
         non_tail_call = true;
@@ -699,7 +701,8 @@ bool trace_recursive_changes(cell_t *entry) {
   }
 
   // if there's only one path, even if the arguments change, it will loop forever
-  assert_throw(!changes || non_tail_call || entry->entry.alts > 1, "infinite tail recursion, single alt");
+  if(!forced_inline)
+    assert_throw(!changes || non_tail_call || entry->entry.alts > 1, "infinite tail recursion, single alt");
   return changes;
 }
 
@@ -968,8 +971,13 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
   }
 
   // if there is no computation in the quote, convert to ap or compose
-  if(reduced_list(l)) {
+  bool is_reduced = reduced_list(l);
+  if(is_reduced || FLAG(*l, value, INLINE)) {
     LOG("all var list %C", l);
+    if(!is_reduced &&
+       FLAG(*l, value, INLINE)) {
+      FLAG_SET(*entry, entry, FORCED_INLINE);
+    }
     cell_t **p;
     FORLIST(p, l, true) force(p);
     while(is_row_list(l) && list_size(l) == 1) l = l->value.ptr[0];

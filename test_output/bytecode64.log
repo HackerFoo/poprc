@@ -2732,11 +2732,6 @@ ___ tests.count (1 -> 1) x2 rec ___
 [12] return [7]
 
 ___ tests.cycle (1 -> 1) rec ___
-[1] var :: ?i x1
-[2] jump tests.cycle_q0 1 :: l x1
-[3] return [2]
-
-___ tests.cycle_q0 (1 -> 1) mut ___
 [1] var :: ?i x2
 [2] jump tests.cycle &1 :: v x1
 [3] __primitive.pushr 2 1 :: l x1
