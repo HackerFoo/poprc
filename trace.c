@@ -971,13 +971,21 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
   }
 
   // if there is no computation in the quote, convert to ap or compose
-  bool is_reduced = reduced_list(l);
-  if(is_reduced || FLAG(*l, value, INLINE)) {
-    LOG("all var list %C", l);
-    if(!is_reduced &&
-       FLAG(*l, value, INLINE)) {
-      FLAG_SET(*entry, entry, FORCED_INLINE);
+  bool inline_quote = FLAG(*l, value, INLINE) || reduced_list(l);
+
+  // inline if the function would be empty
+  // TODO check for barriers? ***
+  if(!inline_quote && entry->entry.out == 1) {
+    inline_quote = true;
+    FOR_TRACE(c, entry) {
+      if(!is_var(c)) {
+        inline_quote = false;
+      }
     }
+  }
+  if(inline_quote) {
+    LOG("all var list %C", l);
+    FLAG_SET(*entry, entry, FORCED_INLINE);
     cell_t **p;
     FORLIST(p, l, true) force(p);
     while(is_row_list(l) && list_size(l) == 1) l = l->value.ptr[0];

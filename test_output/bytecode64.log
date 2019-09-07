@@ -1397,20 +1397,12 @@ ___ list.head (1 -> 1) ___
 
 ___ list.iteratel (2 -> 1) rec ___
 [1] var :: ?l x2
-[2] var :: ?a x2
+[2] changing var :: ?a x2
 [3] __primitive.ap &2 &1 -> 4 :: v? x1
 [4] __primitive.dep 3 :: a x1
-[5] jump list.iteratel_q0 2 1 4 :: l x1
-[6] return [5]
-
-___ list.iteratel_q0 (3 -> 1) mut ___
-[1] var :: ?a x1
-[2] var :: ?l x1
-[3] var :: ?a x1
-[4] list.iteratel 1 2 :: v x1
-[5] __primitive.ap 4 3 6 :: l x1
-[6] [] :: l x1
-[7] return [5]
+[5] list.iteratel 4 1 :: v x1
+[6] __primitive.quote 5 2 :: l x1
+[7] return [6]
 
 ___ list.length (1 -> 1) ___
 [1] var :: ?l x1
@@ -1469,20 +1461,13 @@ ___ list.listdup_r0 (3 -> 1) x2 rec ___
 [15] return [10]
 
 ___ list.map (2 -> 1) rec ___
-[1] var :: ?l x1
-[2] var :: ?l x1
+[1] var :: ?l x2
+[2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
 [4] __primitive.dep 3 :: a x1
-[5] jump list.map_q0 4 1 3 :: l x1
-[6] return [5]
-
-___ list.map_q0 (3 -> 1) mut ___
-[1] var :: ?l x1
-[2] var :: ?l x2
-[3] var :: ?a x1
-[4] jump list.map 1 &2 :: v x1
-[5] __primitive.compose 4 3 2 :: l x1
-[6] return [5]
+[5] jump list.map 3 &1 :: v x1
+[6] __primitive.compose 5 4 1 :: l x1
+[7] return [6]
 
 ___ list.merge (2 -> 1) ___
 [1] var :: ?a x1
@@ -2231,14 +2216,9 @@ ___ tests.binrec (4 -> 1) ___
 [8] return [7]
 
 ___ tests.box (0 -> 1) rec ___
-[1] jump tests.box_q0 :: l x1
-[2] return [1]
-
-___ tests.box_q0 (0 -> 1) mut ___
 [1] tests.box :: v x1
-[2] __primitive.ap 1 3 :: l x1
-[3] [] :: l x1
-[4] return [2]
+[2] __primitive.quote 1 :: l x1
+[3] return [2]
 
 ___ tests.br10 (1 -> 1) ___
 [1] var :: ?i x1
@@ -2966,12 +2946,7 @@ ___ tests.dup_map (1 -> 1) ___
 [3] return [2]
 
 ___ tests.dup_map_r0 (1 -> 1) rec ___
-[1] var :: ?l x1
-[2] jump tests.dup_map_r0_q0 1 :: l x1
-[3] return [2]
-
-___ tests.dup_map_r0_q0 (1 -> 1) mut ___
-[1] var :: ?l x1
+[1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: i x2
 [4] jump tests.dup_map_r0 2 :: v x1
@@ -3378,12 +3353,7 @@ ___ tests.map_add1 (1 -> 1) ___
 [3] return [2]
 
 ___ tests.map_add1_r0 (1 -> 1) rec ___
-[1] var :: ?l x1
-[2] jump tests.map_add1_r0_q0 1 :: l x1
-[3] return [2]
-
-___ tests.map_add1_r0_q0 (1 -> 1) mut ___
-[1] var :: ?l x1
+[1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: i x1
 [4] __primitive.add 3 5 :: i x1

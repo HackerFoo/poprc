@@ -414,7 +414,7 @@ dup_map: [int_t dup] map
 
 map_add1: [1+] map
 
-cycle: int_t dup [cycle]$ swap pushr --inline
+cycle: int_t dup [cycle]$ swap pushr
 
 __ [... x] [...] [f] mov_ap -> [...] [fx' ...] [f]
 mov_ap: dup -swap2 [. movr] dip32
