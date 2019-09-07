@@ -323,7 +323,7 @@ void gen_body(cell_t *e) {
     if(!is_value(c)) {
       if(!ONEOF(c->op, OP_dep, OP_seq, OP_unless)) {
         if(get_entry(c) == e) {
-          assert_error(last_call(e, c));
+          assert_error(FLAG(*c, trace, JUMP));
           continue;
         }
         if(block_start) {
@@ -354,10 +354,12 @@ void gen_body(cell_t *e) {
 
 // TODO clean up
 static
-void gen_outputs(const cell_t *e, const cell_t *r0, const type_t *rtypes) {
+bool gen_outputs(const cell_t *e, const cell_t *r0, const type_t *rtypes) {
+  bool ret = false;
   csize_t out = e->entry.out;
   COUNTUP(i, out) {
     type_t t = rtypes[i];
+    if(t == T_LIST) continue;
     printf("  assign out%d = ", (int)i);
     const cell_t *r = r0;
     const cell_t *r_prev = NULL;
@@ -375,7 +377,9 @@ void gen_outputs(const cell_t *e, const cell_t *r0, const type_t *rtypes) {
     } while(r > e);
     assert_error(r_prev);
     printf("%s%d;\n", cname(t), cgen_index(e, r_prev->value.ptr[REVI(i)]));
+    ret = true;
   }
+  return ret;
 }
 
 static
@@ -486,8 +490,8 @@ void gen_module(cell_t *e) {
     gen_loops(e);
     printf("\n");
   }
-  gen_outputs(e, r0, rtypes);
-  printf("\nendmodule\n");
+  if(gen_outputs(e, r0, rtypes)) printf("\n");
+  printf("endmodule\n");
 
   FOR_TRACE(c, e) {
     if(c->op == OP_exec && c->trace.type != T_BOTTOM) {
