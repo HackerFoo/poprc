@@ -987,7 +987,11 @@ int trace_build_quote(cell_t *entry, cell_t *l) {
     LOG("all var list %C", l);
     FLAG_SET(*entry, entry, FORCED_INLINE);
     cell_t **p;
-    FORLIST(p, l, true) force(p);
+    FORLIST(p, l, true) {
+      reduce(p, is_row_arg(&__it) ?
+                  &CTX(list, 0, 0) :
+                  &CTX(any));
+    }
     while(is_row_list(l) && list_size(l) == 1) l = l->value.ptr[0];
     if(is_var(l)) {
       switch_entry(entry, l);

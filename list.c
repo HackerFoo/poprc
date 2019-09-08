@@ -173,6 +173,10 @@ start:
   }
 }
 
+bool is_row_arg(const list_iterator_t *it) {
+  return it->row && it->index > it->size;
+}
+
 static
 cell_t *_make_test_list(csize_t n, cell_t *row) {
   cell_t *l = make_list(n + !!row);
