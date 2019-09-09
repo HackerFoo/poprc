@@ -111,7 +111,7 @@ void gen_value_rhs(const cell_t *c) {
 }
 
 static bool is_sync(const cell_t *c) {
-  if(c->op == OP_ap) return true;
+  if(ONEOF(c->op, OP_ap, OP_pushr, OP_compose)) return true; // ***
   cell_t *entry = get_entry(c);
   return entry && FLAG(*entry, entry, SYNC);
 }
@@ -135,6 +135,8 @@ void gen_decls(cell_t *e) {
           printf("  wire inst%d_in_ready;\n", i);
         }
         printf("  `wire(%s, %s%d);\n", vltype(t), cname(t), i);
+      } else if(t == T_LIST) {
+        printf("  `const(%s, %s%d, `nil);\n", vltype(t), cname(t), i);
       }
     }
   }
@@ -284,7 +286,7 @@ void gen_instance(const cell_t *e, const cell_t *c, int *sync_chain, uintptr_t c
     type_t at = trace_type(&e[a]);
     printf("%s\n      `in(%s, %d, %s%d)",
            sep, vltype(at), (int)i, cname(at), a);
-    sep = ", ";
+    sep = ",";
   };
   printf("%s\n      `out(%s, 0, %s%d)",
          sep, vltype(t), cname(t), inst);
@@ -359,13 +361,12 @@ bool gen_outputs(const cell_t *e, const cell_t *r0, const type_t *rtypes) {
   csize_t out = e->entry.out;
   COUNTUP(i, out) {
     type_t t = rtypes[i];
-    if(t == T_LIST) continue;
     printf("  assign out%d = ", (int)i);
     const cell_t *r = r0;
     const cell_t *r_prev = NULL;
     int block = 1;
     do {
-      if(!is_tail_call(e, r)) {
+      if(t == T_LIST || !is_tail_call(e, r)) {
         if(r_prev) {
           printf("\n      block%d_valid ? %s%d : ",
                  block, cname(t), cgen_index(e, r_prev->value.ptr[REVI(i)]));
@@ -377,6 +378,22 @@ bool gen_outputs(const cell_t *e, const cell_t *r0, const type_t *rtypes) {
     } while(r > e);
     assert_error(r_prev);
     printf("%s%d;\n", cname(t), cgen_index(e, r_prev->value.ptr[REVI(i)]));
+    if(t == T_LIST) {
+      printf("  assign out%d_valid = ", (int)i);
+      r = r0;
+      const char *sep = "";
+      while(r > e) {
+        printf("%s%s%d_valid", sep, cname(t), cgen_index(e, r_prev->value.ptr[REVI(i)]));
+        r = &e[tr_index(r->alt)];
+        sep = " | ";
+      }
+      printf(";\n");
+      r = r0;
+      while(r > e) {
+        printf("  assign %s%d_ready = out%d_ready;\n", cname(t), cgen_index(e, r_prev->value.ptr[REVI(i)]), (int)i);
+        r = &e[tr_index(r->alt)];
+      }
+    }
     ret = true;
   }
   return ret;
