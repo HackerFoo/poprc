@@ -827,8 +827,8 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   return abort_op(rsp, cp, ctx);
 }
 
-WORD_ALIAS("pushl", ap, 2, 1, pushl)
-WORD_ALIAS("popr", ap, 1, 2, popr)
+WORD_ALIAS("pushl", ap, 2, 1, pushl, SYNC)
+WORD_ALIAS("popr", ap, 1, 2, popr, SYNC)
 OP(ap) {
   if(closure_args(*cp) == 1) {
     return func_type(cp, ctx, T_LIST);
@@ -837,7 +837,7 @@ OP(ap) {
   }
 }
 
-WORD(".", compose, 2, 1)
+WORD(".", compose, 2, 1, SYNC)
 OP(compose) {
   return func_compose_ap(cp, ctx, true);
 }
@@ -852,14 +852,14 @@ cell_t *expand_nil(cell_t *c) {
   return c;
 }
 
-WORD("quote", quote, 1, 1)
+WORD("quote", quote, 1, 1, SYNC)
 OP(quote) {
   (*cp)->op = OP_ap;
   *cp = expand_nil(*cp);
   return RETRY;
 }
 
-WORD("pushr", pushr, 2, 1)
+WORD("pushr", pushr, 2, 1, SYNC)
 OP(pushr) {
   (*cp)->op = OP_compose;
   *cp = expand_nil(*cp);

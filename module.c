@@ -34,8 +34,8 @@
 #include "list.h"
 #include "trace.h"
 
-#define WORD_ALIAS__ITEM(__file, __line, __name, __func, __in, __out, __builder) \
-  WORD__ITEM(__file, __line, __name, __func, __in, __out)
+#define WORD_ALIAS__ITEM(__file, __line, __name, __func, __in, __out, __builder, ...) \
+  WORD__ITEM(__file, __line, __name, __func, __in, __out, ##__VA_ARGS__)
 
 // count the number of words
 #define WORD__ITEM(...) CONCAT(anon, __LINE__),
@@ -45,7 +45,7 @@ enum word_count {
 };
 #undef WORD__ITEM
 
-#define WORD__ITEM(__file, __line, __name, __func, __in, __out) \
+#define WORD__ITEM_FLAGS(__file, __line, __name, __func, __in, __out, __flags) \
   {                                                      \
     .first = (uintptr_t)__name,                          \
     .second = (uintptr_t)&(cell_t) {                     \
@@ -56,10 +56,20 @@ enum word_count {
         .in = __in,                                      \
         .out = __out,                                    \
         .len = 0,                                        \
-        .flags = ENTRY_PRIMITIVE                         \
+        .flags = (__flags)                               \
       }                                                  \
     }                                                    \
   },
+
+#define WORD__ITEM_6(__file, __line, __name, __func, __in, __out) \
+  WORD__ITEM_FLAGS(__file, __line, __name, __func, __in, __out, ENTRY_PRIMITIVE)
+#define WORD__ITEM_7(__file, __line, __name, __func, __in, __out, f0)   \
+  WORD__ITEM_FLAGS(__file, __line, __name, __func, __in, __out, ENTRY_PRIMITIVE | ENTRY_##f0)
+#define WORD__ITEM_8(__file, __line, __name, __func, __in, __out, f0, f1)  \
+  WORD__ITEM_FLAGS(__file, __line, __name, __func, __in, __out, ENTRY_PRIMITIVE | ENTRY_##f0 | ENTRY_##f1)
+#define WORD__ITEM_9(__file, __line, __name, __func, __in, __out, f0, f1, f2) \
+  WORD__ITEM_FLAGS(__file, __line, __name, __func, __in, __out, ENTRY_PRIMITIVE | ENTRY_##f0 | ENTRY_##f1 | ENTRY_##f2)
+#define WORD__ITEM(...) DISPATCH(WORD__ITEM, __VA_ARGS__)
 
 pair_t primitive_module[] = {
   { .first = WORD_COUNT, .second = WORD_COUNT },

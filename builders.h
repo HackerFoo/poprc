@@ -1,9 +1,9 @@
 #ifndef __BUILDERS__
 #define __BUILDERS__
 
-#define WORD__ITEM(__file, __line, __name, __func, __in, __out)     \
+#define WORD__ITEM(__file, __line, __name, __func, __in, __out, ...)        \
   BUILDER##__in##__out(__func, __func)
-#define WORD_ALIAS__ITEM(__file, __line, __name, __func, __in, __out, __builder) \
+#define WORD_ALIAS__ITEM(__file, __line, __name, __func, __in, __out, __builder, ...) \
   BUILDER##__in##__out(__builder, __func)
 
 #define BUILDER01(__name, __op)                 \
