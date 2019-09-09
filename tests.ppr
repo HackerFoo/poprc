@@ -412,6 +412,9 @@ f12: 1 swap seq 2 3 | +
 
 dup_map: [int_t dup] map
 
+__ should this return `[]` ?
+drop_map: [drop] map
+
 map_add1: [1+] map
 
 cycle: int_t dup [cycle]$ swap pushr

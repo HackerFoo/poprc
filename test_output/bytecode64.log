@@ -2940,6 +2940,18 @@ ___ tests.drop_loop6_r0 (2 -> 1) x2 rec ___
 [11] jump tests.drop_loop6_r0 2 10 :: i x1
 [12] return [9]
 
+___ tests.drop_map (1 -> 1) ___
+[1] var :: ?l x1
+[2] jump tests.drop_map_r0 1 :: l x1
+[3] return [2]
+
+___ tests.drop_map_r0 (1 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] __primitive.ap 1 -> X :: l? x1
+[3] tests.drop_map_r0 2 :: v x1
+[4] __primitive.quote 3 :: l x1
+[5] return [4]
+
 ___ tests.dup_map (1 -> 1) ___
 [1] var :: ?l x1
 [2] jump tests.dup_map_r0 1 :: l x1
