@@ -68,6 +68,7 @@ bool is_function(cell_t const *c) {
   return c && is_var(c) && c->value.type == T_LIST;
 }
 
+#define LIST_MAX_DEPTH 200
 
 // not really a func
 response func_list(cell_t **cp, context_t *ctx) {
@@ -96,13 +97,19 @@ response func_list(cell_t **cp, context_t *ctx) {
     add_conditions_var(*p, value_condition(c)); // *** modifies *p
   }
   if(n && is_row_list(c) && is_list(c->value.ptr[n-1])) {
-    response r = func_list(&c->value.ptr[n-1], ctx_pos(&CTX(any), ctx->pos));
-    if(r == FAIL) {
+    if(ctx->depth >= LIST_MAX_DEPTH) {
+      drop(c->value.ptr[n-1]);
       c->value.ptr[n-1] = &nil_cell;
+      FLAG_SET(*c, value, ABBREV);
     } else {
-      CHECK(r);
-      ctx->alt_set |= c->value.ptr[n-1]->value.alt_set;
-      CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+      response r = func_list(&c->value.ptr[n-1], ctx_pos(&CTX(any), ctx->pos));
+      if(r == FAIL) {
+        c->value.ptr[n-1] = &nil_cell;
+      } else {
+        CHECK(r);
+        ctx->alt_set |= c->value.ptr[n-1]->value.alt_set;
+        CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+      }
     }
   }
   c->value.alt_set = ctx->alt_set;

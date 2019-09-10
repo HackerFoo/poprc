@@ -467,6 +467,7 @@ bool show_list_elements(cell_t const *c) {
     return true;
   }
   if(is_row_list(c)) {
+    if(FLAG(*c, value, ABBREV)) printf("...");
     bool out = show_list_elements(c->value.ptr[--n]);
     if(!n) return out;
     if(out) putchar(' ');

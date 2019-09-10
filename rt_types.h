@@ -155,6 +155,7 @@ struct __attribute__((packed)) expr {
 
 // value flags
 #define FLAG_value (value, VALUE)
+#define VALUE_ABBREV     0x01
 #define VALUE_TRACED     0x02
 #define VALUE_INLINE     0x04
 #define VALUE_DEP        0x08
