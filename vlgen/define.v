@@ -37,7 +37,7 @@
 
 `define sync_wire(name) `concat_(`current_inst, name)
 
-`define inst(t, n) t n
+`define inst(t, n) t t``_``n
 
 `define apply(f, x) `f x
 

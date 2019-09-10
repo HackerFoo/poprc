@@ -128,3 +128,29 @@ module __primitive_pushr1_lli(
     assign out_valid = `true;
 
 endmodule
+
+module __primitive_pushr2_llii(
+  `sync_ports,
+  `input(stream, 0),
+  `input(int, 1),
+  `input(int, 2),
+  `output(stream, 0)
+);
+
+    reg select = `false;
+    assign out0 = in_valid ? (select ? in2 : in1) : in0;
+    assign out0_valid = in_valid | in0_valid;
+    assign in0_ready = ~in_valid;
+    assign in_ready = out0_ready & ~select;
+    assign out_valid = `true;
+
+    always @(posedge clk) begin
+        if(in_valid) begin
+            select <= ~select;
+        end
+        else begin
+            `reset(select);
+        end
+    end
+
+endmodule

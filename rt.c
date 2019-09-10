@@ -371,15 +371,15 @@ unsigned int update_deps(cell_t *c) {
   return deps;
 }
 
-csize_t count_deps(cell_t *c) {
+csize_t count_deps(const cell_t *c) {
   csize_t deps = 0;
-  TRAVERSE(c, out) {
+  TRAVERSE(c, const, out) {
     if(*p) deps++;
   }
   return deps;
 }
 
-refcount_t direct_refs(cell_t *c) {
+refcount_t direct_refs(const cell_t *c) {
   return csub(c->n + 1, count_deps(c));
 }
 

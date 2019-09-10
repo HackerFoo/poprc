@@ -326,6 +326,13 @@ void gen_body(cell_t *e) {
       if(!ONEOF(c->op, OP_dep, OP_seq, OP_unless)) {
         if(get_entry(c) == e) {
           assert_error(FLAG(*c, trace, JUMP));
+          TRAVERSE(c, const, in) {
+            int i = tr_index(*p);
+            const cell_t *a = &e[i];
+            if(trace_type(a) == T_LIST && direct_refs(a) <= 1) { // ***
+              printf("    assign %s%d_valid = `true;\n", cname(T_LIST), i);
+            }
+          }
           continue;
         }
         if(block_start) {
