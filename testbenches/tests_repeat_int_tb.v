@@ -1,9 +1,9 @@
 `timescale 1ns / 1ps
 `define intN 8
 `include "primitives.v"
-`include "tests_cycle.v"
+`include "tests_repeat_int.v"
 
-module tests_cycle_tb;
+module tests_repeat_int_tb;
 
     reg clk;
     `reg(int, dIn);
@@ -17,8 +17,8 @@ module tests_cycle_tb;
     end
 
     initial begin
-        $dumpfile("tests_cycle_tb.vcd");
-        $dumpvars(0, tests_cycle_tb);
+        $dumpfile("tests_repeat_int_tb.vcd");
+        $dumpvars(0, tests_repeat_int_tb);
 
         dIn     = 42;
         clk     = 0;
@@ -32,6 +32,6 @@ module tests_cycle_tb;
         $finish;
     end
 
-    `inst_sync(tests_cycle, cycle)(`sync(in_valid, out_ready), `in(int, 0, dIn), `out(stream, 0, sOut));
+    `inst_sync(tests_repeat_int, repeat_int)(`sync(in_valid, out_ready), `in(int, 0, dIn), `out(stream, 0, sOut));
 
 endmodule

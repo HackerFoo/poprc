@@ -265,7 +265,6 @@ ldmult: listdup sum
 
 stream: dup [stream] pushl swap
 box: [box]
-__ cycle: cycle [1] .
 
 __ should't just drop an arg
 f8: . $
@@ -417,7 +416,7 @@ drop_map: [drop] map
 
 map_add1: [1+] map
 
-cycle: int_t dup [cycle]$ swap pushr
+repeat_int: int_t dup [repeat_int]$ swap pushr
 
 __ [... x] [...] [f] mov_ap -> [...] [fx' ...] [f]
 mov_ap: dup -swap2 [. movr] dip32

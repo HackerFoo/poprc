@@ -191,6 +191,8 @@ assoc:
 
 __ remove: [head] swap [=s not] pushl . filter
 
+repeat: dup [repeat]$ swap pushr
+
 module stack:
 
 imports:

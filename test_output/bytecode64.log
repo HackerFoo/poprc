@@ -1593,6 +1593,12 @@ ___ list.pushl_seq (2 -> 1) ___
 [4] __primitive.ap 2 1 :: l x1
 [5] return [3]
 
+___ list.repeat (1 -> 1) rec ___
+[1] var :: ?a x2
+[2] jump list.repeat &1 :: l x1
+[3] __primitive.pushr 2 1 :: l x1
+[4] return [3]
+
 ___ list.reverse (1 -> 1) ___
 [1] var :: ?l x1
 [2] [] :: l x1
@@ -2711,12 +2717,6 @@ ___ tests.count (1 -> 1) x2 rec ___
 [11] __primitive.add 10 9 :: i x1
 [12] return [7]
 
-___ tests.cycle (1 -> 1) rec ___
-[1] var :: ?i x2
-[2] jump tests.cycle &1 :: l x1
-[3] __primitive.pushr 2 1 :: l x1
-[4] return [3]
-
 ___ tests.dec (1 -> 1) x2 rec ___
 [1] changing var :: ?i x4
 [2] __primitive.lte &1 &3 :: y x1
@@ -3522,6 +3522,12 @@ ___ tests.quote_str (1 -> 1) ___
 [3] val "'" :: s x2
 [4] __primitive.strcat 2 3 :: s x1
 [5] return [4]
+
+___ tests.repeat_int (1 -> 1) rec ___
+[1] var :: ?i x2
+[2] jump tests.repeat_int &1 :: l x1
+[3] __primitive.pushr 2 1 :: l x1
+[4] return [3]
 
 ___ tests.reverse_reverse (1 -> 1) ___
 [1] var :: ?a x1
