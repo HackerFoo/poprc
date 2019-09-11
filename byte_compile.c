@@ -915,7 +915,10 @@ void mark_jumps(cell_t *entry) {
   FOR_TRACE(c, entry) {
     if(ONEOF(c->op, OP_seq, OP_assert, OP_unless, OP_pushr, OP_compose, OP_dep)) continue;
     if(is_return(c) && jump) {
-      FLAG_SET(*c, trace, JUMP);
+      cell_t *e = get_entry(jump);
+      if(e == entry) {
+        FLAG_SET(*c, trace, JUMP);
+      }
       FLAG_SET(*jump, trace, JUMP);
       jump = NULL;
       continue;
