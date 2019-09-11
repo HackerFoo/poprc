@@ -1,5 +1,26 @@
 #+TITLE: PoprC Notes
 
+* generator = ready line
+* mutual recursion in quotes
+- state machine (Mealy)
+  - like object where popr is a method call
+- token passing, parallelism, circular pipeline
+* linear graphs
+- `A ⅋ B` is two subgraphs that diverge such that you can't reach one from the other
+- `A ⊗ B` is two subgraphs that diverge after reversing all the edges
+- `A ⊕ B` don't diverge (some vertex is reachable from both A and B)
+- `A & B` don't diverge in the reverse direction
+* connected linear vertices are always trees and can be laid out in blocks
+- stack for linear allocation, move to heap when refcount > 1
+* IDEA inline continuations on non-tail calls?
+- one non-tail call: build data-only stack followed by reduction
+- multiple non-tail calls: defunctionalize return addresses
+* work on C streaming, defunctionization -> jumps
+* list.repeat
+in_valid: 1 X..., out_ready: 1...
+in_ready: 1 0..., out_valid: 1...
+out0_ready: 1..., out0_valid: 1...
+in0: 42 X..., out0: 42 42...
 * need to split ready items in quotes
 - if second arg is ready, don't reduce first arg
 - [r . a] [b] . ==> [r] [a . b] .
