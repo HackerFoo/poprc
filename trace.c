@@ -736,20 +736,25 @@ void hw_analysis(cell_t *e) {
   // mark functions that use recursive functions
   if(FLAG(*e, entry, RECURSIVE)) {
     FLAG_SET(*e, entry, SYNC);
-  } else {
-    FOR_TRACE_CONST(c, e) {
-      if(is_user_func(c)) {
-        cell_t *entry = get_entry(c);
-        if(!entry) continue;
-        if(FLAG(*entry, entry, RECURSIVE) || FLAG(*entry, entry, SYNC)) {
-          FLAG_SET(*e, entry, SYNC);
+  }
+  FOR_TRACE_CONST(c, e) {
+    if(is_user_func(c)) {
+      cell_t *entry = get_entry(c);
+      if(!entry) continue;
+      if(entry == e && NOT_FLAG(*c, trace, JUMP)) {
+        if(FLAG(*e, entry, STACK)) {
+          FLAG_SET(*e, entry, RETURN_ADDR);
         }
-        if(FLAG(*entry, entry, RAM)) {
-          FLAG_SET(*e, entry, RAM);
-        }
-      } else if(c->op == OP_ap) {
+        FLAG_SET(*e, entry, STACK);
+      }
+      if(FLAG(*entry, entry, RECURSIVE) || FLAG(*entry, entry, SYNC)) {
+        FLAG_SET(*e, entry, SYNC);
+      }
+      if(FLAG(*entry, entry, RAM)) {
         FLAG_SET(*e, entry, RAM);
       }
+    } else if(c->op == OP_ap) {
+      FLAG_SET(*e, entry, RAM);
     }
   }
 }

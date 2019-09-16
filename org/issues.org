@@ -1,5 +1,16 @@
 #+TITLE: PoprC Issues
 
+* vlgen
+** DONE non-tail recursion
+- split ... in `self(x); ...; return y;`
+  - where there are no other self calls in ...
+** memory tokens (Array)
+** IO
+** data types
+*** string
+** more testbenches
+*** reverse
+*** sort
 * STARTED Compile to C
 Compile to direct C when possible
 - strict, function arguments, no backtracking

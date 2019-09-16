@@ -220,6 +220,8 @@ struct __attribute__((packed)) mem {
 #define ENTRY_RECURSIVE     0x0100
 #define ENTRY_MUTUAL        0x0200
 #define ENTRY_FORCED_INLINE 0x0400
+#define ENTRY_STACK         0x0800
+#define ENTRY_RETURN_ADDR   0x1000
 
 typedef struct wrap_data {
   cell_t *initial;

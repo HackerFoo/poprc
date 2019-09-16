@@ -134,11 +134,22 @@ void gen_decls(cell_t *e) {
         if(is_sync(c)) {
           printf("  wire inst%d_in_ready;\n", i);
         }
-        printf("  `wire(%s, %s%d);\n", vltype(t), cname(t), i);
+        if(is_self_call(e, c)) {
+          printf("  `reg(%s, %s%d) = 0;\n", vltype(t), cname(t), i); // ***
+        } else {
+          printf("  `wire(%s, %s%d);\n", vltype(t), cname(t), i);
+        }
       } else if(t == T_LIST) {
         printf("  `const(%s, %s%d, `nil);\n", vltype(t), cname(t), i);
       }
     }
+  }
+  if(FLAG(*e, entry, STACK)) { // ***
+    printf("\n"
+           "  // stack\n"
+           "  reg `intT stack[0:255];\n"
+           "  reg [0:7] sp = 0;\n"
+           "  reg reduce_stack = `false;\n");
   }
 }
 
@@ -192,6 +203,23 @@ void gen_sync_disjoint_inputs(const cell_t *e, const cell_t *c) {
   } else {
     printf("`true");
   }
+}
+
+static
+void gen_sync_block(const cell_t *e, int block) {
+  const char *sep = "";
+  FOR_TRACE_CONST(c, e, block) {
+    if(is_return(c)) break;
+    if(is_user_func(c)) {
+      cell_t *ce = get_entry(c);
+      if(ce == e) break;
+    }
+    if(c->op == OP_assert || is_sync(c)) {
+      printf("%sinst%d_out_valid", sep, (int)(c-e));
+      sep = " & ";
+    }
+  }
+  if(!sep[0]) printf("`true");
 }
 
 static
@@ -325,13 +353,16 @@ void gen_body(cell_t *e) {
     if(!is_value(c)) {
       if(!ONEOF(c->op, OP_dep, OP_seq, OP_unless)) {
         if(get_entry(c) == e) {
-          assert_error(FLAG(*c, trace, JUMP));
-          TRAVERSE(c, const, in) {
-            int i = tr_index(*p);
-            const cell_t *a = &e[i];
-            if(trace_type(a) == T_LIST && direct_refs(a) <= 1) { // ***
-              printf("    assign %s%d_valid = `true;\n", cname(T_LIST), i);
+          if(FLAG(*c, trace, JUMP)) {
+            TRAVERSE(c, const, in) {
+              int i = tr_index(*p);
+              const cell_t *a = &e[i];
+              if(trace_type(a) == T_LIST && direct_refs(a) <= 1) { // ***
+                printf("    assign %s%d_valid = `true;\n", cname(T_LIST), i);
+              }
             }
+          } else {
+            goto next_block;
           }
           continue;
         }
@@ -348,11 +379,12 @@ void gen_body(cell_t *e) {
         }
       }
     } else if(is_return(c)) {
+    next_block:
       if(block_start) {
         printf("\n  `start_block(block%d)\n", block);
       }
       printf("    wire block%d_valid = ", block);
-      gen_sync_disjoint_inputs(e, c);
+      gen_sync_block(e, block);
       printf(";\n");
       printf("  `end_block(block%d)\n", block);
       block = (c - e) + calculate_cells(c->size);
@@ -406,39 +438,59 @@ bool gen_outputs(const cell_t *e, const cell_t *r0, const type_t *rtypes) {
   return ret;
 }
 
+bool is_self_call(const cell_t *e, const cell_t *c) {
+  return is_user_func(c) && get_entry(c) == e;
+}
+
 static
-void gen_valid_ready(const cell_t *e, const cell_t *r0) {
+void gen_valid_ready(const cell_t *e, UNUSED const cell_t *r0) {
   const char *sep;
   int block;
   if(FLAG(*e, entry, RECURSIVE)) {
     printf("  wire not_valid = ");
     sep = "";
     block = 1;
-    for(const cell_t *r = r0; r > e; r = &e[tr_index(r->alt)]) {
-      if(is_tail_call(e, r)) {
+    FOR_TRACE_CONST(c, e) {
+      bool self_call = is_self_call(e, c);
+      if(self_call) {
         printf("%sblock%d_valid", sep, block);
         sep = " | ";
       }
-      block = (r - e) + calculate_cells(r->size);
+      if(is_return(c) ||
+         (self_call && NOT_FLAG(*c, trace, JUMP))) {
+        block = (c - e) + calculate_cells(c->size);
+      }
     }
     if(!sep[0]) printf("`false");
     printf(";\n");
   }
 
   // valid
-  printf("  wire valid = %s(", FLAG(*e, entry, RECURSIVE) ? "!not_valid & " : "");
+  printf("  wire valid%s = %s(",
+         FLAG(*e, entry, STACK) ? "_ret" : "",
+         FLAG(*e, entry, RECURSIVE) ? "!not_valid & " : "");
   sep = "";
   block = 1;
-  for(const cell_t *r = r0; r > e; r = &e[tr_index(r->alt)]) {
-    if(!is_tail_call(e, r)) {
+  FOR_TRACE_CONST(c, e) {
+    if(block &&
+       is_return(c) &&
+       !is_tail_call(e, c)) {
       printf("%sblock%d_valid", sep, block);
       sep = " | ";
     }
-    block = (r - e) + calculate_cells(r->size);
+    if(is_return(c)) {
+      block = (c - e) + calculate_cells(c->size);
+    } else if((is_self_call(e, c) &&
+               NOT_FLAG(*c, trace, JUMP))) {
+      block = 0;
+    }
   }
   if(!sep[0]) printf("`true");
-  printf(");\n"
-         "  assign out_valid = %svalid;\n", FLAG(*e, entry, RECURSIVE) ? "active & " : "");
+  printf(");\n");
+  if(FLAG(*e, entry, STACK)) {
+    printf("  wire valid = reduce_stack & ~|sp;\n");
+  }
+  printf("  assign out_valid = %svalid;\n", FLAG(*e, entry, RECURSIVE) ? "active & " : "");
 }
 
 static
@@ -450,10 +502,18 @@ void gen_loop(const cell_t *e, int block, const cell_t *tail_call) {
     type_t t = trace_type(&e[a]);
     assert_error(trace_type(&e[in - i]) == t);
     if(t != T_LIST) {
+      if(NOT_FLAG(*tail_call, trace, JUMP)) { // ***
+        printf("        stack[sp");
+        if(i) printf(" + %d", (int)i);
+        printf("] <= %s%d;\n", cname(t), (int)(in - i));
+      }
       printf("        %s%d <= %s%d;\n",
              cname(t), (int)(in - i),
              cname(t), a);
     }
+  }
+  if(NOT_FLAG(*tail_call, trace, JUMP)) {
+    printf("        sp <= sp + %d;\n", e->entry.in);
   }
   printf("      end\n");
 }
@@ -468,12 +528,39 @@ void gen_loops(cell_t *e) {
     type_t t = trace_type(c);
     if(t != T_LIST) printf("      %s%d <= in%d;\n", cname(t), i, e->entry.in - i);
   }
-  printf("      `set(active);\n"
-         "    end\n"
+  printf("      `set(active);\n");
+  if(FLAG(*e, entry, STACK))
+    printf("      `reset(reduce_stack);\n");
+  printf("    end\n"
          "    else if(valid) begin\n"
          "       if(out_ready) `reset(active);\n"
-         "    end\n"
-         "    else begin\n");
+         "    end\n");
+  if(FLAG(*e, entry, STACK)) {
+    printf("    else if(valid_ret || reduce_stack) begin\n"
+           "      `set(reduce_stack);\n");
+    FOR_TRACE_CONST(c, e) {
+      if(is_self_call(e, c) &&
+         NOT_FLAG(*c, trace, JUMP)) {
+        printf("      %s%d <= out0;\n",
+               cname(trace_type(c)), (int)(c - e));
+        cell_t *const *out = &c->expr.arg[closure_args(c) - closure_out(c)];
+        COUNTUP(i, e->entry.out-1) {
+          int x = tr_index(out[i]);
+          printf("      %s%d <= out%d;\n",
+                 cname(trace_type(&e[x])), x, (int)(i + 1));
+        }
+      }
+    }
+    RANGEUP(i, 1, e->entry.in + 1) {
+      cell_t *v = &e[i];
+      printf("      %s%d <= stack[sp - %d];\n",
+             cname(trace_type(v)), (int)i, (int)REVI(i));
+    }
+    printf("      sp <= sp - %d;\n"
+           "    end\n",
+           e->entry.out); // ***
+  }
+  printf("    else begin\n");
   int start = 1;
   const cell_t *tail_call = NULL;
   FOR_TRACE_CONST(c, e) {
