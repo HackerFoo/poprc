@@ -218,6 +218,18 @@ void gen_sync_block(const cell_t *e, int block) {
       printf("%sinst%d_out_valid", sep, (int)(c-e));
       sep = " & ";
     }
+    if(c->op == OP_unless) {
+      int b = 1;
+      FOR_TRACE_CONST(r, e) {
+        if(is_return(r)) {
+          if(b != block) {
+            printf("%s!block%d_valid", sep, b);
+            sep = " & ";
+          }
+          b = (r - e) + calculate_cells(r->size);
+        }
+      }
+    }
   }
   if(!sep[0]) printf("`true");
 }
@@ -446,29 +458,10 @@ static
 void gen_valid_ready(const cell_t *e, UNUSED const cell_t *r0) {
   const char *sep;
   int block;
-  if(FLAG(*e, entry, RECURSIVE)) {
-    printf("  wire not_valid = ");
-    sep = "";
-    block = 1;
-    FOR_TRACE_CONST(c, e) {
-      bool self_call = is_self_call(e, c);
-      if(self_call) {
-        printf("%sblock%d_valid", sep, block);
-        sep = " | ";
-      }
-      if(is_return(c) ||
-         (self_call && NOT_FLAG(*c, trace, JUMP))) {
-        block = (c - e) + calculate_cells(c->size);
-      }
-    }
-    if(!sep[0]) printf("`false");
-    printf(";\n");
-  }
 
   // valid
-  printf("  wire valid%s = %s(",
-         FLAG(*e, entry, STACK) ? "_ret" : "",
-         FLAG(*e, entry, RECURSIVE) ? "!not_valid & " : "");
+  printf("  wire valid%s = ",
+         FLAG(*e, entry, STACK) ? "_ret" : "");
   sep = "";
   block = 1;
   FOR_TRACE_CONST(c, e) {
@@ -485,8 +478,8 @@ void gen_valid_ready(const cell_t *e, UNUSED const cell_t *r0) {
       block = 0;
     }
   }
-  if(!sep[0]) printf("`true");
-  printf(");\n");
+  if(!sep[0]) printf("`false");
+  printf(";\n");
   if(FLAG(*e, entry, STACK)) {
     printf("  wire valid = reduce_stack & ~|sp;\n");
   }
