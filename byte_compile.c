@@ -923,6 +923,7 @@ void mark_jumps(cell_t *entry) {
       jump = NULL;
       continue;
     }
+    if(is_value(c)) continue;
     if(is_user_func(c)) {
       jump = c;
       continue;

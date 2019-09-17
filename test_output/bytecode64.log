@@ -1086,7 +1086,7 @@ ___ gen_ed.write_list_r0 (3 -> 2) x2 rec ___
 ___ io.getline (2 -> 3) ___
 [1] var :: ?o x1
 [2] var :: ?y x1
-[3] io.getline_loop 2 1 5 -> 7 6 :: y x3
+[3] jump io.getline_loop 2 1 5 -> 7 6 :: y x3
 [5] val "" :: s x1
 [6] __primitive.dep 3 :: s x1
 [7] __primitive.dep 3 :: o x1
@@ -1472,7 +1472,7 @@ ___ list.map (2 -> 1) rec ___
 ___ list.merge (2 -> 1) ___
 [1] var :: ?a x1
 [2] var :: ?a x1
-[3] list.merge_loop 2 1 4 :: l x1
+[3] jump list.merge_loop 2 1 4 :: l x1
 [4] [] :: l x1
 [5] return [3]
 
@@ -1671,7 +1671,7 @@ ___ list.sort_r0 (2 -> 1) x2 rec ___
 [14] __primitive.dep 10 :: l x1
 [15] list.sort_r0 2 13 :: v x1
 [16] list.merge_loop 12 15 11 :: l x2
-[17] list.seq_list_r0 18 &16 :: y x1
+[17] jump list.seq_list_r0 18 &16 :: y x1
 [18] val True :: y x1
 [19] __primitive.seq 16 17 :: l x2
 [20] return [19] -> 24
@@ -1716,7 +1716,7 @@ ___ list.split_list (1 -> 3) ___
 [3] val 0 :: i x1
 [4] __primitive.div &2 5 :: i? x1
 [5] val 2 :: i x1
-[6] list.split_at_r0 1 7 4 -> 8 :: l x2
+[6] jump list.split_at_r0 1 7 4 -> 8 :: l x2
 [7] [] :: l x1
 [8] __primitive.dep 6 :: l x1
 [9] return [6 8 2]
@@ -2571,7 +2571,7 @@ ___ tests.calc_step_q1 (3 -> 1) ___
 [1] var :: ?i x1
 [2] var :: ?i x1
 [3] var :: ?l x1
-[4] algorithm.__caret___r0 5 1 2 :: i x1
+[4] jump algorithm.__caret___r0 5 1 2 :: i x1
 [5] val 1 :: i x1
 [6] __primitive.pushr 3 4 :: l x1
 [7] return [6]
@@ -2579,7 +2579,7 @@ ___ tests.calc_step_q1 (3 -> 1) ___
 ___ tests.calc_step_q2 (2 -> 1) ___
 [1] var :: ?i x1
 [2] var :: ?l x1
-[3] tests.fibl_r0 1 4 5 :: i x1
+[3] jump tests.fibl_r0 1 4 5 :: i x1
 [4] val 0 :: i x1
 [5] val 1 :: i x1
 [6] __primitive.pushr 2 3 :: l x1
@@ -2594,7 +2594,7 @@ ___ tests.calc_step_q3 (2 -> 1) ___
 
 ___ tests.calc_step_q4 (1 -> 1) ___
 [1] var :: ?l x2
-[2] list.length_r0 3 &1 :: i x1
+[2] jump list.length_r0 3 &1 :: i x1
 [3] val 0 :: i x1
 [4] __primitive.pushr 1 2 :: l x1
 [5] return [4]
@@ -3334,7 +3334,7 @@ ___ tests.ldmult (2 -> 1) ___
 [2] var :: ?i x1
 [3] list.listdup_r0 2 1 4 :: l x1
 [4] [] :: l x1
-[5] algorithm.sum_r0 6 3 :: i x1
+[5] jump algorithm.sum_r0 6 3 :: i x1
 [6] val 0 :: i x1
 [7] return [5]
 
@@ -3621,7 +3621,7 @@ ___ tests.sum3 (3 -> 1) ___
 [2] var :: ?a x1
 [3] var :: ?a x1
 [4] __primitive.quote 3 2 1 :: l x1
-[5] algorithm.sum_r0 6 4 :: i x1
+[5] jump algorithm.sum_r0 6 4 :: i x1
 [6] val 0 :: i x1
 [7] return [5]
 
