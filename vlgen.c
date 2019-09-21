@@ -149,7 +149,7 @@ void gen_decls(cell_t *e) {
            "  // stack\n"
            "  reg `intT stack[0:255];\n"
            "  reg [0:7] sp = 0;\n"
-           "  reg reduce_stack = `false;\n");
+           "  reg returned = `false;\n");
   }
 }
 
@@ -206,8 +206,12 @@ void gen_sync_disjoint_inputs(const cell_t *e, const cell_t *c) {
 }
 
 static
-void gen_sync_block(const cell_t *e, int block) {
+void gen_sync_block(const cell_t *e, int block, bool ret) {
   const char *sep = "";
+  if(ret) {
+    printf("%sreturned", sep); // TODO check return code
+    sep = " & ";
+  }
   FOR_TRACE_CONST(c, e, block) {
     if(is_return(c)) break;
     if(is_user_func(c)) {
@@ -351,6 +355,7 @@ void gen_body(cell_t *e) {
   build_backrefs(e, (uintptr_t **)backrefs, backrefs_n);
   bool block_start = true;
   int block = 1;
+  int return_block = 0;
   int block_sync_chain = 0;
   if(FLAG(*e, entry, RECURSIVE)) {
     printf("\n  `loop_sync(");
@@ -374,6 +379,7 @@ void gen_body(cell_t *e) {
               }
             }
           } else {
+            return_block = (c - e) + calculate_cells(c->size);
             goto next_block;
           }
           continue;
@@ -396,7 +402,7 @@ void gen_body(cell_t *e) {
         printf("\n  `start_block(block%d)\n", block);
       }
       printf("    wire block%d_valid = ", block);
-      gen_sync_block(e, block);
+      gen_sync_block(e, block, block == return_block);
       printf(";\n");
       printf("  `end_block(block%d)\n", block);
       block = (c - e) + calculate_cells(c->size);
@@ -460,28 +466,24 @@ void gen_valid_ready(const cell_t *e, UNUSED const cell_t *r0) {
   int block;
 
   // valid
-  printf("  wire valid%s = ",
-         FLAG(*e, entry, STACK) ? "_ret" : "");
+  printf("  wire %s = ",
+         FLAG(*e, entry, STACK) ? "returning" : "valid");
   sep = "";
   block = 1;
   FOR_TRACE_CONST(c, e) {
-    if(block &&
-       is_return(c) &&
+    if(is_return(c) &&
        !is_tail_call(e, c)) {
       printf("%sblock%d_valid", sep, block);
       sep = " | ";
     }
-    if(is_return(c)) {
+    if(is_return(c) || is_self_call(e, c)) {
       block = (c - e) + calculate_cells(c->size);
-    } else if((is_self_call(e, c) &&
-               NOT_FLAG(*c, trace, JUMP))) {
-      block = 0;
     }
   }
   if(!sep[0]) printf("`false");
   printf(";\n");
   if(FLAG(*e, entry, STACK)) {
-    printf("  wire valid = reduce_stack & ~|sp;\n");
+    printf("  wire valid = returning & ~|sp;\n");
   }
   printf("  assign out_valid = %svalid;\n", FLAG(*e, entry, RECURSIVE) ? "active & " : "");
 }
@@ -513,8 +515,10 @@ void gen_loop(const cell_t *e, int block, const cell_t *tail_call) {
 
 static
 void gen_loops(cell_t *e) {
-  printf("  always @(posedge clk) begin\n"
-         "    if(in_valid & ~active) begin\n");
+  printf("  always @(posedge clk) begin\n");
+  if(FLAG(*e, entry, STACK))
+     printf("    returned <= returning;\n");
+  printf("    if(in_valid & ~active) begin\n");
   FOR_TRACE_CONST(c, e) {
     if(!is_var(c)) break;
     int i = c - e;
@@ -523,14 +527,13 @@ void gen_loops(cell_t *e) {
   }
   printf("      `set(active);\n");
   if(FLAG(*e, entry, STACK))
-    printf("      `reset(reduce_stack);\n");
+    printf("      `reset(returned);\n");
   printf("    end\n"
          "    else if(valid) begin\n"
          "       if(out_ready) `reset(active);\n"
          "    end\n");
   if(FLAG(*e, entry, STACK)) {
-    printf("    else if(valid_ret || reduce_stack) begin\n"
-           "      `set(reduce_stack);\n");
+    printf("    else if(returning) begin\n");
     FOR_TRACE_CONST(c, e) {
       if(is_self_call(e, c) &&
          NOT_FLAG(*c, trace, JUMP)) {
