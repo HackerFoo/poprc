@@ -377,7 +377,7 @@ cell_t *exec_expand(cell_t *c) {
       nc = row_quote(nc);
     } else {
       nc = copy(p);
-      nc->expr.flags = 0;
+      nc->expr.flags &= EXPR_TRACE; // only keep TRACE
       nc->n = p->n;
     }
     nc->tmp = 0;
