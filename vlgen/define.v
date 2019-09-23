@@ -120,4 +120,6 @@
 
 `define valid(x) (! (& x))
 
+`define returned_to(name) (returned && return_addr == label_``name)
+
 `endif

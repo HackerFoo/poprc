@@ -2,8 +2,11 @@
 
 * vlgen
 ** DONE non-tail recursion
+*** DONE initial single call site support
 - split ... in `self(x); ...; return y;`
   - where there are no other self calls in ...
+*** DONE stack per value to allow singe cycle access
+*** DONE store inputs to block instead of top level
 ** memory tokens (Array)
 ** IO
 ** data types

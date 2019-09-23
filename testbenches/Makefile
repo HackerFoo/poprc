@@ -8,7 +8,8 @@ FUNCTIONS = \
   tests.repeat_int \
   tests.dup_map \
   tests.map_add1 \
-  tests.fact
+  tests.fact \
+  tests.fib
 COMMON = ../vlgen/primitives.v ../vlgen/define.v
 
 BUILD = build
