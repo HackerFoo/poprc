@@ -21,7 +21,7 @@ module tests_dup_map_tb;
     end
 
     initial begin
-        $dumpfile("tests_dup_map_tb.vcd");
+        $dumpfile(`dumpfile);
         $dumpvars(0, tests_dup_map_tb);
 
         sIn     = 0;

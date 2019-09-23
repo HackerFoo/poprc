@@ -16,7 +16,7 @@ module tests_fact_tb;
    end
 
    initial begin
-      $dumpfile("tests_fact_tb.vcd");
+      $dumpfile(`dumpfile);
       $dumpvars(0, tests_fact_tb);
 
       a    = 8;

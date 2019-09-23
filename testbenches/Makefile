@@ -16,8 +16,20 @@ BUILD = build
 INCLUDE = -I../vlgen -I$(BUILD)/gen
 
 .PHONY: all
-all: $(patsubst %_tb.v, $(BUILD)/vcd/%_tb.vcd, $(wildcard *_tb.v))
-all: $(patsubst %, $(BUILD)/preprocessed/%, $(wildcard *_swbut.v))
+all: test $(patsubst %, $(BUILD)/preprocessed/%, $(wildcard *_swbut.v))
+
+.PHONY: sim
+sim: $(patsubst %_tb.v, $(BUILD)/sim/%_tb.fst, $(wildcard *_tb.v))
+sim: $(patsubst %_tb.v, $(BUILD)/sim/%_tb.log, $(wildcard *_tb.v))
+
+.PHONY: test
+test: sim
+	diff -U 3 -r -x '*.fst' -x '*~' verified $(BUILD)/sim
+
+.PHONY: verify
+verify: sim
+	@mkdir -p verified
+	cp $(BUILD)/sim/*.log verified/
 
 print-%:
 	@echo $* = $($*)
@@ -25,9 +37,9 @@ print-%:
 # keep intermediate files
 .SECONDARY:
 
-$(BUILD)/vcd/%_tb.vcd: $(BUILD)/vvp/%_tb.vvp
-	@mkdir -p $(dir $@)
-	cd $(dir $@) && vvp $(abspath $<)
+$(BUILD)/sim/%_tb.fst $(BUILD)/sim/%_tb.log: $(BUILD)/vvp/%_tb.vvp
+	@mkdir -p $(BUILD)/sim
+	cd $(BUILD)/sim && vvp -l$*_tb.log $(abspath $<) -fst
 
 # add generated files as prerequisites for *_tb.v and *_swbut.v
 $(foreach suf, tb swbut swbut_tb, \
@@ -35,7 +47,7 @@ $(foreach suf, tb swbut swbut_tb, \
     $(eval $(BUILD)/preprocessed/$(target): $(patsubst %_$(suf).v, $(BUILD)/gen/%.v, $(target)))))
 $(BUILD)/preprocessed/%.v: %.v $(COMMON)
 	@mkdir -p $(dir $@)
-	iverilog -o - -E $(INCLUDE) $< | sed '/^\s*$$/d' > $@
+	iverilog -o - -E $(INCLUDE) -Ddumpfile="\"$*.fst\"" $< | sed '/^\s*$$/d' > $@
 
 $(BUILD)/vvp/%_tb.vvp: $(BUILD)/preprocessed/%_tb.v
 	@mkdir -p $(dir $@)

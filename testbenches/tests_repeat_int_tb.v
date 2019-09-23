@@ -17,7 +17,7 @@ module tests_repeat_int_tb;
     end
 
     initial begin
-        $dumpfile("tests_repeat_int_tb.vcd");
+        $dumpfile(`dumpfile);
         $dumpvars(0, tests_repeat_int_tb);
 
         dIn     = 42;

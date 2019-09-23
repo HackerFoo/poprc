@@ -20,7 +20,7 @@ module stream_tb;
     end
 
     initial begin
-        $dumpfile("stream_tb.vcd");
+        $dumpfile(`dumpfile);
         $dumpvars(0, stream_tb);
 
         sIn       = 1;

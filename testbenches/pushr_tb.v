@@ -17,7 +17,7 @@ module pushr_tb;
     end
 
     initial begin
-        $dumpfile("pushr_tb.vcd");
+        $dumpfile(`dumpfile);
         $dumpvars(0, pushr_tb);
 
         sIn       = 1;

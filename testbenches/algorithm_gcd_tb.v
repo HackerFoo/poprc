@@ -17,7 +17,7 @@ module algorithm_gcd_tb;
    end
 
    initial begin
-      $dumpfile("algorithm_gcd_tb.vcd");
+      $dumpfile(`dumpfile);
       $dumpvars(0, algorithm_gcd_tb);
 
       a         = 21;

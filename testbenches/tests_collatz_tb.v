@@ -16,7 +16,7 @@ module tests_collatz_tb;
     end
 
     initial begin
-        $dumpfile("tests_collatz_tb.vcd");
+        $dumpfile(`dumpfile);
         $dumpvars(0, tests_collatz_tb);
 
         a    = 27;

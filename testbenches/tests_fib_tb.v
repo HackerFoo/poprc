@@ -16,7 +16,7 @@ module tests_fib_tb;
    end
 
    initial begin
-      $dumpfile("tests_fib_tb.vcd");
+      $dumpfile(`dumpfile);
       $dumpvars(0, tests_fib_tb);
 
       a    = 10;

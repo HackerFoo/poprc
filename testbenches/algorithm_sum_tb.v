@@ -16,7 +16,7 @@ module algorithm_sum_tb;
     end
 
     initial begin
-        $dumpfile("algorithm_sum_tb.vcd");
+        $dumpfile(`dumpfile);
         $dumpvars(0, algorithm_sum_tb);
 
         sIn     = 0;

@@ -22,7 +22,7 @@ module tests_map_add1_tb;
     end
 
     initial begin
-        $dumpfile("tests_map_add1_tb.vcd");
+        $dumpfile(`dumpfile);
         $dumpvars(0, tests_map_add1_tb);
 
         sIn     = 0;

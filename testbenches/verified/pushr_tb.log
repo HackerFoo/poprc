@@ -1,0 +1,7 @@
+FST info: dumpfile pushr_tb.fst opened for output.
+sIn = 00000001 (  1), sOut = 00101010 ( 42)
+sIn = 00000001 (  1), sOut = 00000001 (  1)
+sIn = 00000010 (  2), sOut = 00000010 (  2)
+sIn = 00000011 (  3), sOut = 00000011 (  3)
+sIn = 00000100 (  4), sOut = 00000100 (  4)
+sIn = 00000101 (  5), sOut = 00000101 (  5)

@@ -10,7 +10,7 @@ module tests_collatz_swbut_tb;
     end
 
     initial begin
-        $dumpfile("tests_collatz_swbut_tb.vcd");
+        $dumpfile(`dumpfile);
         $dumpvars(0, tests_collatz_swbut_tb);
 
         #100000;
