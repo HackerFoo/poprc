@@ -117,21 +117,27 @@ static bool is_sync(const cell_t *c) {
 }
 
 static
+bool update_block(const cell_t *e, const cell_t *c, int *block) {
+  if(is_return(c) ||
+     (is_self_call(e, c) && NOT_FLAG(*c, trace, JUMP))) {
+    *block = (c - e) + calculate_cells(c->size);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+static
 void gen_stack(const cell_t *e, const type_t *rtypes) {
   int ra_bits = 0;
-  int block = 0;
   int nt_self_calls = 1;
   if(FLAG(*e, entry, RETURN_ADDR)) {
-    block = 1;
     nt_self_calls = 0;
     FOR_TRACE_CONST(c, e) {
       if(is_self_call(e, c) &&
          NOT_FLAG(*c, trace, JUMP)) {
         nt_self_calls++;
-      } else if(!is_return(c)) {
-        continue;
       }
-      block = (c - e) + calculate_cells(c->size);
     }
     ra_bits = int_log2(nt_self_calls);
   }
@@ -140,14 +146,12 @@ void gen_stack(const cell_t *e, const type_t *rtypes) {
          "  `define RB %d\n", ra_bits);
   if(ra_bits) {
     int i = 0;
-    block = 1;
+    int block = 1;
     FOR_TRACE_CONST(c, e) {
-      if(is_self_call(e, c) &&
+      if(update_block(e, c, &block) &&
+         is_self_call(e, c) &&
          NOT_FLAG(*c, trace, JUMP)) {
-        block = (c - e) + calculate_cells(c->size);
         printf("  localparam label_block%d = `RB'd%d;\n", block, i++);
-      } else if(!is_return(c)) {
-        block = (c - e) + calculate_cells(c->size);
       }
     }
   }
@@ -269,13 +273,12 @@ void gen_sync_block(const cell_t *e, int block, bool ret) {
     if(c->op == OP_unless) {
       int b = 1;
       FOR_TRACE_CONST(r, e) {
-        if(is_return(r)) {
-          if(b != block) {
-            printf("%s!block%d_valid", sep, b);
-            sep = " & ";
-          }
-          b = (r - e) + calculate_cells(r->size);
+        if(is_return(r) &&
+           b != block) {
+          printf("%s!block%d_valid", sep, b);
+          sep = " & ";
         }
+        update_block(e, r, &b);
       }
     }
   }
@@ -405,8 +408,8 @@ void gen_instance(const cell_t *e, const cell_t *c, int *sync_chain, uintptr_t c
 }
 
 static
-int next_block(const cell_t *e, const cell_t *c,
-                int block, bool block_start, int return_block) {
+void next_block(const cell_t *e, int block,
+                bool block_start, int return_block) {
   if(block_start) {
     printf("\n  `start_block(block%d)\n", block);
   }
@@ -414,7 +417,6 @@ int next_block(const cell_t *e, const cell_t *c,
   gen_sync_block(e, block, block == return_block);
   printf(";\n");
   printf("  `end_block(block%d)\n", block);
-  return (c - e) + calculate_cells(c->size);
 }
 
 static
@@ -449,9 +451,9 @@ void gen_body(cell_t *e) {
               }
             }
           } else {
-            block = next_block(e, c, block, block_start, return_block);
+            next_block(e, block, block_start, return_block);
+            update_block(e, c, &block);
             return_block = block;
-            block_start = true;
           }
           continue;
         }
@@ -468,9 +470,9 @@ void gen_body(cell_t *e) {
         }
       }
     } else if(is_return(c)) {
-      block = next_block(e, c, block, block_start, return_block);
-      block_start = true;
+      next_block(e, block, block_start, return_block);
     }
+    block_start = update_block(e, c, &block);
   }
 }
 
@@ -545,9 +547,7 @@ void gen_valid_ready(const cell_t *e, UNUSED const cell_t *r0) {
       printf("%sblock%d_valid", sep, block);
       sep = " | ";
     }
-    if(is_return(c) || is_self_call(e, c)) {
-      block = (c - e) + calculate_cells(c->size);
-    }
+    update_block(e, c, &block);
   }
   if(!sep[0]) printf("`false");
   printf(";\n");
@@ -654,10 +654,8 @@ void gen_loops(cell_t *e) {
   FOR_TRACE_CONST(c, e) {
     if(is_self_call(e, c)) {
       gen_loop(e, c, block);
-    } else if(!is_return(c)) {
-      continue;
     }
-    block = (c - e) + calculate_cells(c->size);
+    update_block(e, c, &block);
   }
   printf("    end\n"
          "  end\n");
