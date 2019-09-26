@@ -90,8 +90,10 @@ void gen_value_rhs(const cell_t *c) {
   type_t t = trace_type(c);
   switch(t) {
   case T_INT:
-  case T_SYMBOL:
     printf("%d", (int)c->value.integer);
+    break;
+  case T_SYMBOL:
+    printf("%d", (int)c->value.symbol);
     break;
   case T_STRING: {
     seg_t str = value_seg(c);

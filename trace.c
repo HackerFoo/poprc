@@ -316,8 +316,9 @@ bool equal_value(const cell_t *a, const cell_t *b) {
   if(b->value.type != type) return false;
   switch(type) {
   case T_INT:
-  case T_SYMBOL:
     return a->value.integer == b->value.integer;
+  case T_SYMBOL:
+    return a->value.symbol == b->value.symbol;
   case T_FLOAT:
     return a->value.flt == b->value.flt;
   case T_LIST:
@@ -625,7 +626,7 @@ int trace_store_something(cell_t *entry, cell_t **v) {
     .op = OP_value,
     .value = {
       .type = T_SYMBOL,
-      .integer = SYM_Something,
+      .symbol = SYM_Something,
       .var = *v
     },
     .size = 2,

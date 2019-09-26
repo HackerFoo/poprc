@@ -71,7 +71,7 @@ OP(open) {
     res = var(T_SYMBOL, c);
     store_dep_var(c, res, 2, T_OPAQUE, ctx->alt_set);
   } else {
-    CHECK_IF(p->value.integer != SYM_IO, FAIL);
+    CHECK_IF(p->value.symbol != SYM_IO, FAIL);
     void *h = io->open(value_seg(q));
     CHECK_IF(!h, FAIL);
     store_lazy_dep(c->expr.arg[2], make_opaque(h), ctx->alt_set);
@@ -103,7 +103,7 @@ OP(close) {
   if(ANY(is_var, p, q)) {
     res = var(T_SYMBOL, c);
   } else {
-    CHECK_IF(p->value.integer != SYM_IO, FAIL);
+    CHECK_IF(p->value.symbol != SYM_IO, FAIL);
     io->close(q->value.opaque);
     res = ref(p);
   }
@@ -135,7 +135,7 @@ response write_op(cell_t **cp, context_t *ctx, void (*op)(file_t *, seg_t)) {
     res = var(T_SYMBOL, c);
     store_dep_var(c, res, 3, T_OPAQUE, ctx->alt_set);
   } else {
-    CHECK_IF(p->value.integer != SYM_IO, FAIL);
+    CHECK_IF(p->value.symbol != SYM_IO, FAIL);
     op((file_t *)q->value.opaque, value_seg(r));
     res = ref(p);
     store_lazy_dep(c->expr.arg[3], ref(q), ctx->alt_set);
@@ -178,7 +178,7 @@ OP(read) {
     store_dep_var(c, res, 2, T_OPAQUE, ctx->alt_set);
     store_dep_var(c, res, 3, T_STRING, ctx->alt_set);
   } else {
-    CHECK_IF(p->value.integer != SYM_IO, FAIL);
+    CHECK_IF(p->value.symbol != SYM_IO, FAIL);
     seg_t s = io->read((file_t *)q->value.opaque);
     store_lazy_dep(c->expr.arg[2], ref(q), ctx->alt_set);
     store_lazy_dep(c->expr.arg[3], make_string(s), ctx->alt_set);

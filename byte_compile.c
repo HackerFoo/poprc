@@ -48,7 +48,7 @@ static void print_value(const cell_t *c) {
     printf(" val %" PRIdPTR, c->value.integer);
     break;
   case T_SYMBOL: {
-    val_t x = c->value.integer;
+    val_t x = c->value.symbol;
     const char *str = symbol_string(x);
     if(!str) str = "??";
     printf(" val %s", str);
@@ -1068,8 +1068,10 @@ uint32_t hash_trace_cell(cell_t *entry, cell_t *tc, uint32_t *arr) {
   if(is_value(tc) && !is_list(tc)) {
     if(is_var(tc)) {
       HASH('v', tc->pos);
-    } else if(ONEOF(tc->value.type, T_INT, T_SYMBOL)) {
+    } else if(tc->value.type == T_INT) {
       HASH('i', tc->value.integer);
+    } else if(tc->value.type == T_SYMBOL) {
+      HASH('y', tc->value.symbol);
     }
     // HASH('t', tc->value.type);
     goto end;

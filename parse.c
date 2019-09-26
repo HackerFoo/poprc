@@ -43,6 +43,7 @@
 #include "user_func.h"
 #include "list.h"
 
+// List of predefined symbols in value order.
 #define MAX_SYMBOLS 64
 #define ENTRY(name) [SYM_##name] = #name
 static const char *symbol_index[MAX_SYMBOLS] = {
@@ -50,13 +51,16 @@ static const char *symbol_index[MAX_SYMBOLS] = {
   ENTRY(True),
   ENTRY(IO),
   ENTRY(Dict),
-  ENTRY(Something)
+  ENTRY(Something),
+  ENTRY(Array)
 };
 #undef ENTRY
 
+// List of predefined symbols sorted alphabetically.
 #define ENTRY(name) {(uintptr_t)#name, SYM_##name}
 static pair_t symbols[MAX_SYMBOLS+1] = {
-  {MAX_SYMBOLS, 5},
+  {MAX_SYMBOLS, 6},
+  ENTRY(Array),
   ENTRY(Dict),
   ENTRY(False),
   ENTRY(IO),
@@ -663,6 +667,15 @@ const char *symbol_string(val_t x) {
     return symbol_index[x];
   } else {
     return NULL;
+  }
+}
+
+FORMAT(symbol, 'Y') {
+  const char *str = symbol_string(i);
+  if(str) {
+    printf("%s", str);
+  } else {
+    printf("UnknownSymbol");
   }
 }
 

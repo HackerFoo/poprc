@@ -49,10 +49,11 @@ OP(value) {
   // TODO move this check out - ctx shouldn't cause a FAIL
   CHECK_IF(!check_type(ctx->t, c->value.type), FAIL);
 
+  // TODO handle expected types other than symbols
   if(ctx->expected && !is_var(c) &&
-     ctx->expected_value != c->value.integer) {
-    LOG("expected %C to be %d, but got %d",
-        c, ctx->expected_value, c->value.integer);
+     ctx->expected_value != c->value.symbol) {
+    LOG("expected %C to be %Y, but got %Y",
+        c, ctx->expected_value, c->value.symbol);
   }
 
   // NOTE: may create multiple placeholder
@@ -107,8 +108,13 @@ cell_t *make_val(uint8_t t) {
 }
 
 cell_t *val(uint8_t t, val_t x) {
+  assert_error(ONEOF(t, T_INT, T_SYMBOL));
   cell_t *c = make_val(t);
-  c->value.integer = x;
+  if(t == T_INT) {
+    c->value.integer = x;
+  } else if(t == T_SYMBOL) {
+    c->value.symbol = x;
+  }
   return c;
 }
 

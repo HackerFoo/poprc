@@ -300,7 +300,7 @@ void graph_cell(FILE *f, cell_t const *c) {
         fprintf(f, "<tr><td bgcolor=\"yellow\">val: %" PRIdPTR "</td></tr>", c->value.integer);
         break;
       case T_SYMBOL:
-        fprintf(f, "<tr><td bgcolor=\"yellow\">val: %s</td></tr>", symbol_string(c->value.integer));
+        fprintf(f, "<tr><td bgcolor=\"yellow\">val: %s</td></tr>", symbol_string(c->value.symbol));
         break;
       case T_FLOAT:
         fprintf(f, "<tr><td bgcolor=\"yellow\">val: %.15g</td></tr>", c->value.flt);
@@ -559,7 +559,7 @@ void show_one(cell_t const *c) {
   } else if(has_type(c, T_LIST)) {
     show_list(c);
   } else if(has_type(c, T_SYMBOL)) {
-    val_t x = c->value.integer;
+    val_t x = c->value.symbol;
     const char *str = symbol_string(x);
     if(str) {
       printf("%s", str);

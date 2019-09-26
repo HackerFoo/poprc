@@ -189,6 +189,10 @@ struct __attribute__((packed)) value {
         char str[0];    /* string */
         cell_t *ptr[2]; /* list */
         void *opaque;   /* opaque */
+        struct {        /* symbol */
+          val_t symbol;
+          void *resource;
+        };
       };
     };
     pair_t map[1]; /* map */
@@ -355,6 +359,7 @@ typedef struct stats_t {
 #define SYM_IO        2
 #define SYM_Dict      3
 #define SYM_Something 4
+#define SYM_Array     5
 
 #define PERSISTENT ((refcount_t)-15)
 

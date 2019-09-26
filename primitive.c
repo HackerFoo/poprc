@@ -51,7 +51,8 @@
     |                                               |
     '-----------------------------------------------*/
 
-cell_t *_op2(cell_t *c, uint8_t t, val_t (*op)(val_t, val_t), cell_t *x, cell_t *y) {
+cell_t *_op2(cell_t *c, type_t t,
+             val_t (*op)(val_t, val_t), cell_t *x, cell_t *y) {
   if(ANY(is_var, x, y)) {
     return var(t, c);
   } else {
@@ -60,16 +61,22 @@ cell_t *_op2(cell_t *c, uint8_t t, val_t (*op)(val_t, val_t), cell_t *x, cell_t 
   }
 }
 
-cell_t *_op1(cell_t *c, uint8_t t, val_t (*op)(val_t), cell_t *x) {
+cell_t *_op1(cell_t *c, type_t arg_type, type_t res_type,
+             val_t (*op)(val_t), cell_t *x) {
+  assert_error(ONEOF(arg_type, T_INT, T_SYMBOL));
   if(is_var(x)) {
-    return var(t, c);
+    return var(res_type, c);
   } else {
-    return val(t, op(x->value.integer));
+    return val(res_type, op(arg_type == T_INT ?
+                            x->value.integer :
+                            x->value.symbol));
   }
 }
 
 // CLEANUP merge with func_op2_float
-response func_op2(cell_t **cp, context_t *ctx, int arg_type, int res_type, val_t (*op)(val_t, val_t), bool nonzero) {
+response func_op2(cell_t **cp, context_t *ctx,
+                  type_t arg_type, type_t res_type,
+                  val_t (*op)(val_t, val_t), bool nonzero) {
   cell_t *res = 0;
   PRE(op2);
 
@@ -92,7 +99,9 @@ response func_op2(cell_t **cp, context_t *ctx, int arg_type, int res_type, val_t
   return abort_op(rsp, cp, ctx);
 }
 
-response func_op1(cell_t **cp, context_t *ctx, int arg_type, int res_type, val_t (*op)(val_t), val_t (*inv_op)(val_t)) {
+response func_op1(cell_t **cp, context_t *ctx,
+                  int arg_type, int res_type,
+                  val_t (*op)(val_t), val_t (*inv_op)(val_t)) {
   cell_t *res = 0;
   PRE(op1);
 
@@ -102,7 +111,7 @@ response func_op1(cell_t **cp, context_t *ctx, int arg_type, int res_type, val_t
   CHECK_DELAY();
   ARGS(p);
 
-  res = _op1(c, res_type, op, p);
+  res = _op1(c, arg_type, res_type, op, p);
   add_conditions(res, p);
   store_reduced(cp, ctx, res);
   return SUCCESS;
@@ -163,6 +172,7 @@ response func_op1_float(cell_t **cp, context_t *ctx, double (*op)(double)) {
 }
 
 response func_eq_op(cell_t **cp, context_t *ctx, type_t type) {
+  assert_error(ONEOF(type, T_INT, T_SYMBOL));
   cell_t *res = 0;
   PRE(eq_op);
 
@@ -172,10 +182,16 @@ response func_eq_op(cell_t **cp, context_t *ctx, type_t type) {
   bool expect_eq = ctx->expected && ctx->expected_value == SYM_True;
   if(expect_eq && is_value(p)) {
     CHECK(reduce_arg(c, 0, &CTX(t, type)));
-    CHECK(reduce_arg(c, 1, &CTX(t, type, p->value.integer)));
+    CHECK(reduce_arg(c, 1, &CTX(t, type,
+                                type == T_INT ?
+                                  p->value.integer :
+                                  p->value.symbol)));
   } else if(expect_eq && is_value(q)) {
     CHECK(reduce_arg(c, 1, &CTX(t, type)));
-    CHECK(reduce_arg(c, 0, &CTX(t, type, q->value.integer)));
+    CHECK(reduce_arg(c, 0, &CTX(t, type,
+                                type == T_INT ?
+                                  q->value.integer :
+                                  q->value.symbol)));
   } else {
     CHECK(reduce_arg(c, 0, &CTX(t, type)));
     CHECK(reduce_arg(c, 1, &CTX(t, type)));
@@ -186,7 +202,11 @@ response func_eq_op(cell_t **cp, context_t *ctx, type_t type) {
   p = c->expr.arg[0];
   q = c->expr.arg[1];
 
-  res = ANY(is_var, p, q) ? var(T_SYMBOL, c) : symbol(p->value.integer == q->value.integer);
+  res = ANY(is_var, p, q) ?
+    var(T_SYMBOL, c) :
+    symbol(type == T_INT ?
+             p->value.integer == q->value.integer :
+             p->value.symbol == q->value.symbol);
   add_conditions(res, p, q);
   store_reduced(cp, ctx, res);
   return SUCCESS;
@@ -351,20 +371,22 @@ OP(lte) {
 }
 
 WORD("==", eq, 2, 1)
-WORD("=:=", eq_s, 2, 1)
 OP(eq) {
   return func_eq_op(cp, ctx, T_INT);
 }
+
+WORD("=:=", eq_s, 2, 1)
 OP(eq_s) {
   return func_eq_op(cp, ctx, T_SYMBOL);
 }
 
 WORD("!=", neq, 2, 1)
-WORD("!:=", neq_s, 2, 1)
 val_t neq_op(val_t x, val_t y) { return x != y; }
 OP(neq) {
   return func_op2(cp, ctx, T_INT, T_SYMBOL, neq_op, false);
 }
+
+WORD("!:=", neq_s, 2, 1)
 OP(neq_s) {
   return func_op2(cp, ctx, T_SYMBOL, T_SYMBOL, neq_op, false);
 }
@@ -465,7 +487,7 @@ OP(assert) {
     q = c->expr.arg[1];
     q_var = is_var(q);
 
-    if(!q_var && q->value.integer != SYM_True) {
+    if(!q_var && q->value.symbol != SYM_True) {
       LOG_WHEN(q->value.var, "symbolic assert fail %C", q);
       ABORT(FAIL);
     }
@@ -983,7 +1005,7 @@ OP(to_string) {
   } else if(p->value.type == T_INT) {
     res = make_string(int_to_string(p->value.integer));
   } else if(p->value.type == T_SYMBOL) {
-    res = make_string(string_seg(symbol_string(p->value.integer)));
+    res = make_string(string_seg(symbol_string(p->value.symbol)));
   } else {
     ABORT(FAIL);
   }
