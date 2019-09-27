@@ -465,3 +465,6 @@ getline_std: "stream,in:std" open getline [close] dip21
 __ IO h
 is_eof:
   read dup [unread] dip32 "" =s
+
+__ Array addr [fn]
+update_array: [tuck read_array [swap] dip22] dip23 $ write_array

@@ -121,3 +121,6 @@ __ algorithm
 49 21 gcd
 2 5^
 [1 2 3] sum
+
+__ io
+Array 3 42 write_array 3 [7/] update_array 3 read_array

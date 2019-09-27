@@ -142,3 +142,5 @@ __ [1] [. 2] id [3 B] . dup . .
 __ arrays
 Array 3 42 write_array Array 3 10 write_array swap 3 read_array swap drop swap 3 read_array swap drop
   42 10
+Array 3 read_array 0 swap unless
+  Array 0

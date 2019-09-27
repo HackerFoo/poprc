@@ -251,8 +251,12 @@ OP(read_array) {
     val_t x = 0;
     CHECK_IF(p->value.symbol != SYM_Array, FAIL);
     unique_id(p, &next_array_id);
-    CHECK_IF(!array_read(p->value.id, q->value.integer, &x), FAIL);
-    store_lazy_dep(c->expr.arg[2], val(T_INT, x), ctx->alt_set);
+    if(array_read(p->value.id, q->value.integer, &x)) {
+      store_lazy_dep(c->expr.arg[2], val(T_INT, x), ctx->alt_set);
+    } else {
+      drop(c);
+      store_fail(c->expr.arg[2], NULL);
+    }
     res = ref(p);
   }
   add_conditions(res, p, q);

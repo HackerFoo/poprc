@@ -1192,6 +1192,17 @@ ___ io.unread_std (2 -> 1) ___
 [8] __primitive.close 6 7 :: y x1
 [9] return [8]
 
+___ io.update_array (3 -> 1) ___
+[1] var :: ?l x1
+[2] var :: ?i x2
+[3] var :: ?y x1
+[4] __primitive.read_array 3 &2 -> 5 :: y x2
+[5] __primitive.dep 4 :: i x1
+[6] __primitive.ap 5 1 -> 7 :: v? x1
+[7] __primitive.dep 6 :: i x1
+[8] __primitive.write_array 4 2 7 :: y x1
+[9] return [8]
+
 ___ io.write_std (2 -> 1) ___
 [1] var :: ?s x1
 [2] var :: ?y x1
