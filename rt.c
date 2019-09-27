@@ -105,6 +105,7 @@ void rt_init() {
   memset(rt_roots, 0, sizeof(rt_roots));
   clear_ptr_tags();
   reset_counters();
+  array_init();
 }
 
 cell_t *forward(cell_t *c, cell_t *a, cell_t *alt) {

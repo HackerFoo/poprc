@@ -191,7 +191,10 @@ struct __attribute__((packed)) value {
         void *opaque;   /* opaque */
         struct {        /* symbol */
           val_t symbol;
-          void *resource;
+          union {
+            val_t id;
+            void *resource;
+          };
         };
       };
     };

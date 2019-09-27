@@ -7,7 +7,7 @@
   - where there are no other self calls in ...
 *** DONE stack per value to allow singe cycle access
 *** DONE store inputs to block instead of top level
-** memory tokens (Array)
+** STARTED memory tokens (Array)
 ** IO
 ** data types
 *** string

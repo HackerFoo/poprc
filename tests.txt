@@ -109,3 +109,7 @@ __ [] [] | popr
 
 __ [1] id [2] . dup .
 __ [1] [. 2] id [3 B] . dup . .
+
+__ arrays
+
+Array 3 42 write_array Array 3 10 write_array swap 3 read_array swap drop swap 3 read_array swap drop
