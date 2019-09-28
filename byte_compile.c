@@ -165,6 +165,12 @@ void print_bytecode(cell_t *entry, bool tags) {
           }
         }
       }
+      if(c->trace.type == T_OPAQUE) {
+        val_t sym = trace_get_opaque_symbol(entry, c);
+        if(sym >= 0) {
+          printf(" is %s", symbol_string(sym));
+        }
+      }
       printf(" :: %c", type_char(c->trace.type));
       if(FLAG(*c, expr, PARTIAL)) printf("?");
       printf(" x%d", c->n + 1);

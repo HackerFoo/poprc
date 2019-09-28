@@ -834,6 +834,8 @@ void trace_dep(cell_t *c) {
   LOG("trace_dep: %d <- %C %d[%d]", x, c, ph_x, c->pos);
   tc->op = OP_dep;
   tc->expr.arg[0] = index_tr(ph_x);
+  assert_error(c->value.type != T_OPAQUE || c->value.symbol);
+  tc->expr.symbol = c->value.symbol;
   tc->trace.type = c->value.type;
   ph->n++;
   c->value.var = tc;
@@ -1460,4 +1462,46 @@ bool is_tail_call(const cell_t *entry, const cell_t *c) {
   return
     FLAG(*c, trace, JUMP) &&
     FLAG(*entry, entry, RECURSIVE);
+}
+
+/*
+// might be useful for linearity checks
+static
+const cell_t *out_arg_of(const cell_t *e, const cell_t *c, int *x) {
+  if(is_dep(c)) {
+    int i = 1;
+    int di = c - e;
+    const cell_t *pc = &e[tr_index(c->expr.arg[0])];
+    TRAVERSE(pc, const, out) {
+      if(p && tr_index(*p) == di) {
+        *x = i;
+        return pc;
+      }
+      i++;
+    }
+    assert_error(false, "out argument not found");
+    return NULL;
+  } else {
+    *x = 0;
+    return c;
+  }
+}
+*/
+
+// TODO extend for arguments in nth position
+val_t trace_get_opaque_symbol(const cell_t *e, const cell_t *c) {
+  assert_error(trace_type(c) == T_OPAQUE);
+  const cell_t *p = c;
+  while(!is_value(p) && !is_dep(p)) {
+    p = &e[tr_index(p->expr.arg[0])];
+  }
+
+  if(trace_type(p) == T_OPAQUE) {
+    if(is_var(p)) {
+      return p->value.symbol;
+    } else if(is_dep(p)) {
+      return p->expr.symbol;
+    }
+  }
+  return -1;
 }

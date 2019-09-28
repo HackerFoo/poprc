@@ -148,7 +148,10 @@ struct __attribute__((packed)) expr {
     val_t idx[2];
     struct {
       cell_t *arg0; // padding
-      alt_set_t alt_set;
+      union {
+        alt_set_t alt_set;
+        val_t symbol;
+      };
     };
   };
 };

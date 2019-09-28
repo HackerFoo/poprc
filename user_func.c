@@ -864,6 +864,13 @@ response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
       assert_error(j >= 0, "not enough bits in dep_mask; maybe dangling dep references? %C", d);
       type_t t = rtypes[j];
       store_dep(d, res->value.var, i + in + 1, t, ctx->alt_set); // TODO opaque symbol
+      if(t == T_OPAQUE) { // opaque types must match in position, so get symbol from input
+        FOR_TRACE_CONST(c, entry) { // TODO optimize this
+          if(is_var(c) && c->pos == entry->entry.in - 1 - i) {
+            d->value.symbol = c->value.symbol;
+          }
+        }
+      }
     }
   }
 

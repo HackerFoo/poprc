@@ -1,5 +1,6 @@
 #+TITLE: PoprC Notes
 
+* keep linear arguments in same position
 * generator = ready line
 * mutual recursion in quotes
 - state machine (Mealy)
