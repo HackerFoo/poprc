@@ -8,6 +8,9 @@
 *** DONE stack per value to allow singe cycle access
 *** DONE store inputs to block instead of top level
 ** STARTED memory tokens (Array)
+*** TODO convert Array symbol to memory interface
+*** TODO add primitives
+- ready/valid for sequencing
 ** IO
 ** data types
 *** string

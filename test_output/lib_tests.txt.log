@@ -230,4 +230,4 @@ __ algorithm
   6
 __ io
 Array 3 42 write_array 3 [7/] update_array 3 read_array
-  Array 6
+  Array# 6

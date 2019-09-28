@@ -70,12 +70,12 @@ OP(open) {
 
   if(ANY(is_var, p, q)) {
     res = var(T_SYMBOL, c);
-    store_dep_var(c, res, 2, T_OPAQUE, ctx->alt_set);
+    store_opaque_dep_var(c, res, 2, SYM_File, ctx->alt_set);
   } else {
     CHECK_IF(p->value.symbol != SYM_IO, FAIL);
     void *h = io->open(value_seg(q));
     CHECK_IF(!h, FAIL);
-    store_lazy_dep(c->expr.arg[2], make_opaque(h), ctx->alt_set);
+    store_lazy_dep(c->expr.arg[2], opaque(SYM_File, h), ctx->alt_set);
     res = ref(p);
   }
   add_conditions(res, p, q);
@@ -94,7 +94,7 @@ OP(close) {
   CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
 
   CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_IO)));
-  CHECK(reduce_arg(c, 1, &CTX(opaque)));
+  CHECK(reduce_arg(c, 1, &CTX(opaque, SYM_File)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
   ARGS(p, q);
@@ -105,6 +105,7 @@ OP(close) {
     res = var(T_SYMBOL, c);
   } else {
     CHECK_IF(p->value.symbol != SYM_IO, FAIL);
+    CHECK_IF(q->value.symbol != SYM_File, FAIL);
     io->close(q->value.opaque);
     res = ref(p);
   }
@@ -123,7 +124,7 @@ response write_op(cell_t **cp, context_t *ctx, void (*op)(file_t *, seg_t)) {
   CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
 
   CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_IO)));
-  CHECK(reduce_arg(c, 1, &CTX(opaque)));
+  CHECK(reduce_arg(c, 1, &CTX(opaque, SYM_File)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK(reduce_arg(c, 2, &CTX(string)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
@@ -134,7 +135,7 @@ response write_op(cell_t **cp, context_t *ctx, void (*op)(file_t *, seg_t)) {
 
   if(ANY(is_var, p, q, r)) {
     res = var(T_SYMBOL, c);
-    store_dep_var(c, res, 3, T_OPAQUE, ctx->alt_set);
+    store_opaque_dep_var(c, res, 3, SYM_File, ctx->alt_set);
   } else {
     CHECK_IF(p->value.symbol != SYM_IO, FAIL);
     op((file_t *)q->value.opaque, value_seg(r));
@@ -167,7 +168,7 @@ OP(read) {
   CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
 
   CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_IO)));
-  CHECK(reduce_arg(c, 1, &CTX(opaque)));
+  CHECK(reduce_arg(c, 1, &CTX(opaque, SYM_File)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
   ARGS(p, q);
@@ -176,7 +177,7 @@ OP(read) {
 
   if(ANY(is_var, p, q)) {
     res = var(T_SYMBOL, c);
-    store_dep_var(c, res, 2, T_OPAQUE, ctx->alt_set);
+    store_opaque_dep_var(c, res, 2, SYM_File, ctx->alt_set);
     store_dep_var(c, res, 3, T_STRING, ctx->alt_set);
   } else {
     CHECK_IF(p->value.symbol != SYM_IO, FAIL);
@@ -223,20 +224,14 @@ bool array_write(uintptr_t arr, uintptr_t addr, val_t in) {
   return true;
 }
 
-void unique_id(cell_t *c, val_t *next_id) {
-  if(!c->value.id) {
-    c->value.id = (*next_id)++;
-  }
-}
-
 WORD("read_array", read_array, 2, 2)
 OP(read_array) {
   cell_t *res = 0;
   PRE(read_array);
 
-  CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
+  CHECK_IF(!check_type(ctx->t, T_OPAQUE), FAIL);
 
-  CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_Array)));
+  CHECK(reduce_arg(c, 0, &CTX(opaque, SYM_Array)));
   CHECK(reduce_arg(c, 1, &CTX(int)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
@@ -245,12 +240,11 @@ OP(read_array) {
   WARN_ALT(read_array);
 
   if(ANY(is_var, p, q)) {
-    res = var(T_SYMBOL, c);
+    res = opaque_var(c, SYM_Array);
     store_dep_var(c, res, 2, T_INT, ctx->alt_set);
   } else {
     val_t x = 0;
     CHECK_IF(p->value.symbol != SYM_Array, FAIL);
-    unique_id(p, &next_array_id);
     if(array_read(p->value.id, q->value.integer, &x)) {
       store_lazy_dep(c->expr.arg[2], val(T_INT, x), ctx->alt_set);
     } else {
@@ -272,9 +266,9 @@ OP(write_array) {
   cell_t *res = 0;
   PRE(write);
 
-  CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
+  CHECK_IF(!check_type(ctx->t, T_OPAQUE), FAIL);
 
-  CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_Array)));
+  CHECK(reduce_arg(c, 0, &CTX(opaque, SYM_Array)));
   CHECK(reduce_arg(c, 1, &CTX(int)));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK(reduce_arg(c, 2, &CTX(int)));
@@ -285,10 +279,9 @@ OP(write_array) {
   WARN_ALT(write);
 
   if(ANY(is_var, p, q, r)) {
-    res = var(T_SYMBOL, c);
+    res = opaque_var(c, SYM_Array);
   } else {
     CHECK_IF(p->value.symbol != SYM_Array, FAIL);
-    unique_id(p, &next_array_id);
     CHECK_IF(!array_write(p->value.id,
                           q->value.integer,
                           r->value.integer), FAIL);

@@ -124,6 +124,9 @@ void print_bytecode(cell_t *entry, bool tags) {
       } else if(is_var(c)) { // variable
         if(FLAG(*c, trace, CHANGES)) printf(" changing");
         printf(" var");
+        if(c->value.type == T_OPAQUE) {
+          printf(" is %s", symbol_string(c->value.symbol));
+        }
       } else { // value
         print_value(c);
       }
@@ -890,7 +893,7 @@ void last_use_analysis(cell_t *entry) {
   FOR_TRACE_REV(c, entry) {
     last_use_mark_cell(entry, c);
     if(!is_return(c) && !is_dep(c) && !direct_refs(c)) {
-      trace_set_type(c, T_BOTTOM);
+      trace_set_type(c, T_BOTTOM, 0);
     }
   }
 

@@ -365,7 +365,9 @@ void switch_entry(cell_t *entry, cell_t *r) {
       }
     }
 
-    cell_t *n = trace_alloc_var(entry, trace_type(v));
+    type_t t = trace_type(v);
+    cell_t *n = trace_alloc_var(entry, t);
+    if(t == T_OPAQUE) n->value.symbol = r->value.symbol;
     //if(is_var(v)) v = &var_entry(v)[v->pos]; // variables move *** DOESN'T WORK
     n->value.var = v;
     r->value.var = n;
@@ -455,7 +457,7 @@ void trace_arg(cell_t *tc, int n, cell_t *a) {
     *p = index_tr(x);
     entry[x].n++;
   }
-  trace_set_type(tc, a->value.type);
+  trace_set_type(tc, a->value.type, a->value.symbol);
 }
 
 static
@@ -478,7 +480,7 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
     // update the types
     if(t != T_ANY) {
       if(is_value(tc)) {
-        trace_set_type(tc, t);
+        trace_set_type(tc, t, r->value.symbol);
         FOR_TRACE(x, entry) {
           // update through assertions
           if(x->op == OP_assert) {
@@ -909,7 +911,10 @@ void trace_update_type(cell_t *c) {
   if(t != T_ANY) {
     cell_t *tc = c->value.var;
     if(tc && tc->op) {
-      trace_set_type(tc, t);
+      trace_set_type(tc, t, c->value.symbol);
+      if(t == T_OPAQUE) {
+        tc->value.symbol = c->value.symbol;
+      }
     }
   }
 }
@@ -921,14 +926,17 @@ void trace_clear(cell_t *e) {
 }
 
 // update the traced type
-void trace_set_type(cell_t *tc, type_t t) {
+void trace_set_type(cell_t *tc, type_t t, val_t sym) {
   tc->trace.type = t;
   if(is_value(tc)) {
     tc->value.type = t;
     if(is_var(tc)) {
+      if(t == T_OPAQUE) {
+        tc->value.symbol = sym;
+      }
       cell_t *p = tc->value.var;
       if(p) {
-        trace_set_type(p, t);
+        trace_set_type(p, t, sym);
       }
     }
   }

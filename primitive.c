@@ -627,7 +627,7 @@ OP(unless) {
     cell_t *entry = var_entry(tc);
     for(cell_t *x = tc; x != tp;
         x = &entry[tr_index(x->expr.arg[0])]) {
-      trace_set_type(x, (*p)->value.type);
+      trace_set_type(x, (*p)->value.type, (*p)->value.symbol);
     }
 
     res = var_create((*p)->value.type, tc, 0, 0);

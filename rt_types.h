@@ -188,12 +188,11 @@ struct __attribute__((packed)) value {
         double flt;     /* float */
         char str[0];    /* string */
         cell_t *ptr[2]; /* list */
-        void *opaque;   /* opaque */
-        struct {        /* symbol */
+        struct {        /* symbol | opaque */
           val_t symbol;
           union {
             val_t id;
-            void *resource;
+            void *opaque;
           };
         };
       };
@@ -363,6 +362,7 @@ typedef struct stats_t {
 #define SYM_Dict      3
 #define SYM_Something 4
 #define SYM_Array     5
+#define SYM_File      6
 
 #define PERSISTENT ((refcount_t)-15)
 

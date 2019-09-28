@@ -797,8 +797,13 @@ response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
         type_t t = p->value.type;
         if(t == T_LIST) t = T_ANY; // HACK, T_FUNCTION breaks things
         in_types[i] = t;
-        CHECK_IF(reduce(&c->expr.arg[i],
-                        WITH(&CTX(t, t), priority, PRIORITY_ASSERT - 1)) == FAIL, FAIL);
+        if(t == T_OPAQUE) {
+          CHECK_IF(reduce(&c->expr.arg[i],
+                          WITH(&CTX(opaque, p->value.symbol), priority, PRIORITY_ASSERT - 1)) == FAIL, FAIL);
+        } else {
+          CHECK_IF(reduce(&c->expr.arg[i],
+                          WITH(&CTX(t, t), priority, PRIORITY_ASSERT - 1)) == FAIL, FAIL);
+        }
         if(++n >= in) break;
       }
     }
@@ -858,7 +863,7 @@ response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
       int j = next_bit(&mask);
       assert_error(j >= 0, "not enough bits in dep_mask; maybe dangling dep references? %C", d);
       type_t t = rtypes[j];
-      store_dep(d, res->value.var, i + in + 1, t, ctx->alt_set);
+      store_dep(d, res->value.var, i + in + 1, t, ctx->alt_set); // TODO opaque symbol
     }
   }
 

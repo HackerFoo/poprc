@@ -552,13 +552,12 @@ void show_one(cell_t const *c) {
     show_int(c);
   } else if(has_type(c, T_FLOAT)) {
     show_float(c);
-  } else if(has_type(c, T_OPAQUE)) {
-    printf("#");
   } else if(has_type(c, T_STRING)) {
     show_string(c);
   } else if(has_type(c, T_LIST)) {
     show_list(c);
-  } else if(has_type(c, T_SYMBOL)) {
+  } else if(has_type(c, T_SYMBOL) ||
+            has_type(c, T_OPAQUE)) {
     val_t x = c->value.symbol;
     const char *str = symbol_string(x);
     if(str) {
@@ -566,6 +565,7 @@ void show_one(cell_t const *c) {
     } else {
       printf("UnknownSymbol");
     }
+    if(has_type(c, T_OPAQUE)) printf("#");
   } else {
     printf("?");
   }

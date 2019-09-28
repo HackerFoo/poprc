@@ -46,6 +46,13 @@ OP(value) {
     return RETRY;
   }
 
+  if(ctx->t == T_OPAQUE &&
+     NOT_FLAG(*c, value, VAR) &&
+     c->value.type == T_SYMBOL) {
+    CHECK_IF(!convert_to_opaque(c), FAIL);
+    return RETRY;
+  }
+
   // TODO move this check out - ctx shouldn't cause a FAIL
   CHECK_IF(!check_type(ctx->t, c->value.type), FAIL);
 
@@ -62,6 +69,10 @@ OP(value) {
     trace_dep(c);
     if(is_any(c) && ctx->t != T_ANY) {
       c->value.type = ctx->t;
+      if(ctx->t == T_OPAQUE) {
+        assert_error(ctx->expected, "must provide expected value when reducing opaque %C", c);
+        c->value.symbol = ctx->expected_value;
+      }
       trace_update(c, c);
     }
     if(ctx->t == T_LIST) {
@@ -83,6 +94,7 @@ OP(value) {
         LOG_WHEN(is_list(c), "nil %C", c);
         int v = trace_store_value(parent, c);
         cell_t *tc = trace_alloc_var(entry, c->value.type);
+        if(c->value.type == T_OPAQUE) tc->value.symbol = c->value.symbol;
         LOG("move value %C %s[%d] -> %s[%d]", c,
             entry->word_name, tc-entry,
             parent->word_name, v);
@@ -128,8 +140,8 @@ cell_t *float_val(double x) {
   return c;
 }
 
-cell_t *make_opaque(void *p) {
-  cell_t *c = make_val(T_OPAQUE);
+cell_t *opaque(val_t sym, void *p) {
+  cell_t *c = val(T_OPAQUE, sym);
   c->value.opaque = p;
   return c;
 }
@@ -264,6 +276,12 @@ cell_t *var_(type_t t, cell_t *c, uint8_t pos) {
 #define var_3(t, c, pos) var_(t, c, pos)
 #define var_2(t, c) var_(t, c, 0)
 #endif
+
+cell_t *opaque_var(cell_t *c, val_t sym) {
+  cell_t *v = var(T_OPAQUE, c);
+  v->value.symbol = sym;
+  return v;
+}
 
 bool is_var(cell_t const *c) {
   return c && is_value(c) && FLAG(*c, value, VAR);

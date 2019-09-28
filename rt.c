@@ -573,6 +573,16 @@ void store_dep_var(cell_t *c, cell_t *res, csize_t pos, type_t t, alt_set_t alt_
   }
 }
 
+void store_opaque_dep_var(cell_t *c, cell_t *res, csize_t pos, val_t sym, alt_set_t alt_set) {
+  cell_t *d = c->expr.arg[pos];
+  if(d && is_dep(d)) {
+    drop(c);
+    d->expr.arg[0] = res;
+    store_dep(d, res->value.var, pos, T_OPAQUE, alt_set);
+    d->value.symbol = sym;
+  }
+}
+
 response abort_op(response rsp, cell_t **cp, context_t *ctx) {
   cell_t *c = *cp;
   if(rsp == FAIL) {
@@ -850,7 +860,7 @@ uint8_t new_alt_id(unsigned int n) {
 #define CTX_float(...) CTX_t(T_FLOAT, ##__VA_ARGS__)
 #define CTX_symbol(...) CTX_t(T_SYMBOL, ##__VA_ARGS__)
 #define CTX_string(...) CTX_t(T_STRING, ##__VA_ARGS__)
-#define CTX_opaque() CTX_t(T_OPAQUE)
+#define CTX_opaque(...) CTX_t(T_OPAQUE, ##__VA_ARGS__)
 #define CTX_return() ((context_t) { .t = T_RETURN })
 #define CTX_INV(invert) ctx->expected, (ctx->expected ? invert(ctx->expected_value) : 0)
 #define CTX_UP ((context_t) { .t = ctx->t, .s = { .in = ctx->s.in, .out = ctx->s.out }, CTX_INHERIT})
@@ -1052,4 +1062,17 @@ TEST(traverse_args) {
     }
   }
   return 0;
+}
+
+bool convert_to_opaque(cell_t *c) {
+  switch(c->value.symbol) {
+  case SYM_Array:
+    c->value.id = next_array_id++;
+    break;
+  default:
+    return false;
+  }
+  LOG("convert symbol %Y to opaque", c->value.symbol);
+  c->value.type = T_OPAQUE;
+  return true;
 }

@@ -52,17 +52,19 @@ static const char *symbol_index[MAX_SYMBOLS] = {
   ENTRY(IO),
   ENTRY(Dict),
   ENTRY(Something),
-  ENTRY(Array)
+  ENTRY(Array),
+  ENTRY(File)
 };
 #undef ENTRY
 
 // List of predefined symbols sorted alphabetically.
 #define ENTRY(name) {(uintptr_t)#name, SYM_##name}
 static pair_t symbols[MAX_SYMBOLS+1] = {
-  {MAX_SYMBOLS, 6},
+  {MAX_SYMBOLS, 7},
   ENTRY(Array),
   ENTRY(Dict),
   ENTRY(False),
+  ENTRY(File),
   ENTRY(IO),
   ENTRY(Something),
   ENTRY(True)
