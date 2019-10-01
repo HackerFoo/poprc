@@ -2121,6 +2121,18 @@ ___ stack.tuck (2 -> 3) ___
 [2] var :: ?a x1
 [3] return [&1 2 1]
 
+___ tests.add_array_at (3 -> 2) ___
+[1] var :: ?i x1
+[2] var :: ?i x3
+[3] var is Array :: ?o x1
+[4] __primitive.read_array 3 &2 -> 5 is Array :: o x2
+[5] __primitive.dep 4 :: i x1
+[6] __primitive.add 5 1 :: i x1
+[7] __primitive.write_array 4 &2 6 is Array :: o x1
+[8] __primitive.read_array 7 2 -> 9 is Array :: o x2
+[9] __primitive.dep 8 :: i x1
+[10] return [8 9]
+
 ___ tests.after0 (1 -> 1) ___
 [1] var :: ?l x1
 [2] jump tests.after0_r0 1 :: l x1

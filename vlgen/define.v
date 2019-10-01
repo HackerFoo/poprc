@@ -13,9 +13,14 @@
  `define anyN `intN
 `endif
 
+`ifndef addrN
+ `define addrN 16
+`endif
+
 `define intT [`intN-1:0]
 `define symT [`symN-1:0]
 `define anyT [`anyN-1:0]
+`define addrT [`anyN-1:0]
 
 `define sync_ports \
   input clk, \
@@ -25,6 +30,8 @@
 `define id(x) x
 
 `define concat_(a, b) `id(a)``_``b
+
+`define stringify(x) `"x`"
 
 `define rename(dst, src) wire src; assign dst = src
 
@@ -53,11 +60,11 @@
 `undef block \
 
 `define sync(valid, ready) \
-  .clk(clk), \
-  .in_valid(valid), \
-  .out_valid(`sync_wire(out_valid)), \
-  .in_ready(`sync_wire(in_ready)), \
-  .out_ready(ready)
+      .clk(clk), \
+      .in_valid(valid), \
+      .out_valid(`sync_wire(out_valid)), \
+      .in_ready(`sync_wire(in_ready)), \
+      .out_ready(ready)
 
 `define input(type, index) `input_``type(index)
 `define output(type, index) `output_``type(index)
@@ -106,6 +113,10 @@
 `define wire_stream(name) wire `intT name; wire name``_valid; wire name``_ready
 `define reg_stream(name) reg `intT name; reg name``_valid; wire name``_ready
 `define const_stream(name, val) localparam `intT name = val; localparam name``_valid = `true
+
+`define interface(type, index) `interface_``type(index)
+`define intf(type, index, name) `intf_``type(index, name)
+`define bus(type, index, inst) `bus_``type``(index, inst)
 
 `define true 1'b1
 `define false 1'b0

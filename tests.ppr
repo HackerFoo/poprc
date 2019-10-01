@@ -425,3 +425,5 @@ old_map:
     [[mov_ap] .]
     [tail2 head popr valid]
     iterate tail head
+
+add_array_at: over [[+] pushl update_array] dip31 read_array

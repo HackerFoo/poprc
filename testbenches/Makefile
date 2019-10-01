@@ -9,7 +9,8 @@ FUNCTIONS = \
   tests.dup_map \
   tests.map_add1 \
   tests.fact \
-  tests.fib
+  tests.fib \
+  tests.add_array_at
 COMMON = ../vlgen/primitives.v ../vlgen/define.v
 
 BUILD = build

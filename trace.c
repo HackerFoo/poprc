@@ -111,8 +111,9 @@ void trace_init() {
 }
 
 cell_t *get_entry(cell_t const *c) {
-  if(!is_user_func(c)) return NULL;
-  return &trace_cells[tr_entry(c->expr.arg[closure_in(c)])];
+  return is_user_func(c) ?
+    &trace_cells[tr_entry(c->expr.arg[closure_in(c)])] :
+    NULL;
 }
 
 void set_entry(cell_t *c, cell_t *e) {
@@ -741,6 +742,9 @@ void hw_analysis(cell_t *e) {
     FLAG_SET(*e, entry, SYNC);
   }
   FOR_TRACE_CONST(c, e) {
+    if(ONEOF(trace_type(c), T_LIST, T_OPAQUE)) {
+      FLAG_SET(*e, entry, SYNC);
+    }
     if(is_user_func(c)) {
       cell_t *entry = get_entry(c);
       if(!entry) continue;
@@ -750,7 +754,8 @@ void hw_analysis(cell_t *e) {
         }
         FLAG_SET(*e, entry, STACK);
       }
-      if(FLAG(*entry, entry, RECURSIVE) || FLAG(*entry, entry, SYNC)) {
+      if(FLAG(*entry, entry, RECURSIVE) ||
+         FLAG(*entry, entry, SYNC)) {
         FLAG_SET(*e, entry, SYNC);
       }
       if(FLAG(*entry, entry, RAM)) {
@@ -914,9 +919,6 @@ void trace_update_type(cell_t *c) {
     cell_t *tc = c->value.var;
     if(tc && tc->op) {
       trace_set_type(tc, t, c->value.symbol);
-      if(t == T_OPAQUE) {
-        tc->value.symbol = c->value.symbol;
-      }
     }
   }
 }
@@ -1464,8 +1466,23 @@ bool is_tail_call(const cell_t *entry, const cell_t *c) {
     FLAG(*entry, entry, RECURSIVE);
 }
 
-/*
-// might be useful for linearity checks
+val_t trace_get_opaque_symbol(const cell_t *e, const cell_t *c) {
+  assert_error(trace_type(c) == T_OPAQUE);
+  const cell_t *p = c;
+  while(!is_value(p) && !is_dep(p)) {
+    p = &e[tr_index(p->expr.arg[0])];
+  }
+
+  if(trace_type(p) == T_OPAQUE) {
+    if(is_var(p)) {
+      return p->value.symbol;
+    } else if(is_dep(p)) {
+      return p->expr.symbol;
+    }
+  }
+  return -1;
+}
+
 static
 const cell_t *out_arg_of(const cell_t *e, const cell_t *c, int *x) {
   if(is_dep(c)) {
@@ -1486,22 +1503,17 @@ const cell_t *out_arg_of(const cell_t *e, const cell_t *c, int *x) {
     return c;
   }
 }
-*/
 
-// TODO extend for arguments in nth position
-val_t trace_get_opaque_symbol(const cell_t *e, const cell_t *c) {
+const cell_t *trace_get_linear_var(const cell_t *e, const cell_t *c) {
   assert_error(trace_type(c) == T_OPAQUE);
   const cell_t *p = c;
-  while(!is_value(p) && !is_dep(p)) {
-    p = &e[tr_index(p->expr.arg[0])];
-  }
-
-  if(trace_type(p) == T_OPAQUE) {
-    if(is_var(p)) {
-      return p->value.symbol;
-    } else if(is_dep(p)) {
-      return p->expr.symbol;
+  while(!is_value(p)) {
+    int x = 0;
+    if(is_dep(p)) {
+      p = out_arg_of(e, p, &x);
     }
+    p = &e[tr_index(p->expr.arg[x])];
   }
-  return -1;
+  assert_error(is_var(p));
+  return p;
 }

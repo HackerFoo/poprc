@@ -154,3 +154,73 @@ module __primitive_pushr2_llii(
     end
 
 endmodule
+
+`define interface_Array(index) \
+  output `addrT intf``index``_addr, \
+  output intf``index``_we, \
+  output `intT intf``index``_di, \
+  input `intT intf``index``_do
+`define intf_Array(index, name) \
+      .intf``index``_addr(`concat_(`current_inst, name``_addr)), \
+      .intf``index``_we(`concat_(`current_inst, name``_we)), \
+      .intf``index``_di(`concat_(`current_inst, name``_di)), \
+      .intf``index``_do(name``_do)
+`define bus_Array(index, inst) \
+  wire `addrT inst``_intf``index``_addr; \
+  wire inst``_intf``index``_we; \
+  wire `intT inst``_intf``index``_di
+
+module __primitive_read_array_ooii(
+  `sync_ports,
+  `interface(Array, 0),
+  `input(int, 1),
+  `output(int, 1)
+);
+
+    reg done = `false;
+    assign out1 = intf0_do;
+    assign out_valid = done;
+    assign in_ready = out_ready;
+    assign intf0_addr = in_valid ? in1 : 0;
+    assign intf0_di = 0;
+    assign intf0_we = `false;
+
+    always @(posedge clk) begin
+        if(in_valid) begin
+            if(out_ready) begin
+              `set(done);
+            end
+        end
+        else if(done) begin
+            `reset(done);
+        end
+    end
+
+endmodule
+
+module __primitive_write_array_ooii(
+  `sync_ports,
+  `interface(Array, 0),
+  `input(int, 1),
+  `input(int, 2)
+);
+
+    reg done = `false;
+    assign out_valid = done;
+    assign in_ready = out_ready;
+    assign intf0_addr = in_valid ? in1 : 0;
+    assign intf0_di = in_valid ? in2 : 0;
+    assign intf0_we = in_valid;
+
+    always @(posedge clk) begin
+        if(in_valid) begin
+            if(out_ready) begin
+              `set(done);
+            end
+        end
+        else if(done) begin
+            `reset(done);
+        end
+    end
+
+endmodule

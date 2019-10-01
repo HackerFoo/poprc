@@ -1,5 +1,8 @@
 #+TITLE: PoprC Notes
 
+* Don't actually route opaque types
+- assign unique ids at the top level
+- distribute bus per unique id
 * keep linear arguments in same position
 * generator = ready line
 * mutual recursion in quotes

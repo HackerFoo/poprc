@@ -1,0 +1,46 @@
+changequote(`{{', `}}')dnl
+`timescale 1ns / 1ps
+`define intN 16
+`include "primitives.v"
+`include "function_name.v"
+
+module function_name{{_tb}};
+
+   reg clk;
+
+   // reg <input>;
+   // wire <output>;
+   reg  in_valid;
+   reg  out_ready;
+
+   always begin
+      #0.5 clk = !clk;
+   end
+
+   initial begin
+      $dumpfile(`dumpfile);
+      $dumpvars(0, function_name{{_tb}});
+
+      in_valid = `true;
+      out_ready = `true;
+      clk  = 0;
+      // setup here
+
+      #1;
+      in_valid = `false;
+
+      #10000;
+      $display("timed out");
+      $finish;
+   end
+
+   `inst_sync(function_name, function_name)(`sync(in_valid, out_ready), /* fill in */);
+
+   always @(posedge clk) begin
+       if(function_name{{_out_valid}}) begin
+           $display( /* something showing success */ );
+           $finish;
+       end
+   end
+
+endmodule // function_name{{_tb}}
