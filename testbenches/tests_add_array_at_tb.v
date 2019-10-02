@@ -9,11 +9,14 @@ module array (
   input  `addrT addr,
   input  we,
   input  `intT di,
-  output reg `intT do
+  output reg `intT do,
+  input valid,
+  output ready
 );
     parameter N = 16;
 
     reg  `intT data[0:N-1];
+    reg  ready = `false;
 
     integer i;
     initial begin
@@ -22,6 +25,10 @@ module array (
     end
 
     always @(posedge clk) begin
+
+        // to test valid/ready logic
+        ready <= ~ready;
+
         do <= data[addr];
         if(we)
           data[addr] <= di;
@@ -38,6 +45,8 @@ module tests_add_array_at_tb;
    wire tests_add_array_at_arr_we;
    wire `intT tests_add_array_at_arr_di;
    wire `intT arr_do;
+   wire tests_add_array_at_arr_valid;
+   wire arr_ready;
    wire `intT res;
 
    reg  in_valid;
@@ -51,7 +60,9 @@ module tests_add_array_at_tb;
              .addr(tests_add_array_at_arr_addr),
              .we(tests_add_array_at_arr_we),
              .di(tests_add_array_at_arr_di),
-             .do(arr_do));
+             .do(arr_do),
+             .valid(tests_add_array_at_arr_valid),
+             .ready(arr_ready));
 
    initial begin
       $dumpfile(`dumpfile);
@@ -63,10 +74,7 @@ module tests_add_array_at_tb;
       addr = 3;
       val = 42;
 
-      #1;
-      in_valid = `false;
-
-      #10;
+      #100;
       $display("timed out");
       $finish;
    end
@@ -82,6 +90,9 @@ module tests_add_array_at_tb;
        if(tests_add_array_at_out_valid) begin
            $display("res = %d", res);
            $finish;
+       end
+       if(tests_add_array_at_in_ready) begin
+           in_valid <= `false;
        end
    end
 

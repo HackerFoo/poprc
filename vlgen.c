@@ -704,42 +704,29 @@ void gen_loops(cell_t *e) {
 }
 
 static
-void gen_bus(const char *name, int intf, int *bus, int n) {
-  printf("  assign intf%d_%s = ", intf, name);
-  const char *sep = "";
-  COUNTUP(i, n) {
-    printf("%sinst%d_intf%d_%s", sep, bus[i], intf, name);
-    sep = " | ";
-  }
-  printf(";\n");
-}
-
-#define MAX_BUS 8 // ***
-static
 bool gen_busses(cell_t *e) {
-  int bus[MAX_BUS];
-  int next = 0;
   bool output = false;
   COUNTUP(i, e->entry.in) {
     int ix = REVI(i) + 1;
     const cell_t *v = &e[ix];
-    next = 0;
     if(v->value.type != T_OPAQUE ||
        trace_get_opaque_symbol(e, v) != SYM_Array) continue;
     int a = ix;
+    const char *sep = "";
+    printf("  assign {intf%d_addr, intf%d_we, intf%d_di, intf%d_valid} =\n",
+           (int)i, (int)i, (int)i, (int)i);
     FOR_TRACE_CONST(c, e, ix) {
       if(is_return(c)) {
         a = ix;
       } else if(!is_dep(c) &&
                 tr_index(c->expr.arg[0]) == a) {
         a = c - e;
-        bus[next++] = a;
+        printf("%s    {inst%d_intf%d_addr, inst%d_intf%d_we, inst%d_intf%d_di, inst%d_intf%d_valid}",
+               sep, a, (int)i, a, (int)i, a, (int)i, a, (int)i);
+        sep = " |\n";
       }
     }
-    assert_error(next, "dropped intf%d", i);
-    gen_bus("addr", i, bus, next);
-    gen_bus("we", i, bus, next);
-    gen_bus("di", i, bus, next);
+    printf(";\n");
     output = true;
   }
   return output;

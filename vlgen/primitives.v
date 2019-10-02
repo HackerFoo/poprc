@@ -155,20 +155,41 @@ module __primitive_pushr2_llii(
 
 endmodule
 
+/* ------------------------------------------------------ *
+     ARRAY BUS
+ * ------------------------------------------------------ *
+     addr:  address
+     we:    write enable
+     di:    data in
+     do:    data out
+     valid: address is valid
+     ready: ready for a new address
+
+     NOTES:
+      -> do is assumed valid once the address
+         has been transmitted (ready & valid)
+      -> all inputs to the bus must be low
+         if valid is low, allowing the bus to be OR'ed
+ * ------------------------------------------------------ */
 `define interface_Array(index) \
   output `addrT intf``index``_addr, \
   output intf``index``_we, \
   output `intT intf``index``_di, \
-  input `intT intf``index``_do
+  input `intT intf``index``_do, \
+  output intf``index``_valid, \
+  input intf``index``_ready
 `define intf_Array(index, name) \
       .intf``index``_addr(`concat_(`current_inst, name``_addr)), \
       .intf``index``_we(`concat_(`current_inst, name``_we)), \
       .intf``index``_di(`concat_(`current_inst, name``_di)), \
-      .intf``index``_do(name``_do)
+      .intf``index``_do(name``_do), \
+      .intf``index``_valid(`concat_(`current_inst, name``_valid)), \
+      .intf``index``_ready(name``_ready)
 `define bus_Array(index, inst) \
   wire `addrT inst``_intf``index``_addr; \
   wire inst``_intf``index``_we; \
-  wire `intT inst``_intf``index``_di
+  wire `intT inst``_intf``index``_di; \
+  wire inst``_intf``index``_valid
 
 module __primitive_read_array_ooii(
   `sync_ports,
@@ -177,22 +198,22 @@ module __primitive_read_array_ooii(
   `output(int, 1)
 );
 
-    reg done = `false;
+    reg out_valid = `false;
     assign out1 = intf0_do;
-    assign out_valid = done;
-    assign in_ready = out_ready;
+    assign in_ready = out_ready & intf0_ready;
+
+    // intf0 is an OR'ed bus, so must be low if not valid
     assign intf0_addr = in_valid ? in1 : 0;
     assign intf0_di = 0;
     assign intf0_we = `false;
+    assign intf0_valid = in_valid;
 
     always @(posedge clk) begin
-        if(in_valid) begin
-            if(out_ready) begin
-              `set(done);
-            end
+        if(intf0_valid & intf0_ready) begin
+            `set(out_valid);
         end
-        else if(done) begin
-            `reset(done);
+        else if(out_ready) begin
+            `reset(out_valid);
         end
     end
 
@@ -205,21 +226,21 @@ module __primitive_write_array_ooii(
   `input(int, 2)
 );
 
-    reg done = `false;
-    assign out_valid = done;
-    assign in_ready = out_ready;
+    reg out_valid = `false;
+    assign in_ready = intf0_ready;
+
+    // intf0 is an OR'ed bus, so must be low if not valid
     assign intf0_addr = in_valid ? in1 : 0;
     assign intf0_di = in_valid ? in2 : 0;
     assign intf0_we = in_valid;
+    assign intf0_valid = in_valid;
 
     always @(posedge clk) begin
-        if(in_valid) begin
-            if(out_ready) begin
-              `set(done);
-            end
+        if(intf0_valid & intf0_ready) begin
+            `set(out_valid);
         end
-        else if(done) begin
-            `reset(done);
+        else if(out_ready) begin
+            `reset(out_valid);
         end
     end
 
