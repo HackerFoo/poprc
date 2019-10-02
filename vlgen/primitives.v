@@ -155,42 +155,6 @@ module __primitive_pushr2_llii(
 
 endmodule
 
-/* ------------------------------------------------------ *
-     ARRAY BUS
- * ------------------------------------------------------ *
-     addr:  address
-     we:    write enable
-     di:    data in
-     do:    data out
-     valid: address is valid
-     ready: ready for a new address
-
-     NOTES:
-      -> do is assumed valid once the address
-         has been transmitted (ready & valid)
-      -> all inputs to the bus must be low
-         if valid is low, allowing the bus to be OR'ed
- * ------------------------------------------------------ */
-`define interface_Array(index) \
-  output `addrT intf``index``_addr, \
-  output intf``index``_we, \
-  output `intT intf``index``_di, \
-  input `intT intf``index``_do, \
-  output intf``index``_valid, \
-  input intf``index``_ready
-`define intf_Array(index, name) \
-      .intf``index``_addr(`concat_(`current_inst, name``_addr)), \
-      .intf``index``_we(`concat_(`current_inst, name``_we)), \
-      .intf``index``_di(`concat_(`current_inst, name``_di)), \
-      .intf``index``_do(name``_do), \
-      .intf``index``_valid(`concat_(`current_inst, name``_valid)), \
-      .intf``index``_ready(name``_ready)
-`define bus_Array(index, inst) \
-  wire `addrT inst``_intf``index``_addr; \
-  wire inst``_intf``index``_we; \
-  wire `intT inst``_intf``index``_di; \
-  wire inst``_intf``index``_valid
-
 module __primitive_read_array_ooii(
   `sync_ports,
   `interface(Array, 0),

@@ -713,16 +713,14 @@ bool gen_busses(cell_t *e) {
        trace_get_opaque_symbol(e, v) != SYM_Array) continue;
     int a = ix;
     const char *sep = "";
-    printf("  assign {intf%d_addr, intf%d_we, intf%d_di, intf%d_valid} =\n",
-           (int)i, (int)i, (int)i, (int)i);
+    printf("  assign `to_bus(intf%d) =\n", (int)i);
     FOR_TRACE_CONST(c, e, ix) {
       if(is_return(c)) {
         a = ix;
       } else if(!is_dep(c) &&
                 tr_index(c->expr.arg[0]) == a) {
         a = c - e;
-        printf("%s    {inst%d_intf%d_addr, inst%d_intf%d_we, inst%d_intf%d_di, inst%d_intf%d_valid}",
-               sep, a, (int)i, a, (int)i, a, (int)i, a, (int)i);
+        printf("%s    `to_bus(inst%d_intf%d)", sep, a, (int)i);
         sep = " |\n";
       }
     }
