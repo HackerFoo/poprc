@@ -72,31 +72,38 @@ const char *vltype_full(const cell_t *e, const cell_t *c) {
   }
 }
 
+#define SEP(str) \
+  const char *sep = ""; \
+  const char *const sep_next = str
+
+#define printf_sep(fmt, ...)                    \
+  do {                                          \
+    printf("%s" fmt, sep, ##__VA_ARGS__);       \
+    sep = sep_next;                             \
+  } while(0)
+
 static
 void gen_module_interface(const cell_t *e, const type_t *rtypes) {
   const cell_t *p = e + 1;
   csize_t out_n = e->entry.out;
 
   printf("module %s_%s (\n", e->module_name, e->word_name);
-  char *sep = "";
+  SEP(",\n");
   if(FLAG(*e, entry, SYNC)) {
-    printf("  `sync_ports");
-    sep = ",\n";
+    printf_sep("  `sync_ports");
   }
   COUNTDOWN(i, e->entry.in) {
     const cell_t *a = &p[i];
-    printf("%s  `%s(%s, %d)", sep,
-           trace_type(a) == T_OPAQUE ? "interface" : "input",
-           vltype_full(e, a),
-           (int)(e->entry.in - 1 - i));
-    sep = ",\n";
+    printf_sep("  `%s(%s, %d)",
+               trace_type(a) == T_OPAQUE ? "interface" : "input",
+               vltype_full(e, a),
+               (int)(e->entry.in - 1 - i));
   }
 
   COUNTUP(i, out_n) {
     type_t t = rtypes[i];
     if(t != T_OPAQUE) {
-      printf("%s  `output(%s, %d)", sep, vltype(t), (int)i);
-      sep = ",\n";
+      printf_sep("  `output(%s, %d)", vltype(t), (int)i);
     }
   }
 
@@ -279,14 +286,13 @@ void gen_sync_disjoint_inputs(const cell_t *e, const cell_t *c) {
 
 static
 void gen_sync_block(const cell_t *e, const cell_t *c, int block, bool ret) {
-  const char *sep = "";
+  SEP(" & ");
   if(ret) {
     if(FLAG(*e, entry, RETURN_ADDR)) {
-      printf("%s`returned_to(block%d)", sep, block);
+      printf_sep("`returned_to(block%d)", block);
     } else {
-      printf("%sreturned", sep);
+      printf_sep("returned");
     }
-    sep = " & ";
   }
   FOR_TRACE_CONST(c, e, block) {
     if(is_return(c)) break;
@@ -299,15 +305,13 @@ void gen_sync_block(const cell_t *e, const cell_t *c, int block, bool ret) {
       FOR_TRACE_CONST(r, e) {
         if(is_return(r) &&
            b != block) {
-          printf("%s!block%d_valid", sep, b);
-          sep = " & ";
+          printf_sep("!block%d_valid", b);
         }
         update_block(e, r, &b);
       }
     }
   }
-  printf("%s", sep);
-  sep = " & ";
+  printf_sep("");
   gen_sync_disjoint_inputs(e, c);
 }
 
@@ -389,7 +393,6 @@ void print_var(const cell_t *e, const cell_t *c, int block) {
 static
 void gen_instance(const cell_t *e, const cell_t *c, int *sync_chain, uintptr_t const *const *backrefs, int block) {
   int inst = c - e;
-  char *sep = "";
   const char *module_name, *word_name;
   bool sync = is_sync(c);
   csize_t
@@ -414,33 +417,30 @@ void gen_instance(const cell_t *e, const cell_t *c, int *sync_chain, uintptr_t c
     printf(", inst%d)(", inst);
   }
 
+  SEP(",");
   COUNTUP(i, in) {
     const cell_t *a = &e[cgen_index(e, c->expr.arg[i])];
     type_t t = trace_type(a);
     if(t == T_OPAQUE) {
       a = trace_get_linear_var(e, a);
     }
-    printf("%s\n      `%s(%s, %d, ",
-           sep,
+    printf_sep("\n      `%s(%s, %d, ",
            trace_type(a) == T_OPAQUE ? "intf" : "in",
            vltype_full(e, a), (int)i); // ***
     print_var(e, a, block);
     printf(")");
-    sep = ",";
   }
   if(t != T_OPAQUE) {
-    printf("%s\n      `out(%s, 0, %s%d)",
-           sep, vltype(t), cname(t), inst);
-    sep = ",";
+    printf_sep("\n      `out(%s, 0, %s%d)",
+               vltype(t), cname(t), inst);
   }
   RANGEUP(i, start_out, n) {
     int a = cgen_index(e, c->expr.arg[i]);
     if(a > 0) {
       type_t at = trace_type(&e[a]);
       if(at == T_OPAQUE) continue;
-      printf("%s\n      `out(%s, %d, %s%d)",
-             sep, vltype(at), (int)(i - start_out + 1), cname(at), a);
-      sep = ",";
+      printf_sep("\n      `out(%s, %d, %s%d)",
+                 vltype(at), (int)(i - start_out + 1), cname(at), a);
     }
   }
 
@@ -551,11 +551,10 @@ bool gen_outputs(const cell_t *e, const cell_t *r0, const type_t *rtypes) {
     if(t == T_LIST) {
       printf("  assign out%d_valid = ", (int)i);
       r = r0;
-      const char *sep = "";
+      SEP(" | ");
       while(r > e) {
-        printf("%s%s%d_valid", sep, cname(t), cgen_index(e, r_prev->value.ptr[REVI(i)]));
+        printf_sep("%s%d_valid", cname(t), cgen_index(e, r_prev->value.ptr[REVI(i)]));
         r = &e[tr_index(r->alt)];
-        sep = " | ";
       }
       printf(";\n");
       r = r0;
@@ -575,23 +574,21 @@ bool is_self_call(const cell_t *e, const cell_t *c) {
 
 static
 void gen_valid_ready(const cell_t *e, UNUSED const cell_t *r0) {
-  const char *sep;
   int block;
 
   // valid
   printf("  wire %s = ",
          FLAG(*e, entry, STACK) ? "returning" : "valid");
-  sep = "";
+  SEP(" | ");
   block = 1;
   FOR_TRACE_CONST(c, e) {
     if(is_return(c) &&
        !is_tail_call(e, c)) {
-      printf("%sblock%d_valid", sep, block);
-      sep = " | ";
+      printf_sep("block%d_valid", block);
     }
     update_block(e, c, &block);
   }
-  if(!sep[0]) printf("`false");
+  if(!*sep) printf("`false");
   printf(";\n");
   if(FLAG(*e, entry, STACK)) {
     printf("  wire valid = returning & ~|sp;\n");
@@ -609,19 +606,17 @@ void gen_loop(const cell_t *e, const cell_t *self_call, int block) {
       int next_block = (self_call - e) + calculate_cells(self_call->size);
       printf("label_block%d, ", next_block);
     }
-    const char *sep = "";
+    SEP(", ");
     RANGEUP(i, 1, e->entry.in + 1) {
       const cell_t *v = &e[i];
-      printf("%s%s%d", sep, cname(trace_type(v)), (int)i);
-      sep = ", ";
+      printf_sep("%s%d", cname(trace_type(v)), (int)i);
     }
     const cell_t *prev = NULL;
     FOR_TRACE_CONST(c, e) {
       if(is_self_call(e, c) && NOT_FLAG(*c, trace, JUMP)) {
         if(prev) {
-          printf("%s", sep);
+          printf_sep("");
           print_var(e, prev, block);
-          sep = ", ";
         }
         prev = c;
       }
@@ -671,18 +666,16 @@ void gen_loops(cell_t *e) {
     } else {
       printf("      {");
     }
-    const char *sep = "";
+    SEP(", ");
     RANGEUP(i, 1, e->entry.in + 1) {
       cell_t *v = &e[i];
-      printf("%s%s%d", sep, cname(trace_type(v)), (int)i);
-      sep = ", ";
+      printf_sep("%s%d", cname(trace_type(v)), (int)i);
     }
     const cell_t *prev = NULL;
     FOR_TRACE_CONST(c, e) {
       if(is_self_call(e, c) && NOT_FLAG(*c, trace, JUMP)) {
         if(prev) {
-          printf("%s%s%d", sep, cname(trace_type(prev)), (int)(prev-e));
-          sep = ", ";
+          printf_sep("%s%d", cname(trace_type(prev)), (int)(prev-e));
         }
         prev = c;
       }
@@ -712,7 +705,7 @@ bool gen_busses(cell_t *e) {
     if(v->value.type != T_OPAQUE ||
        trace_get_opaque_symbol(e, v) != SYM_Array) continue;
     int a = ix;
-    const char *sep = "";
+    SEP(" |\n");
     printf("  assign `to_bus(intf%d) =\n", (int)i);
     FOR_TRACE_CONST(c, e, ix) {
       if(is_return(c)) {
@@ -720,8 +713,7 @@ bool gen_busses(cell_t *e) {
       } else if(!is_dep(c) &&
                 tr_index(c->expr.arg[0]) == a) {
         a = c - e;
-        printf("%s    `to_bus(inst%d_intf%d)", sep, a, (int)i);
-        sep = " |\n";
+        printf_sep("    `to_bus(inst%d_intf%d)", a, (int)i);
       }
     }
     printf(";\n");
