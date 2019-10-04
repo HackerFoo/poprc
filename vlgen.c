@@ -697,7 +697,7 @@ void gen_loops(cell_t *e) {
 }
 
 static
-bool gen_busses(cell_t *e) {
+bool gen_buses(cell_t *e) {
   bool output = false;
   COUNTUP(i, e->entry.in) {
     int ix = REVI(i) + 1;
@@ -746,7 +746,7 @@ void gen_module(cell_t *e) {
     gen_valid_ready(e, r0);
     printf("\n");
   }
-  if(gen_busses(e)) printf("\n");
+  if(gen_buses(e)) printf("\n");
   if(FLAG(*e, entry, RECURSIVE)) {
     gen_loops(e);
     printf("\n");
