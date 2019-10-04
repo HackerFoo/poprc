@@ -7,9 +7,9 @@
   - where there are no other self calls in ...
 *** DONE stack per value to allow singe cycle access
 *** DONE store inputs to block instead of top level
-** STARTED memory tokens (Array)
-*** TODO convert Array symbol to memory interface
-*** TODO add primitives
+** DONE memory tokens (Array)
+*** DONE convert Array symbol to memory interface
+*** DONE add primitives
 - ready/valid for sequencing
 ** IO
 ** data types
@@ -30,6 +30,8 @@ Compile to direct C when possible
 **** closure_set_ready
 **** split_args
 * major
+** TODO pushl/pushr inside loops
+** TODO nested lists
 ** STARTED implement tail recursion modulo X
 *** TODO handle recursion modulo X in backends
 *** compose, ap

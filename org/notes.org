@@ -1,5 +1,17 @@
 #+TITLE: PoprC Notes
 
+* pushl/pushr
+- idea: just emit streams, reversing negative streams when consumed
+  - this means e.g. maps can be applied backwards
+** before tail call
+<== emit || l <===> r || emit ==>
+- two pointers, so must hold
+*** pushl: enqueue (+)
+*** pushr: push (-)
+** after tail call
+- one pointer
+*** pushr: emit to queue (+)
+*** pushl: emit to stack (-)
 * Don't actually route opaque types
 - assign unique ids at the top level
 - distribute bus per unique id
