@@ -109,6 +109,13 @@ map:
     [map] pushl swap __ [xs] [[f] map] [x f]
     [$] dip21 . __ [[xs] [f] map . x f]
 
+__ [xs] s [f] map_with -> [xs']
+map_with:
+  [[popr] dip12] dip23 __ [xs] x s [f]
+    dup [ap21] dip32 __ [xs] [x s f / s'] s' [f]
+    [map_with] ap20 swap __ [xs] [s' [f] map_with] [x s f / s']
+    [$] dip21 . __ [xs s' [f] map_with . x s f / s']
+
 __ a [b..] [p]
 pushif:
   [over] dip23 $

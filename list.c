@@ -88,8 +88,20 @@ response func_list(cell_t **cp, context_t *ctx) {
 
   ctx->alt_set = c->value.alt_set;
   COUNTUP(i, n) {
-    CHECK(reduce_ptr(c, i, ctx_pos(&CTX(any), ctx->pos)));
-    CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+    response r = reduce_ptr(c, i, ctx_pos(&CTX(any), ctx->pos));
+    if(ctx->depth > 0 && r == FAIL) {
+      // shrink the list to the first failure
+      closure_shrink_list(c, i);
+      RANGEUP(j, i, n) {
+        drop(c->value.ptr[j]);
+      }
+      FLAG_CLEAR(*c, value, ROW);
+      n = i;
+      break;
+    } else {
+      CHECK(r);
+      CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+    }
   }
   log_ptrs(c);
   CHECK_DELAY();
@@ -131,8 +143,9 @@ void log_ptrs(cell_t *c) {
   }
 }
 
-void reduce_list(cell_t **cp) {
+void reduce_list(cell_t **cp, int depth) {
   context_t *ctx = WITH(&CTX(return), priority, PRIORITY_TOP);
+  ctx->depth = depth;
   response rsp = SUCCESS;
   cell_t **p = cp;
   while(*p) {

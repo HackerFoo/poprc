@@ -289,6 +289,12 @@ void closure_shrink(cell_t *c, csize_t s) {
   }
 }
 
+void closure_shrink_list(cell_t *c, csize_t n) {
+  csize_t size = n + VALUE_OFFSET(ptr);
+  closure_shrink(c, n + VALUE_OFFSET(ptr));
+  c->size = size;
+}
+
 void closure_free(cell_t *c) {
   closure_shrink(c, 0);
 }

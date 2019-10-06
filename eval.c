@@ -605,14 +605,14 @@ bool can_reduce(cell_t *l) {
      closure_is_ready(l->value.ptr[0]));
 }
 
-void reduce_root(cell_t **cp, int limit) {
-  if(limit > 0) {
+void reduce_root(cell_t **cp, int depth, int limit) {
+  if(depth < limit) {
     insert_root(cp);
-    reduce_list(cp);
+    reduce_list(cp, depth);
     if(*cp) {
       cell_t **p;
       FORLIST(p, *cp, true) {
-        if(can_reduce(*p)) reduce_root(p, limit - 1);
+        if(can_reduce(*p)) reduce_root(p, depth + 1, limit);
       }
     }
     remove_root(cp);
@@ -635,7 +635,7 @@ bool eval(const char *prefix, const cell_t *p) {
       if(!quiet) printf("incomplete expression\n");
     } else {
       rt_init();
-      reduce_root(&c, reduction_limit);
+      reduce_root(&c, 0, reduction_limit);
       if(c) {
         ASSERT_REF();
         success = true;

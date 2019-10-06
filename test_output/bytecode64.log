@@ -1480,6 +1480,18 @@ ___ list.map (2 -> 1) rec ___
 [6] __primitive.compose 5 4 1 :: l x1
 [7] return [6]
 
+___ list.map_with (3 -> 1) rec ___
+[1] var :: ?l x2
+[2] changing var :: ?a x1
+[3] changing var :: ?l x1
+[4] __primitive.ap 3 -> 5 :: l? x2
+[5] __primitive.dep 4 :: a x1
+[6] __primitive.ap 5 2 &1 -> 7 :: l? x2
+[7] __primitive.dep 6 :: a x1
+[8] jump list.map_with 4 7 1 :: l x1
+[9] __primitive.compose 8 6 :: l x1
+[10] return [9]
+
 ___ list.merge (2 -> 1) ___
 [1] var :: ?a x1
 [2] var :: ?a x1

@@ -411,7 +411,6 @@ OP(placeholder) {
   cell_t *res;
   if(n == 1) {
     res = copy(c->expr.arg[0]);
-    FLAG_SET(*res, value, ROW);
   } else {
     res = var(T_LIST, c, ctx->pos);
     RANGEUP(i, in, n) {
@@ -423,6 +422,7 @@ OP(placeholder) {
       }
     }
   }
+  FLAG_SET(*res, value, ROW);
   if(c->expr.out) FLAG_SET(*c, expr, PARTIAL);
   add_conditions_from_array(res, c->expr.arg, in);
   store_reduced(cp, ctx, res);
