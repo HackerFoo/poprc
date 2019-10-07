@@ -10,11 +10,12 @@ FUNCTIONS = \
   tests.map_add1 \
   tests.fact \
   tests.fib \
-  tests.add_array_at
+  tests.add_array_at \
+  io.stream_read_array
 COMMON = ../vlgen/primitives.v ../vlgen/define.v
 
 BUILD = build
-INCLUDE = -I../vlgen -I$(BUILD)/gen
+INCLUDE = -I../vlgen -I$(BUILD)/gen -Iutil
 
 .PHONY: all
 all: test $(patsubst %, $(BUILD)/preprocessed/%, $(wildcard *_swbut.v))
@@ -48,7 +49,7 @@ $(foreach suf, tb swbut swbut_tb, \
     $(eval $(BUILD)/preprocessed/$(target): $(patsubst %_$(suf).v, $(BUILD)/gen/%.v, $(target)))))
 $(BUILD)/preprocessed/%.v: %.v $(COMMON)
 	@mkdir -p $(dir $@)
-	iverilog -o - -E $(INCLUDE) -Ddumpfile="\"$*.fst\"" $< | sed '/^\s*$$/d' > $@
+	iverilog -o - -E $(INCLUDE) -Ddumpfile="\"$*.fst\"" $< | sed 's/[[:space:]]*$$//' | cat -s > $@
 
 $(BUILD)/vvp/%_tb.vvp: $(BUILD)/preprocessed/%_tb.v
 	@mkdir -p $(dir $@)

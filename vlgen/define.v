@@ -113,6 +113,7 @@
 `define wire_stream(name) wire `intT name; wire name``_valid; wire name``_ready
 `define reg_stream(name) reg `intT name; reg name``_valid; wire name``_ready
 `define const_stream(name, val) localparam `intT name = val; localparam name``_valid = `true
+`define const_nil(name) localparam `intT name = `nil; localparam name``_valid = `false
 
 `define interface(type, index) `interface_``type(index)
 `define intf(type, index, name) `intf_``type(index, name)
