@@ -450,6 +450,7 @@ imports:
   module stack
   module control
   module logic
+  module list
 
 read_std: "stream,in:std" open read [close] dip21
 write_std: ["stream,out:std" open] dip12 write close
@@ -469,9 +470,12 @@ getline: "" getline_loop
 
 getline_std: "stream,in:std" open getline [close] dip21
 
-__ IO h
+__ IO h -> bool
 is_eof:
   read dup [unread] dip32 "" =s
 
-__ Array addr [fn]
+__ Array addr [fn] -> Array
 update_array: [tuck read_array [swap] dip22] dip23 $ write_array
+
+__ Array [... idx] stream_read_array -> [... data]
+stream_read_array: swap [swap read_array swap] map_with

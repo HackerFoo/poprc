@@ -35,6 +35,12 @@ OP(value) {
   ctx->alt_set = c->value.alt_set;
   if(is_var(c)) CHECK_PRIORITY(PRIORITY_VAR);
 
+  // convert from T_BOTTOM
+  if(c->value.type == T_BOTTOM && ctx->t != T_ANY) {
+    c->value.type = ctx->t;
+    trace_update_type(c);
+  }
+
   // promote integer constants to float constants
   if(ctx->t == T_FLOAT &&
      NOT_FLAG(*c, value, VAR) &&

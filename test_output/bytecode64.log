@@ -1181,6 +1181,23 @@ ___ io.read_std (1 -> 2) ___
 [8] __primitive.close 5 7 :: y x1
 [9] return [8 6]
 
+___ io.stream_read_array (2 -> 1) ___
+[1] var :: ?l x1
+[2] var is Array :: ?o x1
+[3] jump io.stream_read_array_r0 2 1 :: l x1
+[4] return [3]
+
+___ io.stream_read_array_r0 (2 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] changing var is Array :: ?o x1
+[3] __primitive.ap 1 -> 4 :: l? x2
+[4] __primitive.dep 3 :: i x1
+[5] __primitive.read_array 2 4 -> 7 is Array :: o x2
+[6] jump io.stream_read_array_r0 5 3 :: l x1
+[7] __primitive.dep 5 :: i x1
+[8] __primitive.pushr 6 7 :: l x1
+[9] return [8]
+
 ___ io.unread_std (2 -> 1) ___
 [1] var :: ?s x1
 [2] var :: ?y x1
