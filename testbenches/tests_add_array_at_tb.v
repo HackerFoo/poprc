@@ -21,6 +21,7 @@ module tests_add_array_at_tb;
 
    reg  in_valid;
    reg  out_ready;
+   wire tests_add_array_at_in_ready;
 
    always begin
       #0.5 clk = !clk;

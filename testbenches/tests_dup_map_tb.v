@@ -10,6 +10,8 @@ module tests_dup_map_tb;
     `wire(stream, sOut);
     reg in_valid;
     reg out_ready;
+    wire dup_map_in_ready;
+
     assign sOut_ready = out_ready;
 
     always begin

@@ -10,6 +10,8 @@ module tests_map_add1_tb;
     `wire(stream, sOut);
     reg in_valid;
     reg out_ready;
+    wire map_add1_in_ready;
+
     assign sOut_ready = out_ready;
 
     always begin

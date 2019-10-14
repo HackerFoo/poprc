@@ -10,6 +10,7 @@ module tests_collatz_tb;
     wire `intT b;
     reg in_valid;
     reg out_ready;
+    wire tests_collatz_in_ready;
 
     always begin
         #0.5 clk = !clk;

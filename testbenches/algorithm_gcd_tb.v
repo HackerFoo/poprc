@@ -11,6 +11,7 @@ module algorithm_gcd_tb;
    wire `intT c;
    reg  in_valid;
    reg  out_ready;
+   wire gcd_in_ready;
 
    always begin
       #0.5 clk = !clk;

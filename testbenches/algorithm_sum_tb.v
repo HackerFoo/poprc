@@ -10,6 +10,7 @@ module algorithm_sum_tb;
     `wire(int, sum);
     reg in_valid;
     reg out_ready;
+    wire sum_inst_in_ready;
 
     always begin
         #0.5 clk = !clk;

@@ -14,6 +14,7 @@ module stream_tb;
      reg in_valid;
      reg out_ready;
      wire ap_valid;
+     wire ap02_in_ready;
 
     always begin
         #0.5 clk = !clk;

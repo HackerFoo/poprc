@@ -16,6 +16,7 @@ module io_stream_read_array_tb;
    wire io_stream_read_array_arr_valid;
    wire arr_ready;
    wire `intT res;
+   wire io_stream_read_array_in_ready;
 
    `reg(stream, sIn);
    `wire(stream, sOut);

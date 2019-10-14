@@ -11,6 +11,7 @@ module pushr_tb;
 
     reg in_valid;
     reg out_ready;
+    wire pushr1_in_ready;
 
     always begin
         #0.5 clk = !clk;
