@@ -1517,3 +1517,24 @@ const cell_t *trace_get_linear_var(const cell_t *e, const cell_t *c) {
   assert_error(is_var(p));
   return p;
 }
+
+void trace_update_range(cell_t *c) {
+  cell_t *v = c->value.var;
+  if(is_var(v) &&
+     (FLAG(*v, value, BOUNDED) ||
+      v->value.min != INTPTR_MIN ||
+      v->value.max != INTPTR_MAX)) {
+    v->value.min = c->value.min;
+    v->value.max = c->value.max;
+    FLAG_SET(*v, value, BOUNDED);
+  }
+}
+
+void trace_unbound(cell_t *c) {
+  cell_t *v = c->value.var;
+  if(is_var(v)) {
+    v->value.min = INTPTR_MIN;
+    v->value.max = INTPTR_MAX;
+    FLAG_CLEAR(*v, value, BOUNDED);
+  }
+}

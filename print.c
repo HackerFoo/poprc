@@ -607,9 +607,9 @@ char *show_type_all(const cell_t *c) {
     "VAR",
     "ROW",
     "LINEAR",
-    "LOCAL",
+    "BOUNDED",
     "DEP",
-    "SPLIT",
+    "INLINE",
     "TRACED"
   };
   static char buf[64];

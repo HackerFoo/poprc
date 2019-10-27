@@ -51,13 +51,13 @@
     |                                               |
     '-----------------------------------------------*/
 
-cell_t *_op2(cell_t *c, type_t t,
+cell_t *_op2(cell_t *c, type_t arg_type, type_t res_type,
              val_t (*op)(val_t, val_t), cell_t *x, cell_t *y) {
   if(ANY(is_var, x, y)) {
-    return var(t, c);
+    return var(res_type, c);
   } else {
-    return val(t, op(x->value.integer,
-                     y->value.integer));
+    return val(res_type, op(arg_type == T_INT ? x->value.integer : x->value.symbol,
+                            arg_type == T_INT ? y->value.integer : y->value.symbol));
   }
 }
 
@@ -73,6 +73,64 @@ cell_t *_op1(cell_t *c, type_t arg_type, type_t res_type,
   }
 }
 
+static
+bool bound_contexts(cell_t *c, context_t *ctx, context_t *arg_ctx) {
+  if(trace_current_entry() == NULL ||
+     ctx->t != T_SYMBOL ||
+     !ctx->expected ||
+     ctx->expected_min != ctx->expected_max ||
+     !ONEOF(c->op, OP_lt, OP_lte, OP_gt, OP_gte, OP_eq, OP_neq)) {
+    return false;
+  }
+
+  op op = c->op;
+  context_t *other = NULL;
+  val_t val;
+  if(is_value(c->expr.arg[0]) && !is_var(c->expr.arg[0])) {
+    val = c->expr.arg[0]->value.integer;
+    other = &arg_ctx[1];
+    switch(op) { // reverse op
+    case OP_lt: op = OP_gt; break;
+    case OP_lte: op = OP_gte; break;
+    case OP_gt: op = OP_lt; break;
+    case OP_gte: op = OP_lte; break;
+    default: break;
+    }
+  } else if(is_value(c->expr.arg[1]) && !is_var(c->expr.arg[1])) {
+    val = c->expr.arg[1]->value.integer;
+    other = &arg_ctx[0];
+  } else return false;
+
+  if(ctx->expected_min == SYM_False) {
+    switch(op) { // negate op
+    case OP_lt: op = OP_gte; break;
+    case OP_lte: op = OP_gt; break;
+    case OP_gt: op = OP_lte; break;
+    case OP_gte: op = OP_lt; break;
+    case OP_eq: op = OP_neq; break;
+    case OP_neq: op = OP_eq; break;
+    default: break;
+    }
+  }
+
+  if(op == OP_neq) return false; // can't represent neq
+
+  other->expected = true;
+  other->expected_min = INTPTR_MIN;
+  other->expected_max = INTPTR_MAX;
+  switch(c->op) {
+    // TODO handle val = INTPTR_MIN/MAX
+  case OP_lt: other->expected_max = val - 1; break;
+  case OP_lte: other->expected_max = val; break;
+  case OP_gt: other->expected_min = val + 1; break;
+  case OP_gte: other->expected_min = val; break;
+  case OP_eq: other->expected_min = other->expected_max = val; break;
+  default: break;
+  }
+
+  return true;
+}
+
 // CLEANUP merge with func_op2_float
 response func_op2(cell_t **cp, context_t *ctx,
                   type_t arg_type, type_t res_type,
@@ -82,14 +140,22 @@ response func_op2(cell_t **cp, context_t *ctx,
 
   CHECK_IF(!check_type(ctx->t, res_type), FAIL);
 
-  CHECK(reduce_arg(c, 0, &CTX(t, arg_type)));
-  CHECK(reduce_arg(c, 1, &CTX(t, arg_type)));
+  context_t arg_ctx[] = {CTX(t, arg_type), CTX(t, arg_type)};
+  bool as_expected = bound_contexts(c, ctx, arg_ctx);
+  CHECK(reduce_arg(c, 0, &arg_ctx[0]));
+  CHECK(reduce_arg(c, 1, &arg_ctx[1]));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
   ARGS(p, q);
 
   CHECK_IF(nonzero && !is_var(q) && q->value.integer == 0, FAIL); // TODO assert this for variables
-  res = _op2(c, res_type, op, p, q);
+  res = _op2(c, arg_type, res_type, op, p, q);
+  if(as_expected) {
+    // TODO forward bounds inference
+    FLAG_SET(*res, value, BOUNDED);
+    res->value.min = ctx->expected_min;
+    res->value.max = ctx->expected_max;
+  }
   if(nonzero) FLAG_SET(*c, expr, PARTIAL);
   add_conditions(res, p, q);
   store_reduced(cp, ctx, res);
@@ -164,50 +230,6 @@ response func_op1_float(cell_t **cp, context_t *ctx, double (*op)(double)) {
 
   res = is_var(p) ? var(T_FLOAT, c) : _op1_float(op, p);
   add_conditions(res, p);
-  store_reduced(cp, ctx, res);
-  return SUCCESS;
-
- abort:
-  return abort_op(rsp, cp, ctx);
-}
-
-response func_eq_op(cell_t **cp, context_t *ctx, type_t type) {
-  assert_error(ONEOF(type, T_INT, T_SYMBOL));
-  cell_t *res = 0;
-  PRE(eq_op);
-
-  CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
-  ARGS(p, q);
-
-  bool expect_eq = ctx->expected && ctx->expected_value == SYM_True;
-  if(expect_eq && is_value(p)) {
-    CHECK(reduce_arg(c, 0, &CTX(t, type)));
-    CHECK(reduce_arg(c, 1, &CTX(t, type,
-                                type == T_INT ?
-                                  p->value.integer :
-                                  p->value.symbol)));
-  } else if(expect_eq && is_value(q)) {
-    CHECK(reduce_arg(c, 1, &CTX(t, type)));
-    CHECK(reduce_arg(c, 0, &CTX(t, type,
-                                type == T_INT ?
-                                  q->value.integer :
-                                  q->value.symbol)));
-  } else {
-    CHECK(reduce_arg(c, 0, &CTX(t, type)));
-    CHECK(reduce_arg(c, 1, &CTX(t, type)));
-  }
-  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
-  CHECK_DELAY();
-
-  p = c->expr.arg[0];
-  q = c->expr.arg[1];
-
-  res = ANY(is_var, p, q) ?
-    var(T_SYMBOL, c) :
-    symbol(type == T_INT ?
-             p->value.integer == q->value.integer :
-             p->value.symbol == q->value.symbol);
-  add_conditions(res, p, q);
   store_reduced(cp, ctx, res);
   return SUCCESS;
 
@@ -370,14 +392,15 @@ OP(lte) {
   return func_op2(cp, ctx, T_INT, T_SYMBOL, lte_op, false);
 }
 
+val_t eq_op(val_t x, val_t y) { return x == y; }
 WORD("==", eq, 2, 1)
 OP(eq) {
-  return func_eq_op(cp, ctx, T_INT);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, eq_op, false);
 }
 
 WORD("=:=", eq_s, 2, 1)
 OP(eq_s) {
-  return func_eq_op(cp, ctx, T_SYMBOL);
+  return func_op2(cp, ctx, T_SYMBOL, T_SYMBOL, eq_op, false);
 }
 
 WORD("!=", neq, 2, 1)
@@ -892,7 +915,7 @@ bool is_list_var(cell_t *c) {
   return is_row_list(c) && is_placeholder(c->value.ptr[0]);
 }
 
-response func_type(cell_t **cp, context_t *ctx, uint8_t type) {
+response func_type(cell_t **cp, context_t *ctx, type_t type) {
   PRE(type);
 
   CHECK_IF(!check_type(ctx->t, type), FAIL);
@@ -1110,7 +1133,7 @@ OP(external) {
 
   csize_t in = closure_in(c), n = closure_args(c);
   assert_error(in >= 1);
-  bool io = ctx->expected && ctx->expected_value == SYM_IO;
+  bool io = expected_symbol(ctx, SYM_IO);
 
   // get name, which must be a constant before code generation
   CHECK(reduce_arg(c, in - 1, &CTX(string)));

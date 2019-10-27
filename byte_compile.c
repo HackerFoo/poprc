@@ -124,6 +124,17 @@ void print_bytecode(cell_t *entry, bool tags) {
       } else if(is_var(c)) { // variable
         if(FLAG(*c, trace, CHANGES)) printf(" changing");
         printf(" var");
+        if(FLAG(*c, value, BOUNDED)) {
+          if(c->value.min > INTPTR_MIN &&
+             c->value.max < INTPTR_MAX) {
+            printf(" in [%" PRIdPTR ", %" PRIdPTR "]",
+                   c->value.min, c->value.max);
+          } else if(c->value.min > INTPTR_MIN) {
+            printf(" >= %" PRIdPTR, c->value.min);
+          } else if(c->value.max < INTPTR_MAX) {
+            printf(" <= %" PRIdPTR, c->value.max);
+          }
+        }
         if(c->value.type == T_OPAQUE) {
           printf(" is %s", symbol_string(c->value.symbol));
         }

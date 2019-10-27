@@ -839,6 +839,14 @@ uint8_t new_alt_id(unsigned int n) {
   return r;
 }
 
+bool expected_symbol(context_t *ctx, val_t sym) {
+  return
+    ctx->t == T_SYMBOL &&
+    ctx->expected &&
+    ctx->expected_min == ctx->expected_max &&
+    ctx->expected_min == sym;
+}
+
 #if INTERFACE
 #define CTX_INHERIT                             \
   .priority = ctx->priority,                    \
@@ -846,15 +854,21 @@ uint8_t new_alt_id(unsigned int n) {
   .inv = ctx->inv,                              \
   .depth = ctx->depth + 1
 
+#define CTX_INHERIT_EXP                         \
+  CTX_INHERIT,                                  \
+  .expected = ctx->expected,                    \
+  .expected_min = ctx->expected_min,            \
+  .expected_max = ctx->expected_max
+
 #define CTX(type, ...) CONCAT(CTX_, type)(__VA_ARGS__)
 #define CTX_list(_in, _out) \
   ((context_t) { .t = T_LIST, .s = { .in = _in, .out = _out }, CTX_INHERIT})
 #define CTX_t_1(_t)                                                     \
-  ((context_t) { .t = _t, CTX_INHERIT, .expected = false })
+  ((context_t) { .t = _t, CTX_INHERIT })
 #define CTX_t_2(_t, _expected_val)                                          \
-  ((context_t) { .t = _t, CTX_INHERIT, .expected = true, .expected_value = _expected_val })
+  ((context_t) { .t = _t, CTX_INHERIT, .expected = true, .expected_min = _expected_val, .expected_max = _expected_val })
 #define CTX_t_3(_t, _expected, _expected_val)                            \
-  ((context_t) { .t = _t, CTX_INHERIT, .expected = _expected, .expected_value = _expected_val })
+  ((context_t) { .t = _t, CTX_INHERIT, .expected = _expected, .expected_min = _expected_val, .expected_max = _expected_val })
 #define CTX_t(...) DISPATCH(CTX_t, __VA_ARGS__)
 #define CTX_any() CTX_t(T_ANY)
 #define CTX_int(...) CTX_t(T_INT, ##__VA_ARGS__)
@@ -863,8 +877,8 @@ uint8_t new_alt_id(unsigned int n) {
 #define CTX_string(...) CTX_t(T_STRING, ##__VA_ARGS__)
 #define CTX_opaque(...) CTX_t(T_OPAQUE, ##__VA_ARGS__)
 #define CTX_return() ((context_t) { .t = T_RETURN })
-#define CTX_INV(invert) ctx->expected, (ctx->expected ? invert(ctx->expected_value) : 0)
-#define CTX_UP ((context_t) { .t = ctx->t, .s = { .in = ctx->s.in, .out = ctx->s.out }, CTX_INHERIT})
+#define CTX_INV(invert) ctx->expected, (ctx->expected ? invert(ctx->expected_min) : 0)
+#define CTX_UP ((context_t) { .t = ctx->t, .s = { .in = ctx->s.in, .out = ctx->s.out }, CTX_INHERIT_EXP})
 #endif
 
 // default 'ctx' for CTX(...) to inherit
@@ -1075,5 +1089,29 @@ bool convert_to_opaque(cell_t *c) {
   }
   LOG("convert symbol %Y to opaque", c->value.symbol);
   c->value.type = T_OPAQUE;
+  return true;
+}
+
+alt_set_t ctx_altset(context_t *ctx) {
+  alt_set_t as = 0;
+  FOLLOW(p, ctx, up) {
+    as |= p->alt_set;
+  }
+  return as;
+}
+
+bool dominated_by_assert(cell_t *c, context_t *ctx) {
+  FOLLOW(p, ctx, up) {
+    if(p->src->op == OP_assert) {
+      cell_t *a = p->src;
+      refcount_t an = a->n;
+      a->n = 0;
+      fake_drop(a);
+      refcount_t cn = c->n;
+      fake_undrop(a);
+      a->n = an;
+      return !~cn;
+    }
+  }
   return true;
 }

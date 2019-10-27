@@ -63,10 +63,12 @@ OP(value) {
   CHECK_IF(!check_type(ctx->t, c->value.type), FAIL);
 
   // TODO handle expected types other than symbols
-  if(ctx->expected && !is_var(c) &&
-     ctx->expected_value != c->value.symbol) {
+  if(ctx->t == T_SYMBOL &&
+     ctx->expected && !is_var(c) &&
+     ctx->expected_min == ctx->expected_max &&
+     ctx->expected_min != c->value.symbol) {
     LOG("expected %C to be %Y, but got %Y",
-        c, ctx->expected_value, c->value.symbol);
+        c, ctx->expected_min, c->value.symbol);
   }
 
   // NOTE: may create multiple placeholder
@@ -76,12 +78,30 @@ OP(value) {
     if(is_any(c) && ctx->t != T_ANY) {
       c->value.type = ctx->t;
       if(ctx->t == T_OPAQUE) {
-        assert_error(ctx->expected, "must provide expected value when reducing opaque %C", c);
-        c->value.symbol = ctx->expected_value;
+        assert_error(ctx->expected && ctx->expected_min == ctx->expected_max,
+                     "must provide expected value when reducing opaque %C", c);
+        c->value.symbol = ctx->expected_min;
       }
       trace_update(c, c);
     }
-    if(ctx->t == T_LIST) {
+    if(ctx->t == T_INT) {
+      if(ctx->expected) {
+        if(dominated_by_assert(c, ctx)) {
+          LOG("bounding var %C to [%d, %d]", c, ctx->expected_min, ctx->expected_max);
+          if(NOT_FLAG(*c, value, BOUNDED)) {
+            FLAG_SET(*c, value, BOUNDED);
+            c->value.min = ctx->expected_min;
+            c->value.max = ctx->expected_max;
+          } else {
+            c->value.min = max(c->value.min, ctx->expected_min);
+            c->value.max = min(c->value.max, ctx->expected_max);
+          }
+          trace_update_range(c);
+        } else {
+          trace_unbound(c);
+        }
+      }
+    } else if(ctx->t == T_LIST) {
       placeholder_extend(cp, ctx->s, false);
     }
   } else if(is_row_list(c)) {
@@ -118,22 +138,25 @@ OP(value) {
   return abort_op(rsp, cp, ctx);
 }
 
-cell_t *make_val(uint8_t t) {
+cell_t *make_val(type_t t) {
   cell_t *c = alloc_value();
   c->op = OP_value;
   c->value.type = t;
   return c;
 }
 
-cell_t *val(uint8_t t, val_t x) {
+cell_t *set_val(cell_t *c, type_t t, val_t x) {
   assert_error(ONEOF(t, T_INT, T_SYMBOL));
-  cell_t *c = make_val(t);
   if(t == T_INT) {
     c->value.integer = x;
   } else if(t == T_SYMBOL) {
     c->value.symbol = x;
   }
   return c;
+}
+
+cell_t *val(type_t t, val_t x) {
+  return(set_val(make_val(t), t, x));
 }
 
 cell_t *int_val(val_t x) {

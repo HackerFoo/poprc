@@ -98,7 +98,8 @@ static_assert(sizeof(location_t) == sizeof_field(location_t, raw), "location_t w
 struct context {
   context_t *up;
   cell_t *src;
-  val_t expected_value;
+  val_t expected_min;
+  val_t expected_max;
   alt_set_t alt_set;
   int priority;
   location_t loc;
@@ -162,7 +163,7 @@ struct __attribute__((packed)) expr {
 #define VALUE_TRACED     0x02
 #define VALUE_INLINE     0x04
 #define VALUE_DEP        0x08
-#define VALUE_LOCAL      0x10
+#define VALUE_BOUNDED    0x10
 #define VALUE_LINEAR     0x20
 #define VALUE_ROW        0x40
 #define VALUE_VAR        0x80
@@ -188,9 +189,13 @@ struct __attribute__((packed)) value {
       cell_t *var; /* variable */
       union {
         val_t integer;  /* integer */
-        double flt;     /* float */
-        char str[0];    /* string */
-        cell_t *ptr[2]; /* list */
+        double flt;     /* float   */
+        char str[0];    /* string  */
+        cell_t *ptr[2]; /* list    */
+        struct {        /* range   */
+          val_t min;
+          val_t max;
+        };
         struct {        /* symbol | opaque */
           val_t symbol;
           union {
