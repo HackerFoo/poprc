@@ -1100,9 +1100,10 @@ alt_set_t ctx_altset(context_t *ctx) {
   return as;
 }
 
-bool dominated_by_assert(cell_t *c, context_t *ctx) {
+bool dominated_by_expectation(cell_t *c, context_t *ctx) {
+  type_t last_t = T_ANY;
   FOLLOW(p, ctx, up) {
-    if(p->src->op == OP_assert) {
+    if(!p->expected || last_t == T_SYMBOL) {
       cell_t *a = p->src;
       refcount_t an = a->n;
       a->n = 0;
@@ -1112,6 +1113,7 @@ bool dominated_by_assert(cell_t *c, context_t *ctx) {
       a->n = an;
       return !~cn;
     }
+    last_t = p->t;
   }
   return true;
 }

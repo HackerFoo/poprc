@@ -18,6 +18,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
+#include <inttypes.h>
 #include "rt_types.h"
 
 #include "startle/error.h"
@@ -74,12 +75,188 @@ cell_t *_op1(cell_t *c, type_t arg_type, type_t res_type,
 }
 
 static
-bool bound_contexts(cell_t *c, context_t *ctx, context_t *arg_ctx) {
+bool bound_contexts_noop(UNUSED cell_t *c,
+                         UNUSED context_t *ctx,
+                         UNUSED context_t *arg_ctx) {
+  return false;
+}
+
+val_t sign(val_t x) {
+  return x < 0 ? -1 :
+    x > 0 ? 1 : 0;
+}
+
+val_t div_min(val_t n, val_t d) {
+  return sat_sub(n, d - sign(d)) / d;
+}
+
+val_t div_max(val_t n, val_t d) {
+  return sat_add(n, d - sign(d)) / d;
+}
+
+#define SHOW(expr, expected)                                            \
+  {                                                                     \
+    val_t x = (expr);                                                   \
+    val_t e = (expected);                                               \
+    bool pass = x == e;                                                 \
+    printf(#expr " = %" PRIdPTR ", expected %" PRIdPTR ": %s\n",        \
+           x, e, pass ? "PASS" : "FAIL");                               \
+    if(!pass) ret = -1;                                                 \
+  }
+
+TEST(div_min_max) {
+  int ret = 0;
+  SHOW(div_min(5, 3), 1);
+  SHOW(div_min(-5, 3), -2);
+  SHOW(div_min(5, -3), -2);
+  SHOW(div_min(-5, -3), 1);
+
+  SHOW(div_max(5, 3), 2);
+  SHOW(div_max(-5, 3), -1);
+  SHOW(div_max(5, -3), -1);
+  SHOW(div_max(-5, -3), 2);
+  return ret;
+}
+
+val_t sat_add(val_t x, val_t y) {
+  if(x >= 0) {
+    if(y > INTPTR_MAX - x) return INTPTR_MAX;
+  } else {
+    if(y < INTPTR_MIN - x) return INTPTR_MIN;
+  }
+  return x + y;
+}
+
+TEST(sat_arith) {
+  int ret = 0;
+  SHOW(sat_add(INTPTR_MIN, INTPTR_MIN), INTPTR_MIN);
+  SHOW(sat_add(INTPTR_MAX, INTPTR_MIN), -1);
+  SHOW(sat_add(INTPTR_MIN, INTPTR_MAX), -1);
+  SHOW(sat_add(INTPTR_MAX, INTPTR_MAX), INTPTR_MAX);
+
+  SHOW(sat_sub(INTPTR_MIN, INTPTR_MIN), 0);
+  SHOW(sat_sub(INTPTR_MAX, INTPTR_MIN), INTPTR_MAX);
+  SHOW(sat_sub(INTPTR_MIN, INTPTR_MAX), INTPTR_MIN);
+  SHOW(sat_sub(INTPTR_MAX, INTPTR_MAX), 0);
+
+  SHOW(sat_mul(INTPTR_MIN, 2), INTPTR_MIN);
+  SHOW(sat_mul(INTPTR_MAX, 2), INTPTR_MAX);
+  SHOW(sat_mul(2, INTPTR_MIN), INTPTR_MIN);
+  SHOW(sat_mul(2, INTPTR_MAX), INTPTR_MAX);
+  SHOW(sat_mul(INTPTR_MIN, -2), INTPTR_MAX);
+  SHOW(sat_mul(INTPTR_MAX, -2), INTPTR_MIN);
+  SHOW(sat_mul(-2, INTPTR_MIN), INTPTR_MAX);
+  SHOW(sat_mul(-2, INTPTR_MAX), INTPTR_MIN);
+  return ret;
+}
+
+val_t sat_sub(val_t x, val_t y) {
+  if(x >= 0) {
+    if(y < x - INTPTR_MAX) return INTPTR_MAX;
+  } else {
+    if(y > x - INTPTR_MIN) return INTPTR_MIN;
+  }
+  return x - y;
+}
+
+val_t sat_mul(val_t x, val_t y) {
+  val_t low_limit = x >= 0 ? INTPTR_MIN : INTPTR_MAX;
+  val_t high_limit = x >= 0 ? INTPTR_MAX : INTPTR_MIN;
+  val_t min_y = div_max(low_limit, x);
+  if(y < min_y) return low_limit;
+  val_t max_y = div_min(high_limit, x);
+  if(y > max_y) return high_limit;
+  return x * y;
+}
+
+static
+bool bound_contexts_arith(cell_t *c, context_t *ctx, context_t *arg_ctx) {
+  if(trace_current_entry() == NULL ||
+     ctx->t != T_INT ||
+     !ctx->expected) {
+    return false;
+  }
+
+  op op = c->op;
+  if(is_value(c->expr.arg[0]) && !is_var(c->expr.arg[0])) {
+    val_t lhs = c->expr.arg[0]->value.integer;
+    context_t *other = &arg_ctx[1];
+    switch(op) {
+    case OP_add:
+      other->expected_min = sat_sub(ctx->expected_min, lhs);
+      other->expected_max = sat_sub(ctx->expected_max, lhs);
+      break;
+    case OP_sub:
+      other->expected_min = sat_sub(lhs, ctx->expected_max);
+      other->expected_max = sat_sub(lhs, ctx->expected_min);
+      break;
+    case OP_mul:
+      if(lhs > 0) {
+        other->expected_min = div_min(ctx->expected_min, lhs);
+        other->expected_max = div_max(ctx->expected_max, lhs);
+      } else if(lhs < 0) {
+        other->expected_min = -div_max(ctx->expected_max, -lhs);
+        other->expected_max = -div_min(ctx->expected_min, -lhs);
+      } else {
+        other->expected_min = INTPTR_MIN;
+        other->expected_max = INTPTR_MAX;
+      }
+      break;
+    case OP_div:
+    default:
+      return false;
+    }
+    other->expected = true;
+    return true;
+  } else if(is_value(c->expr.arg[1]) && !is_var(c->expr.arg[1])) {
+    val_t rhs = c->expr.arg[1]->value.integer;
+    context_t *other = &arg_ctx[0];
+    switch(op) {
+    case OP_add: // same as above
+      other->expected_min = sat_sub(ctx->expected_min, rhs);
+      other->expected_max = sat_sub(ctx->expected_max, rhs);
+      break;
+    case OP_sub:
+      other->expected_min = sat_add(ctx->expected_max, rhs);
+      other->expected_max = sat_add(ctx->expected_min, rhs);
+      break;
+    case OP_mul: // same as above
+      if(rhs > 0) {
+        other->expected_min = div_min(ctx->expected_min, rhs);
+        other->expected_max = div_max(ctx->expected_max, rhs);
+      } else if(rhs < 0) {
+        other->expected_min = -div_max(ctx->expected_max, -rhs);
+        other->expected_max = -div_min(ctx->expected_min, -rhs);
+      } else {
+        other->expected_min = INTPTR_MIN;
+        other->expected_max = INTPTR_MAX;
+      }
+      break;
+    case OP_div:
+      if(rhs > 0) {
+        other->expected_min = sat_mul(ctx->expected_min, rhs);
+        other->expected_max = sat_mul(ctx->expected_max, rhs);
+      } else if(rhs < 0) {
+        other->expected_min = sat_mul(ctx->expected_max, rhs);
+        other->expected_max = sat_mul(ctx->expected_min, rhs);
+      }
+      break;
+    default:
+      return false;
+    }
+    other->expected = true;
+    return true;
+  } else {
+    return false;
+  }
+}
+
+static
+bool bound_contexts_cmp(cell_t *c, context_t *ctx, context_t *arg_ctx) {
   if(trace_current_entry() == NULL ||
      ctx->t != T_SYMBOL ||
      !ctx->expected ||
-     ctx->expected_min != ctx->expected_max ||
-     !ONEOF(c->op, OP_lt, OP_lte, OP_gt, OP_gte, OP_eq, OP_neq)) {
+     ctx->expected_min != ctx->expected_max) {
     return false;
   }
 
@@ -109,11 +286,13 @@ bool bound_contexts(cell_t *c, context_t *ctx, context_t *arg_ctx) {
     case OP_gte: op = OP_lt; break;
     case OP_eq: op = OP_neq; break;
     case OP_neq: op = OP_eq; break;
+    case OP_eq_s: op = OP_neq_s; break;
+    case OP_neq_s: op = OP_eq_s; break;
     default: break;
     }
   }
 
-  if(op == OP_neq) return false; // can't represent neq
+  if(ONEOF(op, OP_neq, OP_neq_s)) return false; // can't represent neq
 
   other->expected = true;
   other->expected_min = INTPTR_MIN;
@@ -124,7 +303,9 @@ bool bound_contexts(cell_t *c, context_t *ctx, context_t *arg_ctx) {
   case OP_lte: other->expected_max = val; break;
   case OP_gt: other->expected_min = val + 1; break;
   case OP_gte: other->expected_min = val; break;
-  case OP_eq: other->expected_min = other->expected_max = val; break;
+  case OP_eq:
+  case OP_eq_s:
+    other->expected_min = other->expected_max = val; break;
   default: break;
   }
 
@@ -134,7 +315,8 @@ bool bound_contexts(cell_t *c, context_t *ctx, context_t *arg_ctx) {
 // CLEANUP merge with func_op2_float
 response func_op2(cell_t **cp, context_t *ctx,
                   type_t arg_type, type_t res_type,
-                  val_t (*op)(val_t, val_t), bool nonzero) {
+                  val_t (*op)(val_t, val_t), bool nonzero,
+                  bool (*bound_contexts)(cell_t *, context_t *, context_t *)) {
   cell_t *res = 0;
   PRE(op2);
 
@@ -240,31 +422,31 @@ response func_op1_float(cell_t **cp, context_t *ctx, double (*op)(double)) {
 WORD("+", add, 2, 1)
 val_t add_op(val_t x, val_t y) { return x + y; }
 OP(add) {
-  return func_op2(cp, ctx, T_INT, T_INT, add_op, false);
+  return func_op2(cp, ctx, T_INT, T_INT, add_op, false, bound_contexts_arith);
 }
 
 WORD("*", mul, 2, 1)
 val_t mul_op(val_t x, val_t y) { return x * y; }
 OP(mul) {
-  return func_op2(cp, ctx, T_INT, T_INT, mul_op, false);
+  return func_op2(cp, ctx, T_INT, T_INT, mul_op, false, bound_contexts_arith);
 }
 
 WORD("-", sub, 2, 1)
 val_t sub_op(val_t x, val_t y) { return x - y; }
 OP(sub) {
-  return func_op2(cp, ctx, T_INT, T_INT, sub_op, false);
+  return func_op2(cp, ctx, T_INT, T_INT, sub_op, false, bound_contexts_arith);
 }
 
 WORD("/", div, 2, 1)
 val_t div_op(val_t x, val_t y) { return x / y; }
 OP(div) {
-  return func_op2(cp, ctx, T_INT, T_INT, div_op, true);
+  return func_op2(cp, ctx, T_INT, T_INT, div_op, true, bound_contexts_arith);
 }
 
 WORD("%", mod, 2, 1)
 val_t mod_op(val_t x, val_t y) { return x % y; }
 OP(mod) {
-  return func_op2(cp, ctx, T_INT, T_INT, mod_op, true);
+  return func_op2(cp, ctx, T_INT, T_INT, mod_op, true, bound_contexts_noop);
 }
 
 WORD("+f", add_float, 2, 1)
@@ -329,31 +511,31 @@ OP(sqrt) {
 WORD("&b", bitand, 2, 1)
 val_t bitand_op(val_t x, val_t y) { return x & y; }
 OP(bitand) {
-  return func_op2(cp, ctx, T_INT, T_INT, bitand_op, false);
+  return func_op2(cp, ctx, T_INT, T_INT, bitand_op, false, bound_contexts_noop);
 }
 
 WORD("|b", bitor, 2, 1)
 val_t bitor_op(val_t x, val_t y) { return x | y; }
 OP(bitor) {
-  return func_op2(cp, ctx, T_INT, T_INT, bitor_op, false);
+  return func_op2(cp, ctx, T_INT, T_INT, bitor_op, false, bound_contexts_noop);
 }
 
 WORD("^b", bitxor, 2, 1)
 val_t bitxor_op(val_t x, val_t y) { return x ^ y; }
 OP(bitxor) {
-  return func_op2(cp, ctx, T_INT, T_INT, bitxor_op, false);
+  return func_op2(cp, ctx, T_INT, T_INT, bitxor_op, false, bound_contexts_noop);
 }
 
 WORD("<<b", shiftl, 2, 1)
 val_t shiftl_op(val_t x, val_t y) { return x << y; }
 OP(shiftl) {
-  return func_op2(cp, ctx, T_INT, T_INT, shiftl_op, false);
+  return func_op2(cp, ctx, T_INT, T_INT, shiftl_op, false, bound_contexts_noop);
 }
 
 WORD(">>b", shiftr, 2, 1)
 val_t shiftr_op(val_t x, val_t y) { return x >> y; }
 OP(shiftr) {
-  return func_op2(cp, ctx, T_INT, T_INT, shiftr_op, false);
+  return func_op2(cp, ctx, T_INT, T_INT, shiftr_op, false, bound_contexts_noop);
 }
 
 WORD("~b", complement, 1, 1)
@@ -371,47 +553,47 @@ OP(not) {
 WORD(">", gt, 2, 1)
 val_t gt_op(val_t x, val_t y) { return x > y; }
 OP(gt) {
-  return func_op2(cp, ctx, T_INT, T_SYMBOL, gt_op, false);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, gt_op, false, bound_contexts_cmp);
 }
 
 WORD(">=", gte, 2, 1)
 val_t gte_op(val_t x, val_t y) { return x >= y; }
 OP(gte) {
-  return func_op2(cp, ctx, T_INT, T_SYMBOL, gte_op, false);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, gte_op, false, bound_contexts_cmp);
 }
 
 WORD("<", lt, 2, 1)
 val_t lt_op(val_t x, val_t y) { return x < y; }
 OP(lt) {
-  return func_op2(cp, ctx, T_INT, T_SYMBOL, lt_op, false);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, lt_op, false, bound_contexts_cmp);
 }
 
 WORD("<=", lte, 2, 1)
 val_t lte_op(val_t x, val_t y) { return x <= y; }
 OP(lte) {
-  return func_op2(cp, ctx, T_INT, T_SYMBOL, lte_op, false);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, lte_op, false, bound_contexts_cmp);
 }
 
 val_t eq_op(val_t x, val_t y) { return x == y; }
 WORD("==", eq, 2, 1)
 OP(eq) {
-  return func_op2(cp, ctx, T_INT, T_SYMBOL, eq_op, false);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, eq_op, false, bound_contexts_cmp);
 }
 
 WORD("=:=", eq_s, 2, 1)
 OP(eq_s) {
-  return func_op2(cp, ctx, T_SYMBOL, T_SYMBOL, eq_op, false);
+  return func_op2(cp, ctx, T_SYMBOL, T_SYMBOL, eq_op, false, bound_contexts_cmp);
 }
 
 WORD("!=", neq, 2, 1)
 val_t neq_op(val_t x, val_t y) { return x != y; }
 OP(neq) {
-  return func_op2(cp, ctx, T_INT, T_SYMBOL, neq_op, false);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, neq_op, false, bound_contexts_cmp);
 }
 
 WORD("!:=", neq_s, 2, 1)
 OP(neq_s) {
-  return func_op2(cp, ctx, T_SYMBOL, T_SYMBOL, neq_op, false);
+  return func_op2(cp, ctx, T_SYMBOL, T_SYMBOL, neq_op, false, bound_contexts_cmp);
 }
 
 WORD("->f", to_float, 1, 1)

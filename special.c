@@ -33,7 +33,28 @@ OP(value) {
   PRE(value);
   stats.reduce_cnt--;
   ctx->alt_set = c->value.alt_set;
-  if(is_var(c)) CHECK_PRIORITY(PRIORITY_VAR);
+  if(is_var(c)) {
+    if(ctx->t == T_INT) {
+      if(ctx->expected) {
+        if(dominated_by_expectation(c, ctx)) {
+          LOG("bounding var %C to [%d, %d]", c, ctx->expected_min, ctx->expected_max);
+          if(NOT_FLAG(*c, value, BOUNDED)) {
+            FLAG_SET(*c, value, BOUNDED);
+            c->value.min = ctx->expected_min;
+            c->value.max = ctx->expected_max;
+          } else {
+            c->value.min = max(c->value.min, ctx->expected_min);
+            c->value.max = min(c->value.max, ctx->expected_max);
+          }
+          trace_update_range(c);
+        } else {
+          CHECK_PRIORITY(PRIORITY_VAR);
+          trace_unbound(c);
+        }
+      }
+    }
+    CHECK_PRIORITY(PRIORITY_VAR);
+  }
 
   // convert from T_BOTTOM
   if(c->value.type == T_BOTTOM && ctx->t != T_ANY) {
@@ -84,24 +105,7 @@ OP(value) {
       }
       trace_update(c, c);
     }
-    if(ctx->t == T_INT) {
-      if(ctx->expected) {
-        if(dominated_by_assert(c, ctx)) {
-          LOG("bounding var %C to [%d, %d]", c, ctx->expected_min, ctx->expected_max);
-          if(NOT_FLAG(*c, value, BOUNDED)) {
-            FLAG_SET(*c, value, BOUNDED);
-            c->value.min = ctx->expected_min;
-            c->value.max = ctx->expected_max;
-          } else {
-            c->value.min = max(c->value.min, ctx->expected_min);
-            c->value.max = min(c->value.max, ctx->expected_max);
-          }
-          trace_update_range(c);
-        } else {
-          trace_unbound(c);
-        }
-      }
-    } else if(ctx->t == T_LIST) {
+    if(ctx->t == T_LIST) {
       placeholder_extend(cp, ctx->s, false);
     }
   } else if(is_row_list(c)) {

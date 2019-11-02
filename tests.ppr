@@ -430,5 +430,6 @@ add_array_at: over [[+] pushl update_array] dip31 read_array
 
 one_to_ten: dup 1 >= ! dup 10 <= !
 one_to_ten2: dup 1 >= ! dup 10 <= ! [dup 5 < !] [dup 5 >= !] | $
+two_to_twenty: 2 / one_to_ten
 
 not_one_to_ten: [dup 1 < !] [dup 10 > !] | $

@@ -23,6 +23,16 @@ M:three
 comments => 0
 @ compose_size
 compose_size => 0
+@ div_min_max
+div_min(5, 3) = 1, expected 1: PASS
+div_min(-5, 3) = -2, expected -2: PASS
+div_min(5, -3) = -2, expected -2: PASS
+div_min(-5, -3) = 1, expected 1: PASS
+div_max(5, 3) = 2, expected 2: PASS
+div_max(-5, 3) = -1, expected -1: PASS
+div_max(5, -3) = -1, expected -1: PASS
+div_max(-5, -3) = 2, expected 2: PASS
+div_min_max => 0
 @ error
 i = 0
 i = 1
@@ -271,6 +281,24 @@ ring_buffer => 0
 {{5, 5}, {6, 6}, {0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}}
 {{6, 6}, {0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}}
 rotate => 0
+@ sat_arith
+sat_add(INTPTR_MIN, INTPTR_MIN) = -9223372036854775808, expected -9223372036854775808: PASS
+sat_add(INTPTR_MAX, INTPTR_MIN) = -1, expected -1: PASS
+sat_add(INTPTR_MIN, INTPTR_MAX) = -1, expected -1: PASS
+sat_add(INTPTR_MAX, INTPTR_MAX) = 9223372036854775807, expected 9223372036854775807: PASS
+sat_sub(INTPTR_MIN, INTPTR_MIN) = 0, expected 0: PASS
+sat_sub(INTPTR_MAX, INTPTR_MIN) = 9223372036854775807, expected 9223372036854775807: PASS
+sat_sub(INTPTR_MIN, INTPTR_MAX) = -9223372036854775808, expected -9223372036854775808: PASS
+sat_sub(INTPTR_MAX, INTPTR_MAX) = 0, expected 0: PASS
+sat_mul(INTPTR_MIN, 2) = -9223372036854775808, expected -9223372036854775808: PASS
+sat_mul(INTPTR_MAX, 2) = 9223372036854775807, expected 9223372036854775807: PASS
+sat_mul(2, INTPTR_MIN) = -9223372036854775808, expected -9223372036854775808: PASS
+sat_mul(2, INTPTR_MAX) = 9223372036854775807, expected 9223372036854775807: PASS
+sat_mul(INTPTR_MIN, -2) = 9223372036854775807, expected 9223372036854775807: PASS
+sat_mul(INTPTR_MAX, -2) = -9223372036854775808, expected -9223372036854775808: PASS
+sat_mul(-2, INTPTR_MIN) = 9223372036854775807, expected 9223372036854775807: PASS
+sat_mul(-2, INTPTR_MAX) = -9223372036854775808, expected -9223372036854775808: PASS
+sat_arith => 0
 @ seg_find
 seg_find => 0
 @ seg_find_char
