@@ -647,8 +647,7 @@ char *show_type_all_short(const cell_t *c) {
   const static char type_flag_char[] = {
     '?',
     '@',
-    '!',
-    '.'
+    '!'
   };
   static char buf[LENGTH(type_flag_char) + 1];
 

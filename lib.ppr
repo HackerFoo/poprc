@@ -28,6 +28,7 @@ module num:
 
 imports:
   module stack
+  module control
 
 __ max of two values
 max: [] ap20 dup . dup tail | [<= !] . popr nip
@@ -39,6 +40,10 @@ __ is argument odd?
 odd: 1 &b 1 ==
 
 even: 1 &b 0 ==
+
+bound: [dup_under >= !] dip21 dup_under <= !
+
+up_to: 0 swap bound
 
 module list:
 
@@ -241,6 +246,8 @@ over4: swap4 dup [-swap4] dip55
 
 dup2: [] ap20 dup . ap04 swap4 drop
 
+dup_under: [dup] dip12
+
 __ x_1 x_2 ... x_n -> x_2 ... x_n x_1
 swap2: [] swap pushr swap pushr pushl pull3 drop
 swap3: [] swap pushr swap pushr swap pushr pushl pull4 drop
@@ -312,7 +319,7 @@ __ a [f] -> fa [f]
 $keep: dup [$] dip21
 
 __ a [f] -> a fa
-peek: [dup] dip12 $
+peek: dup_under $
 
 __ a [f] -> fa a
 ->: peek swap
@@ -344,7 +351,7 @@ iterate:
     [fork] ap20 ifdo
 
 while:
-   over [$keep [dup] dip12 while] dip22 vifte
+   over [$keep dup_under while] dip22 vifte
 
 __ apply [f] n times
 times: __ a [f] n
@@ -393,7 +400,7 @@ and: [!] [False swap not!] | ap21 nip
 implies: swap not or
 
 __ A B default -> A, or B if A fails
-default: [dup] dip12 otherwise |
+default: dup_under otherwise |
 
 otherwise2: __ a0 a1 b0 b1
   [] ap20 otherwise otherwise get2
