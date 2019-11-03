@@ -381,4 +381,15 @@
 #define ARGS_3(p, q, r) ARGS_2(p, q), __ARGS(r, 2)
 #define ARGS(...) DISPATCH(ARGS, __VA_ARGS__)
 
+#define ALLOC(_args, ...)                       \
+  ({                                            \
+    cell_t *_self = closure_alloc(_args);       \
+    *_self = (cell_t) {                         \
+      .size = _self->size,                      \
+      ##__VA_ARGS__                             \
+    };                                          \
+    _self;                                      \
+  })
+
+
 #endif

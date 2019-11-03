@@ -448,10 +448,10 @@ cell_t *compose(list_iterator_t it, cell_t *b, csize_t out) {
 cell_t *ready_func(op op, csize_t in, csize_t out) {
   assert_error(out > 0);
   csize_t args = in + out - 1;
-  cell_t *c = closure_alloc(args);
-  c->expr.out = out - 1;
-  c->expr.flags = 0;
-  c->op = op;
+  cell_t *c = ALLOC(args,
+    .expr.out = out - 1,
+    .op = op
+  );
   return c;
 }
 
@@ -902,67 +902,91 @@ bool check_type(type_t requested, type_t expected) {
 }
 
 cell_t *build01(op op) {
-  cell_t *c = closure_alloc(0);
-  c->op = op;
+  cell_t *c = ALLOC(0,
+    .op = op,
+    .expr.out = 0
+  );
   return c;
 }
 
 cell_t *build11(op op, cell_t *i0) {
-  cell_t *c = closure_alloc(1);
-  c->op = op;
-  c->expr.arg[0] = i0;
+  cell_t *c = ALLOC(1,
+    .op = op,
+    .expr = {
+      .out = 0,
+      .arg = {i0}
+    }
+  );
   return c;
 }
 
 cell_t *build21(op op, cell_t *i0, cell_t *i1) {
-  cell_t *c = closure_alloc(2);
-  c->op = op;
-  c->expr.arg[0] = i0;
-  c->expr.arg[1] = i1;
+  cell_t *c = ALLOC(2,
+    .op = op,
+    .expr = {
+      .out = 0,
+      .arg = {i0, i1}
+    }
+  );
   return c;
 }
 
 cell_t *build31(op op, cell_t *i0, cell_t *i1, cell_t *i2) {
-  cell_t *c = closure_alloc(3);
-  c->op = op;
-  c->expr.arg[0] = i0;
-  c->expr.arg[1] = i1;
+  cell_t *c = ALLOC(3,
+    .op = op,
+    .expr = {
+      .out = 0,
+      .arg = {i0, i1}
+    }
+  );
   c->expr.arg[2] = i2;
   return c;
 }
 
 cell_t *build12(op op, cell_t *i0, cell_t **o1) {
-  cell_t *c = closure_alloc(2);
-  c->op = op;
-  c->expr.arg[0] = i0;
-  c->expr.arg[1] = *o1 = dep(ref(c));
+  cell_t *c = ALLOC(2,
+    .op = op,
+    .expr = {
+      .out = 1,
+      .arg = {i0, *o1 = dep(ref(_self))}
+    }
+  );
   return c;
 }
 
 cell_t *build22(op op, cell_t *i0, cell_t *i1, cell_t **o1) {
-  cell_t *c = closure_alloc(3);
-  c->op = op;
-  c->expr.arg[0] = i0;
-  c->expr.arg[1] = i1;
+  cell_t *c = ALLOC(3,
+    .op = op,
+    .expr = {
+      .out = 1,
+      .arg = {i0, i1}
+    }
+  );
   c->expr.arg[2] = *o1 = dep(ref(c));
   return c;
 }
 
 cell_t *build32(op op, cell_t *i0, cell_t *i1, cell_t *i2, cell_t **o1) {
-  cell_t *c = closure_alloc(4);
-  c->op = op;
-  c->expr.arg[0] = i0;
-  c->expr.arg[1] = i1;
+  cell_t *c = ALLOC(4,
+    .op = op,
+    .expr = {
+      .out = 1,
+      .arg = {i0, i1}
+    }
+  );
   c->expr.arg[2] = i2;
   c->expr.arg[3] = *o1 = dep(ref(c));
   return c;
 }
 
 cell_t *build23(op op, cell_t *i0, cell_t *i1, cell_t **o1, cell_t **o2) {
-  cell_t *c = closure_alloc(4);
-  c->op = op;
-  c->expr.arg[0] = i0;
-  c->expr.arg[1] = i1;
+  cell_t *c = ALLOC(4,
+    .op = op,
+    .expr = {
+      .out = 2,
+      .arg = {i0, i1}
+    }
+  );
   c->expr.arg[2] = *o1 = dep(ref(c));
   c->expr.arg[3] = *o2 = dep(ref(c));
   return c;

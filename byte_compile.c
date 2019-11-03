@@ -712,8 +712,9 @@ cell_t *flat_quote(cell_t *new_entry, cell_t *parent_entry) {
     }
   }
 
-  cell_t *nc = closure_alloc(in + 1);
-  nc->op = OP_exec;
+  cell_t *nc = ALLOC(in + 1,
+    .op = OP_exec
+  );
 
   FOR_TRACE(p, new_entry) {
     if(is_var(p) && p->value.var) {

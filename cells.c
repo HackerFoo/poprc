@@ -151,9 +151,10 @@ cell_t *alloc_list(csize_t n) {
 // allocate space for n chars + '\0'
 cell_t *alloc_string(size_t n) {
   int args = DIV_UP(n + 1, sizeof_field(cell_t, expr.arg[0]));
-  cell_t *c = closure_alloc(args + VALUE_OFFSET(str));
-  c->op = OP_value;
-  c->value.type = T_STRING;
+  cell_t *c = ALLOC(args + VALUE_OFFSET(str),
+    .op = OP_value,
+    .value.type = T_STRING
+  );
   c->value.str[n] = '\0';
   size_t max_size = sizeof_field(cell_t, expr.arg[0]) * args;
   c->value.str[max_size-1] = max_size - n;
@@ -233,7 +234,6 @@ cell_t *closure_alloc_cells(csize_t size) {
   if(current_alloc_cnt > stats.max_alloc_cnt)
     stats.max_alloc_cnt = current_alloc_cnt;
 
-  memset(c, 0, sizeof(cell_t)*size);
   WATCH(c, "cell_alloc");
   return c;
 }

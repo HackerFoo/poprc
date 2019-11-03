@@ -144,8 +144,11 @@ OP(value) {
 
 cell_t *make_val(type_t t) {
   cell_t *c = alloc_value();
-  c->op = OP_value;
-  c->value.type = t;
+  *c = (cell_t) {
+    .size = c->size,
+    .op = OP_value,
+    .value.type = t
+  };
   return c;
 }
 
@@ -246,11 +249,15 @@ cell_t *var_create(type_t t, cell_t *tc, int in, int out) {
 
 cell_t *var_create_nonlist(type_t t, cell_t *tc) {
   cell_t *c = alloc_value();
-  c->op = OP_value;
-  c->size = 2;
-  c->value.var = tc;
-  c->value.flags = VALUE_VAR;
-  c->value.type = t;
+  *c = (cell_t) {
+    .size = c->size,
+    .op = OP_value,
+    .value = {
+      .var = tc,
+      .flags = VALUE_VAR,
+      .type = t
+    }
+  };
   trace_update_type(c);
   return c;
 }
@@ -324,11 +331,14 @@ cell_t *make_map(csize_t s) {
   csize_t cs = calculate_map_size(s);
   cell_t *c = closure_alloc_cells(cs);
   uintptr_t size = (sizeof(cell_t) * cs - offsetof(cell_t, value.map)) / sizeof(pair_t) - 1;
-  c->op = OP_value;
-  c->size = 2 * (size + 1) + 1;
-  c->value.type = T_MAP;
-  c->value.map[0].first = size;
-  c->value.map[0].second = 0;
+  *c = (cell_t) {
+    .op = OP_value,
+    .size = 2 * (size + 1) + 1,
+    .value = {
+      .type = T_MAP,
+      .map = {{size, 0}}
+    }
+  };
   return c;
 }
 

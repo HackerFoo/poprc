@@ -52,9 +52,10 @@ cell_t *lex(const char* s, const char* e) {
     const char *next = seg_end(t);
     update_line(s, next, &line);
     s = next;
-    cell_t *c = closure_alloc(1);
-    c->op = OP_fail; // HACK
-    c->n = PERSISTENT;
+    cell_t *c = ALLOC(1,
+      .op = OP_fail, // HACK
+      .n = PERSISTENT
+    );
     tok_set_seg(c, t);
     c->tok_list.line = line;
     c->char_class = cc;

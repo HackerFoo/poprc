@@ -262,9 +262,10 @@ response unify_exec(cell_t **cp, cell_t *parent_entry, context_t *ctx) {
     }
 
     csize_t in = tmp_list_length(vl);
-    cell_t *n = closure_alloc(in + out + 1);
-    n->expr.out = out;
-    n->op = OP_exec;
+    cell_t *n = ALLOC(in + out + 1,
+      .expr.out = out,
+      .op = OP_exec
+    );
     n->expr.arg[in] = entry;
     FLAG_SET(*n, expr, RECURSIVE);
     FLAG_SET(*n, expr, NO_UNIFY);
@@ -535,9 +536,10 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
   csize_t
     in = entry->entry.in,
     out = entry->entry.out;
-  cell_t *nc = closure_alloc(in + out);
-  nc->expr.out = out - 1;
-  nc->op = OP_exec;
+  cell_t *nc = ALLOC(in + out,
+    .expr.out = out - 1,
+    .op = OP_exec
+  );
   cell_t *vl = 0;
   input_var_list(c, &vl);
   assert_error(tmp_list_length(vl) == in,
