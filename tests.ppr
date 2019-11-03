@@ -433,3 +433,14 @@ one_to_ten2: dup 1 >= ! dup 10 <= ! [dup 5 < !] [dup 5 >= !] | $
 two_to_twenty: 2 / one_to_ten
 
 not_one_to_ten: [dup 1 < !] [dup 10 > !] | $
+
+__ for testing analysis
+mul_lt50: 1 10 bound swap 1 10 bound * dup 50 < !
+assoc100:
+  0 100 bound swap2
+    0 100 bound swap2
+    0 100 bound swap2
+    []ap30 dup
+    [+ +] . head swap
+    [[+] dip21 +] . head ==
+    True swap!

@@ -26,6 +26,7 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <inttypes.h>
 
 #if defined(USE_READLINE)
 #include <readline/readline.h>
@@ -72,6 +73,7 @@
 
 bool quit = false;
 bool command_line = false;
+bool exit_on_error = false;
 
 static bool tty = false;
 static bool echo = false;
@@ -193,7 +195,6 @@ int main(int argc, char **argv) {
   log_init();
 
   error_t error;
-  bool exit_on_error = false;
 
   if(catch_error(&error)) {
     printf(NOTE("ERROR") " ");
@@ -915,5 +916,94 @@ COMMAND(tag, "convert tag <-> hex") {
     const char *tag = rest->tok_list.location;
     int x = read_tag(tag);
     printf(FORMAT_TAG " = 0x%x\n", tag, x);
+  }
+}
+
+bool call(cell_t *e, val_t *in_args, val_t *out_args) {
+  assert_throw(e && NOT_FLAG(*e, entry, PRIMITIVE));
+  csize_t in = e->entry.in;
+  csize_t out = e->entry.out;
+  cell_t *c = func(OP_exec, in + 1, out);
+  COUNTUP(i, in) {
+    c->expr.arg[i] = val(T_INT, in_args[i]);
+  }
+  c->expr.arg[in] = e;
+  cell_t *l = make_list(out);
+  l->value.ptr[0] = c;
+  RANGEUP(i, 1, out) {
+    l->value.ptr[REVI(i)] = c->expr.arg[in + i] = dep(c);
+  }
+  refn(c, out-1);
+  closure_set_ready(c, true);
+  reduce_root(&l, 0, reduction_limit);
+  if(!l) return false;
+  ASSERT_REF();
+  if(out_args) {
+    COUNTUP(i, out) {
+      out_args[i] = l->value.ptr[REVI(i)]->value.integer;
+    }
+  }
+  drop(l);
+  return true;
+}
+
+void inputs_from_number(int n, pair_t *bounds, int bounds_n, val_t *input) {
+  COUNTDOWN(i, bounds_n) {
+    int range = bounds[i].second - bounds[i].first;
+    input[i] = bounds[i].first + n % range;
+    n /= range;
+  }
+}
+
+#define ANALYZE_ARGS 8
+#define ANALYZE_MAX_COMBINATIONS (1<<24)
+COMMAND(analyze, "analyze a function") {
+  pair_t bounds[ANALYZE_ARGS];
+  val_t inputs[ANALYZE_ARGS];
+  if(rest) {
+    seg_t name = tok_seg(rest);
+    cell_t *module = eval_module();
+    cell_t *e = module_lookup_compiled(name, &module);
+    assert_throw(e, "function not found");
+    csize_t in = e->entry.in;
+    assert_throw(in, "no arguments");
+    assert_throw(in <= ANALYZE_ARGS, "too many arguments");
+    COUNTUP(i, in) {
+      cell_t *v = &e[REVI(i) + 1];
+      assert_throw(v->value.type == T_INT, "only integer inputs");
+      assert_throw(FLAG(*v, value, BOUNDED), "inputs must be bounded");
+      bounds[i] = (pair_t) {
+        v->value.min,
+        v->value.max
+      };
+    }
+    int combinations = 1;
+    COUNTUP(i, in) {
+      combinations *= bounds[i].second - bounds[i].first;
+    }
+    assert_throw(combinations <= ANALYZE_MAX_COMBINATIONS, "too many combinations");
+    printf("%d combinations to test\n", combinations);
+    stats_start();
+    int dot = combinations / 80;
+    COUNTUP(i, combinations) {
+      if(!dot) {
+        dot = combinations / 80;
+        putchar('.');
+        fflush(stdout);
+      } else dot--;
+      inputs_from_number(i, bounds, in, inputs);
+      rt_init();
+      bool success = call(e, inputs, NULL);
+      if(!success) {
+        printf("\nFAILED test %d with inputs:", (int)i);
+        COUNTUP(j, in) {
+          printf(" %d", (int)inputs[j]);
+        }
+        printf("\n");
+        break;
+      }
+    }
+    printf("\n");
+    stats_stop();
   }
 }
