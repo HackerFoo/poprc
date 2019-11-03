@@ -87,8 +87,8 @@ ifeq ($(BUILD),release-with-asserts)
 endif
 
 ifeq ($(BUILD),profile)
-	CFLAGS += -DNDEBUG $(OPT_FLAG)
-	CXXFLAGS += -DNDEBUG $(OPT_FLAG)
+	CFLAGS += -g -DNDEBUG $(OPT_FLAG)
+	CXXFLAGS += -g -DNDEBUG $(OPT_FLAG)
 	LIBS += -lprofiler
 endif
 
@@ -120,7 +120,8 @@ GEN := $(patsubst %.c, .gen/%.h, $(SRC)) $(patsubst %, .gen/%_list.h, $(LISTS))
 DOT := $(wildcard *.dot)
 DOTSVG := $(patsubst %.dot, $(DIAGRAMS)/%.svg, $(DOT))
 
-PROFILE_EXPRESSION := '426 [0 1] [[dup2 + 0xffff &b] .] swap2 1- times head'
+#PROFILE_COMMAND := -ev '426 [0 1] [[dup2 + 0xffff &b] .] swap2 1- times head'
+PROFILE_COMMAND := -ana assoc100
 PPROF := ~/go/bin/pprof
 
 CFLAGS += -DPREFIX="\"$(PREFIX)\"" $(EXTRA_CFLAGS)
@@ -295,7 +296,7 @@ graph: eval
 .PHONY: profile
 profile:
 	make BUILD=profile test
-	CPUPROFILE=eval_prof.out CPUPROFILE_FREQUENCY=10000 ./eval -lo $(POPR_SRC) -im -ev $(PROFILE_EXPRESSION) -st -q
+	CPUPROFILE=eval_prof.out CPUPROFILE_FREQUENCY=10000 ./eval -lo $(POPR_SRC) -im $(PROFILE_COMMAND) -st -q
 	$(PPROF) --pdf eval eval_prof.out > eval_prof.pdf
 
 .PHONY: dbg
