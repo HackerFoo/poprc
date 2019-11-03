@@ -21,10 +21,12 @@ COMMA := ,
 .gen/git_log.h.new: LOG = $(shell git log -1 --oneline)
 .gen/git_log.h.new: $(SRC)
 	@mkdir -p $(dir $@)
+	echo -n '#define GIT_LOG "' > $@
+	git log -1 --oneline | tr -d '\n' >> $@
 	@if git diff-index --quiet HEAD --; then \
-		echo '#define GIT_LOG "$(LOG)"' > $@; \
+		echo '"' >> $@; \
 	else \
-		echo '#define GIT_LOG "$(LOG) [DIRTY]"' > $@; \
+		echo ' [DIRTY]"' >> $@; \
 	fi
 
 .PHONY: .gen/file_ids.h.new
