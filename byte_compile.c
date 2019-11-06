@@ -68,6 +68,20 @@ static void print_value(const cell_t *c) {
   }
 }
 
+void print_bound(tcell_t *tc) {
+  if(FLAG(*tc, trace, BOUNDED)) {
+    if(tc->trace.min > INTPTR_MIN &&
+       tc->trace.max < INTPTR_MAX) {
+      printf(" in [%" PRIdPTR ", %" PRIdPTR "]",
+             tc->trace.min, tc->trace.max);
+    } else if(tc->trace.min > INTPTR_MIN) {
+      printf(" >= %" PRIdPTR, tc->trace.min);
+    } else if(tc->trace.max < INTPTR_MAX) {
+      printf(" <= %" PRIdPTR, tc->trace.max);
+    }
+  }
+}
+
 // print bytecode for entry e
 static uint32_t hashes[1024];
 void print_bytecode(tcell_t *entry, bool tags) {
@@ -125,17 +139,7 @@ void print_bytecode(tcell_t *entry, bool tags) {
       } else if(is_var(c)) { // variable
         if(FLAG(*tc, trace, CHANGES)) printf(" changing");
         printf(" var");
-        if(FLAG(*c, value, BOUNDED)) {
-          if(tc->trace.min > INTPTR_MIN &&
-             tc->trace.max < INTPTR_MAX) {
-            printf(" in [%" PRIdPTR ", %" PRIdPTR "]",
-                   tc->trace.min, tc->trace.max);
-          } else if(tc->trace.min > INTPTR_MIN) {
-            printf(" >= %" PRIdPTR, tc->trace.min);
-          } else if(tc->trace.max < INTPTR_MAX) {
-            printf(" <= %" PRIdPTR, tc->trace.max);
-          }
-        }
+        print_bound(tc);
         if(c->value.type == T_OPAQUE) {
           printf(" is %s", symbol_string(c->value.symbol));
         }
@@ -177,7 +181,8 @@ void print_bytecode(tcell_t *entry, bool tags) {
           }
         }
       }
-      if(tc->trace.type == T_OPAQUE) {
+      print_bound(tc);
+      if(tc->trace.type == T_OPAQUE) { // ***
         val_t sym = trace_get_opaque_symbol(entry, tc);
         if(sym >= 0) {
           printf(" is %s", symbol_string(sym));

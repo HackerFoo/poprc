@@ -377,6 +377,7 @@ void breakpoint();
 #define TRACE_DECL       0x0020
 #define TRACE_NO_SKIP    0x0040
 #define TRACE_JUMP       0x0080
+#define TRACE_BOUNDED    0x0100
 
 typedef struct trace {
   val_t min, max;
