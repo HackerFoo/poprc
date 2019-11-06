@@ -62,15 +62,21 @@ cell_t *row_quote(cell_t *x) {
   return q;
 }
 
-bool is_list(cell_t const *c) {
+#if INTERFACE
+#define is_list(c) _is_list(GET_CELL(c))
+#define is_row_list(c) _is_row_list(GET_CELL(c))
+#define is_function(c) _is_function(GET_CELL(c))
+#endif
+
+bool _is_list(cell_t const *c) {
   return c && is_value(c) && !is_var(c) && ONEOF(c->value.type, T_LIST, T_RETURN);
 }
 
-bool is_row_list(cell_t const *c) {
+bool _is_row_list(cell_t const *c) {
   return is_list(c) && FLAG(*c, value, ROW);
 }
 
-bool is_function(cell_t const *c) {
+bool _is_function(cell_t const *c) {
   return c && is_var(c) && c->value.type == T_LIST;
 }
 

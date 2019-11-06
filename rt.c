@@ -546,7 +546,7 @@ void store_fail(cell_t *c, cell_t *alt) { // CLEANUP
   c->alt = alt;
 }
 
-void store_dep(cell_t *c, cell_t *tc, csize_t pos, type_t t, alt_set_t alt_set) { // CLEANUP
+void store_dep(cell_t *c, tcell_t *tc, csize_t pos, type_t t, alt_set_t alt_set) { // CLEANUP
   WATCH(c, "store_dep");
   cell_t v = {
     .op = OP_value,

@@ -77,13 +77,13 @@ const char *cname(type_t t) {
 }
 
 // print a suffix to select the mode of some primitives
-void print_type_suffix(const cell_t *entry, const cell_t *c) {
-  if(ONEOF(c->op, OP_assert, OP_exec)) return;
-  printf("_%c", type_char(trace_type(c)));
-  TRAVERSE(c, const, args) {
+void print_type_suffix(const tcell_t *entry, const tcell_t *tc) {
+  if(ONEOF(tc->op, OP_assert, OP_exec)) return;
+  printf("_%c", type_char(trace_type(tc)));
+  TRAVERSE(tc, const, args) {
     char ch;
     if(*p) {
-      const cell_t *ta = &entry[cgen_index(entry, *p)];
+      const tcell_t *ta = &entry[cgen_index(entry, *p)];
       type_t t = trace_type(ta);
       ch = type_char(t);
       if(!tr_flags(*p, TR_FINAL) &&
@@ -97,8 +97,8 @@ void print_type_suffix(const cell_t *entry, const cell_t *c) {
   }
 }
 
-void gen_function_signature(const cell_t *e) {
-  const cell_t *p = e + 1;
+void gen_function_signature(const tcell_t *e) {
+  const tcell_t *p = e + 1;
   csize_t out_n = e->entry.out;
   type_t rtypes[out_n];
   resolve_types(e, rtypes);
@@ -106,7 +106,7 @@ void gen_function_signature(const cell_t *e) {
   printf("%s%s_%s(", ctype(rtypes[0]), e->module_name, e->word_name);
   char *sep = "";
   COUNTDOWN(i, e->entry.in) {
-    const cell_t *a = &p[i];
+    const tcell_t *a = &p[i];
     type_t t = trace_type(a);
     printf("%s%s%s%d", sep, ctype(t), cname(t), (int)i + 1);
     sep = ", ";
@@ -119,13 +119,13 @@ void gen_function_signature(const cell_t *e) {
   printf(")");
 }
 
-void gen_function_signatures(const cell_t *e) {
+void gen_function_signatures(const tcell_t *e) {
   gen_function_signature(e);
   printf(";\n");
 
   FOR_TRACE_CONST(c, e) {
     if(c->op == OP_exec && c->trace.type != T_BOTTOM) {
-      const cell_t *x = get_entry(c);
+      const tcell_t *x = get_entry(c);
       if(x != e) {
         gen_function_signatures(x);
       }
@@ -133,16 +133,16 @@ void gen_function_signatures(const cell_t *e) {
   }
 }
 
-void gen_next_block(const cell_t *e, const cell_t *c) {
-  const cell_t *end = e + e->entry.len;
-  const cell_t *next = closure_next_const(c);
+void gen_next_block(const tcell_t *e, const tcell_t *c) {
+  const tcell_t *end = e + e->entry.len;
+  const tcell_t *next = closure_next_const(c);
   if(next <= end) {
     printf("}\n\nblock%d: {\n", (int)(next - e));
   }
 }
 
 static
-void gen_body(const cell_t *e) {
+void gen_body(const tcell_t *e) {
   printf("\nentry: {\n");
   bool skip = false;
   FOR_TRACE_CONST(c, e) {
@@ -157,7 +157,7 @@ void gen_body(const cell_t *e) {
 }
 
 static
-void gen_return(const cell_t *e, const cell_t *l) {
+void gen_return(const tcell_t *e, const tcell_t *l) {
   csize_t out_n = list_size(l);
   int ires = cgen_index(e, l->value.ptr[out_n - 1]);
 
@@ -170,7 +170,7 @@ void gen_return(const cell_t *e, const cell_t *l) {
 
   COUNTDOWN(i, out_n-1) {
     int ai = cgen_index(e, l->value.ptr[i]);
-    const cell_t *a = &e[ai];
+    const tcell_t *a = &e[ai];
     type_t t = trace_type(a);
     const char *n = cname(t);
     int output = REVI(i);
@@ -182,7 +182,7 @@ void gen_return(const cell_t *e, const cell_t *l) {
 
 // print the RHS to initialize a value
 static
-void gen_value_rhs(const cell_t *c) {
+void gen_value_rhs(const tcell_t *c) {
   type_t t = trace_type(c);
   switch(t) {
   case T_INT:
@@ -192,7 +192,7 @@ void gen_value_rhs(const cell_t *c) {
     printf("%d;\n", (int)c->value.symbol);
     break;
   case T_STRING: {
-    seg_t str = value_seg(c);
+    seg_t str = value_seg(&c->c);
     printf("{ .s = \"");
     print_escaped_string(str);
     printf("\", .n = %d };\n", (int)str.n);
@@ -208,19 +208,20 @@ void gen_value_rhs(const cell_t *c) {
 }
 
 static
-void gen_decls(cell_t *e) {
-  FOR_TRACE(c, e) {
+void gen_decls(tcell_t *e) {
+  FOR_TRACE(tc, e) {
+    cell_t *c = &tc->c;
     if(is_var(c)) continue;
-    type_t t = trace_type(c);
+    type_t t = trace_type(tc);
     if(!ONEOF(t, T_RETURN, T_BOTTOM)) {
       if(c->op == OP_value) {
-        if(NOT_FLAG(*c, trace, IMMEDIATE)) {
-          FLAG_SET(*c, trace, DECL);
+        if(NOT_FLAG(*tc, trace, IMMEDIATE)) {
+          FLAG_SET(*tc, trace, DECL);
         }
       } else if(direct_refs(c) > 1 ||
                 is_dep(c) ||
                 FLAG(*c, expr, PARTIAL)) {
-        int x = cgen_lookup(e, c);
+        int x = cgen_lookup(e, tc);
         if(x) {
           FLAG_SET(e[x], trace, DECL);
         }
@@ -230,15 +231,16 @@ void gen_decls(cell_t *e) {
 
   // T_BOTTOM is (ab)used to indicate a new line needs to be started
   type_t last_type = T_BOTTOM;
-  FOR_TRACE_CONST(c, e) {
+  FOR_TRACE_CONST(tc, e) {
+    const cell_t *c = &tc->c;
     if(is_var(c)) continue;
-    int i = c - e;
-    type_t t = trace_type(c);
-    if(FLAG(*c, trace, DECL)) {
+    int i = tc - e;
+    type_t t = trace_type(tc);
+    if(FLAG(*tc, trace, DECL)) {
       if(c->op == OP_value) {
         if(last_type != T_BOTTOM) printf(";\n");
         printf("  const %s%s%d = ", ctype(t), cname(t), i);
-        gen_value_rhs(c);
+        gen_value_rhs(tc);
         last_type = T_BOTTOM;
       } else {
         if(last_type == t) {
@@ -255,11 +257,11 @@ void gen_decls(cell_t *e) {
   if(last_type != T_BOTTOM) printf(";\n");
 }
 
-bool gen_skip(const cell_t *c) {
+bool gen_skip(const tcell_t *c) {
   return ONEOF(c->op, OP_dep, OP_seq, OP_unless);
 }
 
-bool last_call(const cell_t *e, const cell_t *c) {
+bool last_call(const tcell_t *e, const tcell_t *c) {
   c = closure_next_const(c);
   FOR_TRACE_CONST(p, e, c - e) {
     if(p->op == OP_assert &&
@@ -275,7 +277,7 @@ bool last_call(const cell_t *e, const cell_t *c) {
 }
 
 // returns true if the rest of the block should be skipped
-bool gen_instruction(const cell_t *e, const cell_t *c, int depth) {
+bool gen_instruction(const tcell_t *e, const tcell_t *c, int depth) {
   if(is_return(c))         { gen_return(e, c);        } else
   if(gen_skip(c) ||
      is_value(c))          { /* nothing */            } else
@@ -309,11 +311,11 @@ bool print_external_header(const char *str) {
   return sep != NULL;
 }
 
-bool gen_is_aliased(const cell_t *c) {
+bool gen_is_aliased(const tcell_t *c) {
   return ONEOF(c->op, OP_seq, OP_assert, OP_unless);
 }
 
-int cgen_lookup(const cell_t *e, const cell_t *c) {
+int cgen_lookup(const tcell_t *e, const tcell_t *c) {
   LOOP(e->entry.len) {
     if(ONEOF(c->op, OP_seq, OP_assert, OP_unless)) {
       c = &e[tr_index(c->expr.arg[0])];
@@ -325,11 +327,11 @@ int cgen_lookup(const cell_t *e, const cell_t *c) {
   return 0;
 }
 
-int cgen_index(const cell_t *e, const cell_t *a) {
+int cgen_index(const tcell_t *e, const cell_t *a) {
   return cgen_lookup(e, &e[tr_index(a)]);
 }
 
-void gen_tail_call(const cell_t *e, const cell_t *c) {
+void gen_tail_call(const tcell_t *e, const tcell_t *c) {
   csize_t in = closure_in(c);
   printf("\n  // tail call\n");
 
@@ -347,7 +349,7 @@ void gen_tail_call(const cell_t *e, const cell_t *c) {
 }
 
 // find next_block
-int find_next_block(const cell_t *e, const cell_t *c) {
+int find_next_block(const tcell_t *e, const tcell_t *c) {
   FOR_TRACE_CONST(p, e, closure_next_const(c) - e) {
     if(is_return(p)) {
       int size = calculate_cells(p->size);
@@ -361,7 +363,7 @@ int find_next_block(const cell_t *e, const cell_t *c) {
   return 0;
 }
 
-bool arg_in_range(const cell_t *e, const cell_t *c, int low, int high) {
+bool arg_in_range(const tcell_t *e, const tcell_t *c, int low, int high) {
   TRAVERSE(c, const, in) {
     int x = cgen_index(e, *p);
     if(INRANGE(x, low, high) &&
@@ -370,7 +372,7 @@ bool arg_in_range(const cell_t *e, const cell_t *c, int low, int high) {
   return false;
 }
 
-int find_next_possible_block(const cell_t *e, const cell_t *c) {
+int find_next_possible_block(const tcell_t *e, const tcell_t *c) {
   int low = c - e, high = low;
   bool skip = true;
   FOR_TRACE_CONST(p, e, closure_next_const(c) - e) {
@@ -403,19 +405,24 @@ void gen_indent(int depth) {
   }
 }
 
-bool is_external(const cell_t *c) {
+#if INTERFACE
+#define is_external(c) _is_external(GET_CELL(c))
+#endif
+
+bool _is_external(const cell_t *c) {
   return c->op == OP_external;
 }
 
-void print_function_name(const cell_t *e, const cell_t *c) {
+void print_function_name(const tcell_t *e, const tcell_t *tc) {
+  const cell_t *c = &tc->c;
   if(is_external(c)) {
-    const cell_t *name = &e[cgen_index(e, c->expr.arg[closure_in(c) - 1])];
+    const cell_t *name = &e[cgen_index(e, c->expr.arg[closure_in(c) - 1])].c;
     assert_error(is_string(name) && !is_var(name),
                  "external name must be an immediate string");
     printf("%s", external_name(name->value.str));
   } else {
     const char *module_name, *word_name;
-    trace_get_name(c, &module_name, &word_name);
+    trace_get_name(tc, &module_name, &word_name);
     printf("%s_%s", module_name, word_name);
   }
   csize_t
@@ -429,11 +436,11 @@ void print_function_name(const cell_t *e, const cell_t *c) {
     printf("%d", in-1);
   }
   if(!is_external(c)) {
-    print_type_suffix(e, c);
+    print_type_suffix(e, tc);
   }
 }
 
-void gen_call(const cell_t *e, const cell_t *c, int depth) {
+void gen_call(const tcell_t *e, const tcell_t *c, int depth) {
   int lhs = c - e;
   char *sep = "";
 
@@ -508,7 +515,7 @@ void gen_call(const cell_t *e, const cell_t *c, int depth) {
 }
 
 // generate instructions that can't be skipped
-void gen_noskip(const cell_t *e, const cell_t *c, int depth) {
+void gen_noskip(const tcell_t *e, const tcell_t *c, int depth) {
   FOR_TRACE_CONST(p, e, closure_next_const(c) - e) {
     if(is_return(p)) break;
     if(FLAG(*p, trace, NO_SKIP)) {
@@ -520,10 +527,10 @@ void gen_noskip(const cell_t *e, const cell_t *c, int depth) {
   }
 }
 
-void gen_assert(const cell_t *e, const cell_t *c, int depth) {
+void gen_assert(const tcell_t *e, const tcell_t *c, int depth) {
   int iq = cgen_index(e, c->expr.arg[1]);
-  const cell_t *ret = NULL;
-  const cell_t *end = e + trace_entry_size(e);
+  const tcell_t *ret = NULL;
+  const tcell_t *end = e + trace_entry_size(e);
 
   if(!set_insert(iq, assert_set, LENGTH(assert_set))) {
     FOR_TRACE_CONST(p, e, closure_next_const(c) - e) {
@@ -535,7 +542,7 @@ void gen_assert(const cell_t *e, const cell_t *c, int depth) {
       }
     }
     if(ret) {
-      const cell_t *next = ret + closure_cells(ret);
+      const tcell_t *next = ret + closure_tcells(ret);
       if(next < end) {
         gen_indent(depth);
         printf("  if(!%s%d) { // assert\n", cname(trace_type(&e[iq])), iq);
@@ -551,11 +558,11 @@ void gen_assert(const cell_t *e, const cell_t *c, int depth) {
   }
 }
 
-bool external_includes(const cell_t *e) {
+bool external_includes(const tcell_t *e) {
   bool has_external_includes = false;
   FOR_TRACE_CONST(c, e) {
     if(c->op == OP_external) {
-      const cell_t *name = &e[cgen_index(e, c->expr.arg[closure_in(c) - 1])];
+      const cell_t *name = &e[cgen_index(e, c->expr.arg[closure_in(c) - 1])].c;
       if(print_external_header(name->value.str)) {
         has_external_includes = true;
       }
@@ -564,7 +571,7 @@ bool external_includes(const cell_t *e) {
   return has_external_includes;
 }
 
-void gen_function(cell_t *e) {
+void gen_function(tcell_t *e) {
   e->op = OP_value;
   zero(assert_set);
 
@@ -577,7 +584,7 @@ void gen_function(cell_t *e) {
 
   FOR_TRACE(c, e) {
     if(c->op == OP_exec && c->trace.type != T_BOTTOM) {
-      cell_t *x = get_entry(c);
+      tcell_t *x = get_entry(c);
       if(x != e && x->op == OP_null) {
         printf("\n");
         gen_function(x);
@@ -586,10 +593,10 @@ void gen_function(cell_t *e) {
   }
 }
 
-void clear_ops(cell_t *e) {
+void clear_ops(tcell_t *e) {
   FOR_TRACE(c, e) {
     if(c->op == OP_exec) {
-      cell_t *x = get_entry(c);
+      tcell_t *x = get_entry(c);
       x->op = OP_null;
     }
   }
@@ -598,9 +605,8 @@ void clear_ops(cell_t *e) {
 COMMAND(cc, "print C code for given function") {
   if(rest) {
     command_define(rest);
-    cell_t
-      *m = eval_module(),
-      *e = module_lookup_compiled(tok_seg(rest), &m);
+    cell_t *m = eval_module();
+    tcell_t *e = tcell_entry(module_lookup_compiled(tok_seg(rest), &m));
 
     if(e) {
       if(external_includes(e)) {

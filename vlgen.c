@@ -62,7 +62,7 @@ const char *vltype(type_t t) {
 }
 
 static
-const char *vltype_full(const cell_t *e, const cell_t *c) {
+const char *vltype_full(const tcell_t *e, const tcell_t *c) {
   type_t t = trace_type(c);
   if(t == T_OPAQUE) {
     val_t sym = trace_get_opaque_symbol(e, c);
@@ -83,8 +83,8 @@ const char *vltype_full(const cell_t *e, const cell_t *c) {
   } while(0)
 
 static
-void gen_module_interface(const cell_t *e, const type_t *rtypes) {
-  const cell_t *p = e + 1;
+void gen_module_interface(const tcell_t *e, const type_t *rtypes) {
+  const tcell_t *p = e + 1;
   csize_t out_n = e->entry.out;
 
   printf("module %s_%s (\n", e->module_name, e->word_name);
@@ -93,7 +93,7 @@ void gen_module_interface(const cell_t *e, const type_t *rtypes) {
     printf_sep("  `sync_ports");
   }
   COUNTDOWN(i, e->entry.in) {
-    const cell_t *a = &p[i];
+    const tcell_t *a = &p[i];
     printf_sep("  `%s(%s, %d)",
                trace_type(a) == T_OPAQUE ? "interface" : "input",
                vltype_full(e, a),
@@ -111,7 +111,7 @@ void gen_module_interface(const cell_t *e, const type_t *rtypes) {
 }
 
 static
-void gen_value_rhs(const cell_t *c) {
+void gen_value_rhs(const tcell_t *c) {
   type_t t = trace_type(c);
   switch(t) {
   case T_INT:
@@ -121,7 +121,7 @@ void gen_value_rhs(const cell_t *c) {
     printf("%d", (int)c->value.symbol);
     break;
   case T_STRING: {
-    seg_t str = value_seg(c);
+    seg_t str = value_seg(&c->c);
     printf("\"");
     print_escaped_string(str);
     printf("\"");
@@ -137,8 +137,8 @@ void gen_value_rhs(const cell_t *c) {
   }
 }
 
-static bool is_sync(const cell_t *c) {
-  cell_t *entry;
+static bool is_sync(const tcell_t *c) {
+  tcell_t *entry;
   return
     !is_value(c) &&
     (ONEOF(trace_type(c), T_LIST, T_OPAQUE) ||
@@ -147,7 +147,7 @@ static bool is_sync(const cell_t *c) {
 }
 
 static
-bool update_block(const cell_t *e, const cell_t *c, int *block) {
+bool update_block(const tcell_t *e, const tcell_t *c, int *block) {
   if(is_return(c) ||
      (is_self_call(e, c) && NOT_FLAG(*c, trace, JUMP))) {
     *block = (c - e) + calculate_cells(c->size);
@@ -158,7 +158,7 @@ bool update_block(const cell_t *e, const cell_t *c, int *block) {
 }
 
 static
-void gen_stack(const cell_t *e, const type_t *rtypes) {
+void gen_stack(const tcell_t *e, const type_t *rtypes) {
   int ra_bits = 0;
   int nt_self_calls = 1;
   if(FLAG(*e, entry, RETURN_ADDR)) {
@@ -198,10 +198,11 @@ void gen_stack(const cell_t *e, const type_t *rtypes) {
 }
 
 static
-void gen_decls(cell_t *e) {
-  FOR_TRACE_CONST(c, e) {
-    int i = c - e;
-    type_t t = trace_type(c);
+void gen_decls(tcell_t *e) {
+  FOR_TRACE_CONST(tc, e) {
+    int i = tc - e;
+    const cell_t *c = &tc->c;
+    type_t t = trace_type(tc);
     if(ONEOF(t, T_BOTTOM, T_RETURN)) continue;
     if(is_var(c)) {
       if(t != T_OPAQUE) {
@@ -214,16 +215,16 @@ void gen_decls(cell_t *e) {
           printf("  `const_nil(%s%d);\n", cname(t), i);
         } else {
           printf("  `const(%s, %s%d, ", vltype(t), cname(t), i);
-          gen_value_rhs(c);
+          gen_value_rhs(tc);
           printf(");\n");
         }
-      } else if(!is_tail_call(e, c)) {
-        if(is_sync(c)) {
+      } else if(!is_tail_call(e, tc)) {
+        if(is_sync(tc)) {
           printf("  wire inst%d_in_ready;\n", i);
         }
         if(t == T_OPAQUE) {
           // handled below
-        } else if(is_self_call(e, c)) {
+        } else if(is_self_call(e, tc)) {
           printf("  `reg(%s, %s%d) = 0;\n", vltype(t), cname(t), i); // ***
         } else {
           printf("  `wire(%s, %s%d);\n", vltype(t), cname(t), i);
@@ -231,9 +232,9 @@ void gen_decls(cell_t *e) {
         if(!is_dep(c)) {
           TRAVERSE(c, const, in) {
             if(!*p) continue;
-            cell_t *a = &e[tr_index(*p)];
+            tcell_t *a = &e[tr_index(*p)];
             if(trace_type(a) == T_OPAQUE) {
-              const cell_t *v = trace_get_linear_var(e, a);
+              const tcell_t *v = trace_get_linear_var(e, a);
               printf("  `bus(%s, %d, inst%d);\n", vltype_full(e, a), e->entry.in - (int)(v-e), i);
             }
           }
@@ -246,7 +247,7 @@ void gen_decls(cell_t *e) {
 }
 
 static
-void find_sync_inputs(const cell_t *e, const cell_t *c, uintptr_t *set, size_t size, int depth) {
+void find_sync_inputs(const tcell_t *e, const tcell_t *c, uintptr_t *set, size_t size, int depth) {
   while(ONEOF(c->op, OP_assert, OP_seq, OP_unless)) {
     if(c->op == OP_assert && !depth) set_insert(c-e, set, size);
     c = &e[tr_index(c->expr.arg[0])];
@@ -263,7 +264,7 @@ void find_sync_inputs(const cell_t *e, const cell_t *c, uintptr_t *set, size_t s
 }
 
 static
-void gen_sync_disjoint_inputs(const cell_t *e, const cell_t *c) {
+void gen_sync_disjoint_inputs(const tcell_t *e, const tcell_t *c) {
   uintptr_t set[MAX_DEGREE] = {0};
   uintptr_t input_set[MAX_DEGREE] = {0};
   LOG("gen_sync_disjoint_inputs %E %d", e, c-e);
@@ -298,7 +299,7 @@ void gen_sync_disjoint_inputs(const cell_t *e, const cell_t *c) {
 }
 
 static
-void gen_sync_block(const cell_t *e, const cell_t *c, int block, bool ret) {
+void gen_sync_block(const tcell_t *e, const tcell_t *c, int block, bool ret) {
   SEP(" & ");
   if(ret) {
     if(FLAG(*e, entry, RETURN_ADDR)) {
@@ -310,7 +311,7 @@ void gen_sync_block(const cell_t *e, const cell_t *c, int block, bool ret) {
   FOR_TRACE_CONST(c, e, block) {
     if(is_return(c)) break;
     if(is_user_func(c)) {
-      cell_t *ce = get_entry(c);
+      tcell_t *ce = get_entry(c);
       if(ce == e) break;
     }
     if(c->op == OP_unless) {
@@ -329,13 +330,13 @@ void gen_sync_block(const cell_t *e, const cell_t *c, int block, bool ret) {
 }
 
 static
-void find_sync_outputs(const cell_t *e, const cell_t *c, uintptr_t *set, size_t size, uintptr_t const *const *backrefs) {
+void find_sync_outputs(const tcell_t *e, const tcell_t *c, uintptr_t *set, size_t size, uintptr_t const *const *backrefs) {
   if(is_return(c)) return;
   const uintptr_t *outs;
   size_t n = get_outputs(e, c, backrefs, &outs);
   COUNTUP(i, n) {
     int oi = outs[i];
-    const cell_t *out = &e[oi];
+    const tcell_t *out = &e[oi];
     if(is_tail_call(e, out)) {
       // stop
     } else if(is_return(out) || (is_sync(out))) {
@@ -349,7 +350,7 @@ void find_sync_outputs(const cell_t *e, const cell_t *c, uintptr_t *set, size_t 
 }
 
 static
-void gen_sync_disjoint_outputs(const cell_t *e, const cell_t *c, uintptr_t const *const *backrefs) {
+void gen_sync_disjoint_outputs(const tcell_t *e, const tcell_t *c, uintptr_t const *const *backrefs) {
   uintptr_t set[MAX_DEGREE] = {0};
   uintptr_t output_set[MAX_DEGREE] = {0};
   LOG("gen_sync_disjoint_outputs %E %d", e, c-e);
@@ -388,7 +389,7 @@ void gen_sync_disjoint_outputs(const cell_t *e, const cell_t *c, uintptr_t const
 }
 
 static
-void print_var(const cell_t *e, const cell_t *c, int block) {
+void print_var(const tcell_t *e, const tcell_t *c, int block) {
   int next = (c - e) + calculate_cells(c->size);
   type_t t = trace_type(c);
   if(t != T_LIST && is_self_call(e, c) && next >= block) {
@@ -404,7 +405,7 @@ void print_var(const cell_t *e, const cell_t *c, int block) {
 }
 
 static
-void gen_instance(const cell_t *e, const cell_t *c, int *sync_chain, uintptr_t const *const *backrefs, int block) {
+void gen_instance(const tcell_t *e, const tcell_t *c, int *sync_chain, uintptr_t const *const *backrefs, int block) {
   int inst = c - e;
   const char *module_name, *word_name;
   bool sync = is_sync(c);
@@ -432,7 +433,7 @@ void gen_instance(const cell_t *e, const cell_t *c, int *sync_chain, uintptr_t c
 
   SEP(",");
   COUNTUP(i, in) {
-    const cell_t *a = &e[cgen_index(e, c->expr.arg[i])];
+    const tcell_t *a = &e[cgen_index(e, c->expr.arg[i])];
     type_t t = trace_type(a);
     if(t == T_OPAQUE) {
       a = trace_get_linear_var(e, a);
@@ -462,7 +463,7 @@ void gen_instance(const cell_t *e, const cell_t *c, int *sync_chain, uintptr_t c
 }
 
 static
-void next_block(const cell_t *e, const cell_t *r, int block,
+void next_block(const tcell_t *e, const tcell_t *r, int block,
                 bool block_start, int return_block) {
   if(block_start) {
     printf("\n  `start_block(block%d)\n", block);
@@ -474,7 +475,7 @@ void next_block(const cell_t *e, const cell_t *r, int block,
 }
 
 static
-void gen_body(cell_t *e) {
+void gen_body(tcell_t *e) {
   size_t backrefs_n = backrefs_size(e);
   assert_le(backrefs_n, 1024);
   uintptr_t const *backrefs[backrefs_n];
@@ -499,8 +500,8 @@ void gen_body(cell_t *e) {
           if(FLAG(*c, trace, JUMP)) {
             TRAVERSE(c, const, in) {
               int i = tr_index(*p);
-              const cell_t *a = &e[i];
-              if(trace_type(a) == T_LIST && direct_refs(a) <= 1) { // *** HACK
+              const tcell_t *a = &e[i];
+              if(trace_type(a) == T_LIST && direct_refs(&a->c) <= 1) { // *** HACK
                 printf("    assign %s%d_ready = `true;\n", cname(T_LIST), i);
               }
             }
@@ -532,15 +533,15 @@ void gen_body(cell_t *e) {
 
 // TODO clean up
 static
-bool gen_outputs(const cell_t *e, const cell_t *r0, const type_t *rtypes) {
+bool gen_outputs(const tcell_t *e, const tcell_t *r0, const type_t *rtypes) {
   bool ret = false;
   csize_t out = e->entry.out;
   COUNTUP(i, out) {
     type_t t = rtypes[i];
     if(t == T_OPAQUE) continue;
     printf("  assign out%d =", (int)i);
-    const cell_t *r = r0;
-    const cell_t *r_prev = NULL;
+    const tcell_t *r = r0;
+    const tcell_t *r_prev = NULL;
     int block = 1;
     do {
       if(t == T_LIST || !is_tail_call(e, r)) {
@@ -581,12 +582,12 @@ bool gen_outputs(const cell_t *e, const cell_t *r0, const type_t *rtypes) {
   return ret;
 }
 
-bool is_self_call(const cell_t *e, const cell_t *c) {
+bool is_self_call(const tcell_t *e, const tcell_t *c) {
   return is_user_func(c) && get_entry(c) == e;
 }
 
 static
-void gen_valid_ready(const cell_t *e, UNUSED const cell_t *r0) {
+void gen_valid_ready(const tcell_t *e, UNUSED const tcell_t *r0) {
   int block;
 
   // valid
@@ -610,7 +611,7 @@ void gen_valid_ready(const cell_t *e, UNUSED const cell_t *r0) {
 }
 
 static
-void gen_loop(const cell_t *e, const cell_t *self_call, int block) {
+void gen_loop(const tcell_t *e, const tcell_t *self_call, int block) {
   csize_t in = e->entry.in;
   printf("      if(block%d_valid) begin\n", block);
   if(NOT_FLAG(*self_call, trace, JUMP)) {
@@ -621,10 +622,10 @@ void gen_loop(const cell_t *e, const cell_t *self_call, int block) {
     }
     SEP(", ");
     RANGEUP(i, 1, e->entry.in + 1) {
-      const cell_t *v = &e[i];
+      const tcell_t *v = &e[i];
       printf_sep("%s%d", cname(trace_type(v)), (int)i);
     }
-    const cell_t *prev = NULL;
+    const tcell_t *prev = NULL;
     FOR_TRACE_CONST(c, e) {
       if(is_self_call(e, c) && NOT_FLAG(*c, trace, JUMP)) {
         if(prev) {
@@ -651,7 +652,7 @@ void gen_loop(const cell_t *e, const cell_t *self_call, int block) {
 }
 
 static
-void gen_loops(cell_t *e) {
+void gen_loops(tcell_t *e) {
   printf("  always @(posedge clk) begin\n");
   if(FLAG(*e, entry, STACK))
      printf("    returned <= returning;\n");
@@ -683,10 +684,10 @@ void gen_loops(cell_t *e) {
     }
     SEP(", ");
     RANGEUP(i, 1, e->entry.in + 1) {
-      cell_t *v = &e[i];
+      tcell_t *v = &e[i];
       printf_sep("%s%d", cname(trace_type(v)), (int)i);
     }
-    const cell_t *prev = NULL;
+    const tcell_t *prev = NULL;
     FOR_TRACE_CONST(c, e) {
       if(is_self_call(e, c) && NOT_FLAG(*c, trace, JUMP)) {
         if(prev) {
@@ -712,11 +713,11 @@ void gen_loops(cell_t *e) {
 }
 
 static
-bool gen_buses(cell_t *e) {
+bool gen_buses(tcell_t *e) {
   bool output = false;
   COUNTUP(i, e->entry.in) {
     int ix = REVI(i) + 1;
-    const cell_t *v = &e[ix];
+    const tcell_t *v = &e[ix];
     if(v->value.type != T_OPAQUE ||
        trace_get_opaque_symbol(e, v) != SYM_Array) continue;
     int a = ix;
@@ -740,9 +741,9 @@ bool gen_buses(cell_t *e) {
 }
 
 static
-void gen_module(cell_t *e) {
+void gen_module(tcell_t *e) {
   e->op = OP_value;
-  const cell_t *r0 = NULL;
+  const tcell_t *r0 = NULL;
   FOR_TRACE_CONST(c, e) {
     if(is_return(c)) {
       r0 = c;
@@ -773,7 +774,7 @@ void gen_module(cell_t *e) {
 
   FOR_TRACE(c, e) {
     if(c->op == OP_exec && c->trace.type != T_BOTTOM) {
-      cell_t *x = get_entry(c);
+      tcell_t *x = get_entry(c);
       if(x != e && x->op == OP_null) {
         printf("\n");
         gen_module(x);
@@ -785,9 +786,8 @@ void gen_module(cell_t *e) {
 COMMAND(cv, "print Verilog code for given function") {
   if(rest) {
     command_define(rest);
-    cell_t
-      *m = eval_module(),
-      *e = module_lookup_compiled(tok_seg(rest), &m);
+    cell_t *m = eval_module();
+    tcell_t *e = tcell_entry(module_lookup_compiled(tok_seg(rest), &m));
 
     if(e) {
       gen_module(e);

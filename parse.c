@@ -164,7 +164,7 @@ bool match_param_word(const char *pre, seg_t seg, csize_t *in, csize_t *out) {
   }
 }
 
-cell_t *parse_word(seg_t w, cell_t *module, unsigned int n, cell_t *entry) {
+cell_t *parse_word(seg_t w, cell_t *module, unsigned int n, tcell_t *entry) {
   cell_t *c;
   cell_t *data = NULL;
   csize_t in = 0, out = 1;
@@ -195,7 +195,7 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n, cell_t *entry) {
         }
       } else {
         c = func(OP_exec, e->entry.in + 1, e->entry.out);
-        data = e;
+        data = (cell_t *)tcell_entry(e);
       }
     } else {
       return NULL;
@@ -213,7 +213,7 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n, cell_t *entry) {
   return c;
 }
 
-val_t fill_args(cell_t *entry, cell_t *l) {
+val_t fill_args(tcell_t *entry, cell_t *l) {
   if(!l) return 0;
   val_t i = 0;
   while(!closure_is_ready(l)) {
@@ -476,13 +476,13 @@ cell_t *array_to_list(cell_t **a, csize_t n) {
   return l;
 }
 
-cell_t *parse_expr(const cell_t **l, cell_t *module, cell_t *entry) {
+cell_t *parse_expr(const cell_t **l, cell_t *module, tcell_t *entry) {
   return parse_subexpr(l, module, entry, 0);
 }
 
 #define MAX_ARGS 32
 #define MAX_PARSE_DEPTH 32
-cell_t *parse_subexpr(const cell_t **l, cell_t *module, cell_t *entry, int depth) {
+cell_t *parse_subexpr(const cell_t **l, cell_t *module, tcell_t *entry, int depth) {
   cell_t *arg_stack[MAX_ARGS]; // TODO use allocated storage
   cell_t *ph = NULL;
   unsigned int n = 0;

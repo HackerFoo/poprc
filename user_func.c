@@ -37,17 +37,21 @@
 #include "parse.h" // for string_printf
 #include "tags.h"
 
-bool is_user_func(const cell_t *c) {
+#if INTERFACE
+#define is_user_func(c) _is_user_func(GET_CELL(c))
+#endif
+
+bool _is_user_func(const cell_t *c) {
   return c->op == OP_exec;
 }
 
 static
-cell_t *map_cell(cell_t *entry, intptr_t x) {
+cell_t *map_cell(tcell_t *entry, intptr_t x) {
   return x <= 0 ? NULL : entry[x].alt;
 }
 
 static
-cell_t *get_return_arg(cell_t *entry, cell_t *returns, intptr_t x) {
+cell_t *get_return_arg(tcell_t *entry, tcell_t *returns, intptr_t x) {
   assert_error(x < entry->entry.out);
   trace_index_t i = tr_index(returns->value.ptr[x]);
   assert_error(i > 0);
@@ -108,7 +112,7 @@ void print_word_pattern(cell_t *word) {
 
 // build a binding list by applying the pattern to c
 // TODO add reduction back in
-cell_t **bind_pattern(cell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) {
+cell_t **bind_pattern(tcell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) {
   assert_error(c);
   CONTEXT("bind_pattern %s %C %C @barrier", strfield(entry, word_name), c, pattern);
   if(!pattern || !tail) return NULL;
@@ -225,15 +229,14 @@ response exec_list(cell_t **cp, context_t *ctx) {
 }
 
 // unify c with pattern pat if possible, returning the unified result
-response unify_exec(cell_t **cp, cell_t *parent_entry, context_t *ctx) {
+response unify_exec(cell_t **cp, tcell_t *parent_entry, context_t *ctx) {
   PRE(unify_exec, "#wrap");
 
   csize_t
     in = closure_in(c),
     out = closure_out(c);
-  cell_t
-    *entry = c->expr.arg[in],
-    *pat = entry->entry.wrap->initial;
+  tcell_t *entry = (tcell_t *)c->expr.arg[in];
+  cell_t *pat = entry->entry.wrap->initial;
 
   if(!pat) return FAIL;
   if(!FLAG(*c, expr, NO_UNIFY)) {
@@ -266,7 +269,7 @@ response unify_exec(cell_t **cp, cell_t *parent_entry, context_t *ctx) {
       .expr.out = out,
       .op = OP_exec
     );
-    n->expr.arg[in] = entry;
+    n->expr.arg[in] = (cell_t *)entry;
     FLAG_SET(*n, expr, RECURSIVE);
     FLAG_SET(*n, expr, NO_UNIFY);
     int pos = 0;
@@ -323,9 +326,9 @@ cell_t *exec_expand(cell_t *c) {
     in = closure_in(c),
     out = closure_out(c),
     n = closure_args(c);
-  cell_t *entry = c->expr.arg[in];
+  tcell_t *entry = (tcell_t *)c->expr.arg[in];
   cell_t *res;
-  cell_t *returns = NULL;
+  tcell_t *returns = NULL;
   cell_t **results[out + 1];
 
   results[out] = &res;
@@ -339,7 +342,7 @@ cell_t *exec_expand(cell_t *c) {
   trace_clear_alt(entry); // *** probably shouldn't need this
 
   COUNTUP(i, in) {
-    cell_t *p = &entry[i + 1];
+    tcell_t *p = &entry[i + 1];
     cell_t *a = c->expr.arg[REVI(i)];
     assert_error(is_var(p), "%d", i);
     if(p->n + 1 == 0) {
@@ -360,7 +363,7 @@ cell_t *exec_expand(cell_t *c) {
       if(!returns) returns = p;
       continue;
     }
-    cell_t *e = is_user_func(p) ? get_entry(p) : NULL;
+    tcell_t *e = is_user_func(p) ? get_entry(p) : NULL;
     cell_t *nc;
     csize_t p_in;
     if(e && e->entry.out == 1 &&
@@ -368,7 +371,7 @@ cell_t *exec_expand(cell_t *c) {
       // wrap incomplete function in a quote
       LOG("quote wrap %d", (int)i);
       nc = closure_alloc(e->entry.in + 1);
-      memcpy(nc, p, offsetof(cell_t, expr.arg));
+      memcpy(nc, &p->c, offsetof(cell_t, expr.arg));
       nc->size = e->entry.in + 1;
       csize_t remaining = e->entry.in - p_in;
       memcpy(&nc->expr.arg[remaining], p->expr.arg, p_in * sizeof(cell_t *));
@@ -377,7 +380,7 @@ cell_t *exec_expand(cell_t *c) {
       closure_set_ready(nc, false);
       nc = row_quote(nc);
     } else {
-      nc = copy(p);
+      nc = copy(&p->c);
       nc->expr.flags &= EXPR_TRACE; // only keep TRACE
       nc->n = p->n;
     }
@@ -397,9 +400,9 @@ cell_t *exec_expand(cell_t *c) {
     if(is_row_list(t)) t = t->value.ptr[0]; // for row quotes created above
 
     // skip rewriting for the entry argument
-    cell_t **t_entry = NULL;
+    tcell_t **t_entry = NULL;
     if(is_user_func(t)) {
-      t_entry = &t->expr.arg[closure_in(t)];
+      t_entry = (tcell_t **)&t->expr.arg[closure_in(t)];
       *t_entry = get_entry(t);
     }
 
@@ -452,7 +455,7 @@ cell_t *exec_expand(cell_t *c) {
   return res;
 }
 
-bool is_within_entry(cell_t *entry, cell_t *p) {
+bool is_within_entry(tcell_t *entry, tcell_t *p) {
   return p > entry && p <= entry + entry->entry.len;
 }
 
@@ -478,7 +481,7 @@ cell_t **input_var_list(cell_t *c, cell_t **tail) {
   return tail;
 }
 
-void vars_in_entry(cell_t **p, cell_t *entry) {
+void vars_in_entry(cell_t **p, tcell_t *entry) {
   while(*p) {
     cell_t *v = *p;
     cell_t **next = &v->tmp;
@@ -493,12 +496,12 @@ void vars_in_entry(cell_t **p, cell_t *entry) {
   }
 }
 
-void reassign_input_order(cell_t *entry) {
+void reassign_input_order(tcell_t *entry) {
   if(!entry->entry.wrap) return;
   cell_t *c = entry->entry.wrap->expand;
   set_ptr_tag(c, "wrap-&gt;expand");
   if(!c) return;
-  cell_t *parent_entry = entry->entry.parent;
+  tcell_t *parent_entry = entry->entry.parent;
   CONTEXT("reassign input order %C (%s -> %s)", c,
           parent_entry->word_name, entry->word_name);
   UNUSED csize_t in = entry->entry.in;
@@ -515,7 +518,7 @@ void reassign_input_order(cell_t *entry) {
 
   int pos = 1;
   FOLLOW(p, vl, tmp) {
-    cell_t *tn = var_for_entry(entry, p->value.var);
+    tcell_t *tn = var_for_entry(entry, p->value.var);
     assert_error(tn);
     assert_error(tn->pos, "%s[%d] (%C)",
                  entry->word_name, tn-entry, p);
@@ -529,8 +532,8 @@ void reassign_input_order(cell_t *entry) {
 
 // this doesn't work for quotes
 // all c's input args must be params
-cell_t *flat_call(cell_t *c, cell_t *entry) {
-  cell_t *parent_entry = entry->entry.parent;
+cell_t *flat_call(cell_t *c, tcell_t *entry) {
+  tcell_t *parent_entry = entry->entry.parent;
   CONTEXT("flat call %C (%s -> %s)", c,
           parent_entry->word_name, entry->word_name);
   csize_t
@@ -548,11 +551,11 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
 
   int pos = 1;
   FOLLOW(p, vl, tmp) {
-    cell_t *tn = get_var(entry, p);
+    tcell_t *tn = get_var(entry, p);
     // Is it okay to update this from reassign_input_order?
     tn->pos = pos;
     // assert_error(tn->pos == pos, "%T (%C)", p->value.var, p);
-    switch_entry(parent_entry, tn);
+    switch_entry(parent_entry, p);
     assert_error(entry_has(parent_entry, tn->value.var));
     cell_t *v = var_create_nonlist(T_ANY, tn->value.var);
     nc->expr.arg[in - pos] = v;
@@ -560,7 +563,7 @@ cell_t *flat_call(cell_t *c, cell_t *entry) {
     pos++;
   }
   clean_tmp(vl);
-  nc->expr.arg[in] = entry;
+  nc->expr.arg[in] = (cell_t *)entry;
   return nc;
 }
 
@@ -658,11 +661,11 @@ context_t *collect_ap_deps(context_t *ctx, cell_t **deps, int n) {
 }
 
 static
-response func_exec_wrap(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
+response func_exec_wrap(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
   csize_t
     in = closure_in(*cp),
     out = closure_out(*cp);
-  cell_t *entry = (*cp)->expr.arg[in];
+  tcell_t *entry = (tcell_t *)(*cp)->expr.arg[in];
   wrap_data wrap;
   PRE(exec_wrap, "%s 0x%x #wrap", entry->word_name, (*cp)->expr.flags);
   LOG_UNLESS(entry->entry.out == 1, "out = %d #unify-multiout", entry->entry.out);
@@ -687,7 +690,7 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
     }
   }
 
-  cell_t *new_entry = trace_start_entry(parent_entry, entry->entry.out);
+  tcell_t *new_entry = trace_start_entry(parent_entry, entry->entry.out);
   new_entry->entry.wrap = &wrap;
   new_entry->module_name = parent_entry->module_name;
   new_entry->word_name = string_printf("%s_r%d", parent_entry->word_name, parent_entry->entry.sub_id++);
@@ -744,7 +747,7 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
   cell_t *res = var_create_with_entry(rtypes[0], parent_entry, p->size);
   // }
 
-  cell_t *tc = res->value.var;
+  tcell_t *tc = res->value.var;
 
   // build list expected by caller
   if(ctx->t == T_LIST) {
@@ -773,9 +776,9 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
 }
 
 static
-response func_exec_trace(cell_t **cp, context_t *ctx, cell_t *parent_entry) {
+response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
   size_t in = closure_in(*cp);
-  cell_t *entry = (*cp)->expr.arg[in];
+  tcell_t *entry = (tcell_t *)(*cp)->expr.arg[in];
   PRE(exec_trace, "%s 0x%x", entry->word_name, (*cp)->expr.flags);
 
   assert_error(parent_entry);
@@ -888,7 +891,7 @@ bool is_input(cell_t *v) {
   return is_var(v) && is_var(v->value.var);
 }
 
-bool all_dynamic(cell_t *entry, cell_t *c) {
+bool all_dynamic(tcell_t *entry, cell_t *c) {
   int in = entry->entry.in;
   assert_error(in == closure_in(c));
   if(NOT_FLAG(*entry, entry, RECURSIVE)) {
@@ -913,19 +916,19 @@ bool all_dynamic(cell_t *entry, cell_t *c) {
   return true;
 }
 
-static cell_t *substitute_entry(cell_t **entry) {
+static tcell_t *substitute_entry(tcell_t **entry) {
   if(FLAG(**entry, entry, RECURSIVE)) {
-    cell_t *e = trace_wrap_entry(*entry);
+    tcell_t *e = trace_wrap_entry(*entry);
     if(e) *entry = e;
   }
   return *entry;
 }
 
 OP(exec) {
-  cell_t *entry = substitute_entry(&(*cp)->expr.arg[closure_in(*cp)]);
+  tcell_t *entry = substitute_entry((tcell_t **)&(*cp)->expr.arg[closure_in(*cp)]);
   PRE(exec, "%s", entry->word_name);
 
-  cell_t *parent_entry = trace_current_entry();
+  tcell_t *parent_entry = trace_current_entry();
 
   if(NOT_FLAG(*entry, entry, COMPLETE)) {
     delay_branch(ctx, PRIORITY_DELAY);

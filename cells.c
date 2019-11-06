@@ -238,23 +238,18 @@ cell_t *closure_alloc_cells(csize_t size) {
   return c;
 }
 
-#define calc_size(f, n)     \
-  ((offsetof(cell_t, f[n])  \
-    + (sizeof(cell_t) - 1)) \
-   / sizeof(cell_t))
-
 csize_t calculate_cells(csize_t n) {
   const csize_t args_in_first_cell =
     (sizeof(cell_t) - offsetof(cell_t, expr.arg)) / sizeof(cell_t *);
-  return n <= args_in_first_cell ? 1 : calc_size(expr.arg, n);
+  return n <= args_in_first_cell ? 1 : calc_size(cell_t, expr.arg, n);
 }
 
 csize_t calculate_list_size(csize_t n) {
-  return calc_size(value.ptr, n);
+  return calc_size(cell_t, value.ptr, n);
 }
 
 csize_t calculate_map_size(csize_t n) {
-  return calc_size(value.map, n + 1);
+  return calc_size(cell_t, value.map, n + 1);
 }
 
 csize_t closure_cells(cell_t const *c) {
@@ -304,23 +299,30 @@ bool is_offset(cell_t const *c) {
   return !((uintptr_t)c & ~0xff);
 }
 
-csize_t list_size(cell_t const *c) {
+#if INTERFACE
+#define list_size(c) _list_size(GET_CELL(c))
+#define closure_args(c) _closure_args(GET_CELL(c))
+#define closure_in(c) _closure_in(GET_CELL(c))
+#define closure_out(c) _closure_out(GET_CELL(c))
+#endif
+
+csize_t _list_size(cell_t const *c) {
   return c->size > VALUE_OFFSET(ptr) ? c->size - VALUE_OFFSET(ptr) : 0;
 }
 
-csize_t closure_args(cell_t const *c) {
+csize_t _closure_args(cell_t const *c) {
   assert_error(is_closure(c));
   return c->size;
 }
 
-csize_t closure_in(cell_t const *c) {
+csize_t _closure_in(cell_t const *c) {
   assert_error(is_closure(c) && !is_value(c));
   csize_t in = c->size - c->expr.out;
   if(is_user_func(c)) in--;
   return in;
 }
 
-csize_t closure_out(cell_t const *c) {
+csize_t _closure_out(cell_t const *c) {
   assert_error(is_closure(c) && !is_value(c));
   return c->expr.out;
 }
@@ -529,14 +531,6 @@ void clear_bit(uint8_t *m, unsigned int x) {
 
 bool check_bit(uint8_t *m, unsigned int x) {
   return m[x >> 3] & (1 << (x & 7));
-}
-
-cell_t *closure_next(cell_t *c) {
-  return c + closure_cells(c);
-}
-
-const cell_t *closure_next_const(const cell_t *c) {
-  return c + closure_cells(c);
 }
 
 // used to get consistent allocations

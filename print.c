@@ -109,7 +109,7 @@ void get_name(const cell_t *c, const char **module_name, const char **word_name)
     *module_name = "null";
     *word_name = "null";
   } else if(is_user_func(c)) {
-    cell_t *e = c->expr.arg[closure_in(c)];
+    tcell_t *e = (tcell_t *)c->expr.arg[closure_in(c)];
     if(is_trace_cell(e)) {
       *module_name = e->module_name;
       *word_name = e->word_name;
@@ -285,7 +285,7 @@ void graph_cell(FILE *f, cell_t const *c) {
       fprintf(f, "<tr><td bgcolor=\"red\">FAIL</td></tr>");
     }
     if(c->value.var) {
-      cell_t *entry = var_entry(c->value.var);
+      tcell_t *entry = var_entry(c->value.var);
       fprintf(f, "<tr><td bgcolor=\"orange\">trace: %d.%d",
               entry_number(entry),
               (int)var_index_nofail(entry, c->value.var));

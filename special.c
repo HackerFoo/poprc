@@ -117,13 +117,13 @@ OP(value) {
       }
     } else {
       // *** probably shouldn't be calling trace functions directly here
-      cell_t *entry = trace_expr_entry(c->pos);
-      cell_t *parent = entry->entry.parent;
-      cell_t *ve = c->value.var ? var_entry(c->value.var) : NULL;
+      tcell_t *entry = trace_expr_entry(c->pos);
+      tcell_t *parent = entry->entry.parent;
+      tcell_t *ve = c->value.var ? var_entry(c->value.var) : NULL;
       if(entry != ve && parent) {
         LOG_WHEN(is_list(c), "nil %C", c);
         int v = trace_store_value(parent, c);
-        cell_t *tc = trace_alloc_var(entry, c->value.type);
+        tcell_t *tc = trace_alloc_var(entry, c->value.type);
         if(c->value.type == T_OPAQUE) tc->value.symbol = c->value.symbol;
         LOG("move value %C %s[%d] -> %s[%d]", c,
             entry->word_name, tc-entry,
@@ -186,7 +186,7 @@ cell_t *symbol(val_t sym) {
   return val(T_SYMBOL, sym);
 }
 
-bool is_value(cell_t const *c) {
+bool _is_value(cell_t const *c) {
   return c && c->op == OP_value;
 }
 
@@ -240,14 +240,14 @@ void placeholder_extend(cell_t **lp, qsize_t s, bool wrap_var) {
   *lp = l;
 }
 
-cell_t *var_create(type_t t, cell_t *tc, int in, int out) {
+cell_t *var_create(type_t t, tcell_t *tc, int in, int out) {
   cell_t *v = var_create_nonlist(t, tc);
   return t == T_LIST && (in || out) ?
     var_create_list(v, in, out, 0, false) :
     v;
 }
 
-cell_t *var_create_nonlist(type_t t, cell_t *tc) {
+cell_t *var_create_nonlist(type_t t, tcell_t *tc) {
   cell_t *c = alloc_value();
   *c = (cell_t) {
     .size = c->size,
@@ -279,13 +279,13 @@ cell_t *var_create_list(cell_t *f, int in, int out, int shift, bool row) {
   return c;
 }
 
-cell_t *var_create_with_entry(type_t t, cell_t *entry, csize_t size) {
+cell_t *var_create_with_entry(type_t t, tcell_t *entry, csize_t size) {
   assert_error(entry);
   int ix = trace_alloc(entry, size);
   return var_create(t, tc_get(entry, ix), 0, 0);
 }
 
-cell_t *infer_entry(cell_t *c, uint8_t pos) {
+tcell_t *infer_entry(cell_t *c, uint8_t pos) {
   assert_error(c);
   TRAVERSE(c, in) {
     cell_t *a = *p;
@@ -298,7 +298,7 @@ cell_t *infer_entry(cell_t *c, uint8_t pos) {
     }
   }
 
-  cell_t *entry = trace_expr_entry(pos);
+  tcell_t *entry = trace_expr_entry(pos);
   if(!entry) {
     entry = trace_current_entry();
     assert_error(entry);
@@ -323,7 +323,13 @@ cell_t *opaque_var(cell_t *c, val_t sym) {
   return v;
 }
 
-bool is_var(cell_t const *c) {
+#if INTERFACE
+#define is_var(c) _is_var(GET_CELL(c))
+#define is_value(c) _is_value(GET_CELL(c))
+#define is_dep(c) _is_dep(GET_CELL(c))
+#endif
+
+bool _is_var(cell_t const *c) {
   return c && is_value(c) && FLAG(*c, value, VAR);
 }
 
@@ -418,7 +424,7 @@ cell_t *dep(cell_t *c) {
   return build11(OP_dep, c);
 }
 
-bool is_dep(cell_t const *c) {
+bool _is_dep(cell_t const *c) {
   return c->op == OP_dep;
 }
 

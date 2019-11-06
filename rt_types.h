@@ -53,6 +53,7 @@ typedef struct tok_list tok_list_t;
 typedef struct entry entry_t;
 typedef struct mem mem_t;
 typedef struct context context_t;
+typedef struct tcell tcell_t;
 
 typedef uintptr_t alt_set_t;
 typedef int16_t refcount_t;
@@ -168,17 +169,6 @@ struct __attribute__((packed)) expr {
 #define VALUE_ROW        0x40
 #define VALUE_VAR        0x80
 
-// trace flags
-#define FLAG_trace (trace, TRACE)
-#define TRACE_INCOMPLETE 0x01
-#define TRACE_TRACED     0x02
-#define TRACE_USED       0x04
-#define TRACE_IMMEDIATE  0x08
-#define TRACE_CHANGES    0x10
-#define TRACE_DECL       0x20
-#define TRACE_NO_SKIP    0x40
-#define TRACE_JUMP       0x80
-
 /* reduced value */
 struct __attribute__((packed)) value {
   type_t type;
@@ -186,7 +176,7 @@ struct __attribute__((packed)) value {
   alt_set_t alt_set;
   union {
     struct {
-      cell_t *var; /* variable */
+      tcell_t *var; /* variable */
       union {
         val_t integer;  /* integer */
         double flt;     /* float   */
@@ -240,7 +230,7 @@ struct __attribute__((packed)) mem {
 typedef struct wrap_data {
   cell_t *initial;
   cell_t *expand;
-  cell_t *entry;
+  tcell_t *entry;
   uintptr_t dep_mask;
 } wrap_data;
 
@@ -249,10 +239,10 @@ struct __attribute__((packed)) entry {
   uint16_t flags;
   uint8_t alts, sub_id;
   csize_t in, out, len;
-  cell_t *parent;
+  tcell_t *parent;
   union {
     wrap_data *wrap;
-    cell_t *compact;
+    tcell_t *compact;
   };
 };
 
@@ -290,40 +280,36 @@ struct __attribute__((packed, aligned(4))) cell {
    */
   union {
     uintptr_t raw[8];
-    struct {
-      union {
-        cell_t *alt;
-        const char *word_name; // entry
-      };
-      union {
-        cell_t *tmp;
-        val_t tmp_val;
-        const char *module_name; // entry
-        char_class_t char_class; // tok_list
-        struct { // trace
-          type_t type;
-          uint8_t flags;
-          union {
-            csize_t prev_cells;
-            csize_t extension;
-          };
-        } trace;
-      };
-      op op;
-      union {
-        uint8_t pos;
-        uint8_t priority; // for use in func_list() & delay_branch()
-      };
-      refcount_t n;
-      csize_t size;
-      union {
-        expr_t expr;
-        value_t value;
-        tok_list_t tok_list;
-        entry_t entry;
-        mem_t mem;
-      };
-    };
+    uintptr_t c;
+#define CELL_STRUCT_CONTENTS                                            \
+    struct __attribute__((packed)) {                                    \
+      union {                                                           \
+        cell_t *alt;                                                    \
+        const char *word_name; /* entry */                              \
+      };                                                                \
+      union {                                                           \
+        cell_t *tmp;                                                    \
+        val_t tmp_val;                                                  \
+        const char *module_name; /* entry */                            \
+        char_class_t char_class; /* tok_list */                         \
+      };                                                                \
+      enum op op;                                                       \
+      union {                                                           \
+        uint8_t pos;                                                    \
+        uint8_t priority; /* for use in func_list() & delay_branch() */ \
+      };                                                                \
+      refcount_t n;                                                     \
+      csize_t size;                                                     \
+      union {                                                           \
+        expr_t expr;                                                    \
+        value_t value;                                                  \
+        tok_list_t tok_list;                                            \
+        entry_t entry;                                                  \
+        mem_t mem;                                                      \
+      };                                                                \
+    }
+/* end of CELL_STRUCT_CONTENTS */
+    CELL_STRUCT_CONTENTS;
   };
 };
 
@@ -348,6 +334,8 @@ ASSERT_VALUE_OFFSET(map);
 
 ASSERT_ALIAS(cell_t, expr.flags, value.flags);
 ASSERT_ALIAS(cell_t, expr.arg[1], expr.alt_set);
+
+static_assert(offsetof(cell_t, c) == 0, "offset of cell_t.c should be 0");
 
 typedef struct stats_t {
   int reduce_cnt, fail_cnt, alloc_cnt, max_alloc_cnt, trace_cnt;
@@ -386,5 +374,42 @@ typedef struct list_iterator {
 void breakpoint();
 
 #define COMMAND(name, desc) void command_##name(UNUSED cell_t *rest)
+
+// trace flags
+#define FLAG_trace (trace, TRACE)
+#define TRACE_INCOMPLETE 0x0001
+#define TRACE_TRACED     0x0002
+#define TRACE_USED       0x0004
+#define TRACE_IMMEDIATE  0x0008
+#define TRACE_CHANGES    0x0010
+#define TRACE_DECL       0x0020
+#define TRACE_NO_SKIP    0x0040
+#define TRACE_JUMP       0x0080
+
+typedef struct trace {
+  val_t min, max;
+  uint16_t flags;
+  union {
+    csize_t prev_cells;
+    csize_t extension;
+  };
+  type_t type;
+} trace_t;
+
+struct tcell {
+  trace_t trace;
+  union {
+    CELL_STRUCT_CONTENTS;
+    cell_t c;
+  };
+};
+
+ASSERT_ALIAS(tcell_t, c.alt, alt);
+ASSERT_ALIAS(tcell_t, c.tmp, tmp);
+ASSERT_ALIAS(tcell_t, c.op, op);
+ASSERT_ALIAS(tcell_t, c.pos, pos);
+ASSERT_ALIAS(tcell_t, c.n, n);
+ASSERT_ALIAS(tcell_t, c.size, size);
+ASSERT_ALIAS(tcell_t, c.expr, expr);
 
 #endif

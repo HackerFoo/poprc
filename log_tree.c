@@ -89,8 +89,8 @@ void fprint_tree(cell_t *c, map_t map, FILE *f) {
   } else {
     fprintf(f, " <- %s:", show_type_all(c));
     if(is_var(c) && c->value.var) {
-      cell_t *var = c->value.var;
-      cell_t *entry = var_entry(var);
+      tcell_t *var = c->value.var;
+      tcell_t *entry = var_entry(var);
       int index = var_index_nofail(entry, var);
       fprintf(f, " %s.%s[%d]",
               strfield(entry, module_name),

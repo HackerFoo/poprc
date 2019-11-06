@@ -684,7 +684,7 @@ OP(assert) {
   CHECK_PRIORITY(PRIORITY_ASSERT);
 
   cell_t *res = NULL;
-  cell_t *tc = NULL;
+  tcell_t *tc = NULL;
   cell_t *q = NULL;
   bool q_var = false;
   CHECK(reduce_arg(c, 1, &CTX(symbol, SYM_True)));
@@ -735,7 +735,7 @@ OP(seq) {
   PRE(seq);
 
   cell_t *res = NULL;
-  cell_t *tc = NULL;
+  tcell_t *tc = NULL;
   cell_t *q = NULL;
   bool q_var = false;
   CHECK(reduce_arg(c, 1, &CTX(any))); // don't split arg here?
@@ -801,7 +801,7 @@ OP(unless) {
   CHECK_PRIORITY(PRIORITY_UNLESS);
 
   cell_t *res = NULL;
-  cell_t *tc = NULL, *tp = NULL;
+  tcell_t *tc = NULL, *tp = NULL;
 
   // reduce each alt
   cell_t **p = &c->expr.arg[0];
@@ -829,8 +829,8 @@ OP(unless) {
 
   if(tc && is_var(*p)) {
     // propagate type
-    cell_t *entry = var_entry(tc);
-    for(cell_t *x = tc; x != tp;
+    tcell_t *entry = var_entry(tc);
+    for(tcell_t *x = tc; x != tp;
         x = &entry[tr_index(x->expr.arg[0])]) {
       trace_set_type(x, (*p)->value.type, (*p)->value.symbol);
     }

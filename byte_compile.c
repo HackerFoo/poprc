@@ -70,7 +70,7 @@ static void print_value(const cell_t *c) {
 
 // print bytecode for entry e
 static uint32_t hashes[1024];
-void print_bytecode(cell_t *entry, bool tags) {
+void print_bytecode(tcell_t *entry, bool tags) {
   uint32_t entry_hash = 0;
   if(entry->entry.len > LENGTH(hashes)) tags = false;
   if(tags) {
@@ -103,8 +103,9 @@ void print_bytecode(cell_t *entry, bool tags) {
   printf(" ___\n");
 
   // body
-  FOR_TRACE(c, entry) {
-    int t = c - entry;
+  FOR_TRACE(tc, entry) {
+    int t = tc - entry;
+    cell_t *c = &tc->c;
     printf("[%d]", t);
     if(!c->op) {
       printf("\n");
@@ -122,17 +123,17 @@ void print_bytecode(cell_t *entry, bool tags) {
         }
         printf("]");
       } else if(is_var(c)) { // variable
-        if(FLAG(*c, trace, CHANGES)) printf(" changing");
+        if(FLAG(*tc, trace, CHANGES)) printf(" changing");
         printf(" var");
         if(FLAG(*c, value, BOUNDED)) {
-          if(c->value.min > INTPTR_MIN &&
-             c->value.max < INTPTR_MAX) {
+          if(tc->trace.min > INTPTR_MIN &&
+             tc->trace.max < INTPTR_MAX) {
             printf(" in [%" PRIdPTR ", %" PRIdPTR "]",
-                   c->value.min, c->value.max);
-          } else if(c->value.min > INTPTR_MIN) {
-            printf(" >= %" PRIdPTR, c->value.min);
-          } else if(c->value.max < INTPTR_MAX) {
-            printf(" <= %" PRIdPTR, c->value.max);
+                   tc->trace.min, tc->trace.max);
+          } else if(tc->trace.min > INTPTR_MIN) {
+            printf(" >= %" PRIdPTR, tc->trace.min);
+          } else if(tc->trace.max < INTPTR_MAX) {
+            printf(" <= %" PRIdPTR, tc->trace.max);
           }
         }
         if(c->value.type == T_OPAQUE) {
@@ -148,11 +149,11 @@ void print_bytecode(cell_t *entry, bool tags) {
       if(!is_ret) printf(" x%d", c->n + 1);
     } else { // print a call
       const char *module_name = NULL, *word_name = NULL;
-      if(FLAG(*c, trace, JUMP)) {
+      if(FLAG(*tc, trace, JUMP)) {
         printf(" jump");
       }
-      if(NOT_FLAG(*c, trace, INCOMPLETE)) {
-        trace_get_name(c, &module_name, &word_name);
+      if(NOT_FLAG(*tc, trace, INCOMPLETE)) {
+        trace_get_name(tc, &module_name, &word_name);
         printf(" %s.%s", module_name, word_name);
       } else {
         printf(" incomplete %s", op_name(c->op));
@@ -176,17 +177,17 @@ void print_bytecode(cell_t *entry, bool tags) {
           }
         }
       }
-      if(c->trace.type == T_OPAQUE) {
-        val_t sym = trace_get_opaque_symbol(entry, c);
+      if(tc->trace.type == T_OPAQUE) {
+        val_t sym = trace_get_opaque_symbol(entry, tc);
         if(sym >= 0) {
           printf(" is %s", symbol_string(sym));
         }
       }
-      printf(" :: %c", type_char(c->trace.type));
+      printf(" :: %c", type_char(tc->trace.type));
       if(FLAG(*c, expr, PARTIAL)) printf("?");
       printf(" x%d", c->n + 1);
     }
-    if(FLAG(*c, trace, NO_SKIP)) printf(".");
+    if(FLAG(*tc, trace, NO_SKIP)) printf(".");
     if(!is_value(c) && FLAG(*c, expr, TRACE)) {
       printf(" [TRACING]");
     }
@@ -206,9 +207,9 @@ void print_bytecode(cell_t *entry, bool tags) {
   }
 
   // print sub-functions once
-  FOR_TRACE(c, entry) {
-    if(is_user_func(c)) {
-      cell_t *e = get_entry(c);
+  FOR_TRACE(tc, entry) {
+    if(is_user_func(tc)) {
+      tcell_t *e = get_entry(tc);
       if(e->entry.parent == entry && !e->op) {
         printf("\n");
         print_bytecode(e, tags);
@@ -216,15 +217,15 @@ void print_bytecode(cell_t *entry, bool tags) {
       }
     }
   }
-  FOR_TRACE(c, entry) {
-    if(is_user_func(c)) {
-      cell_t *e = get_entry(c);
+  FOR_TRACE(tc, entry) {
+    if(is_user_func(tc)) {
+      tcell_t *e = get_entry(tc);
       e->op = OP_null;
     }
   }
 }
 
-void drop_trace(cell_t *entry, cell_t *tc) {
+void drop_trace(tcell_t *entry, tcell_t *tc) {
   if(tc->n <= 0) {
     LOG("drop %s[%d] %O", entry->word_name, tc-entry, tc->op);
     if(tc->op) {
@@ -246,11 +247,11 @@ void drop_trace(cell_t *entry, cell_t *tc) {
 }
 
 static
-void condense(cell_t *entry) {
+void condense(tcell_t *entry) {
   if(entry->entry.len == 0) return;
-  cell_t *ret = NULL;
+  tcell_t *ret = NULL;
   csize_t in = entry->entry.in;
-  cell_t *vars = get_trace_ptr(in);
+  tcell_t *vars = get_trace_ptr(in);
   int nvars = 0;
   int idx = 1 + in;
 
@@ -268,17 +269,17 @@ void condense(cell_t *entry) {
         // move variables out into temporary space
         assert_error(tc->pos);
         nvars++;
-        memcpy(&vars[tc->pos-1], tc, sizeof(cell_t));
+        memcpy(&vars[tc->pos-1], tc, sizeof(tcell_t));
         tc->op = OP_null;
         tc->alt = index_tr(tc->pos);
         LOG_WHEN(tc->pos != tc-entry, "move var %d -> %d", tc-entry, tc->pos);
       } else if(is_return(tc)) {
         if(ret) ret->alt = index_tr(idx);
         ret = tc;
-        idx += calculate_cells(tc->size);
+        idx += calculate_tcells(tc->size);
       } else {
         tc->alt = index_tr(idx);
-        idx += calculate_cells(tc->size);
+        idx += calculate_tcells(tc->size);
       }
     } else {
       LOG("collapse %d", tc-entry);
@@ -304,14 +305,14 @@ void condense(cell_t *entry) {
   idx = 1;
   FOR_TRACE(p, entry) {
     if(p->op) {
-      csize_t s = calculate_cells(p->size);
+      csize_t s = calculate_tcells(p->size);
       if(!(is_value(p) && p->value.type == T_RETURN)) {
         p->alt = NULL;
       }
       if(idx < p - entry) {
-        cell_t *n = &entry[idx];
-        memmove(n, p, s * sizeof(cell_t));
-        memset(n + s, 0, (p - n) * sizeof(cell_t));
+        tcell_t *n = &entry[idx];
+        memmove(n, p, s * sizeof(tcell_t));
+        memset(n + s, 0, (p - n) * sizeof(tcell_t)); // *** keeps zeroing p - n
         p = n;
       }
       idx += s;
@@ -319,14 +320,14 @@ void condense(cell_t *entry) {
   }
 
   // prepend vars
-  memmove(&entry[in + 1], &entry[1], (len - in) * sizeof(cell_t));
-  memcpy(&entry[1], vars, in * sizeof(cell_t));
-  memset(vars, 0, in * sizeof(cell_t));
+  memmove(&entry[in + 1], &entry[1], (len - in) * sizeof(tcell_t));
+  memcpy(&entry[1], vars, in * sizeof(tcell_t));
+  memset(vars, 0, in * sizeof(tcell_t));
   entry->entry.len = len;
 }
 
 static
-void trace_replace_arg(cell_t *entry, int old, int new) {
+void trace_replace_arg(tcell_t *entry, int old, int new) {
   FOR_TRACE(tc, entry) {
     if(tc->op) {
       TRAVERSE(tc, args, ptrs) {
@@ -355,7 +356,7 @@ void shift_out(cell_t *c, uintptr_t dep_mask) {
   }
 }
 
-void trace_drop_return(cell_t *entry, int out, uintptr_t dep_mask) {
+void trace_drop_return(tcell_t *entry, int out, uintptr_t dep_mask) {
   int used = 0;
   FORMASK(i, j, dep_mask) {
     used++;
@@ -363,14 +364,14 @@ void trace_drop_return(cell_t *entry, int out, uintptr_t dep_mask) {
   if(used == out) return;
   FOR_TRACE(p, entry) {
     if(p->op == OP_exec && get_entry(p) == entry) {
-      shift_out(p, dep_mask);
+      shift_out(&p->c, dep_mask);
     }
   }
   entry->entry.out = used;
 }
 
 static
-void condense_and_analyze(cell_t *entry) {
+void condense_and_analyze(tcell_t *entry) {
   condense(entry);
   last_use_analysis(entry);
   no_skip_analysis(entry);
@@ -378,9 +379,9 @@ void condense_and_analyze(cell_t *entry) {
 }
 
 // runs after reduction to finish functions marked incomplete
-void trace_final_pass(cell_t *entry) {
+void trace_final_pass(tcell_t *entry) {
   // replace alts with trace cells
-  cell_t *prev = NULL;
+  tcell_t *prev = NULL;
 
   // propagate types to asserts
   FOR_TRACE(p, entry) {
@@ -390,13 +391,14 @@ void trace_final_pass(cell_t *entry) {
     }
   }
 
-  FOR_TRACE(p, entry) {
-    if(FLAG(*p, trace, INCOMPLETE)) {
+  FOR_TRACE(tc, entry) {
+    cell_t *p = &tc->c;
+    if(FLAG(*tc, trace, INCOMPLETE)) {
       if(p->op == OP_placeholder) { // convert a placeholder to ap or compose
-        FLAG_CLEAR(*p, trace, INCOMPLETE);
+        FLAG_CLEAR(*tc, trace, INCOMPLETE);
         if(closure_in(p) > 1 && FLAG(*p, expr, ROW)) {
           cell_t **right_arg = &p->expr.arg[closure_in(p)-1];
-          cell_t *l = &entry[tr_index(*right_arg)];
+          cell_t *l = &entry[tr_index(*right_arg)].c;
           if(is_nil(l)) {
             p->op = OP_pushr;
             l->n--;
@@ -411,14 +413,14 @@ void trace_final_pass(cell_t *entry) {
         if(prev && prev->op == OP_ap &&
            tr_index(p->expr.arg[closure_in(p) - 1]) == prev - entry &&
            prev->n == 0) {
-          LOG("merging ap %d to %d", p - entry, prev - entry);
+          LOG("merging ap %d to %d", tc - entry, prev - entry);
           csize_t
             p_in = closure_in(p),
             p_out = closure_out(p),
             p_size = closure_args(p);
           refcount_t p_n = p->n;
           cell_t *tmp = copy(p);
-          trace_replace_arg(entry, p - entry, prev - entry);
+          trace_replace_arg(entry, tc - entry, prev - entry);
           prev->op = p->op;
           memset(p, 0, calculate_cells(p_size) * sizeof(cell_t));
           ARRAY_SHIFTR(prev->expr.arg[0], p_in-1, prev->size);
@@ -431,15 +433,15 @@ void trace_final_pass(cell_t *entry) {
         }
       }
     }
-    prev = p;
+    prev = tc;
   }
   if(NOT_FLAG(*entry, entry, QUOTE) &&
     TWEAK(true, "to disable condense/move_vars in %s", entry->word_name)) {
     condense_and_analyze(entry);
   }
-  FOR_TRACE(p, entry) {
-    if(p->op == OP_exec) {
-      cell_t *e = get_entry(p);
+  FOR_TRACE(tc, entry) {
+    if(tc->op == OP_exec) {
+      tcell_t *e = get_entry(tc);
       if(FLAG(*e, entry, QUOTE)) {
         condense_and_analyze(e);
       }
@@ -449,12 +451,12 @@ void trace_final_pass(cell_t *entry) {
 
 // add an entry and all sub-entries to a module
 static
-void store_entries(cell_t *entry, cell_t *module) {
+void store_entries(tcell_t *entry, cell_t *module) {
   assert_error(module_name(module) == entry->module_name);
-  module_set(module, string_seg(entry->word_name), entry);
-  FOR_TRACE(c, entry) {
-    if(c->op != OP_exec) continue;
-    cell_t *sub_e = get_entry(c);
+  module_set(module, string_seg(entry->word_name), &entry->c);
+  FOR_TRACE(tc, entry) {
+    if(tc->op != OP_exec) continue;
+    tcell_t *sub_e = get_entry(tc);
     if(sub_e->entry.parent == entry) store_entries(sub_e, module);
   }
 }
@@ -462,13 +464,13 @@ void store_entries(cell_t *entry, cell_t *module) {
 static
 cell_t *compile_entry(seg_t name, cell_t *module) {
   csize_t in, out;
-  cell_t *entry = implicit_lookup(name, module);
-  if(!is_list(entry)) return entry;
-  cell_t *ctx = get_module(string_seg(entry->module_name)); // switch context module for words from other modules
-  if(pre_compile_word(entry, ctx, &in, &out) &&
-     compile_word(&entry, name, ctx, in, out)) {
-    store_entries(entry, ctx);
-    return entry;
+  cell_t *l = implicit_lookup(name, module);
+  if(!is_list(l)) return l;
+  cell_t *ctx = get_module(string_seg(l->module_name)); // switch context module for words from other modules
+  if(pre_compile_word(l, ctx, &in, &out) &&
+     compile_word(&l, name, ctx, in, out)) {
+    store_entries(tcell_entry(l), ctx);
+    return l;
   } else {
     return NULL;
   }
@@ -584,11 +586,11 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   // set up
   rt_init();
   trace_init();
-  cell_t *e = trace_start_entry(NULL, out);
+  tcell_t *e = trace_start_entry(NULL, out);
   e->entry.in = in;
   // make recursive return this entry
-  (*entry)->alt = e; // ***
-  *entry = e;
+  (*entry)->alt = &e->c; // ***
+  *entry = &e->c;
 
   e->module_name = module_name(module);
   seg_t ident_seg = {
@@ -617,11 +619,11 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   return true;
 }
 
-void dedup_subentries(cell_t *e) {
+void dedup_subentries(tcell_t *e) {
   FOR_TRACE(c, e) {
     // duplicate quotes are common
     if(is_user_func(c)) {
-      cell_t *ce = get_entry(c);
+      tcell_t *ce = get_entry(c);
       if(FLAG(*ce, entry, QUOTE)) {
         dedup_entry(&ce);
         set_entry(c, ce);
@@ -631,13 +633,13 @@ void dedup_subentries(cell_t *e) {
 }
 
 // replace variable c if there is a matching entry in a
-void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *entry) {
+void replace_var(cell_t *c, cell_t **a, csize_t a_n, tcell_t *entry) {
   int x = var_index(entry, c->value.var);
   COUNTUP(j, a_n) {
     int y = tr_index(a[j]);
     if(y == x) {
       int xn = a_n - j;
-      cell_t *tc = &entry[xn];
+      tcell_t *tc = &entry[xn];
       tc->value.type = trace_type(c->value.var);
       c->value.var = &entry[xn];
       return;
@@ -653,7 +655,7 @@ void replace_var(cell_t *c, cell_t **a, csize_t a_n, cell_t *entry) {
 }
 
 // need a quote version that only marks vars
-void mark_barriers(cell_t *entry, cell_t *c) {
+void mark_barriers(tcell_t *entry, cell_t *c) {
   TRAVERSE(c, in) {
     cell_t *x = *p;
     if(x) {
@@ -663,7 +665,7 @@ void mark_barriers(cell_t *entry, cell_t *c) {
   }
 }
 
-void set_pos_for_values(cell_t *c, cell_t *entry) {
+void set_pos_for_values(cell_t *c, tcell_t *entry) {
   if(is_value(c)) {
     if(!is_var(c) && is_cell(c)) {
       LOG("set pos for %C to %s", c, entry->word_name);
@@ -678,8 +680,8 @@ void set_pos_for_values(cell_t *c, cell_t *entry) {
   }
 }
 
-void move_changing_values(cell_t *entry, cell_t *c) {
-  cell_t *expanding = c->expr.arg[closure_in(c)];
+void move_changing_values(tcell_t *entry, cell_t *c) {
+  tcell_t *expanding = (tcell_t *)c->expr.arg[closure_in(c)];
   TRAVERSE(c, in) {
     int i = expanding->entry.in - (p - c->expr.arg);
     if(FLAG(expanding[i], trace, CHANGES)) {
@@ -689,7 +691,7 @@ void move_changing_values(cell_t *entry, cell_t *c) {
 }
 
 // TODO pull out/duplicate things referenced in multiple quotes
-void mark_quote_barriers(cell_t *entry, cell_t *c) {
+void mark_quote_barriers(tcell_t *entry, cell_t *c) {
   TRAVERSE(c, in) {
     cell_t *x = *p;
     if(!x) continue;
@@ -702,11 +704,12 @@ void mark_quote_barriers(cell_t *entry, cell_t *c) {
   }
 }
 
-cell_t *flat_quote(cell_t *new_entry, cell_t *parent_entry) {
+cell_t *flat_quote(tcell_t *new_entry, tcell_t *parent_entry) {
   CONTEXT("flat quote (%s -> %s)", parent_entry->word_name, new_entry->word_name);
   unsigned int in = new_entry->entry.in;
 
-  FOR_TRACE(p, new_entry) {
+  FOR_TRACE(tc, new_entry) {
+    cell_t *p = &tc->c;
     if(is_var(p) && !p->value.var) {
       in--;
     }
@@ -716,23 +719,24 @@ cell_t *flat_quote(cell_t *new_entry, cell_t *parent_entry) {
     .op = OP_exec
   );
 
-  FOR_TRACE(p, new_entry) {
+  FOR_TRACE(tc, new_entry) {
+    cell_t *p = &tc->c;
     if(is_var(p) && p->value.var) {
-      cell_t *tp = var_for_entry(parent_entry, p);
+      tcell_t *tp = var_for_entry(parent_entry, tc);
       cell_t *v = var_create_nonlist(trace_type(tp), tp);
       assert_error(INRANGE(p->pos, 1, in));
       nc->expr.arg[in - p->pos] = v;
       LOG("arg[%d] -> %d", in - p->pos, tp - parent_entry);
     }
   }
-  nc->expr.arg[in] = new_entry;
+  nc->expr.arg[in] = (cell_t *)new_entry;
   return nc;
 }
 
 // takes a parent entry and offset to a quote, and creates an entry from compiling the quote
-int compile_quote(cell_t *parent_entry, cell_t *l) {
+int compile_quote(tcell_t *parent_entry, cell_t *l) {
   // set up
-  cell_t *e = trace_start_entry(parent_entry, 1);
+  tcell_t *e = trace_start_entry(parent_entry, 1);
   e->module_name = parent_entry->module_name;
   e->word_name = string_printf("%s_q%d", parent_entry->word_name, parent_entry->entry.sub_id++);
   FLAG_SET(*e, entry, QUOTE);
@@ -787,19 +791,19 @@ int compile_quote(cell_t *parent_entry, cell_t *l) {
 
 // decode a pointer to an index and return a trace pointer
 static
-const cell_t *tref(const cell_t *entry, const cell_t *c) {
+const tcell_t *tref(const tcell_t *entry, const cell_t *c) {
   int i = tr_index(c);
   return i <= 0 ? NULL : &entry[i];
 }
 
 // get the return type
-type_t trace_type(const cell_t *c) {
-  assert_error(c);
-  return is_value(c) ? c->value.type : c->trace.type;
+type_t trace_type(const tcell_t *tc) {
+  assert_error(tc);
+  return is_value(tc) ? tc->value.type : tc->trace.type;
 }
 
 // resolve types in each return in e starting at c, storing the resulting types in t
-void resolve_types(const cell_t *e, type_t *t) {
+void resolve_types(const tcell_t *e, type_t *t) {
   csize_t out = e->entry.out;
 
   COUNTUP(i, out) {
@@ -807,7 +811,7 @@ void resolve_types(const cell_t *e, type_t *t) {
   }
 
   // find first return
-  const cell_t *p = NULL;
+  const tcell_t *p = NULL;
   FOR_TRACE_CONST(tc, e) {
     if(trace_type(tc) == T_RETURN) {
       p = tc;
@@ -832,64 +836,69 @@ void resolve_types(const cell_t *e, type_t *t) {
 }
 
 // very similar to get_name() but decodes entry
-void trace_get_name(const cell_t *c, const char **module_name, const char **word_name) {
-  if(is_user_func(c)) {
-    cell_t *e = get_entry(c); // <- differs from get_name()
+void trace_get_name(const tcell_t *tc, const char **module_name, const char **word_name) {
+  if(is_user_func(tc)) {
+    tcell_t *e = get_entry(tc); // <- differs from get_name()
     *module_name = e->module_name;
     *word_name = e->word_name;
   } else {
     *module_name = PRIMITIVE_MODULE_NAME;
-    *word_name = op_name(c->op);
+    *word_name = op_name(tc->op);
   }
 }
 
-cell_t *entry_from_token(cell_t *tok) {
+tcell_t *entry_from_token(cell_t *tok) {
   seg_t id = tok_seg(tok);
   if(tok->char_class == CC_NUMERIC) {
     return entry_from_number(strtol(id.s, NULL, 0));
   } else {
     cell_t *m = eval_module();
-    return module_lookup_compiled(id, &m);
+    return tcell_entry(module_lookup_compiled(id, &m));
   }
 }
 
 // to allow backwards iteration
-void set_prev_cells(cell_t *entry) {
+void set_prev_cells(tcell_t *entry) {
   csize_t prev_cells = 0;
-  FOR_TRACE(c, entry) {
-    c->trace.prev_cells = prev_cells;
-    prev_cells = calculate_cells(c->size);
+  FOR_TRACE(tc, entry) {
+    tc->trace.prev_cells = prev_cells;
+    prev_cells = calculate_tcells(tc->size);
   }
   entry[1].trace.prev_cells = prev_cells;
 }
 
 static
-void last_use_mark(cell_t *entry, cell_t **p) {
+void last_use_mark(tcell_t *entry, cell_t **p) {
   int x = tr_index(*p);
-  cell_t *a = &entry[x];
+  tcell_t *a = &entry[x];
   if(x && NOT_FLAG(*a, trace, USED)) {
     tr_set_flags(p, TR_FINAL);
     FLAG_SET(*a, trace, USED);
   }
 }
 
-bool is_return(const cell_t *c) {
+#if INTERFACE
+#define is_return(c) _is_return(GET_CELL(c))
+#define is_expr(c) _is_expr(GET_CELL(c))
+#endif
+
+bool _is_return(const cell_t *c) {
   return is_value(c) && c->value.type == T_RETURN;
 }
 
-bool is_expr(cell_t *c) {
+bool _is_expr(cell_t *c) {
   return c && c->op != OP_value;
 }
 
 static
-void clear_used(cell_t *entry) {
-  FOR_TRACE(c, entry) {
-    FLAG_CLEAR(*c, trace, USED);
+void clear_used(tcell_t *entry) {
+  FOR_TRACE(tc, entry) {
+    FLAG_CLEAR(*tc, trace, USED);
   }
 }
 
 static
-void last_use_mark_cell(cell_t *entry, cell_t *c) {
+void last_use_mark_cell(tcell_t *entry, cell_t *c) {
   if(is_value(c)) {
     if(is_return(c)) {
       COUNTUP(i, list_size(c)) {
@@ -903,21 +912,23 @@ void last_use_mark_cell(cell_t *entry, cell_t *c) {
   }
 }
 
-void last_use_analysis(cell_t *entry) {
+void last_use_analysis(tcell_t *entry) {
   set_prev_cells(entry);
   clear_used(entry);
 
   // calls and returns
-  FOR_TRACE_REV(c, entry) {
+  FOR_TRACE_REV(tc, entry) {
+    cell_t *c = &tc->c;
     last_use_mark_cell(entry, c);
     if(!is_return(c) && !is_dep(c) && !direct_refs(c)) {
-      trace_set_type(c, T_BOTTOM, 0);
+      trace_set_type(tc, T_BOTTOM, 0);
     }
   }
 
   // go back over non-partial segments for each branch
   bool partial = false;
-  FOR_TRACE_REV(c, entry) {
+  FOR_TRACE_REV(tc, entry) {
+    cell_t *c = &tc->c;
     if(is_return(c)) {
       clear_used(entry);
       partial = false;
@@ -931,14 +942,15 @@ void last_use_analysis(cell_t *entry) {
   }
 }
 
-void mark_jumps(cell_t *entry) {
-  cell_t *jump = NULL;
-  FOR_TRACE(c, entry) {
+void mark_jumps(tcell_t *entry) {
+  tcell_t *jump = NULL;
+  FOR_TRACE(tc, entry) {
+    cell_t *c = &tc->c;
     if(ONEOF(c->op, OP_seq, OP_assert, OP_unless, OP_pushr, OP_compose, OP_dep)) continue;
     if(is_return(c) && jump) {
-      cell_t *e = get_entry(jump);
+      tcell_t *e = get_entry(jump);
       if(e == entry) {
-        FLAG_SET(*c, trace, JUMP);
+        FLAG_SET(*tc, trace, JUMP);
       }
       FLAG_SET(*jump, trace, JUMP);
       jump = NULL;
@@ -946,7 +958,7 @@ void mark_jumps(cell_t *entry) {
     }
     if(is_value(c)) continue;
     if(is_user_func(c)) {
-      jump = c;
+      jump = tc;
       continue;
     }
     jump = NULL;
@@ -957,7 +969,7 @@ void mark_jumps(cell_t *entry) {
 // at a partial. Direct dependencies on that partial are not marked.
 // TODO optimize
 static
-bool mark_no_skip(cell_t *entry, cell_t *c, int last_return, int last_partial) {
+bool mark_no_skip(tcell_t *entry, tcell_t *c, int last_return, int last_partial) {
   bool res = true;
   int i = c - entry;
   if(!is_expr(c) || i < last_partial) return true;
@@ -994,13 +1006,13 @@ bool mark_no_skip(cell_t *entry, cell_t *c, int last_return, int last_partial) {
 
 // mark instructions that can't be skipped on failure
 // used in cgen
-void no_skip_analysis(cell_t *entry) {
+void no_skip_analysis(tcell_t *entry) {
   int last_return = 0;
-  FOR_TRACE(c, entry) {
-    if(is_return(c)) {
-      last_return = c - entry;
+  FOR_TRACE(tc, entry) {
+    if(is_return(tc)) {
+      last_return = tc - entry;
     } else {
-      mark_no_skip(entry, c, last_return, 0);
+      mark_no_skip(entry, tc, last_return, 0);
     }
   }
 }
@@ -1009,7 +1021,7 @@ COMMAND(bc, "print bytecode for a word, or all") {
   if(rest) {
     CONTEXT("bytecode command");
     command_define(rest);
-    cell_t *e = entry_from_token(rest);
+    tcell_t *e = entry_from_token(rest);
     if(e) {
       printf("\n");
       print_bytecode(e, true);
@@ -1023,7 +1035,7 @@ COMMAND(bc, "print bytecode for a word, or all") {
 COMMAND(trace, "trace an instruction") {
   if(rest) {
     CONTEXT("trace command");
-    cell_t *e = entry_from_token(rest);
+    tcell_t *e = entry_from_token(rest);
     if(e) {
       bool set = false;
       cell_t *arg = rest->tok_list.next;
@@ -1058,9 +1070,9 @@ COMMAND(bt, "break on trace") {
 }
 
 static
-csize_t dep_pos(const cell_t *entry,
-                const cell_t *tc) {
-  const cell_t *src = &entry[tr_index(tc->expr.arg[0])];
+csize_t dep_pos(const tcell_t *entry,
+                const tcell_t *tc) {
+  const tcell_t *src = &entry[tr_index(tc->expr.arg[0])];
   int index = tc - entry;
   int pos = 1;
   TRAVERSE(src, const, out) {
@@ -1074,7 +1086,7 @@ csize_t dep_pos(const cell_t *entry,
 }
 
 #define HASH(l, x) (hash = (hash * 1021 + (uint32_t)(l)) * 1979 + (uint32_t)(x))
-uint32_t hash_trace_cell(cell_t *entry, cell_t *tc, uint32_t *arr) {
+uint32_t hash_trace_cell(tcell_t *entry, tcell_t *tc, uint32_t *arr) {
   uint32_t hash = 1;
   int idx = tc - entry - 1;
 
@@ -1110,10 +1122,10 @@ end:
   return hash;
 }
 
-uint32_t hash_entry(cell_t *entry, uint32_t *arr) {
+uint32_t hash_entry(tcell_t *entry, uint32_t *arr) {
   uint32_t hash = 1;
-  FOR_TRACE(c, entry) {
-    HASH('c', hash_trace_cell(entry, c, arr));
+  FOR_TRACE(tc, entry) {
+    HASH('c', hash_trace_cell(entry, tc, arr));
   }
   return hash;
 }
@@ -1125,11 +1137,11 @@ FORMAT(tag, 'H') {
   printf(FORMAT_TAG, tag);
 }
 
-size_t backrefs_size(const cell_t *entry) {
+size_t backrefs_size(const tcell_t *entry) {
   size_t n = entry->entry.len;
-  FOR_TRACE_CONST(c, entry) {
-    if(!is_return(c)) {
-      n += c->n + 1;
+  FOR_TRACE_CONST(tc, entry) {
+    if(!is_return(tc)) {
+      n += tc->n + 1;
     }
   }
   return n;
@@ -1146,35 +1158,35 @@ bool set_nonzero(uintptr_t *arr, size_t n, uintptr_t x) {
   return false;
 }
 
-size_t get_outputs(const cell_t *entry, const cell_t *c, uintptr_t const *const *backrefs, uintptr_t const **outputs) {
+size_t get_outputs(const tcell_t *entry, const tcell_t *c, uintptr_t const *const *backrefs, uintptr_t const **outputs) {
   int i = c - entry;
   assert_error(INRANGE(i, 1, entry->entry.len));
   *outputs = backrefs[i - 1];
   return entry[i].n + 1;
 }
 
-void build_backrefs(const cell_t *entry, uintptr_t **table, size_t size) {
+void build_backrefs(const tcell_t *entry, uintptr_t **table, size_t size) {
   uintptr_t **index = table;
   uintptr_t *backref = (uintptr_t *)(table + entry->entry.len);
   memset(table, 0, sizeof(*table) * size);
 
   // build the index
-  FOR_TRACE_CONST(c, entry) {
-    if(!is_return(c)) {
-      index[c - entry - 1] = backref;
-      backref += c->n + 1;
+  FOR_TRACE_CONST(tc, entry) {
+    if(!is_return(tc)) {
+      index[tc - entry - 1] = backref;
+      backref += tc->n + 1;
     } else {
-      index[c - entry - 1] = NULL;
+      index[tc - entry - 1] = NULL;
     }
   }
 
   assert_le((uintptr_t **)backref - table, (int)size);
 
   // fill backrefs
-  FOR_TRACE_CONST(c, entry) {
-    TRAVERSE(c, const, in, ptrs) {
+  FOR_TRACE_CONST(tc, entry) {
+    TRAVERSE(tc, const, in, ptrs) {
       int x = tr_index(*p);
-      bool success = set_nonzero(index[x-1], entry[x].n + 1, c - entry);
+      bool success = set_nonzero(index[x-1], entry[x].n + 1, tc - entry);
       assert_error(success);
     }
   }

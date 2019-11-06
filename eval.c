@@ -781,7 +781,7 @@ void print_bytecode_line(cell_t *l, unsigned int n) {
   char name_buf[8];
   snprintf(name_buf, sizeof(name_buf), "fn%d", n++);
   cell_t *e = parse_eval_def(string_seg(name_buf), l);
-  print_bytecode(e, false);
+  print_bytecode(tcell_entry(e), false);
 }
 
 COMMAND(bc_in, "print bytecode for each line") {
@@ -919,7 +919,7 @@ COMMAND(tag, "convert tag <-> hex") {
   }
 }
 
-bool call(cell_t *e, val_t *in_args, val_t *out_args) {
+bool call(tcell_t *e, val_t *in_args, val_t *out_args) {
   assert_throw(e && NOT_FLAG(*e, entry, PRIMITIVE));
   csize_t in = e->entry.in;
   csize_t out = e->entry.out;
@@ -927,7 +927,7 @@ bool call(cell_t *e, val_t *in_args, val_t *out_args) {
   COUNTUP(i, in) {
     c->expr.arg[i] = val(T_INT, in_args[i]);
   }
-  c->expr.arg[in] = e;
+  c->expr.arg[in] = (cell_t *)e;
   cell_t *l = make_list(out);
   l->value.ptr[0] = c;
   RANGEUP(i, 1, out) {
@@ -968,13 +968,14 @@ COMMAND(analyze, "analyze a function") {
     csize_t in = e->entry.in;
     assert_throw(in, "no arguments");
     assert_throw(in <= ANALYZE_ARGS, "too many arguments");
+    tcell_t *entry = tcell_entry(e);
     COUNTUP(i, in) {
-      cell_t *v = &e[REVI(i) + 1];
+      tcell_t *v = &entry[REVI(i) + 1];
       assert_throw(v->value.type == T_INT, "only integer inputs");
       assert_throw(FLAG(*v, value, BOUNDED), "inputs must be bounded");
       bounds[i] = (pair_t) {
-        v->value.min,
-        v->value.max
+        v->trace.min,
+        v->trace.max
       };
     }
     int combinations = 1;
@@ -993,7 +994,7 @@ COMMAND(analyze, "analyze a function") {
       } else dot--;
       inputs_from_number(i, bounds, in, inputs);
       rt_init();
-      bool success = call(e, inputs, NULL);
+      bool success = call(entry, inputs, NULL);
       if(!success) {
         printf("\nFAILED test %d with inputs:", (int)i);
         COUNTUP(j, in) {

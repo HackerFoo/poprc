@@ -1,5 +1,7 @@
 #+TITLE: PoprC Notes
 
+* tcell_t
+- C11 _Generic
 * pushl/pushr
 - idea: just emit streams, reversing negative streams when consumed
   - this means e.g. maps can be applied backwards
