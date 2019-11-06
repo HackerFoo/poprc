@@ -450,11 +450,6 @@ void trace_shrink(tcell_t *t, csize_t args) {
   }
 }
 
-#define trace_copy(entry, _c)                           \
-  _Generic(*(_c),                                       \
-           cell_t: trace_copy_cell,                     \
-           tcell_t: trace_copy_tcell)((entry), (_c))
-
 // copy c into newly allocated space in the trace
 static
 int trace_copy_cell(tcell_t *entry, const cell_t *c) {
@@ -634,7 +629,7 @@ int trace_store_value(tcell_t *entry, cell_t *c) {
   int x = trace_lookup_value_linear(entry, c);
   if(x == -1) {
     assert_error(!is_list(c) || list_size(c) == 0);
-    x = trace_copy(entry, c);
+    x = trace_copy_cell(entry, c);
     tcell_t *tc = &entry[x];
     tc->value.alt_set = 0;
     tc->value.var = NULL;
@@ -1091,7 +1086,7 @@ int trace_return(tcell_t *entry, cell_t *c_) {
     *p = index_tr(x);
     if(x >= 0) entry[x].n++;
   }
-  int x = trace_copy(entry, c);
+  int x = trace_copy_cell(entry, c);
   tcell_t *tc = &entry[x];
   LOG("trace_return: %s[%d] <- %C", entry->word_name, tc-entry, c_);
   closure_free(c);
@@ -1287,7 +1282,7 @@ int copy_conditions(tcell_t *entry, int i, int v) {
   if(a == an) return i;
   int x = i;
   if(a) {
-    x = trace_copy(entry, tc);
+    x = trace_copy_tcell(entry, tc);
     entry[x].n = ~0;
     entry[tr_index(tc->expr.arg[1])].n++;
   }

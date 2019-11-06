@@ -18,13 +18,15 @@
 #ifndef __MACROS__
 #define __MACROS__
 
+#if __STDC_VERSION__ >= 201112L
 #define GET_CELL(_c)                            \
   _Generic(*(_c),                               \
            cell_t: (_c),                        \
            tcell_t: (&(_c)->c))
-
+#else
 // old definition, can cause ubsan type errors
-// #define GET_CELL(_c) ((cell_t *)&(_c)->c)
+#define GET_CELL(_c) ((cell_t *)&(_c)->c)
+#endif
 
 // chunky list iterators
 #define FORLIST_3(x, l, r) for(list_iterator_t __it = list_begin(l); (x = list_next(&__it, (r))) ; )
