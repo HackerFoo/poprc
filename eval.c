@@ -947,18 +947,18 @@ bool call(tcell_t *e, val_t *in_args, val_t *out_args) {
   return true;
 }
 
-void inputs_from_number(int n, pair_t *bounds, int bounds_n, val_t *input) {
+void inputs_from_number(int n, range_t *bounds, int bounds_n, val_t *input) {
   COUNTDOWN(i, bounds_n) {
-    int range = bounds[i].second - bounds[i].first;
-    input[i] = bounds[i].first + n % range;
-    n /= range;
+    int span = bounds[i].max - bounds[i].min;
+    input[i] = bounds[i].min + n % span;
+    n /= span;
   }
 }
 
 #define ANALYZE_ARGS 8
 #define ANALYZE_MAX_COMBINATIONS (1<<24)
 COMMAND(analyze, "analyze a function") {
-  pair_t bounds[ANALYZE_ARGS];
+  range_t bounds[ANALYZE_ARGS];
   val_t inputs[ANALYZE_ARGS];
   if(rest) {
     seg_t name = tok_seg(rest);
@@ -972,15 +972,12 @@ COMMAND(analyze, "analyze a function") {
     COUNTUP(i, in) {
       tcell_t *v = &entry[REVI(i) + 1];
       assert_throw(v->value.type == T_INT, "only integer inputs");
-      assert_throw(FLAG(*v, value, BOUNDED), "inputs must be bounded");
-      bounds[i] = (pair_t) {
-        v->trace.min,
-        v->trace.max
-      };
+      assert_throw(FLAG(*v, trace, BOUNDED), "inputs must be bounded");
+      bounds[i] = v->trace.bound;
     }
     int combinations = 1;
     COUNTUP(i, in) {
-      combinations *= bounds[i].second - bounds[i].first;
+      combinations *= bounds[i].max - bounds[i].min;
     }
     assert_throw(combinations <= ANALYZE_MAX_COMBINATIONS, "too many combinations");
     printf("%d combinations to test\n", combinations);

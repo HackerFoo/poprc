@@ -843,8 +843,8 @@ bool expected_symbol(context_t *ctx, val_t sym) {
   return
     ctx->t == T_SYMBOL &&
     ctx->expected &&
-    ctx->expected_min == ctx->expected_max &&
-    ctx->expected_min == sym;
+    ctx->bound.min == ctx->bound.max &&
+    ctx->bound.min == sym;
 }
 
 #if INTERFACE
@@ -857,8 +857,7 @@ bool expected_symbol(context_t *ctx, val_t sym) {
 #define CTX_INHERIT_EXP                         \
   CTX_INHERIT,                                  \
   .expected = ctx->expected,                    \
-  .expected_min = ctx->expected_min,            \
-  .expected_max = ctx->expected_max
+  .bound = ctx->bound
 
 #define CTX(type, ...) CONCAT(CTX_, type)(__VA_ARGS__)
 #define CTX_list(_in, _out) \
@@ -866,9 +865,9 @@ bool expected_symbol(context_t *ctx, val_t sym) {
 #define CTX_t_1(_t)                                                     \
   ((context_t) { .t = _t, CTX_INHERIT })
 #define CTX_t_2(_t, _expected_val)                                          \
-  ((context_t) { .t = _t, CTX_INHERIT, .expected = true, .expected_min = _expected_val, .expected_max = _expected_val })
+  ((context_t) { .t = _t, CTX_INHERIT, .expected = true, .bound.min = _expected_val, .bound.max = _expected_val })
 #define CTX_t_3(_t, _expected, _expected_val)                            \
-  ((context_t) { .t = _t, CTX_INHERIT, .expected = _expected, .expected_min = _expected_val, .expected_max = _expected_val })
+  ((context_t) { .t = _t, CTX_INHERIT, .expected = _expected, .bound.min = _expected_val, .bound.max = _expected_val })
 #define CTX_t(...) DISPATCH(CTX_t, __VA_ARGS__)
 #define CTX_any() CTX_t(T_ANY)
 #define CTX_int(...) CTX_t(T_INT, ##__VA_ARGS__)
@@ -877,7 +876,7 @@ bool expected_symbol(context_t *ctx, val_t sym) {
 #define CTX_string(...) CTX_t(T_STRING, ##__VA_ARGS__)
 #define CTX_opaque(...) CTX_t(T_OPAQUE, ##__VA_ARGS__)
 #define CTX_return() ((context_t) { .t = T_RETURN })
-#define CTX_INV(invert) ctx->expected, (ctx->expected ? invert(ctx->expected_min) : 0)
+#define CTX_INV(invert) ctx->expected, (ctx->expected ? invert(ctx->bound.min) : 0)
 #define CTX_UP ((context_t) { .t = ctx->t, .s = { .in = ctx->s.in, .out = ctx->s.out }, CTX_INHERIT_EXP})
 #endif
 

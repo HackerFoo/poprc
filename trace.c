@@ -1539,18 +1539,18 @@ const tcell_t *trace_get_linear_var(const tcell_t *e, const tcell_t *c) {
 void trace_update_range(cell_t *c) {
   tcell_t *v = c->value.var;
   if(FLAG(*v, trace, BOUNDED) ||
-     v->trace.min != INTPTR_MIN ||
-     v->trace.max != INTPTR_MAX) {
-    v->trace.min = c->value.min;
-    v->trace.max = c->value.max;
+     v->trace.bound.min != INTPTR_MIN ||
+     v->trace.bound.max != INTPTR_MAX) {
+    v->trace.bound.min = c->value.range.min;
+    v->trace.bound.max = c->value.range.max;
     FLAG_SET(*v, trace, BOUNDED);
   }
 }
 
 void trace_unbound(cell_t *c) {
   tcell_t *v = c->value.var;
-  v->trace.min = INTPTR_MIN;
-  v->trace.max = INTPTR_MAX;
+  v->trace.bound.min = INTPTR_MIN;
+  v->trace.bound.max = INTPTR_MAX;
   FLAG_CLEAR(*v, trace, BOUNDED);
 }
 

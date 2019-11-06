@@ -183,23 +183,23 @@ bool bound_contexts_arith(cell_t *c, context_t *ctx, context_t *arg_ctx) {
     context_t *other = &arg_ctx[1];
     switch(op) {
     case OP_add:
-      other->expected_min = sat_sub(ctx->expected_min, lhs);
-      other->expected_max = sat_sub(ctx->expected_max, lhs);
+      other->bound.min = sat_sub(ctx->bound.min, lhs);
+      other->bound.max = sat_sub(ctx->bound.max, lhs);
       break;
     case OP_sub:
-      other->expected_min = sat_sub(lhs, ctx->expected_max);
-      other->expected_max = sat_sub(lhs, ctx->expected_min);
+      other->bound.min = sat_sub(lhs, ctx->bound.max);
+      other->bound.max = sat_sub(lhs, ctx->bound.min);
       break;
     case OP_mul:
       if(lhs > 0) {
-        other->expected_min = div_min(ctx->expected_min, lhs);
-        other->expected_max = div_max(ctx->expected_max, lhs);
+        other->bound.min = div_min(ctx->bound.min, lhs);
+        other->bound.max = div_max(ctx->bound.max, lhs);
       } else if(lhs < 0) {
-        other->expected_min = -div_max(ctx->expected_max, -lhs);
-        other->expected_max = -div_min(ctx->expected_min, -lhs);
+        other->bound.min = -div_max(ctx->bound.max, -lhs);
+        other->bound.max = -div_min(ctx->bound.min, -lhs);
       } else {
-        other->expected_min = INTPTR_MIN;
-        other->expected_max = INTPTR_MAX;
+        other->bound.min = INTPTR_MIN;
+        other->bound.max = INTPTR_MAX;
       }
       break;
     case OP_div:
@@ -213,32 +213,32 @@ bool bound_contexts_arith(cell_t *c, context_t *ctx, context_t *arg_ctx) {
     context_t *other = &arg_ctx[0];
     switch(op) {
     case OP_add: // same as above
-      other->expected_min = sat_sub(ctx->expected_min, rhs);
-      other->expected_max = sat_sub(ctx->expected_max, rhs);
+      other->bound.min = sat_sub(ctx->bound.min, rhs);
+      other->bound.max = sat_sub(ctx->bound.max, rhs);
       break;
     case OP_sub:
-      other->expected_min = sat_add(ctx->expected_max, rhs);
-      other->expected_max = sat_add(ctx->expected_min, rhs);
+      other->bound.min = sat_add(ctx->bound.max, rhs);
+      other->bound.max = sat_add(ctx->bound.min, rhs);
       break;
     case OP_mul: // same as above
       if(rhs > 0) {
-        other->expected_min = div_min(ctx->expected_min, rhs);
-        other->expected_max = div_max(ctx->expected_max, rhs);
+        other->bound.min = div_min(ctx->bound.min, rhs);
+        other->bound.max = div_max(ctx->bound.max, rhs);
       } else if(rhs < 0) {
-        other->expected_min = -div_max(ctx->expected_max, -rhs);
-        other->expected_max = -div_min(ctx->expected_min, -rhs);
+        other->bound.min = -div_max(ctx->bound.max, -rhs);
+        other->bound.max = -div_min(ctx->bound.min, -rhs);
       } else {
-        other->expected_min = INTPTR_MIN;
-        other->expected_max = INTPTR_MAX;
+        other->bound.min = INTPTR_MIN;
+        other->bound.max = INTPTR_MAX;
       }
       break;
     case OP_div:
       if(rhs > 0) {
-        other->expected_min = sat_mul(ctx->expected_min, rhs);
-        other->expected_max = sat_mul(ctx->expected_max, rhs);
+        other->bound.min = sat_mul(ctx->bound.min, rhs);
+        other->bound.max = sat_mul(ctx->bound.max, rhs);
       } else if(rhs < 0) {
-        other->expected_min = sat_mul(ctx->expected_max, rhs);
-        other->expected_max = sat_mul(ctx->expected_min, rhs);
+        other->bound.min = sat_mul(ctx->bound.max, rhs);
+        other->bound.max = sat_mul(ctx->bound.min, rhs);
       }
       break;
     default:
@@ -256,7 +256,7 @@ bool bound_contexts_cmp(cell_t *c, context_t *ctx, context_t *arg_ctx) {
   if(trace_current_entry() == NULL ||
      ctx->t != T_SYMBOL ||
      !ctx->expected ||
-     ctx->expected_min != ctx->expected_max) {
+     ctx->bound.min != ctx->bound.max) {
     return false;
   }
 
@@ -278,7 +278,7 @@ bool bound_contexts_cmp(cell_t *c, context_t *ctx, context_t *arg_ctx) {
     other = &arg_ctx[0];
   } else return false;
 
-  if(ctx->expected_min == SYM_False) {
+  if(ctx->bound.min == SYM_False) {
     switch(op) { // negate op
     case OP_lt: op = OP_gte; break;
     case OP_lte: op = OP_gt; break;
@@ -295,17 +295,17 @@ bool bound_contexts_cmp(cell_t *c, context_t *ctx, context_t *arg_ctx) {
   if(ONEOF(op, OP_neq, OP_neq_s)) return false; // can't represent neq
 
   other->expected = true;
-  other->expected_min = INTPTR_MIN;
-  other->expected_max = INTPTR_MAX;
+  other->bound.min = INTPTR_MIN;
+  other->bound.max = INTPTR_MAX;
   switch(c->op) {
     // TODO handle val = INTPTR_MIN/MAX
-  case OP_lt: other->expected_max = val - 1; break;
-  case OP_lte: other->expected_max = val; break;
-  case OP_gt: other->expected_min = val + 1; break;
-  case OP_gte: other->expected_min = val; break;
+  case OP_lt: other->bound.max = val - 1; break;
+  case OP_lte: other->bound.max = val; break;
+  case OP_gt: other->bound.min = val + 1; break;
+  case OP_gte: other->bound.min = val; break;
   case OP_eq:
   case OP_eq_s:
-    other->expected_min = other->expected_max = val; break;
+    other->bound.min = other->bound.max = val; break;
   default: break;
   }
 
@@ -335,8 +335,8 @@ response func_op2(cell_t **cp, context_t *ctx,
   if(as_expected) {
     // TODO forward bounds inference
     FLAG_SET(*res, value, BOUNDED);
-    res->value.min = ctx->expected_min;
-    res->value.max = ctx->expected_max;
+    res->value.range.min = ctx->bound.min;
+    res->value.range.max = ctx->bound.max;
   }
   if(nonzero) FLAG_SET(*c, expr, PARTIAL);
   add_conditions(res, p, q);

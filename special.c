@@ -29,6 +29,13 @@
 #include "trace.h"
 #include "list.h"
 
+static range_t range_intersect(range_t a, range_t b) {
+  return (range_t) {
+    .min = max(a.min, b.min),
+    .max = min(a.max, b.max)
+  };
+}
+
 OP(value) {
   PRE(value);
   stats.reduce_cnt--;
@@ -37,14 +44,12 @@ OP(value) {
     if(ctx->t == T_INT) {
       if(ctx->expected) {
         if(dominated_by_expectation(c, ctx)) {
-          LOG("bounding var %C to [%d, %d]", c, ctx->expected_min, ctx->expected_max);
+          LOG("bounding var %C to [%d, %d]", c, ctx->bound.min, ctx->bound.max);
           if(NOT_FLAG(*c, value, BOUNDED)) {
             FLAG_SET(*c, value, BOUNDED);
-            c->value.min = ctx->expected_min;
-            c->value.max = ctx->expected_max;
+            c->value.range = ctx->bound;
           } else {
-            c->value.min = max(c->value.min, ctx->expected_min);
-            c->value.max = min(c->value.max, ctx->expected_max);
+            c->value.range = range_intersect(c->value.range, ctx->bound);
           }
           trace_update_range(c);
         } else {
@@ -86,10 +91,10 @@ OP(value) {
   // TODO handle expected types other than symbols
   if(ctx->t == T_SYMBOL &&
      ctx->expected && !is_var(c) &&
-     ctx->expected_min == ctx->expected_max &&
-     ctx->expected_min != c->value.symbol) {
+     ctx->bound.min == ctx->bound.max &&
+     ctx->bound.min != c->value.symbol) {
     LOG("expected %C to be %Y, but got %Y",
-        c, ctx->expected_min, c->value.symbol);
+        c, ctx->bound.min, c->value.symbol);
   }
 
   // NOTE: may create multiple placeholder
@@ -99,9 +104,9 @@ OP(value) {
     if(is_any(c) && ctx->t != T_ANY) {
       c->value.type = ctx->t;
       if(ctx->t == T_OPAQUE) {
-        assert_error(ctx->expected && ctx->expected_min == ctx->expected_max,
+        assert_error(ctx->expected && ctx->bound.min == ctx->bound.max,
                      "must provide expected value when reducing opaque %C", c);
-        c->value.symbol = ctx->expected_min;
+        c->value.symbol = ctx->bound.min;
       }
       trace_update(c, c);
     }

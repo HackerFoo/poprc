@@ -94,11 +94,14 @@ typedef union location {
 #undef FILE_ID
 static_assert(sizeof(location_t) == sizeof_field(location_t, raw), "location_t wrong size");
 
+typedef struct range {
+  val_t min, max;
+} range_t;
+
 struct context {
   context_t *up;
   cell_t *src;
-  val_t expected_min;
-  val_t expected_max;
+  range_t bound;
   alt_set_t alt_set;
   int priority;
   location_t loc;
@@ -177,10 +180,7 @@ struct __attribute__((packed)) value {
         double flt;     /* float   */
         char str[0];    /* string  */
         cell_t *ptr[2]; /* list    */
-        struct {        /* range   */
-          val_t min;
-          val_t max;
-        };
+        range_t range;  /* range   */
         struct {        /* symbol | opaque */
           val_t symbol;
           union {
@@ -380,7 +380,7 @@ void breakpoint();
 #define TRACE_BOUNDED    0x0100
 
 typedef struct trace {
-  val_t min, max;
+  range_t bound;
   uint16_t flags;
   union {
     csize_t prev_cells;
