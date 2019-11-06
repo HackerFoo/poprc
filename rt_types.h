@@ -46,7 +46,7 @@ typedef enum __attribute__((packed)) type_t {
   T_FAIL // TODO use T_BOTTOM
 } type_t;
 
-typedef struct cell cell_t;
+typedef union cell cell_t;
 typedef struct expr expr_t;
 typedef struct value value_t;
 typedef struct tok_list tok_list_t;
@@ -83,13 +83,11 @@ typedef enum __attribute__((packed)) file_id {
   FILE_ID_COUNT
 } file_id_t;
 
-typedef struct location {
-  union {
-    uintptr_t raw;
-    struct {
-      file_id_t file;
-      uint16_t line;
-    };
+typedef union location {
+  uintptr_t raw;
+  struct {
+    file_id_t file;
+    uint16_t line;
   };
 } location_t;
 
@@ -122,17 +120,14 @@ typedef enum response {
 
 #define TR_FINAL 0x01
 
-typedef struct tr tr;
-struct __attribute__((packed)) tr {
-  union {
-    cell_t *ptr;
-    int entry;
-    struct {
-      int16_t index;
-      uint8_t flags;
-    };
+typedef union tr {
+  cell_t *ptr;
+  int entry;
+  struct __attribute__((packed)) {
+    int16_t index;
+    uint8_t flags;
   };
-};
+} tr;
 
 #define FLAG_expr (expr, EXPR)
 #define EXPR_NEEDS_ARG 0x02
@@ -272,51 +267,48 @@ typedef enum __attribute__((packed)) op {
 
 #undef OP__ITEM
 
-struct __attribute__((packed, aligned(4))) cell {
+union cell {
   /* op indicates the type:
    * OP_null      -> mem
    * OP_value     -> value
    * otherwise    -> expr
    */
-  union {
-    uintptr_t raw[8];
-    uintptr_t c;
+  uintptr_t c[8];
 #define CELL_STRUCT_CONTENTS                                            \
-    struct __attribute__((packed)) {                                    \
-      union {                                                           \
-        cell_t *alt;                                                    \
-        const char *word_name; /* entry */                              \
-      };                                                                \
-      union {                                                           \
-        cell_t *tmp;                                                    \
-        val_t tmp_val;                                                  \
-        const char *module_name; /* entry */                            \
-        char_class_t char_class; /* tok_list */                         \
-      };                                                                \
-      enum op op;                                                       \
-      union {                                                           \
-        uint8_t pos;                                                    \
-        uint8_t priority; /* for use in func_list() & delay_branch() */ \
-      };                                                                \
-      refcount_t n;                                                     \
-      csize_t size;                                                     \
-      union {                                                           \
-        expr_t expr;                                                    \
-        value_t value;                                                  \
-        tok_list_t tok_list;                                            \
-        entry_t entry;                                                  \
-        mem_t mem;                                                      \
-      };                                                                \
-    }
+  struct __attribute__((packed)) {                                      \
+    union {                                                             \
+      cell_t *alt;                                                      \
+      const char *word_name; /* entry */                                \
+    };                                                                  \
+    union {                                                             \
+      cell_t *tmp;                                                      \
+      val_t tmp_val;                                                    \
+      const char *module_name; /* entry */                              \
+      char_class_t char_class; /* tok_list */                           \
+    };                                                                  \
+    enum op op;                                                         \
+    union {                                                             \
+      uint8_t pos;                                                      \
+      uint8_t priority; /* for use in func_list() & delay_branch() */   \
+    };                                                                  \
+    refcount_t n;                                                       \
+    csize_t size;                                                       \
+    union {                                                             \
+      expr_t expr;                                                      \
+      value_t value;                                                    \
+      tok_list_t tok_list;                                              \
+      entry_t entry;                                                    \
+      mem_t mem;                                                        \
+    };                                                                  \
+  }
 /* end of CELL_STRUCT_CONTENTS */
-    CELL_STRUCT_CONTENTS;
-  };
+  CELL_STRUCT_CONTENTS;
 };
 
 #define VALUE_OFFSET(f) ((offsetof(cell_t, value.f) - offsetof(cell_t, expr.arg)) / sizeof(cell_t *))
 
 #ifndef EMSCRIPTEN
-static_assert(sizeof(cell_t) == sizeof_field(cell_t, raw), "cell_t wrong size");
+static_assert(sizeof(cell_t) == sizeof_field(cell_t, c), "cell_t wrong size");
 #endif
 
 static_assert(sizeof(tr) == sizeof_field(cell_t, expr.arg[0]), "tr wrong size");
