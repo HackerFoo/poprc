@@ -178,9 +178,9 @@ unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
 #define FORMAT__ITEM(file, line, name, c) CASE_PRINT(c, format_##name(x))
 #include "format_list.h"
 #undef FORMAT__ITEM
-        CASE('d', (int), "%d");
-        CASE('u', (unsigned int), "%u");
-        CASE('x', (int), "%x");
+        CASE('d', (intptr_t), "%" PRIdPTR);
+        CASE('u', (uintptr_t), "%" PRIuPTR);
+        CASE('x', (uintptr_t), "%" PRIxPTR);
         CASE('s', (const char *), "%s");
         CASE('p', (void *), "%p");
 #undef CASE
