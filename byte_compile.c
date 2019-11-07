@@ -70,14 +70,23 @@ static void print_value(const cell_t *c) {
 
 void print_bound(tcell_t *tc) {
   if(FLAG(*tc, trace, BOUNDED)) {
-    if(tc->trace.bound.min > INTPTR_MIN &&
-       tc->trace.bound.max < INTPTR_MAX) {
-      printf(" in [%" PRIdPTR ", %" PRIdPTR "]",
-             tc->trace.bound.min, tc->trace.bound.max);
-    } else if(tc->trace.bound.min > INTPTR_MIN) {
-      printf(" >= %" PRIdPTR, tc->trace.bound.min);
-    } else if(tc->trace.bound.max < INTPTR_MAX) {
-      printf(" <= %" PRIdPTR, tc->trace.bound.max);
+    type_t t = trace_type(tc);
+    if(t == T_INT) {
+      if(tc->trace.bound.min == tc->trace.bound.max) {
+        printf(" is %" PRIdPTR, tc->trace.bound.min);
+      } else if(tc->trace.bound.min > INTPTR_MIN &&
+         tc->trace.bound.max < INTPTR_MAX) {
+        printf(" in [%" PRIdPTR ", %" PRIdPTR "]",
+               tc->trace.bound.min, tc->trace.bound.max);
+      } else if(tc->trace.bound.min > INTPTR_MIN) {
+        printf(" >= %" PRIdPTR, tc->trace.bound.min);
+      } else if(tc->trace.bound.max < INTPTR_MAX) {
+        printf(" <= %" PRIdPTR, tc->trace.bound.max);
+      }
+    } else if(t == T_SYMBOL) {
+      if(tc->trace.bound.max == tc->trace.bound.min) {
+        printf(" is %s", symbol_string(tc->trace.bound.min));
+      }
     }
   }
 }

@@ -94,10 +94,6 @@ typedef union location {
 #undef FILE_ID
 static_assert(sizeof(location_t) == sizeof_field(location_t, raw), "location_t wrong size");
 
-typedef struct range {
-  val_t min, max;
-} range_t;
-
 struct context {
   context_t *up;
   cell_t *src;

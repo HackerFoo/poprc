@@ -444,3 +444,5 @@ assoc100:
     [+ +] . head swap
     [[+] dip21 +] . head ==
     True swap!
+
+range_add10: + 1 10 bound

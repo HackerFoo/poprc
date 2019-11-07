@@ -29,13 +29,6 @@
 #include "trace.h"
 #include "list.h"
 
-static range_t range_intersect(range_t a, range_t b) {
-  return (range_t) {
-    .min = max(a.min, b.min),
-    .max = min(a.max, b.max)
-  };
-}
-
 OP(value) {
   PRE(value);
   stats.reduce_cnt--;
@@ -250,6 +243,21 @@ cell_t *var_create(type_t t, tcell_t *tc, int in, int out) {
   return t == T_LIST && (in || out) ?
     var_create_list(v, in, out, 0, false) :
     v;
+}
+
+cell_t *var_create_bound(cell_t *v, tcell_t *tc, const context_t *ctx) {
+  assert_error(is_var(v));
+  type_t t = v->value.type;
+  cell_t *res = var_create(t, tc, 0, 0);
+  range_t r = get_range(v);
+  if(ctx->expected &&
+     dominated_by_expectation(v, ctx)) r = range_intersect(r, ctx->bound);
+  if(r.min != INTPTR_MIN || r.max != INTPTR_MAX) {
+    FLAG_SET(*res, value, BOUNDED);
+    res->value.range = r;
+    trace_update_range(res);
+  }
+  return res;
 }
 
 cell_t *var_create_nonlist(type_t t, tcell_t *tc) {
@@ -495,4 +503,13 @@ OP(fail) {
   PRE(fail);
   stats.reduce_cnt--;
   return abort_op(FAIL, cp, ctx);
+}
+
+range_t get_range(cell_t *c) {
+  assert_error(is_value(c));
+  if(is_var(c)) {
+    return FLAG(*c, value, BOUNDED) ? c->value.range : range_all;
+  } else {
+    return (range_t) { c->value.integer, c->value.integer };
+  }
 }

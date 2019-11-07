@@ -1555,6 +1555,7 @@ void trace_unbound(cell_t *c) {
 }
 
 tcell_t *tcell_entry(cell_t *e) {
+  if(!e) return NULL;
   assert_error(e->op == OP_null && e->n == PERSISTENT);
   return (tcell_t *)((char *)e - offsetof(tcell_t, c));
 }

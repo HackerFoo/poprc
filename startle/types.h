@@ -33,6 +33,10 @@ typedef struct seg_t {
   size_t n; /**< length in bytes */
 } seg_t;
 
+typedef struct range {
+  intptr_t min, max;
+} range_t;
+
 #define UNUSED __attribute__((unused))
 
 #endif

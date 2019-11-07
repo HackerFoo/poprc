@@ -37,6 +37,8 @@
  *  @brief Generally useful functions
  */
 
+const range_t range_all = { INTPTR_MIN, INTPTR_MAX };
+
 /** Estimate the median of an array */
 unsigned int median3(pair_t *array, unsigned int lo, unsigned int hi) {
   unsigned int mid = lo + (hi - lo) / 2;
@@ -991,4 +993,134 @@ TEST(seg_find_char) {
 
 char capitalize(char c) {
   return INRANGE(c, 'a', 'z') ? c - ('a' - 'A') : c;
+}
+
+range_t range_intersect(range_t a, range_t b) {
+  return (range_t) {
+    .min = max(a.min, b.min),
+    .max = min(a.max, b.max)
+  };
+}
+
+intptr_t sign(intptr_t x) {
+  return x < 0 ? -1 :
+    x > 0 ? 1 : 0;
+}
+
+intptr_t div_min(intptr_t n, intptr_t d) {
+  return sat_sub(n, d - sign(d)) / d;
+}
+
+intptr_t div_mini(intptr_t n, intptr_t d) {
+  if(n == INTPTR_MAX) return INTPTR_MAX;
+  if(n == INTPTR_MIN) return INTPTR_MIN;
+  return div_min(n, d);
+}
+
+intptr_t div_max(intptr_t n, intptr_t d) {
+  return sat_add(n, d - sign(d)) / d;
+}
+
+intptr_t div_maxi(intptr_t n, intptr_t d) {
+  if(n == INTPTR_MAX) return INTPTR_MAX;
+  if(n == INTPTR_MIN) return INTPTR_MIN;
+  return div_max(n, d);
+}
+
+#define SHOW(expr, expected)                                            \
+  {                                                                     \
+    intptr_t x = (expr);                                                \
+    intptr_t e = (expected);                                            \
+    bool pass = x == e;                                                 \
+    printf(#expr " = %" PRIdPTR ", expected %" PRIdPTR ": %s\n",        \
+           x, e, pass ? "PASS" : "FAIL");                               \
+    if(!pass) ret = -1;                                                 \
+  }
+
+TEST(div_min_max) {
+  int ret = 0;
+  SHOW(div_min(5, 3), 1);
+  SHOW(div_min(-5, 3), -2);
+  SHOW(div_min(5, -3), -2);
+  SHOW(div_min(-5, -3), 1);
+
+  SHOW(div_max(5, 3), 2);
+  SHOW(div_max(-5, 3), -1);
+  SHOW(div_max(5, -3), -1);
+  SHOW(div_max(-5, -3), 2);
+  return ret;
+}
+
+intptr_t sat_add(intptr_t x, intptr_t y) {
+  if(x >= 0) {
+    if(y > INTPTR_MAX - x) return INTPTR_MAX;
+  } else {
+    if(y < INTPTR_MIN - x) return INTPTR_MIN;
+  }
+  return x + y;
+}
+
+intptr_t sat_addi(intptr_t x, intptr_t y) {
+  if(ONEOF(INTPTR_MAX, x, y)) return INTPTR_MAX;
+  if(ONEOF(INTPTR_MIN, x, y)) return INTPTR_MIN;
+  return sat_add(x, y);
+}
+
+TEST(sat_arith) {
+  int ret = 0;
+  SHOW(sat_add(INTPTR_MIN, INTPTR_MIN), INTPTR_MIN);
+  SHOW(sat_add(INTPTR_MAX, INTPTR_MIN), -1);
+  SHOW(sat_add(INTPTR_MIN, INTPTR_MAX), -1);
+  SHOW(sat_add(INTPTR_MAX, INTPTR_MAX), INTPTR_MAX);
+
+  SHOW(sat_sub(INTPTR_MIN, INTPTR_MIN), 0);
+  SHOW(sat_sub(INTPTR_MAX, INTPTR_MIN), INTPTR_MAX);
+  SHOW(sat_sub(INTPTR_MIN, INTPTR_MAX), INTPTR_MIN);
+  SHOW(sat_sub(INTPTR_MAX, INTPTR_MAX), 0);
+
+  SHOW(sat_mul(INTPTR_MIN, 2), INTPTR_MIN);
+  SHOW(sat_mul(INTPTR_MAX, 2), INTPTR_MAX);
+  SHOW(sat_mul(2, INTPTR_MIN), INTPTR_MIN);
+  SHOW(sat_mul(2, INTPTR_MAX), INTPTR_MAX);
+  SHOW(sat_mul(INTPTR_MIN, -2), INTPTR_MAX);
+  SHOW(sat_mul(INTPTR_MAX, -2), INTPTR_MIN);
+  SHOW(sat_mul(-2, INTPTR_MIN), INTPTR_MAX);
+  SHOW(sat_mul(-2, INTPTR_MAX), INTPTR_MIN);
+  return ret;
+}
+
+intptr_t sat_sub(intptr_t x, intptr_t y) {
+  if(x >= 0) {
+    if(y < x - INTPTR_MAX) return INTPTR_MAX;
+  } else {
+    if(y > x - INTPTR_MIN) return INTPTR_MIN;
+  }
+  return x - y;
+}
+
+intptr_t sat_subi(intptr_t x, intptr_t y) {
+  if(x == INTPTR_MAX || y == INTPTR_MIN) return INTPTR_MAX;
+  if(x == INTPTR_MIN || y == INTPTR_MAX) return INTPTR_MIN;
+  return sat_sub(x, y);
+}
+
+intptr_t sat_mul(intptr_t x, intptr_t y) {
+  if(x == 0 || y == 0) return 0;
+  intptr_t low_limit = x > 0 ? INTPTR_MIN : INTPTR_MAX;
+  intptr_t high_limit = x > 0 ? INTPTR_MAX : INTPTR_MIN;
+  intptr_t min_y = div_max(low_limit, x);
+  if(y < min_y) return low_limit;
+  intptr_t max_y = div_min(high_limit, x);
+  if(y > max_y) return high_limit;
+  return x * y;
+}
+
+intptr_t sat_muli(intptr_t x, intptr_t y) {
+  if(x == 0 || y == 0) return 0;
+  if(ONEOF(x, INTPTR_MIN, INTPTR_MAX) ||
+     ONEOF(x, INTPTR_MIN, INTPTR_MAX)) {
+    return (x > 0) == (y > 0) ?
+      INTPTR_MAX : INTPTR_MIN;
+  }
+  return sat_mul(x, y);
 }
