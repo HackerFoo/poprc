@@ -44,14 +44,14 @@
 
 `define sync_wire(name) `concat_(`current_inst, name)
 
-`define inst(t, n) t t``_``n
+`define inst(t, n, p) t p t``_``n
 
 `define apply(f, x) `f x
 
-`define inst_sync(t, n) \
+`define inst_sync(t, n, p) \
   `define current_inst n \
   wire `sync_wire(out_valid); \
-  `inst(t, n)
+  `inst(t, n, p)
 
 `define start_block(name) \
 `define block name \
@@ -66,56 +66,44 @@
       .in_ready(`sync_wire(in_ready)), \
       .out_ready(ready)
 
-`define input(type, index) `input_``type(index)
-`define output(type, index) `output_``type(index)
-`define define_simple_input(type) `define input_``type``(index) input `type``T `id(in)``index
-`define define_simple_output(type) `define output_``type``(index) output `type``T `id(out)``index
+`define input(type, N, index) `input_``type(N, index)
+`define input_simple(N, index) input [N-1:0] `id(in)``index
+`define output(type, N, index) `output_``type(N, index)
+`define output_simple(N, index) output [N-1:0] `id(out)``index
 `define in(type, index, name) `in_``type(index, name)
 `define out(type, index, name) `out_``type(index, name)
-`define define_simple_in(type) `define in_``type(index, name) .`id(in)``index(name)
-`define define_simple_out(type) `define out_``type(index, name) .`id(out)``index(name)
-`define alias(type, name, index) `alias_``type(name, index)
-`define variable(type, name, in) `variable_``type(name, in)
-`define define_simple_alias(type) `define alias_``type(name, other) wire `type``T name = other
-`define define_simple_variable(type) `define variable_``type(name, in) reg `type``T name = 0
-`define wire(type, name) `wire_``type(name)
-`define define_simple_wire(type) `define wire_``type(name) wire `type``T name
-`define reg(type, name) `reg_``type(name)
-`define define_simple_reg(type) `define reg_``type(name) reg `type``T name
-`define const(type, name, val) `const_``type(name, val)
-`define define_simple_const(type) `define const_``type(name, val) localparam `type``T name = val
+`define in_simple(index, name) .`id(in)``index(name)
+`define out_simple(index, name) .`id(out)``index(name)
+`define alias(type, N, name, index) `alias_``type(N, name, index)
+`define alias_simple(N, name, other) wire [N-1:0] name = other
+`define variable(type, N, name, in) `variable_``type(N, name, in)
+`define variable_simple(N, name, in) reg [N-1:0] name = 0
+`define wire(type, N, name) `wire_``type(N, name)
+`define wire_simple(N, name) wire [N-1:0] name
+`define reg(type, N, name) `reg_``type(N, name)
+`define reg_simple(N, name) reg [N-1:0] name
+`define const(type, N, name, val) `const_``type(N, name, val)
+`define const_simple(N, name, val) localparam [N-1:0] name = val
 
-`define define_simple_type(type) \
-  `define_simple_input(type) \
-  `define_simple_output(type) \
-  `define_simple_in(type) \
-  `define_simple_out(type) \
-  `define_simple_alias(type) \
-  `define_simple_variable(type) \
-  `define_simple_wire(type) \
-  `define_simple_reg(type) \
-  `define_simple_const(type)
-
-`define_simple_type(int)
-`define_simple_type(sym)
-`define_simple_type(any)
-
-`define input_stream(index) input `intT in``index, input in``index``_valid, output in``index``_ready
-`define output_stream(index) output `intT out``index, output out``index``_valid, input out``index``_ready
+`define input_stream(N, index) input [N-1:0] in``index, input in``index``_valid, output in``index``_ready
+`define output_stream(N, index) output [N-1:0] out``index, output out``index``_valid, input out``index``_ready
 `define in_stream(index, name) .in``index(name), .in``index``_valid(name``_valid), .in``index``_ready(name``_ready)
 `define out_stream(index, name) .out``index(name), .out``index``_valid(name``_valid), .out``index``_ready(name``_ready)
-`define alias_stream(name, other) wire `intT name = other; wire name``_valid = other``_valid; wire name``_ready; assign other``_ready = name``_ready
-`define variable_stream(name, in) \
-  wire `intT name = in; \
+`define alias_stream(N, name, other) \
+  wire [N-1:0] name = other; \
+  wire name``_valid = other``_valid; wire name``_ready; \
+  assign other``_ready = name``_ready
+`define variable_stream(N, name, in) \
+  wire [N-1:0] name = in; \
   reg name``_valid_reg; \
   wire name``_valid = in``_valid; \
   `rename(in``_ready, name``_ready)
-`define wire_stream(name) wire `intT name; wire name``_valid; wire name``_ready
-`define reg_stream(name) reg `intT name; reg name``_valid; wire name``_ready
-`define const_stream(name, val) localparam `intT name = val; localparam name``_valid = `true
-`define const_nil(name) localparam `intT name = `nil; localparam name``_valid = `false; wire name``_ready
+`define wire_stream(N, name) wire [N-1:0] name; wire name``_valid; wire name``_ready
+`define reg_stream(N, name) reg [N-1:0] name; reg name``_valid; wire name``_ready
+`define const_stream(N, name, val) localparam [N-1:0] name = val; localparam name``_valid = `true
+`define const_nil(N, name) localparam [N-1:0] name = `nil; localparam name``_valid = `false; wire name``_ready
 
-`define interface(type, index) `interface_``type(index)
+`define interface(type, AN, DN, index) `interface_``type(AN, DN, index)
 `define intf(type, index, name) `intf_``type(index, name)
 `define bus(type, index, inst) `bus_``type``(index, inst)
 
@@ -135,11 +123,11 @@
       -> all inputs to the bus must be low
          if valid is low, allowing the bus to be OR'ed
  * ------------------------------------------------------ */
-`define interface_Array(index) \
-  output `addrT intf``index``_addr, \
+`define interface_Array(AN, DN, index) \
+  output [AN-1:0] intf``index``_addr, \
   output intf``index``_we, \
-  output `intT intf``index``_di, \
-  input `intT intf``index``_do, \
+  output [DN-1:0] intf``index``_di, \
+  input [DN-1:0] intf``index``_do, \
   output intf``index``_valid, \
   input intf``index``_ready
 `define intf_Array(index, name) \

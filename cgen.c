@@ -101,7 +101,7 @@ void gen_function_signature(const tcell_t *e) {
   const tcell_t *p = e + 1;
   csize_t out_n = e->entry.out;
   type_t rtypes[out_n];
-  resolve_types(e, rtypes);
+  resolve_types(e, rtypes, NULL);
 
   printf("%s%s_%s(", ctype(rtypes[0]), e->module_name, e->word_name);
   char *sep = "";

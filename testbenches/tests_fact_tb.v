@@ -33,6 +33,6 @@ module tests_fact_tb;
       $finish;
    end
 
-   `inst_sync(tests_fact, tests_fact)(`sync(in_valid, out_ready), .in0(a), .out0(b));
+   `inst_sync(tests_fact, tests_fact, #())(`sync(in_valid, out_ready), .in0(a), .out0(b));
 
 endmodule // tests_fact_tb

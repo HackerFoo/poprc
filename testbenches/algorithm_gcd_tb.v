@@ -36,6 +36,6 @@ module algorithm_gcd_tb;
       $finish;
    end
 
-   `inst_sync(algorithm_gcd, gcd)(`sync(in_valid, out_ready), .in0(a), .in1(b), .out0(c));
+   `inst_sync(algorithm_gcd, gcd, #())(`sync(in_valid, out_ready), .in0(a), .in1(b), .out0(c));
 
 endmodule // gcd_tb

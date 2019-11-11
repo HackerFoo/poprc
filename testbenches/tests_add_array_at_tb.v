@@ -50,12 +50,12 @@ module tests_add_array_at_tb;
       $finish;
    end
 
-   `inst_sync(tests_add_array_at, tests_add_array_at)(
+   `inst_sync(tests_add_array_at, tests_add_array_at, #())(
      `sync(in_valid, out_ready),
      `intf(Array, 0, arr),
-     `in(int, 1, addr),
-     `in(int, 2, val),
-     `out(int, 1, res));
+     `in(simple, 1, addr),
+     `in(simple, 2, val),
+     `out(simple, 1, res));
 
    always @(posedge clk) begin
        if(tests_add_array_at_out_valid) begin

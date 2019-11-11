@@ -46,19 +46,41 @@
 // table of corresponding Verilog types
 static
 const char *vltype(type_t t) {
+  return t == T_LIST ? "stream" : "simple";
+}
+
+static
+int bits_needed(range_t r) {
+  if(r.min >= 0) { // unsigned
+    return int_log2l(r.max);
+  } else { // signed
+    return int_log2l(max(r.max, sat_subi(0, r.min))) + 1;
+  }
+}
+
+static
+const char *vlbits(type_t t, range_t r) {
+  static char num[8]; // *** not reentrant
   static const char *table[] = {
-    [T_ANY]      = "any",
-    [T_INT]      = "int",
-    [T_LIST]     = "stream",
-    [T_SYMBOL]   = "sym",
-    [T_MAP]      = "map",
-    [T_STRING]   = "string",
-    [T_FLOAT]    = "real",
-    [T_OPAQUE]   = "opaque",
-    [T_BOTTOM]   = "void",
+    [T_ANY]      = "`anyN",
+    [T_INT]      = "`intN",
+    [T_LIST]     = "`intN",
+    [T_SYMBOL]   = "`symN",
+    [T_MAP]      = "`mapN",
+    [T_STRING]   = "`stringN",
+    [T_FLOAT]    = "`realN",
+    [T_OPAQUE]   = "`opaqueN",
+    [T_BOTTOM]   = "`voidN",
   };
   assert_error(t < LENGTH(table));
-  return table[t];
+  if(ONEOF(t, T_INT, T_SYMBOL) &&
+     range_bounded(r) &&
+     range_span(r) > 0) {
+    snprintf(num, sizeof(num), "%u", bits_needed(r));
+    return num;
+  } else {
+    return table[t];
+  }
 }
 
 static
@@ -83,7 +105,7 @@ const char *vltype_full(const tcell_t *e, const tcell_t *c) {
   } while(0)
 
 static
-void gen_module_interface(const tcell_t *e, const type_t *rtypes) {
+void gen_module_interface(const tcell_t *e, const type_t *rtypes, const range_t *rranges) {
   const tcell_t *p = e + 1;
   csize_t out_n = e->entry.out;
 
@@ -94,16 +116,23 @@ void gen_module_interface(const tcell_t *e, const type_t *rtypes) {
   }
   COUNTDOWN(i, e->entry.in) {
     const tcell_t *a = &p[i];
-    printf_sep("  `%s(%s, %d)",
-               trace_type(a) == T_OPAQUE ? "interface" : "input",
-               vltype_full(e, a),
-               (int)(e->entry.in - 1 - i));
+    type_t t = trace_type(a);
+    if(t != T_OPAQUE) {
+      printf_sep("  `input(%s, %s, %d)",
+                 vltype_full(e, a),
+                 vlbits(trace_type(a), a->trace.bound),
+                 (int)(e->entry.in - 1 - i));
+    } else {
+      printf_sep("  `interface(%s, `addrN, `intN, %d)", // *** addr/data width isn't in trace yet
+                 vltype_full(e, a),
+                 (int)(e->entry.in - 1 - i));
+    }
   }
 
   COUNTUP(i, out_n) {
     type_t t = rtypes[i];
     if(t != T_OPAQUE) {
-      printf_sep("  `output(%s, %d)", vltype(t), (int)i);
+      printf_sep("  `output(%s, %s, %d)", vltype(t), vlbits(t, rranges[i]), (int)i);
     }
   }
 
@@ -158,7 +187,7 @@ bool update_block(const tcell_t *e, const tcell_t *c, int *block) {
 }
 
 static
-void gen_stack(const tcell_t *e, const type_t *rtypes) {
+void gen_stack(const tcell_t *e, const type_t *rtypes, const range_t *rranges) {
   int ra_bits = 0;
   int nt_self_calls = 1;
   if(FLAG(*e, entry, RETURN_ADDR)) {
@@ -193,7 +222,7 @@ void gen_stack(const tcell_t *e, const type_t *rtypes) {
     printf("  reg [`RB-1:0] return_addr = `RB'd0;\n");
   }
   COUNTUP(i, e->entry.out) {
-    printf("  reg `%sT return%d = 0;\n", vltype(rtypes[i]), (int)i);
+    printf("  reg [%s-1:0] return%d = 0;\n", vlbits(rtypes[i], rranges[i]), (int)i);
   }
 }
 
@@ -207,14 +236,14 @@ void gen_decls(tcell_t *e) {
     if(is_var(c)) {
       if(t != T_OPAQUE) {
         const char *decl = FLAG(*e, entry, RECURSIVE) ? "variable" : "alias";
-        printf("  `%s(%s, %s%d, in%d);\n", decl, vltype(t), cname(t), i, e->entry.in - i);
+        printf("  `%s(%s, %s, %s%d, in%d);\n", decl, vltype(t), vlbits(t, tc->trace.bound), cname(t), i, e->entry.in - i);
       }
     } else {
       if(c->op == OP_value) {
         if(t == T_LIST) {
-          printf("  `const_nil(%s%d);\n", cname(t), i);
+          printf("  `const_nil(%s, %s%d);\n", vlbits(t, tc->trace.bound), cname(t), i);
         } else {
-          printf("  `const(%s, %s%d, ", vltype(t), cname(t), i);
+          printf("  `const(%s, %s, %s%d, ", vltype(t), vlbits(t, tc->trace.bound), cname(t), i);
           gen_value_rhs(tc);
           printf(");\n");
         }
@@ -225,9 +254,9 @@ void gen_decls(tcell_t *e) {
         if(t == T_OPAQUE) {
           // handled below
         } else if(is_self_call(e, tc)) {
-          printf("  `reg(%s, %s%d) = 0;\n", vltype(t), cname(t), i); // ***
+          printf("  `reg(%s, %s, %s%d) = 0;\n", vltype(t), vlbits(t, tc->trace.bound), cname(t), i); // ***
         } else {
-          printf("  `wire(%s, %s%d);\n", vltype(t), cname(t), i);
+          printf("  `wire(%s, %s, %s%d);\n", vltype(t), vlbits(t, tc->trace.bound), cname(t), i);
         }
         if(!is_dep(c)) {
           TRAVERSE(c, const, in) {
@@ -240,7 +269,7 @@ void gen_decls(tcell_t *e) {
           }
         }
       } else if(t == T_LIST) {
-        printf("  `const_nil(%s%d);\n", cname(t), i);
+        printf("  `const_nil(%s, %s%d);\n", vlbits(t, tc->trace.bound), cname(t), i);
       }
     }
   }
@@ -420,7 +449,7 @@ void gen_instance(const tcell_t *e, const tcell_t *c, int *sync_chain, uintptr_t
   if(sync) {
     printf("    `inst_sync(");
     print_function_name(e, c);
-    printf(", inst%d)(\n      `sync(", inst);
+    printf(", inst%d, #())(\n      `sync(", inst);
     gen_sync_disjoint_inputs(e, c);
     printf(", ");
     gen_sync_disjoint_outputs(e, c, backrefs);
@@ -428,7 +457,7 @@ void gen_instance(const tcell_t *e, const tcell_t *c, int *sync_chain, uintptr_t
   } else {
     printf("    `inst(");
     print_function_name(e, c);
-    printf(", inst%d)(", inst);
+    printf(", inst%d, #())(", inst);
   }
 
   SEP(",");
@@ -751,12 +780,13 @@ void gen_module(tcell_t *e) {
     }
   }
   type_t rtypes[e->entry.out];
-  resolve_types(e, rtypes);
-  gen_module_interface(e, rtypes);
+  range_t rranges[e->entry.out];
+  resolve_types(e, rtypes, rranges);
+  gen_module_interface(e, rtypes, rranges);
   printf("\n");
   gen_decls(e);
   if(FLAG(*e, entry, STACK)) {
-    gen_stack(e, rtypes);
+    gen_stack(e, rtypes, rranges);
   }
   gen_body(e);
   printf("\n");

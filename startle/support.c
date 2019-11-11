@@ -38,6 +38,7 @@
  */
 
 const range_t range_all = { INTPTR_MIN, INTPTR_MAX };
+const range_t range_none = { 0, -1 };
 
 /** Estimate the median of an array */
 unsigned int median3(pair_t *array, unsigned int lo, unsigned int hi) {
@@ -1000,6 +1001,29 @@ range_t range_intersect(range_t a, range_t b) {
     .min = max(a.min, b.min),
     .max = min(a.max, b.max)
   };
+}
+
+range_t range_union(range_t a, range_t b) {
+  return (range_t) {
+    .min = min(a.min, b.min),
+    .max = max(a.max, b.max)
+  };
+}
+
+bool range_eq(range_t a, range_t b) {
+  return
+    a.min == b.min &&
+    a.max == b.max;
+}
+
+intptr_t range_span(range_t a) {
+  return a.max > a.min ? sat_subi(a.max, a.min) : 0;
+}
+
+bool range_bounded(range_t a) {
+  return
+    a.max < INTPTR_MAX &&
+    a.min > INTPTR_MIN;
 }
 
 intptr_t sign(intptr_t x) {

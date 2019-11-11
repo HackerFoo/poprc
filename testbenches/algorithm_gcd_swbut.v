@@ -30,7 +30,7 @@ module top(
     end
 
     wire gcd_in_ready;
-    `inst_sync(algorithm_gcd, gcd)(`sync(in_valid, `true), .in0(a), .in1(b), .out0(c));
+    `inst_sync(algorithm_gcd, gcd, #())(`sync(in_valid, `true), .in0(a), .in1(b), .out0(c));
 
     assign out = {in_valid, gcd_out_valid, ~gcd_in_ready, 5'd0, c};
 

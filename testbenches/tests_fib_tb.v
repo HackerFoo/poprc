@@ -33,7 +33,7 @@ module tests_fib_tb;
       $finish;
    end
 
-   `inst_sync(tests_fib, tests_fib)(`sync(in_valid, out_ready), .in0(a), .out0(b));
+   `inst_sync(tests_fib, tests_fib, #())(`sync(in_valid, out_ready), .in0(a), .out0(b));
 
    always @(posedge clk) begin
        if(tests_fib_out_valid) begin

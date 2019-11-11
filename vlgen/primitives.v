@@ -2,18 +2,23 @@
 
 `define primitive_op1(name, op, inT, outT, suf) \
 module __primitive_``name``_``suf``( \
-  `input(inT, 0), \
-  `output(outT, 0) \
+  `input(simple, in0N, 0), \
+  `output(simple, out0N, 0) \
 ); \
+    parameter in0N = `inT``N; \
+    parameter out0N = `outT``N; \
     assign out0 = op in0; \
 endmodule
 
 `define primitive_op2(name, op, inT, outT, suf) \
 module __primitive_``name``_``suf``( \
-  `input(inT, 0), \
-  `input(inT, 1), \
-  `output(outT, 0) \
+  `input(simple, in0N, 0), \
+  `input(simple, in1N, 1), \
+  `output(simple, out0N, 0) \
 ); \
+    parameter in0N = `inT``N; \
+    parameter in1N = `inT``N; \
+    parameter out0N = `outT``N; \
     assign out0 = in0 op in1; \
 endmodule
 
@@ -40,10 +45,13 @@ endmodule
 // stream end signal is in-band
 module __primitive_ap01_lli(
   `sync_ports,
-  `input(stream, 0),
-  `output(stream, 0),
-  `output(int, 1)
+  `input(stream, in0N, 0),
+  `output(stream, out0N, 0),
+  `output(simple, out1N, 1)
 );
+    parameter in0N = `intN;
+    parameter out0N = `intN;
+    parameter out1N = `intN;
 
     assign out0 = in0;
     assign out1 = in0;
@@ -57,11 +65,15 @@ endmodule
 
 module __primitive_ap02_llii(
   `sync_ports,
-  `input(stream, 0),
-  `output(stream, 0),
-  `output(int, 1),
-  `output(int, 2)
+  `input(stream, in0N, 0),
+  `output(stream, out0N, 0),
+  `output(simple, out1N, 1),
+  `output(simple, out2N, 2)
 );
+    parameter in0N = `intN;
+    parameter out0N = `intN;
+    parameter out1N = `intN;
+    parameter out2N = `intN;
 
     reg done = `false;
     reg  `intT data2 = `false; reg data2_valid = `false;
@@ -91,11 +103,15 @@ endmodule
 // TODO stream should preempt other inputs
 module __primitive_ap20_liil(
   `sync_ports,
-  `input(int, 0),
-  `input(int, 1),
-  `input(stream, 2),
-  `output(stream, 0)
+  `input(simple, in0N, 0),
+  `input(simple, in1N, 1),
+  `input(stream, in2N, 2),
+  `output(stream, out0N, 0)
 );
+    parameter in0N = `intN;
+    parameter in1N = `intN;
+    parameter in2N = `intN;
+    parameter out0N = `intN;
 
     reg `intT data0 = 0; reg data0_valid = 0;
     assign out0 = in_valid ? (data0_valid ? data0 : in1) : in2;
@@ -116,10 +132,13 @@ endmodule
 
 module __primitive_pushr1_lli(
   `sync_ports,
-  `input(stream, 0),
-  `input(int, 1),
-  `output(stream, 0)
+  `input(stream, in0N, 0),
+  `input(simple, in1N, 1),
+  `output(stream, out0N, 0)
 );
+    parameter in0N = `intN;
+    parameter in1N = `intN;
+    parameter out0N = `intN;
 
     assign out0 = in_valid ? in1 : in0;
     assign out0_valid = in_valid | in0_valid;
@@ -131,11 +150,15 @@ endmodule
 
 module __primitive_pushr2_llii(
   `sync_ports,
-  `input(stream, 0),
-  `input(int, 1),
-  `input(int, 2),
-  `output(stream, 0)
+  `input(stream, in0N, 0),
+  `input(simple, in1N, 1),
+  `input(simple, in2N, 2),
+  `output(stream, out0N, 0)
 );
+    parameter in0N = `intN;
+    parameter in1N = `intN;
+    parameter in2N = `intN;
+    parameter out0N = `intN;
 
     reg select = `false;
     assign out0 = in_valid ? (select ? in2 : in1) : in0;
@@ -157,10 +180,14 @@ endmodule
 
 module __primitive_read_array_ooii(
   `sync_ports,
-  `interface(Array, 0),
-  `input(int, 1),
-  `output(int, 1)
+  `interface(Array, interfaceAN0, interfaceDN0, 0),
+  `input(simple, in1N, 1),
+  `output(simple, out1N, 1)
 );
+    parameter interfaceAN0 = `addrN;
+    parameter interfaceDN0 = `intN;
+    parameter in1N = `intN;
+    parameter out1N = `intN;
 
     reg out_valid = `false;
     assign out1 = intf0_do;
@@ -185,10 +212,14 @@ endmodule
 
 module __primitive_write_array_ooii(
   `sync_ports,
-  `interface(Array, 0),
-  `input(int, 1),
-  `input(int, 2)
+  `interface(Array, interfaceAN0, interfaceDN0, 0),
+  `input(simple, in1N, 1),
+  `input(simple, in2N, 2)
 );
+    parameter interfaceAN0 = `addrN;
+    parameter interfaceDN0 = `intN;
+    parameter in1N = `intN;
+    parameter in2N = `intN;
 
     reg out_valid = `false;
     assign in_ready = intf0_ready;

@@ -5,9 +5,9 @@
 module pushr_tb;
 
     reg clk;
-    `reg(stream, sIn);
-    `wire(stream, sOut);
-    `reg(int, dIn1);
+    `reg(stream, `intN, sIn);
+    `wire(stream, `intN, sOut);
+    `reg(simple, `intN, dIn1);
 
     reg in_valid;
     reg out_ready;
@@ -40,10 +40,10 @@ module pushr_tb;
         $display("sIn = %b (%d), sOut = %b (%d)", sIn, sIn, sOut, sOut);
     end
 
-    `inst_sync(__primitive_pushr1_lli, pushr1)
+    `inst_sync(__primitive_pushr1_lli, pushr1, #())
       (`sync(in_valid, out_ready),
        `in(stream, 0, sIn),
-       `in(int, 1, dIn1),
+       `in(simple, 1, dIn1),
        `out(stream, 0, sOut));
 
 endmodule

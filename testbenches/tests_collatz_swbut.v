@@ -18,7 +18,7 @@ module top(
     reg                  out_ready;
     wire                 collatz_in_ready;
 
-    `inst_sync(tests_collatz, collatz)(`sync(in_valid, out_ready), .in0(a), .out0(b));
+    `inst_sync(tests_collatz, collatz, #())(`sync(in_valid, out_ready), .in0(a), .out0(b));
 
     assign out = {~collatz_in_ready, out_reg};
     initial out_ready = `true;

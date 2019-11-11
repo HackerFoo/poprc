@@ -6,8 +6,8 @@
 module tests_map_add1_tb;
 
     reg clk;
-    `reg(stream, sIn);
-    `wire(stream, sOut);
+    `reg(stream, `intN, sIn);
+    `wire(stream, `intN, sOut);
     reg in_valid;
     reg out_ready;
     wire map_add1_in_ready;
@@ -40,6 +40,6 @@ module tests_map_add1_tb;
         $finish;
     end
 
-    `inst_sync(tests_map_add1, map_add1)(`sync(in_valid, out_ready), `in(stream, 0, sIn), `out(stream, 0, sOut));
+    `inst_sync(tests_map_add1, map_add1, #())(`sync(in_valid, out_ready), `in(stream, 0, sIn), `out(stream, 0, sOut));
 
 endmodule

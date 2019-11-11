@@ -6,8 +6,8 @@
 module tests_repeat_int_tb;
 
     reg clk;
-    `reg(int, dIn);
-    `wire(stream, sOut);
+    `reg(simple, `intN, dIn);
+    `wire(stream, `intN, sOut);
     reg in_valid;
     reg out_ready;
     wire repeat_int_in_ready;
@@ -34,6 +34,6 @@ module tests_repeat_int_tb;
         $finish;
     end
 
-    `inst_sync(tests_repeat_int, repeat_int)(`sync(in_valid, out_ready), `in(int, 0, dIn), `out(stream, 0, sOut));
+    `inst_sync(tests_repeat_int, repeat_int, #())(`sync(in_valid, out_ready), `in(simple, 0, dIn), `out(stream, 0, sOut));
 
 endmodule

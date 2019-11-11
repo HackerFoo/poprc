@@ -743,7 +743,7 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
 
   trace_clear_alt(parent_entry);
   type_t rtypes[new_entry->entry.out];
-  resolve_types(new_entry, rtypes);
+  resolve_types(new_entry, rtypes, NULL);
   cell_t *res = var_create_with_entry(rtypes[0], parent_entry, p->size);
   // }
 
@@ -844,7 +844,7 @@ response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
     }
   }
 
-  resolve_types(entry, rtypes);
+  resolve_types(entry, rtypes, NULL);
   wrap_data *wrap = entry->entry.wrap;
   uintptr_t mask = wrap ? wrap->dep_mask : 0;
   if(mask == 0) mask = (1 << entry_out) - 1;

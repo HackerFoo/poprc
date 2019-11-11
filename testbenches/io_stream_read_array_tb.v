@@ -18,8 +18,8 @@ module io_stream_read_array_tb;
    wire `intT res;
    wire io_stream_read_array_in_ready;
 
-   `reg(stream, sIn);
-   `wire(stream, sOut);
+   `reg(stream, `intN, sIn);
+   `wire(stream, `intN, sOut);
    reg in_valid;
    reg out_ready;
    assign sOut_ready = out_ready;
@@ -51,7 +51,7 @@ module io_stream_read_array_tb;
       $finish;
    end
 
-   `inst_sync(io_stream_read_array, io_stream_read_array)(
+   `inst_sync(io_stream_read_array, io_stream_read_array, #())(
      `sync(in_valid, out_ready),
      `intf(Array, 0, arr),
      `in(stream, 1, sIn),

@@ -6,8 +6,8 @@
 module algorithm_sum_tb;
 
     reg clk;
-    `reg(stream, sIn);
-    `wire(int, sum);
+    `reg(stream, `intN, sIn);
+    `wire(simple, `intN, sum);
     reg in_valid;
     reg out_ready;
     wire sum_inst_in_ready;
@@ -36,6 +36,6 @@ module algorithm_sum_tb;
         $finish;
     end
 
-    `inst_sync(algorithm_sum, sum_inst)(`sync(in_valid, out_ready), `in(stream, 0, sIn), `out(int, 0, sum));
+    `inst_sync(algorithm_sum, sum_inst, #())(`sync(in_valid, out_ready), `in(stream, 0, sIn), `out(simple, 0, sum));
 
 endmodule

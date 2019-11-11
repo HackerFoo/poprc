@@ -817,11 +817,16 @@ type_t trace_type(const tcell_t *tc) {
 }
 
 // resolve types in each return in e starting at c, storing the resulting types in t
-void resolve_types(const tcell_t *e, type_t *t) {
+void resolve_types(const tcell_t *e, type_t *t, range_t *r) {
   csize_t out = e->entry.out;
 
   COUNTUP(i, out) {
     t[i] = T_BOTTOM;
+  }
+  if(r) {
+    COUNTUP(i, out) {
+      if(r) r[i] = range_none;
+    }
   }
 
   // find first return
@@ -836,12 +841,17 @@ void resolve_types(const tcell_t *e, type_t *t) {
 
   while(p) {
     COUNTUP(i, out) {
-      type_t pt = trace_type(tref(e, p->value.ptr[i]));
+      const tcell_t *tc = tref(e, p->value.ptr[i]);
+      type_t pt = trace_type(tc);
       type_t *rt = &t[out-1 - i];
       if(*rt == T_BOTTOM) {
         *rt = pt;
-      } else if(*rt != pt &&
-                pt != T_BOTTOM) {
+      } else if(*rt == pt) {
+        if(r && ONEOF(pt, T_INT, T_SYMBOL)) {
+          range_t *rr = &r[out-1 - i];
+          *rr = range_union(*rr, tc->trace.bound);
+        }
+      } else if(pt != T_BOTTOM) {
         *rt = T_ANY;
       }
     }
