@@ -218,7 +218,7 @@ val_t fill_args(tcell_t *entry, cell_t *l) {
   val_t i = 0;
   while(!closure_is_ready(l)) {
     cell_t *v = param(T_ANY, entry);
-    trace_update(v, v);
+    trace_update(v);
     arg(l, v);
     ++i;
   }
@@ -243,7 +243,7 @@ bool match_class(const cell_t *c, char_class_t cc,
     c->tok_list.length <= max_length;
 }
 
-int parse_num(const cell_t *c) {
+long int parse_num(const cell_t *c) {
   return strtol(c->tok_list.location, NULL, 0);
 }
 

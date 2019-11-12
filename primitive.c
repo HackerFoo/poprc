@@ -52,17 +52,10 @@
     |                                               |
     '-----------------------------------------------*/
 
-void infer_bound(cell_t *c, const context_t *ctx,
-                 range_t (*range_op)(range_t, range_t),
-                 cell_t *v, cell_t *x, cell_t *y) {
-  range_t r = range_op(get_range(x), get_range(y));
-  if(ctx->expected &&
-     dominated_by_expectation(c, ctx)) r = range_intersect(r, ctx->bound);
-  if(r.min != INTPTR_MIN || r.max != INTPTR_MAX) {
-    v->value.range = r;
-    FLAG_SET(*v, value, BOUNDED);
-    trace_update_range(v);
-  }
+range_t infer_bound(const context_t *ctx,
+                    range_t (*range_op)(range_t, range_t),
+                    cell_t *x, cell_t *y) {
+  return range_intersect(range_op(get_range(x), get_range(y)), ctx->bound);
 }
 
 cell_t *_op2(cell_t *c, const context_t *ctx, type_t arg_type, type_t res_type,
@@ -70,7 +63,7 @@ cell_t *_op2(cell_t *c, const context_t *ctx, type_t arg_type, type_t res_type,
              cell_t *x, cell_t *y) {
   if(ANY(is_var, x, y)) {
     cell_t *v = var(res_type, c);
-    infer_bound(c, ctx, range_op, v, x, y);
+    v->value.range = infer_bound(ctx, range_op, x, y);
     return v;
   } else {
     return val(res_type, op(arg_type == T_INT ? x->value.integer : x->value.symbol,
@@ -100,8 +93,7 @@ bool bound_contexts_noop(UNUSED cell_t *c,
 static
 bool bound_contexts_arith(cell_t *c, context_t *ctx, context_t *arg_ctx) {
   if(trace_current_entry() == NULL ||
-     ctx->t != T_INT ||
-     !ctx->expected) {
+     ctx->t != T_INT) {
     return false;
   }
 
@@ -134,7 +126,6 @@ bool bound_contexts_arith(cell_t *c, context_t *ctx, context_t *arg_ctx) {
     default:
       return false;
     }
-    other->expected = true;
     return true;
   } else if(is_value(c->expr.arg[1]) && !is_var(c->expr.arg[1])) {
     val_t rhs = c->expr.arg[1]->value.integer;
@@ -145,8 +136,8 @@ bool bound_contexts_arith(cell_t *c, context_t *ctx, context_t *arg_ctx) {
       other->bound.max = sat_subi(ctx->bound.max, rhs);
       break;
     case OP_sub:
-      other->bound.min = sat_addi(ctx->bound.max, rhs);
-      other->bound.max = sat_addi(ctx->bound.min, rhs);
+      other->bound.min = sat_addi(ctx->bound.min, rhs);
+      other->bound.max = sat_addi(ctx->bound.max, rhs);
       break;
     case OP_mul: // same as above
       if(rhs > 0) {
@@ -172,7 +163,6 @@ bool bound_contexts_arith(cell_t *c, context_t *ctx, context_t *arg_ctx) {
     default:
       return false;
     }
-    other->expected = true;
     return true;
   } else {
     return false;
@@ -183,7 +173,6 @@ static
 bool bound_contexts_cmp(cell_t *c, context_t *ctx, context_t *arg_ctx) {
   if(trace_current_entry() == NULL ||
      ctx->t != T_SYMBOL ||
-     !ctx->expected ||
      ctx->bound.min != ctx->bound.max) {
     return false;
   }
@@ -222,7 +211,6 @@ bool bound_contexts_cmp(cell_t *c, context_t *ctx, context_t *arg_ctx) {
 
   if(ONEOF(op, OP_neq, OP_neq_s)) return false; // can't represent neq
 
-  other->expected = true;
   other->bound.min = INTPTR_MIN;
   other->bound.max = INTPTR_MAX;
   switch(op) {
@@ -241,7 +229,7 @@ bool bound_contexts_cmp(cell_t *c, context_t *ctx, context_t *arg_ctx) {
 
 range_t no_range_op(UNUSED range_t a,
                     UNUSED range_t b) {
-  return range_all;
+  return RANGE_ALL;
 }
 
 // CLEANUP merge with func_op2_float
@@ -390,7 +378,7 @@ OP(sub) {
 WORD("/", div, 2, 1)
 val_t div_op(val_t x, val_t y) { return x / y; }
 range_t div_range_op(range_t n, range_t d) {
-  if(d.min <= 0 && d.max >= 0) return range_all;
+  if(d.min <= 0 && d.max >= 0) return RANGE_ALL;
   val_t d_small = d.max < 0 ? d.max : d.min;
   if(d_small > 0) {
     return (range_t) {

@@ -38,6 +38,7 @@
 #include "user_func.h"
 #include "tags.h"
 #include "builders.h"
+#include "parse.h"
 
 #if INTERFACE
 #define MAX_ALTS 256
@@ -187,7 +188,7 @@ cell_t *drop_alt(cell_t *c) {
     drop(c->alt);
     c->alt = NULL;
     return c;
-  } else if(is_value(c)) {
+  } else if(is_value(c) && !c->value.var) {
     cell_t *n = COPY_REF(c, ptrs);
     n->alt = NULL;
     drop(c);
@@ -558,7 +559,8 @@ void store_dep(cell_t *c, tcell_t *tc, csize_t pos, type_t t, alt_set_t alt_set)
       .alt_set = alt_set,
       .type = t,
       .flags = VALUE_VAR | VALUE_DEP,
-      .var = tc
+      .var = tc,
+      .range = max_bound
     }
   };
   if(c->op) closure_shrink(c, 1);
@@ -593,7 +595,7 @@ response abort_op(response rsp, cell_t **cp, context_t *ctx) {
     }
     WATCH(c, "abort_op");
     cell_t *alt = ref(c->alt);
-    if(c->n && ctx->t == T_ANY && !ctx->expected) { // HACK this should be more sophisticated
+    if(c->n && ctx->t == T_ANY) { // HACK this should be more sophisticated
       TRAVERSE(c, in) drop(*p);
       TRAVERSE(c, out) {
         cell_t *d = *p;
@@ -842,7 +844,6 @@ uint8_t new_alt_id(unsigned int n) {
 bool expected_symbol(context_t *ctx, val_t sym) {
   return
     ctx->t == T_SYMBOL &&
-    ctx->expected &&
     ctx->bound.min == ctx->bound.max &&
     ctx->bound.min == sym;
 }
@@ -856,19 +857,18 @@ bool expected_symbol(context_t *ctx, val_t sym) {
 
 #define CTX_INHERIT_EXP                         \
   CTX_INHERIT,                                  \
-  .expected = ctx->expected,                    \
   .bound = ctx->bound
 
 #define CTX(type, ...) CONCAT(CTX_, type)(__VA_ARGS__)
 #define CTX_list(_in, _out) \
-  ((context_t) { .t = T_LIST, .s = { .in = _in, .out = _out }, CTX_INHERIT})
+  ((context_t) { .t = T_LIST, .s = { .in = (_in), .out = (_out) }, CTX_INHERIT})
 #define CTX_t_1(_t)                                                     \
-  ((context_t) { .t = _t, CTX_INHERIT })
+  ((context_t) { .t = (_t), CTX_INHERIT, .bound = max_bound })
 #define CTX_t_2(_t, _expected_val)                                          \
-  ((context_t) { .t = _t, CTX_INHERIT, .expected = true, .bound.min = _expected_val, .bound.max = _expected_val })
+  ((context_t) { .t = (_t), CTX_INHERIT, .bound = { .min = (_expected_val), .max = (_expected_val) } })
 #define CTX_t_3(_t, _expected, _expected_val)                            \
-  ((context_t) { .t = _t, CTX_INHERIT, .expected = _expected, .bound.min = _expected_val, .bound.max = _expected_val })
-#define CTX_t(...) DISPATCH(CTX_t, __VA_ARGS__)
+  ((context_t) { .t = (_t), CTX_INHERIT, .bound = (_expected) ? RANGE(_expected_val) : max_bound })
+#define CTX_t(...) DISPATCH2(CTX_t, __VA_ARGS__)
 #define CTX_any() CTX_t(T_ANY)
 #define CTX_int(...) CTX_t(T_INT, ##__VA_ARGS__)
 #define CTX_float(...) CTX_t(T_FLOAT, ##__VA_ARGS__)
@@ -876,12 +876,30 @@ bool expected_symbol(context_t *ctx, val_t sym) {
 #define CTX_string(...) CTX_t(T_STRING, ##__VA_ARGS__)
 #define CTX_opaque(...) CTX_t(T_OPAQUE, ##__VA_ARGS__)
 #define CTX_return() ((context_t) { .t = T_RETURN })
-#define CTX_INV(invert) ctx->expected, (ctx->expected ? invert(ctx->bound.min) : 0)
+#define CTX_INV(invert) range_singleton(ctx->bound), invert(ctx->bound.min)
 #define CTX_UP ((context_t) { .t = ctx->t, .s = { .in = ctx->s.in, .out = ctx->s.out }, CTX_INHERIT_EXP})
 #endif
 
 // default 'ctx' for CTX(...) to inherit
-context_t * const ctx = &(context_t) { .t = T_ANY, .priority = PRIORITY_TOP };
+context_t * const ctx = &(context_t) { .t = T_ANY, .priority = PRIORITY_TOP, .bound = { .min = INTPTR_MIN, .max = INTPTR_MAX } };
+range_t max_bound = RANGE_ALL;
+
+COMMAND(max_bound, "set max_bound") {
+  if(!rest || !rest->tok_list.next) {
+    printf("max_bound requires two arguments\n");
+    return;
+  }
+  long int min = parse_num(rest);
+  long int max = parse_num(rest->tok_list.next);
+  if(max < min) {
+    printf("first argument must be less than or equal to the second\n");
+    return;
+  }
+  max_bound = (range_t) {
+    .min = min,
+    .max = max
+  };
+}
 
 context_t *ctx_pos(context_t *ctx, uint8_t pos) {
   ctx->pos = pos;
@@ -1115,7 +1133,7 @@ bool convert_to_opaque(cell_t *c) {
   return true;
 }
 
-alt_set_t ctx_altset(context_t *ctx) {
+alt_set_t ctx_alt_set(context_t *ctx) {
   alt_set_t as = 0;
   FOLLOW(p, ctx, up) {
     as |= p->alt_set;
@@ -1123,20 +1141,11 @@ alt_set_t ctx_altset(context_t *ctx) {
   return as;
 }
 
-bool dominated_by_expectation(cell_t *c, const context_t *ctx) {
-  type_t last_t = T_ANY;
+alt_set_t ctx_alt_set_range(context_t *ctx) {
+  alt_set_t as = 0;
   FOLLOW(p, ctx, up) {
-    if(!p->expected || last_t == T_SYMBOL) {
-      cell_t *a = p->src;
-      refcount_t an = a->n;
-      a->n = 0;
-      fake_drop(a);
-      refcount_t cn = c->n;
-      fake_undrop(a);
-      a->n = an;
-      return !~cn;
-    }
-    last_t = p->t;
+    as |= p->alt_set;
+    if(!range_bounded(p->bound)) break;
   }
-  return true;
+  return as;
 }

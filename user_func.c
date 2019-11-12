@@ -798,6 +798,7 @@ response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
 
     FOR_TRACE(p, entry) {
       if(is_var(p) && p->pos) {
+        assert_le(p->pos, in);
         int i = in - p->pos;
         type_t t = p->value.type;
         if(t == T_LIST) t = T_ANY; // HACK, T_FUNCTION breaks things

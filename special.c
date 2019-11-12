@@ -29,25 +29,56 @@
 #include "trace.h"
 #include "list.h"
 
+bool ctx_has_pos(context_t *ctx) {
+  FOLLOW(p, ctx, up) {
+    if(p->src->pos) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool ctx_split(cell_t *c, context_t *ctx) {
+  tcell_t *entry = var_entry(c->value.var);
+  if(entry->entry.wrap) return false;
+  if(ctx_has_pos(ctx)) return false; // ***
+  alt_set_t c_as = c->value.alt_set;
+  alt_set_t ctx_as = ctx_alt_set(ctx);
+  if(c_as == ctx_as) return true;
+
+  alt_set_t combined_as = c_as | ctx_as;
+  alt_set_t common = c_as & ctx_as;
+  if(as_conflict(combined_as)) return false;
+  alt_set_t differ = (c_as ^ ctx_as) & AS_MASK;
+  cell_t *alt = c->alt;
+  cell_t **p = &c->alt;
+  c->value.alt_set = combined_as;
+  FOR_MASK(i, differ) {
+    alt_set_t as = common | as_from_mask(differ, i);
+    if(!as_conflict(as | combined_as)) continue;
+    cell_t *a = copy(c);
+    a->value.alt_set = as;
+    *p = a;
+    p = &a->alt;
+  }
+  *p = alt;
+  return true;
+}
+
 OP(value) {
   PRE(value);
   stats.reduce_cnt--;
   ctx->alt_set = c->value.alt_set;
   if(is_var(c)) {
     if(ctx->t == T_INT) {
-      if(ctx->expected) {
-        if(dominated_by_expectation(c, ctx)) {
-          LOG("bounding var %C to [%d, %d]", c, ctx->bound.min, ctx->bound.max);
-          if(NOT_FLAG(*c, value, BOUNDED)) {
-            FLAG_SET(*c, value, BOUNDED);
-            c->value.range = ctx->bound;
-          } else {
-            c->value.range = range_intersect(c->value.range, ctx->bound);
+      range_t r = range_intersect(c->value.range, ctx->bound);
+      if(!range_eq(r, c->value.range)) {
+        if(ctx_split(c, ctx)) {
+          c->value.range = r;
+          if(is_any(c) && ctx->t != T_ANY) {
+            c->value.type = ctx->t;
+            trace_update_type(c);
           }
-          trace_update_range(c);
-        } else {
-          CHECK_PRIORITY(PRIORITY_VAR);
-          trace_unbound(c);
         }
       }
     }
@@ -83,8 +114,8 @@ OP(value) {
 
   // TODO handle expected types other than symbols
   if(ctx->t == T_SYMBOL &&
-     ctx->expected && !is_var(c) &&
-     ctx->bound.min == ctx->bound.max &&
+     !is_var(c) &&
+     range_singleton(ctx->bound) &&
      ctx->bound.min != c->value.symbol) {
     LOG("expected %C to be %Y, but got %Y",
         c, ctx->bound.min, c->value.symbol);
@@ -97,11 +128,11 @@ OP(value) {
     if(is_any(c) && ctx->t != T_ANY) {
       c->value.type = ctx->t;
       if(ctx->t == T_OPAQUE) {
-        assert_error(ctx->expected && ctx->bound.min == ctx->bound.max,
+        assert_error(range_singleton(ctx->bound),
                      "must provide expected value when reducing opaque %C", c);
         c->value.symbol = ctx->bound.min;
       }
-      trace_update(c, c);
+      trace_update(c);
     }
     if(ctx->t == T_LIST) {
       placeholder_extend(cp, ctx->s, false);
@@ -122,7 +153,19 @@ OP(value) {
         LOG_WHEN(is_list(c), "nil %C", c);
         int v = trace_store_value(parent, c);
         tcell_t *tc = trace_alloc_var(entry, c->value.type);
-        if(c->value.type == T_OPAQUE) tc->value.symbol = c->value.symbol;
+
+        switch(c->value.type) {
+        case T_OPAQUE:
+        case T_SYMBOL:
+          c->value.range = RANGE(c->value.symbol);
+          break;
+        case T_INT:
+          c->value.range = RANGE(c->value.integer);
+          break;
+        default:
+          c->value.range = max_bound;
+          break;
+        }
         LOG("move value %C %s[%d] -> %s[%d]", c,
             entry->word_name, tc-entry,
             parent->word_name, v);
@@ -130,6 +173,7 @@ OP(value) {
         c->value.flags = VALUE_VAR;
         tc->value.var = &parent[v];
         c->pos = 0;
+        trace_update_range(c); // ***
       }
     }
   }
@@ -249,14 +293,7 @@ cell_t *var_create_bound(cell_t *v, tcell_t *tc, const context_t *ctx) {
   assert_error(is_var(v));
   type_t t = v->value.type;
   cell_t *res = var_create(t, tc, 0, 0);
-  range_t r = get_range(v);
-  if(ctx->expected &&
-     dominated_by_expectation(v, ctx)) r = range_intersect(r, ctx->bound);
-  if(r.min != INTPTR_MIN || r.max != INTPTR_MAX) {
-    FLAG_SET(*res, value, BOUNDED);
-    res->value.range = r;
-    trace_update_range(res);
-  }
+  res->value.range = range_intersect(ctx->bound, get_range(v));
   return res;
 }
 
@@ -268,7 +305,8 @@ cell_t *var_create_nonlist(type_t t, tcell_t *tc) {
     .value = {
       .var = tc,
       .flags = VALUE_VAR,
-      .type = t
+      .type = t,
+      .range = max_bound
     }
   };
   trace_update_type(c);
@@ -503,13 +541,4 @@ OP(fail) {
   PRE(fail);
   stats.reduce_cnt--;
   return abort_op(FAIL, cp, ctx);
-}
-
-range_t get_range(cell_t *c) {
-  assert_error(is_value(c));
-  if(is_var(c)) {
-    return FLAG(*c, value, BOUNDED) ? c->value.range : range_all;
-  } else {
-    return (range_t) { c->value.integer, c->value.integer };
-  }
 }

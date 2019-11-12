@@ -46,6 +46,8 @@
 
 static tcell_t trace_cells[MAX_TRACE_CELLS] ALIGN64;
 static tcell_t *trace_ptr = &trace_cells[0];
+static scratch_t * const scratch_top = (scratch_t *)(&trace_cells + 1);
+static scratch_t *scratch_ptr = (scratch_t *)(&trace_cells + 1);
 static tcell_t *active_entries[1 << 4];
 static unsigned int prev_entry_pos = 0;
 static tcell_t *trace_block_map[BLOCK_MAP_SIZE] = {0};
@@ -108,6 +110,7 @@ bool is_trace_cell(void const *p) {
 
 void trace_init() {
   prev_entry_pos = 0;
+  reset_scratch();
 }
 
 #if INTERFACE
@@ -312,6 +315,14 @@ void tr_set_index(cell_t *const *cp, int index) {
   ((tr *)cp)->index = index;
 }
 
+tcell_t *get_arg(tcell_t *entry, const cell_t *a) {
+  return a ? &entry[tr_index(a)] : NULL;
+}
+
+const tcell_t *get_arg_const(const tcell_t *entry, const cell_t *a) {
+  return a ? &entry[tr_index(a)] : NULL;
+}
+
 TEST(trace_encode) {
   return tr_index(index_tr(0x5ac3)) == 0x5ac3 ? 0 : -1;
 }
@@ -429,6 +440,7 @@ int trace_alloc(tcell_t *entry, csize_t args) {
   tcell_t *tc = &entry[index];
   tc->n = -1;
   tc->size = args;
+  tc->trace.range = RANGE_NONE;
   LOG("trace_alloc %s[%d] size = %d", entry->word_name, tc-entry, args);
   return index;
 }
@@ -467,6 +479,25 @@ int trace_copy_tcell(tcell_t *entry, const tcell_t *tc) {
   return index;
 }
 
+// get temporary storage to use with a trace cell
+scratch_t *get_scratch(tcell_t *tc) {
+  assert_error(prev_entry_pos);
+  int x = tc - active_entries[0];
+  assert_error(x > 0);
+  scratch_t *s = &scratch_top[-x];
+  if(s < scratch_ptr) {
+    assert_error((char *)s >= (char *)trace_ptr);
+    scratch_ptr = s;
+    memset(s, 0, (scratch_ptr - s) * sizeof(scratch_t));
+  }
+  return s;
+}
+
+static
+void reset_scratch() {
+  scratch_ptr = scratch_top;
+}
+
 void trace_arg(tcell_t *tc, int n, cell_t *a) {
   assert_error(is_var(a));
   cell_t **p = &tc->expr.arg[n];
@@ -488,9 +519,10 @@ int trace_value(tcell_t *entry, cell_t *v) {
 
 // store expression c in the trace
 static
-void trace_store_expr(cell_t *c, const cell_t *r) {
-  tcell_t *entry = var_entry(r->value.var);
-  assert_error(entry);
+void trace_store_expr(tcell_t *entry, cell_t *c, cell_t *r) {
+  if(!entry) return;
+  assert_error(NOT_FLAG(*r, value, DEP));
+  assert_error(is_var(r));
   tcell_t *tc = r->value.var;
   if(!tc) return;
   type_t t = r->value.type;
@@ -512,6 +544,9 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
         tc->trace.type = t;
       }
     }
+    tc->trace.hash = 0;
+    hash_trace_cell(entry, tc);
+    dedup_trace_cell(entry, r);
     return;
   }
   assert_error(tc->size == c->size);
@@ -567,6 +602,28 @@ void trace_store_expr(cell_t *c, const cell_t *r) {
     FLAG_SET(*entry, entry, PARTIAL);
   }
   tc->alt = NULL;
+  hash_trace_cell(entry, tc);
+  dedup_trace_cell(entry, r);
+}
+
+void dedup_trace_cell(tcell_t *entry, cell_t *r) {
+  tcell_t *v = r->value.var;
+  if(is_var(v) ||
+     closure_out(v) > 0 ||
+     ONEOF(v->op, OP_dep, OP_placeholder, OP_unless, OP_assert, OP_seq)) return;
+  uint32_t hash = v->trace.hash;
+  if(!hash) return;
+  FOR_TRACE(tc, entry) {
+    if(tc >= v) break;
+    if(tc->trace.hash == hash) {
+      if(!trace_cell_eq(entry, v, tc)) continue;
+      v->n = -1;
+      r->value.var = tc;
+      trace_update_range(r);
+      LOG("dedup %T (%C) -> %T", v, r, tc);
+      break;
+    }
+  }
 }
 
 void trace_store_row_assert(cell_t *c, cell_t *r) {
@@ -647,8 +704,11 @@ int trace_store_something(tcell_t *entry, tcell_t **v) {
     .op = OP_value,
     .value = {
       .type = T_SYMBOL,
-      .symbol = SYM_Something,
-      .var = *v
+      .var = *v,
+      .range = {
+        .min = SYM_Something,
+        .max = SYM_Something
+      }
     },
     .size = 2,
     .n = -1
@@ -656,17 +716,6 @@ int trace_store_something(tcell_t *entry, tcell_t **v) {
   int x = trace_store_value(entry, &c);
   *v = c.value.var;
   return x;
-}
-
-// store c which reduces to r in the trace
-static
-void trace_store(cell_t *c, const cell_t *r) {
-  assert_error(is_var(r));
-  if(FLAG(*r, value, DEP)) {
-    trace_dep(c);
-  } else {
-    trace_store_expr(c, r);
-  }
 }
 
 static
@@ -738,6 +787,7 @@ tcell_t *get_trace_ptr(size_t size) {
 tcell_t *trace_start_entry(tcell_t *parent, csize_t out) {
   tcell_t *e = get_trace_ptr(ENTRY_BLOCK_SIZE);
   trace_ptr += ENTRY_BLOCK_SIZE; // TODO
+  assert_error((char *)trace_ptr < (char *)scratch_ptr);
   e->n = PERSISTENT;
   e->entry = (struct entry) {
     .out = out,
@@ -810,6 +860,7 @@ void trace_end_entry(tcell_t *e) {
     FLAG_SET_TO(*e, entry, RECURSIVE, trace_recursive_changes(e));
   }
   hw_analysis(e);
+  hash_entry(e);
 }
 
 tcell_t *trace_current_entry() {
@@ -839,9 +890,9 @@ void trace_clear_alt(tcell_t *entry) {
 }
 
 // called to update c in the trace
-void trace_update(cell_t *c, cell_t *r) {
+void trace_update(cell_t *r) {
   if(is_list(r)) return;
-  trace_store(c, r);
+  trace_store_expr(var_entry(r->value.var), r, r);
 }
 
 void trace_dep(cell_t *c) {
@@ -866,17 +917,36 @@ void trace_dep(cell_t *c) {
   FLAG_CLEAR(*c, value, DEP);
 }
 
+void trace_reclaim(tcell_t *e, tcell_t *tc) {
+  int ix = var_index(e, tc);
+  if(e->entry.len - (ix - 1) == calculate_tcells(tc->size)) {
+    if(tc->op) {
+      TRAVERSE(tc, in) {
+        if(*p) {
+          int x = tr_index(*p);
+          if(x >= 0) e[x].n--;
+        }
+      }
+    }
+    e->entry.len = ix - 1;
+  } else {
+    tc->n = -1;
+  }
+}
+
 // reclaim failed allocation if possible
 void trace_drop(cell_t *r) {
-  if(!r || !is_var(r)) return;
-  tcell_t *v = r->value.var;
-  if(v && !v->op) {
-    tcell_t *e = var_entry(v);
-    if(e) {
-      int ix = var_index(e, v);
-      if(e->entry.len - (ix - 1) == calculate_tcells(v->size)) {
-        e->entry.len = ix - 1;
+  if(!r || !is_value(r)) return;
+  tcell_t *tc = r->value.var;
+  if(tc) {
+    WATCH(r, "trace_drop");
+    if(!tc->op) {
+      tcell_t *e = var_entry(tc);
+      if(e) {
+        trace_reclaim(e, tc);
       }
+    } else {
+      trace_update_range(r);
     }
   }
 }
@@ -924,7 +994,7 @@ void trace_reduction(cell_t *c, cell_t *r) {
   tcell_t *entry = var_entry(r->value.var);
   if(!entry) entry = new_entry;
 
-  trace_store(c, r);
+  trace_store_expr(entry, c, r);
   if(is_var(r) && new_entry && new_entry != entry) {
     switch_entry(new_entry, r);
   }
@@ -1537,21 +1607,22 @@ const tcell_t *trace_get_linear_var(const tcell_t *e, const tcell_t *c) {
 }
 
 void trace_update_range(cell_t *c) {
-  tcell_t *v = c->value.var;
-  if(FLAG(*v, trace, BOUNDED) ||
-     v->trace.bound.min != INTPTR_MIN ||
-     v->trace.bound.max != INTPTR_MAX) {
-    v->trace.bound.min = c->value.range.min;
-    v->trace.bound.max = c->value.range.max;
-    FLAG_SET(*v, trace, BOUNDED);
+  tcell_t *tc = c->value.var;
+  range_t prev = tc->trace.range;
+  tc->trace.range = range_union(prev, get_range(c));
+  if(!range_eq(prev, tc->trace.range)) {
+    LOG("bounded var %C (%T) to [%d, %d]", c, tc,
+        tc->trace.range.min, tc->trace.range.max);
   }
 }
 
-void trace_unbound(cell_t *c) {
-  tcell_t *v = c->value.var;
-  v->trace.bound.min = INTPTR_MIN;
-  v->trace.bound.max = INTPTR_MAX;
-  FLAG_CLEAR(*v, trace, BOUNDED);
+range_t get_range(cell_t *c) {
+  assert_error(is_value(c));
+  if(is_var(c)) {
+    return c->value.range;
+  } else {
+    return (range_t) { c->value.integer, c->value.integer };
+  }
 }
 
 tcell_t *tcell_entry(cell_t *e) {
@@ -1570,4 +1641,113 @@ tcell_t *closure_next(tcell_t *c) {
 
 const tcell_t *closure_next_const(const tcell_t *c) {
   return c + closure_tcells(c);
+}
+
+csize_t dep_pos(const tcell_t *entry,
+                const tcell_t *tc) {
+  const tcell_t *src = &entry[tr_index(tc->expr.arg[0])];
+  int index = tc - entry;
+  int pos = 1;
+  TRAVERSE(src, const, out) {
+    if(tr_index(*p) == index) {
+      return pos;
+    } else {
+      pos++;
+    }
+  }
+  return 0;
+}
+
+#define HASH(l, x) (hash = (hash * 1021 + (uint32_t)(l)) * 1979 + (uint32_t)(x))
+uint32_t hash_trace_cell(tcell_t *entry, tcell_t *tc) {
+  uint32_t hash = 1;
+  int idx = tc - entry - 1;
+
+  if(!tc || !tc->op ||
+     !INRANGE(idx, 0, entry->entry.len)) {
+    HASH('n', 1);
+    return hash;
+  }
+
+  if(tc->trace.hash) return tc->trace.hash;
+
+  if(is_value(tc)) {
+    if(is_var(tc)) {
+      HASH('v', tc->pos);
+    } else if(tc->value.type == T_LIST) {
+      TRAVERSE(tc, ptrs) {
+        HASH('p', hash_trace_cell(entry, &entry[tr_index(*p)]));
+      }
+    } else if(tc->value.type == T_INT) {
+      HASH('i', tc->value.integer);
+    } else if(tc->value.type == T_SYMBOL) {
+      HASH('y', tc->value.symbol);
+    }
+    // HASH('t', tc->value.type);
+  } else {
+    if(is_dep(tc)) {
+      HASH('d', dep_pos(entry, tc));
+    } else {
+      TRAVERSE(tc, in) {
+        HASH('a', hash_trace_cell(entry, &entry[tr_index(*p)]));
+      }
+    }
+    HASH('o', tc->op);
+    HASH('O', closure_out(tc));
+  }
+  tc->trace.hash = hash;
+  return hash;
+}
+
+uint32_t hash_entry(tcell_t *entry) {
+  uint32_t hash = 1;
+  FOR_TRACE(tc, entry) {
+    tc->trace.hash = 0;
+  }
+  FOR_TRACE(tc, entry) {
+    HASH('c', hash_trace_cell(entry, tc));
+  }
+  entry->trace.hash = hash;
+  return hash;
+}
+#undef HASH
+
+FORMAT(tag, 'H') {
+  tag_t tag;
+  write_tag(tag, i);
+  printf(FORMAT_TAG, tag);
+}
+
+bool trace_cell_eq(const tcell_t *entry, const tcell_t *a, const tcell_t *b) {
+  if(a->op != b->op) return false;
+  op op = a->op;
+  if(op == OP_value) {
+    if(is_var(a)) {
+      return is_var(b) && a->pos == b->pos;
+    } else {
+      switch(op) {
+      case T_INT: return a->value.integer == b->value.integer;
+      case T_SYMBOL: return a->value.symbol == b->value.symbol;
+      case T_FLOAT: return a->value.flt == b->value.flt;
+      default: // ***
+        return a == b;
+      }
+    }
+  } else if(op == OP_dep) {
+    return dep_pos(entry, a) == dep_pos(entry, b) &&
+      trace_cell_eq(entry,
+                    get_arg_const(entry, a->expr.arg[0]),
+                    get_arg_const(entry, b->expr.arg[0]));
+  } else {
+    if(closure_out(a) != closure_out(b)) return false;
+    if(closure_in(a) != closure_in(b)) return false;
+    COUNTUP(i, closure_in(a)) {
+      if(!trace_cell_eq(entry,
+                        get_arg_const(entry, a->expr.arg[i]),
+                        get_arg_const(entry, b->expr.arg[i]))) {
+        return false;
+      }
+    }
+    return true;
+  }
 }

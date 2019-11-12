@@ -69,37 +69,30 @@ static void print_value(const cell_t *c) {
 }
 
 void print_bound(tcell_t *tc) {
-  if(FLAG(*tc, trace, BOUNDED)) {
-    type_t t = trace_type(tc);
-    if(t == T_INT) {
-      if(tc->trace.bound.min == tc->trace.bound.max) {
-        printf(" is %" PRIdPTR, tc->trace.bound.min);
-      } else if(tc->trace.bound.min > INTPTR_MIN &&
-         tc->trace.bound.max < INTPTR_MAX) {
-        printf(" in [%" PRIdPTR ", %" PRIdPTR "]",
-               tc->trace.bound.min, tc->trace.bound.max);
-      } else if(tc->trace.bound.min > INTPTR_MIN) {
-        printf(" >= %" PRIdPTR, tc->trace.bound.min);
-      } else if(tc->trace.bound.max < INTPTR_MAX) {
-        printf(" <= %" PRIdPTR, tc->trace.bound.max);
-      }
-    } else if(t == T_SYMBOL) {
-      if(tc->trace.bound.max == tc->trace.bound.min) {
-        printf(" is %s", symbol_string(tc->trace.bound.min));
-      }
+  type_t t = trace_type(tc);
+  range_t r = tc->trace.range;
+  if(t == T_INT) {
+    if(range_empty(r)) {
+      printf(" is empty");
+    } else if(range_singleton(r)) {
+      printf(" is %" PRIdPTR, r.min);
+    } else if(range_bounded(r)) {
+      printf(" in [%" PRIdPTR ", %" PRIdPTR "]",
+             r.min, r.max);
+    } else if(range_has_lower_bound(r)) {
+      printf(" >= %" PRIdPTR, r.min);
+    } else if(range_has_upper_bound(r)) {
+      printf(" <= %" PRIdPTR, r.max);
+    }
+  } else if(t == T_SYMBOL) {
+    if(range_singleton(r)) {
+      printf(" is %s", symbol_string(tc->trace.range.min));
     }
   }
 }
 
 // print bytecode for entry e
-static uint32_t hashes[1024];
 void print_bytecode(tcell_t *entry, bool tags) {
-  uint32_t entry_hash = 0;
-  if(entry->entry.len > LENGTH(hashes)) tags = false;
-  if(tags) {
-    zero(hashes);
-    entry_hash = hash_entry(entry, hashes);
-  }
   // word info (top line)
   printf("___ %s.%s (%d -> %d)",
          entry->module_name, entry->word_name,
@@ -119,7 +112,7 @@ void print_bytecode(tcell_t *entry, bool tags) {
   }
   if(tags) {
     tag_t tag;
-    write_tag(tag, entry_hash);
+    write_tag(tag, entry->trace.hash);
     printf(" " FADE("(hash: " FORMAT_TAG ")"), tag);
   }
 
@@ -190,7 +183,7 @@ void print_bytecode(tcell_t *entry, bool tags) {
           }
         }
       }
-      print_bound(tc);
+      if(NOT_FLAG(*tc, trace, JUMP)) print_bound(tc);
       if(tc->trace.type == T_OPAQUE) { // ***
         val_t sym = trace_get_opaque_symbol(entry, tc);
         if(sym >= 0) {
@@ -213,7 +206,7 @@ void print_bytecode(tcell_t *entry, bool tags) {
     }
     if(tags) {
       tag_t tag;
-      write_tag(tag, hashes[t-1]);
+      write_tag(tag, tc->trace.hash);
       printf(" " FADE(FORMAT_TAG) "\n", tag);
     } else {
       printf("\n");
@@ -825,7 +818,7 @@ void resolve_types(const tcell_t *e, type_t *t, range_t *r) {
   }
   if(r) {
     COUNTUP(i, out) {
-      if(r) r[i] = range_none;
+      if(r) r[i] = RANGE_NONE;
     }
   }
 
@@ -849,7 +842,7 @@ void resolve_types(const tcell_t *e, type_t *t, range_t *r) {
       } else if(*rt == pt) {
         if(r && ONEOF(pt, T_INT, T_SYMBOL)) {
           range_t *rr = &r[out-1 - i];
-          *rr = range_union(*rr, tc->trace.bound);
+          *rr = range_union(*rr, tc->trace.range);
         }
       } else if(pt != T_BOTTOM) {
         *rt = T_ANY;
@@ -1091,74 +1084,6 @@ COMMAND(trace, "trace an instruction") {
 
 COMMAND(bt, "break on trace") {
   break_on_trace = true;
-}
-
-static
-csize_t dep_pos(const tcell_t *entry,
-                const tcell_t *tc) {
-  const tcell_t *src = &entry[tr_index(tc->expr.arg[0])];
-  int index = tc - entry;
-  int pos = 1;
-  TRAVERSE(src, const, out) {
-    if(tr_index(*p) == index) {
-      return pos;
-    } else {
-      pos++;
-    }
-  }
-  return 0;
-}
-
-#define HASH(l, x) (hash = (hash * 1021 + (uint32_t)(l)) * 1979 + (uint32_t)(x))
-uint32_t hash_trace_cell(tcell_t *entry, tcell_t *tc, uint32_t *arr) {
-  uint32_t hash = 1;
-  int idx = tc - entry - 1;
-
-  if(!tc || !tc->op ||
-     !INRANGE(idx, 0, entry->entry.len)) {
-    HASH('n', 1);
-    return hash;
-  }
-
-  if(arr && arr[idx]) return arr[idx];
-
-  if(is_value(tc) && !is_list(tc)) {
-    if(is_var(tc)) {
-      HASH('v', tc->pos);
-    } else if(tc->value.type == T_INT) {
-      HASH('i', tc->value.integer);
-    } else if(tc->value.type == T_SYMBOL) {
-      HASH('y', tc->value.symbol);
-    }
-    // HASH('t', tc->value.type);
-    goto end;
-  }
-  TRAVERSE(tc, in, ptrs) {
-    HASH('a', hash_trace_cell(entry, &entry[tr_index(*p)], arr));
-  }
-  if(is_dep(tc)) {
-    HASH('d', dep_pos(entry, tc));
-  }
-  HASH('o', tc->op);
-  if(!is_value(tc)) HASH('O', closure_out(tc));
-end:
-  if(arr) arr[idx] = hash;
-  return hash;
-}
-
-uint32_t hash_entry(tcell_t *entry, uint32_t *arr) {
-  uint32_t hash = 1;
-  FOR_TRACE(tc, entry) {
-    HASH('c', hash_trace_cell(entry, tc, arr));
-  }
-  return hash;
-}
-#undef HASH
-
-FORMAT(tag, 'H') {
-  tag_t tag;
-  write_tag(tag, i);
-  printf(FORMAT_TAG, tag);
 }
 
 size_t backrefs_size(const tcell_t *entry) {

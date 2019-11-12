@@ -37,8 +37,10 @@
  *  @brief Generally useful functions
  */
 
-const range_t range_all = { INTPTR_MIN, INTPTR_MAX };
-const range_t range_none = { 0, -1 };
+#if INTERFACE
+#define RANGE_ALL ((range_t) { .min = INTPTR_MIN, .max = INTPTR_MAX })
+#define RANGE_NONE ((range_t) { .min = INTPTR_MAX, .max = INTPTR_MIN })
+#endif
 
 /** Estimate the median of an array */
 unsigned int median3(pair_t *array, unsigned int lo, unsigned int hi) {
@@ -1003,12 +1005,32 @@ range_t range_intersect(range_t a, range_t b) {
   };
 }
 
+bool range_empty(range_t a) {
+  return a.min > a.max;
+}
+
 range_t range_union(range_t a, range_t b) {
+  if(range_empty(b)) return a;
+  if(range_empty(a)) return b;
   return (range_t) {
     .min = min(a.min, b.min),
     .max = max(a.max, b.max)
   };
 }
+
+bool range_singleton(range_t a) {
+  return a.min == a.max;
+}
+
+#if INTERFACE
+#define RANGE_1(x)                              \
+  ({                                            \
+    __typeof__(x) __x = (x);                    \
+    (range_t) { .min = __x, .max = __x };       \
+  })
+#define RANGE_2(lo, hi) ((range_t) { .min = (lo), .max = (hi) })
+#define RANGE(...) DISPATCH(RANGE, __VA_ARGS__)
+#endif
 
 bool range_eq(range_t a, range_t b) {
   return
@@ -1020,10 +1042,24 @@ intptr_t range_span(range_t a) {
   return a.max > a.min ? sat_subi(a.max, a.min) : 0;
 }
 
+bool range_has_lower_bound(range_t a) {
+  return a.min != INTPTR_MIN;
+}
+
+bool range_has_upper_bound(range_t a) {
+  return a.max != INTPTR_MAX;
+}
+
 bool range_bounded(range_t a) {
   return
-    a.max < INTPTR_MAX &&
-    a.min > INTPTR_MIN;
+    range_has_lower_bound(a) &&
+    range_has_upper_bound(a);
+}
+
+bool range_partially_bounded(range_t a) {
+  return
+    range_has_lower_bound(a) ||
+    range_has_upper_bound(a);
 }
 
 intptr_t sign(intptr_t x) {

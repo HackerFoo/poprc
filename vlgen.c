@@ -120,7 +120,7 @@ void gen_module_interface(const tcell_t *e, const type_t *rtypes, const range_t 
     if(t != T_OPAQUE) {
       printf_sep("  `input(%s, %s, %d)",
                  vltype_full(e, a),
-                 vlbits(trace_type(a), a->trace.bound),
+                 vlbits(trace_type(a), a->trace.range),
                  (int)(e->entry.in - 1 - i));
     } else {
       printf_sep("  `interface(%s, `addrN, `intN, %d)", // *** addr/data width isn't in trace yet
@@ -236,14 +236,14 @@ void gen_decls(tcell_t *e) {
     if(is_var(c)) {
       if(t != T_OPAQUE) {
         const char *decl = FLAG(*e, entry, RECURSIVE) ? "variable" : "alias";
-        printf("  `%s(%s, %s, %s%d, in%d);\n", decl, vltype(t), vlbits(t, tc->trace.bound), cname(t), i, e->entry.in - i);
+        printf("  `%s(%s, %s, %s%d, in%d);\n", decl, vltype(t), vlbits(t, tc->trace.range), cname(t), i, e->entry.in - i);
       }
     } else {
       if(c->op == OP_value) {
         if(t == T_LIST) {
-          printf("  `const_nil(%s, %s%d);\n", vlbits(t, tc->trace.bound), cname(t), i);
+          printf("  `const_nil(%s, %s%d);\n", vlbits(t, tc->trace.range), cname(t), i);
         } else {
-          printf("  `const(%s, %s, %s%d, ", vltype(t), vlbits(t, tc->trace.bound), cname(t), i);
+          printf("  `const(%s, %s, %s%d, ", vltype(t), vlbits(t, tc->trace.range), cname(t), i);
           gen_value_rhs(tc);
           printf(");\n");
         }
@@ -254,9 +254,9 @@ void gen_decls(tcell_t *e) {
         if(t == T_OPAQUE) {
           // handled below
         } else if(is_self_call(e, tc)) {
-          printf("  `reg(%s, %s, %s%d) = 0;\n", vltype(t), vlbits(t, tc->trace.bound), cname(t), i); // ***
+          printf("  `reg(%s, %s, %s%d) = 0;\n", vltype(t), vlbits(t, tc->trace.range), cname(t), i); // ***
         } else {
-          printf("  `wire(%s, %s, %s%d);\n", vltype(t), vlbits(t, tc->trace.bound), cname(t), i);
+          printf("  `wire(%s, %s, %s%d);\n", vltype(t), vlbits(t, tc->trace.range), cname(t), i);
         }
         if(!is_dep(c)) {
           TRAVERSE(c, const, in) {
@@ -269,7 +269,7 @@ void gen_decls(tcell_t *e) {
           }
         }
       } else if(t == T_LIST) {
-        printf("  `const_nil(%s, %s%d);\n", vlbits(t, tc->trace.bound), cname(t), i);
+        printf("  `const_nil(%s, %s%d);\n", vlbits(t, tc->trace.range), cname(t), i);
       }
     }
   }

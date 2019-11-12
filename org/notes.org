@@ -1,5 +1,8 @@
 #+TITLE: PoprC Notes
 
+* range inference
+- add max_bound flag to bound all values
+- use bit set for symbols
 * tcell_t
 - C11 _Generic
 * pushl/pushr

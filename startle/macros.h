@@ -391,3 +391,11 @@
   })
 
 #endif
+
+#define FOR_MASK(i, mask)                       \
+  for(__typeof__(mask)                          \
+        __mask = (mask),                        \
+        __inc = ~__mask + 1,                    \
+        i = 0, __done = __mask + 1;             \
+      __done != __mask;                         \
+      __done = i, i = (i + __inc) & __mask)

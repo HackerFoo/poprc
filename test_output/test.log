@@ -53,6 +53,8 @@ _check_flat_copy: 1 + 0 = 1
 flat_copy_list => 0
 @ flattened_list_copy
 flattened_list_copy => 0
+@ for_mask
+for_mask => 0
 @ formask
 0, 0
 1, 1

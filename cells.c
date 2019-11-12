@@ -429,7 +429,7 @@ void dropn(cell_t *c, refcount_t n) {
         }
       }
     }
-    if(is_var(c) && !is_list(c)) {
+    if(is_value(c) && !is_list(c)) {
       trace_drop(c);
     }
     closure_free(c);
@@ -495,6 +495,15 @@ alt_set_t as_mask(alt_set_t a) {
   return (a | (a >> 1)) & AS_MASK;
 }
 
+alt_set_t as_from_mask(alt_set_t mask, alt_set_t x) {
+  assert_error((mask & ~AS_MASK) == 0 &&
+               (x & ~AS_MASK) == 0);
+  alt_set_t
+    as0 = (~x) & mask,
+    as1 = (x & mask) << 1;
+  return as0 | as1;
+}
+
 /*
 alt_set_t as_more_general_than(alt_set_t a, alt_set_t b) {
   return (~a & b) & ~(((alt_set_t)1<<AS_SIZE)-1);
@@ -517,6 +526,7 @@ TEST(alt_sets) {
   ok &= !!as_conflict(a1 | c);
   ok &= m0 == m1;
   ok &= (a1 | b0 | d) == e;
+  ok &= as_from_mask(as_mask(e), (e >> 1) & AS_MASK) == e;
 //  ok &= !!as_more_general_than(a0, c);
   return ok ? 0 : -1;
 }

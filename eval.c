@@ -958,7 +958,7 @@ void inputs_from_number(int n, range_t *bounds, int bounds_n, val_t *input) {
 #define ANALYZE_ARGS 8
 #define ANALYZE_MAX_COMBINATIONS (1<<24)
 COMMAND(analyze, "analyze a function") {
-  range_t bounds[ANALYZE_ARGS];
+  range_t ranges[ANALYZE_ARGS];
   val_t inputs[ANALYZE_ARGS];
   if(rest) {
     seg_t name = tok_seg(rest);
@@ -972,12 +972,12 @@ COMMAND(analyze, "analyze a function") {
     COUNTUP(i, in) {
       tcell_t *v = &entry[REVI(i) + 1];
       assert_throw(v->value.type == T_INT, "only integer inputs");
-      assert_throw(FLAG(*v, trace, BOUNDED), "inputs must be bounded");
-      bounds[i] = v->trace.bound;
+      assert_throw(range_bounded(v->trace.range), "inputs must be bounded");
+      ranges[i] = v->trace.range;
     }
     int combinations = 1;
     COUNTUP(i, in) {
-      combinations *= bounds[i].max - bounds[i].min;
+      combinations *= ranges[i].max - ranges[i].min;
     }
     assert_throw(combinations <= ANALYZE_MAX_COMBINATIONS, "too many combinations");
     printf("%d combinations to test\n", combinations);
@@ -989,7 +989,7 @@ COMMAND(analyze, "analyze a function") {
         putchar('.');
         fflush(stdout);
       } else dot--;
-      inputs_from_number(i, bounds, in, inputs);
+      inputs_from_number(i, ranges, in, inputs);
       rt_init();
       bool success = call(entry, inputs, NULL);
       if(!success) {

@@ -446,3 +446,4 @@ assoc100:
     True swap!
 
 range_add10: + 1 10 bound
+disj_bound: [1 5 bound] [8 10 bound] | $

@@ -106,7 +106,6 @@ struct context {
   uint8_t pos;
   uint8_t depth;
   bool retry;
-  bool expected;
   bool inv;
 };
 
@@ -373,15 +372,19 @@ void breakpoint();
 #define TRACE_DECL       0x0020
 #define TRACE_NO_SKIP    0x0040
 #define TRACE_JUMP       0x0080
-#define TRACE_BOUNDED    0x0100
 
 typedef struct trace {
-  range_t bound;
+  union {
+    range_t range;
+    uint8_t symbol_set[sizeof(range_t)];
+  };
+  alt_set_t range_as;
   uint16_t flags;
   union {
     csize_t prev_cells;
     csize_t extension;
   };
+  uint32_t hash;
   type_t type;
 } trace_t;
 
@@ -392,6 +395,10 @@ struct tcell {
     cell_t c;
   };
 };
+
+typedef struct scratch {
+  range_t range;
+} scratch_t;
 
 ASSERT_ALIAS(tcell_t, c.alt, alt);
 ASSERT_ALIAS(tcell_t, c.tmp, tmp);

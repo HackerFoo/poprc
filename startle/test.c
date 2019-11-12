@@ -181,3 +181,16 @@ TEST(macro_math) {
   if(SNAP_UP(3, 3) != 3) return -8;
   return 0;
 }
+
+TEST(for_mask) {
+  int count = 0;
+  int prev = -1;
+  FOR_MASK(i, 0xa569) {
+    if(i == prev) return -1;
+    if(i & ~__mask) return -2;
+    prev = i;
+    count++;
+  }
+  if(count != 256) return -3;
+  return 0;
+}
