@@ -39,7 +39,9 @@
 
 #if INTERFACE
 #define RANGE_ALL ((range_t) { .min = INTPTR_MIN, .max = INTPTR_MAX })
+#define RANGE_ALL_INIT { .min = INTPTR_MIN, .max = INTPTR_MAX }
 #define RANGE_NONE ((range_t) { .min = INTPTR_MAX, .max = INTPTR_MIN })
+#define RANGE_NONE_INIT { .min = INTPTR_MAX, .max = INTPTR_MIN }
 #endif
 
 /** Estimate the median of an array */

@@ -882,7 +882,7 @@ bool expected_symbol(context_t *ctx, val_t sym) {
 
 // default 'ctx' for CTX(...) to inherit
 context_t * const ctx = &(context_t) { .t = T_ANY, .priority = PRIORITY_TOP, .bound = { .min = INTPTR_MIN, .max = INTPTR_MAX } };
-range_t max_bound = RANGE_ALL;
+range_t max_bound = RANGE_ALL_INIT;
 
 COMMAND(max_bound, "set max_bound") {
   if(!rest || !rest->tok_list.next) {
