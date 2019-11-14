@@ -616,7 +616,6 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   fill_args(e, left);
   e->entry.alts = trace_reduce(e, &c);
   drop(c);
-  trace_final_pass(e);
   trace_end_entry(e);
   dedup_subentries(e);
   trace_compact(e);
@@ -778,8 +777,7 @@ int compile_quote(tcell_t *parent_entry, cell_t *l) {
   drop(init);
   remove_root(&init);
 
-  trace_final_pass(e); // *** wait?
-  trace_end_entry(e);
+  trace_end_entry(e); // *** wait?
 
   trace_clear_alt(parent_entry);
   cell_t *res = var(T_LIST, q, parent_entry->pos);

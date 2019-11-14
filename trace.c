@@ -364,6 +364,7 @@ void switch_entry(tcell_t *entry, cell_t *r) {
   CONTEXT("switch_entry %s %C", entry->word_name, r);
   assert_error(NOT_FLAG(*entry, entry, COMPLETE));
   assert_error(is_var(r));
+  if(entry_has(entry, r->value.var)) return;
   if(!get_var(entry, r)) {
     if(entry->entry.parent)
       switch_entry(entry->entry.parent, r);
@@ -386,7 +387,6 @@ void switch_entry(tcell_t *entry, cell_t *r) {
     if(t == T_OPAQUE) n->value.symbol = r->value.symbol;
     //if(is_var(v)) v = &var_entry(v)[v->pos]; // variables move *** DOESN'T WORK
     n->value.var = v;
-    trace_update_range(r);
     r->value.var = n;
   }
 }
@@ -850,6 +850,7 @@ bool has_outside_call(const tcell_t *entry) {
 
 // finish tracing
 void trace_end_entry(tcell_t *e) {
+  trace_final_pass(e);
   e->entry.wrap = NULL;
   assert_error(prev_entry_pos && e->pos == prev_entry_pos, "out of order start/end entry");
   active_entries[--prev_entry_pos] = NULL;
@@ -1608,18 +1609,19 @@ const tcell_t *trace_get_linear_var(const tcell_t *e, const tcell_t *c) {
 }
 
 void trace_update_range(cell_t *c) {
-  tcell_t *tc = c->value.var;
-  if(!tc) return;
-  if(FLAG(*var_entry(tc), entry, COMPLETE)) {
-    LOG(MARK("WARN") " attempt to update range for completed trace cell %T from %C",
-        tc, c);
-    return;
-  }
-  range_t prev = tc->trace.range;
-  tc->trace.range = range_union(prev, get_range(c));
-  if(!range_eq(prev, tc->trace.range)) {
-    LOG("bounded var %C (%T) to [%d, %d]", c, tc,
-        tc->trace.range.min, tc->trace.range.max);
+  range_t c_range = get_range(c);
+  FOLLOW(tc, c->value.var, value.var) {
+    if(FLAG(*var_entry(tc), entry, COMPLETE)) {
+      LOG(MARK("WARN") " attempt to update range with [%d, %d] for completed trace cell %T from %C",
+          c_range.min, c_range.max, tc, c);
+    } else {
+      range_t r = range_union(tc->trace.range, c_range);
+      if(!range_eq(r, tc->trace.range)) {
+        tc->trace.range = r;
+        LOG("bounded var %C (%T) to [%d, %d]", c, tc, r.min, r.max);
+      }
+    }
+    if(!is_var(tc)) break;
   }
 }
 
