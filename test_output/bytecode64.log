@@ -7,7 +7,7 @@ ___ algorithm.__caret__ (2 -> 1) ___
 
 ___ algorithm.__caret___r0 (3 -> 1) x2 rec ___
 [1] changing var :: ?i x3
-[2] changing var is empty :: ?i x3
+[2] changing var :: ?i x3
 [3] changing var is 1 :: ?i x2
 [4] __primitive.neq &1 5 :: y x2
 [5] val 0 :: i x1
@@ -750,7 +750,7 @@ ___ gen_ed.count_lines (2 -> 3) ___
 [8] return [4 7 6]
 
 ___ gen_ed.count_lines_r0 (3 -> 3) x2 rec ___
-[1] changing var >= 0 :: ?i x2
+[1] changing var is 0 :: ?i x2
 [2] changing var is File :: ?o x1
 [3] changing var :: ?y x1
 [4] __primitive.read 3 2 -> 12 5 :: y x3
@@ -992,7 +992,7 @@ ___ gen_ed.sum_lines (2 -> 3) ___
 [8] return [4 7 6]
 
 ___ gen_ed.sum_lines_r0 (3 -> 3) x2 rec ___
-[1] changing var >= 0 :: ?i x2
+[1] changing var is 0 :: ?i x2
 [2] changing var is File :: ?o x1
 [3] changing var :: ?y x1
 [4] __primitive.read 3 2 -> 12 5 :: y x3
@@ -1437,7 +1437,7 @@ ___ list.length_r0 (2 -> 1) x2 rec ___
 [3] __primitive.ap 1 -> 4 :: l? x2
 [4] __primitive.dep 3 :: a x2
 [5] __primitive.seq 8 4 :: v x1
-[6] __primitive.add 2 7 in [0, 1] :: i x1
+[6] __primitive.add 2 7 is 1 :: i x1
 [7] val 1 :: i x1
 [8] jump list.length_r0 6 3 :: v x1
 [9] return [5] -> 11
@@ -1450,7 +1450,7 @@ ___ list.length_r0 (2 -> 1) x2 rec ___
 [3] __primitive.ap 1 -> 4 :: l? x2
 [4] __primitive.dep 3 :: a x2
 [5] __primitive.seq 8 4 :: v x1
-[6] __primitive.add 2 7 in [0, 1] :: i x1
+[6] __primitive.add 2 7 is 1 :: i x1
 [7] val 1 :: i x1
 [8] jump list.length_r0 6 3 :: v x1
 [9] return [5] -> 11
@@ -1467,7 +1467,7 @@ ___ list.listdup (2 -> 1) ___
 ___ list.listdup_r0 (3 -> 1) x2 rec ___
 [1] changing var :: ?l x2
 [2] var :: ?i x2
-[3] changing var is empty :: ?i x2
+[3] changing var :: ?i x2
 [4] __primitive.gt &3 5 is False :: y x2
 [5] val 0 :: i x1
 [6] __primitive.not &4 :: y x1
@@ -3027,7 +3027,7 @@ ___ tests.drop_loop6 (1 -> 1) ___
 
 ___ tests.drop_loop6_r0 (2 -> 1) x2 rec ___
 [1] changing var is 7 :: ?i x3
-[2] var is empty :: ?i x2
+[2] var :: ?i x2
 [3] __primitive.gt &1 4 :: y x2
 [4] val 0 :: i x1
 [5] __primitive.not &3 :: y x1
@@ -3206,7 +3206,7 @@ ___ tests.fibl (1 -> 1) ___
 [6] return [5]
 
 ___ tests.fibl_r0 (3 -> 1) x2 rec ___
-[1] changing var <= 1 :: ?i x3
+[1] changing var is 1 :: ?i x3
 [2] changing var is 0 :: ?i x1
 [3] changing var <= 0 :: ?i x2
 [4] __primitive.gt &3 5 is False :: y x2
@@ -3294,7 +3294,7 @@ ___ tests.inl_loop2 (3 -> 1) ___
 
 ___ tests.inl_loop2_r0 (3 -> 1) x2 rec ___
 [1] changing var :: ?i x3
-[2] var is empty :: ?i x2
+[2] var :: ?i x2
 [3] var :: ?i x2
 [4] __primitive.lt &1 &3 :: y x2
 [5] __primitive.not &4 :: y x1
@@ -3788,9 +3788,9 @@ ___ tests.sum_times2 (2 -> 1) ___
 [5] return [4]
 
 ___ tests.sum_times2_r0 (3 -> 1) x2 rec ___
-[1] changing var :: ?i x2
+[1] changing var is 0 :: ?i x2
 [2] changing var :: ?y x1
-[3] changing var is empty :: ?i x2
+[3] changing var :: ?i x2
 [4] __primitive.gt &3 5 is False :: y x2
 [5] val 0 :: i x1
 [6] __primitive.not &4 :: y x1
@@ -3820,9 +3820,9 @@ ___ tests.sum_times2v (2 -> 1) ___
 [5] return [4]
 
 ___ tests.sum_times2v_r0 (3 -> 1) x2 rec ___
-[1] changing var :: ?i x2
+[1] changing var is 0 :: ?i x2
 [2] changing var :: ?y x1
-[3] changing var is empty :: ?i x2
+[3] changing var :: ?i x2
 [4] __primitive.gt &3 5 is False :: y x2
 [5] val 0 :: i x1
 [6] __primitive.not &4 :: y x1

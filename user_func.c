@@ -736,10 +736,11 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
   if(top) {
     trace_drop_return(new_entry, ctx->s.out, wrap.dep_mask);
   }
+
+  drop(wrap.initial);
+  remove_root(&wrap.initial);
   trace_final_pass(new_entry);
   trace_end_entry(new_entry);
-  remove_root(&wrap.initial);
-  drop(wrap.initial);
 
   trace_clear_alt(parent_entry);
   type_t rtypes[new_entry->entry.out];

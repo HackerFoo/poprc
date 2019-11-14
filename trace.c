@@ -386,6 +386,7 @@ void switch_entry(tcell_t *entry, cell_t *r) {
     if(t == T_OPAQUE) n->value.symbol = r->value.symbol;
     //if(is_var(v)) v = &var_entry(v)[v->pos]; // variables move *** DOESN'T WORK
     n->value.var = v;
+    trace_update_range(r);
     r->value.var = n;
   }
 }
@@ -1608,6 +1609,12 @@ const tcell_t *trace_get_linear_var(const tcell_t *e, const tcell_t *c) {
 
 void trace_update_range(cell_t *c) {
   tcell_t *tc = c->value.var;
+  if(!tc) return;
+  if(FLAG(*var_entry(tc), entry, COMPLETE)) {
+    LOG(MARK("WARN") " attempt to update range for completed trace cell %T from %C",
+        tc, c);
+    return;
+  }
   range_t prev = tc->trace.range;
   tc->trace.range = range_union(prev, get_range(c));
   if(!range_eq(prev, tc->trace.range)) {
