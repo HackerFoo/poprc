@@ -193,13 +193,19 @@
   })
 
 // embedded linked list
-#define FOLLOW_3(p, l, next) for(__typeof__(l) p = (l); p != NULL; p = p->next)
+#define FOLLOW_3(p, l, next)                            \
+  for(__typeof__(l) p = (l), *_prev = &(l);             \
+      p != NULL;                                        \
+      _prev = (__typeof__(l) *) &p->next, p = p->next)
 
 // embedded zig-zag (alternating) linked list
-#define FOLLOW_4(p, q, l, next)                      \
-  for(__typeof__(l) p = (l), q = p ? p->next : NULL; \
-      q != NULL;                                     \
-      p = q->next, q = p ? p->next : NULL)
+#define FOLLOW_4(p, q, l, next)                                 \
+  for(__typeof__(l)                                             \
+        p = (l),                                                \
+        q = p ? p->next : NULL,                                 \
+        *_prev = &(l);                                          \
+      q != NULL;                                                \
+      _prev = &q->next, p = q->next, q = p ? p->next : NULL)
 
 #define FOLLOW(...) DISPATCH(FOLLOW, ##__VA_ARGS__)
 

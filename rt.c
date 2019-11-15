@@ -681,9 +681,8 @@ cell_t *add_to_list(cell_t *c, cell_t *nc, cell_t **l) {
   return nc;
 }
 
-static
-cell_t *add_copy_to_list(cell_t *c, cell_t **l) {
-  return add_to_list(c, copy(c), l);
+cell_t *add_to_mutate_list(cell_t *c, cell_t **l) {
+  return c->tmp ? c->tmp : add_to_list(c, copy(c), l);
 }
 
 /* traverse r and make copies to tmp */
@@ -710,7 +709,7 @@ bool mutate_sweep(cell_t *r, cell_t **l) {
     mutate_update(r, true);
     return false;
   } else {
-    add_copy_to_list(r, l);
+    add_to_mutate_list(r, l);
     return true;
   }
 }
@@ -728,16 +727,32 @@ bool deps_are_unique(cell_t *c) {
 /* drop(r) */
 /* modify c' in r' without affecting c */
 cell_t *mutate(cell_t **cp, cell_t **rp) {
-  cell_t *c = *cp, *r = *rp;
+  cell_t *c = *cp;
   cell_t *l = NULL;
+  add_to_mutate_list(c, &l);
+  l = mutate_list(l, rp);
+  if(l && c->tmp) *cp = c->tmp;
+  return l;
+}
 
+/* mutate a list of cells built with add_to_mutate_list */
+cell_t *mutate_list(cell_t *l, cell_t **rp) {
+  cell_t *r = *rp;
+
+  // check if necessary
   fake_drop(r);
-  if(!~c->n) {
+  FOLLOW(c, nc, l, tmp) {
+    if(!~c->n) {
+      refcount_t n = c->n;
+      memcpy(c, nc, sizeof(cell_t) * closure_cells(c));
+      c->n = n;
+      *_prev = nc->tmp; // delete
+    }
+  }
+  if(!l) {
     fake_undrop(r);
     return NULL;
   }
-
-  add_copy_to_list(c, &l);
 
   mutate_sweep(r, &l);
   fake_undrop(r);
@@ -756,7 +771,6 @@ cell_t *mutate(cell_t **cp, cell_t **rp) {
     li = t->tmp;
   }
   assert_error(check_deps(r));
-  if(c->tmp) *cp = c->tmp;
   if(r->tmp) *rp = r->tmp;
   return l;
 }
