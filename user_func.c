@@ -739,7 +739,6 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
 
   drop(wrap.initial);
   remove_root(&wrap.initial);
-  trace_final_pass(new_entry);
   trace_end_entry(new_entry);
 
   trace_clear_alt(parent_entry);

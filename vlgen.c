@@ -51,10 +51,12 @@ const char *vltype(type_t t) {
 
 static
 int bits_needed(range_t r) {
-  if(r.min >= 0) { // unsigned
-    return int_log2l(r.max + 1);
+  if(range_empty(r)) {
+    return 0;
+  } if(r.min >= 0) { // unsigned
+    return max(1, int_log2l(r.max + 1));
   } else { // signed
-    return int_log2l(max(r.max, sat_subi(0, r.min)) + 1) + 1;
+    return max(1, int_log2l(max(r.max, sat_subi(0, r.min)) + 1) + 1);
   }
 }
 
@@ -434,6 +436,43 @@ void print_var(const tcell_t *e, const tcell_t *c, int block) {
 }
 
 static
+void gen_width_params(const tcell_t *e, const tcell_t *c) {
+  printf("#(");
+  if(!is_user_func(c)) {
+    csize_t
+      in = closure_in(c),
+      n = closure_args(c),
+      start_out = n - closure_out(c);
+    type_t t = trace_type(c);
+    SEP(", ");
+    COUNTUP(i, in) {
+      const tcell_t *a = &e[cgen_index(e, c->expr.arg[i])];
+      if(trace_type(a) == T_OPAQUE) continue;
+      if(range_bounded(a->trace.range) && !range_empty(a->trace.range)) {
+        assert_gt(bits_needed(a->trace.range), 0);
+        printf_sep(".in%dN(%d)", (int)i, bits_needed(a->trace.range));
+      }
+    }
+    if(t != T_OPAQUE) {
+      if(range_bounded(c->trace.range) && !range_empty(c->trace.range)) {
+        printf_sep(".out0N(%d)", bits_needed(c->trace.range));
+      }
+    }
+    RANGEUP(i, start_out, n) {
+      int a = cgen_index(e, c->expr.arg[i]);
+      if(a > 0) {
+        type_t at = trace_type(&e[a]);
+        if(at == T_OPAQUE) continue;
+        if(range_bounded(e[a].trace.range) && !range_empty(e[a].trace.range)) {
+          printf_sep(".out%dN(%d)", (int)(i - start_out + 1), bits_needed(e[a].trace.range));
+        }
+      }
+    }
+  }
+  printf(")");
+}
+
+static
 void gen_instance(const tcell_t *e, const tcell_t *c, int *sync_chain, uintptr_t const *const *backrefs, int block) {
   int inst = c - e;
   const char *module_name, *word_name;
@@ -449,7 +488,9 @@ void gen_instance(const tcell_t *e, const tcell_t *c, int *sync_chain, uintptr_t
   if(sync) {
     printf("    `inst_sync(");
     print_function_name(e, c);
-    printf(", inst%d, #())(\n      `sync(", inst);
+    printf(", inst%d, ", inst);
+    gen_width_params(e, c);
+    printf(")(\n      `sync(");
     gen_sync_disjoint_inputs(e, c);
     printf(", ");
     gen_sync_disjoint_outputs(e, c, backrefs);
@@ -457,7 +498,9 @@ void gen_instance(const tcell_t *e, const tcell_t *c, int *sync_chain, uintptr_t
   } else {
     printf("    `inst(");
     print_function_name(e, c);
-    printf(", inst%d, #())(", inst);
+    printf(", inst%d, ", inst);
+    gen_width_params(e, c);
+    printf(")(");
   }
 
   SEP(",");
