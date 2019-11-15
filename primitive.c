@@ -488,8 +488,23 @@ OP(sqrt) {
 
 WORD("&b", bitand, 2, 1)
 val_t bitand_op(val_t x, val_t y) { return x & y; }
+range_t bitand_range_op(range_t a, range_t b) {
+  if(a.min < 0) {
+    return b.min < 0 ? RANGE_ALL :
+      (range_t) {
+        .min = 0,
+        .max = b.max
+      };
+  } else {
+    return
+      (range_t) {
+        .min = 0,
+        .max = b.min < 0 ? a.max : min(a.max, b.max)
+      };
+  }
+}
 OP(bitand) {
-  return func_op2(cp, ctx, T_INT, T_INT, bitand_op, no_range_op, false, bound_contexts_noop);
+  return func_op2(cp, ctx, T_INT, T_INT, bitand_op, bitand_range_op, false, bound_contexts_noop);
 }
 
 WORD("|b", bitor, 2, 1)
@@ -528,50 +543,57 @@ OP(not) {
   return func_op1(cp, ctx, T_SYMBOL, T_SYMBOL, not_op, not_op);
 }
 
+range_t bool_range_op(UNUSED range_t a, UNUSED range_t b) {
+  return (range_t) {
+    .min = SYM_False,
+    .max = SYM_True
+  };
+}
+
 WORD(">", gt, 2, 1)
 val_t gt_op(val_t x, val_t y) { return x > y; }
 OP(gt) {
-  return func_op2(cp, ctx, T_INT, T_SYMBOL, gt_op, no_range_op, false, bound_contexts_cmp);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, gt_op, bool_range_op, false, bound_contexts_cmp);
 }
 
 WORD(">=", gte, 2, 1)
 val_t gte_op(val_t x, val_t y) { return x >= y; }
 OP(gte) {
-  return func_op2(cp, ctx, T_INT, T_SYMBOL, gte_op, no_range_op, false, bound_contexts_cmp);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, gte_op, bool_range_op, false, bound_contexts_cmp);
 }
 
 WORD("<", lt, 2, 1)
 val_t lt_op(val_t x, val_t y) { return x < y; }
 OP(lt) {
-  return func_op2(cp, ctx, T_INT, T_SYMBOL, lt_op, no_range_op, false, bound_contexts_cmp);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, lt_op, bool_range_op, false, bound_contexts_cmp);
 }
 
 WORD("<=", lte, 2, 1)
 val_t lte_op(val_t x, val_t y) { return x <= y; }
 OP(lte) {
-  return func_op2(cp, ctx, T_INT, T_SYMBOL, lte_op, no_range_op, false, bound_contexts_cmp);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, lte_op, bool_range_op, false, bound_contexts_cmp);
 }
 
 val_t eq_op(val_t x, val_t y) { return x == y; }
 WORD("==", eq, 2, 1)
 OP(eq) {
-  return func_op2(cp, ctx, T_INT, T_SYMBOL, eq_op, no_range_op, false, bound_contexts_cmp);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, eq_op, bool_range_op, false, bound_contexts_cmp);
 }
 
 WORD("=:=", eq_s, 2, 1)
 OP(eq_s) {
-  return func_op2(cp, ctx, T_SYMBOL, T_SYMBOL, eq_op, no_range_op, false, bound_contexts_cmp);
+  return func_op2(cp, ctx, T_SYMBOL, T_SYMBOL, eq_op, bool_range_op, false, bound_contexts_cmp);
 }
 
 WORD("!=", neq, 2, 1)
 val_t neq_op(val_t x, val_t y) { return x != y; }
 OP(neq) {
-  return func_op2(cp, ctx, T_INT, T_SYMBOL, neq_op, no_range_op, false, bound_contexts_cmp);
+  return func_op2(cp, ctx, T_INT, T_SYMBOL, neq_op, bool_range_op, false, bound_contexts_cmp);
 }
 
 WORD("!:=", neq_s, 2, 1)
 OP(neq_s) {
-  return func_op2(cp, ctx, T_SYMBOL, T_SYMBOL, neq_op, no_range_op, false, bound_contexts_cmp);
+  return func_op2(cp, ctx, T_SYMBOL, T_SYMBOL, neq_op, bool_range_op, false, bound_contexts_cmp);
 }
 
 WORD("->f", to_float, 1, 1)

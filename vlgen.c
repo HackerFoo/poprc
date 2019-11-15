@@ -52,9 +52,9 @@ const char *vltype(type_t t) {
 static
 int bits_needed(range_t r) {
   if(r.min >= 0) { // unsigned
-    return int_log2l(r.max);
+    return int_log2l(r.max + 1);
   } else { // signed
-    return int_log2l(max(r.max, sat_subi(0, r.min))) + 1;
+    return int_log2l(max(r.max, sat_subi(0, r.min)) + 1) + 1;
   }
 }
 
