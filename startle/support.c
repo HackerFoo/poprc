@@ -648,7 +648,7 @@ char *arguments(int argc, char **argv) {
   COUNTUP(i, argc) {
     char *a = argv[i];
     char *np = stpcpy(p, a);
-    if(*a == '-') {
+    if(a[0] == '-' && is_letter(a[1])) {
       *p = ':';
       if(i) {
         *(p-1) = '\n';
@@ -694,6 +694,10 @@ char *replace_char(char *s, char c_old, char c_new) {
 
 bool is_whitespace(char c) {
   return ONEOF(c, ' ', '\n', '\r', '\t');
+}
+
+bool is_letter(char c) {
+  return INRANGE(c, 'a', 'z') || INRANGE(c, 'A', 'Z');
 }
 
 seg_t seg_trim(seg_t s) {
