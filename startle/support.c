@@ -38,10 +38,12 @@
  */
 
 #if INTERFACE
-#define RANGE_ALL ((range_t) { .min = INTPTR_MIN, .max = INTPTR_MAX })
 #define RANGE_ALL_INIT { .min = INTPTR_MIN, .max = INTPTR_MAX }
-#define RANGE_NONE ((range_t) { .min = INTPTR_MAX, .max = INTPTR_MIN })
+#define RANGE_ALL ((range_t)RANGE_ALL_INIT)
 #define RANGE_NONE_INIT { .min = INTPTR_MAX, .max = INTPTR_MIN }
+#define RANGE_NONE ((range_t)RANGE_NONE_INIT)
+#define RANGE_POS_INIT { .min = 0, .max = INTPTR_MAX }
+#define RANGE_POS ((range_t)RANGE_POS_INIT)
 #endif
 
 /** Estimate the median of an array */
@@ -1062,6 +1064,30 @@ bool range_bounded(range_t a) {
     range_has_upper_bound(a);
 }
 
+range_t range_bits(int b) {
+  if(b == 0) {
+    return (range_t) {
+      .min = 0,
+      .max = 0
+    };
+  } else if(b < 0) {
+    if(b <= -(int)sizeof(intptr_t) * 8)
+      return RANGE_ALL;
+    int w = -b - 1;
+    return (range_t) {
+      .min = -(((intptr_t)1) << w),
+        .max = (((intptr_t)1) << w) - 1
+    };
+  } else {
+    if(b >= (int)sizeof(intptr_t) * 8 - 1)
+      return RANGE_POS;
+    return (range_t) {
+      .min = 0,
+      .max = (((intptr_t)1) << b) - 1
+    };
+  }
+}
+
 bool range_partially_bounded(range_t a) {
   return
     range_has_lower_bound(a) ||
@@ -1074,7 +1100,8 @@ intptr_t sign(intptr_t x) {
 }
 
 intptr_t div_min(intptr_t n, intptr_t d) {
-  return sat_sub(n, d - sign(d)) / d;
+  return (n < 0) == (d < 0) ? n / d :
+    sat_sub(n, d - sign(d)) / d;
 }
 
 intptr_t div_mini(intptr_t n, intptr_t d) {
@@ -1084,13 +1111,30 @@ intptr_t div_mini(intptr_t n, intptr_t d) {
 }
 
 intptr_t div_max(intptr_t n, intptr_t d) {
-  return sat_add(n, d - sign(d)) / d;
+  return (n < 0) != (d < 0) ? n / d :
+    sat_add(n, d - sign(d)) / d;
 }
 
 intptr_t div_maxi(intptr_t n, intptr_t d) {
   if(n == INTPTR_MAX) return INTPTR_MAX;
   if(n == INTPTR_MIN) return INTPTR_MIN;
   return div_max(n, d);
+}
+
+intptr_t sat_abs(intptr_t x) {
+  if(x == INTPTR_MIN) return INTPTR_MAX;
+  return x < 0 ? -x : x;
+}
+
+intptr_t sat_neg(intptr_t x) {
+  if(x == INTPTR_MIN) return INTPTR_MAX;
+  return -x;
+}
+
+intptr_t sat_negi(intptr_t x) {
+  if(x == INTPTR_MIN) return INTPTR_MAX;
+  if(x == INTPTR_MAX) return INTPTR_MIN;
+  return -x;
 }
 
 #define SHOW(expr, expected)                                            \
@@ -1114,6 +1158,16 @@ TEST(div_min_max) {
   SHOW(div_max(-5, 3), -1);
   SHOW(div_max(5, -3), -1);
   SHOW(div_max(-5, -3), 2);
+
+  SHOW(div_min(2, 2), 1);
+  SHOW(div_min(2, -2), -1);
+  SHOW(div_min(-2, 2), -1);
+  SHOW(div_min(-2, -2), 1);
+  SHOW(div_max(2, 2), 1);
+  SHOW(div_max(2, -2), -1);
+  SHOW(div_max(-2, 2), -1);
+  SHOW(div_max(-2, -2), 1);
+
   return ret;
 }
 

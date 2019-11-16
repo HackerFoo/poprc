@@ -32,6 +32,14 @@ div_max(5, 3) = 2, expected 2: PASS
 div_max(-5, 3) = -1, expected -1: PASS
 div_max(5, -3) = -1, expected -1: PASS
 div_max(-5, -3) = 2, expected 2: PASS
+div_min(2, 2) = 1, expected 1: PASS
+div_min(2, -2) = -1, expected -1: PASS
+div_min(-2, 2) = -1, expected -1: PASS
+div_min(-2, -2) = 1, expected 1: PASS
+div_max(2, 2) = 1, expected 1: PASS
+div_max(2, -2) = -1, expected -1: PASS
+div_max(-2, 2) = -1, expected -1: PASS
+div_max(-2, -2) = 1, expected 1: PASS
 div_min_max => 0
 @ error
 i = 0

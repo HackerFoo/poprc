@@ -39,6 +39,7 @@ bool ctx_has_pos(context_t *ctx) {
 }
 
 bool ctx_split(cell_t *c, context_t *ctx) {
+  assert_error(is_var(c), "split on context only at variables");
   tcell_t *entry = var_entry(c->value.var);
   if(entry->entry.wrap) return false;
   if(ctx_has_pos(ctx)) return false; // ***
@@ -154,6 +155,7 @@ OP(value) {
         int v = trace_store_value(parent, c);
         tcell_t *tc = trace_alloc_var(entry, c->value.type);
 
+        /* bounds too tight in case of recursion
         switch(c->value.type) {
         case T_OPAQUE:
         case T_SYMBOL:
@@ -163,9 +165,13 @@ OP(value) {
           c->value.range = RANGE(c->value.integer);
           break;
         default:
-          c->value.range = max_bound;
+          c->value.range = default_bound;
           break;
         }
+        */
+
+        c->value.range = default_bound;
+
         LOG("move value %C %s[%d] -> %s[%d]", c,
             entry->word_name, tc-entry,
             parent->word_name, v);
@@ -306,7 +312,7 @@ cell_t *var_create_nonlist(type_t t, tcell_t *tc) {
       .var = tc,
       .flags = VALUE_VAR,
       .type = t,
-      .range = max_bound
+      .range = default_bound
     }
   };
   trace_update_type(c);

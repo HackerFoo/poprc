@@ -18,6 +18,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <inttypes.h>
 #include "rt_types.h"
 
 #include "startle/error.h"
@@ -560,7 +561,7 @@ void store_dep(cell_t *c, tcell_t *tc, csize_t pos, type_t t, alt_set_t alt_set)
       .type = t,
       .flags = VALUE_VAR | VALUE_DEP,
       .var = tc,
-      .range = max_bound
+      .range = default_bound
     }
   };
   if(c->op) closure_shrink(c, 1);
@@ -877,11 +878,11 @@ bool expected_symbol(context_t *ctx, val_t sym) {
 #define CTX_list(_in, _out) \
   ((context_t) { .t = T_LIST, .s = { .in = (_in), .out = (_out) }, CTX_INHERIT})
 #define CTX_t_1(_t)                                                     \
-  ((context_t) { .t = (_t), CTX_INHERIT, .bound = max_bound })
+  ((context_t) { .t = (_t), CTX_INHERIT, .bound = default_bound })
 #define CTX_t_2(_t, _expected_val)                                          \
   ((context_t) { .t = (_t), CTX_INHERIT, .bound = { .min = (_expected_val), .max = (_expected_val) } })
 #define CTX_t_3(_t, _expected, _expected_val)                            \
-  ((context_t) { .t = (_t), CTX_INHERIT, .bound = (_expected) ? RANGE(_expected_val) : max_bound })
+  ((context_t) { .t = (_t), CTX_INHERIT, .bound = (_expected) ? RANGE(_expected_val) : default_bound })
 #define CTX_t(...) DISPATCH2(CTX_t, __VA_ARGS__)
 #define CTX_any() CTX_t(T_ANY)
 #define CTX_int(...) CTX_t(T_INT, ##__VA_ARGS__)
@@ -896,23 +897,31 @@ bool expected_symbol(context_t *ctx, val_t sym) {
 
 // default 'ctx' for CTX(...) to inherit
 context_t * const ctx = &(context_t) { .t = T_ANY, .priority = PRIORITY_TOP, .bound = { .min = INTPTR_MIN, .max = INTPTR_MAX } };
-range_t max_bound = RANGE_ALL_INIT;
+range_t default_bound = RANGE_ALL_INIT;
 
-COMMAND(max_bound, "set max_bound") {
-  if(!rest || !rest->tok_list.next) {
-    printf("max_bound requires two arguments\n");
+COMMAND(bound, "set default_bound") {
+  if(!rest) {
+    printf("bound requires an argument\n");
     return;
   }
-  long int min = parse_num(rest);
-  long int max = parse_num(rest->tok_list.next);
-  if(max < min) {
-    printf("first argument must be less than or equal to the second\n");
-    return;
+  if(rest->tok_list.next) {
+    long int min = parse_num(rest);
+    long int max = parse_num(rest->tok_list.next);
+    if(max < min) {
+      printf("first argument must be less than or equal to the second\n");
+      return;
+    }
+    default_bound = (range_t) {
+      .min = min,
+      .max = max
+    };
+  } else {
+    int bits = parse_num(rest);
+    default_bound = range_bits(bits);
   }
-  max_bound = (range_t) {
-    .min = min,
-    .max = max
-  };
+  if(!quiet)
+    printf("default_bound set to [%" PRIdPTR ", %" PRIdPTR "]\n",
+           default_bound.min, default_bound.max);
 }
 
 context_t *ctx_pos(context_t *ctx, uint8_t pos) {

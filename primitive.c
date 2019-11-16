@@ -52,18 +52,18 @@
     |                                               |
     '-----------------------------------------------*/
 
-range_t infer_bound(const context_t *ctx,
-                    range_t (*range_op)(range_t, range_t),
+// forward inference only
+range_t infer_bound(range_t (*range_op)(range_t, range_t),
                     cell_t *x, cell_t *y) {
-  return range_intersect(range_op(get_range(x), get_range(y)), ctx->bound);
+  return range_op(get_range(x), get_range(y));
 }
 
-cell_t *_op2(cell_t *c, const context_t *ctx, type_t arg_type, type_t res_type,
+cell_t *_op2(cell_t *c, type_t arg_type, type_t res_type,
              val_t (*op)(val_t, val_t), range_t (*range_op)(range_t, range_t),
              cell_t *x, cell_t *y) {
   if(ANY(is_var, x, y)) {
     cell_t *v = var(res_type, c);
-    v->value.range = infer_bound(ctx, range_op, x, y);
+    v->value.range = infer_bound(range_op, x, y);
     return v;
   } else {
     return val(res_type, op(arg_type == T_INT ? x->value.integer : x->value.symbol,
@@ -253,7 +253,7 @@ response func_op2(cell_t **cp, context_t *ctx,
   ARGS(p, q);
 
   CHECK_IF(nonzero && !is_var(q) && q->value.integer == 0, FAIL); // TODO assert this for variables
-  res = _op2(c, ctx, arg_type, res_type, op, range_op, p, q);
+  res = _op2(c, arg_type, res_type, op, range_op, p, q);
   if(nonzero) FLAG_SET(*c, expr, PARTIAL);
   add_conditions(res, p, q);
   store_reduced(cp, ctx, res);
@@ -399,29 +399,24 @@ OP(div) {
 WORD("%", mod, 2, 1)
 val_t mod_op(val_t x, val_t y) { return x % y; }
 range_t mod_range_op(range_t n, range_t d) {
-  if(d.min == d.max &&
+  val_t da = max(sat_abs(d.min), sat_abs(d.max));
+  if(range_singleton(d) &&
      !ONEOF(d.min, INTPTR_MAX, INTPTR_MIN)) {
-    val_t n_span = sat_subi(n.max, n.min);
-    if(n_span < d.min &&
-       n.max % d.min >= n_span) {
+    val_t n_span = range_span(n);
+    if(n_span == 0 || da == 0) return RANGE_NONE;
+    if(n_span ==
+       range_span((range_t) { .min = n.min % da,
+                              .max = n.max % da })) {
       return (range_t) {
-        .min = n.min % d.min,
-        .max = n.max % d.min
-      };
-    } else {
-      return (range_t) {
-        .min = 0,
-        .max = d.min
+        .min = n.min % da,
+        .max = n.max % da
       };
     }
-  } else {
-    val_t a = d.min < 0 ? sat_subi(0, d.min) : d.min;
-    val_t b = d.max < 0 ? sat_subi(0, d.max) : d.max;
-    return (range_t) {
-      .min = 0,
-      .max = max(a, b)
-    };
   }
+  return (range_t) {
+    .min = max(min(n.min, 0), sat_negi(sat_subi(da, 1))),
+    .max = min(max(n.max, 0), sat_subi(da, 1))
+  };
 }
 OP(mod) {
   return func_op2(cp, ctx, T_INT, T_INT, mod_op, mod_range_op, true, bound_contexts_noop);
