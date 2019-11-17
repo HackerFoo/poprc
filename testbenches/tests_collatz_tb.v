@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-`define intN 16
+`define intN 27
 `include "primitives.v"
 `include "tests_collatz.v"
 
@@ -28,11 +28,18 @@ module tests_collatz_tb;
         #1;
         in_valid = `false;
 
-        #115;
-        $display("b = %b (%d)", b, b);
+        #200;
+        $display("timed out");
         $finish;
     end
 
     `inst_sync(tests_collatz, tests_collatz, #())(`sync(in_valid, out_ready), .in0(a), .out0(b));
+
+    always @(posedge clk) begin
+        if(tests_collatz_out_valid) begin
+            $display("b = %b (%d)", b, b);
+            $finish;
+        end
+    end
 
 endmodule // tests_collatz_tb

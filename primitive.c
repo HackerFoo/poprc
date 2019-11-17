@@ -92,31 +92,31 @@ bool bound_contexts_noop(UNUSED cell_t *c,
 
 static
 bool bound_contexts_arith(cell_t *c, context_t *ctx, context_t *arg_ctx) {
-  if(trace_current_entry() == NULL ||
-     ctx->t != T_INT) {
+  if(trace_current_entry() == NULL) {
     return false;
   }
 
+  range_t bound = ctx->t == T_INT ? ctx->bound : default_bound;
   op op = c->op;
   if(is_value(c->expr.arg[0]) && !is_var(c->expr.arg[0])) {
     val_t lhs = c->expr.arg[0]->value.integer;
     context_t *other = &arg_ctx[1];
     switch(op) {
     case OP_add:
-      other->bound.min = sat_subi(ctx->bound.min, lhs);
-      other->bound.max = sat_subi(ctx->bound.max, lhs);
+      other->bound.min = sat_subi(bound.min, lhs);
+      other->bound.max = sat_subi(bound.max, lhs);
       break;
     case OP_sub:
-      other->bound.min = sat_subi(lhs, ctx->bound.max);
-      other->bound.max = sat_subi(lhs, ctx->bound.min);
+      other->bound.min = sat_subi(lhs, bound.max);
+      other->bound.max = sat_subi(lhs, bound.min);
       break;
     case OP_mul:
       if(lhs > 0) {
-        other->bound.min = div_mini(ctx->bound.min, lhs);
-        other->bound.max = div_maxi(ctx->bound.max, lhs);
+        other->bound.min = div_maxi(bound.min, lhs);
+        other->bound.max = div_mini(bound.max, lhs);
       } else if(lhs < 0) {
-        other->bound.min = div_mini(ctx->bound.max, lhs);
-        other->bound.max = div_maxi(ctx->bound.min, lhs);
+        other->bound.min = div_maxi(bound.max, lhs);
+        other->bound.max = div_mini(bound.min, lhs);
       } else {
         other->bound.min = INTPTR_MIN;
         other->bound.max = INTPTR_MAX;
@@ -132,20 +132,20 @@ bool bound_contexts_arith(cell_t *c, context_t *ctx, context_t *arg_ctx) {
     context_t *other = &arg_ctx[0];
     switch(op) {
     case OP_add: // same as above
-      other->bound.min = sat_subi(ctx->bound.min, rhs);
-      other->bound.max = sat_subi(ctx->bound.max, rhs);
+      other->bound.min = sat_subi(bound.min, rhs);
+      other->bound.max = sat_subi(bound.max, rhs);
       break;
     case OP_sub:
-      other->bound.min = sat_addi(ctx->bound.min, rhs);
-      other->bound.max = sat_addi(ctx->bound.max, rhs);
+      other->bound.min = sat_addi(bound.min, rhs);
+      other->bound.max = sat_addi(bound.max, rhs);
       break;
     case OP_mul: // same as above
       if(rhs > 0) {
-        other->bound.min = div_mini(ctx->bound.min, rhs);
-        other->bound.max = div_maxi(ctx->bound.max, rhs);
+        other->bound.min = div_maxi(bound.min, rhs);
+        other->bound.max = div_mini(bound.max, rhs);
       } else if(rhs < 0) {
-        other->bound.min = div_mini(ctx->bound.max, rhs);
-        other->bound.max = div_maxi(ctx->bound.min, rhs);
+        other->bound.min = div_maxi(bound.max, rhs);
+        other->bound.max = div_mini(bound.min, rhs);
       } else {
         other->bound.min = INTPTR_MIN;
         other->bound.max = INTPTR_MAX;
@@ -153,11 +153,11 @@ bool bound_contexts_arith(cell_t *c, context_t *ctx, context_t *arg_ctx) {
       break;
     case OP_div:
       if(rhs > 0) {
-        other->bound.min = sat_muli(ctx->bound.min, rhs);
-        other->bound.max = sat_muli(ctx->bound.max, rhs);
+        other->bound.min = sat_muli(bound.min, rhs);
+        other->bound.max = sat_muli(bound.max, rhs);
       } else if(rhs < 0) {
-        other->bound.min = sat_muli(ctx->bound.max, rhs);
-        other->bound.max = sat_muli(ctx->bound.min, rhs);
+        other->bound.min = sat_muli(bound.max, rhs);
+        other->bound.max = sat_muli(bound.min, rhs);
       }
       break;
     default:
@@ -173,7 +173,7 @@ static
 bool bound_contexts_cmp(cell_t *c, context_t *ctx, context_t *arg_ctx) {
   if(trace_current_entry() == NULL ||
      ctx->t != T_SYMBOL ||
-     ctx->bound.min != ctx->bound.max) {
+     !range_singleton(ctx->bound)) {
     return false;
   }
 
@@ -382,13 +382,13 @@ range_t div_range_op(range_t n, range_t d) {
   val_t d_small = d.max < 0 ? d.max : d.min;
   if(d_small > 0) {
     return (range_t) {
-      .min = div_mini(n.min, d_small),
-      .max = div_maxi(n.max, d_small)
+      .min = div_i(n.min, d_small),
+      .max = div_i(n.max, d_small)
     };
   } else {
     return (range_t) {
-      .min = div_mini(n.max, d_small),
-      .max = div_maxi(n.min, d_small)
+      .min = div_i(n.max, d_small),
+      .max = div_i(n.min, d_small)
     };
   }
 }

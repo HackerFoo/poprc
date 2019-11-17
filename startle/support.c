@@ -1121,6 +1121,12 @@ intptr_t div_maxi(intptr_t n, intptr_t d) {
   return div_max(n, d);
 }
 
+intptr_t div_i(intptr_t n, intptr_t d) {
+  if(n == INTPTR_MAX) return INTPTR_MAX;
+  if(n == INTPTR_MIN) return INTPTR_MIN;
+  return n / d;
+}
+
 intptr_t sat_abs(intptr_t x) {
   if(x == INTPTR_MIN) return INTPTR_MAX;
   return x < 0 ? -x : x;
