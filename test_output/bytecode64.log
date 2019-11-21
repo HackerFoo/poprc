@@ -3780,6 +3780,25 @@ ___ tests.sum3 (3 -> 1) ___
 [6] val 0 :: i x1
 [7] return [5]
 
+___ tests.sum_diff_map (1 -> 1) ___
+[1] var :: ?l x1
+[2] jump tests.sum_diff_map_r0 1 :: l x1
+[3] return [2]
+
+___ tests.sum_diff_map_r0 (1 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] __primitive.ap 1 -> 5 :: l? x2
+[3] tests.sum_diff_map_r0 2 :: l x1
+[4] __primitive.pushr 3 11 :: l x1
+[5] __primitive.dep 2 :: l x1
+[6] __primitive.ap 5 -> 7 8 :: v? x2
+[7] __primitive.dep 6 :: i x2
+[8] __primitive.dep 6 :: i x2
+[9] __primitive.sub &7 &8 :: i x1
+[10] __primitive.add 7 8 :: i x1
+[11] __primitive.quote 10 9 :: l x1
+[12] return [4]
+
 ___ tests.sum_times2 (2 -> 1) ___
 [1] var :: ?i x1
 [2] var :: ?y x1
