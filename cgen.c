@@ -100,10 +100,10 @@ void print_type_suffix(const tcell_t *entry, const tcell_t *tc) {
 void gen_function_signature(const tcell_t *e) {
   const tcell_t *p = e + 1;
   csize_t out_n = e->entry.out;
-  type_t rtypes[out_n];
-  resolve_types(e, rtypes, NULL);
+  trace_t tr;
 
-  printf("%s%s_%s(", ctype(rtypes[0]), e->module_name, e->word_name);
+  get_trace_info_for_output(&tr, e, 0);
+  printf("%s%s_%s(", ctype(tr.type), e->module_name, e->word_name);
   char *sep = "";
   COUNTDOWN(i, e->entry.in) {
     const tcell_t *a = &p[i];
@@ -113,7 +113,8 @@ void gen_function_signature(const tcell_t *e) {
   }
 
   RANGEUP(i, 1, out_n) {
-    printf("%s%s*out_%s%d", sep, ctype(rtypes[i]), cname(rtypes[i]), (int)i-1);
+    get_trace_info_for_output(&tr, e, i);
+    printf("%s%s*out_%s%d", sep, ctype(tr.type), cname(tr.type), (int)i-1);
   }
 
   printf(")");

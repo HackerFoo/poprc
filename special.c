@@ -53,12 +53,14 @@ bool ctx_split(cell_t *c, context_t *ctx) {
   alt_set_t differ = (c_as ^ ctx_as) & AS_MASK;
   cell_t *alt = c->alt;
   cell_t **p = &c->alt;
+  if(!differ) return true;
   c->value.alt_set = combined_as;
   FOR_MASK(i, differ) {
     alt_set_t as = common | as_from_mask(differ, i);
     if(!as_conflict(as | combined_as)) continue;
     cell_t *a = copy(c);
     a->value.alt_set = as;
+    LOG("ctx_split %C -> %C %S", c, a, as);
     *p = a;
     p = &a->alt;
   }

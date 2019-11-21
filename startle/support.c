@@ -1047,7 +1047,7 @@ bool range_eq(range_t a, range_t b) {
 }
 
 intptr_t range_span(range_t a) {
-  return a.max > a.min ? sat_subi(a.max, a.min) : 0;
+  return a.max >= a.min ? sat_subi(a.max, a.min) + 1 : 0;
 }
 
 bool range_has_lower_bound(range_t a) {

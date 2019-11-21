@@ -88,6 +88,10 @@ void print_bound(tcell_t *tc) {
     if(range_singleton(r)) {
       printf(" is %s", symbol_string(tc->trace.range.min));
     }
+  } else if(t == T_LIST) {
+    if(tc->trace.bit_width) {
+      printf(" %db", tc->trace.bit_width);
+    }
   }
 }
 
@@ -183,7 +187,7 @@ void print_bytecode(tcell_t *entry, bool tags) {
           }
         }
       }
-      if(NOT_FLAG(*tc, trace, JUMP)) print_bound(tc);
+      print_bound(tc);
       if(tc->trace.type == T_OPAQUE) { // ***
         val_t sym = trace_get_opaque_symbol(entry, tc);
         if(sym >= 0) {
@@ -383,6 +387,15 @@ void condense_and_analyze(tcell_t *entry) {
   last_use_analysis(entry);
   no_skip_analysis(entry);
   mark_jumps(entry);
+
+  // mark first_return
+  FOR_TRACE(tc, entry) {
+    if(is_return(tc)) {
+      entry->trace.first_return = tc - entry;
+      break;
+    }
+  }
+  calculate_bit_width(entry);
 }
 
 // runs after reduction to finish functions marked incomplete
@@ -795,7 +808,6 @@ int compile_quote(tcell_t *parent_entry, cell_t *l) {
 }
 
 // decode a pointer to an index and return a trace pointer
-static
 const tcell_t *tref(const tcell_t *entry, const cell_t *c) {
   int i = tr_index(c);
   return i <= 0 ? NULL : &entry[i];
@@ -807,46 +819,34 @@ type_t trace_type(const tcell_t *tc) {
   return is_value(tc) ? tc->value.type : tc->trace.type;
 }
 
-// resolve types in each return in e starting at c, storing the resulting types in t
-void resolve_types(const tcell_t *e, type_t *t, range_t *r) {
-  csize_t out = e->entry.out;
+void get_trace_info_for_output(trace_t *tr, const tcell_t *e, int n) {
+  assert_error(n < e->entry.out);
+  int i = e->entry.out - 1 - n;
 
-  COUNTUP(i, out) {
-    t[i] = T_BOTTOM;
-  }
-  if(r) {
-    COUNTUP(i, out) {
-      if(r) r[i] = RANGE_NONE;
-    }
-  }
+  tr->type = T_BOTTOM;
+  tr->bit_width = 0;
+  tr->range = RANGE_NONE;
 
-  // find first return
-  const tcell_t *p = NULL;
-  FOR_TRACE_CONST(tc, e) {
-    if(trace_type(tc) == T_RETURN) {
-      p = tc;
-      break;
-    }
-  }
-  if(!p) return;
+  if(!e->trace.first_return) return;
+  const tcell_t *p = &e[e->trace.first_return];
 
   while(p) {
-    COUNTUP(i, out) {
-      const tcell_t *tc = tref(e, p->value.ptr[i]);
-      type_t pt = trace_type(tc);
-      type_t *rt = &t[out-1 - i];
-      if(*rt == T_BOTTOM) {
-        *rt = pt;
-      } else if(*rt == pt) {
-        if(r && ONEOF(pt, T_INT, T_SYMBOL)) {
-          range_t *rr = &r[out-1 - i];
-          *rr = range_union(*rr, tc->trace.range);
-        }
-      } else if(pt != T_BOTTOM) {
-        *rt = T_ANY;
-      }
+    const tcell_t *tc = tref(e, p->value.ptr[i]);
+    type_t pt = trace_type(tc);
+    if(tr->type == T_BOTTOM) {
+      tr->type = pt;
+    } else if(tr->type == pt) {
+      // do nothing
+    } else if(pt != T_BOTTOM) {
+      tr->type = T_ANY;
     }
+    tr->bit_width = max(tr->bit_width, tc->trace.bit_width);
+    tr->range = range_union(tr->range, tc->trace.range);
     p = tref(e, p->alt);
+  }
+
+  if(NOT_FLAG(*e, entry, COMPLETE)) {
+    tr->range = range_union(tr->range, default_bound);
   }
 }
 
@@ -1137,4 +1137,80 @@ void build_backrefs(const tcell_t *entry, uintptr_t **table, size_t size) {
       assert_error(success);
     }
   }
+}
+
+int bits_needed(range_t r) {
+  if(range_empty(r)) {
+    return 0;
+  } if(r.min >= 0) { // unsigned
+    return max(1, int_log2l(sat_add(r.max, 1)));
+  } else { // signed
+    return max(1, int_log2l(sat_add(max(r.max, sat_neg(r.min)), 1)) + 1);
+  }
+}
+
+int stream_bits(tcell_t *entry, tcell_t *tc, int offset) {
+  if(!ONEOF(trace_type(tc), T_LIST, T_ANY, T_BOTTOM)) return offset; // ***
+  if(tc->trace.bit_width && tc->trace.bit_width >= offset) {
+    return tc->trace.bit_width;
+  }
+  if(is_value(tc) || is_dep(tc)) {
+    tc->trace.bit_width = offset;
+    return tc->trace.bit_width;
+  }
+  if(is_user_func(tc)) {
+    const tcell_t *e = get_entry(tc);
+    trace_t tr;
+    get_trace_info_for_output(&tr, e, 0);
+    if(tr.bit_width == 0) {
+      tc->trace.bit_width = offset;
+    } else {
+      assert_error(tr.bit_width >= offset);
+      tc->trace.bit_width = tr.bit_width;
+    }
+    return tc->trace.bit_width;
+  }
+  int bits = 0;
+  cell_t *const *stream_in =
+    tc->op == OP_quote ? NULL : // no input
+    tc->op == OP_ap ? &tc->expr.arg[closure_in(tc)-1] : // last input
+    &tc->expr.arg[0]; // first input
+  if(ONEOF(tc->op, OP_quote, OP_ap, OP_pushr)) {
+    TRAVERSE(tc, const, in) {
+      if(p != stream_in && *p) bits += bit_width(entry, &entry[tr_index(*p)]);
+    }
+    TRAVERSE(tc, const, out) {
+      if(*p) bits -= bit_width(entry, &entry[tr_index(*p)]);
+    }
+  }
+  if(stream_in) {
+    bits += stream_bits(entry, &entry[tr_index(*stream_in)], -min(0, bits));
+  }
+  assert_ge(bits, 0);
+  tc->trace.bit_width = max(tc->trace.bit_width, bits);
+  return tc->trace.bit_width;
+}
+
+void calculate_bit_width(tcell_t *entry) {
+  FOR_TRACE(tc, entry) {
+    tc->trace.bit_width = bit_width(entry, tc);
+  }
+}
+
+int bit_width(tcell_t *e, tcell_t *tc) {
+  if(tc->trace.bit_width) {
+    return tc->trace.bit_width;
+  }
+  int bits = range_bounded(default_bound) ? bits_needed(default_bound) : 0;
+  type_t t = trace_type(tc);
+  range_t r = tc->trace.range;
+  if(ONEOF(t, T_INT, T_SYMBOL) &&
+     range_bounded(r) &&
+     range_span(r) > 0) {
+    return bits_needed(r);
+  } else if(t == T_LIST) {
+    return stream_bits(e, tc, 0);
+  }
+  tc->trace.bit_width = max(tc->trace.bit_width, bits);
+  return tc->trace.bit_width;
 }

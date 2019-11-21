@@ -377,14 +377,15 @@ typedef struct trace {
   union {
     range_t range;
     uint8_t symbol_set[sizeof(range_t)];
+    uintptr_t first_return;
   };
-  alt_set_t range_as;
   uint16_t flags;
   union {
     csize_t prev_cells;
     csize_t extension;
   };
   uint32_t hash;
+  uint16_t bit_width;
   type_t type;
 } trace_t;
 

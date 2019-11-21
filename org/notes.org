@@ -1,5 +1,24 @@
 #+TITLE: PoprC Notes
 
+* stream widening
+- apN0 -> ap0N ==> ap10 -> ap01
+  - with wider data type
+  - need to insert gearboxes to change width
+    2 -> 1: ap02 -> ap10, ap10
+* AXI
+- AXI BMF/TLM
+- verification
+- Use AXI-Lite or AXI-Stream
+  - AXI DMA
+- AXI in Popr?
+  - B R [Array -> Array] axi_run -> WA W RA
+  - RA -> R, WA W -> B forms a loop
+  - not a good idea
+* vectors
+- chunky lists tell us the size of width of a stream
+  - fixed size -> quote/ap, no pushr/compose
+- enforce that all but the outer list is fixed size
+- can use this to calculate the width
 * range inference
 - add max_bound flag to bound all values
 - use bit set for symbols

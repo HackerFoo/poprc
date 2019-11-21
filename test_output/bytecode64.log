@@ -3890,7 +3890,7 @@ ___ tests.two_to_twenty (1 -> 1) ___
 
 ___ tests.vifte_collatz (1 -> 1) x2 rec ___
 [1] changing var :: ?i x2
-[2] tests.vifte_collatz_step 1 :: i x3
+[2] tests.vifte_collatz_step 1 >= 2 :: i x3
 [3] __primitive.seq 4 &2 :: v x1
 [4] jump tests.vifte_collatz 2 :: v x1
 [5] return [3] -> 7

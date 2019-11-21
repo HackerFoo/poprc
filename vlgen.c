@@ -50,17 +50,6 @@ const char *vltype(type_t t) {
 }
 
 static
-int bits_needed(range_t r) {
-  if(range_empty(r)) {
-    return 0;
-  } if(r.min >= 0) { // unsigned
-    return max(1, int_log2l(r.max + 1));
-  } else { // signed
-    return max(1, int_log2l(max(r.max, sat_subi(0, r.min)) + 1) + 1);
-  }
-}
-
-static
 const char *vlbits(type_t t, range_t r) {
   static char num[8]; // *** not reentrant
   static const char *table[] = {
@@ -107,9 +96,10 @@ const char *vltype_full(const tcell_t *e, const tcell_t *c) {
   } while(0)
 
 static
-void gen_module_interface(const tcell_t *e, const type_t *rtypes, const range_t *rranges) {
+void gen_module_interface(const tcell_t *e) {
   const tcell_t *p = e + 1;
   csize_t out_n = e->entry.out;
+  trace_t tr;
 
   printf("module %s_%s (\n", e->module_name, e->word_name);
   SEP(",\n");
@@ -132,9 +122,9 @@ void gen_module_interface(const tcell_t *e, const type_t *rtypes, const range_t 
   }
 
   COUNTUP(i, out_n) {
-    type_t t = rtypes[i];
-    if(t != T_OPAQUE) {
-      printf_sep("  `output(%s, %s, %d)", vltype(t), vlbits(t, rranges[i]), (int)i);
+    get_trace_info_for_output(&tr, e, i);
+    if(tr.type != T_OPAQUE) {
+      printf_sep("  `output(%s, %d, %d)", vltype(tr.type), tr.bit_width, (int)i);
     }
   }
 
@@ -189,9 +179,10 @@ bool update_block(const tcell_t *e, const tcell_t *c, int *block) {
 }
 
 static
-void gen_stack(const tcell_t *e, const type_t *rtypes, const range_t *rranges) {
+void gen_stack(const tcell_t *e) {
   int ra_bits = 0;
   int nt_self_calls = 1;
+  trace_t tr;
   if(FLAG(*e, entry, RETURN_ADDR)) {
     nt_self_calls = 0;
     FOR_TRACE_CONST(c, e) {
@@ -224,7 +215,8 @@ void gen_stack(const tcell_t *e, const type_t *rtypes, const range_t *rranges) {
     printf("  reg [`RB-1:0] return_addr = `RB'd0;\n");
   }
   COUNTUP(i, e->entry.out) {
-    printf("  reg [%s-1:0] return%d = 0;\n", vlbits(rtypes[i], rranges[i]), (int)i);
+    get_trace_info_for_output(&tr, e, i);
+    printf("  reg [%d-1:0] return%d = 0;\n", tr.bit_width, (int)i);
   }
 }
 
@@ -605,14 +597,16 @@ void gen_body(tcell_t *e) {
 
 // TODO clean up
 static
-bool gen_outputs(const tcell_t *e, const tcell_t *r0, const type_t *rtypes) {
+bool gen_outputs(const tcell_t *e) {
   bool ret = false;
   csize_t out = e->entry.out;
+  trace_t tr;
   COUNTUP(i, out) {
-    type_t t = rtypes[i];
+    get_trace_info_for_output(&tr, e, i);
+    type_t t = tr.type;
     if(t == T_OPAQUE) continue;
     printf("  assign out%d =", (int)i);
-    const tcell_t *r = r0;
+    const tcell_t *r = &e[e->trace.first_return];
     const tcell_t *r_prev = NULL;
     int block = 1;
     do {
@@ -636,14 +630,14 @@ bool gen_outputs(const tcell_t *e, const tcell_t *r0, const type_t *rtypes) {
 
     if(t == T_LIST) {
       printf("  assign out%d_valid = ", (int)i);
-      r = r0;
+      r = &e[e->trace.first_return];
       SEP(" | ");
       while(r > e) {
         printf_sep("%s%d_valid", cname(t), cgen_index(e, r_prev->value.ptr[REVI(i)]));
         r = &e[tr_index(r->alt)];
       }
       printf(";\n");
-      r = r0;
+      r = &e[e->trace.first_return];
       while(r > e) {
         printf("  assign %s%d_ready = out%d_ready;\n", cname(t), cgen_index(e, r_prev->value.ptr[REVI(i)]), (int)i);
         r = &e[tr_index(r->alt)];
@@ -659,7 +653,7 @@ bool is_self_call(const tcell_t *e, const tcell_t *c) {
 }
 
 static
-void gen_valid_ready(const tcell_t *e, UNUSED const tcell_t *r0) {
+void gen_valid_ready(const tcell_t *e) {
   int block;
 
   // valid
@@ -815,26 +809,16 @@ bool gen_buses(tcell_t *e) {
 static
 void gen_module(tcell_t *e) {
   e->op = OP_value;
-  const tcell_t *r0 = NULL;
-  FOR_TRACE_CONST(c, e) {
-    if(is_return(c)) {
-      r0 = c;
-      break;
-    }
-  }
-  type_t rtypes[e->entry.out];
-  range_t rranges[e->entry.out];
-  resolve_types(e, rtypes, rranges);
-  gen_module_interface(e, rtypes, rranges);
+  gen_module_interface(e);
   printf("\n");
   gen_decls(e);
   if(FLAG(*e, entry, STACK)) {
-    gen_stack(e, rtypes, rranges);
+    gen_stack(e);
   }
   gen_body(e);
   printf("\n");
   if(FLAG(*e, entry, SYNC)) {
-    gen_valid_ready(e, r0);
+    gen_valid_ready(e);
     printf("\n");
   }
   if(gen_buses(e)) printf("\n");
@@ -842,7 +826,7 @@ void gen_module(tcell_t *e) {
     gen_loops(e);
     printf("\n");
   }
-  if(gen_outputs(e, r0, rtypes)) printf("\n");
+  if(gen_outputs(e)) printf("\n");
   printf("endmodule\n");
 
   FOR_TRACE(c, e) {

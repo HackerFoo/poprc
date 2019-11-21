@@ -1247,6 +1247,10 @@ unsigned int trace_reduce(tcell_t *entry, cell_t **cp) {
       tcell_t *r = &entry[x];
       FLAG_CLEAR(*entry, entry, PARTIAL);
 
+      if(!alts) {
+        entry->trace.first_return = x;
+      }
+
       LOG("branch %d finished %C", alts, *p);
 
       r->n++;
