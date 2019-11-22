@@ -85,7 +85,8 @@ void gen_module_interface(const tcell_t *e) {
     const tcell_t *a = &p[i];
     type_t t = trace_type(a);
     if(t != T_OPAQUE) {
-      printf_sep("  `input(%s, %d, %d)",
+      printf_sep("  `%sinput(%s, %d, %d)",
+                 STR_IF(!a->trace.bit_width, "null_"),
                  vltype_full(e, a),
                  a->trace.bit_width,
                  (int)(e->entry.in - 1 - i));
@@ -99,7 +100,9 @@ void gen_module_interface(const tcell_t *e) {
   COUNTUP(i, out_n) {
     get_trace_info_for_output(&tr, e, i);
     if(tr.type != T_OPAQUE) {
-      printf_sep("  `output(%s, %d, %d)", vltype(tr.type), tr.bit_width, (int)i);
+      printf_sep("  `%soutput(%s, %d, %d)",
+                 STR_IF(!tr.bit_width, "null_"),
+                 vltype(tr.type), tr.bit_width, (int)i);
     }
   }
 
@@ -202,17 +205,19 @@ void gen_decls(tcell_t *e) {
     const cell_t *c = &tc->c;
     type_t t = trace_type(tc);
     if(ONEOF(t, T_BOTTOM, T_RETURN)) continue;
+    const char *null_str = STR_IF(!tc->trace.bit_width, "null_");
     if(is_var(c)) {
       if(t != T_OPAQUE) {
         const char *decl = FLAG(*e, entry, RECURSIVE) ? "variable" : "alias";
-        printf("  `%s(%s, %d, %s%d, in%d);\n", decl, vltype(t), tc->trace.bit_width, cname(t), i, e->entry.in - i);
+        printf("  `%s(%s%s, %d, %s%d, in%d);\n",
+               decl, null_str, vltype(t), tc->trace.bit_width, cname(t), i, e->entry.in - i);
       }
     } else {
       if(c->op == OP_value) {
         if(t == T_LIST) {
-          printf("  `const_nil(%d, %s%d);\n", tc->trace.bit_width, cname(t), i);
+          printf("  `%sconst_nil(%d, %s%d);\n", null_str, tc->trace.bit_width, cname(t), i);
         } else {
-          printf("  `const(%s, %d, %s%d, ", vltype(t), tc->trace.bit_width, cname(t), i);
+          printf("  `%sconst(%s, %d, %s%d, ", null_str, vltype(t), tc->trace.bit_width, cname(t), i);
           gen_value_rhs(tc);
           printf(");\n");
         }
@@ -223,9 +228,9 @@ void gen_decls(tcell_t *e) {
         if(t == T_OPAQUE) {
           // handled below
         } else if(is_self_call(e, tc)) {
-          printf("  `reg(%s, %d, %s%d) = 0;\n", vltype(t), tc->trace.bit_width, cname(t), i); // ***
+          printf("  `reg(%s%s, %d, %s%d) = 0;\n", null_str, vltype(t), tc->trace.bit_width, cname(t), i); // ***
         } else {
-          printf("  `wire(%s, %d, %s%d);\n", vltype(t), tc->trace.bit_width, cname(t), i);
+          printf("  `wire(%s%s, %d, %s%d);\n", null_str, vltype(t), tc->trace.bit_width, cname(t), i);
         }
         if(!is_dep(c)) {
           TRAVERSE(c, const, in) {
@@ -238,7 +243,7 @@ void gen_decls(tcell_t *e) {
           }
         }
       } else if(t == T_LIST) {
-        printf("  `const_nil(%d, %s%d);\n", tc->trace.bit_width, cname(t), i);
+        printf("  `%sconst_nil(%d, %s%d);\n", null_str, tc->trace.bit_width, cname(t), i);
       }
     }
   }
@@ -477,14 +482,17 @@ void gen_instance(const tcell_t *e, const tcell_t *c, int *sync_chain, uintptr_t
     if(t == T_OPAQUE) {
       a = trace_get_linear_var(e, a);
     }
-    printf_sep("\n      `%s(%s, %d, ",
-           trace_type(a) == T_OPAQUE ? "intf" : "in",
-           vltype_full(e, a), (int)i); // ***
+    const char *null_str = STR_IF(!a->trace.bit_width && t != T_OPAQUE, "null_");
+    printf_sep("\n      `%s(%s%s, %d, ",
+               t == T_OPAQUE ? "intf" : "in",
+               null_str,
+               vltype_full(e, a), (int)i); // ***
     print_var(e, a, block);
     printf(")");
   }
   if(t != T_OPAQUE) {
-    printf_sep("\n      `out(%s, 0, %s%d)",
+    printf_sep("\n      `out(%s%s, 0, %s%d)",
+               STR_IF(!c->trace.bit_width, "null_"),
                vltype(t), cname(t), inst);
   }
   RANGEUP(i, start_out, n) {
@@ -492,7 +500,8 @@ void gen_instance(const tcell_t *e, const tcell_t *c, int *sync_chain, uintptr_t
     if(a > 0) {
       type_t at = trace_type(&e[a]);
       if(at == T_OPAQUE) continue;
-      printf_sep("\n      `out(%s, %d, %s%d)",
+      printf_sep("\n      `out(%s%s, %d, %s%d)",
+                 STR_IF(!e[a].trace.bit_width, "null_"),
                  vltype(at), (int)(i - start_out + 1), cname(at), a);
     }
   }

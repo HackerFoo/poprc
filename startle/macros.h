@@ -399,3 +399,5 @@
         i = 0, __done = __mask + 1;             \
       __done != __mask;                         \
       __done = i, i = (i + __inc) & __mask)
+
+#define STR_IF(cond, str) ((cond) ? (str) : "")
