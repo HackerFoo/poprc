@@ -31,9 +31,16 @@ module algorithm_sum_tb;
         #1; sIn = 3;
         #1; sIn = 8'hff;
         #1; sIn_valid = `false;
-        #1;
-        $display("sum = %b (%d)", sum, sum);
+        #10;
+        $display("timed out");
         $finish;
+    end
+
+    always @(posedge clk) begin
+        if(sum_inst_out_valid) begin
+            $display("sum = %b (%d)", sum, sum);
+            $finish;
+        end
     end
 
     `inst_sync(algorithm_sum, sum_inst, #())(`sync(in_valid, out_ready), `in(stream, 0, sIn), `out(simple, 0, sum));

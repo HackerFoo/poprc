@@ -395,7 +395,9 @@ void condense_and_analyze(tcell_t *entry) {
       break;
     }
   }
-  calculate_bit_width(entry);
+  LOOP(2) { // run twice to for self calls
+    calculate_bit_width(entry);
+  }
 }
 
 // runs after reduction to finish functions marked incomplete
@@ -1142,7 +1144,9 @@ void build_backrefs(const tcell_t *entry, uintptr_t **table, size_t size) {
 int bits_needed(range_t r) {
   if(range_empty(r)) {
     return 0;
-  } if(r.min >= 0) { // unsigned
+  } else if(!range_bounded(r)) {
+    return 0;
+  } else if(r.min >= 0) { // unsigned
     return max(1, int_log2l(sat_add(r.max, 1)));
   } else { // signed
     return max(1, int_log2l(sat_add(max(r.max, sat_neg(r.min)), 1)) + 1);
@@ -1155,8 +1159,7 @@ int stream_bits(tcell_t *entry, tcell_t *tc, int offset) {
     return tc->trace.bit_width;
   }
   if(is_value(tc) || is_dep(tc)) {
-    tc->trace.bit_width = offset;
-    return tc->trace.bit_width;
+    return tc->trace.bit_width = offset;
   }
   if(is_user_func(tc)) {
     const tcell_t *e = get_entry(tc);
@@ -1170,6 +1173,7 @@ int stream_bits(tcell_t *entry, tcell_t *tc, int offset) {
     }
     return tc->trace.bit_width;
   }
+
   int bits = 0;
   cell_t *const *stream_in =
     tc->op == OP_quote ? NULL : // no input
@@ -1187,30 +1191,39 @@ int stream_bits(tcell_t *entry, tcell_t *tc, int offset) {
     bits += stream_bits(entry, &entry[tr_index(*stream_in)], -min(0, bits));
   }
   assert_ge(bits, 0);
-  tc->trace.bit_width = max(tc->trace.bit_width, bits);
-  return tc->trace.bit_width;
+  return tc->trace.bit_width = max(tc->trace.bit_width, bits);
 }
 
 void calculate_bit_width(tcell_t *entry) {
+  LOG("calculate_bit_width %E", entry);
   FOR_TRACE(tc, entry) {
-    tc->trace.bit_width = bit_width(entry, tc);
+    bit_width(entry, tc);
   }
 }
 
-int bit_width(tcell_t *e, tcell_t *tc) {
-  if(tc->trace.bit_width) {
-    return tc->trace.bit_width;
+int bit_width(tcell_t *entry, tcell_t *tc) {
+  if(is_user_func(tc)) {
+    const tcell_t *e = get_entry(tc);
+    COUNTUP(i, e->entry.in) {
+      const tcell_t *v_e = &e[e->entry.in - i];
+      if(trace_type(v_e) == T_LIST) {
+        tcell_t *v = &entry[tr_index(tc->expr.arg[i])];
+        stream_bits(entry, v, v_e->trace.bit_width);
+      }
+    }
   }
-  int bits = range_bounded(default_bound) ? bits_needed(default_bound) : 0;
-  type_t t = trace_type(tc);
-  range_t r = tc->trace.range;
-  if(ONEOF(t, T_INT, T_SYMBOL) &&
-     range_bounded(r) &&
-     range_span(r) > 0) {
-    return bits_needed(r);
-  } else if(t == T_LIST) {
-    return stream_bits(e, tc, 0);
+  if(!tc->trace.bit_width) {
+    type_t t = trace_type(tc);
+    range_t r = tc->trace.range;
+    if(ONEOF(t, T_INT, T_SYMBOL) &&
+       range_bounded(r) &&
+       range_span(r) > 0) {
+      tc->trace.bit_width = bits_needed(r);
+    } else if(t == T_LIST) {
+      tc->trace.bit_width = stream_bits(entry, tc, 0);
+    } else {
+      tc->trace.bit_width = bits_needed(default_bound);
+    }
   }
-  tc->trace.bit_width = max(tc->trace.bit_width, bits);
   return tc->trace.bit_width;
 }
