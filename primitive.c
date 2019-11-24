@@ -823,13 +823,6 @@ OP(unless) {
   CHECK_DELAY();
 
   if(tc && is_var(*p)) {
-    // propagate type
-    tcell_t *entry = var_entry(tc);
-    for(tcell_t *x = tc; x != tp;
-        x = &entry[tr_index(x->expr.arg[0])]) {
-      trace_set_type(x, (*p)->value.type, (*p)->value.symbol);
-    }
-
     res = var_create_bound(*p, tc, ctx);
     trace_arg(tp, 0, *p);
   } else {
@@ -1040,6 +1033,14 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   drop(l);
   if(out) FLAG_SET(*c, expr, PARTIAL);
   add_conditions(res, p, *q);
+  if(res->value.var) { // ***
+    tcell_t *v = res->value.var;
+    if(v && v->trace.type != T_ANY) {
+      LOG("removing type from %T, res = %C #type", v, res);
+      v->trace.type = T_ANY;
+      v->trace.range = RANGE_NONE;
+    }
+  }
   store_reduced(cp, ctx, res);
   ASSERT_REF();
   return SUCCESS;
@@ -1259,7 +1260,7 @@ OP(strsplit) {
 
   if(is_var(p)) {
     res = var(T_STRING, c);
-    store_dep_var(c, res, 2, T_STRING, ctx->alt_set);
+    store_dep_var(c, res, 2, T_STRING, RANGE_ALL, ctx->alt_set);
   } else {
     // TODO rewrite to handle strings containing \0
     char *s = strstr(p->value.str, q->value.str);
@@ -1333,7 +1334,7 @@ OP(external) {
   RANGEUP(i, in, n) {
     cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {
-      store_dep_var(c, res, i, T_ANY, ctx->alt_set);
+      store_dep_var(c, res, i, T_ANY, default_bound, ctx->alt_set);
     } else {
       LOG("dropped extern[%C] output", c);
     }

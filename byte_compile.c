@@ -92,6 +92,12 @@ void print_bound(tcell_t *tc) {
     if(tc->trace.bit_width) {
       printf(" %db", tc->trace.bit_width);
     }
+  } else if(t == T_OPAQUE) {
+    printf(" is %s", symbol_string(tc->trace.range.min));
+    if(tc->trace.range.min == SYM_Array &&
+       tc->trace.addr_width && tc->trace.bit_width) {
+      printf(" %da %db", tc->trace.addr_width, tc->trace.bit_width);
+    }
   }
 }
 
@@ -146,9 +152,6 @@ void print_bytecode(tcell_t *entry, bool tags) {
         if(FLAG(*tc, trace, CHANGES)) printf(" changing");
         printf(" var");
         print_bound(tc);
-        if(c->value.type == T_OPAQUE) {
-          printf(" is %s", symbol_string(c->value.symbol));
-        }
       } else { // value
         print_value(c);
       }
@@ -188,12 +191,6 @@ void print_bytecode(tcell_t *entry, bool tags) {
         }
       }
       print_bound(tc);
-      if(tc->trace.type == T_OPAQUE) { // ***
-        val_t sym = trace_get_opaque_symbol(entry, tc);
-        if(sym >= 0) {
-          printf(" is %s", symbol_string(sym));
-        }
-      }
       printf(" :: %c", type_char(tc->trace.type));
       if(FLAG(*c, expr, PARTIAL)) printf("?");
       printf(" x%d", c->n + 1);
@@ -405,11 +402,12 @@ void trace_final_pass(tcell_t *entry) {
   // replace alts with trace cells
   tcell_t *prev = NULL;
 
-  // propagate types to asserts
+  // propagate types to asserts ***
   FOR_TRACE(p, entry) {
     if(p->op == OP_assert &&
        p->trace.type == T_ANY) {
-      p->trace.type = trace_type(&entry[tr_index(p->expr.arg[0])]);
+      p->trace.type = entry[tr_index(p->expr.arg[0])].trace.type;
+      p->trace.range = entry[tr_index(p->expr.arg[0])].trace.range;
     }
   }
 
@@ -653,28 +651,6 @@ void dedup_subentries(tcell_t *e) {
   }
 }
 
-// replace variable c if there is a matching entry in a
-void replace_var(cell_t *c, cell_t **a, csize_t a_n, tcell_t *entry) {
-  int x = var_index(entry, c->value.var);
-  COUNTUP(j, a_n) {
-    int y = tr_index(a[j]);
-    if(y == x) {
-      int xn = a_n - j;
-      tcell_t *tc = &entry[xn];
-      tc->value.type = trace_type(c->value.var);
-      c->value.var = &entry[xn];
-      return;
-    }
-  }
-
-  { // diagnostics for fall through, which shouldn't happen
-    CONTEXT_LOG("replace_var fall through: %C (%d)", c, x);
-    COUNTUP(j, a_n) {
-      LOG("%d -> %d", tr_index(a[j]), j);
-    }
-  }
-}
-
 // need a quote version that only marks vars
 void mark_barriers(tcell_t *entry, cell_t *c) {
   TRAVERSE(c, in) {
@@ -818,7 +794,7 @@ const tcell_t *tref(const tcell_t *entry, const cell_t *c) {
 // get the return type
 type_t trace_type(const tcell_t *tc) {
   assert_error(tc);
-  return is_value(tc) ? tc->value.type : tc->trace.type;
+  return tc->trace.type;
 }
 
 void get_trace_info_for_output(trace_t *tr, const tcell_t *e, int n) {
@@ -847,7 +823,8 @@ void get_trace_info_for_output(trace_t *tr, const tcell_t *e, int n) {
     p = tref(e, p->alt);
   }
 
-  if(NOT_FLAG(*e, entry, COMPLETE)) {
+  if(NOT_FLAG(*e, entry, COMPLETE) &&
+     tr->type != T_OPAQUE) {
     tr->range = range_union(tr->range, default_bound);
   }
 }
@@ -938,7 +915,7 @@ void last_use_analysis(tcell_t *entry) {
     cell_t *c = &tc->c;
     last_use_mark_cell(entry, c);
     if(!is_return(c) && !is_dep(c) && !direct_refs(c)) {
-      trace_set_type(tc, T_BOTTOM, 0);
+      trace_set_type(tc, T_BOTTOM);
     }
   }
 
@@ -1164,7 +1141,8 @@ int stream_bits(tcell_t *entry, tcell_t *tc, int offset) {
   if(is_user_func(tc)) {
     const tcell_t *e = get_entry(tc);
     trace_t tr;
-    get_trace_info_for_output(&tr, e, 0);
+    tr.bit_width = 0;
+    if(e != entry) get_trace_info_for_output(&tr, e, 0);
     if(tr.bit_width == 0) {
       tc->trace.bit_width = offset;
     } else {
@@ -1194,6 +1172,32 @@ int stream_bits(tcell_t *entry, tcell_t *tc, int offset) {
   return tc->trace.bit_width = max(tc->trace.bit_width, bits);
 }
 
+void array_bits(tcell_t *entry, tcell_t *tc, int aw, int bw) {
+  assert_error(ONEOF(trace_type(tc), T_OPAQUE, T_ANY, T_BOTTOM));
+  assert_error(trace_opaque_symbol(tc) == SYM_Array);
+  if(tc->trace.addr_width && tc->trace.addr_width >= aw &&
+     tc->trace.bit_width && tc->trace.bit_width >= bw) return;
+  int addr, data;
+  switch(tc->op) {
+  case OP_read_array:
+  case OP_write_array:
+    addr = tr_index(tc->expr.arg[1]);
+    data = tr_index(tc->expr.arg[2]);
+
+    tc->trace.addr_width = max(aw, bit_width(entry, &entry[addr]));
+    tc->trace.bit_width = max(bw, data ? bit_width(entry, &entry[data]) : 0);
+    array_bits(entry, &entry[tr_index(tc->expr.arg[0])],
+               tc->trace.addr_width,
+               tc->trace.bit_width);
+    break;
+  case OP_value:
+    tc->trace.addr_width = aw;
+    tc->trace.bit_width = bw;
+  default:
+    break;
+  }
+}
+
 void calculate_bit_width(tcell_t *entry) {
   LOG("calculate_bit_width %E", entry);
   FOR_TRACE(tc, entry) {
@@ -1206,10 +1210,18 @@ int bit_width(tcell_t *entry, tcell_t *tc) {
     const tcell_t *e = get_entry(tc);
     COUNTUP(i, e->entry.in) {
       const tcell_t *v_e = &e[e->entry.in - i];
-      if(trace_type(v_e) == T_LIST) {
-        tcell_t *v = &entry[tr_index(tc->expr.arg[i])];
+      type_t t = trace_type(v_e);
+      tcell_t *v = &entry[tr_index(tc->expr.arg[i])];
+      if(t == T_LIST) {
         stream_bits(entry, v, v_e->trace.bit_width);
+      } else if(t == T_OPAQUE &&
+                trace_opaque_symbol(v_e) == SYM_Array) {
+        array_bits(entry, v, v_e->trace.addr_width, v_e->trace.bit_width);
       }
+    }
+    if(trace_type(tc) != T_BOTTOM &&
+       (e != entry || trace_type(tc) != T_LIST)) {
+      get_trace_info_for_output(&tc->trace, e, 0);
     }
   }
   if(!tc->trace.bit_width) {
@@ -1221,6 +1233,9 @@ int bit_width(tcell_t *entry, tcell_t *tc) {
       tc->trace.bit_width = bits_needed(r);
     } else if(t == T_LIST) {
       tc->trace.bit_width = stream_bits(entry, tc, 0);
+    } else if(t == T_OPAQUE &&
+              trace_opaque_symbol(tc) == SYM_Array) {
+      array_bits(entry, tc, 0, 0);
     } else {
       tc->trace.bit_width = bits_needed(default_bound);
     }

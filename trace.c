@@ -384,7 +384,6 @@ void switch_entry(tcell_t *entry, cell_t *r) {
 
     type_t t = trace_type(v);
     tcell_t *n = trace_alloc_var(entry, t);
-    if(t == T_OPAQUE) n->value.symbol = r->value.symbol;
     //if(is_var(v)) v = &var_entry(v)[v->pos]; // variables move *** DOESN'T WORK
     n->value.var = v;
     r->value.var = n;
@@ -472,14 +471,6 @@ int trace_copy_cell(tcell_t *entry, const cell_t *c) {
   return index;
 }
 
-static
-int trace_copy_tcell(tcell_t *entry, const tcell_t *tc) {
-  int index = trace_alloc(entry, tc->size);
-  size_t n = closure_tcells(tc);
-  memcpy(&entry[index], tc, sizeof(tcell_t) * n);
-  return index;
-}
-
 // get temporary storage to use with a trace cell
 scratch_t *get_scratch(tcell_t *tc) {
   assert_error(prev_entry_pos);
@@ -508,7 +499,6 @@ void trace_arg(tcell_t *tc, int n, cell_t *a) {
     *p = index_tr(x);
     entry[x].n++;
   }
-  trace_set_type(tc, a->value.type, a->value.symbol);
 }
 
 static
@@ -525,31 +515,7 @@ void trace_store_expr(tcell_t *entry, cell_t *c, cell_t *r) {
   assert_error(NOT_FLAG(*r, value, DEP));
   assert_error(is_var(r));
   tcell_t *tc = r->value.var;
-  if(!tc) return;
-  type_t t = r->value.type;
-  if(tc->op) {
-    // this cell has already been written
-    // update the types
-    if(t != T_ANY) {
-      if(is_value(tc)) {
-        trace_set_type(tc, t, r->value.symbol);
-        FOR_TRACE(x, entry) {
-          // update through assertions
-          if(x->op == OP_assert) {
-            if(tr_index(x->expr.arg[0]) == var_index(entry, r->value.var)) {
-              x->trace.type = t;
-            }
-          }
-        }
-      } else if(is_dep(tc)) {
-        tc->trace.type = t;
-      }
-    }
-    tc->trace.hash = 0;
-    hash_trace_cell(entry, tc);
-    dedup_trace_cell(entry, r);
-    return;
-  }
+  if(!tc || tc->op) return;
   assert_error(tc->size == c->size);
   assert_error(c->op != OP_dep);
   CONTEXT_LOG("trace_store_expr: %s[%d] <- %O %C %C",
@@ -590,6 +556,7 @@ void trace_store_expr(tcell_t *entry, cell_t *c, cell_t *r) {
     }
     *p = index_tr(x);
   }
+  type_t t = r->value.type;
   if(is_value(c)) {
     tc->value.alt_set = 0;
     tc->value.type = t;
@@ -620,7 +587,6 @@ void dedup_trace_cell(tcell_t *entry, cell_t *r) {
       if(!trace_cell_eq(entry, v, tc)) continue;
       v->n = -1;
       r->value.var = tc;
-      trace_update_range(r);
       LOG("dedup %T (%C) -> %T", v, r, tc);
       break;
     }
@@ -694,6 +660,8 @@ int trace_store_value(tcell_t *entry, cell_t *c) {
     tc->alt = NULL;
     tc->pos = 0;
     tc->n = -1;
+    tc->trace.type = c->value.type;
+    tc->trace.range = get_range(c);
   }
 
   apply_condition(c, &x);
@@ -891,12 +859,6 @@ void trace_clear_alt(tcell_t *entry) {
   }
 }
 
-// called to update c in the trace
-void trace_update(cell_t *r) {
-  if(is_list(r)) return;
-  trace_store_expr(var_entry(r->value.var), r, r);
-}
-
 void trace_dep(cell_t *c) {
   if(!is_var(c)) return;
   if(NOT_FLAG(*c, value, DEP)) return;
@@ -910,9 +872,7 @@ void trace_dep(cell_t *c) {
   LOG("trace_dep: %d <- %C %d[%d]", x, c, ph_x, c->pos);
   tc->op = OP_dep;
   tc->expr.arg[0] = index_tr(ph_x);
-  assert_error(c->value.type != T_OPAQUE || c->value.symbol);
-  tc->expr.symbol = c->value.symbol;
-  tc->trace.type = c->value.type;
+  assert_error(c->value.type != T_OPAQUE || range_singleton(c->value.range));
   ph->n++;
   c->value.var = tc;
   c->pos = 0;
@@ -948,7 +908,7 @@ void trace_drop(cell_t *r) {
         trace_reclaim(e, tc);
       }
     } else {
-      trace_update_range(r);
+      trace_update(r);
     }
   }
 }
@@ -967,7 +927,6 @@ cell_t *get_list_function_var(cell_t *c) {
 void trace_reduction(cell_t *c, cell_t *r) {
   WATCH(c, "trace_reduction", "%C", r);
   tcell_t *new_entry = trace_expr_entry(c->pos);
-  trace_update_type(r);
   if(!is_var(r)) {
     // print tracing information for a reduction
     if(FLAG(*c, expr, TRACE)) {
@@ -1002,38 +961,58 @@ void trace_reduction(cell_t *c, cell_t *r) {
   }
 }
 
-// update the type of c in the trace
-void trace_update_type(cell_t *c) {
+void trace_set_type(tcell_t *tc, type_t t) {
+  tc->trace.type = t;
+  if(is_value(tc)) tc->value.type = t;
+}
+
+void trace_update_1(cell_t *c) {
+  if(c->value.var) {
+    trace_update_2(c->value.var, c);
+  }
+}
+
+void trace_update_2(tcell_t *v, cell_t *c) {
   type_t t = c->value.type;
-  if(t != T_ANY) {
-    tcell_t *tc = c->value.var;
-    if(tc && tc->op) {
-      trace_set_type(tc, t, c->value.symbol);
+  if(t == T_ANY) return;
+  range_t c_range = get_range(c);
+  FOLLOW(tc, v, value.var) {
+    if(FLAG(*var_entry(tc), entry, COMPLETE)) {
+      LOG(MARK("WARN") " attempt to update with %t[%d, %d] for completed trace cell %T from %C",
+          t, c_range.min, c_range.max, tc, c);
+    } else {
+      range_t r = range_union(tc->trace.range, c_range);
+      type_t pt = trace_type(tc);
+      if(pt != t || !range_eq(r, tc->trace.range)) {
+        tc->trace.range = r;
+        assert_error(ONEOF(pt, T_ANY, T_BOTTOM) || ONEOF(t, T_BOTTOM, pt), "@type");
+        trace_set_type(tc, t);
+        LOG("updated var %C (%T) to %t[%d, %d]", c, tc, t, r.min, r.max);
+        assert_error(trace_type(tc) != T_OPAQUE || range_singleton(r));
+      }
+    }
+    if(!is_var(tc)) break;
+  }
+
+  // optimize this ***
+  tcell_t *entry = var_entry(v);
+  int ix = var_index(entry, v);
+  FOR_TRACE(x, entry) {
+    // update through assertions
+    if(x->op == OP_assert && tr_index(x->expr.arg[0]) == ix) {
+      trace_update_2(x, c);
     }
   }
 }
+
+#if INTERFACE
+#define trace_update(...) DISPATCH(trace_update, __VA_ARGS__)
+#endif
 
 // zero space in the trace allocated to an entry
 void trace_clear(tcell_t *e) {
   size_t count = e->entry.len;
   memset(e, 0, (count + 1) * sizeof(tcell_t));
-}
-
-// update the traced type
-void trace_set_type(tcell_t *tc, type_t t, val_t sym) {
-  tc->trace.type = t;
-  if(is_value(tc)) {
-    tc->value.type = t;
-    if(is_var(tc)) {
-      if(t == T_OPAQUE) {
-        tc->value.symbol = sym;
-      }
-      tcell_t *p = tc->value.var;
-      if(p) {
-        trace_set_type(p, t, sym);
-      }
-    }
-  }
 }
 
 // returns true if there's a function yet to be expanded (recursive) or a partial function
@@ -1162,7 +1141,7 @@ int trace_return(tcell_t *entry, cell_t *c_) {
   tcell_t *tc = &entry[x];
   LOG("trace_return: %s[%d] <- %C", entry->word_name, tc-entry, c_);
   closure_free(c);
-  tc->value.type = T_RETURN;
+  trace_set_type(tc, T_RETURN);
   tc->n = -1;
   tc->alt = NULL;
   return x;
@@ -1283,6 +1262,7 @@ tcell_t *trace_alloc_var(tcell_t *entry, type_t t) {
   tcell_t *tc = &entry[x];
   tc->op = OP_value;
   tc->value.type = t;
+  tc->trace.type = t;
   tc->value.flags = VALUE_VAR;
   tc->pos = ++entry->entry.in;
   return tc;
@@ -1358,8 +1338,9 @@ int copy_conditions(tcell_t *entry, int i, int v) {
   if(a == an) return i;
   int x = i;
   if(a) {
-    x = trace_copy_tcell(entry, tc);
-    entry[x].n = ~0;
+    x = trace_copy_cell(entry, &tc->c);
+    tcell_t *tn = &entry[x];
+    tn->n = ~0;
     entry[tr_index(tc->expr.arg[1])].n++;
   }
   entry[x].expr.arg[0] = index_tr(an);
@@ -1560,21 +1541,8 @@ bool is_tail_call(const tcell_t *entry, const tcell_t *c) {
     FLAG(*entry, entry, RECURSIVE);
 }
 
-val_t trace_get_opaque_symbol(const tcell_t *e, const tcell_t *c) {
-  assert_error(trace_type(c) == T_OPAQUE);
-  const tcell_t *p = c;
-  while(!is_value(p) && !is_dep(p)) {
-    p = &e[tr_index(p->expr.arg[0])];
-  }
-
-  if(trace_type(p) == T_OPAQUE) {
-    if(is_var(p)) {
-      return p->value.symbol;
-    } else if(is_dep(p)) {
-      return p->expr.symbol;
-    }
-  }
-  return -1;
+val_t trace_opaque_symbol(const tcell_t *c) {
+  return c->trace.range.min;
 }
 
 static
@@ -1612,29 +1580,20 @@ const tcell_t *trace_get_linear_var(const tcell_t *e, const tcell_t *c) {
   return p;
 }
 
-void trace_update_range(cell_t *c) {
-  range_t c_range = get_range(c);
-  FOLLOW(tc, c->value.var, value.var) {
-    if(FLAG(*var_entry(tc), entry, COMPLETE)) {
-      LOG(MARK("WARN") " attempt to update range with [%d, %d] for completed trace cell %T from %C",
-          c_range.min, c_range.max, tc, c);
-    } else {
-      range_t r = range_union(tc->trace.range, c_range);
-      if(!range_eq(r, tc->trace.range)) {
-        tc->trace.range = r;
-        LOG("bounded var %C (%T) to [%d, %d]", c, tc, r.min, r.max);
-      }
-    }
-    if(!is_var(tc)) break;
-  }
-}
-
 range_t get_range(cell_t *c) {
   assert_error(is_value(c));
   if(is_var(c)) {
     return c->value.range;
   } else {
-    return (range_t) { c->value.integer, c->value.integer };
+    switch(c->value.type) {
+    case T_INT:
+      return RANGE(c->value.integer);
+    case T_SYMBOL:
+    case T_OPAQUE:
+      return RANGE(c->value.symbol);
+    default:
+      return default_bound;
+    }
   }
 }
 
@@ -1763,4 +1722,13 @@ bool trace_cell_eq(const tcell_t *entry, const tcell_t *a, const tcell_t *b) {
     }
     return true;
   }
+}
+
+bool is_array(const tcell_t *tc) {
+  return trace_type(tc) == T_OPAQUE &&
+    tc->trace.range.min == SYM_Array;
+}
+
+bool is_self_call(const tcell_t *e, const tcell_t *c) {
+  return is_user_func(c) && get_entry(c) == e;
 }

@@ -548,7 +548,7 @@ void store_fail(cell_t *c, cell_t *alt) { // CLEANUP
   c->alt = alt;
 }
 
-void store_dep(cell_t *c, tcell_t *tc, csize_t pos, type_t t, alt_set_t alt_set) { // CLEANUP
+void store_dep(cell_t *c, tcell_t *tc, csize_t pos, type_t t, range_t r, alt_set_t alt_set) { // CLEANUP
   WATCH(c, "store_dep");
   cell_t v = {
     .op = OP_value,
@@ -561,29 +561,19 @@ void store_dep(cell_t *c, tcell_t *tc, csize_t pos, type_t t, alt_set_t alt_set)
       .type = t,
       .flags = VALUE_VAR | VALUE_DEP,
       .var = tc,
-      .range = default_bound
+      .range = r
     }
   };
   if(c->op) closure_shrink(c, 1);
   *c = v;
 }
 
-void store_dep_var(cell_t *c, cell_t *res, csize_t pos, type_t t, alt_set_t alt_set) {
+void store_dep_var(cell_t *c, cell_t *res, csize_t pos, type_t t, range_t r, alt_set_t alt_set) {
   cell_t *d = c->expr.arg[pos];
   if(d && is_dep(d)) {
     drop(c);
     d->expr.arg[0] = res;
-    store_dep(d, res->value.var, pos, t, alt_set);
-  }
-}
-
-void store_opaque_dep_var(cell_t *c, cell_t *res, csize_t pos, val_t sym, alt_set_t alt_set) {
-  cell_t *d = c->expr.arg[pos];
-  if(d && is_dep(d)) {
-    drop(c);
-    d->expr.arg[0] = res;
-    store_dep(d, res->value.var, pos, T_OPAQUE, alt_set);
-    d->value.symbol = sym;
+    store_dep(d, res->value.var, pos, t, r, alt_set);
   }
 }
 

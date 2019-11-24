@@ -80,7 +80,6 @@ OP(value) {
           c->value.range = r;
           if(is_any(c) && ctx->t != T_ANY) {
             c->value.type = ctx->t;
-            trace_update_type(c);
           }
         }
       }
@@ -91,7 +90,6 @@ OP(value) {
   // convert from T_BOTTOM
   if(c->value.type == T_BOTTOM && ctx->t != T_ANY) {
     c->value.type = ctx->t;
-    trace_update_type(c);
   }
 
   // promote integer constants to float constants
@@ -133,9 +131,8 @@ OP(value) {
       if(ctx->t == T_OPAQUE) {
         assert_error(range_singleton(ctx->bound),
                      "must provide expected value when reducing opaque %C", c);
-        c->value.symbol = ctx->bound.min;
+        c->value.range = ctx->bound;
       }
-      trace_update(c);
     }
     if(ctx->t == T_LIST) {
       placeholder_extend(cp, ctx->s, false);
@@ -181,7 +178,6 @@ OP(value) {
         c->value.flags = VALUE_VAR;
         tc->value.var = &parent[v];
         c->pos = 0;
-        trace_update_range(c); // ***
       }
     }
   }
@@ -317,7 +313,6 @@ cell_t *var_create_nonlist(type_t t, tcell_t *tc) {
       .range = default_bound
     }
   };
-  trace_update_type(c);
   return c;
 }
 
@@ -378,7 +373,7 @@ cell_t *var_(type_t t, cell_t *c, uint8_t pos) {
 
 cell_t *opaque_var(cell_t *c, val_t sym) {
   cell_t *v = var(T_OPAQUE, c);
-  v->value.symbol = sym;
+  v->value.range = RANGE(sym);
   return v;
 }
 
@@ -524,7 +519,7 @@ OP(placeholder) {
     RANGEUP(i, in, n) {
       cell_t *d = c->expr.arg[i];
       if(d && is_dep(d)) {
-        store_dep_var(c, res, i, T_ANY, ctx->alt_set);
+        store_dep_var(c, res, i, T_ANY, default_bound, ctx->alt_set);
       } else {
         LOG("dropped placeholder[%C] output", c);
       }

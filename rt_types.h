@@ -143,10 +143,7 @@ struct __attribute__((packed)) expr {
     val_t idx[2];
     struct {
       cell_t *arg0; // padding
-      union {
-        alt_set_t alt_set;
-        val_t symbol;
-      };
+      alt_set_t alt_set;
     };
   };
 };
@@ -386,6 +383,7 @@ typedef struct trace {
   };
   uint32_t hash;
   uint16_t bit_width;
+  uint8_t addr_width;
   type_t type;
 } trace_t;
 

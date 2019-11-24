@@ -612,7 +612,7 @@ cell_t *wrap_vars(cell_t **res, cell_t *p, uintptr_t dep_mask, csize_t out) {
     if(dep_mask & (1 << i)) {
       if(out_arg0) {
         d = closure_alloc(1);
-        store_dep(d, (*res)->value.var, dpos++, T_ANY, 0);
+        store_dep(d, (*res)->value.var, dpos++, T_ANY, default_bound, 0);
         *out_arg++ = d;
       } else {
         d = out_arg0 = *res;
@@ -766,7 +766,7 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
         assert_error(d->expr.arg[0] == c);
         drop(c);
         get_trace_info_for_output(&tr, new_entry, i + 1);
-        store_dep(d, tc, i + in + 1, tr.type, 0);
+        store_dep(d, tc, i + in + 1, tr.type, tr.range, 0);
         d->value.range = tr.range;
         p->expr.arg[in + 1 + i] = d;
       }
@@ -777,6 +777,19 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
   add_conditions_from_array(res, p->expr.arg, in);
   store_reduced(cp, ctx, res);
   return SUCCESS;
+}
+
+static
+void trace_update_all(cell_t *c) {
+  TRAVERSE(c, in, ptrs) {
+    if(*p) {
+      if(is_var(*p)) {
+        trace_update(*p);
+      } else {
+        trace_update_all(*p);
+      }
+    }
+  }
 }
 
 static
@@ -809,7 +822,7 @@ response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
         in_types[i] = t;
         if(t == T_OPAQUE) {
           CHECK_IF(reduce(&c->expr.arg[i],
-                          WITH(&CTX(opaque, p->value.symbol), priority, PRIORITY_ASSERT - 1)) == FAIL, FAIL);
+                          WITH(&CTX(opaque, p->trace.range.min), priority, PRIORITY_ASSERT - 1)) == FAIL, FAIL);
         } else {
           CHECK_IF(reduce(&c->expr.arg[i],
                           WITH(&CTX(t, t), priority, PRIORITY_ASSERT - 1)) == FAIL, FAIL);
@@ -850,7 +863,11 @@ response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
   }
 
   wrap_data *wrap = entry->entry.wrap;
-  uintptr_t mask = wrap ? wrap->dep_mask : 0;
+  uintptr_t mask = 0;
+  if(wrap) {
+    mask = wrap->dep_mask;
+    trace_update_all(wrap->expand);
+  }
   if(mask == 0) mask = (1 << entry_out) - 1;
   {
     int j = next_bit(&mask);
@@ -873,15 +890,8 @@ response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
       int j = next_bit(&mask);
       assert_error(j >= 0, "not enough bits in dep_mask; maybe dangling dep references? %C", d);
       get_trace_info_for_output(&tr, entry, j);
-      store_dep(d, res->value.var, i + in + 1, tr.type, ctx->alt_set); // TODO opaque symbol
+      store_dep(d, res->value.var, i + in + 1, tr.type, tr.range, ctx->alt_set);
       d->value.range = tr.range;
-      if(tr.type == T_OPAQUE) { // opaque types must match in position, so get symbol from input
-        FOR_TRACE_CONST(c, entry) { // TODO optimize this
-          if(is_var(c) && c->pos == entry->entry.in - 1 - i) {
-            d->value.symbol = c->value.symbol;
-          }
-        }
-      }
     }
   }
 

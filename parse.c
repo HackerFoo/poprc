@@ -218,7 +218,6 @@ val_t fill_args(tcell_t *entry, cell_t *l) {
   val_t i = 0;
   while(!closure_is_ready(l)) {
     cell_t *v = param(T_ANY, entry);
-    trace_update(v);
     arg(l, v);
     ++i;
   }

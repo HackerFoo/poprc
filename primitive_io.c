@@ -70,7 +70,7 @@ OP(open) {
 
   if(ANY(is_var, p, q)) {
     res = var(T_SYMBOL, c);
-    store_opaque_dep_var(c, res, 2, SYM_File, ctx->alt_set);
+    store_dep_var(c, res, 2, T_OPAQUE, RANGE(SYM_File), ctx->alt_set);
   } else {
     CHECK_IF(p->value.symbol != SYM_IO, FAIL);
     void *h = io->open(value_seg(q));
@@ -135,7 +135,7 @@ response write_op(cell_t **cp, context_t *ctx, void (*op)(file_t *, seg_t)) {
 
   if(ANY(is_var, p, q, r)) {
     res = var(T_SYMBOL, c);
-    store_opaque_dep_var(c, res, 3, SYM_File, ctx->alt_set);
+    store_dep_var(c, res, 3, T_OPAQUE, RANGE(SYM_File), ctx->alt_set);
   } else {
     CHECK_IF(p->value.symbol != SYM_IO, FAIL);
     op((file_t *)q->value.opaque, value_seg(r));
@@ -177,8 +177,8 @@ OP(read) {
 
   if(ANY(is_var, p, q)) {
     res = var(T_SYMBOL, c);
-    store_opaque_dep_var(c, res, 2, SYM_File, ctx->alt_set);
-    store_dep_var(c, res, 3, T_STRING, ctx->alt_set);
+    store_dep_var(c, res, 2, T_OPAQUE, RANGE(SYM_File), ctx->alt_set);
+    store_dep_var(c, res, 3, T_STRING, RANGE_ALL, ctx->alt_set);
   } else {
     CHECK_IF(p->value.symbol != SYM_IO, FAIL);
     seg_t s = io->read((file_t *)q->value.opaque);
@@ -241,7 +241,7 @@ OP(read_array) {
 
   if(ANY(is_var, p, q)) {
     res = opaque_var(c, SYM_Array);
-    store_dep_var(c, res, 2, T_INT, ctx->alt_set);
+    store_dep_var(c, res, 2, T_INT, default_bound, ctx->alt_set);
   } else {
     val_t x = 0;
     CHECK_IF(p->value.symbol != SYM_Array, FAIL);
