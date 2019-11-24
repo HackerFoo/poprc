@@ -50,16 +50,16 @@ module __primitive_ap01_lli(
   `output(simple, out1N, 1)
 );
     parameter in0N = `intN;
-    parameter out0N = `intN;
     parameter out1N = `intN;
+    parameter out0N = in0N - out1N;
 
-    assign out0 = in0;
+    assign out0 = in0 >> out1N;
     assign out1 = in0;
-    assign out0_valid = in0_valid & ~in_valid;
-    assign out_valid = in0_valid & in_valid & `valid(in0);
+    assign out0_valid = in0_valid;
+    assign out_valid = in0_valid & `valid(out1);
 
-    assign in_ready = in0_valid & in_valid;
-    assign in0_ready = out_ready & (out0_ready | in_valid);
+    assign in_ready = `true;
+    assign in0_ready = out0_ready & out_ready;
 
 endmodule
 
@@ -140,14 +140,34 @@ module __primitive_pushr1_lli(
     parameter in1N = `intN;
     parameter out0N = `intN;
 
-    assign out0 = in_valid ? in1 : in0;
-    assign out0_valid = in_valid | in0_valid;
-    assign in0_ready = ~in_valid;
+    assign out0 = { in0, in1 };
+    assign out0_valid = in_valid & in0_valid;
+    assign in0_ready = out0_ready;
     assign in_ready = out0_ready;
     assign out_valid = `true;
 
 endmodule
 
+module __primitive_pushr2_llii(
+  `sync_ports,
+  `input(stream, in0N, 0),
+  `input(simple, in1N, 1),
+  `input(simple, in2N, 2),
+  `output(stream, out0N, 0)
+);
+    parameter in0N = `intN;
+    parameter in1N = `intN;
+    parameter in2N = `intN;
+    parameter out0N = in0N + in1N + in2N;
+    assign out0 = { in0, in1, in2 };
+    assign out0_valid = in_valid & in0_valid;
+    assign in0_ready = out0_ready;
+    assign in_ready = out0_ready;
+    assign out_valid = `true;
+
+endmodule
+
+/*
 module __primitive_pushr2_llii(
   `sync_ports,
   `input(stream, in0N, 0),
@@ -177,15 +197,16 @@ module __primitive_pushr2_llii(
     end
 
 endmodule
+*/
 
 module __primitive_read_array_ooii(
   `sync_ports,
-  `interface(Array, interfaceAN0, interfaceDN0, 0),
+  `interface(Array, intf0AN, intf0DN, 0),
   `input(simple, in1N, 1),
   `output(simple, out1N, 1)
 );
-    parameter interfaceAN0 = `addrN;
-    parameter interfaceDN0 = `intN;
+    parameter intf0AN = `addrN;
+    parameter intf0DN = `intN;
     parameter in1N = `intN;
     parameter out1N = `intN;
 
@@ -212,12 +233,12 @@ endmodule
 
 module __primitive_write_array_ooii(
   `sync_ports,
-  `interface(Array, interfaceAN0, interfaceDN0, 0),
+  `interface(Array, intf0AN, intf0DN, 0),
   `input(simple, in1N, 1),
   `input(simple, in2N, 2)
 );
-    parameter interfaceAN0 = `addrN;
-    parameter interfaceDN0 = `intN;
+    parameter intf0AN = `addrN;
+    parameter intf0DN = `intN;
     parameter in1N = `intN;
     parameter in2N = `intN;
 

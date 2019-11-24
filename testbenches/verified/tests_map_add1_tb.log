@@ -1,5 +1,5 @@
 FST info: dumpfile tests_map_add1_tb.fst opened for output.
-sIn = 00000000 (  0), sOut = 11111111 (255)
+sIn = 00000000 (  0), sOut = 00000001 (  1)
 sIn = 00000001 (  1), sOut = 00000010 (  2)
 sIn = 00000010 (  2), sOut = 00000011 (  3)
 sIn = 00000011 (  3), sOut = 00000100 (  4)

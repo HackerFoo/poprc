@@ -50,10 +50,10 @@ const char *vltype(type_t t) {
 }
 
 static
-const char *vltype_full(const tcell_t *e, const tcell_t *c) {
+const char *vltype_full(const tcell_t *c) {
   type_t t = trace_type(c);
   if(t == T_OPAQUE) {
-    val_t sym = trace_get_opaque_symbol(e, c);
+    val_t sym = trace_opaque_symbol(c);
     return symbol_string(sym);
   } else {
     return vltype(t);
@@ -87,12 +87,14 @@ void gen_module_interface(const tcell_t *e) {
     if(t != T_OPAQUE) {
       printf_sep("  `%sinput(%s, %d, %d)",
                  STR_IF(!a->trace.bit_width, "null_"),
-                 vltype_full(e, a),
+                 vltype_full(a),
                  a->trace.bit_width,
                  (int)(e->entry.in - 1 - i));
     } else {
-      printf_sep("  `interface(%s, `addrN, `intN, %d)", // *** addr/data width isn't in trace yet
-                 vltype_full(e, a),
+      printf_sep("  `interface(%s, %d, %d, %d)",
+                 vltype_full(a),
+                 a->trace.addr_width,
+                 a->trace.bit_width,
                  (int)(e->entry.in - 1 - i));
     }
   }
@@ -158,18 +160,30 @@ bool update_block(const tcell_t *e, const tcell_t *c, int *block) {
 
 static
 void gen_stack(const tcell_t *e) {
-  int ra_bits = 0;
-  int nt_self_calls = 1;
+  int ra_bits = 0; // return address bits
+  int rd_bits = 0; // return data bits
+  int nt_self_calls = 0; // non-tail self calls
+  int in_bits = 0; // input bits
   trace_t tr;
+  RANGEUP(i, 1, e->entry.in + 1) {
+    in_bits += e[i].trace.bit_width;
+  }
   if(FLAG(*e, entry, RETURN_ADDR)) {
     nt_self_calls = 0;
+    int last_nt_bits = 0;
     FOR_TRACE_CONST(c, e) {
       if(is_self_call(e, c) &&
          NOT_FLAG(*c, trace, JUMP)) {
         nt_self_calls++;
+        rd_bits += c->trace.bit_width;
+        last_nt_bits = c->trace.bit_width;
       }
     }
+    rd_bits -= last_nt_bits; // no need to store the last return
     ra_bits = int_log2(nt_self_calls);
+  } else {
+    nt_self_calls = 1;
+    ra_bits = 0;
   }
   printf("\n"
          "  // stack\n"
@@ -185,10 +199,10 @@ void gen_stack(const tcell_t *e) {
       }
     }
   }
-  printf("  localparam STACK_WIDTH = `RB + %d * `intN;\n" // ***
+  printf("  localparam STACK_WIDTH = `RB + %d;\n"
          "  reg [STACK_WIDTH-1:0] stack[0:255];\n"
          "  reg [7:0] sp = 0;\n"
-         "  reg returned = `false;\n", e->entry.in + nt_self_calls - 1);
+         "  reg returned = `false;\n", in_bits + rd_bits);
   if(ra_bits) {
     printf("  reg [`RB-1:0] return_addr = `RB'd0;\n");
   }
@@ -215,7 +229,7 @@ void gen_decls(tcell_t *e) {
     } else {
       if(c->op == OP_value) {
         if(t == T_LIST) {
-          printf("  `%sconst_nil(%d, %s%d);\n", null_str, tc->trace.bit_width, cname(t), i);
+          printf("  `%sconst_nil(%s%d);\n", null_str, cname(t), i);
         } else {
           printf("  `%sconst(%s, %d, %s%d, ", null_str, vltype(t), tc->trace.bit_width, cname(t), i);
           gen_value_rhs(tc);
@@ -238,12 +252,13 @@ void gen_decls(tcell_t *e) {
             tcell_t *a = &e[tr_index(*p)];
             if(trace_type(a) == T_OPAQUE) {
               const tcell_t *v = trace_get_linear_var(e, a);
-              printf("  `bus(%s, %d, inst%d);\n", vltype_full(e, a), e->entry.in - (int)(v-e), i);
+              printf("  `bus(%s, %d, %d, %d, inst%d);\n",
+                     vltype_full(a), a->trace.addr_width, a->trace.bit_width, e->entry.in - (int)(v-e), i);
             }
           }
         }
       } else if(t == T_LIST) {
-        printf("  `%sconst_nil(%d, %s%d);\n", null_str, tc->trace.bit_width, cname(t), i);
+        printf("  `%sconst_nil(%s%d);\n", null_str, cname(t), i);
       }
     }
   }
@@ -419,16 +434,17 @@ void gen_width_params(const tcell_t *e, const tcell_t *c) {
     SEP(", ");
     COUNTUP(i, in) {
       const tcell_t *a = &e[cgen_index(e, c->expr.arg[i])];
-      if(trace_type(a) == T_OPAQUE) continue;
-      if(range_bounded(a->trace.range) && !range_empty(a->trace.range)) {
-        assert_gt(bits_needed(a->trace.range), 0);
-        printf_sep(".in%dN(%d)", (int)i, bits_needed(a->trace.range));
+      if(trace_type(a) == T_OPAQUE) {
+        if(is_array(a)) {
+          printf_sep(".intf0AN(%d)", a->trace.addr_width);
+          printf_sep(".intf0DN(%d)", a->trace.bit_width);
+        }
+      } else {
+        printf_sep(".in%dN(%d)", (int)i, a->trace.bit_width);
       }
     }
     if(t != T_OPAQUE) {
-      if(range_bounded(c->trace.range) && !range_empty(c->trace.range)) {
-        printf_sep(".out0N(%d)", bits_needed(c->trace.range));
-      }
+      printf_sep(".out0N(%d)", c->trace.bit_width);
     }
     RANGEUP(i, start_out, n) {
       int a = cgen_index(e, c->expr.arg[i]);
@@ -436,7 +452,7 @@ void gen_width_params(const tcell_t *e, const tcell_t *c) {
         type_t at = trace_type(&e[a]);
         if(at == T_OPAQUE) continue;
         if(range_bounded(e[a].trace.range) && !range_empty(e[a].trace.range)) {
-          printf_sep(".out%dN(%d)", (int)(i - start_out + 1), bits_needed(e[a].trace.range));
+          printf_sep(".out%dN(%d)", (int)(i - start_out + 1), e[a].trace.bit_width);
         }
       }
     }
@@ -486,7 +502,7 @@ void gen_instance(const tcell_t *e, const tcell_t *c, int *sync_chain, uintptr_t
     printf_sep("\n      `%s(%s%s, %d, ",
                t == T_OPAQUE ? "intf" : "in",
                null_str,
-               vltype_full(e, a), (int)i); // ***
+               vltype_full(a), (int)i); // ***
     print_var(e, a, block);
     printf(")");
   }
@@ -632,10 +648,6 @@ bool gen_outputs(const tcell_t *e) {
   return ret;
 }
 
-bool is_self_call(const tcell_t *e, const tcell_t *c) {
-  return is_user_func(c) && get_entry(c) == e;
-}
-
 static
 void gen_valid_ready(const tcell_t *e) {
   int block;
@@ -768,8 +780,7 @@ bool gen_buses(tcell_t *e) {
   COUNTUP(i, e->entry.in) {
     int ix = REVI(i) + 1;
     const tcell_t *v = &e[ix];
-    if(v->value.type != T_OPAQUE ||
-       trace_get_opaque_symbol(e, v) != SYM_Array) continue;
+    if(!is_array(v)) continue;
     int a = ix;
     SEP(" |\n");
     printf("  assign `to_bus(intf%d) =\n", (int)i);

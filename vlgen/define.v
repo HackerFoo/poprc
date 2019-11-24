@@ -88,6 +88,7 @@
 `define input_stream(N, index) input [N-1:0] in``index, input in``index``_valid, output in``index``_ready
 `define output_stream(N, index) output [N-1:0] out``index, output out``index``_valid, input out``index``_ready
 `define in_stream(index, name) .in``index(name), .in``index``_valid(name``_valid), .in``index``_ready(name``_ready)
+`define in_null_stream(index, name) .in``index(), .in``index``_valid(name``_valid), .in``index``_ready(name``_ready)
 `define out_stream(index, name) .out``index(name), .out``index``_valid(name``_valid), .out``index``_ready(name``_ready)
 `define out_null_stream(index, name) .out``index(), .out``index``_valid(name``_valid), .out``index``_ready(name``_ready)
 `define alias_stream(N, name, other) \
@@ -103,11 +104,11 @@
 `define wire_null_stream(N, name) wire name``_valid; wire name``_ready
 `define reg_stream(N, name) reg [N-1:0] name; reg name``_valid; wire name``_ready
 `define const_stream(N, name, val) localparam [N-1:0] name = val; localparam name``_valid = `true
-`define const_nil(N, name) localparam [N-1:0] name = `nil; localparam name``_valid = `false; wire name``_ready
+`define null_const_nil(name) localparam name``_valid = `true; wire name``_ready
 
 `define interface(type, AN, DN, index) `interface_``type(AN, DN, index)
 `define intf(type, index, name) `intf_``type(index, name)
-`define bus(type, index, inst) `bus_``type``(index, inst)
+`define bus(type, AN, DN, index, inst) `bus_``type``(AN, DN, index, inst)
 
 /* ------------------------------------------------------ *
      ARRAY BUS
@@ -139,10 +140,10 @@
       .intf``index``_do(name``_do), \
       .intf``index``_valid(`concat_(`current_inst, name``_valid)), \
       .intf``index``_ready(name``_ready)
-`define bus_Array(index, inst) \
-  wire `addrT inst``_intf``index``_addr; \
+`define bus_Array(AN, DN, index, inst) \
+  wire [AN-1:0] inst``_intf``index``_addr; \
   wire inst``_intf``index``_we; \
-  wire `intT inst``_intf``index``_di; \
+  wire [DN-1:0] inst``_intf``index``_di; \
   wire inst``_intf``index``_valid
 
 `define to_bus(pre) {pre``_addr, pre``_we, pre``_di, pre``_valid}
