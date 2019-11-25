@@ -977,19 +977,25 @@ void trace_update_2(tcell_t *v, cell_t *c) {
   if(t == T_ANY) return;
   range_t c_range = get_range(c);
   FOLLOW(tc, v, value.var) {
-    if(FLAG(*var_entry(tc), entry, COMPLETE)) {
+    tcell_t *entry = var_entry(tc);
+    if(FLAG(*entry, entry, COMPLETE)) {
       LOG(MARK("WARN") " attempt to update with %t[%d, %d] for completed trace cell %T from %C",
           t, c_range.min, c_range.max, tc, c);
     } else {
-      range_t r = range_union(tc->trace.range, c_range);
-      type_t pt = trace_type(tc);
-      if(pt != t || !range_eq(r, tc->trace.range)) {
-        tc->trace.range = r;
-        assert_error(ONEOF(pt, T_ANY, T_BOTTOM) || ONEOF(t, T_BOTTOM, pt), "@type");
-        trace_set_type(tc, t);
-        LOG("updated var %C (%T) to %t[%d, %d]", c, tc, t, r.min, r.max);
-        assert_error(trace_type(tc) != T_OPAQUE || range_singleton(r));
-      }
+      tcell_t *p = tc;
+      do {
+        range_t r = range_union(p->trace.range, c_range);
+        type_t pt = trace_type(p);
+        if(pt != t || !range_eq(r, p->trace.range)) {
+          p->trace.range = r;
+          assert_error(ONEOF(pt, T_ANY, T_BOTTOM) || ONEOF(t, T_BOTTOM, pt), "@type");
+          trace_set_type(p, t);
+          LOG("updated var %C (%T) to %t[%d, %d]", c, p, t, r.min, r.max);
+          assert_error(trace_type(p) != T_OPAQUE || range_singleton(r));
+        }
+        p = ONEOF(p->op, OP_assert, OP_unless, OP_seq) ?
+          &entry[tr_index(p->expr.arg[0])] : NULL;
+      } while(p);
     }
     if(!is_var(tc)) break;
   }
