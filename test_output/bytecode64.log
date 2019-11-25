@@ -2874,7 +2874,7 @@ ___ tests.disj_bound (1 -> 1) x2 ___
 [4] __primitive.assert &1 2 in [1, 10] :: i? x2
 [5] __primitive.lte &4 6 :: y x1
 [6] val 5 :: i x1
-[7] __primitive.assert 4 5 in [1, 10] :: i? x1
+[7] __primitive.assert 4 5 in [1, 5] :: i? x1
 [8] return [7] -> 15
 [9] __primitive.gte &1 10 :: y x1
 [10] val 8 :: i x1
@@ -3551,10 +3551,10 @@ ___ tests.one_to_ten2 (1 -> 1) x2 ___
 [4] __primitive.assert &1 &2 in [1, 10] :: i? x2
 [5] __primitive.lte &4 6 :: y x2
 [6] val 10 :: i x1
-[7] __primitive.assert 4 &5 in [1, 10] :: i? x2
+[7] __primitive.assert 4 &5 in [1, 4] :: i? x2
 [8] __primitive.lt &7 &9 :: y x1
 [9] val 5 :: i x2
-[10] __primitive.assert 7 8 in [1, 10] :: i? x1
+[10] __primitive.assert 7 8 in [1, 4] :: i? x1
 [11] return [10] -> 16
 [12] __primitive.assert 1 2 in [5, 10] :: i? x1
 [13] __primitive.assert 12 5 in [5, 10] :: i? x2

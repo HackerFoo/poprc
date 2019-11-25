@@ -1004,9 +1004,10 @@ void trace_update_2(tcell_t *v, cell_t *c) {
   tcell_t *entry = var_entry(v);
   int ix = var_index(entry, v);
   FOR_TRACE(x, entry) {
-    // update through assertions
-    if(x->op == OP_assert && tr_index(x->expr.arg[0]) == ix) {
-      trace_update_2(x, c);
+    // update through conditions
+    if(ONEOF(x->op, OP_assert, OP_unless, OP_seq) && tr_index(x->expr.arg[0]) == ix) {
+      x->trace.type = t;
+      x->trace.range = range_union(x->trace.range, c_range);
     }
   }
 }
