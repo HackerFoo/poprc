@@ -47,6 +47,8 @@ __ list
   2
 [[2 "a"] [3 "b"]] "b" assoc
   3
+[1 2 3] [30 20 10] [+] zip
+  [31 22 13]
 __ stack
 [1] pull
   1 []
@@ -82,16 +84,18 @@ __ stack
   1 2 3 4 5 1
 1 2 dup2
   1 2 1 2
-1 2 3 4 5 6 7 swap2
-  1 2 3 4 6 7 5
-1 2 3 4 5 6 7 swap3
-  1 2 3 5 6 7 4
-1 2 3 4 5 6 7 swap4
-  1 2 4 5 6 7 3
-1 2 3 4 5 6 7 swap5
-  1 3 4 5 6 7 2
-1 2 3 4 5 6 7 swap6
-  2 3 4 5 6 7 1
+1 2 3 4 5 6 7 8 swap2
+  1 2 3 4 5 7 8 6
+1 2 3 4 5 6 7 8 swap3
+  1 2 3 4 6 7 8 5
+1 2 3 4 5 6 7 8 swap4
+  1 2 3 5 6 7 8 4
+1 2 3 4 5 6 7 8 swap5
+  1 2 4 5 6 7 8 3
+1 2 3 4 5 6 7 8 swap6
+  1 3 4 5 6 7 8 2
+1 2 3 4 5 6 7 8 swap7
+  2 3 4 5 6 7 8 1
 __ control
 True A B ifte
   A
@@ -107,6 +111,8 @@ False A B ifte
   2 2 2 2 A
 1 A [1+ dup dup dup dup] dip15
   2 2 2 2 2 A
+1 A [1+ dup dup dup dup dup] dip16
+  2 2 2 2 2 2 A
 1 2 A [+] dip21
   3 A
 1 2 A [+ dup] dip22
@@ -117,6 +123,8 @@ False A B ifte
   3 3 3 3 A
 1 2 A [+ dup dup dup dup] dip25
   3 3 3 3 3 A
+1 2 A [+ dup dup dup dup dup] dip26
+  3 3 3 3 3 3 A
 1 2 3 A [+ +] dip31
   6 A
 1 2 3 A [+ + dup] dip32
@@ -127,6 +135,8 @@ False A B ifte
   6 6 6 6 A
 1 2 3 A [+ + dup dup dup dup] dip35
   6 6 6 6 6 A
+1 2 3 A [+ + dup dup dup dup dup] dip36
+  6 6 6 6 6 6 A
 1 2 3 4 A [+ + +] dip41
   10 A
 1 2 3 4 A [+ + + dup] dip42
@@ -137,6 +147,8 @@ False A B ifte
   10 10 10 10 A
 1 2 3 4 A [+ + + dup dup dup dup] dip45
   10 10 10 10 10 A
+1 2 3 4 A [+ + + dup dup dup dup dup] dip46
+  10 10 10 10 10 10 A
 1 2 3 4 5 A [+ + + +] dip51
   15 A
 1 2 3 4 5 A [+ + + + dup] dip52
@@ -147,10 +159,28 @@ False A B ifte
   15 15 15 15 A
 1 2 3 4 5 A [+ + + + dup dup dup dup] dip55
   15 15 15 15 15 A
+1 2 3 4 5 A [+ + + + dup dup dup dup dup] dip56
+  15 15 15 15 15 15 A
+1 2 3 4 5 6 A [+ + + + +] dip61
+  21 A
+1 2 3 4 5 6 A [+ + + + + dup] dip62
+  21 21 A
+1 2 3 4 5 6 A [+ + + + + dup dup] dip63
+  21 21 21 A
+1 2 3 4 5 6 A [+ + + + + dup dup dup] dip64
+  21 21 21 21 A
+1 2 3 4 5 6 A [+ + + + + dup dup dup dup] dip65
+  21 21 21 21 21 A
+1 2 3 4 5 6 A [+ + + + + dup dup dup dup dup] dip66
+  21 21 21 21 21 21 A
 1 [2+] $
+  3
+1 2 [+] $$
   3
 1 [2+] $keep
   3 [2 +]
+1 2 [+] $$keep
+  3 [+]
 1 [2+] peek
   1 3
 1 [2+] ->

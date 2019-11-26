@@ -182,6 +182,14 @@ ___ control.$$- (3 -> 2) ___
 [6] __primitive.dep 4 :: a x1
 [7] return [6 5]
 
+___ control.$$keep (3 -> 2) ___
+[1] var :: ?l x2
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] __primitive.ap 3 2 &1 -> 5 :: v? x1
+[5] __primitive.dep 4 :: a x1
+[6] return [5 1]
+
 ___ control.$- (2 -> 2) ___
 [1] var :: ?l x1
 [2] var :: ?a x1
@@ -298,6 +306,19 @@ ___ control.dip15 (3 -> 6) ___
 [10] __primitive.dep 4 :: a x1
 [11] return [10 9 8 7 6 2]
 
+___ control.dip16 (3 -> 7) ___
+[1] var :: ?l x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] __primitive.ap 3 1 -> 11 10 9 8 7 6 :: v? x6
+[6] __primitive.dep 4 :: a x1
+[7] __primitive.dep 4 :: a x1
+[8] __primitive.dep 4 :: a x1
+[9] __primitive.dep 4 :: a x1
+[10] __primitive.dep 4 :: a x1
+[11] __primitive.dep 4 :: a x1
+[12] return [11 10 9 8 7 6 2]
+
 ___ control.dip21 (4 -> 2) ___
 [1] var :: ?l x1
 [2] var :: ?a x1
@@ -352,6 +373,20 @@ ___ control.dip25 (4 -> 6) ___
 [10] __primitive.dep 5 :: a x1
 [11] __primitive.dep 5 :: a x1
 [12] return [11 10 9 8 7 2]
+
+___ control.dip26 (4 -> 7) ___
+[1] var :: ?l x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] var :: ?a x1
+[5] __primitive.ap 4 3 1 -> 12 11 10 9 8 7 :: v? x6
+[7] __primitive.dep 5 :: a x1
+[8] __primitive.dep 5 :: a x1
+[9] __primitive.dep 5 :: a x1
+[10] __primitive.dep 5 :: a x1
+[11] __primitive.dep 5 :: a x1
+[12] __primitive.dep 5 :: a x1
+[13] return [12 11 10 9 8 7 2]
 
 ___ control.dip31 (5 -> 2) ___
 [1] var :: ?l x1
@@ -412,6 +447,21 @@ ___ control.dip35 (5 -> 6) ___
 [11] __primitive.dep 6 :: a x1
 [12] __primitive.dep 6 :: a x1
 [13] return [12 11 10 9 8 2]
+
+___ control.dip36 (5 -> 7) ___
+[1] var :: ?l x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] var :: ?a x1
+[5] var :: ?a x1
+[6] __primitive.ap 5 4 3 1 -> 13 12 11 10 9 8 :: v? x6
+[8] __primitive.dep 6 :: a x1
+[9] __primitive.dep 6 :: a x1
+[10] __primitive.dep 6 :: a x1
+[11] __primitive.dep 6 :: a x1
+[12] __primitive.dep 6 :: a x1
+[13] __primitive.dep 6 :: a x1
+[14] return [13 12 11 10 9 8 2]
 
 ___ control.dip41 (6 -> 2) ___
 [1] var :: ?l x1
@@ -477,6 +527,22 @@ ___ control.dip45 (6 -> 6) ___
 [12] __primitive.dep 7 :: a x1
 [13] __primitive.dep 7 :: a x1
 [14] return [13 12 11 10 9 2]
+
+___ control.dip46 (6 -> 7) ___
+[1] var :: ?l x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] var :: ?a x1
+[5] var :: ?a x1
+[6] var :: ?a x1
+[7] __primitive.ap 6 5 4 3 1 -> 14 13 12 11 10 9 :: v? x6
+[9] __primitive.dep 7 :: a x1
+[10] __primitive.dep 7 :: a x1
+[11] __primitive.dep 7 :: a x1
+[12] __primitive.dep 7 :: a x1
+[13] __primitive.dep 7 :: a x1
+[14] __primitive.dep 7 :: a x1
+[15] return [14 13 12 11 10 9 2]
 
 ___ control.dip51 (7 -> 2) ___
 [1] var :: ?l x1
@@ -547,6 +613,116 @@ ___ control.dip55 (7 -> 6) ___
 [13] __primitive.dep 8 :: a x1
 [14] __primitive.dep 8 :: a x1
 [15] return [14 13 12 11 10 2]
+
+___ control.dip56 (7 -> 7) ___
+[1] var :: ?l x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] var :: ?a x1
+[5] var :: ?a x1
+[6] var :: ?a x1
+[7] var :: ?a x1
+[8] __primitive.ap 7 6 5 4 3 1 -> 15 14 13 12 11 10 :: v? x6
+[10] __primitive.dep 8 :: a x1
+[11] __primitive.dep 8 :: a x1
+[12] __primitive.dep 8 :: a x1
+[13] __primitive.dep 8 :: a x1
+[14] __primitive.dep 8 :: a x1
+[15] __primitive.dep 8 :: a x1
+[16] return [15 14 13 12 11 10 2]
+
+___ control.dip61 (8 -> 2) ___
+[1] var :: ?l x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] var :: ?a x1
+[5] var :: ?a x1
+[6] var :: ?a x1
+[7] var :: ?a x1
+[8] var :: ?a x1
+[9] __primitive.ap 8 7 6 5 4 3 1 -> 11 :: v? x1
+[11] __primitive.dep 9 :: a x1
+[12] return [11 2]
+
+___ control.dip62 (8 -> 3) ___
+[1] var :: ?l x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] var :: ?a x1
+[5] var :: ?a x1
+[6] var :: ?a x1
+[7] var :: ?a x1
+[8] var :: ?a x1
+[9] __primitive.ap 8 7 6 5 4 3 1 -> 12 11 :: v? x2
+[11] __primitive.dep 9 :: a x1
+[12] __primitive.dep 9 :: a x1
+[13] return [12 11 2]
+
+___ control.dip63 (8 -> 4) ___
+[1] var :: ?l x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] var :: ?a x1
+[5] var :: ?a x1
+[6] var :: ?a x1
+[7] var :: ?a x1
+[8] var :: ?a x1
+[9] __primitive.ap 8 7 6 5 4 3 1 -> 13 12 11 :: v? x3
+[11] __primitive.dep 9 :: a x1
+[12] __primitive.dep 9 :: a x1
+[13] __primitive.dep 9 :: a x1
+[14] return [13 12 11 2]
+
+___ control.dip64 (8 -> 5) ___
+[1] var :: ?l x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] var :: ?a x1
+[5] var :: ?a x1
+[6] var :: ?a x1
+[7] var :: ?a x1
+[8] var :: ?a x1
+[9] __primitive.ap 8 7 6 5 4 3 1 -> 14 13 12 11 :: v? x4
+[11] __primitive.dep 9 :: a x1
+[12] __primitive.dep 9 :: a x1
+[13] __primitive.dep 9 :: a x1
+[14] __primitive.dep 9 :: a x1
+[15] return [14 13 12 11 2]
+
+___ control.dip65 (8 -> 6) ___
+[1] var :: ?l x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] var :: ?a x1
+[5] var :: ?a x1
+[6] var :: ?a x1
+[7] var :: ?a x1
+[8] var :: ?a x1
+[9] __primitive.ap 8 7 6 5 4 3 1 -> 15 14 13 12 11 :: v? x5
+[11] __primitive.dep 9 :: a x1
+[12] __primitive.dep 9 :: a x1
+[13] __primitive.dep 9 :: a x1
+[14] __primitive.dep 9 :: a x1
+[15] __primitive.dep 9 :: a x1
+[16] return [15 14 13 12 11 2]
+
+___ control.dip66 (8 -> 7) ___
+[1] var :: ?l x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] var :: ?a x1
+[5] var :: ?a x1
+[6] var :: ?a x1
+[7] var :: ?a x1
+[8] var :: ?a x1
+[9] __primitive.ap 8 7 6 5 4 3 1 -> 16 15 14 13 12 11 :: v? x6
+[11] __primitive.dep 9 :: a x1
+[12] __primitive.dep 9 :: a x1
+[13] __primitive.dep 9 :: a x1
+[14] __primitive.dep 9 :: a x1
+[15] __primitive.dep 9 :: a x1
+[16] __primitive.dep 9 :: a x1
+[17] return [16 15 14 13 12 11 2]
 
 ___ control.either (3 -> 1) x2 ___
 [1] var :: ?l x1
@@ -1605,6 +1781,15 @@ ___ list.pop_par (2 -> 4) ___
 [6] __primitive.dep 5 :: a x1
 [7] return [5 3 6 4]
 
+___ list.popr_para (2 -> 4) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] __primitive.ap 1 -> 4 :: l? x2
+[4] __primitive.dep 3 :: a x1
+[5] __primitive.ap 2 -> 6 :: l? x2
+[6] __primitive.dep 5 :: a x1
+[7] return [5 3 6 4]
+
 ___ list.pushif (3 -> 1) x2 ___
 [1] var :: ?l x1
 [2] var :: ?l x2
@@ -1766,6 +1951,32 @@ ___ list.top_par (2 -> 4) ___
 [5] __primitive.ap &2 -> 6 :: v? x1
 [6] __primitive.dep 5 :: a x1
 [7] return [2 1 6 4]
+
+___ list.zip (3 -> 1) rec ___
+[1] var :: ?l x2
+[2] changing var :: ?l x1
+[3] changing var :: ?l x1
+[4] __primitive.ap 2 -> 5 :: l? x2
+[5] __primitive.dep 4 :: a x1
+[6] __primitive.ap 3 -> 7 :: l? x2
+[7] __primitive.dep 6 :: a x1
+[8] __primitive.ap 7 5 &1 -> 9 :: v? x1
+[9] __primitive.dep 8 :: a x1
+[10] jump list.zip 6 4 1 :: v x1
+[11] __primitive.pushr 10 9 :: l x1
+[12] return [11]
+
+___ list.zip1 (3 -> 4) ___
+[1] var :: ?l x2
+[2] var :: ?l x1
+[3] var :: ?l x1
+[4] __primitive.ap 2 -> 5 :: l? x2
+[5] __primitive.dep 4 :: a x1
+[6] __primitive.ap 3 -> 7 :: l? x2
+[7] __primitive.dep 6 :: a x1
+[8] __primitive.ap 7 5 &1 -> 9 :: v? x1
+[9] __primitive.dep 8 :: a x1
+[10] return [6 4 1 9]
 
 ___ logic.and (2 -> 1) x2 ___
 [1] var :: ?y x2
@@ -2005,6 +2216,18 @@ ___ stack.get6 (1 -> 6) ___
 [9] __primitive.dep 2 :: a x1
 [10] return [9 8 7 6 5 4]
 
+___ stack.get7 (1 -> 7) ___
+[1] var :: ?l x1
+[2] __primitive.ap 1 -> 10 9 8 7 6 5 4 :: v? x7
+[4] __primitive.dep 2 :: a x1
+[5] __primitive.dep 2 :: a x1
+[6] __primitive.dep 2 :: a x1
+[7] __primitive.dep 2 :: a x1
+[8] __primitive.dep 2 :: a x1
+[9] __primitive.dep 2 :: a x1
+[10] __primitive.dep 2 :: a x1
+[11] return [10 9 8 7 6 5 4]
+
 ___ stack.nip (2 -> 1) ___
 [1] var :: ?a x1
 [2] var :: ?v x0
@@ -2105,6 +2328,19 @@ ___ stack.pull7 (1 -> 8) ___
 [10] __primitive.dep 2 :: a x1
 [11] return [10 9 8 7 6 5 4 2]
 
+___ stack.pull8 (1 -> 9) ___
+[1] var :: ?l x1
+[2] __primitive.ap 1 -> 4 5 6 7 8 9 10 11 :: l? x9
+[4] __primitive.dep 2 :: a x1
+[5] __primitive.dep 2 :: a x1
+[6] __primitive.dep 2 :: a x1
+[7] __primitive.dep 2 :: a x1
+[8] __primitive.dep 2 :: a x1
+[9] __primitive.dep 2 :: a x1
+[10] __primitive.dep 2 :: a x1
+[11] __primitive.dep 2 :: a x1
+[12] return [11 10 9 8 7 6 5 4 2]
+
 ___ stack.rev3 (3 -> 3) ___
 [1] var :: ?a x1
 [2] var :: ?a x1
@@ -2150,6 +2386,17 @@ ___ stack.swap6 (7 -> 7) ___
 [6] var :: ?a x1
 [7] var :: ?a x1
 [8] return [6 5 4 3 2 1 7]
+
+___ stack.swap7 (8 -> 8) ___
+[1] var :: ?a x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] var :: ?a x1
+[5] var :: ?a x1
+[6] var :: ?a x1
+[7] var :: ?a x1
+[8] var :: ?a x1
+[9] return [7 6 5 4 3 2 1 8]
 
 ___ stack.tail (1 -> 1) ___
 [1] var :: ?l x1

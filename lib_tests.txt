@@ -24,6 +24,7 @@ __ list
 [5 3 4 1 2] sort
 [[2 "a"] [3 "b"]] "a" assoc
 [[2 "a"] [3 "b"]] "b" assoc
+[1 2 3] [30 20 10] [+] zip
 
 __ stack
 [1] pull
@@ -43,11 +44,12 @@ __ stack
 1 2 3 4 over3
 1 2 3 4 5 over4
 1 2 dup2
-1 2 3 4 5 6 7 swap2
-1 2 3 4 5 6 7 swap3
-1 2 3 4 5 6 7 swap4
-1 2 3 4 5 6 7 swap5
-1 2 3 4 5 6 7 swap6
+1 2 3 4 5 6 7 8 swap2
+1 2 3 4 5 6 7 8 swap3
+1 2 3 4 5 6 7 8 swap4
+1 2 3 4 5 6 7 8 swap5
+1 2 3 4 5 6 7 8 swap6
+1 2 3 4 5 6 7 8 swap7
 
 __ control
 True A B ifte
@@ -57,28 +59,41 @@ False A B ifte
 1 A [1+ dup dup] dip13
 1 A [1+ dup dup dup] dip14
 1 A [1+ dup dup dup dup] dip15
+1 A [1+ dup dup dup dup dup] dip16
 1 2 A [+] dip21
 1 2 A [+ dup] dip22
 1 2 A [+ dup dup] dip23
 1 2 A [+ dup dup dup] dip24
 1 2 A [+ dup dup dup dup] dip25
+1 2 A [+ dup dup dup dup dup] dip26
 1 2 3 A [+ +] dip31
 1 2 3 A [+ + dup] dip32
 1 2 3 A [+ + dup dup] dip33
 1 2 3 A [+ + dup dup dup] dip34
 1 2 3 A [+ + dup dup dup dup] dip35
+1 2 3 A [+ + dup dup dup dup dup] dip36
 1 2 3 4 A [+ + +] dip41
 1 2 3 4 A [+ + + dup] dip42
 1 2 3 4 A [+ + + dup dup] dip43
 1 2 3 4 A [+ + + dup dup dup] dip44
 1 2 3 4 A [+ + + dup dup dup dup] dip45
+1 2 3 4 A [+ + + dup dup dup dup dup] dip46
 1 2 3 4 5 A [+ + + +] dip51
 1 2 3 4 5 A [+ + + + dup] dip52
 1 2 3 4 5 A [+ + + + dup dup] dip53
 1 2 3 4 5 A [+ + + + dup dup dup] dip54
 1 2 3 4 5 A [+ + + + dup dup dup dup] dip55
+1 2 3 4 5 A [+ + + + dup dup dup dup dup] dip56
+1 2 3 4 5 6 A [+ + + + +] dip61
+1 2 3 4 5 6 A [+ + + + + dup] dip62
+1 2 3 4 5 6 A [+ + + + + dup dup] dip63
+1 2 3 4 5 6 A [+ + + + + dup dup dup] dip64
+1 2 3 4 5 6 A [+ + + + + dup dup dup dup] dip65
+1 2 3 4 5 6 A [+ + + + + dup dup dup dup dup] dip66
 1 [2+] $
+1 2 [+] $$
 1 [2+] $keep
+1 2 [+] $$keep
 1 [2+] peek
 1 [2+] ->
 1 [2+] [10*] fork
