@@ -4205,3 +4205,21 @@ ___ tests.vifte_quote (1 -> 1) x2 ___
 [7] val 0 :: i x1
 [8] return [6]
 
+___ tests.zip_add (2 -> 1) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] jump tests.zip_add_r0 1 2 :: l x1
+[4] return [3]
+
+___ tests.zip_add_r0 (2 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] changing var :: ?l x1
+[3] __primitive.ap 1 -> 4 :: l? x2
+[4] __primitive.dep 3 :: i x1
+[5] __primitive.ap 2 -> 6 :: l? x2
+[6] __primitive.dep 5 :: i x1
+[7] __primitive.add 4 6 :: i x1
+[8] jump tests.zip_add_r0 5 3 :: l x1
+[9] __primitive.pushr 8 7 :: l x1
+[10] return [9]
+

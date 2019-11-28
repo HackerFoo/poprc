@@ -8,6 +8,7 @@ FUNCTIONS = \
   tests.repeat_int:8 \
   tests.dup_map:8 \
   tests.map_add1:8 \
+  tests.zip_add:8 \
   tests.fact:16 \
   tests.fib:16 \
   tests.add_array_at:8 \

@@ -451,3 +451,5 @@ disj_bound: [1 5 bound] [8 10 bound] | $
 sum_diff_map: [get2 dup2 - [+] dip21 []ap20] map
 
 f13: seq popr 1+
+
+zip_add: [+] zip

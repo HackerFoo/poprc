@@ -1,0 +1,7 @@
+FST info: dumpfile tests_zip_add_tb.fst opened for output.
+sInA = 00000000 (  0), sInB = 00000000 (  0), sOut = 00000000 (  0)
+sInA = 00000001 (  1), sInB = 00000010 (  2), sOut = 00000011 (  3)
+sInA = 00000010 (  2), sInB = 00000100 (  4), sOut = 00000110 (  6)
+sInA = 00000011 (  3), sInB = 00000110 (  6), sOut = 00001001 (  9)
+sInA = 00000100 (  4), sInB = 00001000 (  8), sOut = 00001100 ( 12)
+sInA = 00000101 (  5), sInB = 00001010 ( 10), sOut = 00001111 ( 15)

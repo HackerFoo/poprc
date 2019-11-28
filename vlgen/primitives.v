@@ -100,7 +100,18 @@ module __primitive_ap02_llii(
     end
 endmodule
 
-// TODO stream should preempt other inputs
+/* ------------------------------------------------------ *
+     NOTE ON READY/VALID DEPENDENCIES
+ * ------------------------------------------------------ *
+
+   `in_ready` can depend on `in_valid` asynchronously,
+   but `out_valid` cannot depend on `out_ready`.
+
+   This is to prevent loops, so that the
+   flow is from source to sink and back.
+
+ * ------------------------------------------------------ */
+
 module __primitive_ap20_liil(
   `sync_ports,
   `input(simple, in0N, 0),
@@ -117,7 +128,7 @@ module __primitive_ap20_liil(
     assign out0 = in_valid ? (data0_valid ? data0 : in1) : in2;
     assign out0_valid = in_valid | data0_valid | in2_valid;
     assign in2_ready = ~in_valid & ~data0_valid;
-    assign in_ready = ~data0_valid;
+    assign in_ready = in_valid & ~data0_valid;
     assign out_valid = `true;
 
     always @(posedge clk) begin
@@ -143,7 +154,7 @@ module __primitive_pushr1_lli(
     assign out0 = { in0, in1 };
     assign out0_valid = in_valid & in0_valid;
     assign in0_ready = out0_ready;
-    assign in_ready = out0_ready;
+    assign in_ready = in_valid & out0_ready;
     assign out_valid = `true;
 
 endmodule
@@ -162,7 +173,7 @@ module __primitive_pushr2_llii(
     assign out0 = { in0, in1, in2 };
     assign out0_valid = in_valid & in0_valid;
     assign in0_ready = out0_ready;
-    assign in_ready = out0_ready;
+    assign in_ready = in_valid & out0_ready;
     assign out_valid = `true;
 
 endmodule
@@ -209,10 +220,11 @@ module __primitive_read_array_ooii(
     parameter intf0DN = `intN;
     parameter in1N = `intN;
     parameter out1N = `intN;
+    reg [out1N-1:0] out1_reg; // "empty" when !out_valid
 
     reg out_valid = `false;
-    assign out1 = intf0_do;
-    assign in_ready = out_ready & intf0_ready;
+    assign out1 = in_valid ? intf0_do : out1_reg; // latch the data returned
+    assign in_ready = in_valid & (!out_valid | out_ready) & intf0_ready;
 
     // intf0 is an OR'ed bus, so must be low if not valid
     assign intf0_addr = in_valid ? in1 : 0;
@@ -222,6 +234,7 @@ module __primitive_read_array_ooii(
 
     always @(posedge clk) begin
         if(intf0_valid & intf0_ready) begin
+            out1_reg <= intf0_do;
             `set(out_valid);
         end
         else if(out_ready) begin
@@ -243,7 +256,7 @@ module __primitive_write_array_ooii(
     parameter in2N = `intN;
 
     reg out_valid = `false;
-    assign in_ready = intf0_ready;
+    assign in_ready = in_valid & intf0_ready;
 
     // intf0 is an OR'ed bus, so must be low if not valid
     assign intf0_addr = in_valid ? in1 : 0;

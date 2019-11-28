@@ -1,5 +1,13 @@
 #+TITLE: PoprC Notes
 
+* zip
+- feed back loop complete indictor to ready on input streams?
+- in_ready always &-ed with in_valid (if there are simple inputs), but out_valid should never depend on out_ready
+* AXI tests
+- AXI Stream
+  - Simple countdown, send TLAST at 0
+  - map 2* with TLAST
+- AXI Lite with an array
 * stream widening
 - apN0 -> ap0N ==> ap10 -> ap01
   - with wider data type
