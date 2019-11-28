@@ -211,8 +211,14 @@ popr_para: [popr] dip12 popr [swap] dip22
 __ [... a] [... b] [f] zip1 -> [...] [...] [f] a b f
 zip1: [popr_para] dip24 $$keep swap
 
-__ [.. a] [... b] [f] zip -> [... a b f]
+__ [... a] [... b] [f] zip -> [... f a b f]
 zip: [zip1] ap31 [zip] swap [.] dip21 pushr
+
+__ [... a] [... b] c [f] zip1 -> [...] [...] c' [f] a b c f
+zip1_with: [[popr_para] dip24] dip35 $$$-keep swap2
+
+__ [... a] [... b] c [f] zip_with -> [... c' f a b c f]
+zip_with: [zip1_with] ap41 [zip_with] swap [.] dip21 pushr
 
 module stack:
 
@@ -335,12 +341,18 @@ dip66: swap pushr ap67 swap7 drop
 __ a [f] -> fa
 $: ap11 nip
 $$: ap21 nip
+$$$: ap31 nip
 $-: ap12 nip2
 $$-: ap22 nip2
+$$$-: ap32 nip2
 
 __ a [f] -> fa [f]
 $keep: dup [$] dip21
 $$keep: dup [$$] dip31
+$$$keep: dup [$$$] dip41
+$-keep: dup [$-] dip22
+$$-keep: dup [$$-] dip32
+$$$-keep: dup [$$$-] dip42
 
 __ a [f] -> a fa
 peek: dup_under $
