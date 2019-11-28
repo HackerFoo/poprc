@@ -736,6 +736,7 @@ cell_t *mutate_list(cell_t *l, cell_t **rp) {
     if(!~c->n) {
       refcount_t n = c->n;
       memcpy(c, nc, sizeof(cell_t) * closure_cells(c));
+      closure_free(nc);
       c->n = n;
       *_prev = nc->tmp; // delete
     }
