@@ -1423,6 +1423,28 @@ ___ io.stream_read_array_r0 (2 -> 1) rec ___
 [8] __primitive.pushr 6 7 :: l x1
 [9] return [8]
 
+___ io.stream_write_array (3 -> 1) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] var is Array :: ?o x1
+[4] jump io.stream_write_array_r0 3 1 2 1b :: l x1
+[5] return [4]
+
+___ io.stream_write_array_r0 (3 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] changing var :: ?l x1
+[3] changing var is Array :: ?o x1
+[4] __primitive.ap 1 -> 5 :: l? x2
+[5] __primitive.dep 4 :: i x1
+[6] __primitive.ap 2 -> 7 :: l? x2
+[7] __primitive.dep 6 :: i x1
+[8] __primitive.write_array 3 5 7 is Array :: o x2
+[9] __primitive.seq 12 &8 is True :: y x1
+[10] jump io.stream_write_array_r0 8 6 4 :: l x1
+[11] __primitive.pushr 10 9 1b :: l x1
+[12] val True :: y x1
+[13] return [11]
+
 ___ io.unread_std (2 -> 1) ___
 [1] var :: ?s x1
 [2] var :: ?y x1
