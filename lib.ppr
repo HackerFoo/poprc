@@ -354,6 +354,14 @@ $-keep: dup [$-] dip22
 $$-keep: dup [$$-] dip32
 $$$-keep: dup [$$$-] dip42
 
+__ apply a quote underneath N items to extract something
+__ a b c ... [f] withN -> fa0 b c ... fa1
+with2: dip12 swap
+with3: [with2] pushl dip23 swap
+with4: [with3] pushl dip34 swap
+with5: [with4] pushl dip45 swap
+with6: [with5] pushl dip56 swap
+
 __ a [f] -> a fa
 peek: dup_under $
 

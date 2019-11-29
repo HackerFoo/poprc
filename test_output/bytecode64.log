@@ -971,6 +971,61 @@ ___ control.while (2 -> 1) x2 rec ___
 [8] __primitive.unless 2 4 :: a x1
 [9] return [8]
 
+___ control.with2 (3 -> 3) ___
+[1] var :: ?l x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] __primitive.ap 3 1 -> 6 5 :: v? x2
+[5] __primitive.dep 4 :: a x1
+[6] __primitive.dep 4 :: a x1
+[7] return [6 2 5]
+
+___ control.with3 (4 -> 4) ___
+[1] var :: ?l x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] var :: ?a x1
+[5] __primitive.ap 4 1 -> 7 6 :: v? x2
+[6] __primitive.dep 5 :: a x1
+[7] __primitive.dep 5 :: a x1
+[8] return [7 3 2 6]
+
+___ control.with4 (5 -> 5) ___
+[1] var :: ?l x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] var :: ?a x1
+[5] var :: ?a x1
+[6] __primitive.ap 5 1 -> 8 7 :: v? x2
+[7] __primitive.dep 6 :: a x1
+[8] __primitive.dep 6 :: a x1
+[9] return [8 4 3 2 7]
+
+___ control.with5 (6 -> 6) ___
+[1] var :: ?l x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] var :: ?a x1
+[5] var :: ?a x1
+[6] var :: ?a x1
+[7] __primitive.ap 6 1 -> 9 8 :: v? x2
+[8] __primitive.dep 7 :: a x1
+[9] __primitive.dep 7 :: a x1
+[10] return [9 5 4 3 2 8]
+
+___ control.with6 (7 -> 7) ___
+[1] var :: ?l x1
+[2] var :: ?a x1
+[3] var :: ?a x1
+[4] var :: ?a x1
+[5] var :: ?a x1
+[6] var :: ?a x1
+[7] var :: ?a x1
+[8] __primitive.ap 7 1 -> 10 9 :: v? x2
+[9] __primitive.dep 8 :: a x1
+[10] __primitive.dep 8 :: a x1
+[11] return [10 6 5 4 3 2 9]
+
 ___ gen_ed.count_lines (2 -> 3) ___
 [1] var is File :: ?o x1
 [2] var :: ?y x1
