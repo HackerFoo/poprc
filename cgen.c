@@ -69,7 +69,7 @@ const char *cname(type_t t) {
     [T_MAP]      = "map",
     [T_STRING]   = "str",
     [T_FLOAT]    = "flt",
-    [T_OPAQUE]   = "ptr",
+    [T_OPAQUE]   = "intf",
     [T_BOTTOM]   = "bot"
   };
   assert_error(t < LENGTH(table));
@@ -415,9 +415,8 @@ bool _is_external(const cell_t *c) {
 }
 
 void print_function_name(const tcell_t *e, const tcell_t *tc) {
-  const cell_t *c = &tc->c;
-  if(is_external(c)) {
-    const cell_t *name = &e[cgen_index(e, c->expr.arg[closure_in(c) - 1])].c;
+  if(is_external(tc)) {
+    const cell_t *name = &e[cgen_index(e, tc->expr.arg[closure_in(tc) - 1])].c;
     assert_error(is_string(name) && !is_var(name),
                  "external name must be an immediate string");
     printf("%s", external_name(name->value.str));
@@ -427,16 +426,20 @@ void print_function_name(const tcell_t *e, const tcell_t *tc) {
     printf("%s_%s", module_name, word_name);
   }
   csize_t
-    in = closure_in(c),
-    out = closure_out(c);
-  if(ONEOF(c->op, OP_ap, OP_compose)) {
+    in = closure_in(tc),
+    out = closure_out(tc);
+  if(ONEOF(tc->op, OP_ap, OP_compose)) {
     assert_error(in >= 1);
     printf("%d%d", in-1, out);
-  } else if(ONEOF(c->op, OP_quote, OP_pushr)) {
+  } else if(ONEOF(tc->op, OP_quote, OP_pushr)) {
     assert_error(in >= 1 && out == 0);
     printf("%d", in-1);
   }
-  if(!is_external(c)) {
+}
+
+void print_function_name_with_suffix(const tcell_t *e, const tcell_t *tc) {
+  print_function_name(e, tc);
+  if(!is_external(tc)) {
     print_type_suffix(e, tc);
   }
 }
@@ -468,7 +471,7 @@ void gen_call(const tcell_t *e, const tcell_t *c, int depth) {
       printf("  %s%s%d = ", FLAG(*c, trace, DECL) ? "" : ctype(t), cname(t), lhs);
     }
   }
-  print_function_name(e, c);
+  print_function_name_with_suffix(e, c);
   printf("(");
 
   COUNTUP(i, in) {

@@ -9,19 +9,12 @@ module io_stream_read_array_tb;
 
    reg clk;
 
-   wire `addrT io_stream_read_array_arr_addr;
-   wire io_stream_read_array_arr_we;
-   wire `intT io_stream_read_array_arr_di;
-   wire `intT arr_do;
-   wire io_stream_read_array_arr_valid;
-   wire arr_ready;
-   wire `intT res;
-   wire io_stream_read_array_in_ready;
-
+   `wire(Array, (`addrN, `intN), arr);
    `reg(stream, `intN, sIn);
    `wire(stream, `intN, sOut);
    reg in_valid;
    reg out_ready;
+   wire inst_in_ready;
    assign sOut_ready = out_ready;
 
    always begin
@@ -29,11 +22,11 @@ module io_stream_read_array_tb;
    end
 
    array arr(.clk(clk),
-             .addr(io_stream_read_array_arr_addr),
-             .we(io_stream_read_array_arr_we),
-             .di(io_stream_read_array_arr_di),
+             .addr(arr_addr),
+             .we(arr_we),
+             .di(arr_di),
              .do(arr_do),
-             .valid(io_stream_read_array_arr_valid),
+             .valid(arr_valid),
              .ready(arr_ready));
 
    initial begin
@@ -51,9 +44,9 @@ module io_stream_read_array_tb;
       $finish;
    end
 
-   `inst_sync(io_stream_read_array, io_stream_read_array, #())(
+   `inst_sync(io_stream_read_array, inst, #())(
      `sync(in_valid, out_ready),
-     `intf(Array, 0, arr),
+     `in(Array, 0, arr),
      `in(stream, 1, sIn),
      `out(stream, 0, sOut));
 
@@ -62,7 +55,7 @@ module io_stream_read_array_tb;
        //     $display("res = %d", res);
        //     $finish;
        // end
-       if(io_stream_read_array_in_ready) begin
+       if(inst_in_ready) begin
            `reset(in_valid);
        end
        if(sIn_ready) begin

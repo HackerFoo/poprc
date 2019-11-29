@@ -803,6 +803,7 @@ void get_trace_info_for_output(trace_t *tr, const tcell_t *e, int n) {
 
   tr->type = T_BOTTOM;
   tr->bit_width = 0;
+  tr->addr_width = 0;
   tr->range = RANGE_NONE;
 
   if(!e->trace.first_return) return;
@@ -819,6 +820,7 @@ void get_trace_info_for_output(trace_t *tr, const tcell_t *e, int n) {
       tr->type = T_ANY;
     }
     tr->bit_width = max(tr->bit_width, tc->trace.bit_width);
+    tr->addr_width = max(tr->addr_width, tc->trace.addr_width);
     tr->range = range_union(tr->range, tc->trace.range);
     p = tref(e, p->alt);
   }
@@ -1190,6 +1192,20 @@ void array_bits(tcell_t *entry, tcell_t *tc, int aw, int bw) {
                tc->trace.addr_width,
                tc->trace.bit_width);
     break;
+  case OP_dup_array:
+    array_bits(entry, &entry[tr_index(tc->expr.arg[0])],
+               tc->trace.addr_width = aw,
+               tc->trace.bit_width = bw);
+    break;
+  case OP_dep: {
+    tcell_t *c = &entry[tr_index(tc->expr.arg[0])];
+    if(trace_type(c) == T_OPAQUE) {
+      array_bits(entry, c,
+                 tc->trace.addr_width = aw,
+                 tc->trace.bit_width = bw);
+    }
+    break;
+  }
   case OP_value:
     tc->trace.addr_width = aw;
     tc->trace.bit_width = bw;

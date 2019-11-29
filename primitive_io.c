@@ -295,6 +295,34 @@ OP(write_array) {
   return abort_op(rsp, cp, ctx);
 }
 
+WORD("dup_array", dup_array, 1, 2)
+OP(dup_array) {
+  cell_t *res = 0;
+  PRE(dup_array);
+
+  CHECK_IF(!check_type(ctx->t, T_OPAQUE), FAIL);
+
+  CHECK(reduce_arg(c, 0, &CTX(opaque, SYM_Array)));
+  CHECK_DELAY();
+  ARGS(p);
+
+  WARN_ALT(dup_array);
+
+  if(is_var(p)) {
+    res = opaque_var(c, SYM_Array);
+    store_dep_var(c, res, 1, T_OPAQUE, RANGE(SYM_Array), ctx->alt_set);
+  } else {
+    res = ref(p);
+    store_lazy_dep(c->expr.arg[1], ref(p), ctx->alt_set);
+  }
+  add_conditions(res, p);
+  store_reduced(cp, ctx, res);
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, ctx);
+}
+
 /* Local Variables: */
 /* eval: (add-to-list 'imenu-generic-expression '("Operator" "^.*OP(\\([a-z_]+\\)).*$" 1)) */
 /* End: */

@@ -1552,41 +1552,6 @@ val_t trace_opaque_symbol(const tcell_t *c) {
   return c->trace.range.min;
 }
 
-static
-const tcell_t *out_arg_of(const tcell_t *e, const tcell_t *c, int *x) {
-  if(is_dep(c)) {
-    int i = 1;
-    int di = c - e;
-    const tcell_t *pc = &e[tr_index(c->expr.arg[0])];
-    TRAVERSE(pc, const, out) {
-      if(p && tr_index(*p) == di) {
-        *x = i;
-        return pc;
-      }
-      i++;
-    }
-    assert_error(false, "out argument not found");
-    return NULL;
-  } else {
-    *x = 0;
-    return c;
-  }
-}
-
-const tcell_t *trace_get_linear_var(const tcell_t *e, const tcell_t *c) {
-  assert_error(trace_type(c) == T_OPAQUE);
-  const tcell_t *p = c;
-  while(!is_value(p)) {
-    int x = 0;
-    if(is_dep(p)) {
-      p = out_arg_of(e, p, &x);
-    }
-    p = &e[tr_index(p->expr.arg[x])];
-  }
-  assert_error(is_var(p));
-  return p;
-}
-
 range_t get_range(cell_t *c) {
   assert_error(is_value(c));
   if(is_var(c)) {

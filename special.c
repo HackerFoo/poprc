@@ -199,10 +199,10 @@ cell_t *make_val(type_t t) {
 }
 
 cell_t *set_val(cell_t *c, type_t t, val_t x) {
-  assert_error(ONEOF(t, T_INT, T_SYMBOL));
+  assert_error(ONEOF(t, T_INT, T_SYMBOL, T_OPAQUE));
   if(t == T_INT) {
     c->value.integer = x;
-  } else if(t == T_SYMBOL) {
+  } else if(ONEOF(t, T_SYMBOL, T_OPAQUE)) {
     c->value.symbol = x;
   }
   return c;

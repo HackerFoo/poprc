@@ -12,7 +12,8 @@ FUNCTIONS = \
   tests.fact:16 \
   tests.fib:16 \
   tests.add_array_at:8 \
-  io.stream_read_array:8
+  io.stream_read_array:8 \
+  io.stream_read_write_array:8
 
 COMMON = ../vlgen/primitives.v ../vlgen/define.v
 

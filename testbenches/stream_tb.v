@@ -48,7 +48,7 @@ module stream_tb;
     end
 
     if(!chained) begin
-        `inst_sync(__primitive_ap02_llii, ap02, #())(
+        `inst_sync(__primitive_ap02, ap02, #())(
                    `sync(in_valid, out_ready),
                    `in(stream, 0, sIn),
                    `out(stream, 0, sOut),
@@ -59,8 +59,8 @@ module stream_tb;
     else begin
         `wire(stream, `intN, s);
         wire apB_in_ready;
-        `inst_sync(__primitive_ap01_lli, apA, #())(`sync(in_valid, apB_in_ready), `in(stream, 0, sIn), `out(stream, 0, s), `out(simple, 1, dOut1));
-        `inst_sync(__primitive_ap01_lli, apB, #())(`sync(apA_out_valid, out_ready), `in(stream, 0, s), `out(stream, 0, sOut), `out(simple, 1, dOut2));
+        `inst_sync(__primitive_ap01, apA, #())(`sync(in_valid, apB_in_ready), `in(stream, 0, sIn), `out(stream, 0, s), `out(simple, 1, dOut1));
+        `inst_sync(__primitive_ap01, apB, #())(`sync(apA_out_valid, out_ready), `in(stream, 0, s), `out(stream, 0, sOut), `out(simple, 1, dOut2));
         assign ap_valid = apA_out_valid | apB_out_valid;
     end
 

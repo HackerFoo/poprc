@@ -11,29 +11,26 @@ module tests_add_array_at_tb;
 
    reg `intT addr;
    reg `intT val;
-   wire `addrT tests_add_array_at_arr_addr;
-   wire tests_add_array_at_arr_we;
-   wire `intT tests_add_array_at_arr_di;
-   wire `intT arr_do;
-   wire tests_add_array_at_arr_valid;
-   wire arr_ready;
-   wire `intT res;
+
+   `wire(Array, (`addrN, `intN), arr_in);
+   `wire(Array, (`addrN, `intN), arr_out);
 
    reg  in_valid;
    reg  out_ready;
-   wire tests_add_array_at_in_ready;
+   wire inst_in_ready;
+   wire `intT res;
 
    always begin
       #0.5 clk = !clk;
    end
 
    array arr(.clk(clk),
-             .addr(tests_add_array_at_arr_addr),
-             .we(tests_add_array_at_arr_we),
-             .di(tests_add_array_at_arr_di),
-             .do(arr_do),
-             .valid(tests_add_array_at_arr_valid),
-             .ready(arr_ready));
+             .addr(arr_in_addr),
+             .we(arr_in_we),
+             .di(arr_in_di),
+             .do(arr_in_do),
+             .valid(arr_in_valid),
+             .ready(arr_in_ready));
 
    initial begin
       $dumpfile(`dumpfile);
@@ -50,19 +47,20 @@ module tests_add_array_at_tb;
       $finish;
    end
 
-   `inst_sync(tests_add_array_at, tests_add_array_at, #())(
+   `inst_sync(tests_add_array_at, inst, #())(
      `sync(in_valid, out_ready),
-     `intf(Array, 0, arr),
+     `in(Array, 0, arr_in),
      `in(simple, 1, addr),
      `in(simple, 2, val),
+     `out(Array, 0, arr_out),
      `out(simple, 1, res));
 
    always @(posedge clk) begin
-       if(tests_add_array_at_out_valid) begin
+       if(inst_out_valid) begin
            $display("res = %d", res);
            $finish;
        end
-       if(tests_add_array_at_in_ready) begin
+       if(inst_in_ready) begin
            in_valid <= `false;
        end
    end

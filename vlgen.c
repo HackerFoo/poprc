@@ -70,6 +70,23 @@ const char *vltype_full(const tcell_t *c) {
     sep = sep_next;                             \
   } while(0)
 
+#define printf_psep(fmt, ...)                   \
+  do {                                          \
+    printf("%s" fmt, *sep, ##__VA_ARGS__);      \
+    *sep = sep_next;                            \
+  } while(0)
+
+static
+void print_type_and_dims(const trace_t *tr) {
+  if(tr->type == T_OPAQUE) {
+    val_t sym = tr->range.min;
+    assert_error(sym == SYM_Array);
+    printf("%s, (%d, %d)", symbol_string(sym), tr->addr_width, tr->bit_width);
+  } else {
+    printf("%s, %d", vltype(tr->type), tr->bit_width);
+  }
+}
+
 static
 void gen_module_interface(const tcell_t *e) {
   const tcell_t *p = e + 1;
@@ -83,29 +100,16 @@ void gen_module_interface(const tcell_t *e) {
   }
   COUNTDOWN(i, e->entry.in) {
     const tcell_t *a = &p[i];
-    type_t t = trace_type(a);
-    if(t != T_OPAQUE) {
-      printf_sep("  `%sinput(%s, %d, %d)",
-                 STR_IF(!a->trace.bit_width, "null_"),
-                 vltype_full(a),
-                 a->trace.bit_width,
-                 (int)(e->entry.in - 1 - i));
-    } else {
-      printf_sep("  `interface(%s, %d, %d, %d)",
-                 vltype_full(a),
-                 a->trace.addr_width,
-                 a->trace.bit_width,
-                 (int)(e->entry.in - 1 - i));
-    }
+    printf_sep("  `%sinput(", STR_IF(!a->trace.bit_width, "null_"));
+    print_type_and_dims(&a->trace);
+    printf(", %d)", (int)(e->entry.in - 1 - i));
   }
 
   COUNTUP(i, out_n) {
     get_trace_info_for_output(&tr, e, i);
-    if(tr.type != T_OPAQUE) {
-      printf_sep("  `%soutput(%s, %d, %d)",
-                 STR_IF(!tr.bit_width, "null_"),
-                 vltype(tr.type), tr.bit_width, (int)i);
-    }
+    printf_sep("  `%soutput(", STR_IF(!tr.bit_width, "null_"));
+    print_type_and_dims(&tr);
+    printf(", %d)", (int)i);
   }
 
   printf("\n);\n");
@@ -141,7 +145,7 @@ void gen_value_rhs(const tcell_t *c) {
 static bool is_sync(const tcell_t *c) {
   tcell_t *entry;
   return
-    !is_value(c) &&
+    !is_value(c) && !is_dep(c) &&
     (ONEOF(trace_type(c), T_LIST, T_OPAQUE) ||
      ((entry = get_entry(c)) &&
       FLAG(*entry, entry, SYNC)));
@@ -221,11 +225,10 @@ void gen_decls(tcell_t *e) {
     if(ONEOF(t, T_BOTTOM, T_RETURN)) continue;
     const char *null_str = STR_IF(!tc->trace.bit_width, "null_");
     if(is_var(c)) {
-      if(t != T_OPAQUE) {
-        const char *decl = FLAG(*e, entry, RECURSIVE) ? "variable" : "alias";
-        printf("  `%s(%s%s, %d, %s%d, in%d);\n",
-               decl, null_str, vltype(t), tc->trace.bit_width, cname(t), i, e->entry.in - i);
-      }
+      const char *decl = FLAG(*e, entry, RECURSIVE) && t != T_OPAQUE ? "variable" : "alias";
+      printf("  `%s(%s", decl, null_str);
+      print_type_and_dims(&tc->trace);
+      printf(", %s%d, in%d);\n", cname(t), i, e->entry.in - i);
     } else {
       if(c->op == OP_value) {
         if(t == T_LIST) {
@@ -239,23 +242,12 @@ void gen_decls(tcell_t *e) {
         if(is_sync(tc)) {
           printf("  wire inst%d_in_ready;\n", i);
         }
-        if(t == T_OPAQUE) {
-          // handled below
-        } else if(is_self_call(e, tc)) {
+        if(t != T_OPAQUE && is_self_call(e, tc)) {
           printf("  `reg(%s%s, %d, %s%d) = 0;\n", null_str, vltype(t), tc->trace.bit_width, cname(t), i); // ***
         } else {
-          printf("  `wire(%s%s, %d, %s%d);\n", null_str, vltype(t), tc->trace.bit_width, cname(t), i);
-        }
-        if(!is_dep(c)) {
-          TRAVERSE(c, const, in) {
-            if(!*p) continue;
-            tcell_t *a = &e[tr_index(*p)];
-            if(trace_type(a) == T_OPAQUE) {
-              const tcell_t *v = trace_get_linear_var(e, a);
-              printf("  `bus(%s, %d, %d, %d, inst%d);\n",
-                     vltype_full(a), a->trace.addr_width, a->trace.bit_width, e->entry.in - (int)(v-e), i);
-            }
-          }
+          printf("  `wire(");
+          print_type_and_dims(&tc->trace);
+          printf(", %s%d);\n", cname(t), i);
         }
       } else if(t == T_LIST) {
         printf("  `%sconst_nil(%s%d);\n", null_str, cname(t), i);
@@ -414,11 +406,20 @@ void print_var(const tcell_t *e, const tcell_t *c, int block) {
     assert_eq(e->entry.out, 1); // TODO
     printf("return0");
   } else {
-    if(t != T_OPAQUE) {
-      printf("%s%d", cname(t), (int)(c - e));
-    } else {
-      printf("intf%d", (int)(e->entry.in - (c - e)));
+    printf("%s%d", cname(t), (int)(c - e));
+  }
+}
+
+static
+void print_params_for_arg(const char *pre, const tcell_t *tc, int i,
+                          const char **sep, const char *sep_next) {
+  if(trace_type(tc) == T_OPAQUE) {
+    if(is_array(tc)) {
+      printf_psep(".%s%dAN(%d)", pre, i, tc->trace.addr_width);
+      printf_psep(".%s%dDN(%d)", pre, i, tc->trace.bit_width);
     }
+  } else {
+    printf_psep(".%s%dN(%d)", pre, i, tc->trace.bit_width);
   }
 }
 
@@ -430,30 +431,15 @@ void gen_width_params(const tcell_t *e, const tcell_t *c) {
       in = closure_in(c),
       n = closure_args(c),
       start_out = n - closure_out(c);
-    type_t t = trace_type(c);
     SEP(", ");
     COUNTUP(i, in) {
-      const tcell_t *a = &e[cgen_index(e, c->expr.arg[i])];
-      if(trace_type(a) == T_OPAQUE) {
-        if(is_array(a)) {
-          printf_sep(".intf0AN(%d)", a->trace.addr_width);
-          printf_sep(".intf0DN(%d)", a->trace.bit_width);
-        }
-      } else {
-        printf_sep(".in%dN(%d)", (int)i, a->trace.bit_width);
-      }
+      print_params_for_arg("in", &e[cgen_index(e, c->expr.arg[i])], i, &sep, sep_next);
     }
-    if(t != T_OPAQUE) {
-      printf_sep(".out0N(%d)", c->trace.bit_width);
-    }
+    print_params_for_arg("out", c, 0, &sep, sep_next);
     RANGEUP(i, start_out, n) {
       int a = cgen_index(e, c->expr.arg[i]);
       if(a > 0) {
-        type_t at = trace_type(&e[a]);
-        if(at == T_OPAQUE) continue;
-        if(range_bounded(e[a].trace.range) && !range_empty(e[a].trace.range)) {
-          printf_sep(".out%dN(%d)", (int)(i - start_out + 1), e[a].trace.bit_width);
-        }
+        print_params_for_arg("out", &e[a], i - start_out + 1, &sep, sep_next);
       }
     }
   }
@@ -495,30 +481,23 @@ void gen_instance(const tcell_t *e, const tcell_t *c, int *sync_chain, uintptr_t
   COUNTUP(i, in) {
     const tcell_t *a = &e[cgen_index(e, c->expr.arg[i])];
     type_t t = trace_type(a);
-    if(t == T_OPAQUE) {
-      a = trace_get_linear_var(e, a);
-    }
     const char *null_str = STR_IF(!a->trace.bit_width && t != T_OPAQUE, "null_");
-    printf_sep("\n      `%s(%s%s, %d, ",
-               t == T_OPAQUE ? "intf" : "in",
+    printf_sep("\n      `in(%s%s, %d, ",
                null_str,
                vltype_full(a), (int)i); // ***
     print_var(e, a, block);
     printf(")");
   }
-  if(t != T_OPAQUE) {
-    printf_sep("\n      `out(%s%s, 0, %s%d)",
-               STR_IF(!c->trace.bit_width, "null_"),
-               vltype(t), cname(t), inst);
-  }
+  printf_sep("\n      `out(%s%s, 0, %s%d)",
+             STR_IF(!c->trace.bit_width, "null_"),
+             vltype_full(c), cname(t), inst);
   RANGEUP(i, start_out, n) {
     int a = cgen_index(e, c->expr.arg[i]);
     if(a > 0) {
       type_t at = trace_type(&e[a]);
-      if(at == T_OPAQUE) continue;
       printf_sep("\n      `out(%s%s, %d, %s%d)",
                  STR_IF(!e[a].trace.bit_width, "null_"),
-                 vltype(at), (int)(i - start_out + 1), cname(at), a);
+                 vltype_full(&e[a]), (int)(i - start_out + 1), cname(at), a);
     }
   }
 
@@ -567,6 +546,10 @@ void gen_body(tcell_t *e) {
               const tcell_t *a = &e[i];
               if(trace_type(a) == T_LIST && direct_refs(&a->c) <= 1) { // *** HACK
                 printf("    assign %s%d_ready = `true;\n", cname(T_LIST), i);
+              }
+              if(is_array(a)) {
+                // teminate bus
+                printf("    assign `to_bus(%s%d) = 0;\n", cname(T_OPAQUE), i);
               }
             }
           } else {
@@ -775,33 +758,6 @@ void gen_loops(tcell_t *e) {
 }
 
 static
-bool gen_buses(tcell_t *e) {
-  bool output = false;
-  COUNTUP(i, e->entry.in) {
-    int ix = REVI(i) + 1;
-    const tcell_t *v = &e[ix];
-    if(!is_array(v)) continue;
-    int a = ix;
-    SEP(" |\n");
-    printf("  assign `to_bus(intf%d) =\n", (int)i);
-    FOR_TRACE_CONST(c, e, ix) {
-      if(is_return(c)) {
-        a = ix;
-      } else if(!is_dep(c) &&
-                tr_index(c->expr.arg[0]) == a) {
-        a = c - e;
-        if(FLAG(*c, trace, JUMP) && is_self_call(e, c)) break;
-        printf_sep("    `to_bus(inst%d_intf%d)", a, (int)i);
-        if(trace_type(c) != T_OPAQUE) break;
-      }
-    }
-    printf(";\n");
-    output = true;
-  }
-  return output;
-}
-
-static
 void gen_module(tcell_t *e) {
   e->op = OP_value;
   gen_module_interface(e);
@@ -816,7 +772,6 @@ void gen_module(tcell_t *e) {
     gen_valid_ready(e);
     printf("\n");
   }
-  if(gen_buses(e)) printf("\n");
   if(FLAG(*e, entry, RECURSIVE)) {
     gen_loops(e);
     printf("\n");
