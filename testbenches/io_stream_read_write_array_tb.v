@@ -92,6 +92,6 @@ module io_stream_read_write_array_tb;
       `in(stream, 2, sWA),
       `in(stream, 3, sW),
       `out(stream, 0, sR),
-      `out(stream, 1, sB));
+      `out(null_stream, 1, sB));
 
 endmodule // io_stream_read_write_array_tb

@@ -100,14 +100,14 @@ void gen_module_interface(const tcell_t *e) {
   }
   COUNTDOWN(i, e->entry.in) {
     const tcell_t *a = &p[i];
-    printf_sep("  `%sinput(", STR_IF(!a->trace.bit_width, "null_"));
+    printf_sep("  `input(%s", STR_IF(!a->trace.bit_width, "null_"));
     print_type_and_dims(&a->trace);
     printf(", %d)", (int)(e->entry.in - 1 - i));
   }
 
   COUNTUP(i, out_n) {
     get_trace_info_for_output(&tr, e, i);
-    printf_sep("  `%soutput(", STR_IF(!tr.bit_width, "null_"));
+    printf_sep("  `output(%s", STR_IF(!tr.bit_width, "null_"));
     print_type_and_dims(&tr);
     printf(", %d)", (int)i);
   }
@@ -245,9 +245,11 @@ void gen_decls(tcell_t *e) {
         if(t != T_OPAQUE && is_self_call(e, tc)) {
           printf("  `reg(%s%s, %d, %s%d) = 0;\n", null_str, vltype(t), tc->trace.bit_width, cname(t), i); // ***
         } else {
-          printf("  `wire(");
-          print_type_and_dims(&tc->trace);
-          printf(", %s%d);\n", cname(t), i);
+          if(tc->trace.bit_width || ONEOF(t, T_LIST, T_OPAQUE)) {
+            printf("  `wire(%s", null_str);
+            print_type_and_dims(&tc->trace);
+            printf(", %s%d);\n", cname(t), i);
+          }
         }
       } else if(t == T_LIST) {
         printf("  `%sconst_nil(%s%d);\n", null_str, cname(t), i);
@@ -587,7 +589,7 @@ bool gen_outputs(const tcell_t *e) {
   COUNTUP(i, out) {
     get_trace_info_for_output(&tr, e, i);
     type_t t = tr.type;
-    if(t == T_OPAQUE) continue;
+    if(t == T_OPAQUE || !tr.bit_width) continue;
     printf("  assign out%d =", (int)i);
     const tcell_t *r = &e[e->trace.first_return];
     const tcell_t *r_prev = NULL;

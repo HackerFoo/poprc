@@ -1485,7 +1485,7 @@ ___ io.stream_read_write_array (4 -> 2) ___
 [4] var is Array :: ?o x1
 [5] __primitive.dup_array 4 -> 6 is Array :: o x2
 [6] __primitive.dep 5 is Array :: o x1
-[7] io.stream_write_array_r0 5 2 1 1b :: l x1
+[7] io.stream_write_array_r0 5 2 1 :: l x1
 [8] jump io.stream_read_array_r0 6 3 :: l x1
 [9] return [8 7]
 
@@ -1493,7 +1493,7 @@ ___ io.stream_write_array (3 -> 1) ___
 [1] var :: ?l x1
 [2] var :: ?l x1
 [3] var is Array :: ?o x1
-[4] jump io.stream_write_array_r0 3 1 2 1b :: l x1
+[4] jump io.stream_write_array_r0 3 1 2 :: l x1
 [5] return [4]
 
 ___ io.stream_write_array_r0 (3 -> 1) rec ___
@@ -1507,7 +1507,7 @@ ___ io.stream_write_array_r0 (3 -> 1) rec ___
 [8] __primitive.write_array 3 5 7 is Array :: o x2
 [9] __primitive.seq 12 &8 is True :: y x1
 [10] jump io.stream_write_array_r0 8 4 6 :: l x1
-[11] __primitive.pushr 10 9 1b :: l x1
+[11] __primitive.pushr 10 9 :: l x1
 [12] val True :: y x1
 [13] return [11]
 
@@ -3100,7 +3100,7 @@ ___ tests.calc_step_q3 (2 -> 1) ___
 [1] var :: ?i x1
 [2] var :: ?l x1
 [3] jump tests.fact 1 :: i x1
-[4] __primitive.pushr 2 3 1b :: l x1
+[4] __primitive.pushr 2 3 :: l x1
 [5] return [4]
 
 ___ tests.calc_step_q4 (1 -> 1) ___

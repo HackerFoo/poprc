@@ -92,10 +92,11 @@
 
 `define input_stream(N, index) input [N-1:0] in``index, input in``index``_valid, output in``index``_ready
 `define output_stream(N, index) output [N-1:0] out``index, output out``index``_valid, input out``index``_ready
+`define output_null_stream(N, index) output out``index``_valid, input out``index``_ready
 `define in_stream(index, name) .in``index(name), .in``index``_valid(name``_valid), .in``index``_ready(name``_ready)
-`define in_null_stream(index, name) .in``index(), .in``index``_valid(name``_valid), .in``index``_ready(name``_ready)
+`define in_null_stream(index, name) .in``index``_valid(name``_valid), .in``index``_ready(name``_ready)
 `define out_stream(index, name) .out``index(name), .out``index``_valid(name``_valid), .out``index``_ready(name``_ready)
-`define out_null_stream(index, name) .out``index(), .out``index``_valid(name``_valid), .out``index``_ready(name``_ready)
+`define out_null_stream(index, name) .out``index``_valid(name``_valid), .out``index``_ready(name``_ready)
 `define alias_stream(N, name, other) \
   wire [N-1:0] name = other; \
   wire name``_valid = other``_valid; wire name``_ready; \

@@ -1120,10 +1120,9 @@ void build_backrefs(const tcell_t *entry, uintptr_t **table, size_t size) {
   }
 }
 
-int bits_needed(range_t r) {
-  if(range_empty(r)) {
-    return 0;
-  } else if(!range_bounded(r)) {
+int bits_needed(range_t r, bool is_constant) {
+  if(range_empty(r) || !range_bounded(r) ||
+     (!is_constant && range_singleton(r))) {
     return 0;
   } else if(r.min >= 0) { // unsigned
     return max(1, int_log2l(sat_add(r.max, 1)));
@@ -1246,14 +1245,14 @@ int bit_width(tcell_t *entry, tcell_t *tc) {
     if(ONEOF(t, T_INT, T_SYMBOL) &&
        range_bounded(r) &&
        range_span(r) > 0) {
-      tc->trace.bit_width = bits_needed(r);
+      tc->trace.bit_width = bits_needed(r, is_value(tc));
     } else if(t == T_LIST) {
       tc->trace.bit_width = stream_bits(entry, tc, 0);
     } else if(t == T_OPAQUE &&
               trace_opaque_symbol(tc) == SYM_Array) {
       array_bits(entry, tc, 0, 0);
     } else {
-      tc->trace.bit_width = bits_needed(default_bound);
+      tc->trace.bit_width = bits_needed(default_bound, is_value(tc));
     }
   }
   return tc->trace.bit_width;
