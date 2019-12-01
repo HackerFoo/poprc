@@ -4202,6 +4202,16 @@ ___ tests.stream_q0 (1 -> 1) mut ___
 [5] [] :: l x1
 [6] return [4]
 
+___ tests.stream_combine (2 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] changing var :: ?l x1
+[3] __primitive.ap 2 -> 4 :: l? x2
+[4] __primitive.dep 3 :: a x1
+[5] __primitive.ap 1 -> X :: l? x1
+[6] jump tests.stream_combine 3 5 :: v x1
+[7] __primitive.pushr 6 4 :: l x1
+[8] return [7]
+
 ___ tests.sum3 (3 -> 1) ___
 [1] var :: ?a x1
 [2] var :: ?a x1

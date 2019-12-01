@@ -1,5 +1,14 @@
 #+TITLE: PoprC Notes
 
+* ready/valid
+set valid --- give ---> set ready
+clear valid < --- take -------'
+* AXI types
+- slave: Array -> [RA WA W -> R B] ==> Array RA WA W -> RB
+- master: [RA WA W -> R B] -> Array
+* write a more correct version of stream_read_write_array
+- choose between read_array and write_array based on stream?
+  e.g. [drop ... read_array ...] [... write_array ...] | get2
 * zip
 - feed back loop complete indictor to ready on input streams?
 - in_ready always &-ed with in_valid (if there are simple inputs), but out_valid should never depend on out_ready

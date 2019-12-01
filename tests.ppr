@@ -453,3 +453,5 @@ sum_diff_map: [get2 dup2 - [+] dip21 []ap20] map
 f13: seq popr 1+
 
 zip_add: [+] zip
+
+stream_combine: popr_para default [[stream_combine] ap20] dip21 pushr
