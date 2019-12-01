@@ -23,9 +23,9 @@
 `define addrT [`anyN-1:0]
 
 `define sync_ports \
-  input clk, input nrst, \
-  input in_valid, output in_ready, \
-  output out_valid, input out_ready
+  input wire clk, input wire nrst, \
+  input wire in_valid, output wire in_ready, \
+  output wire out_valid, input wire out_ready
 
 `define id(x) x
 
@@ -73,9 +73,9 @@
 `define snd(p) `snd_``p
 
 `define input(type, N, index) `input_``type(N, index)
-`define input_simple(N, index) input [N-1:0] `id(in)``index
+`define input_simple(N, index) input wire [N-1:0] `id(in)``index
 `define output(type, N, index) `output_``type(N, index)
-`define output_simple(N, index) output [N-1:0] `id(out)``index
+`define output_simple(N, index) output wire [N-1:0] `id(out)``index
 `define in(type, index, name) `in_``type(index, name)
 `define out(type, index, name) `out_``type(index, name)
 `define in_simple(index, name) .`id(in)``index(name)
@@ -91,9 +91,9 @@
 `define const(type, N, name, val) `const_``type(N, name, val)
 `define const_simple(N, name, val) localparam [N-1:0] name = val
 
-`define input_stream(N, index) input [N-1:0] in``index, input in``index``_valid, output in``index``_ready
-`define output_stream(N, index) output [N-1:0] out``index, output out``index``_valid, input out``index``_ready
-`define output_null_stream(N, index) output out``index``_valid, input out``index``_ready
+`define input_stream(N, index) input wire [N-1:0] in``index, input wire in``index``_valid, output wire in``index``_ready
+`define output_stream(N, index) output wire [N-1:0] out``index, output wire out``index``_valid, input wire out``index``_ready
+`define output_null_stream(N, index) output wire out``index``_valid, input wire out``index``_ready
 `define in_stream(index, name) .in``index(name), .in``index``_valid(name``_valid), .in``index``_ready(name``_ready)
 `define in_null_stream(index, name) .in``index``_valid(name``_valid), .in``index``_ready(name``_ready)
 `define out_stream(index, name) .out``index(name), .out``index``_valid(name``_valid), .out``index``_ready(name``_ready)
@@ -132,21 +132,21 @@
 
 // master
 `define input_Array(N, index) \
-  output [`fst(N)-1:0] in``index``_addr, \
-  output               in``index``_we, \
-  output [`snd(N)-1:0] in``index``_di, \
-  input  [`snd(N)-1:0] in``index``_do, \
-  output               in``index``_valid, \
-  input                in``index``_ready
+  output wire [`fst(N)-1:0] in``index``_addr, \
+  output wire               in``index``_we, \
+  output wire [`snd(N)-1:0] in``index``_di, \
+  input  wire [`snd(N)-1:0] in``index``_do, \
+  output wire               in``index``_valid, \
+  input  wire               in``index``_ready
 
 // slave
 `define output_Array(N, index) \
-  input  [`fst(N)-1:0] out``index``_addr, \
-  input                out``index``_we, \
-  input  [`snd(N)-1:0] out``index``_di, \
-  output [`snd(N)-1:0] out``index``_do, \
-  input                out``index``_valid, \
-  output               out``index``_ready
+  input  wire [`fst(N)-1:0] out``index``_addr, \
+  input  wire                out``index``_we, \
+  input  wire [`snd(N)-1:0] out``index``_di, \
+  output wire [`snd(N)-1:0] out``index``_do, \
+  input  wire               out``index``_valid, \
+  output wire               out``index``_ready
 
 `define in_Array(index, name) \
       .in``index``_addr(name``_addr), \

@@ -2723,6 +2723,17 @@ ___ tests.assoc100 (3 -> 1) ___
 [24] val True :: y x1
 [25] return [23]
 
+___ tests.axi_lite_slave (4 -> 2) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] var :: ?l x1
+[4] var is Array :: ?o x1
+[5] __primitive.dup_array 4 -> 6 is Array :: o x2
+[6] __primitive.dep 5 is Array :: o x1
+[7] io.stream_write_array_r0 5 2 1 :: l x1
+[8] jump io.stream_read_array_r0 6 3 :: l x1
+[9] return [8 7]
+
 ___ tests.binrec (4 -> 1) ___
 [1] var :: ?l x1
 [2] var :: ?l x1

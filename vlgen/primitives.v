@@ -165,10 +165,10 @@ module __primitive_read_array(
     parameter out0DN = `intN;
 
     reg [out1N-1:0] out1_reg; // "empty" when !out_valid
-    reg out_valid = `false;
+    reg out_valid_reg;
 
     assign out1 = in_valid ? in0_do : out1_reg; // latch the data returned
-    assign in_ready = in_valid & (!out_valid | out_ready) & in0_ready;
+    assign in_ready = in_valid & (!out_valid_reg | out_ready) & in0_ready;
 
     assign in0_addr = in_valid ? in1 : out0_addr;
     assign in0_we = !in_valid & out0_we;
@@ -176,17 +176,18 @@ module __primitive_read_array(
     assign out0_do = in0_do;
     assign in0_valid = in_valid | out0_valid;
     assign out0_ready = in0_ready;
+    assign out_valid = out_valid_reg;
 
     always @(posedge clk) begin
         if(!nrst) begin
-            `reset(out_valid);
+            `reset(out_valid_reg);
         end
         else if(in0_valid & in0_ready) begin
             out1_reg <= in0_do;
-            `set(out_valid);
+            `set(out_valid_reg);
         end
         else if(out_ready) begin
-            `reset(out_valid);
+            `reset(out_valid_reg);
         end
     end
 
@@ -206,7 +207,7 @@ module __primitive_write_array(
     parameter out0AN = `addrN;
     parameter out0DN = `intN;
 
-    reg out_valid = `false;
+    reg out_valid_reg;
 
     assign in_ready = in_valid & in0_ready;
     assign in0_addr = in_valid ? in1 : out0_addr;
@@ -215,16 +216,17 @@ module __primitive_write_array(
     assign out0_do = in0_do;
     assign in0_valid = in_valid | out0_valid;
     assign out0_ready = in0_ready;
+    assign out_valid = out_valid_reg;
 
     always @(posedge clk) begin
         if(!nrst) begin
-            `reset(out_valid);
+            `reset(out_valid_reg);
         end
         else if(in0_valid & in0_ready) begin
-            `set(out_valid);
+            `set(out_valid_reg);
         end
         else if(out_ready) begin
-            `reset(out_valid);
+            `reset(out_valid_reg);
         end
     end
 

@@ -13,7 +13,8 @@ FUNCTIONS = \
   tests.fib:16 \
   tests.add_array_at:8 \
   io.stream_read_array:8 \
-  io.stream_read_write_array:8
+  io.stream_read_write_array:8 \
+  tests.axi_lite_slave:32
 
 COMMON = ../vlgen/primitives.v ../vlgen/define.v
 
@@ -55,7 +56,7 @@ $(BUILD)/sim/%_tb.fst $(BUILD)/sim/%_tb.log: $(BUILD)/vvp/%_tb.vvp
 	cd $(BUILD)/sim && vvp -l$*_tb.log $(abspath $<) -fst
 
 # add generated files as prerequisites for *_tb.v and *_swbut.v
-$(foreach suf, tb swbut swbut_tb, \
+$(foreach suf, tb swbut swbut_tb top, \
   $(foreach target, $(wildcard *_$(suf).v), \
     $(eval $(BUILD)/preprocessed/$(target): $(patsubst %_$(suf).v, $(BUILD)/gen/%.v, $(target)))))
 $(BUILD)/preprocessed/%.v: %.v $(COMMON)
