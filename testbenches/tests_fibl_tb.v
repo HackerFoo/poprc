@@ -5,34 +5,26 @@
 
 module tests_fibl_tb;
 
-   reg clk;
-   reg `intT a;
-   wire `intT b;
-   reg  in_valid;
-   reg  out_ready;
-   wire tests_fibl_in_ready;
+    reg `intT a;
+    wire `intT b;
+    wire tests_fibl_in_ready;
 
-   always begin
-      #0.5 clk = !clk;
-   end
+    `testbench(tests_fibl_tb, 30)
 
-   initial begin
-      $dumpfile(`dumpfile);
-      $dumpvars(0, tests_fibl_tb);
+    `inst_sync(tests_fibl, tests_fibl, #())(`sync(in_valid, out_ready), .in0(a), .out0(b));
 
-      a    = 21;
-      in_valid = `true;
-      out_ready = `true;
-      clk  = 0;
+    initial begin
+        #1;
+        nrst = `true;
+        a    = 21;
+        in_valid = `true;
 
-      #1;
-      in_valid = `false;
+        #1;
+        in_valid = `false;
 
-      #22;
-      $display("b = %b (%d)", b, b);
-      $finish;
-   end
-
-   `inst_sync(tests_fibl, tests_fibl, #())(`sync(in_valid, out_ready), .in0(a), .out0(b));
+        `wait_for(tests_fibl_out_valid);
+        $display("b = %b (%d)", b, b);
+        $finish;
+    end
 
 endmodule // tests_fibl_tb

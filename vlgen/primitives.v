@@ -41,8 +41,6 @@ endmodule
 `primitive_op2(bitor, |, int, int)
 `primitive_op2(bitxor, ^, int, int)
 
-// make these chainable to get ap0N
-// stream end signal is in-band
 module __primitive_ap01(
   `sync_ports,
   `input(stream, in0N, 0),
@@ -51,15 +49,14 @@ module __primitive_ap01(
 );
     parameter in0N = `intN;
     parameter out1N = `intN;
-    parameter out0N = in0N - out1N;
+    parameter out0N = 0;
 
     assign out0 = in0 >> out1N;
     assign out1 = in0;
     assign out0_valid = in0_valid;
-    assign out_valid = in0_valid & `valid(out1);
-
-    assign in_ready = `true;
+    assign out_valid = in0_valid && `valid(out1);
     assign in0_ready = out0_ready & out_ready;
+    assign in_ready = `true;
 
 endmodule
 
@@ -71,33 +68,18 @@ module __primitive_ap02(
   `output(simple, out2N, 2)
 );
     parameter in0N = `intN;
-    parameter out0N = `intN;
     parameter out1N = `intN;
     parameter out2N = `intN;
+    parameter out0N = 0;
 
-    reg done = `false;
-    reg  `intT data2 = `false; reg data2_valid = `false;
-
+    assign out0 = in0 >> (out1N + out2N);
+    assign out1 = in0 >> out2N;
+    assign out2 = in0;
+    assign out0_valid = in0_valid;
+    assign out_valid = in0_valid && `valid(out1) && `valid(out2);
+    assign in0_ready = out0_ready & out_ready;
     assign in_ready = `true;
-    assign in0_ready = ~done | out0_ready;
 
-    assign out0 = in0;
-    assign out1 = in0;
-    assign out2 = data2;
-    assign out0_valid = done;
-    assign out_valid = data2_valid & `valid(in0) & `valid(data2) & ~done;
-
-    always @(posedge clk) begin
-        if(in_valid) begin
-            `reset(data2_valid);
-            `reset(done);
-        end
-        else if(in0_valid) begin
-            done <= data2_valid;
-            data2 <= in0;
-            data2_valid <= in0_valid;
-        end
-    end
 endmodule
 
 /* ------------------------------------------------------ *
@@ -122,22 +104,12 @@ module __primitive_ap20(
     parameter in0N = `intN;
     parameter in1N = `intN;
     parameter in2N = `intN;
-    parameter out0N = `intN;
-
-    reg `intT data0 = 0; reg data0_valid = 0;
-    assign out0 = in_valid ? (data0_valid ? data0 : in1) : in2;
-    assign out0_valid = in_valid | data0_valid | in2_valid;
-    assign in2_ready = ~in_valid & ~data0_valid;
-    assign in_ready = in_valid & ~data0_valid;
+    parameter out0N = in0N + in1N + in2N;
+    assign out0 = { in0, in1, in2 };
+    assign out0_valid = in_valid & in2_valid;
+    assign in2_ready = out0_ready;
+    assign in_ready = in_valid & out0_ready;
     assign out_valid = `true;
-
-    always @(posedge clk) begin
-        if(in_valid) begin
-            data0 <= in0;
-            `set(data0_valid);
-        end
-        if(data0_valid) `reset(data0_valid);
-    end
 
 endmodule
 
@@ -178,38 +150,6 @@ module __primitive_pushr2(
 
 endmodule
 
-/*
-module __primitive_pushr2(
-  `sync_ports,
-  `input(stream, in0N, 0),
-  `input(simple, in1N, 1),
-  `input(simple, in2N, 2),
-  `output(stream, out0N, 0)
-);
-    parameter in0N = `intN;
-    parameter in1N = `intN;
-    parameter in2N = `intN;
-    parameter out0N = `intN;
-
-    reg select = `false;
-    assign out0 = in_valid ? (select ? in2 : in1) : in0;
-    assign out0_valid = in_valid | in0_valid;
-    assign in0_ready = ~in_valid;
-    assign in_ready = out0_ready & ~select;
-    assign out_valid = `true;
-
-    always @(posedge clk) begin
-        if(in_valid) begin
-            select <= ~select;
-        end
-        else begin
-            `reset(select);
-        end
-    end
-
-endmodule
-*/
-
 module __primitive_read_array(
   `sync_ports,
   `input(Array, (in0AN, in0DN), 0),
@@ -225,8 +165,8 @@ module __primitive_read_array(
     parameter out0DN = `intN;
 
     reg [out1N-1:0] out1_reg; // "empty" when !out_valid
-
     reg out_valid = `false;
+
     assign out1 = in_valid ? in0_do : out1_reg; // latch the data returned
     assign in_ready = in_valid & (!out_valid | out_ready) & in0_ready;
 
@@ -238,7 +178,10 @@ module __primitive_read_array(
     assign out0_ready = in0_ready;
 
     always @(posedge clk) begin
-        if(in0_valid & in0_ready) begin
+        if(!nrst) begin
+            `reset(out_valid);
+        end
+        else if(in0_valid & in0_ready) begin
             out1_reg <= in0_do;
             `set(out_valid);
         end
@@ -264,8 +207,8 @@ module __primitive_write_array(
     parameter out0DN = `intN;
 
     reg out_valid = `false;
-    assign in_ready = in_valid & in0_ready;
 
+    assign in_ready = in_valid & in0_ready;
     assign in0_addr = in_valid ? in1 : out0_addr;
     assign in0_we = in_valid | out0_we;
     assign in0_di = in_valid ? in2 : out0_di;
@@ -274,7 +217,10 @@ module __primitive_write_array(
     assign out0_ready = in0_ready;
 
     always @(posedge clk) begin
-        if(in0_valid & in0_ready) begin
+        if(!nrst) begin
+            `reset(out_valid);
+        end
+        else if(in0_valid & in0_ready) begin
             `set(out_valid);
         end
         else if(out_ready) begin

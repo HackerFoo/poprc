@@ -5,39 +5,31 @@
 
 module tests_dup_map_tb;
 
-    reg clk;
     `reg(stream, `intN, sIn);
     `wire(stream, `intN, sOut);
-    reg in_valid;
-    reg out_ready;
     wire dup_map_in_ready;
-
     assign sOut_ready = out_ready;
 
-    always begin
-        #0.5 clk = !clk;
-    end
+    `testbench(tests_dup_map_tb, 100)
+
+    `inst_sync(tests_dup_map, dup_map, #())(`sync(in_valid, out_ready), `in(stream, 0, sIn), `out(stream, 0, sOut));
 
     always @(posedge clk) begin
         if(sIn_ready) sIn <= sIn + 1;
     end
 
     initial begin
-        $dumpfile(`dumpfile);
-        $dumpvars(0, tests_dup_map_tb);
-
+        #1;
+        nrst = `true;
         sIn     = 0;
-        clk     = 0;
         in_valid = `true;
-        out_ready = `true;
         sIn_valid = `true;
 
         #1; in_valid = `false;
 
         #20;
+        // TODO: print a result
         $finish;
     end
-
-    `inst_sync(tests_dup_map, dup_map, #())(`sync(in_valid, out_ready), `in(stream, 0, sIn), `out(stream, 0, sOut));
 
 endmodule

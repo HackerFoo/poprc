@@ -17,6 +17,7 @@ module top(
     reg                  in_valid;
     reg                  out_ready;
     wire                 collatz_in_ready;
+    localparam           nrst = `true;
 
     `inst_sync(tests_collatz, collatz, #())(`sync(in_valid, out_ready), .in0(a), .out0(b));
 

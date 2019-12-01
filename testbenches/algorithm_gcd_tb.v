@@ -5,37 +5,29 @@
 
 module algorithm_gcd_tb;
 
-   reg clk;
-   reg `intT a;
-   reg `intT b;
-   wire `intT c;
-   reg  in_valid;
-   reg  out_ready;
-   wire gcd_in_ready;
+    reg `intT a;
+    reg `intT b;
+    wire `intT c;
+    wire gcd_in_ready;
 
-   always begin
-      #0.5 clk = !clk;
-   end
+    `testbench(algorithm_gcd_tb, 20)
 
-   initial begin
-      $dumpfile(`dumpfile);
-      $dumpvars(0, algorithm_gcd_tb);
+    `inst_sync(algorithm_gcd, gcd, #())(`sync(in_valid, out_ready), .in0(a), .in1(b), .out0(c));
 
-      a         = 21;
-      b         = 35;
+    initial begin
+        a         = 21;
+        b         = 35;
 
-      clk       = 0;
-      in_valid  = `true;
-      out_ready = `true;
+        #1;
+        nrst      = `true;
+        in_valid  = `true;
 
-      #1;
-      in_valid   = `false;
+        #1;
+        in_valid   = `false;
 
-      #10;
-      $display("c = %b (%d)", c, c);
-      $finish;
-   end
-
-   `inst_sync(algorithm_gcd, gcd, #())(`sync(in_valid, out_ready), .in0(a), .in1(b), .out0(c));
+        `wait_for(gcd_out_valid);
+        $display("c = %b (%d)", c, c);
+        $finish;
+    end
 
 endmodule // gcd_tb

@@ -5,34 +5,28 @@
 
 module tests_fact_tb;
 
-   reg clk;
-   reg `intT a;
-   wire `intT b;
-   reg  in_valid;
-   reg  out_ready;
-   wire tests_fact_in_ready;
+    reg `intT a;
+    wire `intT b;
+    wire tests_fact_in_ready;
 
-   always begin
-      #0.5 clk = !clk;
-   end
+    `testbench(tests_fact_tb, 50)
 
-   initial begin
-      $dumpfile(`dumpfile);
-      $dumpvars(0, tests_fact_tb);
+    `inst_sync(tests_fact, tests_fact, #())(`sync(in_valid, out_ready), .in0(a), .out0(b));
 
-      a    = 8;
-      in_valid = `true;
-      out_ready = `true;
-      clk  = 0;
+    initial begin
+        #1;
+        nrst = `true;
+        a    = 8;
+        in_valid = `true;
+        out_ready = `true;
+        clk  = 0;
 
-      #1;
-      in_valid = `false;
+        #1;
+        in_valid = `false;
 
-      #16;
-      $display("b = %b (%d)", b, b);
-      $finish;
-   end
-
-   `inst_sync(tests_fact, tests_fact, #())(`sync(in_valid, out_ready), .in0(a), .out0(b));
+        `wait_for(tests_fact_out_valid);
+        $display("b = %b (%d)", b, b);
+        $finish;
+    end
 
 endmodule // tests_fact_tb

@@ -23,7 +23,7 @@
 `define addrT [`anyN-1:0]
 
 `define sync_ports \
-  input clk, \
+  input clk, input nrst, \
   input in_valid, output in_ready, \
   output out_valid, input out_ready
 
@@ -61,6 +61,7 @@
 
 `define sync(valid, ready) \
       .clk(clk), \
+      .nrst(nrst), \
       .in_valid(valid), \
       .out_valid(`sync_wire(out_valid)), \
       .in_ready(`sync_wire(in_ready)), \
@@ -82,7 +83,7 @@
 `define alias(type, N, name, index) `alias_``type(N, name, index)
 `define alias_simple(N, name, other) wire [N-1:0] name = other
 `define variable(type, N, name, in) `variable_``type(N, name, in)
-`define variable_simple(N, name, in) reg [N-1:0] name = 0
+`define variable_simple(N, name, in) reg [N-1:0] name
 `define wire(type, N, name) `wire_``type(N, name)
 `define wire_simple(N, name) wire [N-1:0] name
 `define reg(type, N, name) `reg_``type(N, name)
@@ -202,5 +203,25 @@
 
 // make sure all labels are declared
 `default_nettype none
+
+`define testbench(tb_name, timeout) \
+   reg in_valid = 0; \
+   reg out_ready = 1; \
+   reg nrst = 0; \
+   reg clk = 0; \
+   always begin \
+      #0.5 clk = !clk; \
+   end \
+   initial begin \
+      $dumpfile(`dumpfile); \
+      $dumpvars(0, tb_name); \
+      # timeout; \
+      $display("timed out"); \
+      $finish; \
+   end
+
+`define wait_for(valid) \
+    @(posedge clk); \
+    while(!(valid)) @(posedge clk)
 
 `endif

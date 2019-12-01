@@ -5,21 +5,17 @@
 
 module tests_collatz_tb;
 
-    reg clk;
     reg `intT a;
     wire `intT b;
-    reg in_valid;
-    reg out_ready;
     wire tests_collatz_in_ready;
 
-    always begin
-        #0.5 clk = !clk;
-    end
+    `testbench(tests_collatz_tb, 200)
+
+    `inst_sync(tests_collatz, tests_collatz, #())(`sync(in_valid, out_ready), .in0(a), .out0(b));
 
     initial begin
-        $dumpfile(`dumpfile);
-        $dumpvars(0, tests_collatz_tb);
-
+        #1;
+        nrst = `true;
         a    = 27;
         in_valid = `true;
         out_ready = `true;
@@ -28,18 +24,9 @@ module tests_collatz_tb;
         #1;
         in_valid = `false;
 
-        #200;
-        $display("timed out");
+        `wait_for(tests_collatz_out_valid);
+        $display("b = %b (%d)", b, b);
         $finish;
-    end
-
-    `inst_sync(tests_collatz, tests_collatz, #())(`sync(in_valid, out_ready), .in0(a), .out0(b));
-
-    always @(posedge clk) begin
-        if(tests_collatz_out_valid) begin
-            $display("b = %b (%d)", b, b);
-            $finish;
-        end
     end
 
 endmodule // tests_collatz_tb

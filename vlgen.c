@@ -205,14 +205,14 @@ void gen_stack(const tcell_t *e) {
   }
   printf("  localparam STACK_WIDTH = `RB + %d;\n"
          "  reg [STACK_WIDTH-1:0] stack[0:255];\n"
-         "  reg [7:0] sp = 0;\n"
-         "  reg returned = `false;\n", in_bits + rd_bits);
+         "  reg [7:0] sp;\n"
+         "  reg returned;\n", in_bits + rd_bits);
   if(ra_bits) {
-    printf("  reg [`RB-1:0] return_addr = `RB'd0;\n");
+    printf("  reg [`RB-1:0] return_addr;\n");
   }
   COUNTUP(i, e->entry.out) {
     get_trace_info_for_output(&tr, e, i);
-    printf("  reg [%d-1:0] return%d = 0;\n", tr.bit_width, (int)i);
+    printf("  reg [%d-1:0] return%d;\n", tr.bit_width, (int)i);
   }
 }
 
@@ -243,7 +243,7 @@ void gen_decls(tcell_t *e) {
           printf("  wire inst%d_in_ready;\n", i);
         }
         if(t != T_OPAQUE && is_self_call(e, tc)) {
-          printf("  `reg(%s%s, %d, %s%d) = 0;\n", null_str, vltype(t), tc->trace.bit_width, cname(t), i); // ***
+          printf("  `reg(%s%s, %d, %s%d);\n", null_str, vltype(t), tc->trace.bit_width, cname(t), i); // ***
         } else {
           if(tc->trace.bit_width || ONEOF(t, T_LIST, T_OPAQUE)) {
             printf("  `wire(%s", null_str);
@@ -703,7 +703,13 @@ void gen_loops(tcell_t *e) {
   printf("  always @(posedge clk) begin\n");
   if(FLAG(*e, entry, STACK))
      printf("    returned <= returning;\n");
-  printf("    if(in_valid & ~active) begin\n");
+  printf("    if(!nrst) begin\n"
+         "      `reset(active);\n");
+  if(FLAG(*e, entry, STACK)) {
+    printf("      sp <= 0;\n");
+  }
+  printf("    end\n");
+  printf("    else if(in_valid & ~active) begin\n");
   FOR_TRACE_CONST(c, e) {
     if(!is_var(c)) break;
     int i = c - e;

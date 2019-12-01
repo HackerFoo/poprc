@@ -5,27 +5,20 @@
 
 module tests_repeat_int_tb;
 
-    reg clk;
     `reg(simple, `intN, dIn);
     `wire(stream, `intN, sOut);
-    reg in_valid;
-    reg out_ready;
     wire repeat_int_in_ready;
-
     assign sOut_ready = out_ready;
 
-    always begin
-        #0.5 clk = !clk;
-    end
+    `testbench(tests_repeat_int_tb, 100)
+
+    `inst_sync(tests_repeat_int, repeat_int, #())(`sync(in_valid, out_ready), `in(simple, 0, dIn), `out(stream, 0, sOut));
 
     initial begin
-        $dumpfile(`dumpfile);
-        $dumpvars(0, tests_repeat_int_tb);
-
-        dIn     = 42;
-        clk     = 0;
+        #1;
+        nrst = `true;
+        dIn  = 42;
         in_valid = `true;
-        out_ready = `true;
 
         #1; in_valid = `false; dIn = 0;
 
@@ -33,7 +26,5 @@ module tests_repeat_int_tb;
 
         $finish;
     end
-
-    `inst_sync(tests_repeat_int, repeat_int, #())(`sync(in_valid, out_ready), `in(simple, 0, dIn), `out(stream, 0, sOut));
 
 endmodule
