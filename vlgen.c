@@ -589,42 +589,44 @@ bool gen_outputs(const tcell_t *e) {
   COUNTUP(i, out) {
     get_trace_info_for_output(&tr, e, i);
     type_t t = tr.type;
-    if(t == T_OPAQUE || !tr.bit_width) continue;
-    printf("  assign out%d =", (int)i);
-    const tcell_t *r = &e[e->trace.first_return];
-    const tcell_t *r_prev = NULL;
-    int block = 1;
-    do {
-      if(t == T_LIST || !is_tail_call(e, r)) {
-        if(r_prev) {
-          int ri = cgen_index(e, r_prev->value.ptr[REVI(i)]);
-          printf("\n      block%d_valid ? ", block);
-          print_var(e, &e[ri], block);
-          printf(" :");
-          block = (r - e) + calculate_cells(r->size);
+    if(t == T_OPAQUE) continue;
+    const tcell_t *r;
+    if(tr.bit_width) {
+      printf("  assign out%d =", (int)i);
+      r = &e[e->trace.first_return];
+      const tcell_t *r_prev = NULL;
+      int block = 1;
+      do {
+        if(t == T_LIST || !is_tail_call(e, r)) {
+          if(r_prev) {
+            int ri = cgen_index(e, r_prev->value.ptr[REVI(i)]);
+            printf("\n      block%d_valid ? ", block);
+            print_var(e, &e[ri], block);
+            printf(" :");
+            block = (r - e) + calculate_cells(r->size);
+          }
+          r_prev = r;
         }
-        r_prev = r;
-      }
-      r = &e[tr_index(r->alt)];
-    } while(r > e);
-    assert_error(r_prev);
+        r = &e[tr_index(r->alt)];
+      } while(r > e);
+      assert_error(r_prev);
 
-    printf(" ");
-    print_var(e, &e[cgen_index(e, r_prev->value.ptr[REVI(i)])], block);
-    printf(";\n");
-
+      printf(" ");
+      print_var(e, &e[cgen_index(e, r_prev->value.ptr[REVI(i)])], block);
+      printf(";\n");
+    }
     if(t == T_LIST) {
       printf("  assign out%d_valid = ", (int)i);
       r = &e[e->trace.first_return];
       SEP(" | ");
       while(r > e) {
-        printf_sep("%s%d_valid", cname(t), cgen_index(e, r_prev->value.ptr[REVI(i)]));
+        printf_sep("%s%d_valid", cname(t), cgen_index(e, r->value.ptr[REVI(i)]));
         r = &e[tr_index(r->alt)];
       }
       printf(";\n");
       r = &e[e->trace.first_return];
       while(r > e) {
-        printf("  assign %s%d_ready = out%d_ready;\n", cname(t), cgen_index(e, r_prev->value.ptr[REVI(i)]), (int)i);
+        printf("  assign %s%d_ready = out%d_ready;\n", cname(t), cgen_index(e, r->value.ptr[REVI(i)]), (int)i);
         r = &e[tr_index(r->alt)];
       }
     }
