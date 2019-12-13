@@ -1,5 +1,6 @@
 #+TITLE: PoprC Notes
 
+* rule: output registers should only change if out_valid
 * ready/valid
 set valid --- give ---> set ready
 clear valid < --- take -------'

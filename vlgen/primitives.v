@@ -105,6 +105,7 @@ module __primitive_ap20(
     parameter in1N = `intN;
     parameter in2N = `intN;
     parameter out0N = in0N + in1N + in2N;
+
     assign out0 = { in0, in1, in2 };
     assign out0_valid = in_valid & in2_valid;
     assign in2_ready = out0_ready;
@@ -142,12 +143,40 @@ module __primitive_pushr2(
     parameter in1N = `intN;
     parameter in2N = `intN;
     parameter out0N = in0N + in1N + in2N;
+
     assign out0 = { in0, in1, in2 };
     assign out0_valid = in_valid & in0_valid;
     assign in0_ready = out0_ready;
     assign in_ready = in_valid & out0_ready;
     assign out_valid = `true;
 
+endmodule
+
+module transparent_buffer(
+  input wire clk,
+  input wire nrst,
+  `input(stream, N, 0),
+  `output(stream, N, 0)
+);
+
+    parameter N = `intN;
+
+    reg [N-1:0] data;
+    reg         data_valid;
+
+    assign in0_ready = !data_valid | out0_ready;
+    assign out0_valid = data_valid | in0_valid;
+    assign out0 = in0_valid ? in0 : data;
+
+    always @(posedge clk) begin
+        if(!nrst) begin
+            `reset(data_valid);
+        end
+        else if(in0_ready) begin
+            if(in0_valid) data <= in0;
+            data_valid <= in0_valid;
+        end
+    end
 endmodule
 
 module __primitive_read_array(
@@ -164,32 +193,22 @@ module __primitive_read_array(
     parameter out0AN = `addrN;
     parameter out0DN = `intN;
 
-    reg [out1N-1:0] out1_reg; // "empty" when !out_valid
-    reg out_valid_reg;
-
-    assign out1 = in_valid ? in0_do : out1_reg; // latch the data returned
-    assign in_ready = in_valid & (!out_valid_reg | out_ready) & in0_ready;
-
     assign in0_addr = in_valid ? in1 : out0_addr;
     assign in0_we = !in_valid & out0_we;
     assign in0_di = out0_di;
     assign out0_do = in0_do;
     assign in0_valid = in_valid | out0_valid;
-    assign out0_ready = in0_ready;
-    assign out_valid = out_valid_reg;
+    assign out0_ready = !in_valid & in0_ready;
 
-    always @(posedge clk) begin
-        if(!nrst) begin
-            `reset(out_valid_reg);
-        end
-        else if(in0_valid & in0_ready) begin
-            out1_reg <= in0_do;
-            `set(out_valid_reg);
-        end
-        else if(out_ready) begin
-            `reset(out_valid_reg);
-        end
-    end
+    transparent_buffer #(.N(out1N))
+      buffer(.clk(clk),
+             .nrst(nrst),
+             .in0(in0_do),
+             .in0_valid(in_valid & in0_ready),
+             .in0_ready(in_ready),
+             .out0(out1),
+             .out0_valid(out_valid),
+             .out0_ready(out_ready));
 
 endmodule
 
@@ -207,27 +226,21 @@ module __primitive_write_array(
     parameter out0AN = `addrN;
     parameter out0DN = `intN;
 
-    reg out_valid_reg;
+    reg valid;
+    wire beat = in_valid & in_ready;
 
-    assign in_ready = in_valid & in0_ready;
+    assign in_ready = in0_ready & out_ready;
     assign in0_addr = in_valid ? in1 : out0_addr;
     assign in0_we = in_valid | out0_we;
     assign in0_di = in_valid ? in2 : out0_di;
     assign out0_do = in0_do;
     assign in0_valid = in_valid | out0_valid;
-    assign out0_ready = in0_ready;
-    assign out_valid = out_valid_reg;
+    assign out0_ready = !in_valid & in0_ready;
+    assign out_valid = valid | beat;
 
     always @(posedge clk) begin
-        if(!nrst) begin
-            `reset(out_valid_reg);
-        end
-        else if(in0_valid & in0_ready) begin
-            `set(out_valid_reg);
-        end
-        else if(out_ready) begin
-            `reset(out_valid_reg);
-        end
+        if(!nrst) `reset(valid);
+        else if(beat | out_ready) valid <= beat;
     end
 
 endmodule

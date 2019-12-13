@@ -589,7 +589,7 @@ bool gen_outputs(const tcell_t *e) {
   COUNTUP(i, out) {
     get_trace_info_for_output(&tr, e, i);
     type_t t = tr.type;
-    if(t == T_OPAQUE) continue;
+    if(t == T_OPAQUE) continue; // TODO connect output arrays to outN
     const tcell_t *r;
     if(tr.bit_width) {
       printf("  assign out%d =", (int)i);

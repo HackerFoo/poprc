@@ -7,22 +7,15 @@ module tests_fact_tb;
 
     reg `intT a;
     wire `intT b;
-    wire tests_fact_in_ready;
 
     `testbench(tests_fact_tb, 50)
 
+    `in_ready(tests_fact);
     `inst_sync(tests_fact, tests_fact, #())(`sync(in_valid, out_ready), .in0(a), .out0(b));
 
     initial begin
-        #1;
-        nrst = `true;
         a    = 8;
-        in_valid = `true;
-        out_ready = `true;
-        clk  = 0;
-
-        #1;
-        in_valid = `false;
+        `start;
 
         `wait_for(tests_fact_out_valid);
         $display("b = %b (%d)", b, b);

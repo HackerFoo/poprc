@@ -1,30 +1,27 @@
 module array (
-  input  wire        clk,
-  input  wire `addrT addr,
-  input  wire        we,
-  input  wire `intT  di,
-  output reg  `intT  do,
-  input  wire        valid,
-  output reg         ready
+  input wire clk,
+  `output(Array, (`addrN, `addrN), 0)
 );
     parameter N = 16;
 
-    reg  `intT data[0:N-1];
+    reg              `intT data[0:N-1];
 
-    integer i;
+    integer          i;
     initial begin
-      ready = `false;
-      for(i = 0; i < 16; i = i + 1)
-        data[i] = i;
+        for(i = 0; i < 16; i = i + 1) begin
+            data[i] = i;
+        end
     end
 
+    assign out0_ready = `true;
+
+    // async read
+    assign out0_do = data[out0_addr];
+
+    // sync write
     always @(posedge clk) begin
-
-        // to test valid/ready logic
-        ready <= ~ready;
-
-        do <= data[addr];
-        if(we)
-          data[addr] <= di;
+        if(out0_valid && out0_we) begin
+            data[out0_addr] <= out0_di;
+        end
     end
 endmodule

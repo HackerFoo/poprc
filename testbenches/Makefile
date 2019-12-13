@@ -14,7 +14,9 @@ FUNCTIONS = \
   tests.add_array_at:8 \
   io.stream_read_array:8 \
   io.stream_read_write_array:8 \
-  tests.axi_lite_slave:32
+  tests.axi_lite_slave:32 \
+  tests.three_reads:8 \
+  tests.three_writes:8
 
 COMMON = ../vlgen/primitives.v ../vlgen/define.v
 

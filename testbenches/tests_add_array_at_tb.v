@@ -13,19 +13,15 @@ module tests_add_array_at_tb;
    `wire(Array, (`addrN, `intN), arr_in);
    `wire(Array, (`addrN, `intN), arr_out);
 
-   wire inst_in_ready;
    wire `intT res;
+   assign `to_bus(arr_out) = 0;
 
    `testbench(tests_add_array_at_tb, 100)
 
    array arr(.clk(clk),
-             .addr(arr_in_addr),
-             .we(arr_in_we),
-             .di(arr_in_di),
-             .do(arr_in_do),
-             .valid(arr_in_valid),
-             .ready(arr_in_ready));
+             `out(Array, 0, arr_in));
 
+   `in_ready(inst);
    `inst_sync(tests_add_array_at, inst, #())(
      `sync(in_valid, out_ready),
      `in(Array, 0, arr_in),
@@ -35,22 +31,13 @@ module tests_add_array_at_tb;
      `out(simple, 1, res));
 
    initial begin
-      #1;
-      nrst = `true;
-      in_valid = `true;
-      clk  = 0;
       addr = 3;
       val = 42;
-   end
+      `start;
 
-   always @(posedge clk) begin
-       if(inst_out_valid) begin
-           $display("res = %d", res);
-           $finish;
-       end
-       if(inst_in_ready) begin
-           in_valid <= `false;
-       end
+      `wait_for(inst_out_valid);
+       $display("res = %d", res);
+       $finish;
    end
 
 endmodule // tests_add_array_at_tb

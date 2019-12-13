@@ -4347,6 +4347,32 @@ ___ tests.test_ap21 (3 -> 1) ___
 [5] __primitive.dep 4 :: a x1
 [6] return [5]
 
+___ tests.three_reads (4 -> 4) ___
+[1] var :: ?i x1
+[2] var :: ?i x1
+[3] var :: ?i x1
+[4] var is Array :: ?o x1
+[5] __primitive.read_array 4 3 -> 10 is Array :: o x2
+[6] __primitive.read_array 5 2 -> 9 is Array :: o x2
+[7] __primitive.read_array 6 1 -> 8 is Array :: o x2
+[8] __primitive.dep 7 :: i x1
+[9] __primitive.dep 6 :: i x1
+[10] __primitive.dep 5 :: i x1
+[11] return [7 10 9 8]
+
+___ tests.three_writes (7 -> 1) ___
+[1] var :: ?i x1
+[2] var :: ?i x1
+[3] var :: ?i x1
+[4] var :: ?i x1
+[5] var :: ?i x1
+[6] var :: ?i x1
+[7] var is Array :: ?o x1
+[8] __primitive.write_array 7 6 5 is Array :: o x1
+[9] __primitive.write_array 8 4 3 is Array :: o x1
+[10] __primitive.write_array 9 2 1 is Array :: o x1
+[11] return [10]
+
 ___ tests.two_to_twenty (1 -> 1) ___
 [1] var in [2, 20] :: ?i x1
 [2] __primitive.div 1 3 in [1, 10] :: i? x2

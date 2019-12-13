@@ -7,23 +7,20 @@ module algorithm_sum_tb;
 
     `reg(stream, `intN, sIn);
     `wire(simple, `intN, sum);
-    wire sum_inst_in_ready;
 
     `testbench(algorithm_sum_tb, 20)
 
+    `in_ready(sum_inst);
     `inst_sync(algorithm_sum, sum_inst, #())(`sync(in_valid, out_ready), `in(stream, 0, sIn), `out(simple, 0, sum));
 
     initial begin
-        sIn     = 0;
-        in_valid = `true;
-        sIn_valid = `true;
+        sIn = 0;
+        `start;
 
-        #1.5; nrst = `true; // *** with #1, valid drops before posedge clk
-        #1; sIn = 1; in_valid = `false; sIn_valid = `true;
+        #1; sIn = 1; sIn_valid = `true;
         #1; sIn = 2;
         #1; sIn = 3;
         #1; sIn = 8'hff;
-        #1; sIn_valid = `false;
 
         `wait_for(sum_inst_out_valid);
         $display("sum = %b (%d)", sum, sum);

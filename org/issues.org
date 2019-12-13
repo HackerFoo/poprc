@@ -1,6 +1,8 @@
 #+TITLE: PoprC Issues
 
 * vlgen
+** TODO register inputs and outputs as needed to handle synchronization
+- modify gen_sync_disjoint_* functions
 ** DONE non-tail recursion
 *** DONE initial single call site support
 - split ... in `self(x); ...; return y;`

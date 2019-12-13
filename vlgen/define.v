@@ -142,7 +142,7 @@
 // slave
 `define output_Array(N, index) \
   input  wire [`fst(N)-1:0] out``index``_addr, \
-  input  wire                out``index``_we, \
+  input  wire               out``index``_we, \
   input  wire [`snd(N)-1:0] out``index``_di, \
   output wire [`snd(N)-1:0] out``index``_do, \
   input  wire               out``index``_valid, \
@@ -209,6 +209,7 @@
    reg out_ready = 1; \
    reg nrst = 0; \
    reg clk = 0; \
+   reg start = 0; \
    always begin \
       #0.5 clk = !clk; \
    end \
@@ -218,10 +219,27 @@
       # timeout; \
       $display("timed out"); \
       $finish; \
+   end \
+   always @(posedge clk) begin \
+      if(in_ready & in_valid) begin \
+        `reset(in_valid); \
+      end \
    end
 
 `define wait_for(valid) \
     @(posedge clk); \
     while(!(valid)) @(posedge clk)
+
+`define in_ready(inst) \
+    wire inst``_in_ready; \
+    wire in_ready = inst``_in_ready
+
+`define start \
+    @(posedge clk); \
+    nrst = `false; \
+    @(posedge clk); \
+    nrst = `true; \
+    @(posedge clk); \
+    #0.01 in_valid = `true
 
 `endif

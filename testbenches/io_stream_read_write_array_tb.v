@@ -9,7 +9,6 @@ module io_stream_read_write_array_tb;
 
     `wire(Array, (`addrN, `intN), arr);
     wire `intT res;
-    wire inst_in_ready;
 
     `reg(stream, `intN, sRA);
     `wire(stream, `intN, sR);
@@ -22,13 +21,9 @@ module io_stream_read_write_array_tb;
     `testbench(io_stream_read_write_array_tb, 40)
 
     array arr(.clk(clk),
-              .addr(arr_addr),
-              .we(arr_we),
-              .di(arr_di),
-              .do(arr_do),
-              .valid(arr_valid),
-              .ready(arr_ready));
+              `out(Array, 0, arr));
 
+    `in_ready(inst);
     `inst_sync(io_stream_read_write_array, inst, #())(
       `sync(in_valid, out_ready),
       `in(Array, 0, arr),
@@ -40,15 +35,13 @@ module io_stream_read_write_array_tb;
 
     reg `addrT i;
     initial begin
-        #1;
-        nrst = `true;
-        in_valid = `true;
         sRA  = 0;
         sRA_valid = `false;
         sWA  = 0;
         sWA_valid = `false;
         sW = 0;
         sW_valid = `false;
+        `start;
 
         // write some data
         for(i = 0; i < 8; i = i + 1) begin
@@ -62,16 +55,16 @@ module io_stream_read_write_array_tb;
         sW_valid = `false;
 
         // read it back
+        sRA_valid = `true;
         for(i = 0; i < 8; i = i + 1) begin
             sRA = i;
-            sRA_valid = `true;
             @(posedge clk);
-            while(!sRA_ready) begin
-                @(posedge clk);
-                $display("arr(%d) = %d", i, sR);
-            end
+            `wait_for(sR_valid);
+            $display("arr(%d) = %d", i, sR);
         end
         sRA_valid = `false;
+        nrst = `false;
+        #2;
         $display("done");
         $finish;
     end

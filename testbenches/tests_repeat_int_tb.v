@@ -7,20 +7,18 @@ module tests_repeat_int_tb;
 
     `reg(simple, `intN, dIn);
     `wire(stream, `intN, sOut);
-    wire repeat_int_in_ready;
     assign sOut_ready = out_ready;
 
     `testbench(tests_repeat_int_tb, 100)
 
+    `in_ready(repeat_int);
     `inst_sync(tests_repeat_int, repeat_int, #())(`sync(in_valid, out_ready), `in(simple, 0, dIn), `out(stream, 0, sOut));
 
     initial begin
-        #1;
-        nrst = `true;
         dIn  = 42;
-        in_valid = `true;
+        `start;
 
-        #1; in_valid = `false; dIn = 0;
+        #1; dIn = 0;
 
         #5; $display("sOut = %b (%d)", sOut, sOut);
 
