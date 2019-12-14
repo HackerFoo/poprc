@@ -229,7 +229,7 @@ module __primitive_write_array(
     reg valid;
     wire beat = in_valid & in_ready;
 
-    assign in_ready = in0_ready & out_ready;
+    assign in_ready = in0_ready & (!valid | out_ready);
     assign in0_addr = in_valid ? in1 : out0_addr;
     assign in0_we = in_valid | out0_we;
     assign in0_di = in_valid ? in2 : out0_di;
