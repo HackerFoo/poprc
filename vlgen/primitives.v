@@ -174,7 +174,7 @@ module transparent_buffer(
         end
         else if(in0_ready) begin
             if(in0_valid) data <= in0;
-            data_valid <= in0_valid;
+            if(!(in0_valid & out0_ready)) data_valid <= in0_valid;
         end
     end
 endmodule
@@ -200,15 +200,17 @@ module __primitive_read_array(
     assign in0_valid = in_valid | out0_valid;
     assign out0_ready = !in_valid & in0_ready;
 
+    wire buf_ready;
     transparent_buffer #(.N(out1N))
       buffer(.clk(clk),
              .nrst(nrst),
              .in0(in0_do),
              .in0_valid(in_valid & in0_ready),
-             .in0_ready(in_ready),
+             .in0_ready(buf_ready),
              .out0(out1),
              .out0_valid(out_valid),
              .out0_ready(out_ready));
+    assign in_ready = buf_ready & in0_ready;
 
 endmodule
 
@@ -260,15 +262,26 @@ module __primitive_dup_array(
     parameter out1AN = `addrN;
     parameter out1DN = `intN;
 
-    assign in0_addr   = out0_valid ? out0_addr  : out1_addr;
-    assign in0_we     = out0_valid ? out0_we    : out1_we;
-    assign in0_di     = out0_valid ? out0_di    : out1_di;
+    reg last_active;
+    wire active0 = !out1_valid | last_active == 1;
+    wire active1 = !out0_valid | last_active == 0;
+    wire select0 = active0 & out0_valid;
+
+    assign in0_addr   = select0 ? out0_addr  : out1_addr;
+    assign in0_we     = select0 ? out0_we    : out1_we;
+    assign in0_di     = select0 ? out0_di    : out1_di;
     assign out0_do    = in0_do;
     assign out1_do    = in0_do;
     assign in0_valid  = out0_valid | out1_valid;
-    assign out0_ready = in0_ready;
-    assign out1_ready = in0_ready;
+    assign out0_ready = in0_ready & active0;
+    assign out1_ready = in0_ready & active1;
     assign in_ready   = `true;
     assign out_valid  = `true;
 
+    always @(posedge clk) begin
+        if(!nrst) `reset(last_active);
+        else if(in0_ready) begin
+            last_active <= out1_valid & active1;
+        end
+    end
 endmodule

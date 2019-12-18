@@ -8,7 +8,7 @@ module array (
 
     integer          i;
     initial begin
-        for(i = 0; i < 16; i = i + 1) begin
+        for(i = 0; i < N; i = i + 1) begin
             data[i] = i;
         end
     end
