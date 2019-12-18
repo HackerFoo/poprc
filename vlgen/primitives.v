@@ -1,24 +1,26 @@
 `include "define.v"
 
 `define primitive_op1(name, op, inT, outT) \
-module __primitive_``name``( \
+module __primitive_``name`` #( \
+  parameter in0N = `inT``N, \
+  parameter out0N = `outT``N \
+)( \
   `input(simple, in0N, 0), \
   `output(simple, out0N, 0) \
 ); \
-    parameter in0N = `inT``N; \
-    parameter out0N = `outT``N; \
     assign out0 = op in0; \
 endmodule
 
 `define primitive_op2(name, op, inT, outT) \
-module __primitive_``name``( \
+module __primitive_``name`` #( \
+  parameter in0N = `inT``N, \
+  parameter in1N = `inT``N, \
+  parameter out0N = `outT``N \
+)( \
   `input(simple, in0N, 0), \
   `input(simple, in1N, 1), \
   `output(simple, out0N, 0) \
 ); \
-    parameter in0N = `inT``N; \
-    parameter in1N = `inT``N; \
-    parameter out0N = `outT``N; \
     assign out0 = in0 op in1; \
 endmodule
 
@@ -41,16 +43,16 @@ endmodule
 `primitive_op2(bitor, |, int, int)
 `primitive_op2(bitxor, ^, int, int)
 
-module __primitive_ap01(
+module __primitive_ap01 #(
+  parameter in0N = `intN,
+  parameter out1N = `intN,
+  parameter out0N = 0
+)(
   `sync_ports,
   `input(stream, in0N, 0),
   `output(stream, out0N, 0),
   `output(simple, out1N, 1)
 );
-    parameter in0N = `intN;
-    parameter out1N = `intN;
-    parameter out0N = 0;
-
     assign out0 = in0 >> out1N;
     assign out1 = in0;
     assign out0_valid = in0_valid;
@@ -60,18 +62,18 @@ module __primitive_ap01(
 
 endmodule
 
-module __primitive_ap02(
+module __primitive_ap02 #(
+  parameter in0N = `intN,
+  parameter out1N = `intN,
+  parameter out2N = `intN,
+  parameter out0N = 0
+)(
   `sync_ports,
   `input(stream, in0N, 0),
   `output(stream, out0N, 0),
   `output(simple, out1N, 1),
   `output(simple, out2N, 2)
 );
-    parameter in0N = `intN;
-    parameter out1N = `intN;
-    parameter out2N = `intN;
-    parameter out0N = 0;
-
     assign out0 = in0 >> (out1N + out2N);
     assign out1 = in0 >> out2N;
     assign out2 = in0;
@@ -94,18 +96,18 @@ endmodule
 
  * ------------------------------------------------------ */
 
-module __primitive_ap20(
+module __primitive_ap20 #(
+  parameter in0N = `intN,
+  parameter in1N = `intN,
+  parameter in2N = `intN,
+  parameter out0N = in0N + in1N + in2N
+)(
   `sync_ports,
   `input(simple, in0N, 0),
   `input(simple, in1N, 1),
   `input(stream, in2N, 2),
   `output(stream, out0N, 0)
 );
-    parameter in0N = `intN;
-    parameter in1N = `intN;
-    parameter in2N = `intN;
-    parameter out0N = in0N + in1N + in2N;
-
     assign out0 = { in0, in1, in2 };
     assign out0_valid = in_valid & in2_valid;
     assign in2_ready = out0_ready;
@@ -114,16 +116,16 @@ module __primitive_ap20(
 
 endmodule
 
-module __primitive_pushr1(
+module __primitive_pushr1 #(
+  parameter in0N = `intN,
+  parameter in1N = `intN,
+  parameter out0N = `intN
+)(
   `sync_ports,
   `input(stream, in0N, 0),
   `input(simple, in1N, 1),
   `output(stream, out0N, 0)
 );
-    parameter in0N = `intN;
-    parameter in1N = `intN;
-    parameter out0N = `intN;
-
     assign out0 = { in0, in1 };
     assign out0_valid = in_valid & in0_valid;
     assign in0_ready = out0_ready;
@@ -132,18 +134,18 @@ module __primitive_pushr1(
 
 endmodule
 
-module __primitive_pushr2(
+module __primitive_pushr2 #(
+  parameter in0N = `intN,
+  parameter in1N = `intN,
+  parameter in2N = `intN,
+  parameter out0N = in0N + in1N + in2N
+)(
   `sync_ports,
   `input(stream, in0N, 0),
   `input(simple, in1N, 1),
   `input(simple, in2N, 2),
   `output(stream, out0N, 0)
 );
-    parameter in0N = `intN;
-    parameter in1N = `intN;
-    parameter in2N = `intN;
-    parameter out0N = in0N + in1N + in2N;
-
     assign out0 = { in0, in1, in2 };
     assign out0_valid = in_valid & in0_valid;
     assign in0_ready = out0_ready;
@@ -152,15 +154,14 @@ module __primitive_pushr2(
 
 endmodule
 
-module transparent_buffer(
+module transparent_buffer #(
+  parameter N = `intN
+)(
   input wire clk,
   input wire nrst,
   `input(stream, N, 0),
   `output(stream, N, 0)
 );
-
-    parameter N = `intN;
-
     reg [N-1:0] data;
     reg         data_valid;
 
@@ -179,20 +180,20 @@ module transparent_buffer(
     end
 endmodule
 
-module __primitive_read_array(
+module __primitive_read_array #(
+  parameter in0AN = `addrN,
+  parameter in0DN = `intN,
+  parameter in1N = `intN,
+  parameter out1N = `intN,
+  parameter out0AN = `addrN,
+  parameter out0DN = `intN
+)(
   `sync_ports,
   `input(Array, (in0AN, in0DN), 0),
   `input(simple, in1N, 1),
   `output(Array, (out0AN, out0DN), 0),
   `output(simple, out1N, 1)
 );
-    parameter in0AN = `addrN;
-    parameter in0DN = `intN;
-    parameter in1N = `intN;
-    parameter out1N = `intN;
-    parameter out0AN = `addrN;
-    parameter out0DN = `intN;
-
     assign in0_addr = in_valid ? in1 : out0_addr;
     assign in0_we = !in_valid & out0_we;
     assign in0_di = out0_di;
@@ -214,20 +215,20 @@ module __primitive_read_array(
 
 endmodule
 
-module __primitive_write_array(
+module __primitive_write_array #(
+  parameter in0AN = `addrN,
+  parameter in0DN = `intN,
+  parameter in1N = `intN,
+  parameter in2N = `intN,
+  parameter out0AN = `addrN,
+  parameter out0DN = `intN
+)(
   `sync_ports,
   `input(Array, (in0AN, in0DN), 0),
   `input(simple, in1N, 1),
   `input(simple, in2N, 2),
   `output(Array, (out0AN, out0DN), 0)
 );
-    parameter in0AN = `addrN;
-    parameter in0DN = `intN;
-    parameter in1N = `intN;
-    parameter in2N = `intN;
-    parameter out0AN = `addrN;
-    parameter out0DN = `intN;
-
     reg valid;
     wire beat = in_valid & in_ready;
 
@@ -249,19 +250,19 @@ endmodule
 
 // arbitrates two masters out0 and out1 to slave in0
 // out0 has priority
-module __primitive_dup_array(
+module __primitive_dup_array #(
+  parameter in0AN = `addrN,
+  parameter in0DN = `intN,
+  parameter out0AN = `addrN,
+  parameter out0DN = `intN,
+  parameter out1AN = `addrN,
+  parameter out1DN = `intN
+)(
   `sync_ports,
   `input(Array, (in0AN, in0DN), 0),
   `output(Array, (out0AN, out0DN), 0),
   `output(Array, (out1AN, out1DN), 1)
 );
-    parameter in0AN = `addrN;
-    parameter in0DN = `intN;
-    parameter out0AN = `addrN;
-    parameter out0DN = `intN;
-    parameter out1AN = `addrN;
-    parameter out1DN = `intN;
-
     reg last_active;
     wire active0 = !out1_valid | last_active == 1;
     wire active1 = !out0_valid | last_active == 0;
