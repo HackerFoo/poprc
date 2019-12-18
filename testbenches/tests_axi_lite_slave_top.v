@@ -34,12 +34,7 @@ module tests_axi_lite_slave_top
     `wire(Array, (`addrN, `intN), arr);
 
     array arr(.clk(clk),
-              .addr(arr_addr),
-              .we(arr_we),
-              .di(arr_di),
-              .do(arr_do),
-              .valid(arr_valid),
-              .ready(arr_ready));
+              `out(Array, 0, arr));
 
     `wire(stream, `addrN, ar);
     `wire(stream, `addrN, aw);
