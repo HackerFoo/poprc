@@ -33,8 +33,9 @@ module tests_axi_lite_slave_top
 
     `wire(Array, (`addrN, `intN), arr);
 
-    array arr(.clk(clk),
-              `out(Array, 0, arr));
+    array #(.N(64))
+      arr(.clk(clk),
+          `out(Array, 0, arr));
 
     `wire(stream, `addrN, ar);
     `wire(stream, `addrN, aw);
@@ -52,10 +53,13 @@ module tests_axi_lite_slave_top
       `out(stream, 0, r),
       `out(null_stream, 1, b));
 
-`define from_axi(stream, signal) \
-    assign stream = s_axi_``stream``signal; \
+`define from_axi_hs(stream) \
     assign stream``_valid = s_axi_``stream``valid; \
     assign s_axi_``stream``ready = stream``_ready
+
+`define from_axi(stream, signal, shift) \
+    assign stream = s_axi_``stream``signal >> shift; \
+    `from_axi_hs(stream)
 
 `define to_axi_hs(stream) \
     assign s_axi_``stream``valid = stream``_valid; \
@@ -65,9 +69,9 @@ module tests_axi_lite_slave_top
     assign s_axi_``stream``signal = stream; \
     `to_axi_hs(stream)
 
-    `from_axi(ar, addr);
-    `from_axi(aw, addr);
-    `from_axi(w, data);
+    `from_axi(ar, addr, 2);
+    `from_axi(aw, addr, 2);
+    `from_axi(w, data, 0);
     `to_axi(r, data);
     `to_axi_hs(b);
 
