@@ -36,6 +36,7 @@ typedef struct {
   seg_t   (*read)   (file_t *);
   void    (*write)  (file_t *, seg_t);
   void    (*unread) (file_t *, seg_t);
+  bool    (*seek)   (file_t *, int);
   void    (*close)  (file_t *);
 } io_t;
 
@@ -45,6 +46,7 @@ const io_t default_io = {
   .read = io_read,
   .write = io_write,
   .unread = io_unread,
+  .seek = io_seek,
   .open = io_open,
   .close = io_close
 };
@@ -316,6 +318,40 @@ OP(dup_array) {
     store_lazy_dep(c->expr.arg[1], ref(p), ctx->alt_set);
   }
   add_conditions(res, p);
+  store_reduced(cp, ctx, res);
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, ctx);
+}
+
+WORD("seek", seek, 3, 2)
+OP(seek) {
+  cell_t *res = 0;
+  PRE(seek);
+
+  CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
+
+  CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_IO)));
+  CHECK(reduce_arg(c, 1, &CTX(opaque, SYM_File)));
+  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+  CHECK(reduce_arg(c, 2, &CTX(int)));
+  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+  CHECK_DELAY();
+  ARGS(p, q, r);
+
+  WARN_ALT(write);
+
+  if(ANY(is_var, p, q, r)) {
+    res = var(T_SYMBOL, c);
+    store_dep_var(c, res, 3, T_OPAQUE, RANGE(SYM_File), ctx->alt_set);
+  } else {
+    CHECK_IF(p->value.symbol != SYM_IO, FAIL);
+    io->seek((file_t *)q->value.opaque, r->value.integer);
+    res = ref(p);
+    store_lazy_dep(c->expr.arg[3], ref(q), ctx->alt_set);
+  }
+  add_conditions(res, p, q, r);
   store_reduced(cp, ctx, res);
   return SUCCESS;
 

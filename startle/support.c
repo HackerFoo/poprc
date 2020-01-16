@@ -914,6 +914,10 @@ size_t rb_capacity(const ring_buffer_t *rb) {
   return rb->size - rb_available(rb) - 1;
 }
 
+void rb_clear(ring_buffer_t *rb) {
+  rb->tail = rb->head;
+}
+
 size_t rb_write(ring_buffer_t *rb, const char *src, size_t size) {
   size = min(size, rb_capacity(rb));
   size_t right = rb->size - rb->head;

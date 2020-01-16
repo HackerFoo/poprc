@@ -32,7 +32,10 @@
 struct ring_buffer;
 #define FILE_IN     0x01
 #define FILE_OUT    0x02
+#define FILE_BINARY 0x04
 #define FILE_STREAM 0x80
+
+#define WORD_SIZE 4
 
 typedef struct {
   seg_t name;
@@ -80,6 +83,8 @@ uint8_t parse_file_prefix(seg_t *name) {
         flags |= FILE_OUT;
       } else if(segcmp("stream", s) == 0) {
         flags |= FILE_STREAM;
+      } else if(segcmp("bin", s) == 0) {
+        flags |= FILE_BINARY;
       }
       if(next) {
         p = next + 1;
@@ -108,16 +113,25 @@ void io_unread(file_t *file, seg_t s) {
 
 seg_t io_read(file_t *file) {
   static char input_buf[INPUT_BUFFER_SIZE]; // ***
-  assert_error(file->buffer);
-  const size_t size = min(file->buffer->size, sizeof(input_buf) - 1);
-  size_t old = rb_read(file->buffer, input_buf, size);
-  ssize_t new = read(file->descriptor, input_buf + old, size - old);
-  size_t read_size = old + max(0, new); // TODO handle errors
-  if(read_size > 0) {
-    input_buf[read_size] = '\0';
-    return (seg_t) { .s = input_buf, .n = read_size };
+  if(!FLAG_(file->flags, FILE_BINARY)) {
+    assert_error(file->buffer);
+    const size_t size = min(file->buffer->size, sizeof(input_buf) - 1);
+    size_t old = rb_read(file->buffer, input_buf, size);
+    ssize_t new = read(file->descriptor, input_buf + old, size - old);
+    size_t read_size = old + max(0, new); // TODO handle errors
+    if(read_size > 0) {
+      input_buf[read_size] = '\0';
+      return (seg_t) { .s = input_buf, .n = read_size };
+    } else {
+      return (seg_t) { .s = NULL, .n = 0 };
+    }
   } else {
-    return (seg_t) { .s = NULL, .n = 0 };
+    ssize_t n = read(file->descriptor, input_buf, WORD_SIZE);
+    if(n == WORD_SIZE) {
+      return (seg_t) { .s = input_buf, .n = WORD_SIZE };
+    } else {
+      return (seg_t) { .s = NULL, .n = 0 };
+    }
   }
 }
 
@@ -128,12 +142,13 @@ void io_write(file_t *file, seg_t s) {
 file_t *io_open(seg_t name) {
   uint8_t flags = parse_file_prefix(&name);
   if(FLAG_(flags, FILE_STREAM)) {
+    assert_error(!FLAG_(flags, FILE_BINARY));
     if(segcmp("std", name) == 0) {
-      switch(flags) {
-      case FILE_STREAM | FILE_IN:
+      switch(flags & (FILE_IN | FILE_OUT)) {
+      case FILE_IN:
         return &stream_stdin;
         break;
-      case FILE_STREAM | FILE_OUT:
+      case FILE_OUT:
         return &stream_stdout;
         break;
       }
@@ -157,7 +172,11 @@ file_t *io_open(seg_t name) {
     } else {
       file_t *file = malloc(sizeof(file_t));
       file->name = name;
-      file->buffer = alloc_ring_buffer(INPUT_BUFFER_SIZE);
+      if(FLAG_(flags, FILE_BINARY)) {
+        file->buffer = NULL;
+      } else {
+        file->buffer = alloc_ring_buffer(INPUT_BUFFER_SIZE);
+      }
       file->descriptor = fd;
       file->flags = flags;
       return file;
@@ -165,10 +184,18 @@ file_t *io_open(seg_t name) {
   }
 }
 
+bool io_seek(file_t *file, int offset) {
+  if(!file || FLAG_(file->flags, FILE_STREAM)) {
+    return false;
+  }
+  if(file->buffer) rb_clear(file->buffer);
+  return lseek(file->descriptor, offset, SEEK_SET) == 0;
+}
+
 void io_close(file_t *file) {
   if(file && !FLAG_(file->flags, FILE_STREAM)) {
     close(file->descriptor);
-    free(file->buffer);
+    if(file->buffer) free(file->buffer);
     free(file);
   }
 }

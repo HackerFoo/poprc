@@ -243,10 +243,15 @@ void irc_io_write(UNUSED file_t *file, seg_t s) {
   fflush(stdout);
 }
 
+bool irc_io_seek(UNUSED file_t *file, UNUSED int offset) {
+  return false;
+}
+
 const io_t irc_io = {
   .read = irc_io_read_with_prompt,
   .write = irc_io_write,
   .unread = io_unread,
+  .seek = irc_io_seek,
   .open = irc_io_open,
   .close = irc_io_close
 };

@@ -1218,6 +1218,31 @@ OP(to_string) {
   return abort_op(rsp, cp, ctx);
 }
 
+WORD("->bin", to_string_bin, 1, 1)
+OP(to_string_bin) {
+  cell_t *res = 0;
+  PRE(to_string_bin);
+
+  CHECK_IF(!check_type(ctx->t, T_STRING), FAIL);
+
+  CHECK(reduce_arg(c, 0, &CTX(int)));
+  CHECK_DELAY();
+  ARGS(p);
+
+  if(is_var(p)) {
+    res = var(T_STRING, c);
+  } else if(p->value.type == T_INT) {
+    int32_t x = p->value.integer;
+    res = make_string((seg_t) { .s = (char *)&x, .n = sizeof(x) });
+  }
+  add_conditions(res, p);
+  store_reduced(cp, ctx, res);
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, ctx);
+}
+
 WORD("<-str", from_string, 1, 1)
 OP(from_string) {
   cell_t *res = 0;
@@ -1235,6 +1260,33 @@ OP(from_string) {
     char *end = NULL;
     val_t x = strtoll(p->value.str, &end, 0);
     CHECK_IF(!end || *end != '\0', FAIL);
+    res = val(T_INT, x);
+  }
+  FLAG_SET(*c, expr, PARTIAL);
+  add_conditions(res, p);
+  store_reduced(cp, ctx, res);
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, ctx);
+}
+
+WORD("<-bin", from_string_bin, 1, 1)
+OP(from_string_bin) {
+  cell_t *res = 0;
+  PRE(from_string_bin);
+
+  CHECK_IF(!check_type(ctx->t, T_INT), FAIL);
+
+  CHECK(reduce_arg(c, 0, &CTX(string)));
+  CHECK_DELAY();
+  ARGS(p);
+
+  if(is_var(p)) {
+    res = var(T_INT, c);
+  } else {
+    val_t x = 0;
+    memcpy(&x, p->value.str, min(string_size(p), sizeof(int)));
     res = val(T_INT, x);
   }
   FLAG_SET(*c, expr, PARTIAL);
