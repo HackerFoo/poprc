@@ -1010,6 +1010,35 @@ cell_t *build32(op op, cell_t *i0, cell_t *i1, cell_t *i2, cell_t **o1) {
   return c;
 }
 
+cell_t *build42(op op, cell_t *i0, cell_t *i1, cell_t *i2, cell_t *i3, cell_t **o1) {
+  cell_t *c = ALLOC(5,
+    .op = op,
+    .expr = {
+      .out = 1,
+      .arg = {i0, i1}
+    }
+  );
+  c->expr.arg[2] = i2;
+  c->expr.arg[3] = i3;
+  c->expr.arg[4] = *o1 = dep(ref(c));
+  return c;
+}
+
+cell_t *build52(op op, cell_t *i0, cell_t *i1, cell_t *i2, cell_t *i3, cell_t *i4, cell_t **o1) {
+  cell_t *c = ALLOC(6,
+    .op = op,
+    .expr = {
+      .out = 1,
+      .arg = {i0, i1}
+    }
+  );
+  c->expr.arg[2] = i2;
+  c->expr.arg[3] = i3;
+  c->expr.arg[4] = i4;
+  c->expr.arg[5] = *o1 = dep(ref(c));
+  return c;
+}
+
 cell_t *build23(op op, cell_t *i0, cell_t *i1, cell_t **o1, cell_t **o2) {
   cell_t *c = ALLOC(4,
     .op = op,

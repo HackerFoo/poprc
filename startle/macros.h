@@ -372,9 +372,10 @@
 #define EACH(...) DISPATCH(EACH, __VA_ARGS__)
 
 #define ANY_2(f, x0) f(x0)
-#define ANY_3(f, x0, x1) (f(x0) || f(x1))
-#define ANY_4(f, x0, x1, x2) (f(x0) || f(x1) || f(x2))
-#define ANY_5(f, x0, x1, x2) (f(x0) || f(x1) || f(x2) || f(x3))
+#define ANY_3(f, x0, x1) (ANY_2(f, x0) || f(x1))
+#define ANY_4(f, x0, x1, x2) (ANY_3(f, x0, x1) || f(x2))
+#define ANY_5(f, x0, x1, x2, x3) (ANY_4(f, x0, x1, x2) || f(x3))
+#define ANY_6(f, x0, x1, x2, x3, x4) (ANY_5(f, x0, x1, x2, x3) || f(x4))
 #define ANY(...) DISPATCH(ANY, __VA_ARGS__)
 
 /** Reassign a variable for the duration of the following block. */

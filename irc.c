@@ -243,8 +243,16 @@ void irc_io_write(UNUSED file_t *file, seg_t s) {
   fflush(stdout);
 }
 
-bool irc_io_seek(UNUSED file_t *file, UNUSED int offset) {
-  return false;
+int irc_io_seek(UNUSED file_t *file, UNUSED int offset) {
+  return -1;
+}
+
+void *irc_io_mmap(UNUSED file_t *file, UNUSED size_t length, UNUSED int offset) {
+  return NULL;
+}
+
+void irc_io_munmap(UNUSED void *addr, UNUSED size_t length) {
+  // do nothing
 }
 
 const io_t irc_io = {
@@ -252,6 +260,8 @@ const io_t irc_io = {
   .write = irc_io_write,
   .unread = io_unread,
   .seek = irc_io_seek,
+  .mmap = irc_io_mmap,
+  .munmap = irc_io_munmap,
   .open = irc_io_open,
   .close = irc_io_close
 };

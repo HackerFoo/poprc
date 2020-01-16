@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/mman.h>
 #include "rt_types.h"
 
 #include "startle/error.h"
@@ -184,12 +185,12 @@ file_t *io_open(seg_t name) {
   }
 }
 
-bool io_seek(file_t *file, int offset) {
+int io_seek(file_t *file, int offset) {
   if(!file || FLAG_(file->flags, FILE_STREAM)) {
-    return false;
+    return -1;
   }
   if(file->buffer) rb_clear(file->buffer);
-  return lseek(file->descriptor, offset, SEEK_SET) == 0;
+  return lseek(file->descriptor, offset, SEEK_SET);
 }
 
 void io_close(file_t *file) {
@@ -198,4 +199,19 @@ void io_close(file_t *file) {
     if(file->buffer) free(file->buffer);
     free(file);
   }
+}
+
+void *io_mmap(file_t *file, size_t length, int offset) {
+  if(FLAG_(file->flags, FILE_STREAM)) {
+    return NULL;
+  }
+  int prot = 0;
+  if(file->flags & FILE_IN) prot |= PROT_READ;
+  if(file->flags & FILE_OUT) prot |= PROT_WRITE;
+  void *data = mmap(NULL, length, prot, MAP_SHARED, file->descriptor, offset);
+  return data == MAP_FAILED ? NULL : data;
+}
+
+void io_munmap(void *addr, size_t length) {
+  munmap(addr, length);
 }

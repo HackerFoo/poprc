@@ -395,6 +395,8 @@
 #define ARGS_1(p) cell_t __ARGS(p, 0)
 #define ARGS_2(p, q) ARGS_1(p), __ARGS(q, 1)
 #define ARGS_3(p, q, r) ARGS_2(p, q), __ARGS(r, 2)
+#define ARGS_4(p, q, r, s) ARGS_3(p, q, r), __ARGS(s, 3)
+#define ARGS_5(p, q, r, s, t) ARGS_4(p, q, r, s), __ARGS(t, 4)
 #define ARGS(...) DISPATCH(ARGS, __VA_ARGS__)
 
 #define ALLOC(_args, ...)                       \

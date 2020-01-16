@@ -15,6 +15,8 @@
     along with PoprC.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <string.h>
+
 #include "rt_types.h"
 
 #include "startle/error.h"
@@ -36,7 +38,9 @@ typedef struct {
   seg_t   (*read)   (file_t *);
   void    (*write)  (file_t *, seg_t);
   void    (*unread) (file_t *, seg_t);
-  bool    (*seek)   (file_t *, int);
+  int     (*seek)   (file_t *, int);
+  void   *(*mmap)   (file_t *, size_t, int);
+  void    (*munmap) (void *, size_t);
   void    (*close)  (file_t *);
 } io_t;
 
@@ -47,6 +51,8 @@ const io_t default_io = {
   .write = io_write,
   .unread = io_unread,
   .seek = io_seek,
+  .mmap = io_mmap,
+  .munmap = io_munmap,
   .open = io_open,
   .close = io_close
 };
@@ -205,25 +211,79 @@ static MAP(arrays, 1 << 16);
 
 val_t next_array_id = 1;
 
+typedef struct mmap_array {
+  uintptr_t id;
+  size_t size;
+  unsigned int width;
+  file_t *file;
+  char *data;
+} mmap_array_t;
+
+static mmap_array_t mmap_array[8];
+static unsigned int mmap_array_count = 0;
+
 void array_init() {
   map_clear(arrays);
   next_array_id = 1;
+  mmap_array_count = 0;
+}
+
+static
+mmap_array_t *lookup_mmap_array(uintptr_t arr) {
+  COUNTUP(i, mmap_array_count) {
+    mmap_array_t *ma = &mmap_array[i];
+    if(ma->id == arr) return ma;
+  }
+  return NULL;
+}
+
+static
+mmap_array_t *new_mmap_array(file_t *file, void *addr, int size, int width) {
+  if(mmap_array_count >= LENGTH(mmap_array)) return NULL;
+  if(width < 1) width = 1;
+  if(size < 0) size = 0;
+  mmap_array_t *ma = &mmap_array[mmap_array_count++];
+  ma->id = next_array_id++;
+  ma->size = size;
+  ma->width = width;
+  ma->file = file;
+  ma->data = (char *)addr;
+  return ma;
 }
 
 bool array_read(uintptr_t arr, uintptr_t addr, val_t *out) {
-  addr &= ADDR_MASK;
-  if(!INRANGE(arr, 1, ID_MAX)) return false;
-  pair_t *p = map_find(arrays, arr << 16 | addr);
-  if(!p) return false;
-  *out = p->second;
-  return true;
+  mmap_array_t *ma = lookup_mmap_array(arr);
+  if(!ma) {
+    addr &= ADDR_MASK;
+    if(!INRANGE(arr, 1, ID_MAX)) return false;
+    pair_t *p = map_find(arrays, arr << 16 | addr);
+    if(!p) return false;
+    *out = p->second;
+    return true;
+  } else {
+    if(!FLAG_(ma->file->flags, FILE_IN)) return false;
+    size_t offset = addr * ma->width;
+    if(offset >= ma->size) return false;
+    *out = 0;
+    memcpy(out, ma->data + offset, min(sizeof(*out), ma->width));
+    return true;
+  }
 }
 
 bool array_write(uintptr_t arr, uintptr_t addr, val_t in) {
-  addr &= ADDR_MASK;
-  if(!INRANGE(arr, 1, ID_MAX)) return false;
-  map_replace_insert(arrays, (pair_t) {arr << 16 | addr, in});
-  return true;
+  mmap_array_t *ma = lookup_mmap_array(arr);
+  if(!ma) {
+    addr &= ADDR_MASK;
+    if(!INRANGE(arr, 1, ID_MAX)) return false;
+    map_replace_insert(arrays, (pair_t) {arr << 16 | addr, in});
+    return true;
+  } else {
+    if(!FLAG_(ma->file->flags, FILE_OUT)) return false;
+    size_t offset = addr * ma->width;
+    if(offset >= ma->size) return false;
+    memcpy(ma->data + offset, &in, min(sizeof(in), ma->width));
+    return true;
+  }
 }
 
 WORD("read_array", read_array, 2, 2)
@@ -340,7 +400,7 @@ OP(seek) {
   CHECK_DELAY();
   ARGS(p, q, r);
 
-  WARN_ALT(write);
+  WARN_ALT(seek);
 
   if(ANY(is_var, p, q, r)) {
     res = var(T_SYMBOL, c);
@@ -358,6 +418,51 @@ OP(seek) {
  abort:
   return abort_op(rsp, cp, ctx);
 }
+
+WORD("mmap", mmap, 5, 2)
+OP(mmap) {
+  cell_t *res = 0;
+  PRE(mmap);
+
+  CHECK_IF(!check_type(ctx->t, T_SYMBOL), FAIL);
+
+  CHECK(reduce_arg(c, 0, &CTX(symbol, SYM_IO)));
+  CHECK(reduce_arg(c, 1, &CTX(opaque, SYM_File)));
+  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+  CHECK(reduce_arg(c, 2, &CTX(int)));
+  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+  CHECK(reduce_arg(c, 3, &CTX(int)));
+  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+  CHECK(reduce_arg(c, 4, &CTX(int)));
+  CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+  CHECK_DELAY();
+  ARGS(p, q, r, s, t);
+
+  WARN_ALT(mmap);
+
+  if(ANY(is_var, p, q, r, s, t)) {
+    res = var(T_SYMBOL, c);
+    store_dep_var(c, res, 5, T_OPAQUE, RANGE(SYM_Array), ctx->alt_set);
+  } else {
+    CHECK_IF(p->value.symbol != SYM_IO, FAIL);
+    file_t *file = (file_t *)q->value.opaque;
+    void *data = io->mmap(file, r->value.integer, s->value.integer);
+    CHECK_IF(!data, FAIL);
+    mmap_array_t *ma = new_mmap_array(file, data, r->value.integer, t->value.integer);
+    res = ref(p);
+    cell_t *arr = opaque(SYM_Array, NULL);
+    arr->value.id = ma->id;
+    store_lazy_dep(c->expr.arg[5], arr, ctx->alt_set);
+  }
+  add_conditions(res, p, q, r, s, t);
+  store_reduced(cp, ctx, res);
+  return SUCCESS;
+
+ abort:
+  return abort_op(rsp, cp, ctx);
+}
+
+// TODO munmap
 
 /* Local Variables: */
 /* eval: (add-to-list 'imenu-generic-expression '("Operator" "^.*OP(\\([a-z_]+\\)).*$" 1)) */

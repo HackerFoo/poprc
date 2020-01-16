@@ -34,6 +34,14 @@
   static inline cell_t *build_##__name(cell_t *i0, cell_t *i1, cell_t *i2, cell_t **o1) { \
     return build32(OP_##__op, i0, i1, i2, o1);                          \
   }
+#define BUILDER42(__name, __op)                                         \
+  static inline cell_t *build_##__name(cell_t *i0, cell_t *i1, cell_t *i2, cell_t *i3, cell_t **o1) { \
+    return build42(OP_##__op, i0, i1, i2, i3, o1);                      \
+  }
+#define BUILDER52(__name, __op)                                         \
+  static inline cell_t *build_##__name(cell_t *i0, cell_t *i1, cell_t *i2, cell_t *i3, cell_t *i4, cell_t **o1) { \
+    return build52(OP_##__op, i0, i1, i2, i3, i4, o1);                  \
+  }
 #define BUILDER23(__name, __op)                                         \
   static inline cell_t *build_##__name(cell_t *i0, cell_t *i1, cell_t **o1, cell_t **o2) { \
     return build23(OP_##__op, i0, i1, o1, o2);                          \

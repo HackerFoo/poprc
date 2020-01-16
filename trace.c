@@ -1408,6 +1408,29 @@ void add_conditions_4(cell_t *res, cell_t *a0, cell_t *a1, cell_t *a2) {
   }
 }
 
+void add_conditions_5(cell_t *res, cell_t *a0, cell_t *a1, cell_t *a2, cell_t *a3) {
+  tcell_t **v = &res->value.var;
+  if(!is_var(res)) {
+    *v = concatenate_conditions(*v,
+           concatenate_conditions(value_condition(a0),
+             concatenate_conditions(value_condition(a1),
+               concatenate_conditions(value_condition(a2),
+                                      value_condition(a3)))));
+  }
+}
+
+void add_conditions_6(cell_t *res, cell_t *a0, cell_t *a1, cell_t *a2, cell_t *a3, cell_t *a4) {
+  tcell_t **v = &res->value.var;
+  if(!is_var(res)) {
+    *v = concatenate_conditions(*v,
+           concatenate_conditions(value_condition(a0),
+             concatenate_conditions(value_condition(a1),
+               concatenate_conditions(value_condition(a2),
+                 concatenate_conditions(value_condition(a3),
+                                        value_condition(a4))))));
+  }
+}
+
 void add_conditions_from_array(cell_t *res, cell_t **a, unsigned int n) {
   tcell_t **v = &res->value.var;
   if(!is_var(res) && n) {
