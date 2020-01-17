@@ -158,7 +158,7 @@ void run_eval_irc() {
       }
     } else {
       assert_error(!too_fast(1));
-      if(eval(irc_prefix, lex(s.s, seg_end(s)))) {
+      if(eval(irc_prefix, lex(s.s, seg_end(s)), &previous_result)) {
         fflush(stdout);
       } else {
         irc_action("overlooks this");

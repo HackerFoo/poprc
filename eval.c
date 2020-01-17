@@ -85,6 +85,8 @@ static bool allow_io = true;
 static int reduction_limit = 5;
 const char *history_path = NULL;
 
+cell_t *previous_result = NULL;
+
 char line_buffer[1024];
 
 COMMAND(git, "git commit for this build") {
@@ -168,7 +170,7 @@ COMMAND(eval, "evaluate the argument") {
       printf("^--- Parse error\n");
     } else {
       stats_start();
-      eval("  ", p);
+      eval("  ", p, &previous_result);
       stats_stop();
     }
   }
@@ -264,6 +266,7 @@ int main(int argc, char **argv) {
   command_line = false;
 
   if(!quit) run_eval(echo);
+  drop(previous_result);
   free_modules();
   unload_files();
   if(run_leak_test &&
@@ -624,28 +627,40 @@ cell_t *eval_module() {
   return modules ? get_module(string_seg("eval")) : NULL;
 }
 
-bool eval(const char *prefix, const cell_t *p) {
-  bool success = false;
+cell_t *eval(const char *prefix, const cell_t *p, cell_t **previous) {
+  if(!match(p, "...")) {
+    drop(*previous);
+    *previous = NULL;
+  } else {
+    p = p->tok_list.next;
+  }
   if(!allow_io && has_IO(p)) {
     if(!quiet) printf("IO not allowed.\n");
   } else {
     cell_t *c = parse_expr(&p, eval_module(), NULL);
-    if(!c) return false;
+    if(!c) return NULL;
+    if(*previous) {
+      c = compose(list_begin(*previous), c, 0); // TODO handle (*previous)->alt
+      drop(*previous);
+      *previous = NULL;
+    } else {
+      rt_init();
+    }
     cell_t *left = *leftmost(&c);
     if(left && !closure_is_ready(left)) {
       if(!quiet) printf("incomplete expression\n");
+      drop(c);
     } else {
-      rt_init();
       reduce_root(&c, 0, reduction_limit);
       if(c) {
         ASSERT_REF();
-        success = true;
         show_alts(prefix, c);
+        *previous = c;
+        return c;
       }
     }
-    drop(c);
   }
-  return success;
+  return NULL;
 }
 
 bool get_arity(const cell_t *p, csize_t *in, csize_t *out, cell_t *module) {
