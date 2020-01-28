@@ -15,11 +15,11 @@ ___ algorithm.__caret___r0 (3 -> 1) x2 rec ___
 [7] __primitive.assert &3 6 :: i? x1
 [8] return [7] -> 15
 [9] __primitive.assert 14 4 :: i? x1
-[10] __primitive.shiftr &1 11 :: i x1
-[11] val 1 :: i x1
-[12] algorithm.acc_odd_power 3 &2 1 :: i x1
-[13] __primitive.mul &2 2 :: i x1
-[14] jump algorithm.__caret___r0 12 13 10 :: i x1
+[10] algorithm.acc_odd_power 3 &2 &1 :: i x1
+[11] __primitive.mul &2 2 :: i x1
+[12] __primitive.shiftr 1 13 :: i x1
+[13] val 1 :: i x1
+[14] jump algorithm.__caret___r0 10 11 12 :: i x1
 [15] return [9]
 
 ___ algorithm.acc_odd_power (3 -> 1) x2 ___
@@ -943,11 +943,11 @@ ___ control.times_r0 (3 -> 1) x2 rec ___
 [7] __primitive.assert &3 6 :: a? x1
 [8] return [7] -> 15
 [9] __primitive.assert 14 4 :: a? x1
-[10] __primitive.sub 1 11 :: i x1
-[11] val 1 :: i x1
-[12] __primitive.ap 3 &2 -> 13 :: v? x1
-[13] __primitive.dep 12 :: a x1
-[14] jump control.times_r0 13 2 10 :: a x1
+[10] __primitive.ap 3 &2 -> 11 :: v? x1
+[11] __primitive.dep 10 :: a x1
+[12] __primitive.sub 1 13 :: i x1
+[13] val 1 :: i x1
+[14] jump control.times_r0 11 2 12 :: a x1
 [15] return [9]
 
 ___ control.times_step (3 -> 3) ___
@@ -1159,10 +1159,10 @@ ___ gen_ed.dl_test3_r0 (4 -> 3) x2 rec ___
 [12] __primitive.assert &4 8 :: y? x1
 [13] return [12 11 9] -> 24
 [14] __primitive.assert 18 &7 :: y? x1
-[15] __primitive.read 4 3 -> 17 16 :: y x3
-[16] __primitive.dep 15 :: s x1
-[17] __primitive.dep 15 is File :: o x1
-[18] jump gen_ed.dl_test3_r0 15 17 10 16 -> 21 23 :: y x3
+[15] __primitive.read 4 3 -> 16 17 :: y x3
+[16] __primitive.dep 15 is File :: o x1
+[17] __primitive.dep 15 :: s x1
+[18] jump gen_ed.dl_test3_r0 15 16 10 17 -> 21 23 :: y x3
 [20] __primitive.assert 21 &7 is File :: o? x1
 [21] __primitive.dep 18 is File :: o x1
 [22] __primitive.assert 23 7 :: s? x1
@@ -2642,19 +2642,18 @@ ___ tests.altf_loop (2 -> 1) ___
 
 ___ tests.altf_loop_r0 (2 -> 1) x3 rec ___
 [1] changing var :: ?i x2
-[2] var :: ?a x3
+[2] var :: ?a x2
 [3] __primitive.gt &1 &4 :: y x3
 [4] val 1 :: i x2
 [5] __primitive.not &3 :: y x1
 [6] __primitive.assert &2 5 :: a? x1
 [7] return [6] -> 11
-[8] __primitive.assert 10 &3 :: a? x1
-[9] __primitive.sub 1 4 :: i x2.
-[10] jump tests.altf_loop_r0 2 9 :: a x1
-[11] return [8] -> 14
-[12] __primitive.assert 13 3 :: a? x1
-[13] jump tests.altf_loop_r0 2 9 :: a x1
-[14] return [12]
+[8] __primitive.assert &10 &3 :: a? x1
+[9] __primitive.sub 1 4 :: i x1.
+[10] jump tests.altf_loop_r0 2 9 :: a x2.
+[11] return [8] -> 13
+[12] __primitive.assert 10 3 :: a? x1
+[13] return [12]
 
 ___ tests.asq (2 -> 2) ___
 [1] var :: ?y x3
@@ -2857,10 +2856,10 @@ ___ tests.calc_loop (2 -> 1) x15 rec ___
 [81] __primitive.eq_str &21 82 :: y x3
 [82] val "gcd" :: s x1
 [83] __primitive.assert 87 &81 :: i? x3
-[84] __primitive.ap &1 -> 86 85 :: l? x3
+[84] __primitive.ap &1 -> 85 86 :: l? x3
 [85] __primitive.dep 84 :: i x1
 [86] __primitive.dep 84 :: i x1
-[87] algorithm.gcd_r0 86 85 :: i x1
+[87] algorithm.gcd_r0 85 86 :: i x1
 [88] __primitive.seq 92 &83 :: v x1
 [89] __primitive.assert 84 &81 :: l? x1
 [90] __primitive.pushr 89 &83 :: l x1
@@ -2870,10 +2869,10 @@ ___ tests.calc_loop (2 -> 1) x15 rec ___
 [94] __primitive.eq_str &21 95 :: y x3
 [95] val "^" :: s x1
 [96] __primitive.assert 100 &94 :: i? x3
-[97] __primitive.ap &1 -> 99 98 :: l? x3
+[97] __primitive.ap &1 -> 98 99 :: l? x3
 [98] __primitive.dep 97 :: i x1
 [99] __primitive.dep 97 :: i x1
-[100] algorithm.__caret___r0 &101 99 98 :: i x1
+[100] algorithm.__caret___r0 &101 98 99 :: i x1
 [101] val 1 :: i x3
 [102] __primitive.seq 106 &96 :: v x1
 [103] __primitive.assert 97 &94 :: l? x1
@@ -3019,18 +3018,18 @@ ___ tests.calc_step (2 -> 1) x14 ___
 [43] __primitive.eq_str &3 44 :: y x1
 [44] val "gcd" :: s x1
 [45] __primitive.assert 49 43 :: l? x1
-[46] __primitive.ap &2 -> 48 47 :: l? x3
+[46] __primitive.ap &2 -> 47 48 :: l? x3
 [47] __primitive.dep 46 :: i x1
 [48] __primitive.dep 46 :: i x1
-[49] jump tests.calc_step_q0 46 47 48 :: l x1
+[49] jump tests.calc_step_q0 46 48 47 :: l x1
 [50] return [45] -> 58
 [51] __primitive.eq_str &3 52 :: y x1
 [52] val "^" :: s x1
 [53] __primitive.assert 57 51 :: l? x1
-[54] __primitive.ap &2 -> 56 55 :: l? x3
+[54] __primitive.ap &2 -> 55 56 :: l? x3
 [55] __primitive.dep 54 :: i x1
 [56] __primitive.dep 54 :: i x1
-[57] jump tests.calc_step_q1 54 55 56 :: l x1
+[57] jump tests.calc_step_q1 54 56 55 :: l x1
 [58] return [53] -> 67
 [59] __primitive.eq_str &3 60 :: y x1
 [60] val "fib" :: s x1
@@ -3192,9 +3191,9 @@ ___ tests.collatz_r0 (2 -> 1) x2 rec ___
 [6] __primitive.assert &2 5 :: i? x1
 [7] return [6] -> 12
 [8] __primitive.assert 11 3 :: i? x1
-[9] tests.collatz_step 1 :: i x1
-[10] __primitive.add 2 4 :: i x1
-[11] jump tests.collatz_r0 10 9 :: i x1
+[9] __primitive.add 2 4 :: i x1
+[10] tests.collatz_step 1 :: i x1
+[11] jump tests.collatz_r0 9 10 :: i x1
 [12] return [8]
 
 ___ tests.collatz_step (1 -> 1) x2 ___
@@ -3265,9 +3264,9 @@ ___ tests.decel_r0 (2 -> 1) x2 rec ___
 [6] __primitive.assert &2 5 :: i? x1
 [7] return [6] -> 12
 [8] __primitive.assert 11 3 :: i? x1
-[9] tests.decel_step 1 :: i x1
-[10] __primitive.add 2 4 :: i x1
-[11] jump tests.decel_r0 10 9 :: i x1
+[9] __primitive.add 2 4 :: i x1
+[10] tests.decel_step 1 :: i x1
+[11] jump tests.decel_r0 9 10 :: i x1
 [12] return [8]
 
 ___ tests.decel_step (1 -> 1) x2 ___
@@ -3576,10 +3575,10 @@ ___ tests.f7c_r0 (2 -> 1) x2 rec ___
 [6] __primitive.assert &1 5 :: i? x1
 [7] return [6] -> 13
 [8] __primitive.assert 12 3 :: i? x1
-[9] __primitive.add 1 &10 :: i x1
+[9] __primitive.sub 2 &10 :: i x1
 [10] val 1 :: i x2
-[11] __primitive.sub 2 10 :: i x1
-[12] jump tests.f7c_r0 11 9 :: i x1
+[11] __primitive.add 1 10 :: i x1
+[12] jump tests.f7c_r0 9 11 :: i x1
 [13] return [8]
 
 ___ tests.f8 (3 -> 1) ___
@@ -3810,15 +3809,15 @@ ___ tests.input_times_r0 (3 -> 1) x2 rec ___
 [11] __primitive.open 2 12 -> 13 :: y x2
 [12] val "stream,in:std" :: s x1
 [13] __primitive.dep 11 is File :: o x1
-[14] io.getline_loop 11 13 16 -> 17 21 :: y x3
-[16] val "" :: s x1
-[17] __primitive.dep 14 is File :: o x1
-[18] __primitive.close 14 17 :: y x1
-[19] __primitive.sub 3 20 :: i x1
-[20] val 1 :: i x1
-[21] __primitive.dep 14 :: s x1
+[14] __primitive.sub 3 15 :: i x1
+[15] val 1 :: i x1
+[16] io.getline_loop 11 13 18 -> 19 21 :: y x3
+[18] val "" :: s x1
+[19] __primitive.dep 16 is File :: o x1
+[20] __primitive.close 16 19 :: y x1
+[21] __primitive.dep 16 :: s x1
 [22] __primitive.ap 21 1 :: l x1
-[23] jump tests.input_times_r0 19 18 22 :: a x1
+[23] jump tests.input_times_r0 14 20 22 :: a x1
 [24] return [10]
 
 ___ tests.it10 (1 -> 1) ___
@@ -4273,14 +4272,14 @@ ___ tests.sum_times2_r0 (3 -> 1) x2 rec ___
 [12] __primitive.dep 10 is File :: o x1
 [13] __primitive.sub 3 14 :: i x1
 [14] val 1 :: i x1
-[15] io.getline_loop 10 12 17 -> 21 18 :: y x3
+[15] io.getline_loop 10 12 17 -> 18 20 :: y x3
 [17] val "" :: s x1
-[18] __primitive.dep 15 :: s x1
-[19] __primitive.from_string 18 :: i? x1
-[20] __primitive.add 19 1 :: i x1
-[21] __primitive.dep 15 is File :: o x1
-[22] __primitive.close 15 21 :: y x1
-[23] jump tests.sum_times2_r0 13 22 20 :: i x1
+[18] __primitive.dep 15 is File :: o x1
+[19] __primitive.close 15 18 :: y x1
+[20] __primitive.dep 15 :: s x1
+[21] __primitive.from_string 20 :: i? x1
+[22] __primitive.add 21 1 :: i x1
+[23] jump tests.sum_times2_r0 13 19 22 :: i x1
 [24] return [9]
 
 ___ tests.sum_times2v (2 -> 1) ___
@@ -4305,23 +4304,23 @@ ___ tests.sum_times2v_r0 (3 -> 1) x2 rec ___
 [12] __primitive.dep 10 is File :: o x1
 [13] __primitive.sub 3 14 :: i x1
 [14] val 1 :: i x1
-[15] io.getline_loop 10 12 17 -> 21 18 :: y x3
+[15] io.getline_loop 10 12 17 -> 18 23 :: y x3
 [17] val "" :: s x1
-[18] __primitive.dep 15 :: s x2
-[19] __primitive.from_string &18 :: i? x1
-[20] __primitive.add 19 1 :: i x1
-[21] __primitive.dep 15 is File :: o x1
-[22] __primitive.close 15 21 :: y x1
-[23] __primitive.open 22 24 -> 25 :: y x2
-[24] val "stream,out:std" :: s x1
-[25] __primitive.dep 23 is File :: o x1
-[26] __primitive.strcat &27 18 :: s x1
-[27] val "'" :: s x2
-[28] __primitive.strcat 26 27 :: s x1
-[29] __primitive.write 23 25 28 -> 30 :: y x2
-[30] __primitive.dep 29 is File :: o x1
-[31] __primitive.close 29 30 :: y x1
-[32] jump tests.sum_times2v_r0 13 31 20 :: i x1
+[18] __primitive.dep 15 is File :: o x1
+[19] __primitive.close 15 18 :: y x1
+[20] __primitive.open 19 21 -> 22 :: y x2
+[21] val "stream,out:std" :: s x1
+[22] __primitive.dep 20 is File :: o x1
+[23] __primitive.dep 15 :: s x2
+[24] __primitive.strcat &25 &23 :: s x1
+[25] val "'" :: s x2
+[26] __primitive.strcat 24 25 :: s x1
+[27] __primitive.write 20 22 26 -> 28 :: y x2
+[28] __primitive.dep 27 is File :: o x1
+[29] __primitive.close 27 28 :: y x1
+[30] __primitive.from_string 23 :: i? x1
+[31] __primitive.add 30 1 :: i x1
+[32] jump tests.sum_times2v_r0 13 29 31 :: i x1
 [33] return [9]
 
 ___ tests.test_ap11 (2 -> 1) ___

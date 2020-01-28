@@ -45,11 +45,15 @@ bool _is_user_func(const cell_t *c) {
   return c->op == OP_exec;
 }
 
+// alts in trace are used to temporarily point to cell instances
+// they are copied to during expansion.
+// this gets that pointer
 static
 cell_t *map_cell(tcell_t *entry, intptr_t x) {
   return x <= 0 ? NULL : entry[x].alt;
 }
 
+// get instance for a return
 static
 cell_t *get_return_arg(tcell_t *entry, tcell_t *returns, intptr_t x) {
   assert_error(x < entry->entry.out);
@@ -193,6 +197,8 @@ cell_t **bind_pattern(tcell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail)
   return tail;
 }
 
+// re-pack results of a recursive function back into a list
+// see: func_exec_wrap
 static
 response exec_list(cell_t **cp, context_t *ctx) {
   PRE_NO_CONTEXT(exec_list);
@@ -204,22 +210,32 @@ response exec_list(cell_t **cp, context_t *ctx) {
   CONTEXT_LOG("exec_list %C", c);
   assert_error(ctx->s.out);
   cell_t *res;
-  csize_t
-    in = closure_in(c),
-    out = ctx->s.out - 1,
-    n = in + out;
+  csize_t in = closure_in(c);
+  tcell_t *entry = (tcell_t *)(*cp)->expr.arg[in];
+  csize_t out = entry->entry.out - 1;
+  assert_error(entry->entry.wrap);
+  const uintptr_t dep_mask = entry->entry.wrap->dep_mask;
 
-  // if ctx->t == T_LIST, need to wrap here
-  // move to func_exec; expand, wrap, and return the original function
+  // the list may be larger than the outputs due to dropping,
+  // so pad with fail_cell when corresponding bit isn't set in dep_mask
   cell_t *nc = expand(c, out);
   nc->expr.out = out;
   res = make_list(ctx->s.out);
-  res->value.ptr[out] = nc;
-  COUNTUP(i, out) {
-    cell_t *d = dep(ref(nc));
-    int j = n - i;
-    res->value.ptr[i] = d;
-    nc->expr.arg[j] = d;
+  cell_t **out_arg = &nc->expr.arg[in + 1];
+  RANGEUP(i, 1, ctx->s.out) {
+    cell_t *d = &fail_cell;
+    if(dep_mask & (1 << i)) {
+      d = dep(ref(nc));
+      *out_arg++ = d;
+    }
+    res->value.ptr[REVI(i) - 1] = d;
+  }
+  if(!dep_mask || // can't drop all outputs
+     dep_mask & 1) {
+    res->value.ptr[ctx->s.out-1] = nc;
+  } else {
+    res->value.ptr[ctx->s.out-1] = &fail_cell;
+    drop(nc);
   }
 
   LOG(TODO " fix condition %C @condition", res);
@@ -229,6 +245,10 @@ response exec_list(cell_t **cp, context_t *ctx) {
 }
 
 // unify c with pattern pat if possible, returning the unified result
+// The purpose is to fuse a recursive function to itself e.g.:
+//   for F = g . f . g', where g . g' = id,
+//       F^n = (g . f . g')^n = g . f^n . g'
+// eliminating the intermediate cancelling g/g' pairs.
 response unify_exec(cell_t **cp, tcell_t *parent_entry, context_t *ctx) {
   PRE(unify_exec, "#wrap");
 
@@ -289,16 +309,18 @@ response unify_exec(cell_t **cp, tcell_t *parent_entry, context_t *ctx) {
     TRAVERSE(c, in) {
       drop(*p);
     }
-    store_lazy_and_update_deps(cp, n, 0);
+    reassign_deps(c, n);
+    store_lazy(cp, n, 0);
   }
   return exec_list(cp, ctx);
 }
 
-void store_lazy_and_update_deps(cell_t **cp, cell_t *r, alt_set_t alt_set) {
-  cell_t *c = *cp;
+// reassign c's deps to r
+void reassign_deps(cell_t *c, cell_t *r) {
   refcount_t n = 0;
   csize_t out_n = closure_out(c);
   assert_error(closure_out(r) == out_n);
+
   if(out_n) {
     cell_t
       **c_out = &c->expr.arg[closure_args(c) - out_n],
@@ -317,9 +339,9 @@ void store_lazy_and_update_deps(cell_t **cp, cell_t *r, alt_set_t alt_set) {
     assert_error(c->n >= n);
     c->n -= n;
   }
-  store_lazy(cp, r, alt_set);
 }
 
+// expand the user function into an instance
 static
 cell_t *exec_expand(cell_t *c) {
   size_t
@@ -329,8 +351,9 @@ cell_t *exec_expand(cell_t *c) {
   tcell_t *entry = (tcell_t *)c->expr.arg[in];
   cell_t *res;
   tcell_t *returns = NULL;
-  cell_t **results[out + 1];
 
+  // pointers to the outputs
+  cell_t **results[out + 1];
   results[out] = &res;
   COUNTUP(i, out) {
     results[i] = &c->expr.arg[n - 1 - i]; // ***
@@ -341,11 +364,14 @@ cell_t *exec_expand(cell_t *c) {
   assert_error(entry->entry.len && FLAG(*entry, entry, COMPLETE));
   trace_clear_alt(entry); // *** probably shouldn't need this
 
+  // assign function inputs to entry inputs
   COUNTUP(i, in) {
     tcell_t *p = &entry[i + 1];
     cell_t *a = c->expr.arg[REVI(i)];
     assert_error(is_var(p), "%d", i);
     if(p->n + 1 == 0) {
+      // unused inputs
+      p->alt = NULL;
       drop(a);
     } else {
       p->alt = refn(a, p->n);
@@ -360,9 +386,12 @@ cell_t *exec_expand(cell_t *c) {
       continue; // skip empty cells TODO remove these
     }
     if(trace_type(p) == T_RETURN) {
+      // store a pointer to the first return
       if(!returns) returns = p;
       continue;
     }
+
+    // allocate a cell and copy instruction
     tcell_t *e = is_user_func(p) ? get_entry(p) : NULL;
     cell_t *nc;
     csize_t p_in;
@@ -391,7 +420,7 @@ cell_t *exec_expand(cell_t *c) {
   // check that a return was found
   assert_error(returns);
 
-  // rewrite pointers
+  // rewrite args/ptrs to pointers stored in alts
   FOR_TRACE(p, entry, in + 1) {
     int i = p - entry;
     cell_t *t = map_cell(entry, i);
@@ -406,7 +435,7 @@ cell_t *exec_expand(cell_t *c) {
       *t_entry = get_entry(t);
     }
 
-    TRAVERSE(t, alt, args, ptrs) {
+    TRAVERSE(t, args, ptrs) {
       if(*p) {
         trace_index_t x = tr_index(*p);
         *p = map_cell(entry, x);
@@ -455,10 +484,6 @@ cell_t *exec_expand(cell_t *c) {
   return res;
 }
 
-bool is_within_entry(tcell_t *entry, tcell_t *p) {
-  return p > entry && p <= entry + entry->entry.len;
-}
-
 // builds a temporary list of referenced variables
 cell_t **input_var_list(cell_t *c, cell_t **tail) {
   if(c && !c->tmp_val && tail != &c->tmp) {
@@ -481,6 +506,7 @@ cell_t **input_var_list(cell_t *c, cell_t **tail) {
   return tail;
 }
 
+// remove vars from p that are not in entry
 void vars_in_entry(cell_t **p, tcell_t *entry) {
   while(*p) {
     cell_t *v = *p;
@@ -496,6 +522,8 @@ void vars_in_entry(cell_t **p, tcell_t *entry) {
   }
 }
 
+// the argument order needs to be consistent on recursive calls
+// re-number inputs to match the order they are reached from wrap->expand
 void reassign_input_order(tcell_t *entry) {
   if(!entry->entry.wrap) return;
   cell_t *c = entry->entry.wrap->expand;
@@ -522,9 +550,7 @@ void reassign_input_order(tcell_t *entry) {
     assert_error(tn);
     assert_error(tn->pos, "%s[%d] (%C)",
                  entry->word_name, tn-entry, p);
-    if(tn->pos != pos) {
-      tn->pos = pos;
-    }
+    tn->pos = pos;
     pos++;
   }
   clean_tmp(vl);
@@ -569,7 +595,8 @@ cell_t *flat_call(cell_t *c, tcell_t *entry) {
 
 // TODO generalize these
 
-// [[...] ...] -> [...]
+// pull out the contents of a list using ap
+// i.e. remove a level of nesting: [[...]] -> [...]
 static
 cell_t *unwrap(cell_t *c, uintptr_t dep_mask, int out, int dropped) {
   int offset = list_size(c) - 1;
@@ -642,6 +669,8 @@ cell_t *expand_list(cell_t *c) {
   return l;
 }
 
+// collect references to up to n deps from the context
+// i.e. where the top n list items will go
 static
 context_t *collect_ap_deps(context_t *ctx, cell_t **deps, int n) {
   while(n > 0) {
@@ -671,6 +700,9 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
   LOG_UNLESS(entry->entry.out == 1, "out = %d #unify-multiout", entry->entry.out);
 
   wrap.entry = entry;
+
+  // calculate dep_mask, which indicates which list items will be used,
+  // as well as collecting references to where they will be stored.
   assert_error(ctx->s.out < sizeof(wrap.dep_mask) * 8);
   wrap.dep_mask = (1 << ctx->s.out) - 1;
   int dropped = 0;
@@ -713,7 +745,8 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
 
   cell_t *l = expand_list(nc);
 
-  // eliminate intermediate list
+  // eliminate intermediate list using unwrap
+  // this will be undone by exec_list
   if(ctx->t == T_LIST) {
     l = unwrap(l, wrap.dep_mask, ctx->s.out, dropped);
     new_entry->entry.out += ctx->s.out - 1 - dropped;
@@ -792,6 +825,8 @@ void trace_update_all(cell_t *c) {
   }
 }
 
+
+// trace this call instead of expanding it
 static
 response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
   size_t in = closure_in(*cp);
@@ -804,32 +839,39 @@ response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
   const size_t out = closure_out(c) + 1;
   const size_t entry_out = entry->entry.out;
   trace_t tr;
-  assert_error(out >= entry_out, "%d %d", out, entry_out);
+  assert_ge(out, entry_out);
 
   // reduce all inputs
   if(in) {
     csize_t n = 0;
     uint8_t in_types[in];
+    val_t in_opaque[in];
     memset(in_types, 0, in * sizeof(in_types[0]));
     reassign_input_order(entry);
 
+    // find types of inputs
     FOR_TRACE(p, entry) {
       if(is_var(p) && p->pos) {
         assert_le(p->pos, in);
         int i = in - p->pos;
         type_t t = p->value.type;
         in_types[i] = t;
-        if(t == T_OPAQUE) {
-          CHECK_IF(reduce(&c->expr.arg[i],
-                          WITH(&CTX(opaque, p->trace.range.min), priority, PRIORITY_ASSERT - 1)) == FAIL, FAIL);
-        } else {
-          CHECK_IF(reduce(&c->expr.arg[i],
-                          WITH(&CTX(t, t), priority, PRIORITY_ASSERT - 1)) == FAIL, FAIL);
-        }
+        if(t == T_OPAQUE) in_opaque[i] = p->trace.range.min;
         if(++n >= in) break;
       }
     }
 
+    // first reduce up to assertions
+    COUNTUP(i, in) {
+      type_t t = in_types[i];
+      context_t arg_ctx = t == T_OPAQUE ?
+        CTX(opaque, in_opaque[i]) :
+        CTX(t, t);
+      CHECK_IF(reduce(&c->expr.arg[i],
+                      WITH(&arg_ctx, priority, PRIORITY_ASSERT - 1)) == FAIL, FAIL);
+    }
+
+    // reduce again the usual way
     COUNTUP(i, in) {
       CHECK(reduce_arg(c, i, &CTX(t, in_types[i])));
       CHECK_IF(as_conflict(ctx->alt_set), FAIL);
@@ -862,22 +904,17 @@ response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
   }
 
   wrap_data *wrap = entry->entry.wrap;
-  uintptr_t mask = 0;
   if(wrap) {
-    mask = wrap->dep_mask;
     trace_update_all(wrap->expand);
   }
-  if(mask == 0) mask = (1 << entry_out) - 1;
-  {
-    int j = next_bit(&mask);
-    assert_error(j >= 0, "not enough bits in dep_mask");
-    get_trace_info_for_output(&tr, entry, j);
-    if(ONEOF(tr.type, T_ANY, T_BOTTOM) && ctx->t != T_ANY) {
-      tr.type = ctx->t;
-    }
-    res = var(tr.type, c, parent_entry->pos);
-    res->value.range = tr.range;
+
+  // get type and create return var
+  get_trace_info_for_output(&tr, entry, 0);
+  if(ONEOF(tr.type, T_ANY, T_BOTTOM) && ctx->t != T_ANY) {
+    tr.type = ctx->t;
   }
+  res = var(tr.type, c, parent_entry->pos);
+  res->value.range = tr.range;
 
   // replace outputs with variables
   cell_t **c_out = &c->expr.arg[in + 1];
@@ -886,9 +923,7 @@ response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
     if(d && is_dep(d)) {
       assert_error(d->expr.arg[0] == c);
       drop(c);
-      int j = next_bit(&mask);
-      assert_error(j >= 0, "not enough bits in dep_mask; maybe dangling dep references? %C", d);
-      get_trace_info_for_output(&tr, entry, j);
+      get_trace_info_for_output(&tr, entry, i + 1);
       store_dep(d, res->value.var, i + in + 1, tr.type, tr.range, ctx->alt_set);
       d->value.range = tr.range;
     }
@@ -906,7 +941,8 @@ bool is_input(cell_t *v) {
   return is_var(v) && is_var(v->value.var);
 }
 
-bool all_dynamic(tcell_t *entry, cell_t *c) {
+// returns true if the function can not be specialized further
+bool is_specialized_to(tcell_t *entry, cell_t *c) {
   int in = entry->entry.in;
   assert_error(in == closure_in(c));
   if(NOT_FLAG(*entry, entry, RECURSIVE)) {
@@ -960,7 +996,7 @@ OP(exec) {
       }
     }
     return AND0(rsp, func_exec_trace(cp, ctx, parent_entry));
-  } else if(parent_entry && all_dynamic(entry, c)) {
+  } else if(parent_entry && is_specialized_to(entry, c)) {
     return func_exec_trace(cp, ctx, parent_entry);
   } else if(parent_entry && FLAG(*entry, entry, RECURSIVE)) {
     return func_exec_wrap(cp, ctx, parent_entry);
