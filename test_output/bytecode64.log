@@ -3662,6 +3662,39 @@ ___ tests.fibl_r0 (3 -> 1) x2 rec ___
 [13] jump tests.fibl_r0 10 1 12 :: i x1
 [14] return [9]
 
+___ tests.fuse_map2 (1 -> 1) ___
+[1] var :: ?l x1
+[2] jump tests.fuse_map2_r0 1 :: l x1
+[3] return [2]
+
+___ tests.fuse_map2_r0 (1 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] __primitive.ap 1 -> 3 :: l? x2
+[3] __primitive.dep 2 :: i x1
+[4] __primitive.add 3 5 :: i x1
+[5] val 1 :: i x1
+[6] __primitive.mul 4 7 :: i x1
+[7] val 2 :: i x1
+[8] jump tests.fuse_map2_r0 2 :: l x1
+[9] __primitive.pushr 8 6 :: l x1
+[10] return [9]
+
+___ tests.fuse_map3 (1 -> 2) ___
+[1] var :: ?l x1
+[2] jump tests.fuse_map3_r0 1 -> 3 :: v x2
+[3] __primitive.dep 2 :: a x1
+[4] return [2 3]
+
+___ tests.fuse_map3_r0 (1 -> 2) rec ___
+[1] changing var :: ?l x1
+[2] __primitive.ap 1 -> 3 :: l? x2
+[3] __primitive.dep 2 :: i x1
+[4] __primitive.add 3 5 :: i x1
+[5] val 1 :: i x1
+[6] jump tests.fuse_map3_r0 2 -> 7 :: v x1
+[7] __primitive.dep 6 :: v x1
+[8] return [7 4]
+
 ___ tests.hello (1 -> 1) ___
 [1] var :: ?y x1
 [2] __primitive.open 1 &3 -> 4 :: y x2

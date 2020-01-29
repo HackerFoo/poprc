@@ -730,8 +730,9 @@ bool trace_recursive_changes(tcell_t *entry) {
         // if !branch_changes, a recusive call has been made without modifying any arguments
         // so a tail call will loop forever without producing anything
         non_tail_call |= NOT_FLAG(*p, trace, JUMP);
-        if(!forced_inline)
+        if(!forced_inline) {
           assert_throw(NOT_FLAG(*p, trace, JUMP) || branch_changes, "infinite tail recursion, tail call with constant args");
+        }
         changes = true;
       } else if(quote_has_call(pe, entry)) {
         non_tail_call = true;
@@ -741,8 +742,15 @@ bool trace_recursive_changes(tcell_t *entry) {
   }
 
   // if there's only one path, even if the arguments change, it will loop forever
-  if(!forced_inline)
-    assert_throw(!changes || non_tail_call || entry->entry.alts > 1, "infinite tail recursion, single alt");
+  if(!forced_inline) {
+    // very conservative check, should only fail if the function is definitely non-terminating
+    // TODO use return types e.g. T_BOTTOM
+    assert_throw(!changes
+                 || non_tail_call // could be lazy
+                 || entry->entry.alts > 1 // maybe only one of alts are recursive
+                 || entry->entry.out > 1, // could drop recursive path
+                 "infinite tail recursion, single alt");
+  }
   return changes;
 }
 

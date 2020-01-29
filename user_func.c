@@ -213,6 +213,7 @@ response exec_list(cell_t **cp, context_t *ctx) {
   csize_t in = closure_in(c);
   tcell_t *entry = (tcell_t *)(*cp)->expr.arg[in];
   csize_t out = entry->entry.out - 1;
+  csize_t ln = max(entry->entry.out, ctx->s.out);
   assert_error(entry->entry.wrap);
   const uintptr_t dep_mask = entry->entry.wrap->dep_mask;
 
@@ -220,9 +221,9 @@ response exec_list(cell_t **cp, context_t *ctx) {
   // so pad with fail_cell when corresponding bit isn't set in dep_mask
   cell_t *nc = expand(c, out);
   nc->expr.out = out;
-  res = make_list(ctx->s.out);
+  res = make_list(ln);
   cell_t **out_arg = &nc->expr.arg[in + 1];
-  RANGEUP(i, 1, ctx->s.out) {
+  RANGEUP(i, 1, ln) {
     cell_t *d = &fail_cell;
     if(dep_mask & (1 << i)) {
       d = dep(ref(nc));
@@ -232,9 +233,9 @@ response exec_list(cell_t **cp, context_t *ctx) {
   }
   if(!dep_mask || // can't drop all outputs
      dep_mask & 1) {
-    res->value.ptr[ctx->s.out-1] = nc;
+    res->value.ptr[ln-1] = nc;
   } else {
-    res->value.ptr[ctx->s.out-1] = &fail_cell;
+    res->value.ptr[ln-1] = &fail_cell;
     drop(nc);
   }
 
