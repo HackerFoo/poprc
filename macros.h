@@ -295,17 +295,6 @@
 #define WORD_ALIAS(...)
 #define OP(name) response func_##name(cell_t **cp, UNUSED context_t *ctx)
 
-#define AND0_1(a) (a)
-#define AND0_2(a, b)                            \
-  ({                                            \
-    __typeof__(a) __a = (a);                    \
-    __a ? __a : (b);                            \
-  })
-#define AND0_3(a, b, c) AND0_2(a, AND0_2(b, c))
-#define AND0_4(a, b, c, d) AND0_3(a, b, AND0_2(c, d))
-#define AND0_5(a, b, c, d, e) AND0_4(a, b, c, AND0_2(d, e))
-#define AND0(...) DISPATCH(AND0, __VA_ARGS__)
-
 #define LOCATION() (location_t) { .file = CONCAT(FILE_ID_, FILEBASE), .line = __LINE__ }
 #define STORE_LOCATION() (ctx->loc = LOCATION())
 

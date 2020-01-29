@@ -995,38 +995,41 @@ OP(exec) {
             *cp, entry->entry.wrap->initial);
         ABORT(FAIL);
       }
+      if(rsp != SUCCESS) return rsp;
     }
-    return AND0(rsp, func_exec_trace(cp, ctx, parent_entry));
-  } else if(parent_entry && is_specialized_to(entry, c)) {
     return func_exec_trace(cp, ctx, parent_entry);
-  } else if(parent_entry && FLAG(*entry, entry, RECURSIVE)) {
-    return func_exec_wrap(cp, ctx, parent_entry);
-  } else {
-    assert_counter(1000);
-
-    if(FLAG(*c, expr, RECURSIVE)) {
-      TRAVERSE(c, in) {
-        CHECK(force(p));
-      }
-      CHECK_DELAY();
+  } else if(parent_entry) {
+    if(is_specialized_to(entry, c)) {
+      return func_exec_trace(cp, ctx, parent_entry);
+    } else if(FLAG(*entry, entry, RECURSIVE)) {
+      return func_exec_wrap(cp, ctx, parent_entry);
     }
-    cell_t *res = exec_expand(c);
-
-    if(FLAG(*entry, entry, TRACE)) {
-      printf(NOTE("TRACE") " %s.%s", entry->module_name, entry->word_name);
-      TRAVERSE(c, in) {
-        putchar(' ');
-        show_one(*p);
-      }
-      printf("\n");
-      if(break_on_trace) {
-        LOG("break on trace: %C", c);
-        breakpoint();
-      }
-    }
-    store_lazy(cp, res, 0);
-    return RETRY;
   }
+
+  assert_counter(1000);
+
+  if(FLAG(*c, expr, RECURSIVE)) {
+    TRAVERSE(c, in) {
+      CHECK(force(p));
+    }
+    CHECK_DELAY();
+  }
+  cell_t *res = exec_expand(c);
+
+  if(FLAG(*entry, entry, TRACE)) {
+    printf(NOTE("TRACE") " %s.%s", entry->module_name, entry->word_name);
+    TRAVERSE(c, in) {
+      putchar(' ');
+      show_one(*p);
+    }
+    printf("\n");
+    if(break_on_trace) {
+      LOG("break on trace: %C", c);
+      breakpoint();
+    }
+  }
+  store_lazy(cp, res, 0);
+  return RETRY;
 
  abort:
   return abort_op(rsp, cp, ctx);
