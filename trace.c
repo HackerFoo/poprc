@@ -827,7 +827,7 @@ bool has_outside_call(const tcell_t *entry) {
 // finish tracing
 void trace_end_entry(tcell_t *e) {
   trace_final_pass(e);
-  e->entry.wrap = NULL;
+  e->entry.specialize = NULL;
   assert_error(prev_entry_pos && e->pos == prev_entry_pos, "out of order start/end entry");
   active_entries[--prev_entry_pos] = NULL;
   e->pos = 0;
@@ -849,11 +849,13 @@ tcell_t *trace_current_entry() {
   }
 }
 
-tcell_t *trace_wrap_entry(tcell_t *entry) {
+// get the top active specialization of an entry
+// NOTE might only need top entry
+tcell_t *trace_specialize_entry(tcell_t *entry) {
   COUNTDOWN(i, prev_entry_pos) {
     tcell_t *e = active_entries[i];
-    if(e->entry.wrap &&
-       e->entry.wrap->entry == entry) {
+    if(e->entry.specialize &&
+       e->entry.specialize->entry == entry) {
       return e;
     }
   }

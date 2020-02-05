@@ -45,6 +45,12 @@ bool _is_user_func(const cell_t *c) {
   return c->op == OP_exec;
 }
 
+tcell_t *closure_entry(cell_t *c) {
+  return is_user_func(c) ?
+    (tcell_t *)c->expr.arg[closure_in(c)] :
+    NULL;
+}
+
 // alts in trace are used to temporarily point to cell instances
 // they are copied to during expansion.
 // this gets that pointer
@@ -198,7 +204,7 @@ cell_t **bind_pattern(tcell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail)
 }
 
 // re-pack results of a recursive function back into a list
-// see: func_exec_wrap
+// see: func_exec_specialize
 static
 response exec_list(cell_t **cp, context_t *ctx) {
   PRE_NO_CONTEXT(exec_list);
@@ -211,11 +217,11 @@ response exec_list(cell_t **cp, context_t *ctx) {
   assert_error(ctx->s.out);
   cell_t *res;
   csize_t in = closure_in(c);
-  tcell_t *entry = (tcell_t *)(*cp)->expr.arg[in];
+  tcell_t *entry = closure_entry(*cp);
   csize_t out = entry->entry.out - 1;
   csize_t ln = max(entry->entry.out, ctx->s.out);
-  assert_error(entry->entry.wrap);
-  const uintptr_t dep_mask = entry->entry.wrap->dep_mask;
+  assert_error(entry->entry.specialize);
+  const uintptr_t dep_mask = entry->entry.specialize->dep_mask;
 
   // the list may be larger than the outputs due to dropping,
   // so pad with fail_cell when corresponding bit isn't set in dep_mask
@@ -251,13 +257,13 @@ response exec_list(cell_t **cp, context_t *ctx) {
 //       F^n = (g . f . g')^n = g . f^n . g'
 // eliminating the intermediate cancelling g/g' pairs.
 response unify_exec(cell_t **cp, tcell_t *parent_entry, context_t *ctx) {
-  PRE(unify_exec, "#wrap");
+  PRE(unify_exec, "#specialize");
 
   csize_t
     in = closure_in(c),
     out = closure_out(c);
-  tcell_t *entry = (tcell_t *)c->expr.arg[in];
-  cell_t *pat = entry->entry.wrap->initial;
+  tcell_t *entry = closure_entry(c);
+  cell_t *pat = entry->entry.specialize->initial;
 
   if(!pat) return FAIL;
   if(!FLAG(*c, expr, NO_UNIFY)) {
@@ -349,7 +355,7 @@ cell_t *exec_expand(cell_t *c) {
     in = closure_in(c),
     out = closure_out(c),
     n = closure_args(c);
-  tcell_t *entry = (tcell_t *)c->expr.arg[in];
+  tcell_t *entry = closure_entry(c);
   cell_t *res;
   tcell_t *returns = NULL;
 
@@ -524,11 +530,10 @@ void vars_in_entry(cell_t **p, tcell_t *entry) {
 }
 
 // the argument order needs to be consistent on recursive calls
-// re-number inputs to match the order they are reached from wrap->expand
+// re-number inputs to match the order they are reached from specialize->expand
 void reassign_input_order(tcell_t *entry) {
-  if(!entry->entry.wrap) return;
-  cell_t *c = entry->entry.wrap->expand;
-  set_ptr_tag(c, "wrap-&gt;expand");
+  if(!entry->entry.specialize) return;
+  cell_t *c = entry->entry.specialize->expand;
   if(!c) return;
   tcell_t *parent_entry = entry->entry.parent;
   CONTEXT("reassign input order %C (%s -> %s)", c,
@@ -538,7 +543,7 @@ void reassign_input_order(tcell_t *entry) {
   input_var_list(c, &vl);
   vars_in_entry(&vl, entry); // ***
   on_assert_error(tmp_list_length(vl) == in,
-                  "%d != %d, %s %C @wrap",
+                  "%d != %d, %s %C @specialize",
                   tmp_list_length(vl), in, entry->word_name, c) {
     FOLLOW(p, vl, tmp) {
       LOG("input var %C", p);
@@ -573,7 +578,7 @@ cell_t *flat_call(cell_t *c, tcell_t *entry) {
   cell_t *vl = 0;
   input_var_list(c, &vl);
   assert_error(tmp_list_length(vl) == in,
-               "%d != %d, %s @wrap",
+               "%d != %d, %s @specialize",
                tmp_list_length(vl), in, entry->word_name);
 
   int pos = 1;
@@ -598,12 +603,13 @@ cell_t *flat_call(cell_t *c, tcell_t *entry) {
 
 // pull out the contents of a list using ap
 // i.e. remove a level of nesting: [[...]] -> [...]
+// TODO handle row
 static
 cell_t *unwrap(cell_t *c, uintptr_t dep_mask, int out, int dropped) {
   int offset = list_size(c) - 1;
 
   // head
-  //assert_error(is_list(c) && list_size(c) == 1, TODO " size = %d, %C", list_size(c), c);
+  assert_error(is_list(c) && list_size(c) == 1, TODO " size = %d, %C", list_size(c), c);
 
   // N = out, ap0N swapN drop
   cell_t *l = make_list(out + offset - dropped);
@@ -690,22 +696,23 @@ context_t *collect_ap_deps(context_t *ctx, cell_t **deps, int n) {
   return ctx;
 }
 
+// generate a specialized sub-trace
 static
-response func_exec_wrap(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
+response func_exec_specialize(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
   csize_t
     in = closure_in(*cp),
     out = closure_out(*cp);
-  tcell_t *entry = (tcell_t *)(*cp)->expr.arg[in];
-  wrap_data wrap;
-  PRE(exec_wrap, "%s 0x%x #wrap", entry->word_name, (*cp)->expr.flags);
+  tcell_t *entry = closure_entry(*cp);
+  specialize_data specialize;
+  PRE(exec_specialize, "%s 0x%x #specialize", entry->word_name, (*cp)->expr.flags);
   LOG_UNLESS(entry->entry.out == 1, "out = %d #unify-multiout", entry->entry.out);
 
-  wrap.entry = entry;
+  specialize.entry = entry;
 
   // calculate dep_mask, which indicates which list items will be used,
   // as well as collecting references to where they will be stored.
-  assert_error(ctx->s.out < sizeof(wrap.dep_mask) * 8);
-  wrap.dep_mask = (1 << ctx->s.out) - 1;
+  assert_error(ctx->s.out < sizeof(specialize.dep_mask) * 8);
+  specialize.dep_mask = (1 << ctx->s.out) - 1;
   int dropped = 0;
   context_t *top = NULL;
   if(ctx->t == T_LIST) {
@@ -714,42 +721,43 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
     if(top) {
       COUNTUP(i, ctx->s.out) {
         if(!deps[i]) {
-          wrap.dep_mask &= ~(1 << i);
+          specialize.dep_mask &= ~(1 << i);
           dropped++;
           LOG("dropped ap %C, out = %d", c, i);
         }
       }
-      LOG("dep_mask %x", wrap.dep_mask);
+      LOG("dep_mask %x", specialize.dep_mask);
     }
   }
 
   tcell_t *new_entry = trace_start_entry(parent_entry, entry->entry.out);
-  new_entry->entry.wrap = &wrap;
+  new_entry->entry.specialize = &specialize;
   new_entry->module_name = parent_entry->module_name;
   new_entry->word_name = string_printf("%s_r%d", parent_entry->word_name, parent_entry->entry.sub_id++);
   LOG("created entry for %s", new_entry->word_name);
+
+  specialize.initial = TAG_PTR(ref(c), "specialize.initial");
+  insert_root(&c);
+
+  // make a list with expanded outputs of c
+  cell_t *nc = COPY_REF(c, in);
+  mark_barriers(new_entry, nc);
+  specialize.expand = TAG_PTR(nc, "specialize.expand");
+  insert_root(&nc);
 
   COUNTUP(i, in) {
     if(c->expr.arg[i]->op != OP_ap ||
        TWEAK(true, "to disable ap simplify %C", c->expr.arg[i]))
     simplify(&c->expr.arg[i]);
   }
-
-  wrap.initial = ref(c);
-  insert_root(&wrap.initial);
   move_changing_values(new_entry, c);
-
-  // make a list with expanded outputs of c
-  cell_t *nc = COPY_REF(c, in);
-  mark_barriers(new_entry, nc);
-  wrap.expand = nc;
 
   cell_t *l = expand_list(nc);
 
   // eliminate intermediate list using unwrap
   // this will be undone by exec_list
   if(ctx->t == T_LIST) {
-    l = unwrap(l, wrap.dep_mask, ctx->s.out, dropped);
+    l = unwrap(l, specialize.dep_mask, ctx->s.out, dropped);
     new_entry->entry.out += ctx->s.out - 1 - dropped;
   }
 
@@ -757,7 +765,6 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
 
   // TODO delay this to avoid quote creation
   TRAVERSE_REF(nc, in);
-  insert_root(&nc);
   new_entry->entry.alts = trace_reduce(new_entry, &l);
   drop(l);
   remove_root(&nc);
@@ -765,14 +772,15 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
   // IDEA split this up? {
   cell_t *p = flat_call(nc, new_entry);
   drop(nc);
-  drop(c);
 
   if(top) {
-    trace_drop_return(new_entry, ctx->s.out, wrap.dep_mask);
+    trace_drop_return(new_entry, ctx->s.out, specialize.dep_mask);
   }
 
-  drop(wrap.initial);
-  remove_root(&wrap.initial);
+  // must drop everything so that trace_drop is called
+  // before the trace is compacted and rearranged
+  drop(specialize.initial);
+  TRAVERSE(c, in) drop(*p);
   trace_end_entry(new_entry);
 
   trace_clear_alt(parent_entry);
@@ -787,7 +795,7 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
 
   // build list expected by caller
   if(ctx->t == T_LIST) {
-    trace_reduction(p, wrap_vars(&res, p, wrap.dep_mask, ctx->s.out));
+    trace_reduction(p, wrap_vars(&res, p, specialize.dep_mask, ctx->s.out));
   }
 
   // handle deps
@@ -807,9 +815,11 @@ response func_exec_wrap(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
     }
   }
 
-  *cp = p;
+  trace_reduction(p, res);
+  replace_cell(cp, ctx, res);
   add_conditions_from_array(res, p->expr.arg, in);
-  store_reduced(cp, ctx, res);
+  remove_root(&c);
+  drop(p);
   return SUCCESS;
 }
 
@@ -831,7 +841,7 @@ void trace_update_all(cell_t *c) {
 static
 response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
   size_t in = closure_in(*cp);
-  tcell_t *entry = (tcell_t *)(*cp)->expr.arg[in];
+  tcell_t *entry = closure_entry(*cp);
   PRE(exec_trace, "%s 0x%x", entry->word_name, (*cp)->expr.flags);
 
   assert_error(parent_entry);
@@ -904,9 +914,9 @@ response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
     }
   }
 
-  wrap_data *wrap = entry->entry.wrap;
-  if(wrap) {
-    trace_update_all(wrap->expand);
+  specialize_data *specialize = entry->entry.specialize;
+  if(specialize) {
+    trace_update_all(specialize->expand);
   }
 
   // get type and create return var
@@ -968,31 +978,32 @@ bool is_specialized_to(tcell_t *entry, cell_t *c) {
   return true;
 }
 
-static tcell_t *substitute_entry(tcell_t **entry) {
-  if(FLAG(**entry, entry, RECURSIVE)) {
-    tcell_t *e = trace_wrap_entry(*entry);
-    if(e) *entry = e;
-  }
-  return *entry;
+static tcell_t *substitute_entry(tcell_t *entry) {
+  if(NOT_FLAG(*entry, entry, RECURSIVE)) return entry;
+  tcell_t *e = trace_specialize_entry(entry); // breaks if specializing the same function twice!
+  return e ? e : entry;
 }
 
 OP(exec) {
-  tcell_t *entry = substitute_entry((tcell_t **)&(*cp)->expr.arg[closure_in(*cp)]);
+  tcell_t *entry = closure_entry(*cp);
   PRE(exec, "%s", entry->word_name);
 
   tcell_t *parent_entry = trace_current_entry();
+  tcell_t *s_entry = substitute_entry(entry);
+  if(s_entry->pos == c->pos) s_entry = entry;
 
-  if(NOT_FLAG(*entry, entry, COMPLETE)) {
+  if(NOT_FLAG(*s_entry, entry, COMPLETE)) {
     delay_branch(ctx, PRIORITY_DELAY);
     CHECK_PRIORITY(PRIORITY_EXEC_SELF);
     assert_error(parent_entry,
                  "incomplete entry can't be unified without "
                  "a parent entry %C @exec_split", c);
-    if(entry->entry.wrap) {
+    if(s_entry->entry.specialize) {
+      c->expr.arg[closure_in(c)] = (cell_t *)s_entry;
       rsp = unify_exec(cp, parent_entry, ctx);
       if(rsp == FAIL) {
         LOG(MARK("WARN") " unify failed: %C %C",
-            *cp, entry->entry.wrap->initial);
+            *cp, s_entry->entry.specialize->initial);
         ABORT(FAIL);
       }
       if(rsp != SUCCESS) return rsp;
@@ -1002,7 +1013,8 @@ OP(exec) {
     if(is_specialized_to(entry, c)) {
       return func_exec_trace(cp, ctx, parent_entry);
     } else if(FLAG(*entry, entry, RECURSIVE)) {
-      return func_exec_wrap(cp, ctx, parent_entry);
+      CHECK_PRIORITY(PRIORITY_EXEC_SELF);
+      return func_exec_specialize(cp, ctx, parent_entry);
     }
   }
 

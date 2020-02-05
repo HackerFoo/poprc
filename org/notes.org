@@ -1,5 +1,10 @@
 #+TITLE: PoprC Notes
 
+* fusion
+- in func_exec_wrap, push specialize-able recursive functions up to parent
+  __ short term options __
+  - don't specialize them for now
+  - specialize inputs first
 * rule: output registers should only change if out_valid
 * ready/valid
 set valid --- give ---> set ready

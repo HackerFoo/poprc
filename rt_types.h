@@ -214,12 +214,12 @@ struct __attribute__((packed)) mem {
 #define ENTRY_STACK         0x0800
 #define ENTRY_RETURN_ADDR   0x1000
 
-typedef struct wrap_data {
+typedef struct specialize_data {
   cell_t *initial;
   cell_t *expand;
   tcell_t *entry;
   uintptr_t dep_mask;
-} wrap_data;
+} specialize_data;
 
 /* word entry */
 struct __attribute__((packed)) entry {
@@ -228,7 +228,7 @@ struct __attribute__((packed)) entry {
   csize_t in, out, len;
   tcell_t *parent;
   union {
-    wrap_data *wrap;
+    specialize_data *specialize;
     tcell_t *compact;
   };
 };

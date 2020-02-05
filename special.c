@@ -41,7 +41,7 @@ bool ctx_has_pos(context_t *ctx) {
 bool ctx_split(cell_t *c, context_t *ctx) {
   assert_error(is_var(c), "split on context only at variables");
   tcell_t *entry = var_entry(c->value.var);
-  if(entry->entry.wrap) return false;
+  if(entry->entry.specialize) return false;
   if(ctx_has_pos(ctx)) return false; // ***
   alt_set_t c_as = c->value.alt_set;
   alt_set_t ctx_as = ctx_alt_set(ctx);

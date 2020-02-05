@@ -24,6 +24,15 @@
 
 static MAP(tags, 4096);
 
+#if INTERFACE
+#define TAG_PTR(ptr, str)                       \
+  ({                                            \
+    __typeof__(ptr) __ptr = ptr;                \
+    set_ptr_tag(__ptr, str);                    \
+    __ptr;                                      \
+  })
+#endif
+
 void set_ptr_tag(const void *ptr, const char *str) {
   pair_t p = { (uintptr_t)ptr, (uintptr_t)str };
   map_insert(tags, p);

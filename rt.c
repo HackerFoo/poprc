@@ -605,17 +605,13 @@ response abort_op(response rsp, cell_t **cp, context_t *ctx) {
   return rsp;
 }
 
-void store_reduced(cell_t **cp, UNUSED context_t *ctx, cell_t *r) { // CLEANUP
+void replace_cell(cell_t **cp, context_t *ctx, cell_t *r) {
   cell_t *c = *cp;
-  assert_error(is_value(r));
-  assert_error(!r->alt);
   if(c->alt || ctx->alt_set) {
     unique(&r);
     r->alt = c->alt;
     r->value.alt_set = ctx->alt_set;
   }
-  trace_reduction(c, r);
-  TRAVERSE(c, in) drop(*p);
   csize_t size = is_closure(r) ? closure_cells(r) : 0;
   if(size <= closure_cells(c)) {
     refcount_t n = c->n;
@@ -629,6 +625,15 @@ void store_reduced(cell_t **cp, UNUSED context_t *ctx, cell_t *r) { // CLEANUP
    } else {
     store_lazy(cp, r, 0);
   }
+}
+
+void store_reduced(cell_t **cp, context_t *ctx, cell_t *r) { // CLEANUP
+  cell_t *c = *cp;
+  assert_error(is_value(r));
+  assert_error(!r->alt);
+  trace_reduction(c, r);
+  TRAVERSE(c, in) drop(*p);
+  replace_cell(cp, ctx, r);
 }
 
 cell_t *conc_alt(cell_t *a, cell_t *b) {
