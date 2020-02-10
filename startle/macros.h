@@ -294,8 +294,8 @@
 #define show(x) printf(#x " = %d\n", (int)(x))
 
 #define FLAG_(x, flag) (((x) & (flag)) != 0)
-#define FLAG_FIELD(s, t) ((s).GET(0, CONCAT(FLAG_, t)).flags)
-#define FLAG_BIT(flag, t) CONCAT(CONCAT(GET(1, CONCAT(FLAG_, t)), _), flag)
+#define FLAG_FIELD(s, t) ((s).GET(0, CONCAT(FLAG_, t)) GET(1, CONCAT(FLAG_, t)) flags)
+#define FLAG_BIT(flag, t) CONCAT(CONCAT(GET(2, CONCAT(FLAG_, t)), _), flag)
 
 /** Return `true` if the flag is set. */
 #define FLAG(s, t, flag) FLAG_(FLAG_FIELD(s, t), FLAG_BIT(flag, t))

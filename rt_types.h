@@ -127,7 +127,7 @@ typedef union tr {
   };
 } tr;
 
-#define FLAG_expr (expr, EXPR)
+#define FLAG_expr (expr, ., EXPR)
 #define EXPR_NEEDS_ARG 0x02
 #define EXPR_TRACE     0x04
 #define EXPR_PARTIAL   0x10
@@ -149,7 +149,7 @@ struct __attribute__((packed)) expr {
 };
 
 // value flags
-#define FLAG_value (value, VALUE)
+#define FLAG_value (value, ., VALUE)
 #define VALUE_ABBREV     0x01
 #define VALUE_TRACED     0x02
 #define VALUE_INLINE     0x04
@@ -199,7 +199,18 @@ struct __attribute__((packed)) mem {
   cell_t *prev, *next;
 };
 
-#define FLAG_entry (entry, ENTRY)
+#define FLAG_specialize (specialize, ->, SPECIALIZE)
+#define SPECIALIZE_ROW     0x01
+
+typedef struct specialize_data {
+  cell_t *initial;
+  cell_t *expand;
+  tcell_t *entry;
+  uintptr_t dep_mask;
+  uint8_t flags;
+} specialize_data;
+
+#define FLAG_entry (entry, ., ENTRY)
 #define ENTRY_PRIMITIVE     0x0001
 #define ENTRY_TRACE         0x0002
 #define ENTRY_SYNC          0x0004
@@ -213,13 +224,6 @@ struct __attribute__((packed)) mem {
 #define ENTRY_FORCED_INLINE 0x0400
 #define ENTRY_STACK         0x0800
 #define ENTRY_RETURN_ADDR   0x1000
-
-typedef struct specialize_data {
-  cell_t *initial;
-  cell_t *expand;
-  tcell_t *entry;
-  uintptr_t dep_mask;
-} specialize_data;
 
 /* word entry */
 struct __attribute__((packed)) entry {
@@ -360,7 +364,7 @@ void breakpoint();
 #define COMMAND(name, desc) void command_##name(UNUSED cell_t *rest)
 
 // trace flags
-#define FLAG_trace (trace, TRACE)
+#define FLAG_trace (trace, ., TRACE)
 #define TRACE_INCOMPLETE 0x0001
 #define TRACE_TRACED     0x0002
 #define TRACE_USED       0x0004

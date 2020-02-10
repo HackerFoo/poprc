@@ -31,6 +31,8 @@
 #if INTERFACE
 
 struct ring_buffer;
+
+#define FLAG_file (file, ->, FILE)
 #define FILE_IN     0x01
 #define FILE_OUT    0x02
 #define FILE_BINARY 0x04

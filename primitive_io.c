@@ -261,7 +261,7 @@ bool array_read(uintptr_t arr, uintptr_t addr, val_t *out) {
     *out = p->second;
     return true;
   } else {
-    if(!FLAG_(ma->file->flags, FILE_IN)) return false;
+    if(!FLAG(*ma, file, IN)) return false;
     size_t offset = addr * ma->width;
     if(offset >= ma->size) return false;
     *out = 0;
@@ -278,7 +278,7 @@ bool array_write(uintptr_t arr, uintptr_t addr, val_t in) {
     map_replace_insert(arrays, (pair_t) {arr << 16 | addr, in});
     return true;
   } else {
-    if(!FLAG_(ma->file->flags, FILE_OUT)) return false;
+    if(!FLAG(*ma, file, OUT)) return false;
     size_t offset = addr * ma->width;
     if(offset >= ma->size) return false;
     memcpy(ma->data + offset, &in, min(sizeof(in), ma->width));
