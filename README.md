@@ -52,6 +52,18 @@ Some other primitives.  `dup` duplicates a value; notice how it respects the con
 
 Some other functions.
 
+PoprC can target both C and Verilog.
+
+For example, the familiar Fibonacci function:
+
+    fib: [dup 1 <= !] [dup 1- dup 1- fib swap fib + swap 1 > !] | pushl head
+
+can be compiled to Verilog and synthesized or simulated:
+
+![fib wave](pic/fib_wave.png)
+
+Note the stack pointer (sp). Recursion is fully supported, but must be bounded.
+
 License
 =======
 
