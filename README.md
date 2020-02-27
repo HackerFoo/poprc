@@ -19,6 +19,18 @@ can be compiled to Verilog and synthesized or simulated:
 
 Note the stack pointer (sp). Recursion is fully supported, but must be bounded.
 
+Here's a working AXI4-Lite slave:
+
+    stream_read_array: swap [swap read_array swap] map_with
+    
+    stream_write_array: swap2 [-swap2 swap write_array dup True swap seq swap] zip_with
+    
+    stream_read_write_array:
+      swap3 dup_array [-swap2 swap stream_write_array] dip31 swap
+        [swap stream_read_array] dip21
+
+when wrapped with a [bit of Verilog](https://github.com/HackerFoo/poprc/blob/master/testbenches/tests_axi_lite_slave_top.v) to map the signals properly.
+
 License
 =======
 
