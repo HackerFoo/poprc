@@ -106,9 +106,9 @@ TEST(loops) {
 }
 
 TEST(formask) {
-  unsigned int mask = 0x11af;
+  unsigned int mask = 0x11ae;
   unsigned int prev_mask = (mask << 1) + 1;
-  FORMASK(i, j, 0x11af) {
+  FORMASK(i, j, mask) {
     printf("%d, %d\n", (int)i, (int)j);
     if((prev_mask - (__mask << (__z + 1))) != 1) return -1;
     prev_mask = __mask;

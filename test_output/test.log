@@ -64,14 +64,13 @@ flattened_list_copy => 0
 @ for_mask
 for_mask => 0
 @ formask
-0, 0
-1, 1
-2, 2
-3, 3
-4, 5
-5, 7
-6, 8
-7, 12
+0, 1
+1, 2
+2, 3
+3, 5
+4, 7
+5, 8
+6, 12
 formask => 0
 @ function_in
 function_in => 0
