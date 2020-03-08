@@ -1,8 +1,10 @@
 language: c
-script: make BUILD=release
+script: make BUILD=release testbenches
 compiler:
   - clang
   - gcc
-dist: trusty
+dist: bionic
 sudo: false
 os: linux
+before_install:
+  - sudo apt-get -y install iverilog
