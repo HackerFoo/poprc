@@ -263,11 +263,11 @@ response unify_exec(cell_t **cp, tcell_t *parent_entry, context_t *ctx) {
     in = closure_in(c),
     out = closure_out(c);
   tcell_t *entry = closure_entry(c);
-  cell_t *pat = entry->entry.specialize->initial;
+  cell_t *initial = entry->entry.specialize->initial;
 
-  if(!pat) return FAIL;
+  if(!initial) return FAIL;
   if(!FLAG(*c, expr, NO_UNIFY)) {
-    assert_eq(in, closure_in(pat)); // TODO skip over non-changing args
+    assert_eq(in, closure_in(initial)); // TODO skip over non-changing args
 
     LOG_WHEN(out != 0, TODO " unify_convert %d: out(%d) != 0 @unify-multiout", c-cells, out);
 
@@ -276,9 +276,9 @@ response unify_exec(cell_t **cp, tcell_t *parent_entry, context_t *ctx) {
       **tail = &vl;
     COUNTUP(i, in) {
       simplify(&c->expr.arg[i]); // FIX this can cause arg flips
-      tail = bind_pattern(NULL, c->expr.arg[i], pat->expr.arg[i], tail);
+      tail = bind_pattern(NULL, c->expr.arg[i], initial->expr.arg[i], tail);
       if(!tail) {
-        LOG("bind_pattern failed %C %C", c->expr.arg[i], pat->expr.arg[i]);
+        LOG("bind_pattern failed %C %C", c->expr.arg[i], initial->expr.arg[i]);
         break;
       }
     }
@@ -310,7 +310,7 @@ response unify_exec(cell_t **cp, tcell_t *parent_entry, context_t *ctx) {
 
     LOG("unified %s %C with initial_word in %s %C",
         entry->word_name, c,
-        parent_entry->word_name, pat);
+        parent_entry->word_name, initial);
     LOG_WHEN(closure_out(c), TODO " handle deps in c = %C, n = %C", c, n);
 
     TRAVERSE(c, in) {
