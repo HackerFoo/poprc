@@ -139,6 +139,12 @@ OP(value) {
     }
   } else if(is_row_list(c)) {
     placeholder_extend(cp, ctx->s, false);
+    /* TODO simplify rows
+    if(list_size(*cp) == 1 && !c->pos && !c->alt) { // ***
+      *cp = CUT(*cp, value.ptr[0]);
+      return RETRY;
+    }
+    */
   } else if(c->pos) {
     if(is_list(c) && !is_empty_list(c)) {
       TRAVERSE(c, ptrs) {
@@ -459,7 +465,7 @@ OP(dep) {
   cell_t *p = ref(c->expr.arg[0]);
   assert_error(is_dep_of(c, p));
   insert_root(&p);
-  CHECK(reduce_one(&p, &CTX(any)));
+  CHECK(reduce_one(&p, ctx_pos(&CTX(any), pos)));
   CHECK_DELAY();
   trace_dep(c);
   remove_root(&p);

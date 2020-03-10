@@ -97,10 +97,14 @@ response func_list(cell_t **cp, context_t *ctx) {
   CHECK_IF(!check_type(ctx->t, T_RETURN), FAIL);
   csize_t n = list_size(c);
   if(n == 0) return SUCCESS;
+  bool row = is_row_list(c);
 
   ctx->alt_set = c->value.alt_set;
   COUNTUP(i, n) {
-    response r = reduce_ptr(c, i, ctx_pos(&CTX(any), ctx->pos));
+    context_t *arg_ctx = row && i == n - 1 ?
+      ctx_pos(&CTX(list, 0, 0), ctx->pos) :
+      ctx_pos(&CTX(any), ctx->pos);
+    response r = reduce_ptr(c, i, arg_ctx);
     if(ctx->depth > 0 && r == FAIL) {
       // shrink the list to the first failure
       closure_shrink_list(c, i);
@@ -120,7 +124,7 @@ response func_list(cell_t **cp, context_t *ctx) {
   TRAVERSE(c, ptrs) {
     add_conditions_var(*p, value_condition(c)); // *** modifies *p
   }
-  if(n && is_row_list(c) && is_list(c->value.ptr[n-1])) {
+  if(n && row && is_list(c->value.ptr[n-1])) {
     if(ctx->depth >= LIST_MAX_DEPTH) {
       drop(c->value.ptr[n-1]);
       c->value.ptr[n-1] = &nil_cell;

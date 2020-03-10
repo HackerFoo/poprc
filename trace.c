@@ -371,6 +371,7 @@ void switch_entry(tcell_t *entry, cell_t *r) {
 
     WATCH(r, "switch_entry", "%s", entry->word_name);
     tcell_t *v = r->value.var;
+    assert_error(v < entry, "cannot switch out");
 
     // a little hacky because ideally variables shouldn't be duplicated
     // see TODO in func_value
@@ -849,6 +850,17 @@ tcell_t *trace_current_entry() {
   }
 }
 
+void trace_reset(tcell_t *entry) {
+  COUNTDOWN(i, prev_entry_pos) {
+    tcell_t *e = active_entries[i];
+    if(e == entry) {
+      prev_entry_pos = i;
+      trace_ptr = entry;
+      break;
+    }
+  }
+}
+
 // get the top active specialization of an entry
 // NOTE might only need top entry
 tcell_t *trace_specialize_entry(tcell_t *entry) {
@@ -1102,6 +1114,7 @@ int trace_build_quote(tcell_t *entry, cell_t *l) {
       return var_index(entry, l->value.var);
     }
     bool row = is_row_list(l);
+    if(row) FLAG_SET(*entry, entry, ROW);
     const int size = function_out(l, true);
     assert_error(!row || size > 1);
     FORLIST(p, l, true) force(p); // ***
@@ -1138,7 +1151,10 @@ cell_t *trace_quote_var(tcell_t *entry, cell_t *l) {
 // store a return
 static
 int trace_return(tcell_t *entry, cell_t *c_) {
+  bool row = entry->entry.specialize && FLAG(entry->entry, specialize, ROW);
+  if(row) FLAG_CLEAR(*c_, value, ROW); // ***
   cell_t *c = flat_copy(c_);
+  assert_eq(list_size(c), entry->entry.out);
   cell_t **p;
   FORLIST(p, c, true) {
     trace_index_t x;

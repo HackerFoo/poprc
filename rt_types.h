@@ -200,7 +200,8 @@ struct __attribute__((packed)) mem {
 };
 
 #define FLAG_specialize (specialize, ->, SPECIALIZE)
-#define SPECIALIZE_ROW     0x01
+#define SPECIALIZE_UNWRAPPED 0x01
+#define SPECIALIZE_ROW       0x02
 
 typedef struct specialize_data {
   cell_t *initial;
@@ -224,6 +225,7 @@ typedef struct specialize_data {
 #define ENTRY_FORCED_INLINE 0x0400
 #define ENTRY_STACK         0x0800
 #define ENTRY_RETURN_ADDR   0x1000
+#define ENTRY_ROW           0x2000
 
 /* word entry */
 struct __attribute__((packed)) entry {

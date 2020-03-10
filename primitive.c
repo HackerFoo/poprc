@@ -879,7 +879,9 @@ OP(id) {
 WORD("drop", drop, 2, 1)
 OP(drop) {
   PRE(drop);
+  int pos = c->pos;
   *cp = CUT(c, expr.arg[0]);
+  mark_pos(*cp, pos);
   return RETRY;
 }
 
@@ -949,8 +951,9 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   int pos = c->pos ? c->pos : c->expr.arg[in]->pos;
 
   // conservative guesses for the sizes of `a` and `b`
+  int ctx_out = pos ? 0 : ctx->s.out;
   qsize_t
-    cs = {ctx->s.in, ctx->s.out + out},
+    cs = {ctx->s.in, ctx_out + out},
     bs = {(row ? 0 : cs.in) + arg_in, cs.out},
     as = {row ? cs.in : 0, 0};
 

@@ -1,6 +1,20 @@
 #+TITLE: PoprC Notes
 
+* pos
+- works as an anchor
+- need to clean up
+- used both to keep expressions in and initial values out of recursion
+* memory
+- write weighted histogram
 * fusion
+- apply `ap0N` to unwrap recursive call, then `pushrN` for row
+- unwrap: [a... b c] -> [a...] b c?
+  maybe not necessary, `a...` is already a list
+  look at row forcing behavior in func_list
+- split row into separate function?
+  or encode lazy row?
+  don't unwrap list functions with row
+    * get chained list functions to work, then fix up specialization
 - in func_exec_wrap, push specialize-able recursive functions up to parent
   __ short term options __
   - don't specialize them for now

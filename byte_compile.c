@@ -677,6 +677,7 @@ void set_pos_for_values(cell_t *c, tcell_t *entry) {
   }
 }
 
+// mark values to be lifted out of recursive functions by setting pos
 void move_changing_values(tcell_t *entry, cell_t *c) {
   tcell_t *expanding = (tcell_t *)c->expr.arg[closure_in(c)];
   TRAVERSE(c, in) {

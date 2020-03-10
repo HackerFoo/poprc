@@ -37,6 +37,8 @@
 #include "parse.h" // for string_printf
 #include "tags.h"
 
+#define ID_MAP_HASH 0x1b21417d
+
 #if INTERFACE
 #define is_user_func(c) _is_user_func(GET_CELL(c))
 #endif
@@ -151,18 +153,18 @@ cell_t **bind_pattern(tcell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail)
     if(pattern->pos) entry = trace_expr_entry(pattern->pos);
 
     if(is_list(c)) {
-      assert_eq(list_size(c), list_size(pattern));
-      COUNTUP(i, list_size(pattern)) {
-        cell_t **a = &c->value.ptr[i];
-        if(closure_is_ready(*a)) {
-          simplify(a); // *** should this should be done at a higher level?
-          LOG_WHEN((*a)->alt, MARK("WARN") " bind drops alt %C -> %C", *a, (*a)->alt);
+      list_iterator_t ci = list_begin(c), pi = list_begin(pattern);
+      cell_t **cp, **pp;
+      while(cp = list_next(&ci, true),
+            pp = list_next(&pi, true),
+            cp && pp) {
+        if(closure_is_ready(*cp)) {
+          simplify(cp); // *** should this should be done at a higher level?
+          LOG_WHEN((*cp)->alt, MARK("WARN") " bind drops alt %C -> %C", *cp, (*cp)->alt);
         }
-        tail = bind_pattern(entry,
-                            *a,
-                            pattern->value.ptr[i],
-                            tail);
+        tail = bind_pattern(entry, *cp, *pp, tail);
       }
+      assert_error(!cp && !pp, "mismatched lists %C %C", c, pattern);
     } else {
       csize_t
         in = function_in(pattern),
@@ -209,19 +211,23 @@ static
 response exec_list(cell_t **cp, context_t *ctx) {
   PRE_NO_CONTEXT(exec_list);
 
-  if(ctx->t != T_LIST || closure_out(c) != 0 || !ctx->s.out) {
+  if(ctx->t != T_LIST || closure_out(c) != 0) {
     return SUCCESS;
   }
 
   CONTEXT_LOG("exec_list %C", c);
-  assert_error(ctx->s.out);
   cell_t *res;
   csize_t in = closure_in(c);
-  tcell_t *entry = closure_entry(*cp);
+  tcell_t *entry = closure_entry(c);
   csize_t out = entry->entry.out - 1;
-  csize_t ln = max(entry->entry.out, ctx->s.out);
+  bool row = FLAG(entry->entry, specialize, ROW);
+  csize_t ln = max(entry->entry.out + row, ctx->s.out);
   assert_error(entry->entry.specialize);
   const uintptr_t dep_mask = entry->entry.specialize->dep_mask;
+
+  if(NOT_FLAG(entry->entry, specialize, UNWRAPPED)) {
+    return SUCCESS;
+  }
 
   // the list may be larger than the outputs due to dropping,
   // so pad with fail_cell when corresponding bit isn't set in dep_mask
@@ -229,10 +235,12 @@ response exec_list(cell_t **cp, context_t *ctx) {
   nc->expr.out = out;
   res = make_list(ln);
   cell_t **out_arg = &nc->expr.arg[in + 1];
+  uintptr_t remaining = dep_mask;
   RANGEUP(i, 1, ln) {
+    remaining &= ~(1 << i);
     cell_t *d = &fail_cell;
     if(dep_mask & (1 << i)) {
-      d = dep(ref(nc));
+      d = remaining ? dep(ref(nc)) : nc;
       *out_arg++ = d;
     }
     res->value.ptr[REVI(i) - 1] = d;
@@ -242,7 +250,10 @@ response exec_list(cell_t **cp, context_t *ctx) {
     res->value.ptr[ln-1] = nc;
   } else {
     res->value.ptr[ln-1] = &fail_cell;
-    drop(nc);
+  }
+
+  if(FLAG(entry->entry, specialize, ROW)) {
+    FLAG_SET(*res, value, ROW);
   }
 
   LOG(TODO " fix condition %C @condition", res);
@@ -292,6 +303,7 @@ response unify_exec(cell_t **cp, tcell_t *parent_entry, context_t *ctx) {
     }
 
     csize_t in = tmp_list_length(vl);
+    assert_error(in, "no inputs %C", c);
     cell_t *n = ALLOC(in + out + 1,
       .expr.out = out,
       .op = OP_exec
@@ -538,13 +550,13 @@ void reassign_input_order(tcell_t *entry) {
   tcell_t *parent_entry = entry->entry.parent;
   CONTEXT("reassign input order %C (%s -> %s)", c,
           parent_entry->word_name, entry->word_name);
-  UNUSED csize_t in = entry->entry.in;
   cell_t *vl = 0;
   input_var_list(c, &vl);
   vars_in_entry(&vl, entry); // ***
-  on_assert_error(tmp_list_length(vl) == in,
+  on_assert_error(tmp_list_length(vl) == entry->entry.in,
                   "%d != %d, %s %C @specialize",
-                  tmp_list_length(vl), in, entry->word_name, c) {
+                  tmp_list_length(vl), entry->entry.in,
+                  entry->word_name, c) {
     FOLLOW(p, vl, tmp) {
       LOG("input var %C", p);
     }
@@ -554,6 +566,7 @@ void reassign_input_order(tcell_t *entry) {
   FOLLOW(p, vl, tmp) {
     tcell_t *tn = var_for_entry(entry, p->value.var);
     assert_error(tn);
+    assert_error(is_var(tn));
     assert_error(tn->pos, "%s[%d] (%C)",
                  entry->word_name, tn-entry, p);
     tn->pos = pos;
@@ -605,16 +618,17 @@ cell_t *flat_call(cell_t *c, tcell_t *entry) {
 // i.e. remove a level of nesting: [[...]] -> [...]
 // TODO handle row
 static
-cell_t *unwrap(cell_t *c, uintptr_t dep_mask, int out, int dropped) {
+cell_t *unwrap(cell_t *c, uintptr_t dep_mask, int out, int dropped, bool row) {
   int offset = list_size(c) - 1;
 
-  // head
+  // head (offset == 0)
   assert_error(is_list(c) && list_size(c) == 1, TODO " size = %d, %C", list_size(c), c);
 
   // N = out, ap0N swapN drop
-  cell_t *l = make_list(out + offset - dropped);
+  cell_t *l = make_list(out + offset - dropped + row);
+  if(row) FLAG_SET(*l, value, ROW);
   cell_t *ap = ready_func(OP_ap, 1, out + 1);
-  LOG("unwrap %d %C [%C]", out, l, ap);
+  LOG("unwrap %C %d %C [%C]", c, out, l, ap);
   COUNTUP(i, offset) {
     l->value.ptr[i] = ref(c->value.ptr[i]);
   }
@@ -628,7 +642,11 @@ cell_t *unwrap(cell_t *c, uintptr_t dep_mask, int out, int dropped) {
     }
   }
   ap->expr.arg[0] = ref(c->value.ptr[offset]);
-  drop(ap);
+  if(row) {
+    *p++ = ap;
+  } else {
+    drop(ap);
+  }
   drop(c);
   return l;
 }
@@ -748,7 +766,7 @@ response func_exec_specialize(cell_t **cp, context_t *ctx, tcell_t *parent_entry
   COUNTUP(i, in) {
     if(c->expr.arg[i]->op != OP_ap ||
        TWEAK(true, "to disable ap simplify %C", c->expr.arg[i]))
-    simplify(&c->expr.arg[i]);
+      simplify(&c->expr.arg[i]);
   }
   move_changing_values(new_entry, c);
 
@@ -756,9 +774,16 @@ response func_exec_specialize(cell_t **cp, context_t *ctx, tcell_t *parent_entry
 
   // eliminate intermediate list using unwrap
   // this will be undone by exec_list
+  bool row = false;
   if(ctx->t == T_LIST) {
-    l = unwrap(l, specialize.dep_mask, ctx->s.out, dropped);
-    new_entry->entry.out += ctx->s.out - 1 - dropped;
+    row = FLAG(*entry, entry, ROW);
+    l = unwrap(l, specialize.dep_mask, ctx->s.out, dropped, row);
+    new_entry->entry.out += ctx->s.out - 1 - dropped + row;
+    FLAG_SET(new_entry->entry, specialize, UNWRAPPED);
+    if(row) {
+      FLAG_SET(new_entry->entry, specialize, ROW);
+      specialize.dep_mask |= 1 << ctx->s.out;
+    }
   }
 
   // IDEA break here?
@@ -769,7 +794,24 @@ response func_exec_specialize(cell_t **cp, context_t *ctx, tcell_t *parent_entry
   drop(l);
   remove_root(&nc);
 
+  // eliminate [id] map
+  if(hash_entry(new_entry) == ID_MAP_HASH) {
+    LOG("[id] map %C %C", c, nc);
+
+    cell_t *p = c->expr.arg[0];
+    tcell_t *tn = get_var(parent_entry, p);
+    cell_t *v = var_create_nonlist(tn->trace.type, tn);
+    *cp = v;
+
+    drop(nc);
+    dropn(c, 2);
+    remove_root(&c);
+    trace_reset(new_entry);
+    return SUCCESS;
+  }
+
   // IDEA split this up? {
+  TRAVERSE(nc, in) simplify(p);
   cell_t *p = flat_call(nc, new_entry);
   drop(nc);
 
@@ -794,8 +836,10 @@ response func_exec_specialize(cell_t **cp, context_t *ctx, tcell_t *parent_entry
   tcell_t *tc = res->value.var;
 
   // build list expected by caller
-  if(ctx->t == T_LIST) {
-    trace_reduction(p, wrap_vars(&res, p, specialize.dep_mask, ctx->s.out));
+  if(FLAG_(specialize.flags, SPECIALIZE_UNWRAPPED)) {
+    cell_t *l = wrap_vars(&res, p, specialize.dep_mask, max(new_entry->entry.out, ctx->s.out + row));
+    if(FLAG_(specialize.flags, SPECIALIZE_ROW)) FLAG_SET(*res, value, ROW);
+    trace_reduction(p, l);
   }
 
   // handle deps
@@ -1012,6 +1056,8 @@ OP(exec) {
   } else if(parent_entry) {
     if(is_specialized_to(entry, c)) {
       return func_exec_trace(cp, ctx, parent_entry);
+    } else if(FLAG(*entry, entry, ROW) && ctx->t == T_LIST && ctx->s.out) {
+      // fall through to unroll
     } else if(FLAG(*entry, entry, RECURSIVE)) {
       CHECK_PRIORITY(PRIORITY_EXEC_SELF);
       return func_exec_specialize(cp, ctx, parent_entry);

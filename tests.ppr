@@ -465,3 +465,10 @@ three_writes: [[[[write_array] dip31] dip42 write_array] dip51] dip62 write_arra
 __ fuse_map: [1+] map [2*] map
 fuse_map2: [1+ 2*] map
 fuse_map3: [1+] map get2
+fuse_map4: [1+] map tail
+fuse_map4b: popr drop [1+] map
+__ fuse_map5: 0 [+ dup] map_with tail
+__ fuse_map5b: popr drop 0 [+ dup] map_with
+
+id_map: [id] map __ eliminate this
+id_map2: popr [id_map2] dip11 pushr
