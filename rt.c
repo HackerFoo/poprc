@@ -321,7 +321,8 @@ response reduce(cell_t **cp, context_t *ctx) {
 
 response simplify(cell_t **cp) {
   CONTEXT("simplify %C", *cp);
-  return reduce(cp, WITH(&CTX(any), priority, PRIORITY_SIMPLIFY));
+  context_t *arg_ctx = &CTX(any);
+  return reduce(cp, WITH(arg_ctx, priority, PRIORITY_SIMPLIFY));
 }
 
 // Perform one reduction step on *cp
@@ -388,7 +389,7 @@ refcount_t direct_refs(const cell_t *c) {
 
 // add more outputs
 cell_t *expand_deps(cell_t *c, csize_t s) {
-  csize_t deps = c->n; // only references should be deps
+  UNUSED csize_t deps = c->n; // only references should be deps
   csize_t in = closure_args(c) - closure_out(c);
 
   c->n = 0;

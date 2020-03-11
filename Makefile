@@ -29,7 +29,11 @@ endif
 
 ifeq ($(findstring gcc, $(CC)),gcc)
 	SANITIZE := -fsanitize=undefined
-	CFLAGS = -falign-functions=4 -Wall -std=gnu99
+	CFLAGS = -falign-functions=4 -Wall -std=gnu99 \
+                 -Wno-address-of-packed-member \
+                 -Wno-unused-but-set-variable \
+                 -Wno-unused-value \
+                 -Wno-pointer-to-int-cast
 	CXXFLAGS = -xc++ -falign-functions=4 -Wall -std=c++98
 	OPT_FLAG = -O3
 	LDFLAGS += -rdynamic

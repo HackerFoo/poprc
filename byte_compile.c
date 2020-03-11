@@ -1115,7 +1115,7 @@ void build_backrefs(const tcell_t *entry, uintptr_t **table, size_t size) {
   FOR_TRACE_CONST(tc, entry) {
     TRAVERSE(tc, const, in, ptrs) {
       int x = tr_index(*p);
-      bool success = set_nonzero(index[x-1], entry[x].n + 1, tc - entry);
+      UNUSED bool success = set_nonzero(index[x-1], entry[x].n + 1, tc - entry);
       assert_error(success);
     }
   }

@@ -160,7 +160,8 @@ void log_ptrs(cell_t *c) {
 }
 
 void reduce_list(cell_t **cp, int depth) {
-  context_t *ctx = WITH(&CTX(return), priority, PRIORITY_TOP);
+  context_t *ctx = &CTX(return);
+  ctx->priority = PRIORITY_TOP;
   ctx->depth = depth;
   response rsp = SUCCESS;
   cell_t **p = cp;

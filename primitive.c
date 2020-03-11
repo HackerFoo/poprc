@@ -774,7 +774,7 @@ bool rule_merge_unless(context_t *ctx) {
   if(ctx->inv) {
     cell_t *c = ctx->src;
     cell_t *p = ctx->up->src;
-    if(p->op == OP_unless && p->expr.arg[1] == c) {
+    if(p && p->op == OP_unless && p->expr.arg[1] == c) {
       LOG("rule match: merge_unless %C %C", p, c);
       p->op = OP_seq;
       //p->expr.arg[1] = p->expr.arg[0];
@@ -802,7 +802,8 @@ OP(unless) {
   cell_t **p = &c->expr.arg[0];
   cell_t **q = &c->expr.arg[1];
   while(*q) {
-    response rsp0 = reduce(q, WITH(&CTX(any), inv, !ctx->inv));
+    context_t *arg_ctx = &CTX(any);
+    response rsp0 = reduce(q, WITH(arg_ctx, inv, !ctx->inv));
     CHECK_IF(rsp0 == RETRY, RETRY);
     if(rsp0 == DELAY) {
       rsp = DELAY;
@@ -868,7 +869,7 @@ OP(id) {
     return SUCCESS;
   } else {
     *cp = CUT(c, expr.arg[0]);
-    mark_pos(*cp, pos);
+    if((*cp)->n != PERSISTENT) mark_pos(*cp, pos);
     return RETRY;
   }
 
@@ -879,9 +880,10 @@ OP(id) {
 WORD("drop", drop, 2, 1)
 OP(drop) {
   PRE(drop);
-  int pos = c->pos;
-  *cp = CUT(c, expr.arg[0]);
-  mark_pos(*cp, pos);
+  drop(c->expr.arg[1]);
+  c->op = OP_id;
+  c->size = 1;
+  c->expr.alt_set = 0;
   return RETRY;
 }
 

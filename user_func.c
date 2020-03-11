@@ -653,6 +653,8 @@ cell_t *unwrap(cell_t *c, uintptr_t dep_mask, int out, int dropped, bool row) {
 
 // [res dep_0 ... dep_out-1]
 cell_t *wrap_vars(cell_t **res, cell_t *p, uintptr_t dep_mask, csize_t out) {
+  assert_error(dep_mask);
+  assert_error(out);
   cell_t *l = make_list(out);
   int offset = closure_args(p) - closure_out(p);
   cell_t **out_arg = &p->expr.arg[offset];
@@ -726,6 +728,7 @@ response func_exec_specialize(cell_t **cp, context_t *ctx, tcell_t *parent_entry
   LOG_UNLESS(entry->entry.out == 1, "out = %d #unify-multiout", entry->entry.out);
 
   specialize.entry = entry;
+  specialize.flags = 0;
 
   // calculate dep_mask, which indicates which list items will be used,
   // as well as collecting references to where they will be stored.
@@ -892,9 +895,8 @@ response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
 
   cell_t *res;
   const size_t out = closure_out(c) + 1;
-  const size_t entry_out = entry->entry.out;
   trace_t tr;
-  assert_ge(out, entry_out);
+  assert_ge(out, entry->entry.out);
 
   // reduce all inputs
   if(in) {
@@ -950,7 +952,8 @@ response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
           switch_entry(parent_entry, f);
         }
       }
-      CHECK(func_list(ap, WITH(&CTX(return), priority, PRIORITY_TOP)));
+      context_t *arg_ctx = &CTX(return);
+      CHECK(func_list(ap, WITH(arg_ctx, priority, PRIORITY_TOP)));
       CHECK_DELAY();
 
       // ensure quotes are stored first
