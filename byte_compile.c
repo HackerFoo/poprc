@@ -509,7 +509,10 @@ void compile_module(cell_t *module) {
 
 // lookup an entry and compile if needed
 cell_t *module_lookup_compiled(seg_t path, cell_t **context) {
-  cell_t *p = module_lookup(path, context);
+  return compile_def(module_lookup(path, context), path, context);
+}
+
+cell_t *compile_def(cell_t *p, seg_t path, cell_t **context) {
   if(!p) return NULL;
   if(!is_list(p)) return p;
   if(FLAG(*p, value, TRACED)) {

@@ -46,9 +46,11 @@ cell_t *lex(const char* s, const char* e) {
   if(!e) e = s + strlen(s);
   seg_t t;
   const char *line = s;
-  cell_t *ret = NULL, **prev = &ret;
+  const char *prev_loc = s;
+  cell_t *ret = NULL, **prev_next = &ret;
   char_class_t cc;
-  while(t = tok(s, e, &cc), t.s) {
+  attr_t attr0 = 0, *attr_prev = &attr0, attr_new = 0;
+  while(t = tok(s, e, &cc, attr_prev, &attr_new), t.s) {
     const char *next = seg_end(t);
     update_line(s, next, &line);
     s = next;
@@ -59,8 +61,12 @@ cell_t *lex(const char* s, const char* e) {
     tok_set_seg(c, t);
     c->tok_list.line = line;
     c->char_class = cc;
-    *prev = c;
-    prev = &c->tok_list.next;
+    c->tok_list.attributes = attr_new;
+    attr_prev = &c->tok_list.attributes;
+    prev_loc = c->tok_list.location + c->tok_list.length;
+    *prev_next = c;
+    prev_next = &c->tok_list.next;
+    attr_new = 0;
   }
   return ret;
 }

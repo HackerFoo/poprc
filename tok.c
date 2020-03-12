@@ -26,6 +26,8 @@
 
 #include "tok.h"
 
+void attribute_parser(const char *s, const char *e, bool after_newline, attr_t *attr_before, attr_t *attr_after);
+
 char_class_t char_class(char c) {
   assert_throw(c < 127, "ASCII only please");
   if(!INRANGE(c, '!', '~'))
@@ -150,9 +152,10 @@ TEST(string_literal) {
   return strcmp(a, "end") ? -1 : 0;
 }
 
-seg_t tok(const char *s, const char* e, char_class_t *class) {
+seg_t tok(const char *s, const char* e, char_class_t *class, attr_t *attr_before, attr_t *attr_after) {
   seg_t seg = {NULL, 0};
   char_class_t cc = CC_NONE;
+  bool after_newline = false;
 
   /* skip spaces & comments */
   for(;;) {
@@ -161,8 +164,10 @@ seg_t tok(const char *s, const char* e, char_class_t *class) {
     if(cc == CC_COMMENT) {
       const char *n = skip_comment(s, e);
       if(s == n) break;
+      attribute_parser(s, n, after_newline, attr_before, attr_after);
       s = n;
     } else if(cc == CC_NONE) {
+      if(*s == '\n') after_newline = true;
       s++;
     } else break;
   }

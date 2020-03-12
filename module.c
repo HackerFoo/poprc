@@ -547,10 +547,13 @@ void print_module_bytecode(cell_t *m) {
       log_soft_init();
       cleanup_cells();
     } else {
-      cell_t *e = module_lookup_compiled(string_seg(name), &m);
-      if(e) {
-        print_bytecode(tcell_entry(e), false);
-        putchar('\n');
+      cell_t *p = module_lookup(string_seg(name), &m);
+      if(!(p->value.attributes & ATTR_HIDE)) {
+        cell_t *e = compile_def(p, string_seg(name), &m);
+        if(e) {
+          print_bytecode(tcell_entry(e), false);
+          putchar('\n');
+        }
       }
     }
   }

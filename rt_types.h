@@ -58,6 +58,7 @@ typedef struct tcell tcell_t;
 typedef uintptr_t alt_set_t;
 typedef int16_t refcount_t;
 typedef intptr_t val_t;
+typedef uintptr_t attr_t;
 
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Warray-bounds"
@@ -166,7 +167,10 @@ struct __attribute__((packed)) value {
   alt_set_t alt_set;
   union {
     struct {
-      tcell_t *var; /* variable */
+      union {
+        tcell_t *var; /* variable */
+        attr_t attributes; /* for definitions */
+      };
       union {
         val_t integer;  /* integer */
         double flt;     /* float   */
@@ -186,11 +190,15 @@ struct __attribute__((packed)) value {
   };
 };
 
+// attributes
+#define ATTR_HIDE        0x00000001
+
 /* token list */
 struct __attribute__((packed)) tok_list {
   csize_t length;
   const char *location, *line;
   cell_t *next;
+  uintptr_t attributes;
 };
 
 /* unallocated memory */

@@ -171,6 +171,13 @@
         p < _end;                                       \
         p++)
 
+#define TRAVERSE_const_ptrs(c)                          \
+  if(is_list(c))                                        \
+    for(cell_t *const *p = (c)->value.ptr,              \
+          **_end = &(c)->value.ptr[list_size(c)];       \
+        p < _end;                                       \
+        p++)
+
 #define CONCAT_ARGS_1(a)             a
 #define CONCAT_ARGS_2(a, b)          CONCAT_ARGS_1(CONCAT_UNDERSCORE(a, b))
 #define CONCAT_ARGS_3(a, b, c)       CONCAT_ARGS_2(CONCAT_UNDERSCORE(a, b), c)

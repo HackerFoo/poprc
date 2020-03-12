@@ -382,8 +382,9 @@ cell_t *parse_defs(cell_t **c, const char *module_name, cell_t **err) {
     *p = *c;
   while(parse_def(&p, &n, &l)) {
     seg_t name = tok_seg(n);
-    cell_free(n);
     l->module_name = module_name;
+    l->value.attributes = n->tok_list.attributes | scan_attributes(l);
+    cell_free(n);
     UNUSED cell_t *old = module_set(m, name, l);
     assert_error(old == NULL, TODO " merge defs");
     if((*err = check_def(l))) break;
@@ -697,4 +698,36 @@ bool parse_numeric_args(cell_t *l, int *arg, int n) {
     }
   }
   return true;
+}
+
+#define MATCH_STRING(p, s, end)                 \
+  (end - (p) >= (int)(LENGTH(s) - 1) &&         \
+   strncmp((p), (s), LENGTH(s) - 1) == 0 &&     \
+   ((p) += LENGTH(s) - 1, true))
+
+void attribute_parser(const char *s, const char *e, bool after_newline, attr_t *attr_before, attr_t *attr_after) {
+  while(s < e) {
+    while(ONEOF(*s, ' ', '\t')) s++;
+    if(MATCH_STRING(s, "{hide}", e)) {
+      if(after_newline) {
+        *attr_after |= ATTR_HIDE;
+      } else {
+        *attr_before |= ATTR_HIDE;
+      }
+    } else {
+      s++;
+    }
+  }
+}
+
+attr_t scan_attributes(const cell_t *l) {
+  attr_t attr = 0;
+  COUNTUP(i, list_size(l)) {
+    const cell_t *p = l->value.ptr[i];
+    while(p) {
+      attr |= p->tok_list.attributes;
+      p = p->tok_list.next;
+    }
+  }
+  return attr;
 }
