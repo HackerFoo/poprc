@@ -549,13 +549,13 @@ void store_fail(cell_t *c, cell_t *alt) { // CLEANUP
   c->alt = alt;
 }
 
-void store_dep(cell_t *c, tcell_t *tc, csize_t pos, type_t t, range_t r, alt_set_t alt_set) { // CLEANUP
+void store_dep(cell_t *c, tcell_t *tc, csize_t i, type_t t, range_t r, alt_set_t alt_set) { // CLEANUP
   WATCH(c, "store_dep");
   cell_t v = {
     .op = OP_value,
     .n = c->n,
     .size = 2,
-    .pos = pos,
+    .arg_index = i,
     .alt = c->alt,
     .value = {
       .alt_set = alt_set,
@@ -569,12 +569,12 @@ void store_dep(cell_t *c, tcell_t *tc, csize_t pos, type_t t, range_t r, alt_set
   *c = v;
 }
 
-void store_dep_var(cell_t *c, cell_t *res, csize_t pos, type_t t, range_t r, alt_set_t alt_set) {
-  cell_t *d = c->expr.arg[pos];
+void store_dep_var(cell_t *c, cell_t *res, csize_t i, type_t t, range_t r, alt_set_t alt_set) {
+  cell_t *d = c->expr.arg[i];
   if(d && is_dep(d)) {
     drop(c);
     d->expr.arg[0] = res;
-    store_dep(d, res->value.var, pos, t, r, alt_set);
+    store_dep(d, res->value.var, i, t, r, alt_set);
   }
 }
 
@@ -919,11 +919,6 @@ COMMAND(bound, "set default_bound") {
   if(!quiet)
     printf("default_bound set to [%" PRIdPTR ", %" PRIdPTR "]\n",
            default_bound.min, default_bound.max);
-}
-
-context_t *ctx_pos(context_t *ctx, uint8_t pos) {
-  ctx->pos = pos;
-  return ctx;
 }
 
 bool check_type(type_t requested, type_t expected) {

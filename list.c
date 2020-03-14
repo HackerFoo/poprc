@@ -102,8 +102,8 @@ response func_list(cell_t **cp, context_t *ctx) {
   ctx->alt_set = c->value.alt_set;
   COUNTUP(i, n) {
     context_t *arg_ctx = row && i == n - 1 ?
-      ctx_pos(&CTX(list, 0, 0), ctx->pos) :
-      ctx_pos(&CTX(any), ctx->pos);
+      &CTX(list, 0, 0) :
+      &CTX(any);
     response r = reduce_ptr(c, i, arg_ctx);
     if(ctx->depth > 0 && r == FAIL) {
       // shrink the list to the first failure
@@ -130,7 +130,7 @@ response func_list(cell_t **cp, context_t *ctx) {
       c->value.ptr[n-1] = &nil_cell;
       FLAG_SET(*c, value, ABBREV);
     } else {
-      response r = func_list(&c->value.ptr[n-1], ctx_pos(&CTX(any), ctx->pos));
+      response r = func_list(&c->value.ptr[n-1], &CTX(any));
       if(r == FAIL) {
         c->value.ptr[n-1] = &nil_cell;
       } else {

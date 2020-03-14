@@ -147,10 +147,14 @@ OP(value) {
     */
   } else if(c->pos) {
     if(is_list(c) && !is_empty_list(c)) {
+      // push pos into lists
       TRAVERSE(c, ptrs) {
-        mark_pos(*p, c->pos);
+        if(is_value(*p) || closure_is_ready(*p)) {
+          mark_pos(*p, c->pos);
+        }
       }
     } else {
+      // lift values out of entry
       // *** probably shouldn't be calling trace functions directly here
       tcell_t *entry = pos_entry(c->pos);
       tcell_t *parent = entry->entry.parent;
@@ -183,8 +187,8 @@ OP(value) {
         c->value.var = tc;
         c->value.flags = VALUE_VAR;
         tc->value.var = &parent[v];
-        c->pos = 0;
       }
+      c->pos = 0;
     }
   }
 
@@ -345,7 +349,8 @@ cell_t *var_create_with_entry(type_t t, tcell_t *entry, csize_t size) {
   return var_create(t, tc_get(entry, ix), 0, 0);
 }
 
-tcell_t *infer_entry(cell_t *c, uint8_t pos) {
+tcell_t *infer_entry(cell_t *c) {
+  uint8_t pos = 0;
   assert_error(c);
   TRAVERSE(c, in) {
     cell_t *a = *p;
@@ -358,24 +363,19 @@ tcell_t *infer_entry(cell_t *c, uint8_t pos) {
     }
   }
 
-  tcell_t *entry = pos_entry(pos);
-  if(!entry) {
-    entry = trace_current_entry();
-    assert_error(entry);
-    LOG(HACK " using current entry %s", entry->word_name);
-  }
+  assert_error(!c->pos || pos < c->pos, "broken barrier %C", c);
+  tcell_t *entry =
+    pos ? pos_entry(pos) :
+    c->pos ? pos_entry(c->pos)->entry.parent :
+    trace_current_entry();
+  assert_error(entry);
+  LOG_WHEN(!pos && !c->pos, HACK " using current entry %s", entry->word_name);
   return entry;
 }
 
-cell_t *var_(type_t t, cell_t *c, uint8_t pos) {
-  return var_create_with_entry(t, infer_entry(c, pos), c->size);
+cell_t *var(type_t t, cell_t *c) {
+  return var_create_with_entry(t, infer_entry(c), c->size);
 }
-
-#if INTERFACE
-#define var(...) DISPATCH(var, __VA_ARGS__)
-#define var_3(t, c, pos) var_(t, c, pos)
-#define var_2(t, c) var_(t, c, 0)
-#endif
 
 cell_t *opaque_var(cell_t *c, val_t sym) {
   cell_t *v = var(T_OPAQUE, c);
@@ -465,7 +465,7 @@ OP(dep) {
   cell_t *p = ref(c->expr.arg[0]);
   assert_error(is_dep_of(c, p));
   insert_root(&p);
-  CHECK(reduce_one(&p, ctx_pos(&CTX(any), pos)));
+  CHECK(reduce_one(&p, &CTX(any)));
   CHECK_DELAY();
   trace_dep(c);
   remove_root(&p);
@@ -521,7 +521,7 @@ OP(placeholder) {
   if(n == 1) {
     res = copy(c->expr.arg[0]);
   } else {
-    res = var(T_LIST, c, ctx->pos);
+    res = var(T_LIST, c);
     RANGEUP(i, in, n) {
       cell_t *d = c->expr.arg[i];
       if(d && is_dep(d)) {

@@ -265,7 +265,7 @@ void condense(tcell_t *entry) {
 
   // drop unreferenced instructions
   FOR_TRACE(tc, entry) {
-    if(tc->n < 0 && !(is_var(tc) && tc->pos)) {
+    if(tc->n < 0 && !(is_var(tc) && tc->var_index)) {
       drop_trace(entry, tc);
     }
   }
@@ -275,12 +275,12 @@ void condense(tcell_t *entry) {
     if(tc->op) {
       if(is_var(tc)) {
         // move variables out into temporary space
-        assert_error(tc->pos);
+        assert_error(tc->var_index);
         nvars++;
-        memcpy(&vars[tc->pos-1], tc, sizeof(tcell_t));
+        memcpy(&vars[tc->var_index-1], tc, sizeof(tcell_t));
         tc->op = OP_null;
-        tc->alt = index_tr(tc->pos);
-        LOG_WHEN(tc->pos != tc-entry, "move var %d -> %d", tc-entry, tc->pos);
+        tc->alt = index_tr(tc->var_index);
+        LOG_WHEN(tc->var_index != tc-entry, "move var %d -> %d", tc-entry, tc->var_index);
       } else if(is_return(tc)) {
         if(ret) ret->alt = index_tr(idx);
         ret = tc;
@@ -668,16 +668,16 @@ void mark_barriers(tcell_t *entry, cell_t *c) {
 void set_pos_for_values(cell_t *c, tcell_t *entry) {
   if(is_value(c)) {
     if(!is_var(c) && is_cell(c)) {
+      WATCH(c, "set_pos_for_values");
       LOG("set pos for %C to %s", c, entry->word_name);
       c->pos = entry->pos;
     }
-  } else if(c->op == OP_ap ||
-            c->op == OP_swap ||
-            c->op == OP_exec) { // *** HACK
+  } /* else if(c->op == OP_ap ||
+            c->op == OP_swap) { // *** HACK
     TRAVERSE(c, in) {
       if(*p) set_pos_for_values(*p, entry);
-    }
-  }
+      }
+  } */
 }
 
 // mark values to be lifted out of recursive functions by setting pos
@@ -725,9 +725,9 @@ cell_t *flat_quote(tcell_t *new_entry, tcell_t *parent_entry) {
     if(is_var(p) && p->value.var) {
       tcell_t *tp = var_for_entry(parent_entry, tc);
       cell_t *v = var_create_nonlist(trace_type(tp), tp);
-      assert_error(INRANGE(p->pos, 1, in));
-      nc->expr.arg[in - p->pos] = v;
-      LOG("arg[%d] -> %d", in - p->pos, tp - parent_entry);
+      assert_error(INRANGE(p->var_index, 1, in));
+      nc->expr.arg[in - p->var_index] = v;
+      LOG("arg[%d] -> %d", in - p->var_index, tp - parent_entry);
     }
   }
   nc->expr.arg[in] = (cell_t *)new_entry;
@@ -775,7 +775,7 @@ int compile_quote(tcell_t *parent_entry, cell_t *l) {
   trace_end_entry(e); // *** wait?
 
   trace_clear_alt(parent_entry);
-  cell_t *res = var(T_LIST, q, parent_entry->pos);
+  cell_t *res = var(T_LIST, q);
   assert_error(entry_has(parent_entry, res->value.var),
                "parent: %s, var: %s[%d]",
                parent_entry->word_name,

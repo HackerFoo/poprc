@@ -361,6 +361,7 @@ cell_t *copy(cell_t const *c) {
   cell_t *new_c = closure_alloc_cells(size);
   memcpy(new_c, c, size * sizeof(cell_t));
   new_c->n = 0;
+  new_c->pos = 0;
   return new_c;
 }
 

@@ -129,7 +129,7 @@ void set_entry(tcell_t *c, tcell_t *e) {
 }
 
 int entry_number(tcell_t const *e) {
-  return e - trace_cells;
+  return e ? e - trace_cells : -1;
 }
 
 tcell_t *entry_from_number(int n) {
@@ -395,6 +395,10 @@ void mark_pos(cell_t *c, int pos) {
   if(!pos || c->pos == pos) return;
   assert_error(c->n != PERSISTENT);
   tcell_t *entry = pos_entry(pos);
+  if(!entry) {
+    LOG("mark_pos: stale %C %d", c, pos);
+    return;
+  }
   WATCH(c, "mark_pos", "%s", entry->word_name);
   if(is_var(c)) {
     switch_entry(entry, c);
@@ -890,14 +894,14 @@ void trace_dep(cell_t *c) {
   tcell_t *tc = &entry[x];
   tcell_t *ph = c->value.var;
   int ph_x = var_index(entry, ph);
-  ph->expr.arg[c->pos] = index_tr(x);
-  LOG("trace_dep: %d <- %C %d[%d]", x, c, ph_x, c->pos);
+  ph->expr.arg[c->arg_index] = index_tr(x);
+  LOG("trace_dep: %d <- %C %d[%d]", x, c, ph_x, c->arg_index);
   tc->op = OP_dep;
   tc->expr.arg[0] = index_tr(ph_x);
   assert_error(c->value.type != T_OPAQUE || range_singleton(c->value.range));
   ph->n++;
   c->value.var = tc;
-  c->pos = 0;
+  c->arg_index = 0;
   FLAG_CLEAR(*c, value, DEP);
 }
 
@@ -1222,7 +1226,7 @@ TEST(var_count) {
 unsigned int trace_reduce(tcell_t *entry, cell_t **cp) {
   cell_t *tc = NULL, **prev = &tc;
   unsigned int alts = 0;
-  context_t *ctx = ctx_pos(&CTX(return), entry->pos);
+  context_t *ctx = &CTX(return);
 
   CONTEXT("trace_reduce %s %C", entry->word_name, *cp);
   insert_root(cp);
@@ -1297,7 +1301,7 @@ tcell_t *trace_alloc_var(tcell_t *entry, type_t t) {
   tc->value.type = t;
   tc->trace.type = t;
   tc->value.flags = VALUE_VAR;
-  tc->pos = ++entry->entry.in;
+  tc->var_index = ++entry->entry.in;
   return tc;
 }
 
@@ -1636,16 +1640,16 @@ const tcell_t *closure_next_const(const tcell_t *c) {
   return c + closure_tcells(c);
 }
 
-csize_t dep_pos(const tcell_t *entry,
-                const tcell_t *tc) {
+csize_t dep_arg_index(const tcell_t *entry,
+                      const tcell_t *tc) {
   const tcell_t *src = &entry[tr_index(tc->expr.arg[0])];
   int index = tc - entry;
-  int pos = 1;
+  int i = 1;
   TRAVERSE(src, const, out) {
     if(tr_index(*p) == index) {
-      return pos;
+      return i;
     } else {
-      pos++;
+      i++;
     }
   }
   return 0;
@@ -1666,7 +1670,7 @@ uint32_t hash_trace_cell(tcell_t *entry, tcell_t *tc) {
 
   if(is_value(tc)) {
     if(is_var(tc)) {
-      HASH('v', tc->pos);
+      HASH('v', tc->var_index);
     } else if(tc->value.type == T_LIST) {
       TRAVERSE(tc, ptrs) {
         HASH('p', hash_trace_cell(entry, &entry[tr_index(*p)]));
@@ -1679,7 +1683,7 @@ uint32_t hash_trace_cell(tcell_t *entry, tcell_t *tc) {
     // HASH('t', tc->value.type);
   } else {
     if(is_dep(tc)) {
-      HASH('d', dep_pos(entry, tc));
+      HASH('d', dep_arg_index(entry, tc));
     } else {
       TRAVERSE(tc, in) {
         HASH('a', hash_trace_cell(entry, &entry[tr_index(*p)]));
@@ -1727,7 +1731,7 @@ bool trace_cell_eq(const tcell_t *entry, const tcell_t *a, const tcell_t *b) {
       }
     }
   } else if(op == OP_dep) {
-    return dep_pos(entry, a) == dep_pos(entry, b) &&
+    return dep_arg_index(entry, a) == dep_arg_index(entry, b) &&
       trace_cell_eq(entry,
                     get_arg_const(entry, a->expr.arg[0]),
                     get_arg_const(entry, b->expr.arg[0]));

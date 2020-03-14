@@ -562,15 +562,14 @@ void reassign_input_order(tcell_t *entry) {
     }
   }
 
-  int pos = 1;
+  int i = 1;
   FOLLOW(p, vl, tmp) {
     tcell_t *tn = var_for_entry(entry, p->value.var);
     assert_error(tn);
     assert_error(is_var(tn));
-    assert_error(tn->pos, "%s[%d] (%C)",
+    assert_error(tn->var_index, "%s[%d] (%C)",
                  entry->word_name, tn-entry, p);
-    tn->pos = pos;
-    pos++;
+    tn->var_index = i++;
   }
   clean_tmp(vl);
 }
@@ -594,18 +593,18 @@ cell_t *flat_call(cell_t *c, tcell_t *entry) {
                "%d != %d, %s @specialize",
                tmp_list_length(vl), in, entry->word_name);
 
-  int pos = 1;
+  int i = 1;
   FOLLOW(p, vl, tmp) {
     tcell_t *tn = get_var(entry, p);
     // Is it okay to update this from reassign_input_order?
-    tn->pos = pos;
-    // assert_error(tn->pos == pos, "%T (%C)", p->value.var, p);
+    tn->var_index = i;
+    // assert_error(tn->var_index == i, "%T (%C)", p->value.var, p);
     switch_entry(parent_entry, p);
     assert_error(entry_has(parent_entry, tn->value.var));
     cell_t *v = var_create_nonlist(T_ANY, tn->value.var);
-    nc->expr.arg[in - pos] = v;
-    LOG("arg[%d] -> %d", in - pos, tn->value.var - parent_entry);
-    pos++;
+    nc->expr.arg[in - i] = v;
+    LOG("arg[%d] -> %d", in - i, tn->value.var - parent_entry);
+    i++;
   }
   clean_tmp(vl);
   nc->expr.arg[in] = (cell_t *)entry;
@@ -908,9 +907,9 @@ response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
 
     // find types of inputs
     FOR_TRACE(p, entry) {
-      if(is_var(p) && p->pos) {
-        assert_le(p->pos, in);
-        int i = in - p->pos;
+      if(is_var(p) && p->var_index) {
+        assert_le(p->var_index, in);
+        int i = in - p->var_index;
         type_t t = p->value.type;
         in_types[i] = t;
         if(t == T_OPAQUE) in_opaque[i] = p->trace.range.min;
@@ -971,7 +970,7 @@ response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
   if(ONEOF(tr.type, T_ANY, T_BOTTOM) && ctx->t != T_ANY) {
     tr.type = ctx->t;
   }
-  res = var(tr.type, c, parent_entry->pos);
+  res = var(tr.type, c);
   res->value.range = tr.range;
 
   // replace outputs with variables

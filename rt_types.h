@@ -104,7 +104,6 @@ struct context {
   location_t loc;
   qsize_t s;
   type_t t;
-  uint8_t pos;
   uint8_t depth;
   bool retry;
   bool inv;
@@ -294,7 +293,9 @@ union cell {
     };                                                                  \
     enum op op;                                                         \
     union {                                                             \
-      uint8_t pos;                                                      \
+      uint8_t pos; /* see below */                                      \
+      uint8_t arg_index; /* arg index (for dep vars) */                 \
+      uint8_t var_index; /* final index for vars in trace */            \
       uint8_t priority; /* for use in func_list() & delay_branch() */   \
     };                                                                  \
     refcount_t n;                                                       \
@@ -310,6 +311,18 @@ union cell {
 /* end of CELL_STRUCT_CONTENTS */
   CELL_STRUCT_CONTENTS;
 };
+
+/* An explanation of pos:
+ *
+ * pos is used to mark the boundary between entries within the graph.
+ * Dependent vars should be created within the entry indicated by pos,
+ * even if they otherwise would not be, while dependencies should *not*
+ * be created within the entry, and switch_entry is used to lift vars.
+ *
+ * For expressions, this means that setting pos will prevent them from
+ * escaping, because they follow their dependencies.
+ * For values, this will lift them out, because they follow their consumer.
+ */
 
 #define VALUE_OFFSET(f) ((offsetof(cell_t, value.f) - offsetof(cell_t, expr.arg)) / sizeof(cell_t *))
 

@@ -290,7 +290,7 @@ void graph_cell(FILE *f, cell_t const *c) {
               entry_number(entry),
               (int)var_index_nofail(entry, c->value.var));
       if(FLAG(*c, value, DEP)) {
-        fprintf(f, "[%d]", (int)c->pos);
+        fprintf(f, "[%d]", (int)c->arg_index);
       }
       fprintf(f, "</td></tr>");
     }
@@ -335,8 +335,14 @@ void graph_cell(FILE *f, cell_t const *c) {
     }
   }
   if(c->pos && !(is_var(c) && FLAG(*c, value, DEP))) {
-    fprintf(f, "<tr><td bgcolor=\"deepskyblue\">pos: %d</td></tr>",
-            entry_number(pos_entry(c->pos)));
+    tcell_t *e = pos_entry(c->pos);
+    if(e) {
+      if(is_value(c)) {
+        fprintf(f, "<tr><td bgcolor=\"deepskyblue\">lift: %d</td></tr>", entry_number(e->entry.parent));
+      } else {
+        fprintf(f, "<tr><td bgcolor=\"deepskyblue\">contain: %d</td></tr>", entry_number(e));
+      }
+    }
   }
   const char *tag = get_ptr_tag(c);
   if(tag) {

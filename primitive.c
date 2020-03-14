@@ -950,7 +950,7 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
 
   cell_t *p = NULL;
   cell_t *res = NULL;
-  int pos = c->pos ? c->pos : c->expr.arg[in]->pos;
+  int pos = c->pos;
 
   // conservative guesses for the sizes of `a` and `b`
   int ctx_out = pos ? 0 : ctx->s.out;
@@ -1001,11 +1001,6 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
     .row = row
   };
 
-  // Maybe remove these?
-  // *** prevent leaking outside variables into lists
-  if(p && !pos) pos = p->pos;
-  if(!pos) pos = (*q)->pos;
-
   insert_root(q);
   cell_t *l = compose(it, ref(*q), ctx->s.out + out); // TODO prevent leaking outside variables
   reverse_ptrs((void **)c->expr.arg, in);
@@ -1017,8 +1012,9 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
     res = list_rest(end);
   }
 
+  cell_t **x;
   COUNTUP(i, out) {
-    cell_t **x = list_next(&it, false);
+    x = list_next(&it, false);
     cell_t *d = c->expr.arg[n-1-i];
     if(d) {
       if(!x) {
@@ -1032,6 +1028,11 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
       LOG_WHEN(res->alt, "popr from alt quote %C <- %C #condition", d, seq_x);
       d->pos = pos; // ***
     }
+  }
+  if(pos &&
+     (x = list_next(&it, true)) &&
+     is_row_arg(&it)) {
+    mark_pos(*x, pos);
   }
   remove_root(q);
 
@@ -1387,7 +1388,7 @@ OP(external) {
   }
   CHECK_DELAY();
 
-  cell_t *res = var(ctx->t, c, ctx->pos);
+  cell_t *res = var(ctx->t, c);
   RANGEUP(i, in, n) {
     cell_t *d = c->expr.arg[i];
     if(d && is_dep(d)) {
