@@ -394,7 +394,7 @@ void switch_entry(tcell_t *entry, cell_t *r) {
 void mark_pos(cell_t *c, int pos) {
   if(!pos || c->pos == pos) return;
   assert_error(c->n != PERSISTENT);
-  tcell_t *entry = trace_expr_entry(pos);
+  tcell_t *entry = pos_entry(pos);
   WATCH(c, "mark_pos", "%s", entry->word_name);
   if(is_var(c)) {
     switch_entry(entry, c);
@@ -948,7 +948,7 @@ cell_t *get_list_function_var(cell_t *c) {
 // called when c is reduced to r to copy to pre-allocated space in the trace
 void trace_reduction(cell_t *c, cell_t *r) {
   WATCH(c, "trace_reduction", "%C", r);
-  tcell_t *new_entry = trace_expr_entry(c->pos);
+  tcell_t *new_entry = pos_entry(c->pos);
   if(!is_var(r)) {
     // print tracing information for a reduction
     if(FLAG(*c, expr, TRACE)) {
@@ -1305,7 +1305,7 @@ bool valid_pos(uint8_t pos) {
   return INRANGE(pos, 1, prev_entry_pos);
 }
 
-tcell_t *trace_expr_entry(uint8_t pos) {
+tcell_t *pos_entry(uint8_t pos) {
   return valid_pos(pos) ?
     active_entries[pos - 1] : NULL;
 }

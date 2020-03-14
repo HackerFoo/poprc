@@ -336,7 +336,7 @@ void graph_cell(FILE *f, cell_t const *c) {
   }
   if(c->pos && !(is_var(c) && FLAG(*c, value, DEP))) {
     fprintf(f, "<tr><td bgcolor=\"deepskyblue\">pos: %d</td></tr>",
-            entry_number(trace_expr_entry(c->pos)));
+            entry_number(pos_entry(c->pos)));
   }
   const char *tag = get_ptr_tag(c);
   if(tag) {

@@ -152,7 +152,7 @@ OP(value) {
       }
     } else {
       // *** probably shouldn't be calling trace functions directly here
-      tcell_t *entry = trace_expr_entry(c->pos);
+      tcell_t *entry = pos_entry(c->pos);
       tcell_t *parent = entry->entry.parent;
       tcell_t *ve = c->value.var ? var_entry(c->value.var) : NULL;
       if(entry != ve && parent) {
@@ -358,7 +358,7 @@ tcell_t *infer_entry(cell_t *c, uint8_t pos) {
     }
   }
 
-  tcell_t *entry = trace_expr_entry(pos);
+  tcell_t *entry = pos_entry(pos);
   if(!entry) {
     entry = trace_current_entry();
     assert_error(entry);

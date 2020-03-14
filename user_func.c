@@ -150,7 +150,7 @@ cell_t **bind_pattern(tcell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail)
   } else if(is_list(pattern) && !is_empty_list(pattern)) {
 
     // push entry in
-    if(pattern->pos) entry = trace_expr_entry(pattern->pos);
+    if(pattern->pos) entry = pos_entry(pattern->pos);
 
     if(is_list(c)) {
       list_iterator_t ci = list_begin(c), pi = list_begin(pattern);
