@@ -321,13 +321,11 @@ calc_step_push:
     ["1"    =s [[1]    .] dip11 !]
     ["+"    =s [[+]    .] dip11 !] | ap21 nip
 
-__ {hide}
 calc_loop:
   top swap [int_t ->str "\n" ++ write_std getline_std] dip22 swap  __ IO [s] "t"
     calc_step top -swap2 over              __ "t" IO [s] IO
     [calc_loop] dip21 vifte
 
-__ {hide}
 calc: [0] calc_loop
 
 __ matches structure of calc_loop

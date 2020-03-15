@@ -1062,13 +1062,11 @@ OP(exec) {
 
   tcell_t *parent_entry = trace_current_entry();
   if(FLAG(*entry, entry, ROW) && ctx->t == T_LIST && ctx->s.out) {
-    if(c->pos) {
+    if(c->pos && parent_entry) {
       tcell_t *e = pos_entry(c->pos);
+      c = unique(cp);
       mark_barriers(e, c);
       move_changing_values(e, c);
-    }
-    if(parent_entry) {
-      c = unique(cp);
     }
     // unroll
   } else {
