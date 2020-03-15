@@ -867,7 +867,7 @@ void trace_reset(tcell_t *entry) {
 
 // get the top active specialization of an entry
 // NOTE might only need top entry
-tcell_t *trace_specialize_entry(tcell_t *entry) {
+tcell_t *trace_specializing_entry(tcell_t *entry) {
   COUNTDOWN(i, prev_entry_pos) {
     tcell_t *e = active_entries[i];
     if(e->entry.specialize &&

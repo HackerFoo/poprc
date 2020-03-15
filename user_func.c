@@ -1,4 +1,4 @@
-/* Copyright 2012-2018 Dustin DeWeese
+/* Copyright 2012-2020 Dustin DeWeese
    This file is part of PoprC.
 
     PoprC is free software: you can redistribute it and/or modify
@@ -37,6 +37,7 @@
 #include "parse.h" // for string_printf
 #include "tags.h"
 
+// hash_entry() of `[id] map`
 #define ID_MAP_HASH 0x1b21417d
 
 #if INTERFACE
@@ -133,15 +134,14 @@ start:
   CONTEXT("bind_pattern %s %C %C @barrier", strfield(entry, word_name), c, pattern);
   if(!pattern || !tail) return NULL;
   if(c->tmp || c == *tail) return tail;
-  if(c == pattern) {
+  if(c == pattern) { // c == pattern, so add all variables
     cell_t **t = tail;
     tail = trace_var_list(c, tail);
     FOLLOW(p, *t, tmp) {
       ref(p);
     }
     if(entry && is_var(pattern)) switch_entry(entry, pattern);
-  } else if(is_var(pattern)) {
-    // found a binding
+  } else if(is_var(pattern)) { // bind the pattern variable to c
     assert_error(!pattern->alt);
     assert_error(c->n != PERSISTENT);
     if(entry) {
@@ -151,38 +151,31 @@ start:
     }
     LOG("bound %s[%d] = %C", entry->word_name, pattern->value.var-entry, c);
     LIST_ADD(tmp, tail, ref(c));
-  } else if(is_row_list(c) && list_size(c) == 1) {
-      cp = &c->value.ptr[0];
-      goto start;
-  } else if(is_list(pattern) && !is_empty_list(pattern)) {
-
-    if(is_row_list(pattern) && list_size(pattern) == 1) {
-      pattern = pattern->value.ptr[0];
-      goto start;
-    }
+  } else if(is_id_list(c)) { // walk through id lists
+    cp = &c->value.ptr[0];
+    goto start;
+  } else if(is_id_list(pattern)) {
+    pattern = pattern->value.ptr[0];
+    goto start;
+  } else if(is_list(pattern) && !is_empty_list(pattern)) { // match inside list pattern
 
     // push entry in
     if(pattern->pos) entry = pos_entry(pattern->pos);
 
-    if(is_list(c)) {
-      if(is_row_list(c) && list_size(c) == 1) {
-        cp = &c->value.ptr[0];
-        goto start;
-      } else {
-        list_iterator_t ci = list_begin(c), pi = list_begin(pattern);
-        cell_t **cp, **pp;
-        while(cp = list_next(&ci, true),
-              pp = list_next(&pi, true),
-              cp && pp) {
-          if(closure_is_ready(*cp) && !is_row_arg(&ci)) {
-            simplify(cp);
-            LOG_WHEN((*cp)->alt, MARK("WARN") " bind drops alt %C -> %C", *cp, (*cp)->alt);
-          }
-          tail = bind_pattern(entry, cp, *pp, tail);
+    if(is_list(c)) { // match the list
+      list_iterator_t ci = list_begin(c), pi = list_begin(pattern);
+      cell_t **cp, **pp;
+      while(cp = list_next(&ci, true),
+            pp = list_next(&pi, true),
+            cp && pp) {
+        if(closure_is_ready(*cp) && !is_row_arg(&ci)) {
+          simplify(cp);
+          LOG_WHEN((*cp)->alt, MARK("WARN") " bind drops alt %C -> %C", *cp, (*cp)->alt);
         }
-        assert_error(!cp && !pp, "mismatched lists %C %C", c, pattern);
+        tail = bind_pattern(entry, cp, *pp, tail);
       }
-    } else {
+      assert_error(!cp && !pp, "mismatched lists %C %C", c, pattern);
+    } else { // c isn't expanded yet, so add code to extract match
       csize_t
         in = function_in(pattern),
         out = function_out(pattern, false);
@@ -201,7 +194,7 @@ start:
         }
       }
     }
-  } else if(pattern->op == OP_id &&
+  } else if(pattern->op == OP_id && // walk through id
             pattern->expr.alt_set == 0) {
     pattern = pattern->expr.arg[0];
     goto start;
@@ -213,7 +206,7 @@ start:
     }
     force(&pattern);
     goto start;
-  } else if(is_user_func(c) && is_user_func(pattern) &&
+  } else if(is_user_func(c) && is_user_func(pattern) && // match user functions (fusion)
             closure_entry(c) == closure_entry(pattern)) {
     assert_eq(closure_in(c), closure_in(pattern));
     COUNTUP(i, closure_in(c)) {
@@ -306,6 +299,7 @@ response unify_exec(cell_t **cp, tcell_t *parent_entry, context_t *ctx) {
 
     LOG_WHEN(out != 0, TODO " unify_convert %d: out(%d) != 0 @unify-multiout", c-cells, out);
 
+    // match c against initial and extract variable bindings
     cell_t
       *vl = 0,
       **tail = &vl;
@@ -318,7 +312,7 @@ response unify_exec(cell_t **cp, tcell_t *parent_entry, context_t *ctx) {
       }
     }
 
-    if(!tail) {
+    if(!tail) { // match failed
       FOLLOW(p, vl, tmp) {
         drop(p);
       }
@@ -776,6 +770,7 @@ response func_exec_specialize(cell_t **cp, context_t *ctx, tcell_t *parent_entry
     }
   }
 
+  // start a new entry
   tcell_t *new_entry = trace_start_entry(parent_entry, entry->entry.out);
   new_entry->entry.specialize = &specialize;
   new_entry->module_name = parent_entry->module_name;
@@ -787,10 +782,11 @@ response func_exec_specialize(cell_t **cp, context_t *ctx, tcell_t *parent_entry
 
   // make a list with expanded outputs of c
   cell_t *nc = COPY_REF(c, in);
-  mark_barriers(new_entry, nc);
   specialize.expand = TAG_PTR(nc, "specialize.expand");
   insert_root(&nc);
 
+  // constrain movement of inputs
+  mark_barriers(new_entry, nc);
   COUNTUP(i, in) {
     if(c->expr.arg[i]->op != OP_ap ||
        TWEAK(true, "to disable ap simplify %C", c->expr.arg[i]))
@@ -814,9 +810,7 @@ response func_exec_specialize(cell_t **cp, context_t *ctx, tcell_t *parent_entry
     }
   }
 
-  // IDEA break here?
-
-  // TODO delay this to avoid quote creation
+  // perform reduction
   TRAVERSE_REF(nc, in);
   new_entry->entry.alts = trace_reduce(new_entry, &l);
   drop(l);
@@ -838,7 +832,7 @@ response func_exec_specialize(cell_t **cp, context_t *ctx, tcell_t *parent_entry
     return SUCCESS;
   }
 
-  // IDEA split this up? {
+  // build self call
   TRAVERSE(nc, in) simplify(p);
   cell_t *p = flat_call(nc, new_entry);
   drop(nc);
@@ -859,7 +853,6 @@ response func_exec_specialize(cell_t **cp, context_t *ctx, tcell_t *parent_entry
   get_trace_info_for_output(&tr, new_entry, 0);
   cell_t *res = var_create_with_entry(tr.type, parent_entry, p->size);
   res->value.range = tr.range;
-  // }
 
   tcell_t *tc = res->value.var;
 
@@ -895,6 +888,7 @@ response func_exec_specialize(cell_t **cp, context_t *ctx, tcell_t *parent_entry
   return SUCCESS;
 }
 
+// call trace_update on all reachable vars
 static
 void trace_update_all(cell_t *c) {
   TRAVERSE(c, in, ptrs) {
@@ -907,7 +901,6 @@ void trace_update_all(cell_t *c) {
     }
   }
 }
-
 
 // trace this call instead of expanding it
 static
@@ -1050,9 +1043,10 @@ bool is_specialized_to(tcell_t *entry, cell_t *c) {
   return true;
 }
 
+// return specializing entry for recursive functions
 static tcell_t *substitute_entry(tcell_t *entry) {
   if(NOT_FLAG(*entry, entry, RECURSIVE)) return entry;
-  tcell_t *e = trace_specialize_entry(entry); // breaks if specializing the same function twice!
+  tcell_t *e = trace_specializing_entry(entry); // breaks if specializing the same function twice!
   return e ? e : entry;
 }
 
@@ -1068,12 +1062,12 @@ OP(exec) {
       mark_barriers(e, c);
       move_changing_values(e, c);
     }
-    // unroll
+    // inline (below)
   } else {
     tcell_t *s_entry = substitute_entry(entry);
     if(s_entry->pos == c->pos) s_entry = entry;
 
-    if(NOT_FLAG(*s_entry, entry, COMPLETE)) {
+    if(NOT_FLAG(*s_entry, entry, COMPLETE)) { // unify a self call with the initial call
       delay_branch(ctx, PRIORITY_DELAY);
       CHECK_PRIORITY(PRIORITY_EXEC_SELF);
       assert_error(parent_entry,
@@ -1090,7 +1084,7 @@ OP(exec) {
         if(rsp != SUCCESS) return rsp;
       }
       return func_exec_trace(cp, ctx, parent_entry);
-    } else if(parent_entry) {
+    } else if(parent_entry) { // perform specialization
       if(is_specialized_to(entry, c)) {
         return func_exec_trace(cp, ctx, parent_entry);
       } else if(FLAG(*entry, entry, RECURSIVE)) {
@@ -1100,6 +1094,7 @@ OP(exec) {
     }
   }
 
+  // inline the function
   assert_counter(1000);
 
   if(FLAG(*c, expr, RECURSIVE)) {
@@ -1110,6 +1105,7 @@ OP(exec) {
   }
   cell_t *res = exec_expand(c);
 
+  // debug tracing
   if(FLAG(*entry, entry, TRACE)) {
     printf(NOTE("TRACE") " %s.%s", entry->module_name, entry->word_name);
     TRAVERSE(c, in) {
@@ -1122,6 +1118,7 @@ OP(exec) {
       breakpoint();
     }
   }
+
   store_lazy(cp, res, 0);
   return RETRY;
 
