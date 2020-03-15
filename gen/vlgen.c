@@ -1,4 +1,4 @@
-/* Copyright 2012-2019 Dustin DeWeese
+/* Copyright 2012-2020 Dustin DeWeese
    This file is part of PoprC.
 
     PoprC is free software: you can redistribute it and/or modify
@@ -61,6 +61,7 @@ const char *vltype_full(const tcell_t *c) {
   }
 }
 
+// for interleaving a separator
 #define SEP(str) \
   const char *sep = ""; \
   const char *const sep_next = str
@@ -88,6 +89,7 @@ void print_type_and_dims(const trace_t *tr) {
   }
 }
 
+// print module name and ports (everything before module body)
 static
 void gen_module_interface(const tcell_t *e) {
   const tcell_t *p = e + 1;
@@ -117,7 +119,7 @@ void gen_module_interface(const tcell_t *e) {
 }
 
 static
-void gen_value_rhs(const tcell_t *c) {
+void gen_constant(const tcell_t *c) {
   type_t t = trace_type(c);
   switch(t) {
   case T_INT:
@@ -143,6 +145,7 @@ void gen_value_rhs(const tcell_t *c) {
   }
 }
 
+// does this cell require synchronization?
 static bool is_sync(const tcell_t *c) {
   tcell_t *entry;
   return
@@ -163,6 +166,7 @@ bool update_block(const tcell_t *e, const tcell_t *c, int *block) {
   }
 }
 
+// stack support: stack, stack pointer, labels, return registers
 static
 void gen_stack(const tcell_t *e) {
   int ra_bits = 0; // return address bits
@@ -173,6 +177,8 @@ void gen_stack(const tcell_t *e) {
   RANGEUP(i, 1, e->entry.in + 1) {
     in_bits += e[i].trace.bit_width;
   }
+
+  // calculate the width of labels
   if(FLAG(*e, entry, RETURN_ADDR)) {
     nt_self_calls = 0;
     int last_nt_bits = 0;
@@ -193,7 +199,7 @@ void gen_stack(const tcell_t *e) {
   printf("\n"
          "  // stack\n"
          "  `define RB %d\n", ra_bits);
-  if(ra_bits) {
+  if(ra_bits) { // generate the labels
     int i = 0;
     int block = 1;
     FOR_TRACE_CONST(c, e) {
@@ -211,12 +217,13 @@ void gen_stack(const tcell_t *e) {
   if(ra_bits) {
     printf("  reg [`RB-1:0] return_addr;\n");
   }
-  COUNTUP(i, e->entry.out) {
+  COUNTUP(i, e->entry.out) { // a register for each return
     get_trace_info_for_output(&tr, e, i);
     printf("  reg [%d-1:0] return%d;\n", tr.bit_width, (int)i);
   }
 }
 
+// declare registers and wires
 static
 void gen_decls(tcell_t *e) {
   FOR_TRACE_CONST(tc, e) {
@@ -225,21 +232,21 @@ void gen_decls(tcell_t *e) {
     type_t t = trace_type(tc);
     if(ONEOF(t, T_BOTTOM, T_RETURN)) continue;
     const char *null_str = STR_IF(!tc->trace.bit_width, "null_");
-    if(is_var(c)) {
+    if(is_var(c)) { // inputs
       const char *decl = FLAG(*e, entry, RECURSIVE) && t != T_OPAQUE ? "variable" : "alias";
       printf("  `%s(%s", decl, null_str);
       print_type_and_dims(&tc->trace);
       printf(", %s%d, in%d);\n", cname(t), i, e->entry.in - i);
-    } else {
+    } else { // constants
       if(c->op == OP_value) {
         if(t == T_LIST) {
           printf("  `%sconst_nil(%s%d);\n", null_str, cname(t), i);
         } else {
           printf("  `%sconst(%s, %d, %s%d, ", null_str, vltype(t), tc->trace.bit_width, cname(t), i);
-          gen_value_rhs(tc);
+          gen_constant(tc);
           printf(");\n");
         }
-      } else if(!is_tail_call(e, tc)) {
+      } else if(!is_tail_call(e, tc)) { // intermediate values
         if(is_sync(tc)) {
           printf("  wire inst%d_in_ready;\n", i);
         }
@@ -252,13 +259,14 @@ void gen_decls(tcell_t *e) {
             printf(", %s%d);\n", cname(t), i);
           }
         }
-      } else if(t == T_LIST) {
+      } else if(t == T_LIST) { // nil
         printf("  `%sconst_nil(%s%d);\n", null_str, cname(t), i);
       }
     }
   }
 }
 
+// find all inputs with which to synchronize
 static
 void find_sync_inputs(const tcell_t *e, const tcell_t *c, uintptr_t *set, size_t size, int depth) {
   while(ONEOF(c->op, OP_assert, OP_seq, OP_unless)) {
@@ -276,6 +284,7 @@ void find_sync_inputs(const tcell_t *e, const tcell_t *c, uintptr_t *set, size_t
   }
 }
 
+// synchronize the minimum set of inputs
 static
 void gen_sync_disjoint_inputs(const tcell_t *e, const tcell_t *c) {
   uintptr_t set[MAX_DEGREE] = {0};
@@ -311,6 +320,7 @@ void gen_sync_disjoint_inputs(const tcell_t *e, const tcell_t *c) {
   }
 }
 
+// synchronize the output of a block
 static
 void gen_sync_block(const tcell_t *e, const tcell_t *c, int block, bool ret) {
   SEP(" & ");
@@ -342,6 +352,7 @@ void gen_sync_block(const tcell_t *e, const tcell_t *c, int block, bool ret) {
   gen_sync_disjoint_inputs(e, c);
 }
 
+// find all outputs with which to synchronize
 static
 void find_sync_outputs(const tcell_t *e, const tcell_t *c, uintptr_t *set, size_t size, uintptr_t const *const *backrefs) {
   if(is_return(c)) return;
@@ -362,6 +373,7 @@ void find_sync_outputs(const tcell_t *e, const tcell_t *c, uintptr_t *set, size_
   }
 }
 
+// synchronize the minimum set of outputs
 static
 void gen_sync_disjoint_outputs(const tcell_t *e, const tcell_t *c, uintptr_t const *const *backrefs) {
   uintptr_t set[MAX_DEGREE] = {0};
@@ -413,6 +425,7 @@ void print_var(const tcell_t *e, const tcell_t *c, int block) {
   }
 }
 
+// parameters for an argument e.g. width
 static
 void print_params_for_arg(const char *pre, const tcell_t *tc, int i,
                           const char **sep, const char *sep_next) {
@@ -426,8 +439,9 @@ void print_params_for_arg(const char *pre, const tcell_t *tc, int i,
   }
 }
 
+// parameters for a module instance
 static
-void gen_width_params(const tcell_t *e, const tcell_t *c) {
+void gen_params(const tcell_t *e, const tcell_t *c) {
   printf("#(");
   if(!is_user_func(c)) {
     csize_t
@@ -449,6 +463,7 @@ void gen_width_params(const tcell_t *e, const tcell_t *c) {
   printf(")");
 }
 
+// make an instance (corresponding to an op)
 static
 void gen_instance(const tcell_t *e, const tcell_t *c, int *sync_chain, uintptr_t const *const *backrefs, int block) {
   int inst = c - e;
@@ -462,11 +477,12 @@ void gen_instance(const tcell_t *e, const tcell_t *c, int *sync_chain, uintptr_t
   trace_get_name(c, &module_name, &word_name);
   type_t t = trace_type(c);
 
+  // name, synchronization, and params
   if(sync) {
     printf("    `inst_sync(");
     print_function_name(e, c);
     printf(", inst%d, ", inst);
-    gen_width_params(e, c);
+    gen_params(e, c);
     printf(")(\n      `sync(");
     gen_sync_disjoint_inputs(e, c);
     printf(", ");
@@ -476,10 +492,11 @@ void gen_instance(const tcell_t *e, const tcell_t *c, int *sync_chain, uintptr_t
     printf("    `inst(");
     print_function_name(e, c);
     printf(", inst%d, ", inst);
-    gen_width_params(e, c);
+    gen_params(e, c);
     printf(")(");
   }
 
+  // inputs
   SEP(",");
   COUNTUP(i, in) {
     const tcell_t *a = &e[cgen_index(e, c->expr.arg[i])];
@@ -491,6 +508,8 @@ void gen_instance(const tcell_t *e, const tcell_t *c, int *sync_chain, uintptr_t
     print_var(e, a, block);
     printf(")");
   }
+
+  // outputs
   printf_sep("\n      `out(%s%s, 0, %s%d)",
              STR_IF(!c->trace.bit_width, "null_"),
              vltype_full(c), cname(t), inst);
@@ -508,6 +527,7 @@ void gen_instance(const tcell_t *e, const tcell_t *c, int *sync_chain, uintptr_t
   if(sync) *sync_chain = inst;
 }
 
+// end one block and start the next
 static
 void next_block(const tcell_t *e, const tcell_t *r, int block,
                 bool block_start, int return_block) {
@@ -530,6 +550,8 @@ void gen_body(tcell_t *e) {
   int block = 1;
   int return_block = 0;
   int block_sync_chain = 0;
+
+  // top level synchronization
   if(FLAG(*e, entry, RECURSIVE)) {
     printf("\n  `loop_sync(");
     gen_sync_disjoint_outputs(e, e, backrefs);
@@ -539,6 +561,7 @@ void gen_body(tcell_t *e) {
     gen_sync_disjoint_outputs(e, e, backrefs);
     printf(");\n");
   }
+
   FOR_TRACE_CONST(c, e) {
     if(!is_value(c)) {
       if(!ONEOF(c->op, OP_dep, OP_seq, OP_unless)) {
@@ -582,6 +605,7 @@ void gen_body(tcell_t *e) {
 }
 
 // TODO clean up
+// assign the data outputs of the module
 static
 bool gen_outputs(const tcell_t *e) {
   bool ret = false;
@@ -636,6 +660,7 @@ bool gen_outputs(const tcell_t *e) {
   return ret;
 }
 
+// outgoing synchronization
 static
 void gen_valid_ready(const tcell_t *e) {
   int block;
@@ -660,6 +685,7 @@ void gen_valid_ready(const tcell_t *e) {
   printf("  assign out_valid = %svalid;\n", FLAG(*e, entry, RECURSIVE) ? "active & " : "");
 }
 
+// assign stack or loop registers to support recursion for each self call
 static
 void gen_loop(const tcell_t *e, const tcell_t *self_call, int block) {
   csize_t in = e->entry.in;
@@ -701,6 +727,7 @@ void gen_loop(const tcell_t *e, const tcell_t *self_call, int block) {
   printf("      end\n");
 }
 
+// implement recursion by setting up for next iteration
 static
 void gen_loops(tcell_t *e) {
   printf("  always @(posedge clk) begin\n");
@@ -733,6 +760,9 @@ void gen_loops(tcell_t *e) {
     COUNTUP(i, e->entry.out) {
       printf("      return%d <= out%d;\n", (int)i, (int)i);
     }
+
+    // pop from stack:
+    // {label, data...} <= stack[sp - 1]; sp <= sp - 1;
     if(FLAG(*e, entry, RETURN_ADDR)) {
       printf("      {return_addr, ");
     } else {
