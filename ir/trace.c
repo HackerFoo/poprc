@@ -1,4 +1,4 @@
-/* Copyright 2012-2018 Dustin DeWeese
+/* Copyright 2012-2020 Dustin DeWeese
    This file is part of PoprC.
 
     PoprC is free software: you can redistribute it and/or modify
@@ -27,14 +27,15 @@
 #include "cells.h"
 #include "rt.h"
 #include "eval.h"
-#include "primitive.h"
 #include "special.h"
-#include "parse.h"
-#include "print.h"
-#include "lex.h"
+#include "parse/parse.h"
+#include "debug/print.h"
+#include "parse/lex.h"
 #include "user_func.h"
 #include "list.h"
-#include "byte_compile.h"
+#include "ir/compile.h"
+#include "var.h"
+#include "ir/analysis.h"
 
 // storage for tracing
 #define ALIGN64 __attribute__((aligned(64)))
@@ -52,7 +53,7 @@ static tcell_t *active_entries[1 << 4];
 static unsigned int prev_entry_pos = 0;
 static tcell_t *trace_block_map[BLOCK_MAP_SIZE] = {0};
 
-#include "trace-local.h"
+#include "ir/trace-local.h"
 
 #if INTERFACE
 typedef intptr_t trace_index_t;
@@ -468,7 +469,6 @@ void trace_shrink(tcell_t *t, csize_t args) {
 }
 
 // copy c into newly allocated space in the trace
-static
 int trace_copy_cell(tcell_t *entry, const cell_t *c) {
   int index = trace_alloc(entry, c->size);
   size_t n = closure_cells(c);
@@ -640,16 +640,6 @@ tcell_t *trace_partial(op op, int n, cell_t *p) {
   return tc;
 }
 
-void apply_condition(cell_t *c, int *x) {
-  assert_error(is_value(c));
-  if(c->value.var) {
-    tcell_t *entry = var_entry(c->value.var);
-    tcell_t *t = concatenate_conditions(c->value.var, &entry[*x]);
-    c->value.var = t;
-    *x = var_index(entry, t);
-  }
-}
-
 // store value c in the trace
 int trace_store_value(tcell_t *entry, cell_t *c) {
   if(!entry) return -1;
@@ -692,73 +682,6 @@ int trace_store_something(tcell_t *entry, tcell_t **v) {
   return x;
 }
 
-static
-bool quote_has_call(const tcell_t *e, const tcell_t *call) {
-  if(NOT_FLAG(*e, entry, QUOTE)) return false;
-  FOR_TRACE_CONST(p, e) {
-    if(is_user_func(p)) {
-      const tcell_t *pe = get_entry(p);
-      if(pe == call ||
-         quote_has_call(pe, call)) return true;
-    }
-  }
-  return false;
-}
-
-// check for recursion and throw errors on nontermination
-static
-bool trace_recursive_changes(tcell_t *entry) {
-  bool changes = false;
-  bool non_tail_call = false;
-  bool forced_inline = FLAG(*entry, entry, FORCED_INLINE);
-
-  FOR_TRACE(p, entry) {
-    if(is_user_func(p)) {
-      const tcell_t *pe = get_entry(p);
-      if(pe == entry) {
-        bool branch_changes = false;
-        csize_t in = closure_in(p);
-        assert_error(in == entry->entry.in,
-                     "incorrect self call arity at %s %d",
-                     entry->word_name, p-entry);
-        COUNTUP(i, in) {
-          trace_index_t v = in - i;
-          if(tr_index(p->expr.arg[i]) != v) {
-            tcell_t *a = &entry[v];
-            assert_error(is_var(a));
-            branch_changes = true;
-            // mark variables that change during recursion
-            FLAG_SET(*a, trace, CHANGES);
-          }
-        }
-
-        // if !branch_changes, a recusive call has been made without modifying any arguments
-        // so a tail call will loop forever without producing anything
-        non_tail_call |= NOT_FLAG(*p, trace, JUMP);
-        if(!forced_inline) {
-          assert_throw(NOT_FLAG(*p, trace, JUMP) || branch_changes, "infinite tail recursion, tail call with constant args");
-        }
-        changes = true;
-      } else if(quote_has_call(pe, entry)) {
-        non_tail_call = true;
-        changes = true;
-      }
-    }
-  }
-
-  // if there's only one path, even if the arguments change, it will loop forever
-  if(!forced_inline) {
-    // very conservative check, should only fail if the function is definitely non-terminating
-    // TODO use return types e.g. T_BOTTOM
-    assert_throw(!changes
-                 || non_tail_call // could be lazy
-                 || entry->entry.alts > 1 // maybe only one of alts are recursive
-                 || entry->entry.out > 1, // could drop recursive path
-                 "infinite tail recursion, single alt");
-  }
-  return changes;
-}
-
 tcell_t *get_trace_ptr(size_t size) {
   assert_error((void *)(trace_ptr + size) < (void *)(&trace_cells+1));
   memset(trace_ptr, 0, sizeof(*trace_ptr) * size);
@@ -784,37 +707,6 @@ tcell_t *trace_start_entry(tcell_t *parent, csize_t out) {
   trace_update_block_map(e);
 
   return e;
-}
-
-void hw_analysis(tcell_t *e) {
-  // mark functions that use recursive functions
-  if(FLAG(*e, entry, RECURSIVE)) {
-    FLAG_SET(*e, entry, SYNC);
-  }
-  FOR_TRACE_CONST(c, e) {
-    if(ONEOF(trace_type(c), T_LIST, T_OPAQUE)) {
-      FLAG_SET(*e, entry, SYNC);
-    }
-    if(is_user_func(c)) {
-      tcell_t *entry = get_entry(c);
-      if(!entry) continue;
-      if(entry == e && NOT_FLAG(*c, trace, JUMP)) {
-        if(FLAG(*e, entry, STACK)) {
-          FLAG_SET(*e, entry, RETURN_ADDR);
-        }
-        FLAG_SET(*e, entry, STACK);
-      }
-      if(FLAG(*entry, entry, RECURSIVE) ||
-         FLAG(*entry, entry, SYNC)) {
-        FLAG_SET(*e, entry, SYNC);
-      }
-      if(FLAG(*entry, entry, RAM)) {
-        FLAG_SET(*e, entry, RAM);
-      }
-    } else if(c->op == OP_ap) {
-      FLAG_SET(*e, entry, RAM);
-    }
-  }
 }
 
 static
@@ -937,16 +829,6 @@ void trace_drop(cell_t *r) {
       trace_update(r);
     }
   }
-}
-
-// find the function variable in a list
-static
-cell_t *get_list_function_var(cell_t *c) {
-  cell_t *left = *leftmost(&c);
-       if(!left)                return NULL;
-  else if(is_function(left))    return left;
-  else if(is_placeholder(left)) return left->expr.arg[closure_in(left) - 1];
-  else                          return NULL;
 }
 
 // called when c is reduced to r to copy to pre-allocated space in the trace
@@ -1143,15 +1025,6 @@ int trace_build_quote(tcell_t *entry, cell_t *l) {
   return compile_quote(entry, l);
 }
 
-cell_t *trace_quote_var(tcell_t *entry, cell_t *l) {
-  assert_error(l != NULL);
-  if(is_empty_list(l)) return l;
-  if(is_var(l)) return l;
-  int x = trace_build_quote(entry, l);
-  drop(l);
-  return var_create_nonlist(T_LIST, &entry[x]);
-}
-
 // store a return
 static
 int trace_return(tcell_t *entry, cell_t *c_) {
@@ -1182,44 +1055,6 @@ int trace_return(tcell_t *entry, cell_t *c_) {
   tc->n = -1;
   tc->alt = NULL;
   return x;
-}
-
-// builds a temporary list of referenced variables
-cell_t **trace_var_list(cell_t *c, cell_t **tail) {
-  if(c && !c->tmp_val && tail != &c->tmp) {
-    if(is_var(c) && !is_list(c)) {
-      LIST_ADD(tmp, tail, c);
-      tail = trace_var_list(c->alt, tail);
-    } else {
-      c->tmp_val = true; // prevent loops
-      TRAVERSE(c, alt, in, ptrs) {
-        tail = trace_var_list(*p, tail);
-      }
-      c->tmp_val = false;
-    }
-  }
-  return tail;
-}
-
-size_t tmp_list_length(cell_t *c) {
-  size_t n = 0;
-  FOLLOW(p, c, tmp) {
-    n++;
-  }
-  return n;
-}
-
-TEST(var_count) {
-  cell_t *l = lex("? [? +] [[?] dup] [[[[?]]]] ? dup", 0);
-  const cell_t *p = l;
-  cell_t *c = parse_expr(&p, NULL, NULL);
-  cell_t *vl = 0;
-  trace_var_list(c, &vl);
-  size_t n = tmp_list_length(vl);
-  printf("length(vl) = %d\n", (int)n);
-  clean_tmp(vl);
-  drop(c);
-  return n == 5 ? 0 : -1;
 }
 
 // reduce for tracing & compilation
@@ -1293,18 +1128,6 @@ unsigned int trace_reduce_one(tcell_t *entry, cell_t *c) {
   return alts;
 }
 
-tcell_t *trace_alloc_var(tcell_t *entry, type_t t) {
-  int x = trace_alloc(entry, 2);
-  if(x <= 0) return NULL;
-  tcell_t *tc = &entry[x];
-  tc->op = OP_value;
-  tc->value.type = t;
-  tc->trace.type = t;
-  tc->value.flags = VALUE_VAR;
-  tc->var_index = ++entry->entry.in;
-  return tc;
-}
-
 bool valid_pos(uint8_t pos) {
   return INRANGE(pos, 1, prev_entry_pos);
 }
@@ -1312,10 +1135,6 @@ bool valid_pos(uint8_t pos) {
 tcell_t *pos_entry(uint8_t pos) {
   return valid_pos(pos) ?
     active_entries[pos - 1] : NULL;
-}
-
-cell_t *param(int t, tcell_t *entry) {
-  return var_create_nonlist(t, trace_alloc_var(entry, t));
 }
 
 void print_active_entries(const char *msg) {
@@ -1363,130 +1182,6 @@ FORMAT(trace_cell, 'T') {
   format_entry_short((val_t)entry);
   if(entry) printf("[%d]", var_index(entry, tc));
 }
-
-/* conditions */
-
-int copy_conditions(tcell_t *entry, int i, int v) {
-  if(!i || i == v) return v;
-  tcell_t *tc = &entry[i];
-  if(!ONEOF(tc->op, OP_assert, OP_seq, OP_unless)) return v;
-  int a = tr_index(tc->expr.arg[0]);
-  int an = copy_conditions(entry, a, v);
-  if(a == an) return i;
-  int x = i;
-  if(a) {
-    x = trace_copy_cell(entry, &tc->c);
-    tcell_t *tn = &entry[x];
-    tn->n = ~0;
-    entry[tr_index(tc->expr.arg[1])].n++;
-  }
-  entry[x].expr.arg[0] = index_tr(an);
-  if(an) entry[an].n++;
-  LOG("copy condition in %s: %d -> %d", entry->word_name, i, x);
-  return x;
-}
-
-void reserve_condition(tcell_t **p) {
-  if(*p) {
-    tcell_t *entry = var_entry(*p);
-    *p = &entry[copy_conditions(entry, var_index(entry, *p), 0)];
-  }
-}
-
-// assert & unless form lists that can be concatenated
-// TODO use refcounting to avoid destructive concatenation
-tcell_t *concatenate_conditions(tcell_t *a, tcell_t *b) {
-  if(a == NULL) return b;
-  if(b == NULL) return a;
-  tcell_t *entry = var_entry(a);
-  b = var_for_entry(entry, b);
-  assert_error(b, "%s %d %d", entry->word_name, a-entry, b-entry);
-  int bi = var_index(entry, b);
-  tcell_t *an = &entry[copy_conditions(entry, var_index(entry, a), bi)];
-  LOG("condition %s %d ... %d %O arg <- %d",
-      entry->word_name, a-entry, an-entry, an->op, b-entry);
-  return an;
-}
-
-tcell_t *value_condition(cell_t *a) {
-  return a && is_value(a) && !is_var(a) ? a->value.var : NULL;
-}
-
-void add_conditions_2(cell_t *res, cell_t *a0) {
-  tcell_t **v = &res->value.var;
-  if(!is_var(res)) {
-    *v = concatenate_conditions(*v, value_condition(a0));
-  }
-}
-
-void add_conditions_3(cell_t *res, cell_t *a0, cell_t *a1) {
-  tcell_t **v = &res->value.var;
-  if(!is_var(res)) {
-    *v = concatenate_conditions(*v,
-           concatenate_conditions(value_condition(a0),
-                                  value_condition(a1)));
-  }
-}
-
-void add_conditions_4(cell_t *res, cell_t *a0, cell_t *a1, cell_t *a2) {
-  tcell_t **v = &res->value.var;
-  if(!is_var(res)) {
-    *v = concatenate_conditions(*v,
-           concatenate_conditions(value_condition(a0),
-             concatenate_conditions(value_condition(a1),
-                                    value_condition(a2))));
-  }
-}
-
-void add_conditions_5(cell_t *res, cell_t *a0, cell_t *a1, cell_t *a2, cell_t *a3) {
-  tcell_t **v = &res->value.var;
-  if(!is_var(res)) {
-    *v = concatenate_conditions(*v,
-           concatenate_conditions(value_condition(a0),
-             concatenate_conditions(value_condition(a1),
-               concatenate_conditions(value_condition(a2),
-                                      value_condition(a3)))));
-  }
-}
-
-void add_conditions_6(cell_t *res, cell_t *a0, cell_t *a1, cell_t *a2, cell_t *a3, cell_t *a4) {
-  tcell_t **v = &res->value.var;
-  if(!is_var(res)) {
-    *v = concatenate_conditions(*v,
-           concatenate_conditions(value_condition(a0),
-             concatenate_conditions(value_condition(a1),
-               concatenate_conditions(value_condition(a2),
-                 concatenate_conditions(value_condition(a3),
-                                        value_condition(a4))))));
-  }
-}
-
-void add_conditions_from_array(cell_t *res, cell_t **a, unsigned int n) {
-  tcell_t **v = &res->value.var;
-  if(!is_var(res) && n) {
-    tcell_t *cs = value_condition(a[n-1]);
-    COUNTDOWN(i, n-1) {
-      cs = concatenate_conditions(value_condition(a[i]), cs);
-    }
-    *v = concatenate_conditions(*v, cs);
-  }
-}
-
-void add_conditions_var_2(cell_t *res, tcell_t *t) {
-  tcell_t **v = &res->value.var;
-  *v = concatenate_conditions(t, *v);
-}
-
-void add_conditions_var_3(cell_t *res, tcell_t *t, cell_t *a0) {
-  tcell_t **v = &res->value.var;
-  *v = concatenate_conditions(t,
-         concatenate_conditions(value_condition(a0), *v));
-}
-
-#if INTERFACE
-#define add_conditions(...) DISPATCH(add_conditions, __VA_ARGS__)
-#define add_conditions_var(...) DISPATCH(add_conditions_var, __VA_ARGS__)
-#endif
 
 int trace_entry_size(const tcell_t *e) {
   return e->entry.len + 1;
@@ -1594,32 +1289,8 @@ cell_t *trace_extension(cell_t *l, int in, int out) {
   }
 }
 
-// *** temporary
-bool is_tail_call(const tcell_t *entry, const tcell_t *c) {
-  return
-    FLAG(*c, trace, JUMP) &&
-    FLAG(*entry, entry, RECURSIVE);
-}
-
 val_t trace_opaque_symbol(const tcell_t *c) {
   return c->trace.range.min;
-}
-
-range_t get_range(cell_t *c) {
-  assert_error(is_value(c));
-  if(is_var(c)) {
-    return c->value.range;
-  } else {
-    switch(c->value.type) {
-    case T_INT:
-      return RANGE(c->value.integer);
-    case T_SYMBOL:
-    case T_OPAQUE:
-      return RANGE(c->value.symbol);
-    default:
-      return default_bound;
-    }
-  }
 }
 
 tcell_t *tcell_entry(cell_t *e) {
@@ -1653,66 +1324,6 @@ csize_t dep_arg_index(const tcell_t *entry,
     }
   }
   return 0;
-}
-
-#define HASH(l, x) (hash = (hash * 1021 + (uint32_t)(l)) * 1979 + (uint32_t)(x))
-uint32_t hash_trace_cell(tcell_t *entry, tcell_t *tc) {
-  uint32_t hash = 1;
-  int idx = tc - entry - 1;
-
-  if(!tc || !tc->op ||
-     !INRANGE(idx, 0, entry->entry.len)) {
-    HASH('n', 1);
-    return hash;
-  }
-
-  if(tc->trace.hash) return tc->trace.hash;
-
-  if(is_value(tc)) {
-    if(is_var(tc)) {
-      HASH('v', tc->var_index);
-    } else if(tc->value.type == T_LIST) {
-      TRAVERSE(tc, ptrs) {
-        HASH('p', hash_trace_cell(entry, &entry[tr_index(*p)]));
-      }
-    } else if(tc->value.type == T_INT) {
-      HASH('i', tc->value.integer);
-    } else if(tc->value.type == T_SYMBOL) {
-      HASH('y', tc->value.symbol);
-    }
-    // HASH('t', tc->value.type);
-  } else {
-    if(is_dep(tc)) {
-      HASH('d', dep_arg_index(entry, tc));
-    } else {
-      TRAVERSE(tc, in) {
-        HASH('a', hash_trace_cell(entry, &entry[tr_index(*p)]));
-      }
-    }
-    HASH('o', tc->op);
-    HASH('O', closure_out(tc));
-  }
-  tc->trace.hash = hash;
-  return hash;
-}
-
-uint32_t hash_entry(tcell_t *entry) {
-  uint32_t hash = 1;
-  FOR_TRACE(tc, entry) {
-    tc->trace.hash = 0;
-  }
-  FOR_TRACE(tc, entry) {
-    HASH('c', hash_trace_cell(entry, tc));
-  }
-  entry->trace.hash = hash;
-  return hash;
-}
-#undef HASH
-
-FORMAT(tag, 'H') {
-  tag_t tag;
-  write_tag(tag, i);
-  printf(FORMAT_TAG, tag);
 }
 
 bool trace_cell_eq(const tcell_t *entry, const tcell_t *a, const tcell_t *b) {
@@ -1752,8 +1363,4 @@ bool trace_cell_eq(const tcell_t *entry, const tcell_t *a, const tcell_t *b) {
 bool is_array(const tcell_t *tc) {
   return trace_type(tc) == T_OPAQUE &&
     tc->trace.range.min == SYM_Array;
-}
-
-bool is_self_call(const tcell_t *e, const tcell_t *c) {
-  return is_user_func(c) && get_entry(c) == e;
 }

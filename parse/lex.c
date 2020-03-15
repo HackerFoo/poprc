@@ -1,4 +1,4 @@
-/* Copyright 2012-2018 Dustin DeWeese
+/* Copyright 2012-2020 Dustin DeWeese
    This file is part of PoprC.
 
     PoprC is free software: you can redistribute it and/or modify
@@ -26,8 +26,8 @@
 
 #include "cells.h"
 #include "special.h"
-#include "tok.h"
-#include "lex.h"
+#include "parse/tok.h"
+#include "parse/lex.h"
 
 seg_t tok_seg(const cell_t *c) {
   seg_t s = {

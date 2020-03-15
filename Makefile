@@ -115,7 +115,14 @@ BUILD_DIR := build/$(CC)/$(BUILD)
 DIAGRAMS := diagrams
 DIAGRAMS_FILE := diagrams.html
 
-SRC := $(wildcard *.c) $(wildcard startle/*.c) $(wildcard cgen/*.c)
+SRC := $(wildcard *.c) \
+       $(wildcard startle/*.c) \
+       $(wildcard cgen/*.c) \
+       $(wildcard primitive/*.c) \
+       $(wildcard ir/*.c) \
+       $(wildcard parse/*.c) \
+       $(wildcard debug/*.c) \
+       $(wildcard gen/*.c)
 OBJS := $(patsubst %.c, $(BUILD_DIR)/%.o, $(SRC))
 EMCC_OBJS := $(patsubst %.c, build/emcc/$(BUILD)/%.o, $(SRC))
 DEPS := $(patsubst %.c, $(BUILD_DIR)/%.d, $(SRC))
@@ -343,7 +350,7 @@ clean-dot:
 
 .PHONY: wc
 wc:
-	wc -l {cgen,startle}/*.[ch] *.[ch] | sort -nr
+	wc -l {cgen,startle,primitive,ir,parse,debug,gen}/*.[ch] *.[ch] | sort -nr
 
 .PHONY: install
 install:

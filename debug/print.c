@@ -1,4 +1,4 @@
-/* Copyright 2012-2018 Dustin DeWeese
+/* Copyright 2012-2020 Dustin DeWeese
    This file is part of PoprC.
 
     PoprC is free software: you can redistribute it and/or modify
@@ -31,16 +31,16 @@
 
 #include "cells.h"
 #include "rt.h"
-#include "primitive.h"
 #include "special.h"
-#include "trace.h"
-#include "parse.h"
-#include "print.h"
+#include "ir/trace.h"
+#include "parse/parse.h"
+#include "debug/print.h"
 #include "module.h"
 #include "user_func.h"
 #include "list.h"
-#include "lex.h"
-#include "tags.h"
+#include "parse/lex.h"
+#include "debug/tags.h"
+#include "var.h"
 
 static BITSET_INDEX(visited, cells);
 static BITSET_INDEX(marked, cells);

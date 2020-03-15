@@ -1,4 +1,4 @@
-/* Copyright 2012-2019 Dustin DeWeese
+/* Copyright 2012-2020 Dustin DeWeese
    This file is part of PoprC.
 
     PoprC is free software: you can redistribute it and/or modify
@@ -29,17 +29,16 @@
 
 #include "cells.h"
 #include "rt.h"
-#include "primitive.h"
 #include "special.h"
-#include "print.h"
-#include "trace.h"
+#include "debug/print.h"
+#include "ir/trace.h"
 #include "list.h"
-#include "parse.h"
+#include "parse/parse.h"
 #include "builders.h"
-#include "lex.h"
+#include "parse/lex.h"
 #include "io.h"
-#include "primitive_io.h"
 #include "eval.h"
+#include "primitive/io.h"
 #include "irc.h"
 
 static

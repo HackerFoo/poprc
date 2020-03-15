@@ -1,4 +1,4 @@
-/* Copyright 2012-2018 Dustin DeWeese
+/* Copyright 2012-2020 Dustin DeWeese
    This file is part of PoprC.
 
     PoprC is free software: you can redistribute it and/or modify
@@ -29,16 +29,17 @@
 #include "cells.h"
 #include "rt.h"
 #include "eval.h"
-#include "primitive.h"
 #include "special.h"
-#include "byte_compile.h"
-#include "parse.h"
-#include "print.h"
-#include "lex.h"
+#include "ir/compile.h"
+#include "parse/parse.h"
+#include "debug/print.h"
+#include "parse/lex.h"
 #include "module.h"
 #include "user_func.h"
 #include "list.h"
-#include "trace.h"
+#include "ir/trace.h"
+#include "var.h"
+#include "ir/analysis.h"
 
 bool break_on_trace = false;
 
@@ -867,16 +868,6 @@ void set_prev_cells(tcell_t *entry) {
   entry[1].trace.prev_cells = prev_cells;
 }
 
-static
-void last_use_mark(tcell_t *entry, cell_t **p) {
-  int x = tr_index(*p);
-  tcell_t *a = &entry[x];
-  if(x && NOT_FLAG(*a, trace, USED)) {
-    tr_set_flags(p, TR_FINAL);
-    FLAG_SET(*a, trace, USED);
-  }
-}
-
 #if INTERFACE
 #define is_return(c) _is_return(GET_CELL(c))
 #define is_expr(c) _is_expr(GET_CELL(c))
@@ -888,133 +879,6 @@ bool _is_return(const cell_t *c) {
 
 bool _is_expr(cell_t *c) {
   return c && c->op != OP_value;
-}
-
-static
-void clear_used(tcell_t *entry) {
-  FOR_TRACE(tc, entry) {
-    FLAG_CLEAR(*tc, trace, USED);
-  }
-}
-
-static
-void last_use_mark_cell(tcell_t *entry, cell_t *c) {
-  if(is_value(c)) {
-    if(is_return(c)) {
-      COUNTUP(i, list_size(c)) {
-        last_use_mark(entry, &c->value.ptr[i]);
-      }
-    }
-  } else if(!is_dep(c)) {
-    COUNTDOWN(i, closure_in(c)) {
-      last_use_mark(entry, &c->expr.arg[i]);
-    }
-  }
-}
-
-void last_use_analysis(tcell_t *entry) {
-  set_prev_cells(entry);
-  clear_used(entry);
-
-  // calls and returns
-  FOR_TRACE_REV(tc, entry) {
-    cell_t *c = &tc->c;
-    last_use_mark_cell(entry, c);
-    if(!is_return(c) && !is_dep(c) && !direct_refs(c)) {
-      trace_set_type(tc, T_BOTTOM);
-    }
-  }
-
-  // go back over non-partial segments for each branch
-  bool partial = false;
-  FOR_TRACE_REV(tc, entry) {
-    cell_t *c = &tc->c;
-    if(is_return(c)) {
-      clear_used(entry);
-      partial = false;
-    } else if(is_expr(c) && FLAG(*c, expr, PARTIAL)) {
-      partial = true;
-    }
-
-    if(!partial) {
-      last_use_mark_cell(entry, c);
-    }
-  }
-}
-
-void mark_jumps(tcell_t *entry) {
-  tcell_t *jump = NULL;
-  FOR_TRACE(tc, entry) {
-    cell_t *c = &tc->c;
-    if(ONEOF(c->op, OP_seq, OP_assert, OP_unless, OP_pushr, OP_compose, OP_dep)) continue;
-    if(is_return(c) && jump) {
-      tcell_t *e = get_entry(jump);
-      if(e == entry) {
-        FLAG_SET(*tc, trace, JUMP);
-      }
-      FLAG_SET(*jump, trace, JUMP);
-      jump = NULL;
-      continue;
-    }
-    if(is_value(c)) continue;
-    if(is_user_func(c)) {
-      jump = tc;
-      continue;
-    }
-    jump = NULL;
-  }
-}
-
-// Recursively mark dependencies in a previous branch, breaking the dependency chain
-// at a partial. Direct dependencies on that partial are not marked.
-// TODO optimize
-static
-bool mark_no_skip(tcell_t *entry, tcell_t *c, int last_return, int last_partial) {
-  bool res = true;
-  int i = c - entry;
-  if(!is_expr(c) || i < last_partial) return true;
-  if(i < last_return && last_partial == 0) {
-    // look for last partial before this
-    FOR_TRACE_REV(p, entry, i) {
-      if(FLAG(*p, expr, PARTIAL)) {
-        last_partial = p - entry;
-        break;
-      }
-    }
-
-    // return if none is found
-    if(last_partial == 0) return true;
-  }
-
-  if(i == last_partial) {
-    last_partial = 0;
-    res = false;
-  }
-
-  // mark dependencies
-  if(ONEOF(c->op, OP_seq, OP_assert, OP_unless)) {
-    res &= mark_no_skip(entry, &entry[tr_index(c->expr.arg[0])], last_return, last_partial);
-  } else {
-    TRAVERSE(c, in) {
-      res &= mark_no_skip(entry, &entry[tr_index(*p)], last_return, last_partial);
-    }
-  }
-
-  if(res && i < last_return) FLAG_SET(*c, trace, NO_SKIP);
-  return res;
-}
-
-// mark instructions that can't be skipped on failure
-// used in cgen
-void no_skip_analysis(tcell_t *entry) {
-  int last_return = 0;
-  FOR_TRACE(tc, entry) {
-    if(is_return(tc)) {
-      last_return = tc - entry;
-    } else {
-      mark_no_skip(entry, tc, last_return, 0);
-    }
-  }
 }
 
 COMMAND(bc, "print bytecode for a word, or all") {
@@ -1067,197 +931,4 @@ COMMAND(trace, "trace an instruction") {
 
 COMMAND(bt, "break on trace") {
   break_on_trace = true;
-}
-
-size_t backrefs_size(const tcell_t *entry) {
-  size_t n = entry->entry.len;
-  FOR_TRACE_CONST(tc, entry) {
-    if(!is_return(tc)) {
-      n += tc->n + 1;
-    }
-  }
-  return n;
-}
-
-bool set_nonzero(uintptr_t *arr, size_t n, uintptr_t x) {
-  assert_error(x);
-  COUNTUP(i, n) {
-    if(!arr[i]) {
-      arr[i] = x;
-      return true;
-    }
-  }
-  return false;
-}
-
-size_t get_outputs(const tcell_t *entry, const tcell_t *c, uintptr_t const *const *backrefs, uintptr_t const **outputs) {
-  int i = c - entry;
-  assert_error(INRANGE(i, 1, entry->entry.len));
-  *outputs = backrefs[i - 1];
-  return entry[i].n + 1;
-}
-
-void build_backrefs(const tcell_t *entry, uintptr_t **table, size_t size) {
-  uintptr_t **index = table;
-  uintptr_t *backref = (uintptr_t *)(table + entry->entry.len);
-  memset(table, 0, sizeof(*table) * size);
-
-  // build the index
-  FOR_TRACE_CONST(tc, entry) {
-    if(!is_return(tc)) {
-      index[tc - entry - 1] = backref;
-      backref += tc->n + 1;
-    } else {
-      index[tc - entry - 1] = NULL;
-    }
-  }
-
-  assert_le((uintptr_t **)backref - table, (int)size);
-
-  // fill backrefs
-  FOR_TRACE_CONST(tc, entry) {
-    TRAVERSE(tc, const, in, ptrs) {
-      int x = tr_index(*p);
-      UNUSED bool success = set_nonzero(index[x-1], entry[x].n + 1, tc - entry);
-      assert_error(success);
-    }
-  }
-}
-
-int bits_needed(range_t r, bool is_constant) {
-  if(range_empty(r) || !range_bounded(r) ||
-     (!is_constant && range_singleton(r))) {
-    return 0;
-  } else if(r.min >= 0) { // unsigned
-    return max(1, int_log2l(sat_add(r.max, 1)));
-  } else { // signed
-    return max(1, int_log2l(sat_add(max(r.max, sat_neg(r.min)), 1)) + 1);
-  }
-}
-
-int stream_bits(tcell_t *entry, tcell_t *tc, int offset) {
-  if(!ONEOF(trace_type(tc), T_LIST, T_ANY, T_BOTTOM)) return offset; // ***
-  if(tc->trace.bit_width && tc->trace.bit_width >= offset) {
-    return tc->trace.bit_width;
-  }
-  if(is_value(tc) || is_dep(tc)) {
-    return tc->trace.bit_width = offset;
-  }
-  if(is_user_func(tc)) {
-    const tcell_t *e = get_entry(tc);
-    trace_t tr;
-    tr.bit_width = 0;
-    if(e != entry) get_trace_info_for_output(&tr, e, 0);
-    if(tr.bit_width == 0) {
-      tc->trace.bit_width = offset;
-    } else {
-      assert_error(tr.bit_width >= offset);
-      tc->trace.bit_width = tr.bit_width;
-    }
-    return tc->trace.bit_width;
-  }
-
-  int bits = 0;
-  cell_t *const *stream_in =
-    tc->op == OP_quote ? NULL : // no input
-    tc->op == OP_ap ? &tc->expr.arg[closure_in(tc)-1] : // last input
-    &tc->expr.arg[0]; // first input
-  if(ONEOF(tc->op, OP_quote, OP_ap, OP_pushr)) {
-    TRAVERSE(tc, const, in) {
-      if(p != stream_in && *p) bits += bit_width(entry, &entry[tr_index(*p)]);
-    }
-    TRAVERSE(tc, const, out) {
-      if(*p) bits -= bit_width(entry, &entry[tr_index(*p)]);
-    }
-  }
-  if(stream_in) {
-    bits += stream_bits(entry, &entry[tr_index(*stream_in)], -min(0, bits));
-  }
-  assert_ge(bits, 0);
-  return tc->trace.bit_width = max(tc->trace.bit_width, bits);
-}
-
-void array_bits(tcell_t *entry, tcell_t *tc, int aw, int bw) {
-  assert_error(ONEOF(trace_type(tc), T_OPAQUE, T_ANY, T_BOTTOM));
-  assert_error(trace_opaque_symbol(tc) == SYM_Array);
-  if(tc->trace.addr_width && tc->trace.addr_width >= aw &&
-     tc->trace.bit_width && tc->trace.bit_width >= bw) return;
-  int addr, data;
-  switch(tc->op) {
-  case OP_read_array:
-  case OP_write_array:
-    addr = tr_index(tc->expr.arg[1]);
-    data = tr_index(tc->expr.arg[2]);
-
-    tc->trace.addr_width = max(aw, bit_width(entry, &entry[addr]));
-    tc->trace.bit_width = max(bw, data ? bit_width(entry, &entry[data]) : 0);
-    array_bits(entry, &entry[tr_index(tc->expr.arg[0])],
-               tc->trace.addr_width,
-               tc->trace.bit_width);
-    break;
-  case OP_dup_array:
-    array_bits(entry, &entry[tr_index(tc->expr.arg[0])],
-               tc->trace.addr_width = aw,
-               tc->trace.bit_width = bw);
-    break;
-  case OP_dep: {
-    tcell_t *c = &entry[tr_index(tc->expr.arg[0])];
-    if(trace_type(c) == T_OPAQUE) {
-      array_bits(entry, c,
-                 tc->trace.addr_width = aw,
-                 tc->trace.bit_width = bw);
-    }
-    break;
-  }
-  case OP_value:
-    tc->trace.addr_width = aw;
-    tc->trace.bit_width = bw;
-  default:
-    break;
-  }
-}
-
-void calculate_bit_width(tcell_t *entry) {
-  LOG("calculate_bit_width %E", entry);
-  FOR_TRACE(tc, entry) {
-    bit_width(entry, tc);
-  }
-}
-
-int bit_width(tcell_t *entry, tcell_t *tc) {
-  if(is_user_func(tc)) {
-    const tcell_t *e = get_entry(tc);
-    COUNTUP(i, e->entry.in) {
-      const tcell_t *v_e = &e[e->entry.in - i];
-      type_t t = trace_type(v_e);
-      tcell_t *v = &entry[tr_index(tc->expr.arg[i])];
-      if(t == T_LIST) {
-        stream_bits(entry, v, v_e->trace.bit_width);
-      } else if(t == T_OPAQUE &&
-                trace_opaque_symbol(v_e) == SYM_Array) {
-        array_bits(entry, v, v_e->trace.addr_width, v_e->trace.bit_width);
-      }
-    }
-    if(trace_type(tc) != T_BOTTOM &&
-       (e != entry || trace_type(tc) != T_LIST)) {
-      get_trace_info_for_output(&tc->trace, e, 0);
-    }
-  }
-  if(!tc->trace.bit_width) {
-    type_t t = trace_type(tc);
-    range_t r = tc->trace.range;
-    if(ONEOF(t, T_INT, T_SYMBOL) &&
-       range_bounded(r) &&
-       range_span(r) > 0) {
-      tc->trace.bit_width = bits_needed(r, is_value(tc));
-    } else if(t == T_LIST) {
-      tc->trace.bit_width = stream_bits(entry, tc, 0);
-    } else if(t == T_OPAQUE &&
-              trace_opaque_symbol(tc) == SYM_Array) {
-      array_bits(entry, tc, 0, 0);
-    } else {
-      tc->trace.bit_width = bits_needed(default_bound, is_value(tc));
-    }
-  }
-  return tc->trace.bit_width;
 }

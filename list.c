@@ -1,4 +1,4 @@
-/* Copyright 2012-2018 Dustin DeWeese
+/* Copyright 2012-2020 Dustin DeWeese
    This file is part of PoprC.
 
     PoprC is free software: you can redistribute it and/or modify
@@ -29,7 +29,8 @@
 #include "user_func.h"
 #include "list.h"
 #include "builders.h"
-#include "trace.h"
+#include "ir/trace.h"
+#include "var.h"
 
 cell_t *empty_list() {
   return make_list(0);
@@ -523,4 +524,13 @@ qsize_t quote_size(cell_t *c, bool row) {
 
 bool is_nil(cell_t *l) {
   return is_list(l) && list_size(l) == 0;
+}
+
+// find the function variable in a list
+cell_t *get_list_function_var(cell_t *c) {
+  cell_t *left = *leftmost(&c);
+       if(!left)                return NULL;
+  else if(is_function(left))    return left;
+  else if(is_placeholder(left)) return left->expr.arg[closure_in(left) - 1];
+  else                          return NULL;
 }

@@ -1,4 +1,4 @@
-/* Copyright 2012-2018 Dustin DeWeese
+/* Copyright 2012-2020 Dustin DeWeese
    This file is part of PoprC.
 
     PoprC is free software: you can redistribute it and/or modify
@@ -32,16 +32,16 @@
 
 #include "cells.h"
 #include "rt.h"
-#include "primitive.h"
 #include "special.h"
-#include "parse.h"
-#include "byte_compile.h"
-#include "trace.h"
-#include "tok.h"
-#include "lex.h"
+#include "parse/parse.h"
+#include "ir/compile.h"
+#include "ir/trace.h"
+#include "parse/tok.h"
+#include "parse/lex.h"
 #include "module.h"
 #include "user_func.h"
 #include "list.h"
+#include "var.h"
 
 // List of predefined symbols in value order.
 #define MAX_SYMBOLS 64

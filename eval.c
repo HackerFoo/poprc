@@ -1,4 +1,4 @@
-/* Copyright 2012-2018 Dustin DeWeese
+/* Copyright 2012-2020 Dustin DeWeese
    This file is part of PoprC.
 
     PoprC is free software: you can redistribute it and/or modify
@@ -46,20 +46,20 @@
 #include "rt.h"
 #include "special.h"
 #include "eval.h"
-#include "byte_compile.h"
-#include "parse.h"
-#include "print.h"
-#include "cgen.h"
-#include "lex.h"
+#include "ir/compile.h"
+#include "parse/parse.h"
+#include "debug/print.h"
+#include "gen/cgen.h"
+#include "parse/lex.h"
 #include "module.h"
 #include "list.h"
-#include "trace.h"
+#include "ir/trace.h"
 #include "git_log.h"
-#include "log_tree.h"
+#include "debug/log_tree.h"
 #include "io.h"
-#include "primitive_io.h"
+#include "primitive/io.h"
 #include "irc.h"
-#include "vlgen.h"
+#include "gen/vlgen.h"
 
 #ifdef EMSCRIPTEN
 #include <emscripten.h>

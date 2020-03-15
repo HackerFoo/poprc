@@ -1,4 +1,4 @@
-/* Copyright 2012-2018 Dustin DeWeese
+/* Copyright 2012-2020 Dustin DeWeese
    This file is part of PoprC.
 
     PoprC is free software: you can redistribute it and/or modify
@@ -21,13 +21,14 @@
 #include "startle/log.h"
 #include "startle/map.h"
 #include "startle/error.h"
-#include "print.h"
+#include "debug/print.h"
 #include "cells.h"
 #include "rt.h"
 #include "list.h"
-#include "trace.h"
+#include "ir/trace.h"
 #include "special.h"
-#include "log_tree.h"
+#include "debug/log_tree.h"
+#include "var.h"
 
 static MAP(map, 255);
 

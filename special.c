@@ -1,4 +1,4 @@
-/* Copyright 2012-2018 Dustin DeWeese
+/* Copyright 2012-2020 Dustin DeWeese
    This file is part of PoprC.
 
     PoprC is free software: you can redistribute it and/or modify
@@ -26,8 +26,9 @@
 #include "cells.h"
 #include "rt.h"
 #include "special.h"
-#include "trace.h"
+#include "ir/trace.h"
 #include "list.h"
+#include "var.h"
 
 bool ctx_has_pos(context_t *ctx) {
   FOLLOW(p, ctx, up) {
@@ -296,102 +297,10 @@ void placeholder_extend(cell_t **lp, qsize_t s, bool wrap_var) {
   *lp = l;
 }
 
-cell_t *var_create(type_t t, tcell_t *tc, int in, int out) {
-  cell_t *v = var_create_nonlist(t, tc);
-  return t == T_LIST && (in || out) ?
-    var_create_list(v, in, out, 0, false) :
-    v;
-}
-
-cell_t *var_create_bound(cell_t *v, tcell_t *tc, const context_t *ctx) {
-  assert_error(is_var(v));
-  type_t t = v->value.type;
-  cell_t *res = var_create(t, tc, 0, 0);
-  res->value.range = range_intersect(ctx->bound, get_range(v));
-  return res;
-}
-
-cell_t *var_create_nonlist(type_t t, tcell_t *tc) {
-  cell_t *c = alloc_value();
-  *c = (cell_t) {
-    .size = c->size,
-    .op = OP_value,
-    .value = {
-      .var = tc,
-      .flags = VALUE_VAR,
-      .type = t,
-      .range = default_bound
-    }
-  };
-  return c;
-}
-
-cell_t *var_create_list(cell_t *f, int in, int out, int shift, bool row) {
-  cell_t *c = make_list(out + shift + 1);
-  cell_t *ph = func(OP_placeholder, in + 1, out + 1);
-  cell_t **a = &c->value.ptr[shift];
-  COUNTUP(i, out) {
-    cell_t *d = dep(ph);
-    a[i] = d;
-    arg(ph, d);
-  }
-  arg(ph, f);
-  refn(ph, out);
-  a[out] = ph;
-  c->value.flags = VALUE_ROW;
-  if(row) FLAG_SET(*ph, expr, ROW);
-  return c;
-}
-
-cell_t *var_create_with_entry(type_t t, tcell_t *entry, csize_t size) {
-  assert_error(entry);
-  int ix = trace_alloc(entry, size);
-  return var_create(t, tc_get(entry, ix), 0, 0);
-}
-
-tcell_t *infer_entry(cell_t *c) {
-  uint8_t pos = 0;
-  assert_error(c);
-  TRAVERSE(c, in) {
-    cell_t *a = *p;
-    if(a && is_var(a)) {
-      // inherit entry with highest pos
-      int ep = entry_pos(var_entry(a->value.var));
-      if(ep > pos) {
-        pos = ep;
-      }
-    }
-  }
-
-  assert_error(!c->pos || pos < c->pos, "broken barrier %C", c);
-  tcell_t *entry =
-    pos ? pos_entry(pos) :
-    c->pos ? pos_entry(c->pos)->entry.parent :
-    trace_current_entry();
-  assert_error(entry);
-  LOG_WHEN(!pos && !c->pos, HACK " using current entry %s", entry->word_name);
-  return entry;
-}
-
-cell_t *var(type_t t, cell_t *c) {
-  return var_create_with_entry(t, infer_entry(c), c->size);
-}
-
-cell_t *opaque_var(cell_t *c, val_t sym) {
-  cell_t *v = var(T_OPAQUE, c);
-  v->value.range = RANGE(sym);
-  return v;
-}
-
 #if INTERFACE
-#define is_var(c) _is_var(GET_CELL(c))
 #define is_value(c) _is_value(GET_CELL(c))
 #define is_dep(c) _is_dep(GET_CELL(c))
 #endif
-
-bool _is_var(cell_t const *c) {
-  return c && is_value(c) && FLAG(*c, value, VAR);
-}
 
 cell_t *make_map(csize_t s) {
   csize_t cs = calculate_map_size(s);

@@ -1,4 +1,4 @@
-/* Copyright 2012-2018 Dustin DeWeese
+/* Copyright 2012-2020 Dustin DeWeese
    This file is part of PoprC.
 
     PoprC is free software: you can redistribute it and/or modify
@@ -27,12 +27,12 @@
 
 #include "cells.h"
 #include "special.h"
-#include "parse.h"
-#include "lex.h"
+#include "parse/parse.h"
+#include "parse/lex.h"
 #include "module.h"
-#include "byte_compile.h"
+#include "ir/compile.h"
 #include "list.h"
-#include "trace.h"
+#include "ir/trace.h"
 
 #define WORD_ALIAS__ITEM(__file, __line, __name, __func, __in, __out, __builder, ...) \
   WORD__ITEM(__file, __line, __name, __func, __in, __out, ##__VA_ARGS__)

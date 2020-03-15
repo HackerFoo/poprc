@@ -1,4 +1,4 @@
-/* Copyright 2012-2018 Dustin DeWeese
+/* Copyright 2012-2020 Dustin DeWeese
    This file is part of PoprC.
 
     PoprC is free software: you can redistribute it and/or modify
@@ -24,7 +24,7 @@
 #include "startle/test.h"
 #include "startle/support.h"
 
-#include "tok.h"
+#include "parse/tok.h"
 
 void attribute_parser(const char *s, const char *e, bool after_newline, attr_t *attr_before, attr_t *attr_after);
 

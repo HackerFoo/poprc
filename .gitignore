@@ -4,7 +4,6 @@ _darcs
 .\#*
 /eval
 /build
-/gen
 /makeheaders/makeheaders
 /*.dot
 /cov-int

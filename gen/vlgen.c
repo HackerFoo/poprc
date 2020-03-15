@@ -28,18 +28,19 @@
 
 #include "cells.h"
 #include "rt.h"
-#include "primitive.h"
 #include "special.h"
-#include "byte_compile.h"
-#include "parse.h"
-#include "print.h"
-#include "cgen.h"
-#include "vlgen.h"
+#include "ir/compile.h"
+#include "parse/parse.h"
+#include "debug/print.h"
+#include "gen/cgen.h"
+#include "gen/vlgen.h"
 #include "eval.h"
-#include "lex.h"
+#include "parse/lex.h"
 #include "user_func.h"
-#include "trace.h"
+#include "ir/trace.h"
 #include "list.h"
+#include "var.h"
+#include "ir/analysis.h"
 
 #define MAX_DEGREE 31
 

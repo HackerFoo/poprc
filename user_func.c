@@ -27,15 +27,17 @@
 
 #include "cells.h"
 #include "rt.h"
-#include "primitive.h"
 #include "special.h"
-#include "byte_compile.h"
-#include "trace.h"
+#include "ir/compile.h"
+#include "ir/trace.h"
 #include "list.h"
 #include "user_func.h"
-#include "print.h"
-#include "parse.h" // for string_printf
-#include "tags.h"
+#include "debug/print.h"
+#include "parse/parse.h" // for string_printf
+#include "debug/tags.h"
+#include "var.h"
+#include "ir/analysis.h"
+#include "primitive/core.h"
 
 // hash_entry() of `[id] map`
 #define ID_MAP_HASH 0x1b21417d
@@ -1133,4 +1135,8 @@ void reduce_quote(cell_t **cp) {
     force(cp);
     remove_root(cp);
   }
+}
+
+bool is_self_call(const tcell_t *e, const tcell_t *c) {
+  return is_user_func(c) && get_entry(c) == e;
 }
