@@ -321,11 +321,13 @@ calc_step_push:
     ["1"    =s [[1]    .] dip11 !]
     ["+"    =s [[+]    .] dip11 !] | ap21 nip
 
+__ {hide}
 calc_loop:
   top swap [int_t ->str "\n" ++ write_std getline_std] dip22 swap  __ IO [s] "t"
     calc_step top -swap2 over              __ "t" IO [s] IO
     [calc_loop] dip21 vifte
 
+__ {hide}
 calc: [0] calc_loop
 
 __ matches structure of calc_loop
@@ -411,7 +413,7 @@ f12: 1 swap seq 2 3 | +
 
 dup_map: [int_t dup] map
 
-__ should this return `[]` ?
+__ {hide} should this return `[]` ?
 drop_map: [drop] map
 
 map_add1: [1+] map
@@ -462,7 +464,7 @@ three_reads: [[read_array swap] dip22 read_array swap] dip33 read_array swap -sw
 
 three_writes: [[[[write_array] dip31] dip42 write_array] dip51] dip62 write_array
 
-fuse_map: [1+] map [2*] map __ {hide}
+fuse_map: [1+] map [2*] map
 fuse_map2: [1+ 2*] map
 fuse_map3: [1+] map get2
 fuse_map4: [1+] map tail

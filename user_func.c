@@ -73,6 +73,7 @@ cell_t *get_return_arg(tcell_t *entry, tcell_t *returns, intptr_t x) {
 // given a list l with arity in -> out, produce an application of the list
 // [X -> Y] => [X -> Y] apXY
 cell_t *apply_list(cell_t *l, csize_t in, csize_t out) {
+  LOG("apply list %C %d %d", l, in, out);
   cell_t *c = func(OP_ap, in + 1, out + 1);
   if(in) {
     c->expr.arg[0] = (cell_t *)(intptr_t)(in - 1);
@@ -124,7 +125,10 @@ void print_word_pattern(cell_t *word) {
 
 // build a binding list by applying the pattern to c
 // TODO add reduction back in
-cell_t **bind_pattern(tcell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail) {
+cell_t **bind_pattern(tcell_t *entry, cell_t **cp, cell_t *pattern, cell_t **tail) {
+  cell_t *c;
+start:
+  c = *cp;
   assert_error(c);
   CONTEXT("bind_pattern %s %C %C @barrier", strfield(entry, word_name), c, pattern);
   if(!pattern || !tail) return NULL;
@@ -147,24 +151,37 @@ cell_t **bind_pattern(tcell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail)
     }
     LOG("bound %s[%d] = %C", entry->word_name, pattern->value.var-entry, c);
     LIST_ADD(tmp, tail, ref(c));
+  } else if(is_row_list(c) && list_size(c) == 1) {
+      cp = &c->value.ptr[0];
+      goto start;
   } else if(is_list(pattern) && !is_empty_list(pattern)) {
+
+    if(is_row_list(pattern) && list_size(pattern) == 1) {
+      pattern = pattern->value.ptr[0];
+      goto start;
+    }
 
     // push entry in
     if(pattern->pos) entry = pos_entry(pattern->pos);
 
     if(is_list(c)) {
-      list_iterator_t ci = list_begin(c), pi = list_begin(pattern);
-      cell_t **cp, **pp;
-      while(cp = list_next(&ci, true),
-            pp = list_next(&pi, true),
-            cp && pp) {
-        if(closure_is_ready(*cp)) {
-          simplify(cp); // *** should this should be done at a higher level?
-          LOG_WHEN((*cp)->alt, MARK("WARN") " bind drops alt %C -> %C", *cp, (*cp)->alt);
+      if(is_row_list(c) && list_size(c) == 1) {
+        cp = &c->value.ptr[0];
+        goto start;
+      } else {
+        list_iterator_t ci = list_begin(c), pi = list_begin(pattern);
+        cell_t **cp, **pp;
+        while(cp = list_next(&ci, true),
+              pp = list_next(&pi, true),
+              cp && pp) {
+          if(closure_is_ready(*cp) && !is_row_arg(&ci)) {
+            simplify(cp);
+            LOG_WHEN((*cp)->alt, MARK("WARN") " bind drops alt %C -> %C", *cp, (*cp)->alt);
+          }
+          tail = bind_pattern(entry, cp, *pp, tail);
         }
-        tail = bind_pattern(entry, *cp, *pp, tail);
+        assert_error(!cp && !pp, "mismatched lists %C %C", c, pattern);
       }
-      assert_error(!cp && !pp, "mismatched lists %C %C", c, pattern);
     } else {
       csize_t
         in = function_in(pattern),
@@ -178,15 +195,16 @@ cell_t **bind_pattern(tcell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail)
         COUNTDOWN(i, out) {
           cell_t **p = list_next(&it, false);
           assert_error(p);
-          cell_t *d = l->expr.arg[in+1+i];
-          tail = bind_pattern(entry, d, *p, tail);
+          cell_t **dp = &l->expr.arg[in+1+i], *d = *dp;
+          tail = bind_pattern(entry, dp, *p, tail);
           drop(d);
         }
       }
     }
   } else if(pattern->op == OP_id &&
             pattern->expr.alt_set == 0) {
-    return bind_pattern(entry, c, pattern->expr.arg[0], tail);
+    pattern = pattern->expr.arg[0];
+    goto start;
   } else if(pattern->op == OP_value && (pattern->pos || entry)) { // HACK to move constants out
     assert_error(!is_list(pattern) || is_empty_list(pattern));
     if(!pattern->pos) {
@@ -194,7 +212,13 @@ cell_t **bind_pattern(tcell_t *entry, cell_t *c, cell_t *pattern, cell_t **tail)
       pattern->pos = entry->pos; // HACKity HACK
     }
     force(&pattern);
-    return bind_pattern(entry, c, pattern, tail);
+    goto start;
+  } else if(is_user_func(c) && is_user_func(pattern) &&
+            closure_entry(c) == closure_entry(pattern)) {
+    assert_eq(closure_in(c), closure_in(pattern));
+    COUNTUP(i, closure_in(c)) {
+      tail = bind_pattern(entry, &c->expr.arg[i], pattern->expr.arg[i], tail);
+    }
   } else {
     // This can be caused by an operation before an infinite loop
     // This will prevent reducing the operation, and therefore fail to unify
@@ -287,7 +311,7 @@ response unify_exec(cell_t **cp, tcell_t *parent_entry, context_t *ctx) {
       **tail = &vl;
     COUNTUP(i, in) {
       simplify(&c->expr.arg[i]); // FIX this can cause arg flips
-      tail = bind_pattern(NULL, c->expr.arg[i], initial->expr.arg[i], tail);
+      tail = bind_pattern(NULL, &c->expr.arg[i], initial->expr.arg[i], tail);
       if(!tail) {
         LOG("bind_pattern failed %C %C", c->expr.arg[i], initial->expr.arg[i]);
         break;
@@ -370,6 +394,7 @@ cell_t *exec_expand(cell_t *c) {
   tcell_t *entry = closure_entry(c);
   cell_t *res;
   tcell_t *returns = NULL;
+  int pos = c->pos;
 
   // pointers to the outputs
   cell_t **results[out + 1];
@@ -500,6 +525,7 @@ cell_t *exec_expand(cell_t *c) {
     next = tr_index(returns->alt);
   }
 
+  mark_pos(res, pos);
   return res;
 }
 
@@ -1035,34 +1061,44 @@ OP(exec) {
   PRE(exec, "%s", entry->word_name);
 
   tcell_t *parent_entry = trace_current_entry();
-  tcell_t *s_entry = substitute_entry(entry);
-  if(s_entry->pos == c->pos) s_entry = entry;
-
-  if(NOT_FLAG(*s_entry, entry, COMPLETE)) {
-    delay_branch(ctx, PRIORITY_DELAY);
-    CHECK_PRIORITY(PRIORITY_EXEC_SELF);
-    assert_error(parent_entry,
-                 "incomplete entry can't be unified without "
-                 "a parent entry %C @exec_split", c);
-    if(s_entry->entry.specialize) {
-      c->expr.arg[closure_in(c)] = (cell_t *)s_entry;
-      rsp = unify_exec(cp, parent_entry, ctx);
-      if(rsp == FAIL) {
-        LOG(MARK("WARN") " unify failed: %C %C",
-            *cp, s_entry->entry.specialize->initial);
-        ABORT(FAIL);
-      }
-      if(rsp != SUCCESS) return rsp;
+  if(FLAG(*entry, entry, ROW) && ctx->t == T_LIST && ctx->s.out) {
+    if(c->pos) {
+      tcell_t *e = pos_entry(c->pos);
+      mark_barriers(e, c);
+      move_changing_values(e, c);
     }
-    return func_exec_trace(cp, ctx, parent_entry);
-  } else if(parent_entry) {
-    if(is_specialized_to(entry, c)) {
-      return func_exec_trace(cp, ctx, parent_entry);
-    } else if(FLAG(*entry, entry, ROW) && ctx->t == T_LIST && ctx->s.out) {
-      // fall through to unroll
-    } else if(FLAG(*entry, entry, RECURSIVE)) {
+    if(parent_entry) {
+      c = unique(cp);
+    }
+    // unroll
+  } else {
+    tcell_t *s_entry = substitute_entry(entry);
+    if(s_entry->pos == c->pos) s_entry = entry;
+
+    if(NOT_FLAG(*s_entry, entry, COMPLETE)) {
+      delay_branch(ctx, PRIORITY_DELAY);
       CHECK_PRIORITY(PRIORITY_EXEC_SELF);
-      return func_exec_specialize(cp, ctx, parent_entry);
+      assert_error(parent_entry,
+                   "incomplete entry can't be unified without "
+                   "a parent entry %C @exec_split", c);
+      if(s_entry->entry.specialize) {
+        c->expr.arg[closure_in(c)] = (cell_t *)s_entry;
+        rsp = unify_exec(cp, parent_entry, ctx);
+        if(rsp == FAIL) {
+          LOG(MARK("WARN") " unify failed: %C %C",
+              *cp, s_entry->entry.specialize->initial);
+          ABORT(FAIL);
+        }
+        if(rsp != SUCCESS) return rsp;
+      }
+      return func_exec_trace(cp, ctx, parent_entry);
+    } else if(parent_entry) {
+      if(is_specialized_to(entry, c)) {
+        return func_exec_trace(cp, ctx, parent_entry);
+      } else if(FLAG(*entry, entry, RECURSIVE)) {
+        CHECK_PRIORITY(PRIORITY_EXEC_SELF);
+        return func_exec_specialize(cp, ctx, parent_entry);
+      }
     }
   }
 

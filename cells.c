@@ -693,7 +693,7 @@ cell_t *take(cell_t **cp) {
   return r;
 }
 
-void unique(cell_t **cp) { // CLEANUP
+cell_t *unique(cell_t **cp) { // CLEANUP
   cell_t *c = *cp;
   if(c->n) {
     if(c->n != PERSISTENT) --c->n;
@@ -701,6 +701,7 @@ void unique(cell_t **cp) { // CLEANUP
     TRAVERSE_REF(n, alt, args, ptrs);
     *cp = n;
   }
+  return *cp;
 }
 
 bool out_used(const cell_t *c, int ix) { // CLEANUP dep
