@@ -3707,6 +3707,79 @@ ___ tests.fuse_map4b_r0 (1 -> 1) rec ___
 [7] __primitive.pushr 6 4 :: l x1
 [8] return [7]
 
+___ tests.fuse_map5d (1 -> 1) ___
+[1] var :: ?l x1
+[2] val 0 :: i x1
+[3] jump tests.fuse_map5d_r0 2 1 :: l x1
+[4] return [3]
+
+___ tests.fuse_map5d_r0 (2 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] changing var :: ?i x1
+[3] __primitive.ap 1 -> 4 :: l? x2
+[4] __primitive.dep 3 :: i x1
+[5] __primitive.mul 4 6 :: i x1
+[6] val 3 :: i x1
+[7] __primitive.add 5 2 :: i x2
+[8] jump tests.fuse_map5d_r0 &7 3 :: l x1
+[9] __primitive.pushr 8 7 :: l x1
+[10] return [9]
+
+___ tests.fuse_map_zip_map (2 -> 1) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] jump tests.fuse_map_zip_map_r0 2 1 :: l x1
+[4] return [3]
+
+___ tests.fuse_map_zip_map_r0 (2 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] changing var :: ?l x1
+[3] __primitive.ap 1 -> 4 :: l? x2
+[4] __primitive.dep 3 :: i x1
+[5] __primitive.mul 4 6 :: i x1
+[6] val 3 :: i x1
+[7] __primitive.ap 2 -> 8 :: l? x2
+[8] __primitive.dep 7 :: i x1
+[9] __primitive.mul 8 10 :: i x1
+[10] val 5 :: i x1
+[11] __primitive.add 5 9 :: i x1
+[12] __primitive.div 11 13 :: i? x1
+[13] val 2 :: i x1
+[14] jump tests.fuse_map_zip_map_r0 7 3 :: l x1
+[15] __primitive.pushr 14 12 :: l x1
+[16] return [15]
+
+___ tests.fuse_zip_zip (3 -> 1) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] var :: ?l x1
+[4] jump tests.fuse_zip_zip_r0 3 2 1 :: l x1
+[5] return [4]
+
+___ tests.fuse_zip_zip_r0 (3 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] changing var :: ?l x1
+[3] changing var :: ?l x1
+[4] __primitive.ap 1 -> 5 :: l? x2
+[5] __primitive.dep 4 :: i x1
+[6] __primitive.mul 5 7 :: i x1
+[7] val 2 :: i x1
+[8] __primitive.ap 2 -> 9 :: l? x2
+[9] __primitive.dep 8 :: i x1
+[10] __primitive.mul 9 11 :: i x1
+[11] val 3 :: i x1
+[12] __primitive.add 6 10 :: i x1
+[13] __primitive.ap 3 -> 14 :: l? x2
+[14] __primitive.dep 13 :: i x1
+[15] __primitive.mul 14 16 :: i x1
+[16] val 5 :: i x1
+[17] __primitive.add 12 15 :: i x1
+[18] __primitive.sub 17 19 :: i x1
+[19] val 1 :: i x1
+[20] jump tests.fuse_zip_zip_r0 13 8 4 :: l x1
+[21] __primitive.pushr 20 18 :: l x1
+[22] return [21]
+
 ___ tests.hello (1 -> 1) ___
 [1] var :: ?y x1
 [2] __primitive.open 1 &3 -> 4 :: y x2

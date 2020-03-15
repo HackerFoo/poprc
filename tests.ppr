@@ -469,6 +469,13 @@ fuse_map4: [1+] map tail
 fuse_map4b: popr drop [1+] map
 fuse_map5: 0 [+ dup] map_with tail __ {hide}
 fuse_map5b: popr drop 0 [+ dup] map_with __ {hide}
+fuse_map5c: 0 [+ dup] map_with head __ {hide}
+fuse_map5d: [3*] map 0 [+ dup] map_with
+fuse_map_zip_map: [3*] map swap [5*] map [+] zip [2/] map
+fuse_zip_zip:
+  [2*] map swap
+    [3*] map [+] zip swap
+      [5*] map [+] zip [1-] map
 
 id_map: [id] map __ eliminate this
 id_map2: popr [id_map2] dip11 pushr
