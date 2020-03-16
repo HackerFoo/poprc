@@ -100,7 +100,13 @@ bool trace_recursive_changes(tcell_t *entry) {
   return changes;
 }
 
-void hw_analysis(tcell_t *e) { // ***
+// set SYNC, STACK, RETURN_ADDR, RAM flags to indicate
+// where extra resources are needed for vlgen
+// SYNC: needs synchronization logic
+// STACK: needs a stack
+// RETURN_ADDR: stack will need labels
+// RAM: uses RAM
+void hw_analysis(tcell_t *e) {
   // mark functions that use recursive functions
   if(FLAG(*e, entry, RECURSIVE)) {
     FLAG_SET(*e, entry, SYNC);
@@ -131,6 +137,9 @@ void hw_analysis(tcell_t *e) { // ***
   }
 }
 
+// creates a hash to be used as a fingerprint
+// NOTE: the same hash only means two things are similar (if no collisions),
+//       not identical i.e. some details are intentionally ignored.
 #define HASH(l, x) (hash = (hash * 1021 + (uint32_t)(l)) * 1979 + (uint32_t)(x))
 uint32_t hash_trace_cell(tcell_t *entry, tcell_t *tc) {
   uint32_t hash = 1;
@@ -198,6 +207,11 @@ bool is_tail_call(const tcell_t *entry, const tcell_t *c) {
     FLAG(*entry, entry, RECURSIVE);
 }
 
+// last use analysis: finds points where a resource can be dropped
+// NOTE: there can be multiple points, because each branch has a
+//       point after which it cannot fail, hence references used
+//       in other branches can be dropped.
+
 static
 void last_use_mark(tcell_t *entry, cell_t **p) {
   int x = tr_index(*p);
@@ -260,6 +274,7 @@ void last_use_analysis(tcell_t *entry) {
   }
 }
 
+// mark jumps, where return information isn't needed e.g. tail calls
 void mark_jumps(tcell_t *entry) {
   tcell_t *jump = NULL;
   FOR_TRACE(tc, entry) {
@@ -335,6 +350,7 @@ void no_skip_analysis(tcell_t *entry) {
   }
 }
 
+// calculate the number of back references needed
 size_t backrefs_size(const tcell_t *entry) {
   size_t n = entry->entry.len;
   FOR_TRACE_CONST(tc, entry) {
@@ -345,6 +361,7 @@ size_t backrefs_size(const tcell_t *entry) {
   return n;
 }
 
+// set nonzero entries in arr[0..n-1] to x
 bool set_nonzero(uintptr_t *arr, size_t n, uintptr_t x) {
   assert_error(x);
   COUNTUP(i, n) {
@@ -356,6 +373,7 @@ bool set_nonzero(uintptr_t *arr, size_t n, uintptr_t x) {
   return false;
 }
 
+// return a pointer (in *outputs) and size of an array of the outputs
 size_t get_outputs(const tcell_t *entry, const tcell_t *c, uintptr_t const *const *backrefs, uintptr_t const **outputs) {
   int i = c - entry;
   assert_error(INRANGE(i, 1, entry->entry.len));
@@ -363,6 +381,7 @@ size_t get_outputs(const tcell_t *entry, const tcell_t *c, uintptr_t const *cons
   return entry[i].n + 1;
 }
 
+// build back reference data
 void build_backrefs(const tcell_t *entry, uintptr_t **table, size_t size) {
   uintptr_t **index = table;
   uintptr_t *backref = (uintptr_t *)(table + entry->entry.len);
@@ -390,6 +409,7 @@ void build_backrefs(const tcell_t *entry, uintptr_t **table, size_t size) {
   }
 }
 
+// bits need for a range, or to store an absolute constant
 int bits_needed(range_t r, bool is_constant) {
   if(range_empty(r) || !range_bounded(r) ||
      (!is_constant && range_singleton(r))) {
@@ -401,6 +421,7 @@ int bits_needed(range_t r, bool is_constant) {
   }
 }
 
+// calculate the width of a stream expression
 int stream_bits(tcell_t *entry, tcell_t *tc, int offset) {
   if(!ONEOF(trace_type(tc), T_LIST, T_ANY, T_BOTTOM)) return offset; // ***
   if(tc->trace.bit_width && tc->trace.bit_width >= offset) {
@@ -443,6 +464,7 @@ int stream_bits(tcell_t *entry, tcell_t *tc, int offset) {
   return tc->trace.bit_width = max(tc->trace.bit_width, bits);
 }
 
+// calculate the address and data width of an array expression
 void array_bits(tcell_t *entry, tcell_t *tc, int aw, int bw) {
   assert_error(ONEOF(trace_type(tc), T_OPAQUE, T_ANY, T_BOTTOM));
   assert_error(trace_opaque_symbol(tc) == SYM_Array);
@@ -483,6 +505,7 @@ void array_bits(tcell_t *entry, tcell_t *tc, int aw, int bw) {
   }
 }
 
+// calculate bit widths
 void calculate_bit_width(tcell_t *entry) {
   LOG("calculate_bit_width %E", entry);
   FOR_TRACE(tc, entry) {
@@ -490,6 +513,7 @@ void calculate_bit_width(tcell_t *entry) {
   }
 }
 
+// calculate bit widths for one expression
 int bit_width(tcell_t *entry, tcell_t *tc) {
   if(is_user_func(tc)) {
     const tcell_t *e = get_entry(tc);
