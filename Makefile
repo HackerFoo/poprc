@@ -146,7 +146,7 @@ all: test
 
 .PHONY: testbenches
 testbenches: fast
-	make -C testbenches all
+	MAKEFLAGS="" make -C testbenches all
 
 # prevent makeheaders from trying to generate this
 LOCAL_HEADERS := ./linenoise/linenoise.h
