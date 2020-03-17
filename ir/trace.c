@@ -37,20 +37,26 @@
 #include "var.h"
 #include "ir/analysis.h"
 
-// storage for tracing
-#define ALIGN64 __attribute__((aligned(64)))
-
+// parameters
 #define ENTRY_BLOCK_SIZE 1024
 #define MAP_BLOCK_SIZE 64
 #define MAX_TRACE_CELLS (1 << 15)
 #define BLOCK_MAP_SIZE ((MAX_TRACE_CELLS + MAP_BLOCK_SIZE - 1) / MAP_BLOCK_SIZE)
 
+// storage for all trace entries
+#define ALIGN64 __attribute__((aligned(64)))
 static tcell_t trace_cells[MAX_TRACE_CELLS] ALIGN64;
 static tcell_t *trace_ptr = &trace_cells[0];
+
+// scratch spaces at the end of trace_cells
 static scratch_t * const scratch_top = (scratch_t *)(&trace_cells + 1);
 static scratch_t *scratch_ptr = (scratch_t *)(&trace_cells + 1);
+
+// stack of entries that are being compiled
 static tcell_t *active_entries[1 << 4];
 static unsigned int prev_entry_pos = 0;
+
+// index to quickly find an entry for a var inside
 static tcell_t *trace_block_map[BLOCK_MAP_SIZE] = {0};
 
 #include "ir/trace-local.h"
@@ -120,13 +126,13 @@ void trace_init() {
 
 tcell_t *_get_entry(cell_t const *c) {
   return is_user_func(c) ?
-    &trace_cells[tr_entry(c->expr.arg[closure_in(c)])] :
+    tr_entry(c->expr.arg[closure_in(c)]) :
     NULL;
 }
 
 void set_entry(tcell_t *c, tcell_t *e) {
   assert_error(is_user_func(c));
-  c->expr.arg[closure_in(c)] = entry_tr(e - trace_cells);
+  c->expr.arg[closure_in(c)] = entry_tr(e);
 }
 
 int entry_number(tcell_t const *e) {
@@ -156,6 +162,7 @@ void trace_update_block_map(tcell_t *entry) {
   }
 }
 
+// is v somewhere within the entry?
 bool entry_has(tcell_t *entry, tcell_t *v) {
   if(!entry) return false;
   tcell_t *end = entry + trace_entry_size(entry);
@@ -168,6 +175,7 @@ tcell_t *trace_entry_next(tcell_t *e) {
               trace_entry_size(e));
 }
 
+// compare two closures
 // TODO don't use memcmp, which causes false negatives
 bool closure_match(cell_t *a, cell_t *b) {
   if(a->op != b->op ||
@@ -185,6 +193,7 @@ bool closure_match(cell_t *a, cell_t *b) {
   }
 }
 
+// check if two entries are equivalent
 bool entries_match(tcell_t *entry_a, tcell_t *entry_b) {
   int len = entry_a->entry.len;
   if(len != entry_b->entry.len) return false;
@@ -195,6 +204,7 @@ bool entries_match(tcell_t *entry_a, tcell_t *entry_b) {
   return true;
 }
 
+// get first entry in the same block as v
 tcell_t *block_first_entry(tcell_t *v) {
   int i = (v - trace_cells) / MAP_BLOCK_SIZE;
   assert_error(i < BLOCK_MAP_SIZE);
@@ -209,6 +219,7 @@ tcell_t *top_parent(tcell_t *e) {
   return r;
 }
 
+// look for an active entry matching x
 tcell_t *trace_matching_entry(tcell_t *x) {
   assert_error(is_trace_cell(x));
   tcell_t *top = top_parent(x);
@@ -221,6 +232,7 @@ tcell_t *trace_matching_entry(tcell_t *x) {
   return x;
 }
 
+// tag duplicate entries for deletion
 void dedup_entry(tcell_t **e) {
   tcell_t *p = trace_matching_entry(*e);
   if(p < *e) {
@@ -229,8 +241,7 @@ void dedup_entry(tcell_t **e) {
   }
 }
 
-// CLEANUP bundle var and entry, no more ints
-
+// get the entry for a var
 tcell_t *var_entry(tcell_t *v) {
   assert_error(is_trace_cell(v));
   for(tcell_t *e = block_first_entry(v);
@@ -242,6 +253,7 @@ tcell_t *var_entry(tcell_t *v) {
   return NULL;
 }
 
+// get the pos for an entry
 int entry_pos(tcell_t *e) {
   FOLLOW(p, e, entry.parent) {
     if(e->pos) return e->pos;
@@ -249,11 +261,14 @@ int entry_pos(tcell_t *e) {
   return 0;
 }
 
+// get the var within the entry corresponding to c
 tcell_t *get_var(tcell_t *entry, cell_t *c) {
   assert_error(is_value(c));
   return var_for_entry(entry, c->value.var);
 }
 
+
+// get the var within the entry corresponding to v
 tcell_t *var_for_entry(tcell_t *entry, tcell_t *v) {
   if(!entry) {
     entry = var_entry(v);
@@ -265,6 +280,7 @@ tcell_t *var_for_entry(tcell_t *entry, tcell_t *v) {
   return NULL;
 }
 
+// get the index of the var in entry for v
 int var_index(tcell_t *entry, tcell_t *v) {
   if(!entry) {
     entry = var_entry(v);
@@ -274,6 +290,8 @@ int var_index(tcell_t *entry, tcell_t *v) {
   return v - entry;
 }
 
+// get the index of the var in entry for v
+// returns -1 on failure
 int var_index_nofail(tcell_t *entry, tcell_t *v) {
   if(!entry) {
     entry = var_entry(v);
@@ -283,24 +301,28 @@ int var_index_nofail(tcell_t *entry, tcell_t *v) {
   return v - entry;
 }
 
+// convert an index to a trace argument
 cell_t *index_tr(int index) {
   tr x = {};
   x.index = index;
   return x.ptr;
 }
 
+// get an index from a trace argument
 int tr_index(const cell_t *c) {
   return ((tr) { .ptr = (cell_t *)c }).index;
 }
 
-cell_t *entry_tr(int entry) {
+// convert an entry to a trace argument
+cell_t *entry_tr(tcell_t *entry) {
   tr x = {};
-  x.entry = entry;
+  x.entry = entry - trace_cells;
   return x.ptr;
 }
 
-int tr_entry(const cell_t *c) {
-  return ((tr) { .ptr = (cell_t *)c }).entry;
+// get an entry from a trace argument
+tcell_t *tr_entry(const cell_t *c) {
+  return &trace_cells[((tr) { .ptr = (cell_t *)c }).entry];
 }
 
 void tr_set_flags(cell_t *const *cp, uint8_t flags) {
@@ -328,6 +350,7 @@ TEST(trace_encode) {
   return tr_index(index_tr(0x5ac3)) == 0x5ac3 ? 0 : -1;
 }
 
+// are the values equal?
 bool equal_value(const cell_t *a, const cell_t *b) {
   int type = a->value.type;
   if(b->value.type != type) return false;
@@ -426,6 +449,7 @@ int trace_get_value(tcell_t *entry, cell_t *r) {
   return -1;
 }
 
+// calculate the number of tcells required to hold n arguments
 csize_t calculate_tcells(csize_t n) {
   const csize_t args_in_first_cell =
     (sizeof(tcell_t) - offsetof(tcell_t, expr.arg)) / sizeof(tcell_t *);
@@ -495,6 +519,7 @@ void reset_scratch() {
   scratch_ptr = scratch_top;
 }
 
+// fill in an argument to a function
 void trace_arg(tcell_t *tc, int n, cell_t *a) {
   assert_error(is_var(a));
   cell_t **p = &tc->expr.arg[n];
@@ -506,6 +531,7 @@ void trace_arg(tcell_t *tc, int n, cell_t *a) {
   }
 }
 
+// store the value v in the entry
 static
 int trace_value(tcell_t *entry, cell_t *v) {
   return is_var(v) || is_list(v) ?
@@ -535,7 +561,7 @@ void trace_store_expr(tcell_t *entry, cell_t *c, cell_t *r) {
   if(is_user_func(tc)) {
     // encode the entry
     cell_t **e = (cell_t **)&tc->expr.arg[closure_in(tc)];
-    *e = entry_tr(entry_number((tcell_t *)*e));
+    *e = entry_tr((tcell_t *)*e);
   }
 
   // encode inputs
@@ -579,6 +605,7 @@ void trace_store_expr(tcell_t *entry, cell_t *c, cell_t *r) {
   dedup_trace_cell(entry, r);
 }
 
+// mark duplicate expressions for deletion i.e. CSE
 void dedup_trace_cell(tcell_t *entry, cell_t *r) {
   tcell_t *v = r->value.var;
   if(is_var(v) ||
@@ -596,28 +623,6 @@ void dedup_trace_cell(tcell_t *entry, cell_t *r) {
       break;
     }
   }
-}
-
-void trace_store_row_assert(cell_t *c, cell_t *r) {
-  cell_t
-    *p = c->expr.arg[0],
-    *q = c->expr.arg[1];
-  if(!is_var(q) || !is_list(p)) return;
-  assert_error(is_row_list(r));
-  cell_t *f = *left_elem(r);
-  if(!is_var(f)) return;
-  assert_error(is_function(f));
-  tcell_t *entry = var_entry(f->value.var);
-  tcell_t *t = f->value.var;
-  if(t->op) return;
-  t->op = OP_assert;
-  t->expr.arg[0] = index_tr(is_row_list(p) ?
-                              trace_get_value(entry, *left_elem(p)) :
-                              trace_store_value(entry, &nil_cell));
-  int tq = trace_get_value(entry, q);
-  entry[tq].n++;
-  t->expr.arg[1] = index_tr(tq);
-  t->trace.type = T_LIST;
 }
 
 // for unless and assert
@@ -663,6 +668,7 @@ int trace_store_value(tcell_t *entry, cell_t *c) {
   return x;
 }
 
+// Store something where the value doesn't matter
 int trace_store_something(tcell_t *entry, tcell_t **v) {
   cell_t c = (cell_t) {
     .op = OP_value,
@@ -710,7 +716,7 @@ tcell_t *trace_start_entry(tcell_t *parent, csize_t out) {
 }
 
 static
-bool has_outside_call(const tcell_t *entry) {
+bool has_mutual_recursion(const tcell_t *entry) {
   FOR_TRACE_CONST(c, entry) {
     if(!is_user_func(c)) continue;
     const tcell_t *e = get_entry(c);
@@ -730,7 +736,7 @@ void trace_end_entry(tcell_t *e) {
   e->pos = 0;
   FLAG_SET(*e, entry, COMPLETE);
   if(FLAG(*e, entry, QUOTE)) {
-    FLAG_SET_TO(*e, entry, MUTUAL, has_outside_call(e));
+    FLAG_SET_TO(*e, entry, MUTUAL, has_mutual_recursion(e));
   } else {
     FLAG_SET_TO(*e, entry, RECURSIVE, trace_recursive_changes(e));
   }
@@ -739,13 +745,10 @@ void trace_end_entry(tcell_t *e) {
 }
 
 tcell_t *trace_current_entry() {
-  if(prev_entry_pos) {
-    return active_entries[prev_entry_pos - 1];
-  } else {
-    return NULL;
-  }
+  return prev_entry_pos ? active_entries[prev_entry_pos - 1] : NULL;
 }
 
+// remove entry and all subentries
 void trace_reset(tcell_t *entry) {
   COUNTDOWN(i, prev_entry_pos) {
     tcell_t *e = active_entries[i];
@@ -758,7 +761,6 @@ void trace_reset(tcell_t *entry) {
 }
 
 // get the top active specialization of an entry
-// NOTE might only need top entry
 tcell_t *trace_specializing_entry(tcell_t *entry) {
   COUNTDOWN(i, prev_entry_pos) {
     tcell_t *e = active_entries[i];
@@ -777,6 +779,7 @@ void trace_clear_alt(tcell_t *entry) {
   }
 }
 
+// store a dep
 void trace_dep(cell_t *c) {
   if(!is_var(c)) return;
   if(NOT_FLAG(*c, value, DEP)) return;
@@ -797,6 +800,7 @@ void trace_dep(cell_t *c) {
   FLAG_CLEAR(*c, value, DEP);
 }
 
+// reclaim the storage used for tc
 void trace_reclaim(tcell_t *e, tcell_t *tc) {
   int ix = var_index(e, tc);
   if(e->entry.len - (ix - 1) == calculate_tcells(tc->size)) {
@@ -869,10 +873,16 @@ void trace_reduction(cell_t *c, cell_t *r) {
   }
 }
 
+// sets {trace,value}.type
 void trace_set_type(tcell_t *tc, type_t t) {
   tc->trace.type = t;
   if(is_value(tc)) tc->value.type = t;
 }
+
+// updates types and ranges for a value c and var v (optional)
+#if INTERFACE
+#define trace_update(...) DISPATCH(trace_update, __VA_ARGS__)
+#endif
 
 void trace_update_1(cell_t *c) {
   if(c->value.var) {
@@ -920,10 +930,6 @@ void trace_update_2(tcell_t *v, cell_t *c) {
   }
 }
 
-#if INTERFACE
-#define trace_update(...) DISPATCH(trace_update, __VA_ARGS__)
-#endif
-
 // zero space in the trace allocated to an entry
 void trace_clear(tcell_t *e) {
   size_t count = e->entry.len;
@@ -943,6 +949,7 @@ bool has_computation(const cell_t *c) {
   return false;
 }
 
+// check if a list is fully reduced i.e. no residual
 bool reduced_list(cell_t *l) {
   cell_t **p;
   FORLIST(p, l, true) {
@@ -959,8 +966,7 @@ int trace_build_quote(tcell_t *entry, cell_t *l) {
   LOG("trace_build_quote %E %C", entry, l);
   assert_error(is_list(l));
   if(is_empty_list(l)) return trace_store_value(entry, l);
-  if(is_row_list(l) && // ***
-     list_size(l) == 1) {
+  if(is_id_list(l)) {
     cell_t *p = l->value.ptr[0];
     if(is_placeholder(p) &&
        closure_in(p) == 1 &&
@@ -994,7 +1000,7 @@ int trace_build_quote(tcell_t *entry, cell_t *l) {
                   &CTX(list, 0, 0) :
                   &CTX(any));
     }
-    while(is_row_list(l) && list_size(l) == 1) l = l->value.ptr[0];
+    unwrap_id_lists(&l);
     if(is_var(l)) {
       switch_entry(entry, l);
       return var_index(entry, l->value.var);
@@ -1004,6 +1010,8 @@ int trace_build_quote(tcell_t *entry, cell_t *l) {
     const int size = function_out(l, true);
     assert_error(!row || size > 1);
     FORLIST(p, l, true) force(p); // ***
+
+    // store the quote as a compose, pushr, or quote
     int x = trace_alloc(entry, size);
     tcell_t *tc = &entry[x];
     cell_t *p0 = l->value.ptr[0];
@@ -1025,7 +1033,7 @@ int trace_build_quote(tcell_t *entry, cell_t *l) {
   return compile_quote(entry, l);
 }
 
-// store a return
+// store a return list
 static
 int trace_return(tcell_t *entry, cell_t *c_) {
   bool row = entry->entry.specialize && FLAG(entry->entry, specialize, ROW);
@@ -1121,6 +1129,7 @@ unsigned int trace_reduce(tcell_t *entry, cell_t **cp) {
   return alts;
 }
 
+// reduce an expression with one output
 unsigned int trace_reduce_one(tcell_t *entry, cell_t *c) {
   cell_t *l = quote(c);
   int alts = trace_reduce(entry, &l);
@@ -1248,6 +1257,8 @@ int trace_count() {
   return trace_ptr - trace_cells;
 }
 
+// delay a branch so that it is listed at the end
+// this allows reducing base cases first
 void delay_branch(context_t *ctx, int priority) {
   FOLLOW(p, ctx, up) {
     cell_t *c = p->src;
@@ -1258,6 +1269,7 @@ void delay_branch(context_t *ctx, int priority) {
   }
 }
 
+// link placeholder extensions
 void trace_extend(tcell_t *entry, tcell_t *tc) {
   assert_error(entry && tc->op == OP_placeholder);
   if(FLAG(*entry, entry, PARTIAL) ||
@@ -1266,6 +1278,7 @@ void trace_extend(tcell_t *entry, tcell_t *tc) {
   l->trace.extension = tc - entry;
 }
 
+// return the var corresponding to a placeholder if already traced
 cell_t *trace_extension(cell_t *l, int in, int out) {
   tcell_t *v = l->value.var;
   if(!v->trace.extension) return NULL;
@@ -1293,16 +1306,19 @@ val_t trace_opaque_symbol(const tcell_t *c) {
   return c->trace.range.min;
 }
 
+// get the address of the tcell_t in which e is embedded as a cell_t
 tcell_t *tcell_entry(cell_t *e) {
   if(!e) return NULL;
   assert_error(e->op == OP_null && e->n == PERSISTENT);
   return (tcell_t *)((char *)e - offsetof(tcell_t, c));
 }
 
+// tcells required to store c
 csize_t closure_tcells(tcell_t const *c) {
   return calculate_tcells(closure_args(c));
 }
 
+// get the next expression
 tcell_t *closure_next(tcell_t *c) {
   return c + closure_tcells(c);
 }
@@ -1311,6 +1327,8 @@ const tcell_t *closure_next_const(const tcell_t *c) {
   return c + closure_tcells(c);
 }
 
+// which output is tc?
+// first is 1, where 0 is failure
 csize_t dep_arg_index(const tcell_t *entry,
                       const tcell_t *tc) {
   const tcell_t *src = &entry[tr_index(tc->expr.arg[0])];
@@ -1326,6 +1344,7 @@ csize_t dep_arg_index(const tcell_t *entry,
   return 0;
 }
 
+// check if two expressions are equivalent
 bool trace_cell_eq(const tcell_t *entry, const tcell_t *a, const tcell_t *b) {
   if(a->op != b->op) return false;
   op op = a->op;

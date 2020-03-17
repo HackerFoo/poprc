@@ -466,7 +466,7 @@ cell_t *exec_expand(cell_t *c) {
     cell_t *t = map_cell(entry, i);
     if((is_value(p) && p->value.type == T_RETURN) || !t) continue;
 
-    if(is_row_list(t)) t = t->value.ptr[0]; // for row quotes created above
+    unwrap_id_lists(&t); // for row quotes created above
 
     // skip rewriting for the entry argument
     tcell_t **t_entry = NULL;
@@ -596,6 +596,7 @@ void reassign_input_order(tcell_t *entry) {
   clean_tmp(vl);
 }
 
+// build a call into entry from its parent
 // this doesn't work for quotes
 // all c's input args must be params
 cell_t *flat_call(cell_t *c, tcell_t *entry) {

@@ -266,7 +266,7 @@
     int i = get_watch(c);                                               \
     if unlikely(i) {                                                    \
         if(i == -1) {                                                   \
-          LOG_NOBREAK(NOTE("WATCH OP") " %O " msg " %C", c->op, c);     \
+          LOG_NOBREAK(NOTE("WATCH OP") " %O " msg " %C", (c)->op, c);   \
         } else {                                                        \
           LOG_NOBREAK(NOTE("WATCH") " %d " msg " %C", i, c);            \
         }                                                               \
@@ -280,7 +280,7 @@
     if unlikely(i) {                                                    \
         if(i == -1) {                                                   \
           LOG_NOBREAK(NOTE("WATCH OP") " %O " msg " %C " fmt,           \
-                      c->op, c, (x));                                   \
+                      (c)->op, c, (x));                                 \
         } else {                                                        \
           LOG_NOBREAK(NOTE("WATCH") " %d " msg " %C " fmt, i, c, (x));  \
         }                                                               \

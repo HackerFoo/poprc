@@ -31,6 +31,7 @@ typedef unsigned int uint;
 
 typedef uint16_t csize_t;
 
+// base types
 typedef enum __attribute__((packed)) type_t {
   T_ANY = 0, /**< type variable */
   T_INT,
@@ -46,6 +47,7 @@ typedef enum __attribute__((packed)) type_t {
   T_FAIL // TODO use T_BOTTOM
 } type_t;
 
+// declare parts of a cell_t
 typedef union cell cell_t;
 typedef struct expr expr_t;
 typedef struct value value_t;
@@ -69,6 +71,7 @@ typedef uintptr_t attr_t;
 #pragma clang diagnostic ignored "-Wgnu-empty-initializer"
 #endif
 
+// quote size info
 typedef struct qsize {
   csize_t in, out;
 } qsize_t;
@@ -84,6 +87,7 @@ typedef enum __attribute__((packed)) file_id {
   FILE_ID_COUNT
 } file_id_t;
 
+// location within PoprC source code
 typedef union location {
   uintptr_t raw;
   struct {
@@ -95,29 +99,32 @@ typedef union location {
 #undef FILE_ID
 static_assert(sizeof(location_t) == sizeof_field(location_t, raw), "location_t wrong size");
 
+// context used for reduction
+// allows both downward and upward information transfer
 struct context {
-  context_t *up;
-  cell_t *src;
-  range_t bound;
-  alt_set_t alt_set;
-  int priority;
-  location_t loc;
-  qsize_t s;
-  type_t t;
-  uint8_t depth;
-  bool retry;
-  bool inv;
+  context_t *up; // outer context [down]
+  cell_t *src; // closure for this context [down]
+  range_t bound; // requested bound [down]
+  alt_set_t alt_set; // outside constraints [up/down]
+  int priority; // used to control reduction stages [down]
+  location_t loc; // reported location (for debug) [up]
+  qsize_t s; // required quote size [down]
+  type_t t; // required type [down]
+  uint8_t depth; // limits nesting depth [down]
+  bool retry; // to trampoline out for rewrites [up]
+  bool inv; // to detect double inversions (see unless) [down]
 };
 
 typedef enum response {
-  SUCCESS = 0,
-  DELAY,
-  RETRY,
-  FAIL
+  SUCCESS = 0, // continue reduction
+  DELAY, // halt reduction for this priority
+  RETRY, // trampoline
+  FAIL // abort and mark failure
 } response;
 
 #define TR_FINAL 0x01
 
+// trace argument
 typedef union tr {
   cell_t *ptr;
   int entry;
@@ -397,6 +404,7 @@ void breakpoint();
 #define TRACE_NO_SKIP    0x0040
 #define TRACE_JUMP       0x0080
 
+// extra data about functions stored in the trace
 typedef struct trace {
   union {
     range_t range;
@@ -416,7 +424,7 @@ typedef struct trace {
 
 struct tcell {
   trace_t trace;
-  union {
+  union { // inline fields so that they can be accessed as in a cell_t
     CELL_STRUCT_CONTENTS;
     cell_t c;
   };

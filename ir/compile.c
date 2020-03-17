@@ -234,6 +234,7 @@ void print_bytecode(tcell_t *entry, bool tags) {
   }
 }
 
+// drop an expression from the trace
 void drop_trace(tcell_t *entry, tcell_t *tc) {
   if(tc->n <= 0) {
     LOG("drop %s[%d] %O", entry->word_name, tc-entry, tc->op);
@@ -255,6 +256,7 @@ void drop_trace(tcell_t *entry, tcell_t *tc) {
   }
 }
 
+// remove unreferenced expressions from the entry
 static
 void condense(tcell_t *entry) {
   if(entry->entry.len == 0) return;
@@ -264,7 +266,7 @@ void condense(tcell_t *entry) {
   int nvars = 0;
   int idx = 1 + in;
 
-  // drop unreferenced instructions
+  // drop unreferenced expressions
   FOR_TRACE(tc, entry) {
     if(tc->n < 0 && !(is_var(tc) && tc->var_index)) {
       drop_trace(entry, tc);
@@ -346,6 +348,7 @@ void trace_replace_arg(tcell_t *entry, int old, int new) {
   }
 }
 
+// remove unused outputs
 static
 void shift_out(cell_t *c, uintptr_t dep_mask) {
   int out = closure_out(c);
@@ -365,6 +368,7 @@ void shift_out(cell_t *c, uintptr_t dep_mask) {
   }
 }
 
+// remove unused outputs in a recursive function
 void trace_drop_return(tcell_t *entry, int out, uintptr_t dep_mask) {
   int used = 0;
   FORMASK(i, j, dep_mask) {
@@ -379,6 +383,7 @@ void trace_drop_return(tcell_t *entry, int out, uintptr_t dep_mask) {
   entry->entry.out = used;
 }
 
+// condense and run all analyses on the entry
 static
 void condense_and_analyze(tcell_t *entry) {
   condense(entry);
@@ -513,6 +518,7 @@ cell_t *module_lookup_compiled(seg_t path, cell_t **context) {
   return compile_def(module_lookup(path, context), path, context);
 }
 
+// compile a definition
 cell_t *compile_def(cell_t *p, seg_t path, cell_t **context) {
   if(!p) return NULL;
   if(!is_list(p)) return p;
@@ -550,6 +556,9 @@ bool pre_compile_word(cell_t *l, cell_t *module, csize_t *in, csize_t *out) {
   return res;
 }
 
+// map a special character to an expanded sequence
+// NOTE: this is a unidirectional mapping, so it doesn't need to be
+//       easy to decode algorithmically
 const char *sym_to_ident(unsigned char c) {
   static const char *table[] = {
     ['^'] = "__caret__"
@@ -562,6 +571,7 @@ const char *sym_to_ident(unsigned char c) {
   }
 }
 
+// expand special characters so that names can be used as identifiers in generated code
 size_t expand_sym(char *buf, size_t n, seg_t src) {
   char *out = buf, *stop = out + n - 1;
   const char *in = src.s;
@@ -598,6 +608,7 @@ COMMAND(ident, "convert symbol to C identifier") {
   if(command_line) quit = true;
 }
 
+// compile one user word (function)
 bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_t out) {
   cell_t *l;
   char ident[64]; // ***
@@ -655,7 +666,7 @@ void dedup_subentries(tcell_t *e) {
   }
 }
 
-// need a quote version that only marks vars
+// mark inputs so they don't lift consumers out
 void mark_barriers(tcell_t *entry, cell_t *c) {
   TRAVERSE(c, in) {
     cell_t *x = *p;
@@ -666,32 +677,22 @@ void mark_barriers(tcell_t *entry, cell_t *c) {
   }
 }
 
-void set_pos_for_values(cell_t *c, tcell_t *entry) {
-  if(is_value(c)) {
-    if(!is_var(c) && is_cell(c)) {
-      WATCH(c, "set_pos_for_values");
-      LOG("set pos for %C to %s", c, entry->word_name);
-      c->pos = entry->pos;
-    }
-  } /* else if(c->op == OP_ap ||
-            c->op == OP_swap) { // *** HACK
-    TRAVERSE(c, in) {
-      if(*p) set_pos_for_values(*p, entry);
-      }
-  } */
-}
-
 // mark values to be lifted out of recursive functions by setting pos
 void move_changing_values(tcell_t *entry, cell_t *c) {
   tcell_t *expanding = (tcell_t *)c->expr.arg[closure_in(c)];
   TRAVERSE(c, in) {
-    int i = expanding->entry.in - (p - c->expr.arg);
-    if(FLAG(expanding[i], trace, CHANGES)) {
-      set_pos_for_values(*p, entry);
+    if(is_value(*p) && !is_var(*p)) {
+      int i = expanding->entry.in - (p - c->expr.arg);
+      if(FLAG(expanding[i], trace, CHANGES)) {
+        WATCH(*p, "move changing value");
+        LOG("set pos for %C to %s", *p, entry->word_name);
+        (*p)->pos = entry->pos;
+      }
     }
   }
 }
 
+// mark shared and boundary expressions so they don't lift consumers out
 // TODO pull out/duplicate things referenced in multiple quotes
 void mark_quote_barriers(tcell_t *entry, cell_t *c) {
   TRAVERSE(c, in) {
@@ -706,6 +707,8 @@ void mark_quote_barriers(tcell_t *entry, cell_t *c) {
   }
 }
 
+// build a call into the quote (new_entry) from parent
+// see flat_call
 cell_t *flat_quote(tcell_t *new_entry, tcell_t *parent_entry) {
   CONTEXT("flat quote (%s -> %s)", parent_entry->word_name, new_entry->word_name);
   unsigned int in = new_entry->entry.in;
@@ -802,6 +805,7 @@ type_t trace_type(const tcell_t *tc) {
   return tc->trace.type;
 }
 
+// get trace_t info for the nth output of entry e
 void get_trace_info_for_output(trace_t *tr, const tcell_t *e, int n) {
   assert_error(n < e->entry.out);
   int i = e->entry.out - 1 - n;
@@ -848,6 +852,7 @@ void trace_get_name(const tcell_t *tc, const char **module_name, const char **wo
   }
 }
 
+// token can be the entry number or the name
 tcell_t *entry_from_token(cell_t *tok) {
   seg_t id = tok_seg(tok);
   if(tok->char_class == CC_NUMERIC) {

@@ -320,8 +320,7 @@ cell_t *list_rest(list_iterator_t it) {
 
 void collapse_row(cell_t **cp) {
   cell_t *l = *cp, *p;
-  if(is_row_list(l) &&
-     list_size(l) == 1 &&
+  if(is_id_list(l) &&
      closure_is_ready(p = l->value.ptr[0])) {
     if(l->value.var) {
       *cp = build_seq(ref(p), l);
@@ -533,4 +532,8 @@ cell_t *get_list_function_var(cell_t *c) {
   else if(is_function(left))    return left;
   else if(is_placeholder(left)) return left->expr.arg[closure_in(left) - 1];
   else                          return NULL;
+}
+
+void unwrap_id_lists(cell_t **lp) {
+  while(is_id_list(*lp)) *lp = (*lp)->value.ptr[0];
 }
