@@ -260,15 +260,12 @@ TEST(list_next) {
 }
 
 // number of remaining elements
-// NOTE: will reduce all quotes
-csize_t list_remaining_size(list_iterator_t it, bool count_last_row, csize_t limit) {
+// TODO handle unrolling
+csize_t list_remaining_size(list_iterator_t it, bool count_last_row) {
   if(!it.array || it.index > it.size) return 0;
   csize_t n = 0;
   while(it.row) {
     cell_t **rp = &it.array[it.size];
-    if(!is_value(*rp) && n + it.size < limit) {
-      reduce_quote(rp); // ***
-    }
     if(is_list(*rp)) {
       n += it.size - it.index;
       it = list_begin(it.array[it.size]);
@@ -283,7 +280,7 @@ csize_t list_remaining_size(list_iterator_t it, bool count_last_row, csize_t lim
 static
 bool _check_list_remaining_size(csize_t x, csize_t y) {
   cell_t *l = _test_list_add(x, y);
-  csize_t z = list_remaining_size(list_begin(l), false, 100);
+  csize_t z = list_remaining_size(list_begin(l), false);
   drop(l);
   printf("_check_list_remaining_size: %d + %d = %d\n", x, y, z);
   return x + y == z;
@@ -430,7 +427,7 @@ bool is_empty_list(const cell_t *l) {
 csize_t function_out(const cell_t *l, bool include_row_var) {
   if(!l || !is_list(l)) return 0;
   list_iterator_t it = list_begin((cell_t *)l);
-  return list_remaining_size(it, include_row_var, 0); // ***
+  return list_remaining_size(it, include_row_var); // ***
 }
 
 // find the leftmost list

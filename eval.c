@@ -640,7 +640,7 @@ cell_t *eval(const char *prefix, const cell_t *p, cell_t **previous) {
     cell_t *c = parse_expr(&p, eval_module(), NULL);
     if(!c) return NULL;
     if(*previous) {
-      c = compose(list_begin(*previous), c, 0); // TODO handle (*previous)->alt
+      c = compose(list_begin(*previous), c); // TODO handle (*previous)->alt
       drop(*previous);
       *previous = NULL;
     } else {

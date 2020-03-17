@@ -413,7 +413,7 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   };
 
   insert_root(q);
-  cell_t *l = compose(it, ref(*q), ctx->s.out + out); // TODO prevent leaking outside variables
+  cell_t *l = compose(it, ref(*q)); // TODO prevent leaking outside variables
   reverse_ptrs((void **)c->expr.arg, in);
 
   it = list_begin(l);
@@ -437,7 +437,6 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
       cell_t *seq_x = build_seq(ref(*x), ref(res));
       store_lazy_dep(d, seq_x, ctx->alt_set);
       LOG_WHEN(res->alt, "popr from alt quote %C <- %C #condition", d, seq_x);
-      d->pos = pos; // ***
     }
   }
   if(pos &&

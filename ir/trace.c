@@ -964,6 +964,7 @@ bool reduced_list(cell_t *l) {
 // store captured variables to be compiled into a quote
 int trace_build_quote(tcell_t *entry, cell_t *l) {
   LOG("trace_build_quote %E %C", entry, l);
+  WATCH(l, "build quote");
   assert_error(is_list(l));
   if(is_empty_list(l)) return trace_store_value(entry, l);
   if(is_id_list(l)) {

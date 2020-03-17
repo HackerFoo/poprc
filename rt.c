@@ -407,7 +407,7 @@ cell_t *expand_deps(cell_t *c, csize_t s) {
   return c;
 }
 
-cell_t *compose(list_iterator_t it, cell_t *b, csize_t out) {
+cell_t *compose(list_iterator_t it, cell_t *b) {
   cell_t **x;
   const csize_t b_in = function_in(b);
   if(b_in && (x = list_next(&it, true))) {
@@ -434,7 +434,7 @@ cell_t *compose(list_iterator_t it, cell_t *b, csize_t out) {
 
   // prepend b with the remainder of a
   insert_root(&b);
-  int remaining_a = list_remaining_size(it, true, max(1, out));
+  int remaining_a = list_remaining_size(it, true);
   remove_root(&b);
   if(remaining_a) {
     csize_t offset = list_size(*ll);
