@@ -1007,9 +1007,12 @@ int trace_build_quote(tcell_t *entry, cell_t *l) {
       return var_index(entry, l->value.var);
     }
     bool row = is_row_list(l);
-    if(row) FLAG_SET(*entry, entry, ROW);
     const int size = function_out(l, true);
-    assert_error(!row || size > 1);
+    if(list_size(l) > size) {
+      row = false; // HACK the leftmost is nil
+    }
+    if(row) FLAG_SET(*entry, entry, ROW);
+    assert_error(!row || size > 1, "must have a non-row output");
     FORLIST(p, l, true) force(p); // ***
 
     // store the quote as a compose, pushr, or quote

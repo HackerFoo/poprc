@@ -1,6 +1,6 @@
 module array (
   input wire clk,
-  `output(Array, (`addrN, `addrN), 0)
+  `output(Array, (`addrN, `intN), 0)
 );
     parameter N = 16;
 

@@ -2,7 +2,10 @@
 `define intN 32
 `define addrN 9
 `include "primitives.v"
-`include "tests_axi_lite_slave.v"
+
+`define axi_module tests_axil_map_w
+`include "tests_axil_map_w.v"
+
 `include "array.v"
 
 module tests_axi_lite_slave_top
@@ -44,7 +47,7 @@ module tests_axi_lite_slave_top
     `wire(null_stream, 0, b);
 
     wire inst_in_ready;
-    `inst_sync(tests_axi_lite_slave, inst, #())(
+    `inst_sync(`id(`axi_module), inst, #())(
       `sync(`true, `true),
       `in(Array, 0, arr),
       `in(stream, 1, ar),

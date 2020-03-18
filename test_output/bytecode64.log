@@ -2733,6 +2733,52 @@ ___ tests.axi_lite_slave (4 -> 2) ___
 [8] jump io.stream_read_array_r0 6 3 :: l x1
 [9] return [8 7]
 
+___ tests.axil_map_r (4 -> 2) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] var :: ?l x1
+[4] var is Array :: ?o x1
+[5] __primitive.dup_array 4 -> 7 is Array :: o x2
+[6] io.stream_write_array_r0 5 2 1 :: l x1
+[7] __primitive.dep 5 is Array :: o x1
+[8] jump tests.axil_map_r_r0 3 7 :: l x1
+[9] return [8 6]
+
+___ tests.axil_map_r_r0 (2 -> 1) rec ___
+[1] changing var is Array :: ?o x1
+[2] changing var :: ?l x1
+[3] __primitive.ap 2 -> 4 :: l? x2
+[4] __primitive.dep 3 :: i x1
+[5] __primitive.read_array 1 4 -> 6 is Array :: o x2
+[6] __primitive.dep 5 :: i x1
+[7] __primitive.add 6 8 :: i x1
+[8] val 3 :: i x1
+[9] jump tests.axil_map_r_r0 3 5 :: l x1
+[10] __primitive.pushr 9 7 :: l x1
+[11] return [10]
+
+___ tests.axil_map_w (4 -> 2) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] var :: ?l x1
+[4] var is Array :: ?o x1
+[5] __primitive.dup_array 4 -> 6 is Array :: o x2
+[6] __primitive.dep 5 is Array :: o x1
+[7] io.stream_read_array_r0 6 3 :: l x1
+[8] tests.axil_map_w_r0 1 :: l x1
+[9] jump io.stream_write_array_r0 5 2 8 :: l x1
+[10] return [7 9]
+
+___ tests.axil_map_w_r0 (1 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] __primitive.ap 1 -> 3 :: l? x2
+[3] __primitive.dep 2 :: i x1
+[4] __primitive.add 3 5 :: i x1
+[5] val 3 :: i x1
+[6] jump tests.axil_map_w_r0 2 :: l x1
+[7] __primitive.pushr 6 4 :: l x1
+[8] return [7]
+
 ___ tests.binrec (4 -> 1) ___
 [1] var :: ?l x1
 [2] var :: ?l x1

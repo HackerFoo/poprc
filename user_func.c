@@ -240,7 +240,7 @@ response exec_list(cell_t **cp, context_t *ctx) {
   tcell_t *entry = closure_entry(c);
   csize_t out = entry->entry.out - 1;
   bool row = FLAG(entry->entry, specialize, ROW);
-  csize_t ln = max(entry->entry.out + row, ctx->s.out);
+  csize_t ln = max(entry->entry.out, ctx->s.out + row);
   assert_error(entry->entry.specialize);
   const uintptr_t dep_mask = entry->entry.specialize->dep_mask;
 
@@ -296,61 +296,60 @@ response unify_exec(cell_t **cp, tcell_t *parent_entry, context_t *ctx) {
   cell_t *initial = entry->entry.specialize->initial;
 
   if(!initial) return FAIL;
-  if(!FLAG(*c, expr, NO_UNIFY)) {
-    assert_eq(in, closure_in(initial)); // TODO skip over non-changing args
+  assert_error(NOT_FLAG(*c, expr, NO_UNIFY));
+  assert_eq(in, closure_in(initial)); // TODO skip over non-changing args
 
-    LOG_WHEN(out != 0, TODO " unify_convert %d: out(%d) != 0 @unify-multiout", c-cells, out);
+  LOG_WHEN(out != 0, TODO " unify_convert %d: out(%d) != 0 @unify-multiout", c-cells, out);
 
-    // match c against initial and extract variable bindings
-    cell_t
-      *vl = 0,
-      **tail = &vl;
-    COUNTUP(i, in) {
-      simplify(&c->expr.arg[i]); // FIX this can cause arg flips
-      tail = bind_pattern(NULL, &c->expr.arg[i], initial->expr.arg[i], tail);
-      if(!tail) {
-        LOG("bind_pattern failed %C %C", c->expr.arg[i], initial->expr.arg[i]);
-        break;
-      }
+  // match c against initial and extract variable bindings
+  cell_t
+    *vl = 0,
+    **tail = &vl;
+  COUNTUP(i, in) {
+    simplify(&c->expr.arg[i]); // FIX this can cause arg flips
+    tail = bind_pattern(NULL, &c->expr.arg[i], initial->expr.arg[i], tail);
+    if(!tail) {
+      LOG("bind_pattern failed %C %C", c->expr.arg[i], initial->expr.arg[i]);
+      break;
     }
+  }
 
-    if(!tail) { // match failed
-      FOLLOW(p, vl, tmp) {
-        drop(p);
-      }
-      clean_tmp(vl);
-      return FAIL;
-    }
-
-    csize_t in = tmp_list_length(vl);
-    assert_error(in, "no inputs %C", c);
-    cell_t *n = ALLOC(in + out + 1,
-      .expr.out = out,
-      .op = OP_exec
-    );
-    n->expr.arg[in] = (cell_t *)entry;
-    FLAG_SET(*n, expr, RECURSIVE);
-    FLAG_SET(*n, expr, NO_UNIFY);
-    int pos = 0;
-
-    // TODO this list should be sorted first by the parent variable pos's
-    FOLLOW(p, vl, tmp) { // get arguments from the binding list
-      n->expr.arg[in - 1 - pos] = p;
-      pos++;
+  if(!tail) { // match failed
+    FOLLOW(p, vl, tmp) {
+      drop(p);
     }
     clean_tmp(vl);
-
-    LOG("unified %s %C with initial_word in %s %C",
-        entry->word_name, c,
-        parent_entry->word_name, initial);
-    LOG_WHEN(closure_out(c), TODO " handle deps in c = %C, n = %C", c, n);
-
-    TRAVERSE(c, in) {
-      drop(*p);
-    }
-    reassign_deps(c, n);
-    store_lazy(cp, n, 0);
+    return FAIL;
   }
+
+  csize_t n_in = tmp_list_length(vl);
+  assert_error(n_in, "no inputs %C", c);
+  cell_t *n = ALLOC(n_in + out + 1,
+    .expr.out = out,
+    .op = OP_exec
+  );
+  n->expr.arg[n_in] = (cell_t *)entry;
+  FLAG_SET(*n, expr, RECURSIVE);
+  FLAG_SET(*n, expr, NO_UNIFY);
+  int pos = 0;
+
+  // TODO this list should be sorted first by the parent variable pos's
+  FOLLOW(p, vl, tmp) { // get arguments from the binding list
+    n->expr.arg[n_in - 1 - pos] = p;
+    pos++;
+  }
+  clean_tmp(vl);
+
+  LOG("unified %s %C with initial_word in %s %C",
+      entry->word_name, c,
+      parent_entry->word_name, initial);
+  LOG_WHEN(closure_out(c), TODO " handle deps in c = %C, n = %C", c, n);
+
+  TRAVERSE(c, in) {
+    drop(*p);
+  }
+  reassign_deps(c, n);
+  store_lazy(cp, n, 0);
   return exec_list(cp, ctx);
 }
 
@@ -1077,7 +1076,7 @@ OP(exec) {
       assert_error(parent_entry,
                    "incomplete entry can't be unified without "
                    "a parent entry %C @exec_split", c);
-      if(s_entry->entry.specialize) {
+      if(s_entry->entry.specialize && NOT_FLAG(*c, expr, NO_UNIFY)) {
         c->expr.arg[closure_in(c)] = (cell_t *)s_entry;
         rsp = unify_exec(cp, parent_entry, ctx);
         if(rsp == FAIL) {
