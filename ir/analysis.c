@@ -170,6 +170,7 @@ uint32_t hash_trace_cell(tcell_t *entry, tcell_t *tc) {
     if(is_dep(tc)) {
       HASH('d', dep_arg_index(entry, tc));
     } else {
+      // TODO hash entry arg
       TRAVERSE(tc, in) {
         HASH('a', hash_trace_cell(entry, &entry[tr_index(*p)]));
       }

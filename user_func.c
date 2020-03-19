@@ -40,7 +40,7 @@
 #include "primitive/core.h"
 
 // hash_entry() of `[id] map`
-#define ID_MAP_HASH 0x1b21417d
+#define ID_MAP_HASH 0x0c7881ab
 
 #if INTERFACE
 #define is_user_func(c) _is_user_func(GET_CELL(c))
