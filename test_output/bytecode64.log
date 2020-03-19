@@ -3844,6 +3844,36 @@ ___ tests.fuse_map5f_r0 (2 -> 1) rec ___
 [9] __primitive.pushr 8 6 :: l x1
 [10] return [9]
 
+___ tests.fuse_map8 (2 -> 2) ___
+[1] var :: ?i x1
+[2] var :: ?i x1
+[3] __primitive.shiftl 1 &4 :: i x2
+[4] val 1 :: i x2
+[5] __primitive.add &3 &6 :: i x1
+[6] val 3 :: i x2
+[7] __primitive.shiftl 2 4 :: i x1
+[8] __primitive.add 7 3 :: i x1
+[9] __primitive.add 8 6 :: i x1
+[10] return [9 5]
+
+___ tests.fuse_map8c (3 -> 3) ___
+[1] var :: ?i x1
+[2] var :: ?i x1
+[3] var :: ?i x1
+[4] __primitive.shiftl 1 &5 :: i x1
+[5] val 1 :: i x4
+[6] __primitive.shiftl 4 &5 :: i x1
+[7] __primitive.add 6 &8 :: i x1
+[8] val 3 :: i x4
+[9] __primitive.shiftl 2 &5 :: i x1
+[10] __primitive.shiftl 9 11 :: i x1
+[11] val 2 :: i x1
+[12] __primitive.add 10 &8 :: i x1
+[13] __primitive.shiftl 3 5 :: i x1
+[14] __primitive.shiftl 13 &8 :: i x1
+[15] __primitive.add 14 8 :: i x1
+[16] return [15 12 7]
+
 ___ tests.fuse_map_zip_map (2 -> 1) ___
 [1] var :: ?l x1
 [2] var :: ?l x1

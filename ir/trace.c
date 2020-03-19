@@ -913,6 +913,8 @@ void trace_update_2(tcell_t *v, cell_t *c) {
         }
         p = ONEOF(p->op, OP_assert, OP_unless, OP_seq) ?
           &entry[tr_index(p->expr.arg[0])] : NULL;
+
+        assert_counter(1000); // ***
       } while(p);
     }
     if(!is_var(tc)) break;
@@ -1263,7 +1265,7 @@ int trace_count() {
 
 // delay a branch so that it is listed at the end
 // this allows reducing base cases first
-void delay_branch(context_t *ctx, int priority) {
+void delay_branch(context_t *ctx, priority_t priority) {
   FOLLOW(p, ctx, up) {
     cell_t *c = p->src;
     if(is_list(c)) {

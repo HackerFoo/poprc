@@ -1065,20 +1065,7 @@ bool is_linear(context_t *ctx) {
   return true;
 }
 
-#if INTERFACE
-enum priority {
-  PRIORITY_SIMPLIFY = 0,
-  PRIORITY_VAR,
-  PRIORITY_ASSERT,
-  PRIORITY_DELAY,
-  PRIORITY_EXEC_SELF,
-  PRIORITY_UNLESS,
-  PRIORITY_MAX
-};
-#define PRIORITY_TOP (PRIORITY_MAX - 1)
-#endif
-
-bool should_delay(context_t *ctx, int priority) {
+bool should_delay(context_t *ctx, priority_t priority) {
   return ctx->priority == PRIORITY_SIMPLIFY ?
     ONEOF(priority, PRIORITY_VAR, PRIORITY_EXEC_SELF):
     ctx->priority < priority;

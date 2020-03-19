@@ -337,6 +337,21 @@ OP(dup) {
   return RETRY;
 }
 
+static
+response reduce_rows(cell_t *l, csize_t out, context_t *ctx) {
+  if(is_list(l)) {
+    list_iterator_t it = list_begin(l);
+    { // reduce rows as much as needed and check for delays
+      COUNTUP(i, out) {
+        response rsp = reduce_row(&it, out - i, ctx);
+        if(rsp != SUCCESS) return rsp;
+        list_next(&it, false);
+      }
+    }
+  }
+  return SUCCESS;
+}
+
 // L M... R compMN --->
 // L [M...] . R . ap0N ---> (pushr)
 // [L: M...] R . ap0N ---> (actual implementation)
@@ -361,6 +376,7 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
 
   cell_t *p = NULL;
   cell_t *res = NULL;
+  cell_t *l = NULL;
   int pos = c->pos;
 
   // conservative guesses for the sizes of `a` and `b`
@@ -413,8 +429,11 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   };
 
   insert_root(q);
-  cell_t *l = compose(it, ref(*q)); // TODO prevent leaking outside variables
+  l = compose(it, ref(*q)); // TODO prevent leaking outside variables
   reverse_ptrs((void **)c->expr.arg, in);
+
+  CHECK(reduce_rows(l, out, ctx));
+  CHECK_DELAY();
 
   it = list_begin(l);
   {
@@ -429,7 +448,6 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
     cell_t *d = c->expr.arg[n-1-i];
     if(d) {
       if(!x) {
-        drop(l);
         LOG("null quote output: arg[%d] = %C", n-1-i, d);
         ABORT(FAIL);
       }
@@ -462,6 +480,7 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   return SUCCESS;
 
  abort:
+  drop(l);
   drop(res);
   return abort_op(rsp, cp, ctx);
 }

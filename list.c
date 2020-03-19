@@ -220,6 +220,16 @@ bool is_row_arg(const list_iterator_t *it) {
   return it->row && it->index > it->size;
 }
 
+response reduce_row(const list_iterator_t *it, csize_t remaining, context_t *ctx) {
+  if(it->row && it->index == it->size) {
+    cell_t **rp = &it->array[it->size];
+    if(!is_value(*rp)) {
+      return reduce(rp, &CTX(list, 0, remaining));
+    }
+  }
+  return SUCCESS;
+}
+
 static
 cell_t *_make_test_list(csize_t n, cell_t *row) {
   cell_t *l = make_list(n + !!row);

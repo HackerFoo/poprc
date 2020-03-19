@@ -99,6 +99,18 @@ typedef union location {
 #undef FILE_ID
 static_assert(sizeof(location_t) == sizeof_field(location_t, raw), "location_t wrong size");
 
+typedef enum __attribute__((packed)) priority {
+  PRIORITY_SIMPLIFY = 0,
+  PRIORITY_VAR,
+  PRIORITY_ASSERT,
+  PRIORITY_DELAY,
+  PRIORITY_EXEC_SELF,
+  PRIORITY_UNLESS,
+  PRIORITY_MAX
+} priority_t;
+#define PRIORITY_TOP (PRIORITY_MAX - 1)
+static_assert(sizeof(priority_t) == 1, "priority_t too big");
+
 // context used for reduction
 // allows both downward and upward information transfer
 struct context {
@@ -106,7 +118,7 @@ struct context {
   cell_t *src; // closure for this context [down]
   range_t bound; // requested bound [down]
   alt_set_t alt_set; // outside constraints [up/down]
-  int priority; // used to control reduction stages [down]
+  priority_t priority; // used to control reduction stages [down]
   location_t loc; // reported location (for debug) [up]
   qsize_t s; // required quote size [down]
   type_t t; // required type [down]
@@ -303,7 +315,7 @@ union cell {
       uint8_t pos; /* see below */                                      \
       uint8_t arg_index; /* arg index (for dep vars) */                 \
       uint8_t var_index; /* final index for vars in trace */            \
-      uint8_t priority; /* for use in func_list() & delay_branch() */   \
+      priority_t priority; /* used in func_list() & delay_branch() */   \
     };                                                                  \
     refcount_t n;                                                       \
     csize_t size;                                                       \
