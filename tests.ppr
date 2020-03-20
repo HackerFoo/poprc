@@ -473,7 +473,7 @@ fuse_map5c: 0 [+ dup] map_with head
 fuse_map5d: [3*] map 0 [+ dup] map_with
 fuse_map5e: popr 0 + [+ dup] map_with
 fuse_map5f: 0 [+ dup] map_with [3*] map
-fuse_map6: 0 [+ dup] map_with 1 [*] map_with __ {hide}
+fuse_map6: 0 [+ dup] map_with 1 [* dup] map_with
 fuse_map7: [dup] map tail __ {hide}
 fuse_map8: []ap20 [2*] map 0 [+ dup] map_with [3+] map get2
 fuse_map8b: []ap20 [2*] map 0 [dup [*] dip21 2*] map_with [3+] map get2 __ {hide}

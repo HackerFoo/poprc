@@ -3844,6 +3844,25 @@ ___ tests.fuse_map5f_r0 (2 -> 1) rec ___
 [9] __primitive.pushr 8 6 :: l x1
 [10] return [9]
 
+___ tests.fuse_map6 (1 -> 1) ___
+[1] var :: ?l x1
+[2] val 1 :: i x1
+[3] val 0 :: i x1
+[4] jump tests.fuse_map6_r0 2 3 1 :: l x1
+[5] return [4]
+
+___ tests.fuse_map6_r0 (3 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] changing var :: ?i x1
+[3] changing var :: ?i x1
+[4] __primitive.ap 1 -> 5 :: l? x2
+[5] __primitive.dep 4 :: i x1
+[6] __primitive.add 5 2 :: i x2
+[7] __primitive.mul &6 3 :: i x2
+[8] jump tests.fuse_map6_r0 &7 6 4 :: l x1
+[9] __primitive.pushr 8 7 :: l x1
+[10] return [9]
+
 ___ tests.fuse_map8 (2 -> 2) ___
 [1] var :: ?i x1
 [2] var :: ?i x1
