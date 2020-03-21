@@ -223,6 +223,7 @@ struct __attribute__((packed)) tok_list {
 struct __attribute__((packed)) mem {
   csize_t __padding;
   cell_t *prev, *next;
+  location_t loc; // for debug
 };
 
 #define FLAG_specialize (specialize, ->, SPECIALIZE)

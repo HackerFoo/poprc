@@ -400,9 +400,17 @@ bool is_any(cell_t const *c) {
   return is_value(c) && c->value.type == T_ANY;
 }
 
-void dropn(cell_t *c, refcount_t n) {
+location_t cell_location(cell_t const *c) {
+  return is_cell(c) && !c->op ? c->mem.loc : ((location_t) {});
+}
+
+#if INTERFACE
+#define dropn(c, n) _dropn(c, n, LOCATION())
+#define drop(c) _dropn(c, 1, LOCATION())
+#endif
+void _dropn(cell_t *c, refcount_t n, location_t loc) {
   if(!is_cell(c) || c->n == PERSISTENT) return;
-  assert_error(is_closure(c));
+  assert_error(is_closure(c), "%C (last dropped at %L)", c, cell_location(c).raw);
   if(n > c->n) {
     cell_t *p;
     LOG_WHEN(c->alt &&
@@ -410,7 +418,7 @@ void dropn(cell_t *c, refcount_t n) {
              c->alt->op != OP_value,
              MARK("WARN") " unreduced alt %C -> %C", c, c->alt);
     TRAVERSE(c, alt, in, ptrs) {
-      drop(*p);
+      _dropn(*p, 1, loc);
     }
     if(is_dep(c) && !is_value(p = c->expr.arg[0]) && is_closure(p)) {
       /* mark dep arg as gone */
@@ -427,13 +435,10 @@ void dropn(cell_t *c, refcount_t n) {
       trace_drop(c);
     }
     closure_free(c);
+    c->mem.loc = loc;
   } else {
     c->n -= n;
   }
-}
-
-void drop(cell_t *c) {
-  dropn(c, 1);
 }
 
 void fake_drop(cell_t *c) {
