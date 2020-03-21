@@ -133,12 +133,12 @@ response func_list(cell_t **cp, context_t *ctx) {
   if(n && row && is_list(c->value.ptr[n-1])) {
     if(ctx->depth >= LIST_MAX_DEPTH) {
       drop(c->value.ptr[n-1]);
-      c->value.ptr[n-1] = &nil_cell;
+      c->value.ptr[n-1] = make_list(0);
       FLAG_SET(*c, value, ABBREV);
     } else {
       response r = func_list(&c->value.ptr[n-1], &CTX(any));
       if(r == FAIL) {
-        c->value.ptr[n-1] = &nil_cell;
+        c->value.ptr[n-1] = make_list(0);
       } else {
         CHECK(r);
         ctx->alt_set |= c->value.ptr[n-1]->value.alt_set;

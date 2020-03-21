@@ -206,8 +206,6 @@ void print_cell_pointer(FILE *f, const char *pre, cell_t *p) {
   if(pre) fprintf(f, "<font color=\"white\">%s: </font>", pre);
   if(p == &fail_cell) {
     fprintf(f, "<font color=\"red\">&amp;fail_cell</font>");
-  } else if(p == &nil_cell) {
-    fprintf(f, "<font color=\"gray60\">&amp;nil_cell</font>");
   } else if(is_cell(p)) {
     fprintf(f, "<font color=\"gray60\">&amp;cells[%d]</font>", CELL_INDEX(p));
   } else {
@@ -675,8 +673,6 @@ FORMAT(cell, 'C') {
   if(is_cell(c)) {
     printf("%d", CELL_INDEX(c));
     mark_cell(c);
-  } else if(c == &nil_cell) {
-    printf("nil");
   } else if(c == &fail_cell) {
     printf("fail");
   } else {
