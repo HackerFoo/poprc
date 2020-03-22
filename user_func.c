@@ -641,7 +641,7 @@ cell_t *flat_call(cell_t *c, tcell_t *entry) {
 // TODO generalize these
 
 // pull out the contents of a list using ap
-// i.e. remove a level of nesting: [[...]] -> [...]
+// i.e. remove a level of nesting: [[...] ...] -> [... ...]
 // TODO handle row
 static
 cell_t *unwrap(cell_t *c, uintptr_t dep_mask, int out, int dropped, bool row) {
@@ -710,12 +710,10 @@ cell_t *wrap_vars(cell_t **res, cell_t *p, uintptr_t dep_mask, csize_t out) {
 // expand a user function into a list of outputs
 static
 cell_t *expand_list(cell_t *c) {
-  size_t out = closure_out(c);
+  size_t out = closure_out(c), n = out;
   cell_t *l = make_list(out + 1);
-  int n = out;
   TRAVERSE(c, out) {
-    *p = dep(c);
-    l->value.ptr[--n] = *p;
+    l->value.ptr[--n] = *p ? (*p = dep(c)) : &fail_cell;
   }
   refn(c, out);
   l->value.ptr[out] = exec_expand(c); // deps will be in c ***

@@ -503,3 +503,4 @@ filter_step: [[popr] dip12] dip23 pushif
 fuse_filter_map: [odd] filter 0 [+ dup] map_with
 fuse_filter_sum: [odd] filter sum
 fuse_map_filter: [1+] map [odd] filter __ {hide}
+fuse_filter_tail: [odd] filter tail __ {hide}
