@@ -489,3 +489,17 @@ id_map2: popr [id_map2] dip11 pushr
 
 axil_map_w: [3+] map stream_read_write_array
 axil_map_r: stream_read_write_array [[3+] map] dip11
+
+__ [l] [p] filter -> [..x..] such that for all x, x p == True
+old_filter:
+  [[[]] pushl] dip11
+    [[filter_step] pushl .] pushl
+    [tail head head valid]
+    iterate head
+
+__ [.. a] [b ..] [p] --> [..] [a b ..] if a p, otherwise [..] [b ..]
+filter_step: [[popr] dip12] dip23 pushif
+
+fuse_filter_map: [odd] filter 0 [+ dup] map_with
+fuse_filter_sum: [odd] filter sum
+fuse_map_filter: [1+] map [odd] filter __ {hide}

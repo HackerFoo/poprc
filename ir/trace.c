@@ -789,6 +789,7 @@ void trace_dep(cell_t *c) {
   tcell_t *tc = &entry[x];
   tcell_t *ph = c->value.var;
   int ph_x = var_index(entry, ph);
+  assert_error(c->arg_index < ph->size);
   ph->expr.arg[c->arg_index] = index_tr(x);
   LOG("trace_dep: %d <- %C %d[%d]", x, c, ph_x, c->arg_index);
   tc->op = OP_dep;

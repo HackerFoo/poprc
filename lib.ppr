@@ -121,21 +121,25 @@ map_with:
     [map_with] ap20 swap __ [xs] [s' [f] map_with] [x s f / s']
     [$] dip21 . __ [xs s' [f] map_with . x s f / s']
 
-__ a [b..] [p]
+__ a [b..] [p] pushif
+__ a p       ==> [a b..]
+__ otherwise ==> [b..]
 pushif:
   [over] dip23 $
     -swap2 dup [pushl] dip21
     ifte
 
-__ [l] [p] filter -> [..x..] such that for all x, x p == True
-filter:
-  [[[]] pushl] dip11
-    [[filter_step] pushl .] pushl
-    [tail head head valid]
-    iterate head
+__ [..x] [f] $top -> [..x] [f] xf
+__ $top: dup2 . head (doesn't work) {hide}
+$top: dup2 [head] dip11 $
 
-__ [.. a] [b ..] [p] --> [..] [a b ..] if a p, otherwise [..] [b ..]
-filter_step: [[popr] dip12] dip23 pushif
+__ [l] [p] next_match -> [l'] x {hide}
+next_match:
+  $top [nip [popr] dip12 !!]
+       [[[tail] dip11 next_match] dip22 not!!] | $$$-
+
+__ [l] [p] filter -> [..x..] such that for all x, x p == True
+filter: tuck next_match [swap filter] dip21 pushr
 
 __ a n listdup --> [a... x n]
 listdup: [] -swap2 [swap pushl] pushl swap times

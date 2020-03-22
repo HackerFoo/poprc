@@ -395,7 +395,11 @@ cell_t *exec_expand(cell_t *c) {
   cell_t **results[out + 1];
   results[out] = &res;
   COUNTUP(i, out) {
-    results[i] = &c->expr.arg[n - 1 - i]; // ***
+    cell_t **dp = &c->expr.arg[n - 1 - i]; // ***
+    assert_error(!*dp || (*dp)->expr.arg[0] == c,
+                 "%C refers to %C instead of %C",
+                 *dp, (*dp)->expr.arg[0], c);
+    results[i] = dp;
   }
 
   CONTEXT("exec_expand %s: %C 0x%x", entry->word_name, c, c->expr.flags);
@@ -867,18 +871,19 @@ response func_exec_specialize(cell_t **cp, context_t *ctx, tcell_t *parent_entry
   }
 
   // handle deps
+  csize_t p_in = closure_in(p);
   if(out) {
     // replace outputs with variables
     cell_t **c_out = &c->expr.arg[in + 1];
     COUNTUP(i, out) {
       cell_t *d = c_out[i];
-      if(d && is_dep(d)) {
+      if(d && is_dep(d)) { // NOTE should null deps be removed?
         assert_error(d->expr.arg[0] == c);
         drop(c);
         get_trace_info_for_output(&tr, new_entry, i + 1);
-        store_dep(d, tc, i + in + 1, tr.type, tr.range, 0);
+        store_dep(d, tc, i + p_in + 1, tr.type, tr.range, 0);
         d->value.range = tr.range;
-        p->expr.arg[in + 1 + i] = d;
+        p->expr.arg[p_in + 1 + i] = d;
       }
     }
   }
@@ -1034,11 +1039,24 @@ bool is_specialized_to(tcell_t *entry, cell_t *c) {
     return true;
   }
   COUNTUP(i, in) {
-    if(NOT_FLAG(entry[i+1], trace, CHANGES)) {
-      int a = REVI(i);
-      force(&c->expr.arg[a]); // HACK
-      if(!is_input(c->expr.arg[a])) {
-        LOG("not dynamic: %C %s arg[%d] = %C", c, entry->word_name, a, c->expr.arg[a]);
+    int a = REVI(i);
+    cell_t **p = &c->expr.arg[a];
+    if(FLAG(entry[i+1], trace, CHANGES)) {
+      if(ONEOF(entry[i+1].value.type, T_LIST, T_ANY)) {
+        simplify(p);
+        if(is_user_func(*p)) {
+          tcell_t *e = closure_entry(*p);
+          if(e->entry.alts == 1 && FLAG(*e, entry, ROW)) {
+            return false;
+          }
+        } else if(ONEOF((*p)->op, OP_pushr, OP_compose)) {
+          return false;
+        }
+      }
+    } else {
+      force(p); // HACK
+      if(!is_input(*p)) {
+        LOG("not dynamic: %C %s arg[%d] = %C", c, entry->word_name, a, *p);
         return false;
       }
     }

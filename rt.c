@@ -280,7 +280,7 @@ cell_t *fill_incomplete(cell_t *c) {
   if(!closure_is_ready(c)) {
     const char *module_name, *word_name;
     get_name(c, &module_name, &word_name);
-    LOG("fill_incomplete: closure not ready %C (%s.%s)", c, module_name, word_name);
+    LOG(MARK("WARN") " fill_incomplete: closure not ready %C (%s.%s)", c, module_name, word_name);
     do {
       c = arg_nd(c, &fail_cell, c);
     } while(!closure_is_ready(c));
@@ -653,6 +653,7 @@ cell_t *conc_alt(cell_t *a, cell_t *b) {
 /* m => in-place, update ref counts for replaced references */
 static
 void mutate_update(cell_t *r, bool m) {
+  WATCH(r, "mutate_update");
   TRAVERSE(r, alt, in, ptrs) {
     cell_t *c = *p;
     if(is_closure(c) && c->n != PERSISTENT) {
@@ -674,6 +675,7 @@ void mutate_update(cell_t *r, bool m) {
 
 static
 cell_t *add_to_list(cell_t *c, cell_t *nc, cell_t **l) {
+  WATCH(c, "add_to_list");
   nc->n = -1;
   CONS(tmp, l, nc);
   CONS(tmp, l, c);

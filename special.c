@@ -373,6 +373,7 @@ OP(dep) {
   /* must temporarily reference to avoid replacement of p which is referenced elsewhere */
   cell_t *p = ref(c->expr.arg[0]);
   assert_error(is_dep_of(c, p));
+  CHECK_IF(!closure_is_ready(p), FAIL); // without this, fill_incomplete can cause broken dep references
   insert_root(&p);
   CHECK(reduce_one(&p, &CTX(any)));
   CHECK_DELAY();
