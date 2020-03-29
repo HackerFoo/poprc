@@ -2768,6 +2768,44 @@ ___ tests.axil_map_w_r0 (3 -> 1) rec ___
 [14] val True :: y x1
 [15] return [13]
 
+___ tests.axil_map_w_fib (4 -> 2) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] var :: ?l x1
+[4] var is Array :: ?o x1
+[5] __primitive.dup_array 4 -> 6 is Array :: o x2
+[6] __primitive.dep 5 is Array :: o x1
+[7] io.stream_read_array_r0 6 3 :: l x1
+[8] jump tests.axil_map_w_fib_r0 1 2 5 :: l x1
+[9] return [7 8]
+
+___ tests.axil_map_w_fib_r0 (3 -> 1) rec ___
+[1] var is Array :: ?o x1
+[2] var :: ?l x1
+[3] var :: ?l x1
+[4] __primitive.ap 3 -> 5 :: l? x2
+[5] __primitive.dep 4 :: i x1
+[6] __primitive.sub 5 &7 :: i x1
+[7] val 1 :: i x2
+[8] tests.fibl_r0 6 9 7 :: i x1
+[9] val 0 :: i x1
+[10] jump tests.axil_map_w_fib_r0_q0 4 8 2 1 :: l x1
+[11] return [10]
+
+___ tests.axil_map_w_fib_r0_q0 (4 -> 1) mut ___
+[1] var is Array :: ?o x1
+[2] var :: ?l x1
+[3] var :: ?i x1
+[4] var :: ?l x1
+[5] __primitive.ap 2 -> 6 :: l? x2
+[6] __primitive.dep 5 :: i x1
+[7] __primitive.write_array 1 6 3 is Array :: o x2
+[8] __primitive.seq 11 &7 is True :: y x1
+[9] jump tests.axil_map_w_fib_r0 4 5 7 :: v x1
+[10] __primitive.pushr 9 8 :: l x1
+[11] val True :: y x1
+[12] return [10]
+
 ___ tests.binrec (4 -> 1) ___
 [1] var :: ?l x1
 [2] var :: ?l x1

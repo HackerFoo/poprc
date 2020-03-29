@@ -111,6 +111,7 @@
 `define wire_null_stream(N, name) wire name``_valid; wire name``_ready
 `define reg_stream(N, name) reg [N-1:0] name; reg name``_valid; wire name``_ready
 `define const_stream(N, name, val) localparam [N-1:0] name = val; localparam name``_valid = `true
+`define const_nil(name) localparam name = 0; localparam name``_valid = `true; wire name``_ready
 `define null_const_nil(name) localparam name``_valid = `true; wire name``_ready
 
 /* ------------------------------------------------------ *

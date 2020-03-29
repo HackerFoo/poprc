@@ -461,6 +461,16 @@ void trace_final_pass(tcell_t *entry) {
     }
     prev = tc;
   }
+  FOR_TRACE(tc, entry) { // *** TODO split condense_and_analyze
+    if(tc->op == OP_exec) {
+      tcell_t *e = get_entry(tc);
+      if(FLAG(*e, entry, QUOTE)) {
+        LOOP(2) { // run twice to for self calls
+          calculate_bit_width(e);
+        }
+      }
+    }
+  }
   if(NOT_FLAG(*entry, entry, QUOTE) &&
     TWEAK(true, "to disable condense/move_vars in %s", entry->word_name)) {
     condense_and_analyze(entry);

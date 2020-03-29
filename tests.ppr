@@ -488,6 +488,7 @@ id_map: [id] map __ eliminate this
 id_map2: popr [id_map2] dip11 pushr
 
 axil_map_w: [3+] map stream_read_write_array
+axil_map_w_fib: [fibl] map stream_read_write_array
 axil_map_r: stream_read_write_array [[3+] map] dip11
 
 __ [l] [p] filter -> [..x..] such that for all x, x p == True
