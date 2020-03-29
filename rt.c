@@ -319,13 +319,17 @@ response reduce(cell_t **cp, context_t *ctx) {
 }
 
 #if INTERFACE
-#define force(cp) reduce((cp), &CTX(any))
+#define force(...) DISPATCH(force, __VA_ARGS__)
+#define force_1(cp) reduce(cp, &CTX(any))
+#define force_2(cp, ctx) reduce(cp, ctx)
+
+#define simplify(...) DISPATCH(simplify, __VA_ARGS__)
+#define simplify_1(cp) simplify_2((cp), &CTX(any))
 #endif
 
-response simplify(cell_t **cp) {
+response simplify_2(cell_t **cp, context_t *ctx) {
   CONTEXT("simplify %C", *cp);
-  context_t *arg_ctx = &CTX(any);
-  return reduce(cp, WITH(arg_ctx, priority, PRIORITY_SIMPLIFY));
+  return reduce(cp, WITH(ctx, priority, PRIORITY_SIMPLIFY));
 }
 
 // Perform one reduction step on *cp

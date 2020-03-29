@@ -729,6 +729,9 @@ cell_t *flat_quote(tcell_t *new_entry, tcell_t *parent_entry) {
     if(is_var(p) && p->value.var) {
       tcell_t *tp = var_for_entry(parent_entry, tc);
       cell_t *v = var_create_nonlist(trace_type(tp), tp);
+      if(trace_type(tp) == T_OPAQUE) { // ***
+        v->value.range = tp->trace.range;
+      }
       assert_error(INRANGE(p->var_index, 1, in));
       nc->expr.arg[in - p->var_index] = v;
       LOG("arg[%d] -> %d", in - p->var_index, tp - parent_entry);
