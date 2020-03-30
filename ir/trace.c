@@ -983,61 +983,65 @@ int trace_build_quote(tcell_t *entry, cell_t *l) {
   }
 
   // if there is no computation in the quote, convert to ap or compose
-  bool inline_quote = FLAG(*l, value, INLINE) || reduced_list(l);
+  bool should_inline = FLAG(*l, value, INLINE) || reduced_list(l);
 
   // inline if the function would be empty
   // TODO check for barriers? ***
-  if(!inline_quote && entry->entry.out == 1) {
-    inline_quote = true;
+  if(!should_inline && entry->entry.out == 1) {
+    should_inline = true;
     FOR_TRACE(c, entry) {
       if(!is_var(c)) {
-        inline_quote = false;
+        should_inline = false;
       }
     }
   }
-  if(inline_quote) {
-    LOG("all var list %C", l);
-    FLAG_SET(*entry, entry, FORCED_INLINE);
-    cell_t **p;
-    FORLIST(p, l, true) {
-      reduce(p, is_row_arg(&__it) ?
-                  &CTX(list, 0, 0) :
-                  &CTX(any));
-    }
-    unwrap_id_lists(&l);
-    if(is_var(l)) {
-      switch_entry(entry, l);
-      return var_index(entry, l->value.var);
-    }
-    bool row = is_row_list(l);
-    const int size = function_out(l, true);
-    if(list_size(l) > size) {
-      row = false; // HACK the leftmost is nil
-    }
-    if(row) FLAG_SET(*entry, entry, ROW);
-    assert_error(!row || size > 1, "must have a non-row output");
-    FORLIST(p, l, true) force(p); // ***
-
-    // store the quote as a compose, pushr, or quote
-    int x = trace_alloc(entry, size);
-    tcell_t *tc = &entry[x];
-    cell_t *p0 = l->value.ptr[0];
-    tc->op = row ? (is_var(p0) && FLAG(*p0, value, ROW) ? OP_compose :
-                    OP_pushr) : OP_quote;
-    tc->trace.type = T_LIST;
-    int n = size;
-
-    FORLIST(p, l, true) {
-      int x = trace_value(entry, *p);
-      tc->expr.arg[--n] = index_tr(x);
-      entry[x].n++;
-    }
-
-    apply_condition(l, &x);
-    return x;
+  if(should_inline) {
+    return inline_quote(entry, l);
   }
 
   return compile_quote(entry, l);
+}
+
+int inline_quote(tcell_t *entry, cell_t *l) {
+  LOG("inline quote %C", l);
+  FLAG_SET(*entry, entry, FORCED_INLINE);
+  cell_t **p;
+  FORLIST(p, l, true) {
+    reduce(p, is_row_arg(&__it) ?
+           &CTX(list, 0, 0) :
+           &CTX(any));
+  }
+  unwrap_id_lists(&l);
+  if(is_var(l)) {
+    switch_entry(entry, l);
+    return var_index(entry, l->value.var);
+  }
+  bool row = is_row_list(l);
+  const int size = function_out(l, true);
+  if(list_size(l) > size) {
+    row = false; // HACK the leftmost is nil
+  }
+  if(row) FLAG_SET(*entry, entry, ROW);
+  assert_error(!row || size > 1, "must have a non-row output");
+  FORLIST(p, l, true) force(p); // ***
+
+  // store the quote as a compose, pushr, or quote
+  int x = trace_alloc(entry, size);
+  tcell_t *tc = &entry[x];
+  cell_t *p0 = l->value.ptr[0];
+  tc->op = row ? (is_var(p0) && FLAG(*p0, value, ROW) ? OP_compose :
+                  OP_pushr) : OP_quote;
+  tc->trace.type = T_LIST;
+  int n = size;
+
+  FORLIST(p, l, true) {
+    int x = trace_value(entry, *p);
+    tc->expr.arg[--n] = index_tr(x);
+    entry[x].n++;
+  }
+
+  apply_condition(l, &x);
+  return x;
 }
 
 // store a return list
@@ -1055,7 +1059,7 @@ int trace_return(tcell_t *entry, cell_t *c_) {
       switch_entry(entry, *p);
       x = var_index(entry, (*p)->value.var);
     } else if(is_list(*p)) {
-      x = trace_build_quote(entry, *p);
+      x = inline_quote(entry, *p);
     } else {
       x = trace_store_value(entry, *p);
     }
