@@ -14,7 +14,15 @@ else
 	USE_READLINE ?= n
 endif
 
-ifeq ($(USE_LINENOISE),y)
+# ensure that USE_LINENOISE and USE_READLINE are exclusive
+ifeq ($(USE_READLINE),y)
+	USE_LINENOISE = n
+	USE_READLINE = y
+else ifeq ($(USE_LINENOISE),y)
+	USE_LINENOISE = y
+	USE_READLINE = n
+else
+	USE_LINENOISE = n
 	USE_READLINE = n
 endif
 

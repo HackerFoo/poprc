@@ -1,8 +1,1 @@
-language: c
-script: make BUILD=release
-compiler:
-  - clang
-  - gcc
-dist: trusty
-sudo: false
-os: linux
+language: nix
