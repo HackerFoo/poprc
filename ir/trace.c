@@ -981,25 +981,7 @@ int trace_build_quote(tcell_t *entry, cell_t *l) {
       return var_index(entry, p->value.var);
     }
   }
-
-  // if there is no computation in the quote, convert to ap or compose
-  bool should_inline = FLAG(*l, value, INLINE) || reduced_list(l);
-
-  // inline if the function would be empty
-  // TODO check for barriers? ***
-  if(!should_inline && entry->entry.out == 1) {
-    should_inline = true;
-    FOR_TRACE(c, entry) {
-      if(!is_var(c)) {
-        should_inline = false;
-      }
-    }
-  }
-  if(should_inline) {
-    return inline_quote(entry, l);
-  }
-
-  return compile_quote(entry, l);
+  return inline_quote(entry, l);
 }
 
 int inline_quote(tcell_t *entry, cell_t *l) {
