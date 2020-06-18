@@ -1,5 +1,13 @@
-;;; package --- Major mode for editing Popr code.
+;;; popr-mode.el --- Major mode for editing Popr code.
+
+;; Copyright (C) 2020 Dustin DeWeese
+
+;; Author: Dustin DeWeese
+;; Version: 0.1
+
 ;;; Commentary:
+
+;; This package provides a major mode for editing Popr code.
 
 ;;; Code:
 
@@ -22,6 +30,7 @@
   '(("Module" "^ *module +\\([^ \t\r\n]+\\):" 1)
     ("Word" "^ *\\([^ \t\r\n]+\\):" 1)))
 
+;;;###autoload
 (define-derived-mode popr-mode fundamental-mode "popr"
   "Major mode for editing Popr code."
   (setq font-lock-defaults '(popr-highlights))
