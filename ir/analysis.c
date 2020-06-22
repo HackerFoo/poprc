@@ -87,6 +87,7 @@ bool trace_recursive_changes(tcell_t *entry) {
     }
   }
 
+  /* TODO check isn't conservative enough
   // if there's only one path, even if the arguments change, it will loop forever
   if(!forced_inline) {
     // very conservative check, should only fail if the function is definitely non-terminating
@@ -97,6 +98,7 @@ bool trace_recursive_changes(tcell_t *entry) {
                  || entry->entry.out > 1, // could drop recursive path
                  "infinite tail recursion, single alt");
   }
+  */
   return changes;
 }
 

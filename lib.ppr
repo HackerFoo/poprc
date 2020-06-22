@@ -535,8 +535,19 @@ update_array: [tuck read_array [swap] dip22] dip23 $ write_array
 __ Array [... idx] stream_read_array -> [... data]
 stream_read_array: swap [swap read_array swap] map_with
 
-stream_write_array: swap2 [-swap2 swap write_array dup True swap seq swap] zip_with
+__ Array [... idx] [... data] stream_write_array -> [... True]
+stream_write_array: swap2 [-swap2 write_array dup True swap seq swap] zip_with
 
+fork_array2:
+  [[dup_array] dip12 $ swap] dip22 $
+
+__ Array sRA sWA sW -> sR sB
 stream_read_write_array:
-  swap3 dup_array [-swap2 swap stream_write_array] dip31 swap
-    [swap stream_read_array] dip21
+  []ap30 dup
+    [drop drop stream_read_array]. swap __ read
+    [nip2 stream_write_array]. __ write
+    fork_array2
+
+fork_array3:
+  [[[dup_array] dip12 $ swap] dip22
+    [dup_array] dip12 $ swap] dip33 $

@@ -505,3 +505,22 @@ fuse_filter_map: [odd] filter 0 [+ dup] map_with
 fuse_filter_sum: [odd] filter sum
 fuse_map_filter: [1+] map [odd] filter __ {hide}
 fuse_filter_tail: [odd] filter tail __ {hide}
+
+fuse_map_ho: [map] pushl swap [map] pushl . $ __ {hide}
+
+__ Array sRA sWA sW f_wa f_w stream_compute {hide}
+stream_compute:
+  []ap50 dup dup
+    [drop drop drop drop stream_read_array]. swap2 __ read
+    [drop drop nip2 stream_write_array]. swap2 __ write
+    [[swap [map] dip21] dip32 map nip2 stream_write_array]. __ compute
+    fork_array3
+
+__ Fixed-function version of stream_compute to simplify testing
+__ Array sRA sWA sW stream_compute_ff {hide}
+stream_compute_ff:
+  []ap30 dup dup
+    [drop drop stream_read_array]. swap2 __ read
+    [nip2 stream_write_array]. swap2 __ write
+    [[[1+] map] dip11 [3*] map nip2 stream_write_array]. __ compute
+    fork_array3

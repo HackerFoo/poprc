@@ -1363,6 +1363,35 @@ ___ gen_ed.write_list_r0 (3 -> 2) x2 rec ___
 [17] __primitive.seq 12 5 :: v x1
 [18] return [17 6]
 
+___ io.fork_array2 (3 -> 2) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] var is Array :: ?o x1
+[4] __primitive.dup_array 3 -> 7 is Array :: o x2
+[5] __primitive.ap 4 1 -> 6 :: v? x1
+[6] __primitive.dep 5 :: a x1
+[7] __primitive.dep 4 is Array :: o x1
+[8] __primitive.ap 7 2 -> 9 :: v? x1
+[9] __primitive.dep 8 :: a x1
+[10] return [9 6]
+
+___ io.fork_array3 (4 -> 3) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] var :: ?l x1
+[4] var is Array :: ?o x1
+[5] __primitive.dup_array 4 -> 12 is Array :: o x2
+[6] __primitive.dup_array 5 -> 9 is Array :: o x2
+[7] __primitive.ap 6 1 -> 8 :: v? x1
+[8] __primitive.dep 7 :: a x1
+[9] __primitive.dep 6 is Array :: o x1
+[10] __primitive.ap 9 2 -> 11 :: v? x1
+[11] __primitive.dep 10 :: a x1
+[12] __primitive.dep 5 is Array :: o x1
+[13] __primitive.ap 12 3 -> 14 :: v? x1
+[14] __primitive.dep 13 :: a x1
+[15] return [14 11 8]
+
 ___ io.getline (2 -> 3) ___
 [1] var is File :: ?o x1
 [2] var :: ?y x1
@@ -1485,7 +1514,7 @@ ___ io.stream_read_write_array (4 -> 2) ___
 [4] var is Array :: ?o x1
 [5] __primitive.dup_array 4 -> 6 is Array :: o x2
 [6] __primitive.dep 5 is Array :: o x1
-[7] io.stream_write_array_r0 5 2 1 :: l x1
+[7] io.stream_write_array_r0 5 1 2 :: l x1
 [8] jump io.stream_read_array_r0 6 3 :: l x1
 [9] return [8 7]
 
@@ -1500,13 +1529,13 @@ ___ io.stream_write_array_r0 (3 -> 1) rec ___
 [1] changing var :: ?l x1
 [2] changing var :: ?l x1
 [3] changing var is Array :: ?o x1
-[4] __primitive.ap 2 -> 5 :: l? x2
+[4] __primitive.ap 1 -> 5 :: l? x2
 [5] __primitive.dep 4 :: i x1
-[6] __primitive.ap 1 -> 7 :: l? x2
+[6] __primitive.ap 2 -> 7 :: l? x2
 [7] __primitive.dep 6 :: i x1
 [8] __primitive.write_array 3 5 7 is Array :: o x2
 [9] __primitive.seq 12 &8 is True :: y x1
-[10] jump io.stream_write_array_r0 8 4 6 :: l x1
+[10] jump io.stream_write_array_r0 8 6 4 :: l x1
 [11] __primitive.pushr 10 9 :: l x1
 [12] val True :: y x1
 [13] return [11]
@@ -2712,7 +2741,7 @@ ___ tests.axi_lite_slave (4 -> 2) ___
 [4] var is Array :: ?o x1
 [5] __primitive.dup_array 4 -> 6 is Array :: o x2
 [6] __primitive.dep 5 is Array :: o x1
-[7] io.stream_write_array_r0 5 2 1 :: l x1
+[7] io.stream_write_array_r0 5 1 2 :: l x1
 [8] jump io.stream_read_array_r0 6 3 :: l x1
 [9] return [8 7]
 
@@ -2722,7 +2751,7 @@ ___ tests.axil_map_r (4 -> 2) ___
 [3] var :: ?l x1
 [4] var is Array :: ?o x1
 [5] __primitive.dup_array 4 -> 7 is Array :: o x2
-[6] io.stream_write_array_r0 5 2 1 :: l x1
+[6] io.stream_write_array_r0 5 1 2 :: l x1
 [7] __primitive.dep 5 is Array :: o x1
 [8] jump tests.axil_map_r_r0 3 7 :: l x1
 [9] return [8 6]
@@ -2748,22 +2777,22 @@ ___ tests.axil_map_w (4 -> 2) ___
 [5] __primitive.dup_array 4 -> 6 is Array :: o x2
 [6] __primitive.dep 5 is Array :: o x1
 [7] io.stream_read_array_r0 6 3 :: l x1
-[8] jump tests.axil_map_w_r0 1 2 5 :: l x1
+[8] jump tests.axil_map_w_r0 2 1 5 :: l x1
 [9] return [7 8]
 
 ___ tests.axil_map_w_r0 (3 -> 1) rec ___
 [1] changing var is Array :: ?o x1
 [2] changing var :: ?l x1
 [3] changing var :: ?l x1
-[4] __primitive.ap 2 -> 5 :: l? x2
+[4] __primitive.ap 3 -> 5 :: l? x2
 [5] __primitive.dep 4 :: i x1
-[6] __primitive.ap 3 -> 7 :: l? x2
+[6] __primitive.ap 2 -> 7 :: l? x2
 [7] __primitive.dep 6 :: i x1
 [8] __primitive.add 7 9 :: i x1
 [9] val 3 :: i x1
 [10] __primitive.write_array 1 5 8 is Array :: o x2
 [11] __primitive.seq 14 &10 is True :: y x1
-[12] jump tests.axil_map_w_r0 6 4 10 :: l x1
+[12] jump tests.axil_map_w_r0 4 6 10 :: l x1
 [13] __primitive.pushr 12 11 :: l x1
 [14] val True :: y x1
 [15] return [13]
@@ -2776,16 +2805,16 @@ ___ tests.axil_map_w_fib (4 -> 2) ___
 [5] __primitive.dup_array 4 -> 6 is Array :: o x2
 [6] __primitive.dep 5 is Array :: o x1
 [7] io.stream_read_array_r0 6 3 :: l x1
-[8] jump tests.axil_map_w_fib_r0 1 2 5 :: l x1
+[8] jump tests.axil_map_w_fib_r0 2 1 5 :: l x1
 [9] return [7 8]
 
 ___ tests.axil_map_w_fib_r0 (3 -> 1) rec ___
 [1] changing var is Array :: ?o x1
 [2] changing var :: ?l x1
 [3] changing var :: ?l x1
-[4] __primitive.ap 2 -> 5 :: l? x2
+[4] __primitive.ap 3 -> 5 :: l? x2
 [5] __primitive.dep 4 :: i x1
-[6] __primitive.ap 3 -> 7 :: l? x2
+[6] __primitive.ap 2 -> 7 :: l? x2
 [7] __primitive.dep 6 :: i x1
 [8] __primitive.sub 7 &9 :: i x1
 [9] val 1 :: i x2
@@ -2793,7 +2822,7 @@ ___ tests.axil_map_w_fib_r0 (3 -> 1) rec ___
 [11] val 0 :: i x1
 [12] __primitive.write_array 1 5 10 is Array :: o x2
 [13] __primitive.seq 16 &12 is True :: y x1
-[14] jump tests.axil_map_w_fib_r0 6 4 12 :: l x1
+[14] jump tests.axil_map_w_fib_r0 4 6 12 :: l x1
 [15] __primitive.pushr 14 13 :: l x1
 [16] val True :: y x1
 [17] return [15]
