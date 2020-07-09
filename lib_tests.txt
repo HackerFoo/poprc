@@ -96,8 +96,13 @@ False A B ifte
 1 [2+] $keep
 1 2 [+] $$keep
 1 [2+] peek
+[1] [2+] peek_cmp
 1 [2+] ->
+[1] [2+] ->cmp
 1 [2+] [10*] fork
+[1] [2+] [10*] fork_cmp
+10 [1+] [2+] [3+] fork3
+[10] [1+] [2+] [3+] fork_cmp3
 1 2 [2+] [10*] para
 1 2 [10*] both
 1 [odd] [2+] if

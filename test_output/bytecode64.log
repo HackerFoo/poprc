@@ -267,6 +267,12 @@ ___ control.-> (2 -> 2) ___
 [4] __primitive.dep 3 :: a x1
 [5] return [4 2]
 
+___ control.->cmp (2 -> 2) ___
+[1] var :: ?l x1
+[2] var :: ?l x2
+[3] __primitive.compose &2 1 :: l x1
+[4] return [3 2]
+
 ___ control.bitree (4 -> 1) x2 rec ___
 [1] var :: ?l x3
 [2] var :: ?l x3
@@ -812,6 +818,37 @@ ___ control.fork (3 -> 2) ___
 [7] __primitive.dep 6 :: a x1
 [8] return [7 5]
 
+___ control.fork3 (4 -> 3) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] var :: ?l x1
+[4] var :: ?a x3
+[5] __primitive.ap &4 1 -> 6 :: v? x1
+[6] __primitive.dep 5 :: a x1
+[7] __primitive.ap &4 2 -> 8 :: v? x1
+[8] __primitive.dep 7 :: a x1
+[9] __primitive.ap 4 3 -> 10 :: v? x1
+[10] __primitive.dep 9 :: a x1
+[11] return [10 8 6]
+
+___ control.fork_cmp (3 -> 2) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] var :: ?l x2
+[4] __primitive.compose &3 1 :: l x1
+[5] __primitive.compose 3 2 :: l x1
+[6] return [5 4]
+
+___ control.fork_cmp3 (4 -> 3) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] var :: ?l x1
+[4] var :: ?l x3
+[5] __primitive.compose &4 1 :: l x1
+[6] __primitive.compose &4 2 :: l x1
+[7] __primitive.compose 4 3 :: l x1
+[8] return [7 6 5]
+
 ___ control.if (3 -> 1) ___
 [1] var :: ?l x1
 [2] var :: ?l x1
@@ -917,6 +954,12 @@ ___ control.peek (2 -> 2) ___
 [3] __primitive.ap &2 1 -> 4 :: v? x1
 [4] __primitive.dep 3 :: a x1
 [5] return [2 4]
+
+___ control.peek_cmp (2 -> 2) ___
+[1] var :: ?l x1
+[2] var :: ?l x2
+[3] __primitive.compose &2 1 :: l x1
+[4] return [2 3]
 
 ___ control.seq2 (3 -> 2) ___
 [1] var :: ?a x2
@@ -4649,6 +4692,37 @@ ___ tests.stream_combine (2 -> 1) rec ___
 [6] jump tests.stream_combine 3 5 :: v x1
 [7] __primitive.pushr 6 4 :: l x1
 [8] return [7]
+
+___ tests.stream_compute_ff2 (4 -> 3) ___
+[1] var :: ?l x2
+[2] var :: ?l x2
+[3] var :: ?l x1
+[4] var is Array :: ?o x1
+[5] __primitive.dup_array 4 -> 8 is Array :: o x2
+[6] __primitive.dup_array 5 -> 7 is Array :: o x2
+[7] __primitive.dep 6 is Array :: o x1
+[8] __primitive.dep 5 is Array :: o x1
+[9] io.stream_write_array_r0 7 &1 &2 :: l x1
+[10] io.stream_read_array_r0 8 3 :: l x1
+[11] jump tests.stream_compute_ff2_r0 2 1 6 :: l x1
+[12] return [10 9 11]
+
+___ tests.stream_compute_ff2_r0 (3 -> 1) rec ___
+[1] changing var is Array :: ?o x1
+[2] changing var :: ?l x1
+[3] changing var :: ?l x1
+[4] __primitive.ap 3 -> 5 :: l? x2
+[5] __primitive.dep 4 :: i x1
+[6] __primitive.ap 2 -> 7 :: l? x2
+[7] __primitive.dep 6 :: i x1
+[8] __primitive.mul 7 9 :: i x1
+[9] val 3 :: i x1
+[10] __primitive.write_array 1 5 8 is Array :: o x2
+[11] __primitive.seq 14 &10 is True :: y x1
+[12] jump tests.stream_compute_ff2_r0 4 6 10 :: l x1
+[13] __primitive.pushr 12 11 :: l x1
+[14] val True :: y x1
+[15] return [13]
 
 ___ tests.sum3 (3 -> 1) ___
 [1] var :: ?a x1

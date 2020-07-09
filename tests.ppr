@@ -510,17 +510,32 @@ fuse_map_ho: [map] pushl swap [map] pushl . $ __ {hide}
 
 __ Array sRA sWA sW f_wa f_w stream_compute {hide}
 stream_compute:
-  []ap50 dup dup
-    [drop drop drop drop stream_read_array]. swap2 __ read
-    [drop drop nip2 stream_write_array]. swap2 __ write
-    [[swap [map] dip21] dip32 map nip2 stream_write_array]. __ compute
-    fork_array3
+  []ap50
+    [drop drop drop drop stream_read_array] __ read
+    [drop drop nip2 stream_write_array] __ write
+    [[swap [map] dip21] dip32 map nip2 stream_write_array] __ compute
+    fork_cmp3 fork_array3
+
+__ Array sRA sWA sW f_w stream_compute {hide}
+stream_compute2:
+  []ap40
+    [drop drop drop stream_read_array] __ read
+    [drop nip2 stream_write_array] __ write
+    [map nip2 stream_write_array] __ compute
+    fork_cmp3 fork_array3
 
 __ Fixed-function version of stream_compute to simplify testing
 __ Array sRA sWA sW stream_compute_ff {hide}
 stream_compute_ff:
-  []ap30 dup dup
-    [drop drop stream_read_array]. swap2 __ read
-    [nip2 stream_write_array]. swap2 __ write
-    [[[1+] map] dip11 [3*] map nip2 stream_write_array]. __ compute
-    fork_array3
+  []ap30
+    [drop drop stream_read_array] __ read
+    [nip2 stream_write_array] __ write
+    [[[1+] map] dip11 [3*] map nip2 stream_write_array] __ compute
+    fork_cmp3 fork_array3
+
+stream_compute_ff2:
+  []ap30
+    [drop drop stream_read_array] __ read
+    [nip2 stream_write_array] __ write
+    [[3*] map nip2 stream_write_array] __ compute
+    fork_cmp3 fork_array3

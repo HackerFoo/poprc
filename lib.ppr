@@ -369,11 +369,23 @@ with6: [with5] pushl dip56 swap
 __ a [f] -> a fa
 peek: dup_under $
 
+__ [a] [f] -> [a] [a f]
+peek_cmp: dup_under .
+
 __ a [f] -> fa a
 ->: peek swap
 
+->cmp: peek_cmp swap
+
 __ a [f] [g] -> fa ga
 fork: [->] dip22 $
+
+fork_cmp: [->cmp] dip22 .
+
+__ a [f] [g] [h] -> fa ga ha
+fork3: [[->] dip22 ->] dip33 $
+
+fork_cmp3: [[->cmp] dip22 ->cmp] dip33 .
 
 __ a b [f] [g] -> fa gb
 para: [dip11] dip32 $
@@ -543,10 +555,10 @@ fork_array2:
 
 __ Array sRA sWA sW -> sR sB
 stream_read_write_array:
-  []ap30 dup
-    [drop drop stream_read_array]. swap __ read
-    [nip2 stream_write_array]. __ write
-    fork_array2
+  []ap30
+    [drop drop stream_read_array] __ read
+    [nip2 stream_write_array] __ write
+    fork_cmp fork_array2
 
 fork_array3:
   [[[dup_array] dip12 $ swap] dip22
