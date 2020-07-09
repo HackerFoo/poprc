@@ -541,3 +541,8 @@ stream_compute_ff2:
     fork_cmp3 fork_array3
 
 help: "Type `:help` (with initial colon) for help.\n" write_std
+
+__ reduced bug from stream_compute_ff {hide}
+parallel_map_zip: [[1+] map] dip11 [3*] map [+] zip
+parallel_map_zip2: swap [1+] map swap [3*] map [+] zip __ <-- this one works
+parallel_map_zip3: [[1+] map] [[3*] map] para [+] zip __ {hide}

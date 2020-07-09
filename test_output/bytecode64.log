@@ -4510,6 +4510,28 @@ ___ tests.ow_not (1 -> 1) ___
 [3] val True :: y x1
 [4] return [2]
 
+___ tests.parallel_map_zip2 (2 -> 1) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] jump tests.parallel_map_zip2_r0 1 2 :: l x1
+[4] return [3]
+
+___ tests.parallel_map_zip2_r0 (2 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] changing var :: ?l x1
+[3] __primitive.ap 1 -> 4 :: l? x2
+[4] __primitive.dep 3 :: i x1
+[5] __primitive.add 4 6 :: i x1
+[6] val 1 :: i x1
+[7] __primitive.ap 2 -> 8 :: l? x2
+[8] __primitive.dep 7 :: i x1
+[9] __primitive.mul 8 10 :: i x1
+[10] val 3 :: i x1
+[11] __primitive.add 5 9 :: i x1
+[12] jump tests.parallel_map_zip2_r0 7 3 :: l x1
+[13] __primitive.pushr 12 11 :: l x1
+[14] return [13]
+
 ___ tests.pct (2 -> 1) ___
 [1] var :: ?i x1
 [2] var :: ?d x1

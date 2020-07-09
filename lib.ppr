@@ -218,7 +218,7 @@ zip1: [popr_para] dip24 $$keep swap
 __ [... a] [... b] [f] zip -> [... f a b f]
 zip: [zip1] ap31 [zip] swap [.] dip21 pushr
 
-__ [... a] [... b] c [f] zip1 -> [...] [...] c' [f] a b c f
+__ [... a] [... b] c [f] zip1_with -> [...] [...] c' [f] a b c f
 zip1_with: [[popr_para] dip24] dip35 $$$-keep swap2
 
 __ [... a] [... b] c [f] zip_with -> [... c' f a b c f]
