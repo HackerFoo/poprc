@@ -144,6 +144,7 @@ OP(seq) {
   tcell_t *tc = NULL;
   cell_t *q = NULL;
   bool q_var = false;
+  int pos = c->pos;
   CHECK(reduce_arg(c, 1, &CTX(any))); // don't split arg here?
   if(rsp == SUCCESS) {
     q = c->expr.arg[1];
@@ -152,7 +153,13 @@ OP(seq) {
     if(q_var) {
       tc = trace_partial(OP_seq, 1, q); // drop on abort?
     } else {
-      reserve_condition(&q->value.var);
+      if(q->value.var) {
+        reserve_condition(&q->value.var);
+      } else if(is_empty_list(q) && !ctx->alt_set && TWEAK(true, "to keep seq %C", c)) {
+        *cp = CUT(c, expr.arg[0]);
+        if((*cp)->n != PERSISTENT) mark_pos(*cp, pos);
+        return RETRY;
+      }
     }
   }
   CHECK(reduce_arg(c, 0, &CTX_UP));

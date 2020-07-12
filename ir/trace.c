@@ -428,6 +428,9 @@ void mark_pos(cell_t *c, int pos) {
     switch_entry(entry, c);
   } else {
     c->pos = pos;
+    if(c->op == OP_seq) { // HACK
+      mark_pos(c->expr.arg[0], pos);
+    }
   }
 }
 

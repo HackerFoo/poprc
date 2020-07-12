@@ -525,24 +525,17 @@ stream_compute2:
     fork_cmp3 fork_array3
 
 __ Fixed-function version of stream_compute to simplify testing
-__ Array sRA sWA sW stream_compute_ff {hide}
+__ Array sRA sWA sW stream_compute_ff
 stream_compute_ff:
   []ap30
     [drop drop stream_read_array] __ read
     [nip2 stream_write_array] __ write
-    [[[1+] map] dip11 [3*] map nip2 stream_write_array] __ compute
-    fork_cmp3 fork_array3
-
-stream_compute_ff2:
-  []ap30
-    [drop drop stream_read_array] __ read
-    [nip2 stream_write_array] __ write
-    [[3*] map nip2 stream_write_array] __ compute
+    [[[1+] map] [[3*] map] para nip2 stream_write_array] __ compute
     fork_cmp3 fork_array3
 
 help: "Type `:help` (with initial colon) for help.\n" write_std
 
-__ reduced bug from stream_compute_ff {hide}
+__ reduced bug from stream_compute_ff
 parallel_map_zip: [[1+] map] dip11 [3*] map [+] zip
-parallel_map_zip2: swap [1+] map swap [3*] map [+] zip __ <-- this one works
-parallel_map_zip3: [[1+] map] [[3*] map] para [+] zip __ {hide}
+parallel_map_zip2: swap [1+] map swap [3*] map [+] zip
+parallel_map_zip3: [[1+] map] [[3*] map] para [+] zip

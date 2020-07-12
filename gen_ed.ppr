@@ -40,6 +40,7 @@ do_linear: [$keep] dip22 iterate_linear
 
 dl_test: [3+] [dup 10<] do_linear
 dl_test2: [] pushl [[3+].] [[dup 10<]. popr] do_linear head
+__ {hide}
 dl_test3:
   [""] ap20
     [[[read] dip23 swap].]
