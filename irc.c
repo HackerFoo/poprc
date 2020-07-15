@@ -44,10 +44,12 @@
 static
 struct {
   bool enabled;
-  seg_t channel;
+  seg_t channel[8];
   seg_t nick;
   seg_t password;
 } irc;
+
+int last_read_channel = 0;
 
 file_t stream_irc = {
   .name = SEG("irc"),
@@ -63,16 +65,21 @@ COMMAND(ircpass, "IRC password") {
 }
 
 COMMAND(irc, "IRC bot mode") {
-  if(rest) {
+  cell_t *tok = rest;
+  if(tok) {
     irc.enabled = true;
-    irc.channel = tok_seg(rest);
-    if(rest->tok_list.next) {
-      irc.nick = tok_seg(rest->tok_list.next);
-    } else {
-      irc.nick = string_seg("poprbot");
+    irc.nick = tok_seg(tok);
+    tok = tok->tok_list.next;
+    FOREACH(i, irc.channel) {
+      if(!tok) {
+        irc.channel[i] = (seg_t) {};
+        break;
+      }
+      seg_t s = tok_seg(tok);
+      irc.channel[i] = s;
+      tok = tok->tok_list.next;
     }
     io = &irc_io;
-    irc_update_prefix();
     irc_connect();
     irc_join();
     run_eval_irc();
@@ -113,8 +120,11 @@ void irc_connect() {
 }
 
 void irc_join() {
-  printf("JOIN :%.*s\n", (int)irc.channel.n, irc.channel.s);
-  fflush(stdout);
+  FOREACH(i, irc.channel) {
+    if(!irc.channel[i].s) break;
+    printf("JOIN :%.*s\n", (int)irc.channel[i].n, irc.channel[i].s);
+    fflush(stdout);
+  }
 }
 
 void irc_pong(const char *msg) {
@@ -128,20 +138,25 @@ void irc_pong(const char *msg) {
 #define SKIP_ONE(p, c) if(*(p) == (c)) (p)++
 #define STRING_IS(p, s)                         \
   (strncmp((p), (s), sizeof(s)-1) == 0 &&       \
-   (line += sizeof(s) - 1, true))
+   (p += sizeof(s) - 1, true))
 #define SEG_IS(p, sg)                           \
   (strncmp((p), (sg).s, (sg).n) == 0 &&         \
-   (line += (sg).n, true))
+   (p += (sg).n, true))
 
-char irc_prefix[64];
-void irc_update_prefix() {
-  snprintf(irc_prefix, sizeof(irc_prefix), ":%.*s PRIVMSG %.*s :",
-           (int)irc.nick.n, irc.nick.s,
-           (int)irc.channel.n, irc.channel.s);
+char *irc_prefix() {
+  static char buf[64];
+  static int c = -1;
+  if(c != last_read_channel) {
+    c = last_read_channel;
+    snprintf(buf, sizeof(buf), ":%.*s PRIVMSG %.*s :",
+             (int)irc.nick.n, irc.nick.s,
+             (int)irc.channel[c].n, irc.channel[c].s);
+  }
+  return buf;
 }
 
 void irc_action(const char *msg) {
-  printf("%s\x01" "ACTION %s" "\x01\n", irc_prefix, msg);
+  printf("%s\x01" "ACTION %s" "\x01\n", irc_prefix(), msg);
   fflush(stdout);
 }
 
@@ -157,7 +172,7 @@ void run_eval_irc() {
       }
     } else {
       assert_error(!too_fast(1));
-      if(eval(irc_prefix, lex(s.s, seg_end(s)), &previous_result)) {
+      if(eval(irc_prefix(), lex(s.s, seg_end(s)), &previous_result)) {
         fflush(stdout);
       } else {
         irc_action("overlooks this");
@@ -182,6 +197,17 @@ seg_t irc_io_read_with_prompt(file_t *file) {
   return irc_io_read(file);
 }
 
+int match_channel(char **pline) {
+  char* line = *pline;
+  FOREACH(i, irc.channel) {
+    if(SEG_IS(line, irc.channel[i])) {
+      *pline = line;
+      return i;
+    }
+  }
+  return -1;
+}
+
 seg_t irc_io_read(file_t *file) {
   if(rb_available(file->buffer)) {
     return (seg_t) {
@@ -194,13 +220,15 @@ seg_t irc_io_read(file_t *file) {
     if(*line == ':') SKIP_PAST(line, ' ');
     if(STRING_IS(line, "PRIVMSG")) {
       SKIP(line, ' ');
-      if(SEG_IS(line, irc.channel)) {
+      int channel;
+      if((channel = match_channel(&line)) != -1) {
         MOVE_TO(line, ':');
         if(STRING_IS(line, ":")) {
           SKIP(line, ' ');
           if(SEG_IS(line, irc.nick)) {
             SKIP_ONE(line, ':');
             SKIP(line, ' ');
+            last_read_channel = channel;
             return string_seg(line);
           }
         }
@@ -231,7 +259,7 @@ void irc_io_write(UNUSED file_t *file, seg_t s) {
       }
     } else if(INRANGE(*p, 32, 126)) {
       if(new_line) {
-        printf("%s", irc_prefix);
+        printf("%s", irc_prefix());
         new_line = false;
       }
       printf("%c", *p);
