@@ -298,9 +298,9 @@ union cell {
    * OP_value     -> value
    * otherwise    -> expr
    */
-  uintptr_t c[8];
+  uintptr_t c[10];
 #define CELL_STRUCT_CONTENTS                                            \
-  struct __attribute__((packed)) {                                      \
+  struct {                                                              \
     union {                                                             \
       cell_t *alt;                                                      \
       const char *word_name; /* entry */                                \
@@ -312,6 +312,7 @@ union cell {
       char_class_t char_class; /* tok_list */                           \
     };                                                                  \
     enum op op;                                                         \
+    seg_t src;                                                          \
     union {                                                             \
       uint8_t pos; /* see below */                                      \
       uint8_t arg_index; /* arg index (for dep vars) */                 \
