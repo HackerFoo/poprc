@@ -118,6 +118,7 @@ struct context {
   cell_t *src; // closure for this context [down]
   range_t bound; // requested bound [down]
   alt_set_t alt_set; // outside constraints [up/down]
+  seg_t text; // text from source [up]
   priority_t priority; // used to control reduction stages [down]
   location_t loc; // reported location (for debug) [up]
   qsize_t s; // required quote size [down]

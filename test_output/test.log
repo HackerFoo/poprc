@@ -312,6 +312,12 @@ sat_arith => 0
 seg_find => 0
 @ seg_find_char
 seg_find_char => 0
+@ seg_range
+"random" + "just" = "just some random"
+"some" + "words" = "some random words"
+"just some random" + "some random words" = "just some random words"
+"" + "just some random words" = "just some random words"
+seg_range => 0
 @ seg_trim
 trimmed: "hi"
 seg_trim => 0

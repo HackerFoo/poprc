@@ -839,6 +839,7 @@ size_t escape_string(char *dst, size_t n, seg_t str, bool xml) {
           CASE('`', "&apos;");
           CASE('&', "&amp;");
         }
+#undef CASE
         if(out) {
           if(d + out_n >= d_end) break;
           memcpy(d, out, out_n);
@@ -1286,4 +1287,40 @@ intptr_t sat_muli(intptr_t x, intptr_t y) {
       INTPTR_MAX : INTPTR_MIN;
   }
   return sat_mul(x, y);
+}
+
+seg_t seg_range(seg_t a, seg_t b) {
+  if(!b.s) {
+    return a;
+  } else if(!a.s) {
+    return b;
+  } else {
+    const char *l = min(a.s, b.s);
+    const char *r = max(seg_end(a), seg_end(b));
+    return (seg_t) {
+      .s = l,
+      .n = r - l
+    };
+  }
+}
+
+TEST(seg_range) {
+  const char *text = "just some random words";
+  seg_t
+    just = (seg_t) { .s = text, .n = 4 },
+    some = (seg_t) { .s = text + 5, .n = 4 },
+    random = (seg_t) { .s = text + 10, .n = 6 },
+    words = (seg_t) { .s = text + 17, .n = 5 };
+
+#define SEG_RANGE_TEST(c, a, b)                                         \
+    c = seg_range(a, b);                                                \
+    printf("\"%.*s\" + \"%.*s\" = \"%.*s\"\n", (int)a.n, a.s, (int)b.n, b.s, (int)c.n, c.s)
+
+    seg_t a, b, c, d, e = { .s = NULL };
+    SEG_RANGE_TEST(a, random, just);
+    SEG_RANGE_TEST(b, some, words);
+    SEG_RANGE_TEST(c, a, b);
+    SEG_RANGE_TEST(d, e, c);
+#undef SEG_RANGE_TEST
+    return 0;
 }

@@ -243,6 +243,7 @@ response reduce_arg(cell_t *c,
   response r = reduce(ap, ctx);
   if(r <= DELAY) {
     ctx->up->alt_set |= ctx->alt_set;
+    ctx->up->text = seg_range(ctx->up->text, ctx->text);
     split_arg(c, n, dup_alt);
   }
   return r;
@@ -258,6 +259,7 @@ response reduce_ptr(cell_t *c,
   response r = reduce(ap, ctx);
   if(r <= DELAY) {
     ctx->up->alt_set |= ctx->alt_set;
+    ctx->up->text = seg_range(ctx->up->text, ctx->text);
     split_arg(c, n + VALUE_OFFSET(ptr), dup_list_alt);
   }
   return r;
@@ -299,6 +301,7 @@ response reduce(cell_t **cp, context_t *ctx) {
     assert_error(is_closure(c));
     c = *cp = fill_incomplete(c);
     stats.reduce_cnt++;
+    ctx->text = c->src;
     op op = c->op;
     response r = op_call(op, cp, ctx);
 
@@ -620,6 +623,7 @@ void replace_cell(cell_t **cp, context_t *ctx, cell_t *r) {
     r->alt = c->alt;
     r->value.alt_set = ctx->alt_set;
   }
+  r->src = ctx->text;
   csize_t size = is_closure(r) ? closure_cells(r) : 0;
   if(size <= closure_cells(c)) {
     refcount_t n = c->n;
