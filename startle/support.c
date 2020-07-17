@@ -1335,3 +1335,43 @@ TEST(seg_range) {
 #undef SEG_RANGE_TEST
     return 0;
 }
+
+size_t flatten_ranges(uintptr_t *l, uintptr_t *r, pair_t *res, size_t n) {
+  quicksort(l, WIDTH(l), n);
+  quicksort(r, WIDTH(r), n);
+  int depth = 0;
+  size_t out_n = 0;
+  uintptr_t *l_end = l + n;
+  LOOP(n * 2) {
+    if(l >= l_end || *l > *r) {
+      depth--;
+      if(!depth) {
+        res->second = *r;
+        res++;
+        out_n++;
+      }
+      r++;
+    } else if (*l < *r) {
+      if(!depth) {
+        res->first = *l;
+      }
+      depth++;
+      l++;
+    } else { // *l == *r
+      l++;
+      r++;
+    }
+  }
+  return out_n;
+}
+
+TEST(flatten_ranges) {
+  uintptr_t l[] = {0, 3, 8,  9,  15, 15, 13};
+  uintptr_t r[] = {5, 7, 12, 11, 15, 18, 14};
+  pair_t res[LENGTH(l)];
+  size_t n = flatten_ranges(l, r, res, LENGTH(l));
+  COUNTUP(i, n) {
+    printf("[%d, %d]\n", (int)res[i].first, (int)res[i].second);
+  }
+  return 0;
+}

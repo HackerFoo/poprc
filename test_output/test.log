@@ -59,6 +59,12 @@ _check_flat_copy: 2 + 2 = 4
 _check_flat_copy: 0 + 1 = 1
 _check_flat_copy: 1 + 0 = 1
 flat_copy_list => 0
+@ flatten_ranges
+[0, 7]
+[8, 12]
+[13, 14]
+[15, 18]
+flatten_ranges => 0
 @ flattened_list_copy
 flattened_list_copy => 0
 @ for_mask
