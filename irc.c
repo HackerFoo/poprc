@@ -86,26 +86,19 @@ COMMAND(irc, "IRC bot mode") {
   }
 }
 
-#define PERIOD_LENGTH_SEC (60)
-#define PERIOD_MAX_COUNT (5)
+#define MESSAGE_PERIOD (60)
+#define MESSAGE_ADVANCE (5)
 
-bool too_fast(int incr) {
-  static time_t period = 0;
-  static int count = 0;
+static time_t next_message_time;
+bool irc_should_wait() {
+  return time(NULL) < next_message_time;
+}
 
-  time_t now = time(NULL) / PERIOD_LENGTH_SEC;
-  if(now > period) {
-    period = now;
-    count = 0;
-  }
-
-  if(count + incr >= PERIOD_MAX_COUNT) {
-    count = PERIOD_MAX_COUNT;
-    return true;
-  } else {
-    count += incr;
-    return false;
-  }
+bool irc_message_sent() {
+  time_t now = time(NULL);
+  next_message_time = max(now - MESSAGE_PERIOD * MESSAGE_ADVANCE,
+                          next_message_time + MESSAGE_PERIOD);
+  return now < next_message_time;
 }
 
 void irc_connect() {
@@ -180,13 +173,13 @@ void run_eval_irc() {
   seg_t s = irc_io_read(&stream_irc);
   while(s.s) {
     if(catch_error(&error, true)) {
-      if(too_fast(0)) {
+      if(irc_should_wait()) {
         irc_action("is tired, takes a nap");
       } else {
         irc_action("scowls");
       }
     } else {
-      assert_error(!too_fast(1));
+      assert_error(!irc_should_wait());
       if(eval(irc_prefix(), lex(s.s, seg_end(s)), &previous_result)) {
         fflush(stdout);
       } else {
@@ -196,7 +189,7 @@ void run_eval_irc() {
     }
     do {
       s = irc_io_read(&stream_irc);
-    } while(too_fast(0));
+    } while(irc_should_wait());
   }
 }
 
@@ -264,7 +257,7 @@ seg_t irc_io_read(file_t *file) {
 // - strips non-printable characters
 // - only prints non-empty lines
 void irc_io_write(UNUSED file_t *file, seg_t s) {
-  assert_error(!too_fast(1));
+  assert_error(!irc_should_wait());
   const char *p = s.s;
   bool new_line = true;
   LOOP(s.n) {
@@ -272,8 +265,9 @@ void irc_io_write(UNUSED file_t *file, seg_t s) {
       if(!new_line) {
         new_line = true;
         printf("\n");
+        irc_message_sent();
       }
-    } else if(INRANGE(*p, 32, 126)) {
+    } else if(INRANGE(*p, 32, 126) || ONEOF(*p, 0x03, 0x1f)) {
       if(new_line) {
         printf("%s", irc_prefix());
         new_line = false;
