@@ -623,8 +623,8 @@ void test_pairs(pair_t *arr, size_t n, size_t a, unsigned int s) {
     s = (s * k) % (n - i);
     swap(&arr[i], &arr[s]);
   }
-  quicksort(arr, a);
-  quicksort(arr + a, n - a);
+  quicksort(arr, WIDTH(arr), a);
+  quicksort(arr + a, WIDTH(arr), n - a);
 }
 
 TEST(merge_huang88) {

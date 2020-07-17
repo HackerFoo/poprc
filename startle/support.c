@@ -49,13 +49,16 @@
 #define RANGE_POS ((range_t)RANGE_POS_INIT)
 #endif
 
+#define KEY(ptr) (*(uintptr_t *)(ptr))
+#define INDEX(ptr, width, i) ((void *)((char *)(ptr) + (width) * (i)))
+
 /** Estimate the median of an array */
-unsigned int median3(pair_t *array, unsigned int lo, unsigned int hi) {
-  unsigned int mid = lo + (hi - lo) / 2;
-  uint32_t
-    a = array[lo].first,
-    b = array[mid].first,
-    c = array[hi].first;
+unsigned int median3(void *array, size_t width, size_t lo, size_t hi) {
+  size_t mid = lo + (hi - lo) / 2;
+  uintptr_t
+    a = KEY(INDEX(array, width, lo)),
+    b = KEY(INDEX(array, width, mid)),
+    c = KEY(INDEX(array, width, hi));
   if(a < b) {
     if(a < c) {
       if (b < c) {
@@ -115,7 +118,7 @@ void print_string_pairs(pair_t *array, size_t len) {
 TEST(sort) {
   /** [sort] */
   pair_t array[] = {{3, 0}, {7, 1}, {2, 2}, {4, 3}, {500, 4}, {0, 5}, {8, 6}, {4, 7}};
-  quicksort(array, LENGTH(array));
+  quicksort(array, WIDTH(array), LENGTH(array));
   uintptr_t last = array[0].first;
   printf("{{%d, %d}", (int)array[0].first, (int)array[0].second);
   RANGEUP(i, 1, LENGTH(array)) {
@@ -139,36 +142,44 @@ TEST(sort) {
 /** Use the Quicksort algorithm to sort an array of pairs by the first element.
  * @snippet support.c sort
  */
-void quicksort(pair_t *array, unsigned int size) {
+void quicksort(void *array, size_t width, size_t size) {
   if(size <= 1) return;
 
   unsigned int lo = 0, hi = size-1;
   struct frame {
     unsigned int lo, hi;
   } stack[size-1];
+  void
+    *pivot_value = alloca(width),
+    *buf = alloca(width);
   struct frame *top = stack;
 
   for(;;) {
-    pair_t
-      *pivot = &array[median3(array, lo, hi)],
-      *right = &array[hi],
-      *left = &array[lo],
+    void
+      *pivot = INDEX(array, width, median3(array, width, lo, hi)),
+      *right = INDEX(array, width, hi),
+      *left = INDEX(array, width, lo),
       *x = left;
-    pair_t pivot_value = *pivot;
-    *pivot = *right;
+    memcpy(pivot_value, pivot, width);
+    memcpy(pivot, right, width);
     unsigned int fill_index = lo;
 
     RANGEUP(i, lo, hi) {
-      if(x->first < pivot_value.first) {
-        swap(x, left);
-        left++;
+      if(KEY(x) < KEY(pivot_value)) {
+
+        // swap
+        memcpy(buf, x, width);
+        memcpy(x, left, width);
+        memcpy(left, buf, width);
+
+        left = INDEX(left, width, 1);
         fill_index++;
       }
-      x++;
+      x = INDEX(x, width, 1);
     }
-    *right = *left;
+    memcpy(right, left, width);
 
-    *left = pivot_value;
+    memcpy(left, pivot_value, width);
 
     if(hi > fill_index + 1) {
       top->lo = fill_index+1;
