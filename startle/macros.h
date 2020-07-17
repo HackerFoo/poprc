@@ -118,7 +118,7 @@
 /** String segment initializer.
  * Example: seg_t s = SEG("Hello");
  */
-#define SEG(x) {(x), sizeof(x) - 1}
+#define SEG(x) ((seg_t) {(x), sizeof(x) - 1})
 
 /** printf that prepends a string segment
  * @param pre print this string first
@@ -348,6 +348,15 @@
 #else
 #define UNDERLINE(x) "[[u;;]" x "]"
 #endif
+
+#define IRC_COLOR_red "04"
+#define IRC_COLOR_blue "02"
+#define IRC_COLOR_gray "14"
+#define IRC_COLOR(c, str) "\x03" CONCAT(IRC_COLOR_, c) str "\x03" "99"
+#define IRC_UNDERLINE_CODE "\x1f"
+#define IRC_UNDERLINE(x) IRC_UNDERLINE_CODE x IRC_UNDERLINE_CODE
+#define IRC_MARK(x) IRC_COLOR(red, x)
+#define IRC_NOTE(x) IRC_COLOR(blue, x)
 
 #define DISABLE(...)                            \
   do {                                          \

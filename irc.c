@@ -160,6 +160,21 @@ void irc_action(const char *msg) {
   fflush(stdout);
 }
 
+void irc_highlight_errors(file_t *file, seg_t src) {
+  pair_t res[fail_location_n];
+  size_t n = get_flattened_error_ranges(src, res);
+  uintptr_t last = 0;
+  COUNTUP(i, n) {
+    irc_io_write(file, (seg_t) { .s = src.s + last, .n = res[i].first - last });
+    irc_io_write(file, SEG(IRC_UNDERLINE_CODE "_"));
+    irc_io_write(file, (seg_t) { .s = src.s + res[i].first, .n = res[i].second - res[i].first });
+    irc_io_write(file, SEG("_" IRC_UNDERLINE_CODE));
+    last = res[i].second;
+  }
+  irc_io_write(file, (seg_t) { .s = src.s + last, .n = src.n - last });
+  irc_io_write(file, SEG("\n"));
+}
+
 void run_eval_irc() {
   error_t error;
   seg_t s = irc_io_read(&stream_irc);
@@ -175,7 +190,8 @@ void run_eval_irc() {
       if(eval(irc_prefix(), lex(s.s, seg_end(s)), &previous_result)) {
         fflush(stdout);
       } else {
-        irc_action("overlooks this");
+        irc_io_write(&stream_irc, SEG(IRC_MARK("error:") " "));
+        irc_highlight_errors(&stream_irc, s);
       }
     }
     do {
