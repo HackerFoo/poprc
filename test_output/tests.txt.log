@@ -144,3 +144,6 @@ Array 3 42 write_array Array 3 10 write_array swap 3 read_array swap drop swap 3
   42 10
 Array 3 read_array 0 swap unless
   Array# 0
+__ fix me
+2 3 | 5 7 | * dup 15 == !
+  10
