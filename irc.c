@@ -41,6 +41,9 @@
 #include "primitive/io.h"
 #include "irc.h"
 
+#define MESSAGE_PERIOD (60)
+#define MESSAGE_ADVANCE (30)
+
 static
 struct {
   bool enabled;
@@ -68,6 +71,7 @@ COMMAND(irc, "IRC bot mode") {
   cell_t *tok = rest;
   if(tok) {
     irc.enabled = true;
+    quiet = true;
     irc.nick = tok_seg(tok);
     tok = tok->tok_list.next;
     FOREACH(i, irc.channel) {
@@ -83,11 +87,9 @@ COMMAND(irc, "IRC bot mode") {
     irc_connect();
     irc_join();
     run_eval_irc();
+    quiet = false;
   }
 }
-
-#define MESSAGE_PERIOD (60)
-#define MESSAGE_ADVANCE (5)
 
 static time_t next_message_time;
 bool irc_should_wait() {
@@ -136,7 +138,7 @@ void irc_pong(const char *msg) {
   (strncmp((p), (sg).s, (sg).n) == 0 &&         \
    (p += (sg).n, true))
 
-char *irc_prefix() {
+char *irc_prefix_no_wait() {
   static char buf[64];
   static int c = -1;
   if(c != last_read_channel) {
@@ -148,8 +150,13 @@ char *irc_prefix() {
   return buf;
 }
 
+char *irc_prefix() {
+  assert_error(!irc_should_wait());
+  return irc_prefix_no_wait();
+}
+
 void irc_action(const char *msg) {
-  printf("%s\x01" "ACTION %s" "\x01\n", irc_prefix(), msg);
+  printf("%s\x01" "ACTION %s" "\x01\n", irc_prefix_no_wait(), msg);
   fflush(stdout);
 }
 
@@ -174,13 +181,19 @@ void run_eval_irc() {
   while(s.s) {
     if(catch_error(&error, true)) {
       if(irc_should_wait()) {
-        irc_action("is tired, takes a nap");
+        printf("%s\x01"
+               "ACTION is tired, takes a nap for %lu seconds"
+               "\x01\n", irc_prefix_no_wait(),
+               next_message_time - time(NULL));
+        fflush(stdout);
       } else {
         irc_action("scowls");
       }
     } else {
-      assert_error(!irc_should_wait());
-      if(eval(irc_prefix(), lex(s.s, seg_end(s)), &previous_result)) {
+      cell_t *c = eval(lex(s.s, seg_end(s)), &previous_result);
+      if(c) {
+        irc_io_write(&stream_irc, SEG("\n"));
+        show_alts(irc_prefix(), c);
         fflush(stdout);
       } else {
         irc_io_write(&stream_irc, SEG(IRC_MARK("error:") " "));
@@ -257,9 +270,8 @@ seg_t irc_io_read(file_t *file) {
 // - strips non-printable characters
 // - only prints non-empty lines
 void irc_io_write(UNUSED file_t *file, seg_t s) {
-  assert_error(!irc_should_wait());
   const char *p = s.s;
-  bool new_line = true;
+  static bool new_line = true;
   LOOP(s.n) {
     if(*p == '\n') {
       if(!new_line) {
@@ -276,7 +288,6 @@ void irc_io_write(UNUSED file_t *file, seg_t s) {
     }
     p++;
   }
-  if(!new_line) printf("\n");
   fflush(stdout);
 }
 

@@ -165,8 +165,9 @@ COMMAND(eval, "evaluate the argument") {
       COUNTUP(i, pos + 2) putchar(' ');
       printf("^--- Parse error\n");
     } else {
+      seg_t src = src_text(p);
       stats_start();
-      eval("  ", p, &previous_result);
+      show_eval("  ", src, eval(p, &previous_result));
       stats_stop();
     }
   }
@@ -660,8 +661,7 @@ void highlight_errors(seg_t src) {
   printf("%.*s\n\n", (int)(src.n - last), src.s + last);
 }
 
-cell_t *eval(const char *prefix, const cell_t *p, cell_t **previous) {
-  seg_t src = src_text(p);
+cell_t *eval(const cell_t *p, cell_t **previous) {
   if(!match(p, "...")) {
     drop(*previous);
     *previous = NULL;
@@ -688,16 +688,21 @@ cell_t *eval(const char *prefix, const cell_t *p, cell_t **previous) {
       reduce_root(&c, 0, reduction_limit);
       if(c) {
         ASSERT_REF();
-        show_alts(prefix, c);
         *previous = c;
         return c;
-      } else if (!quiet) {
-        printf("`-( " MARK("FAILED!") " )\n\n");
-        highlight_errors(src);
       }
     }
   }
   return NULL;
+}
+
+void show_eval(const char *prefix, seg_t src, const cell_t *c) {
+  if(c) {
+    show_alts(prefix, c);
+  } else if (!quiet) {
+    printf("`-( " MARK("FAILED!") " )\n\n");
+    highlight_errors(src);
+  }
 }
 
 bool get_arity(const cell_t *p, csize_t *in, csize_t *out, cell_t *module) {
@@ -913,9 +918,11 @@ COMMAND(tweak, "tweak a value") {
 }
 
 void breakpoint_hook() {
-  print_active_entries("  - while compiling ");
-  make_graph_all(NULL);
-  log_trees();
+  if(!quiet) {
+    print_active_entries("  - while compiling ");
+    make_graph_all(NULL);
+    log_trees();
+  }
 }
 
 COMMAND(noio, "prevent IO") {
