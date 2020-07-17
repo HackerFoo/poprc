@@ -481,6 +481,13 @@ cell_t *parse_expr(const cell_t **l, cell_t *module, tcell_t *entry) {
 }
 
 #define MAX_ARGS 32
+cell_t *push_arg(cell_t **stack, unsigned int *n, seg_t seg, cell_t *c) {
+  assert_throw(*n < MAX_ARGS);
+  c->src = seg;
+  stack[(*n)++] = c;
+  return c;
+}
+
 #define MAX_PARSE_DEPTH 32
 cell_t *parse_subexpr(const cell_t **l, cell_t *module, tcell_t *entry, int depth) {
   cell_t *arg_stack[MAX_ARGS]; // TODO use allocated storage
@@ -498,24 +505,21 @@ cell_t *parse_subexpr(const cell_t **l, cell_t *module, tcell_t *entry, int dept
 
     case CC_NUMERIC:
     {
-      assert_throw(n < MAX_ARGS);
-      arg_stack[n++] = int_val(strtol(seg.s, NULL, 0));
+      push_arg(arg_stack, &n, seg, int_val(strtol(seg.s, NULL, 0)));
     } break;
     case CC_FLOAT:
     {
       char *end;
       double x = strtod(seg.s, &end);
       if(end != seg.s) {
-        assert_throw(n < MAX_ARGS);
-        arg_stack[n++] = float_val(x);
+        push_arg(arg_stack, &n, seg, float_val(x));
       }
     } break;
     case CC_STRING:
     {
-      assert_throw(n < MAX_ARGS);
-      arg_stack[n++] =
-        make_unescaped_string((seg_t) { .s = seg.s + 1,
-                                        .n = seg.n - 2 });
+      push_arg(arg_stack, &n, seg,
+               make_unescaped_string((seg_t) { .s = seg.s + 1,
+                                               .n = seg.n - 2 }));
     } break;
 
     case CC_SYMBOL:
@@ -546,8 +550,7 @@ cell_t *parse_subexpr(const cell_t **l, cell_t *module, tcell_t *entry, int dept
     case CC_VAR:
     {
       if(is_uppercase(*seg.s)) {
-        assert_throw(n < MAX_ARGS);
-        arg_stack[n++] = string_symbol(seg);
+        push_arg(arg_stack, &n, seg, string_symbol(seg));
       } else {
         cell_t *c = parse_word(seg, module, n, entry);
         if(!c) {
@@ -567,23 +570,22 @@ cell_t *parse_subexpr(const cell_t **l, cell_t *module, tcell_t *entry, int dept
             }
           }
         }
-        assert_throw(n < MAX_ARGS);
         if(c->op == OP_placeholder) {
           drop(ph); // HACK probably should chain placeholders somehow
           ph = c;
+          c->src = seg;
         } else {
-          arg_stack[n++] = c;
+          push_arg(arg_stack, &n, seg, c);
           if(f) {
             TRAVERSE(c, out) {
-              assert_throw(n < MAX_ARGS);
-              arg_stack[n++] = *p;
+              push_arg(arg_stack, &n, seg, *p);
             }
           }
         }
       }
     } break;
 
-    case CC_BRACKET:
+    case CC_BRACKET: // TODO .src for lists
     {
       if(seg.n == 1) {
         switch(*seg.s) {
@@ -598,8 +600,7 @@ cell_t *parse_subexpr(const cell_t **l, cell_t *module, tcell_t *entry, int dept
         {
           cell_t *c = parse_subexpr(l, module, entry, depth + 1);
           if(c) {
-            assert_throw(n < MAX_ARGS);
-            arg_stack[n++] = c;
+            push_arg(arg_stack, &n, seg, c); // TODO
           } else {
             LOG("parse failure");
             goto fail;

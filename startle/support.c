@@ -17,13 +17,16 @@
 
 #include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <inttypes.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdbool.h>
+
+#if INTERFACE
+#include <stdio.h>
+#endif
 
 #include "startle/types.h"
 #include "startle/macros.h"
@@ -810,7 +813,7 @@ TEST(unescape_string) {
   return segcmp(out, unescaped) == 0 ? 0 : -1;
 }
 
-size_t escape_string(char *dst, size_t n, seg_t str) {
+size_t escape_string(char *dst, size_t n, seg_t str, bool xml) {
   char *d = dst;
   const char
     *s = str.s,
@@ -819,7 +822,33 @@ size_t escape_string(char *dst, size_t n, seg_t str) {
   while(s < s_end && d < d_end) {
     char c = *s++;
     if(INRANGE(c, 32, 126) && c != '\\') {
-      *d++ = c;
+      if(xml) {
+        char *out = NULL;
+        int out_n = 0;
+
+#define CASE(c, res)                            \
+        case c:                                 \
+          out = res;                            \
+          out_n = sizeof(res) - 1;              \
+          break
+
+        switch(c) {
+          CASE('<', "&lt;");
+          CASE('>', "&gt;");
+          CASE('"', "&quot;");
+          CASE('`', "&apos;");
+          CASE('&', "&amp;");
+        }
+        if(out) {
+          if(d + out_n >= d_end) break;
+          memcpy(d, out, out_n);
+          d += out_n;
+        } else {
+          *d++ = c;
+        }
+      } else {
+        *d++ = c;
+      }
     } else {
       if(d + 1 >= d_end) break;
       switch(c) {
@@ -852,29 +881,33 @@ size_t escape_string(char *dst, size_t n, seg_t str) {
 }
 
 TEST(escape_string) {
-  char out[32];
-  seg_t escaped = SEG("test\\n\\\\string\\bG\\0stuff\\x1b");
-  seg_t unescaped = SEG("test\n\\string\bG\0stuff\x1b");
-  escape_string(out, sizeof(out), unescaped);
+  char out[64];
+  seg_t escaped = SEG("test\\n\\\\string\\bG\\0stuff\\x1b&amp;t");
+  seg_t unescaped = SEG("test\n\\string\bG\0stuff\x1b&t");
+  escape_string(out, sizeof(out), unescaped, true);
   printf("%s\n", out);
   return segcmp(out, escaped) == 0 ? 0 : -1;
 }
 
-void print_escaped_string(seg_t str) {
+void fprintf_escaped_string(FILE *f, seg_t str, bool xml) {
   char buf[64];
   while(str.n > 16) {
-    escape_string(buf, sizeof(buf), (seg_t) { .s = str.s, .n = 16 });
-    printf("%s", buf);
+    escape_string(buf, sizeof(buf), (seg_t) { .s = str.s, .n = 16 }, xml);
+    fprintf(f, "%s", buf);
     str.s += 16;
     str.n -= 16;
   }
-  escape_string(buf, sizeof(buf), str);
-  printf("%s", buf);
+  escape_string(buf, sizeof(buf), str, xml);
+  fprintf(f, "%s", buf);
+}
+
+void print_escaped_string(seg_t str, bool xml) {
+  fprintf_escaped_string(stdout, str, xml);
 }
 
 TEST(print_escaped_string) {
-  seg_t unescaped = SEG("test\n\\string\bG\0stuff");
-  print_escaped_string(unescaped);
+  seg_t unescaped = SEG("test\n\\string\bG\0stuff&");
+  print_escaped_string(unescaped, true);
   printf("\n");
   return 0;
 }

@@ -17,6 +17,7 @@
 
 #include "rt_types.h"
 #include <string.h>
+#include <stdio.h>
 
 #include "startle/error.h"
 #include "startle/test.h"

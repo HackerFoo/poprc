@@ -131,7 +131,7 @@ void gen_constant(const tcell_t *c) {
   case T_STRING: {
     seg_t str = value_seg(&c->c);
     printf("\"");
-    print_escaped_string(str);
+    print_escaped_string(str, false);
     printf("\"");
     break;
   }

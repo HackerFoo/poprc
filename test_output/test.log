@@ -49,7 +49,7 @@ i = 2
 [37;44mTEST[0m [37;41m!!![0m startle/error.c:232: test_error: Assertion `i < 3' failed: Don't worry, it's okay. [38;5;8ma72vd[0m
 error => 0
 @ escape_string
-test\n\\string\bG\0stuff\x1b
+test\n\\string\bG\0stuff\x1b&amp;t
 escape_string => 0
 @ expand_map
 map[10] = {{eight, 7}, {five, 4}, {four, 3}, {one, 0}, {seven, 6}, {six, 5}, {three, 2}, {two, 1}, {nine, 8}, {ten, 9}}
@@ -274,7 +274,7 @@ parse_module => 0
 @ prim_to_string
 prim_to_string => 0
 @ print_escaped_string
-test\n\\string\bG\0stuff
+test\n\\string\bG\0stuff&amp;
 print_escaped_string => 0
 @ ring_buffer
 he

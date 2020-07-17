@@ -306,7 +306,7 @@ void graph_cell(FILE *f, cell_t const *c) {
       case T_STRING: {
         seg_t str = value_seg(c);
         char buf[64];
-        int len = escape_string(buf, sizeof(buf), str);
+        int len = escape_string(buf, sizeof(buf), str, true);
         fprintf(f, "<tr><td bgcolor=\"yellow\">val: %.*s</td></tr>", (int)len, buf);
       } break;
       case T_LIST:
@@ -345,6 +345,11 @@ void graph_cell(FILE *f, cell_t const *c) {
   const char *tag = get_ptr_tag(c);
   if(tag) {
     fprintf(f, "<tr><td><font color=\"white\">tag: %s</font></td></tr>", tag);
+  }
+  if(c->src.s) {
+    fprintf(f, "<tr><td><font color=\"white\">");
+    fprintf_escaped_string(f, c->src, true);
+    fprintf(f, "</font></td></tr>");
   }
   fprintf(f, "</table>>\nshape = \"none\"\n];\n");
 
@@ -432,7 +437,7 @@ void show_float(cell_t const *c) {
 void show_string(cell_t const *c) {
   assert_error(has_type(c, T_STRING));
   printf("\"");
-  print_escaped_string(value_seg(c));
+  print_escaped_string(value_seg(c), false);
   printf("\"");
 }
 

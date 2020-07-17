@@ -195,7 +195,7 @@ void gen_value_rhs(const tcell_t *c) {
   case T_STRING: {
     seg_t str = value_seg(&c->c);
     printf("{ .s = \"");
-    print_escaped_string(str);
+    print_escaped_string(str, false);
     printf("\", .n = %d };\n", (int)str.n);
     break;
   }

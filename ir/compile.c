@@ -60,7 +60,7 @@ static void print_value(const cell_t *c) {
     break;
   case T_STRING:
     printf(" val \"");
-    print_escaped_string(value_seg(c));
+    print_escaped_string(value_seg(c), false);
     printf("\"");
     break;
   default:
