@@ -59,6 +59,9 @@ static cell_t *watched_cells[4] = {0};
 static op watched_op = OP_null;
 bool watch_enabled = false;
 
+seg_t fail_location[64];
+size_t fail_location_n = 0;
+
 #if INTERFACE
 #define ASSERT_REF() if(ctx->priority > PRIORITY_SIMPLIFY) assert_error(assert_ref(rt_roots, rt_roots_n))
 #endif
@@ -111,6 +114,7 @@ void rt_init() {
   clear_ptr_tags();
   reset_counters();
   array_init();
+  fail_location_n = 0;
 }
 
 cell_t *forward(cell_t *c, cell_t *a, cell_t *alt) {
@@ -290,6 +294,24 @@ cell_t *fill_incomplete(cell_t *c) {
   return c;
 }
 
+void log_fail(context_t *ctx) {
+  if(ctx->text.s &&
+     fail_location_n < LENGTH(fail_location)) {
+    fail_location[fail_location_n++] = ctx->text;
+  }
+}
+
+void print_fail_log() {
+  COUNTUP(i, fail_location_n) {
+    seg_t s = fail_location[i];
+    printf("%d: %.*s\n", (int)i, (int)s.n, s.s);
+  }
+}
+
+COMMAND(errors, "list errors") {
+  print_fail_log();
+}
+
 // Reduce *cp with type t
 response reduce(cell_t **cp, context_t *ctx) {
   cell_t *c = *cp;
@@ -310,6 +332,7 @@ response reduce(cell_t **cp, context_t *ctx) {
 
     LOG_WHEN(!*cp, MARK("FAIL") ": %O %C (%s.%s) %L @abort",
              op, c, module_name, word_name, ctx->loc.raw);
+    log_fail(ctx);
     c = *cp;
     if(r <= DELAY || (r == RETRY && ctx->retry)) {
       ctx->retry = false;

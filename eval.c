@@ -132,10 +132,6 @@ void stats_display() {
          saved_stats.alt_cnt);
 }
 
-void usage() {
-  printf("usage: eval [-t <test name>]\n");
-}
-
 COMMAND(echo, "whether the input line is echoed") {
   echo = !rest || segcmp("yes", tok_seg(rest)) == 0;
 }
@@ -627,7 +623,45 @@ cell_t *eval_module() {
   return modules ? get_module(string_seg("eval")) : NULL;
 }
 
+seg_t src_text(const cell_t *p) {
+  seg_t seg = { .s = p->tok_list.location };
+  while(p->tok_list.next) {
+    p = p->tok_list.next;
+  }
+  seg.n = seg_end(tok_seg(p)) - seg.s;
+  return seg;
+}
+
+size_t get_flattened_error_ranges(seg_t src, pair_t *res) {
+  uintptr_t
+    l[fail_location_n],
+    r[fail_location_n];
+
+  // load offsets into l and r
+  COUNTUP(i, fail_location_n) {
+    l[i] = fail_location[i].s - src.s;
+    r[i] = l[i] + fail_location[i].n;
+  }
+
+  return flatten_ranges(l, r, res, fail_location_n);
+}
+
+void highlight_errors(seg_t src) {
+  pair_t res[fail_location_n];
+  size_t n = get_flattened_error_ranges(src, res);
+  uintptr_t last = 0;
+  COUNTUP(i, n) {
+    printf("%.*s", (int)(res[i].first - last), src.s + last);
+    printf(UNDERLINE("%.*s"),
+           (int)(res[i].second - res[i].first),
+           src.s + res[i].first);
+    last = res[i].second;
+  }
+  printf("%.*s\n\n", (int)(src.n - last), src.s + last);
+}
+
 cell_t *eval(const char *prefix, const cell_t *p, cell_t **previous) {
+  seg_t src = src_text(p);
   if(!match(p, "...")) {
     drop(*previous);
     *previous = NULL;
@@ -657,6 +691,9 @@ cell_t *eval(const char *prefix, const cell_t *p, cell_t **previous) {
         show_alts(prefix, c);
         *previous = c;
         return c;
+      } else if (!quiet) {
+        printf("`-( " MARK("FAILED!") " )\n\n");
+        highlight_errors(src);
       }
     }
   }

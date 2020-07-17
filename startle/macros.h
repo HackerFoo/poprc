@@ -343,6 +343,12 @@
 #define TODO MARK("TODO")
 #define HACK MARK("HACK")
 
+#if !defined(EMSCRIPTEN)
+#define UNDERLINE(x) "\x1b[4m" x "\x1b[0m"
+#else
+#define UNDERLINE(x) "[[u;;]" x "]"
+#endif
+
 #define DISABLE(...)                            \
   do {                                          \
     LOG(MARK("DISABLED") " %s", __func__);      \

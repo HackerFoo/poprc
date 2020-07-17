@@ -1375,3 +1375,21 @@ TEST(flatten_ranges) {
   }
   return 0;
 }
+
+pair_t seg_pair(seg_t seg) {
+  return seg.s ?
+    (pair_t) {
+      .first = (uintptr_t)seg.s,
+      .second = (uintptr_t)(seg.s + seg.n)
+    } :
+  (pair_t) {0, 0};
+}
+
+seg_t pair_seg(pair_t p) {
+  return p.first && p.second ?
+    (seg_t) {
+      .s = (char *)p.first,
+      .n = (char *)p.second - (char *)p.first
+    } :
+  (seg_t) {NULL, 0};
+}
