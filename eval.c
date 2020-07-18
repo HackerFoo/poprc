@@ -658,7 +658,7 @@ void highlight_errors(seg_t src) {
            src.s + res[i].first);
     last = res[i].second;
   }
-  printf("%.*s\n\n", (int)(src.n - last), src.s + last);
+  printf("%.*s\n", (int)(src.n - last), src.s + last);
 }
 
 cell_t *eval(const cell_t *p, cell_t **previous) {
@@ -700,8 +700,10 @@ void show_eval(const char *prefix, seg_t src, const cell_t *c) {
   if(c) {
     show_alts(prefix, c);
   } else if (!quiet) {
-    printf("`-( " MARK("FAILED!") " )\n\n");
+    printf("\n");
     highlight_errors(src);
+    printf(" |\n");
+    printf(" '-( " MARK("FAILED!") " )\n\n");
   }
 }
 

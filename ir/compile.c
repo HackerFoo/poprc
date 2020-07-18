@@ -799,10 +799,16 @@ COMMAND(bc, "print bytecode for a word, or all") {
   if(rest) {
     CONTEXT("bytecode command");
     command_define(rest);
+    seg_t src = src_text(rest);
     tcell_t *e = entry_from_token(rest);
-    if(e) {
+    if(e && e->entry.alts) {
       printf("\n");
       print_bytecode(e, true);
+    } else {
+      printf("\n");
+      highlight_errors(src);
+      printf(" |\n");
+      printf(" '-( " MARK("FAILED!") " )\n\n");
     }
   } else {
     print_all_bytecode();
