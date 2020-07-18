@@ -643,6 +643,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
     .n = expand_sym(ident, LENGTH(ident), name)
   };
   e->word_name = seg_string(ident_seg); // TODO fix unnecessary alloc
+  e->src = src_text(toks);
   CONTEXT_LOG("compiling %s", e->word_name);
 
   // parse
@@ -799,16 +800,18 @@ COMMAND(bc, "print bytecode for a word, or all") {
   if(rest) {
     CONTEXT("bytecode command");
     command_define(rest);
-    seg_t src = src_text(rest);
     tcell_t *e = entry_from_token(rest);
-    if(e && e->entry.alts) {
-      printf("\n");
-      print_bytecode(e, true);
+    if(!e) {
+      printf("not found\n");
     } else {
       printf("\n");
-      highlight_errors(src);
-      printf(" |\n");
-      printf(" '-( " MARK("FAILED!") " )\n\n");
+      if(e->entry.alts) {
+        print_bytecode(e, true);
+      } else {
+        highlight_errors(e->src);
+        printf(" |\n");
+        printf(" '-( " MARK("FAILED!") " )\n\n");
+      }
     }
   } else {
     print_all_bytecode();
