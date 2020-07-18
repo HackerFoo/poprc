@@ -647,15 +647,29 @@ size_t get_flattened_error_ranges(seg_t src, pair_t *res) {
   return flatten_ranges(l, r, res, fail_location_n);
 }
 
+static
+void print_seg_escape(seg_t seg) {
+  COUNTUP(i, seg.n) {
+    char c = seg.s[i];
+    switch(c) {
+#if defined(EMSCRIPTEN)
+    case '[': printf("&#91;"); break;
+    case ']': printf("&#93;"); break;
+#endif
+    default: printf("%c", c); break;
+    }
+  }
+}
+
 void highlight_errors(seg_t src) {
   pair_t res[fail_location_n];
   size_t n = get_flattened_error_ranges(src, res);
   uintptr_t last = 0;
   COUNTUP(i, n) {
     printf("%.*s", (int)(res[i].first - last), src.s + last);
-    printf(UNDERLINE("%.*s"),
-           (int)(res[i].second - res[i].first),
-           src.s + res[i].first);
+    printf(UNDERLINE_START);
+    print_seg_escape((seg_t) { .s = src.s + res[i].first, .n = res[i].second - res[i].first });
+    printf(UNDERLINE_END);
     last = res[i].second;
   }
   printf("%.*s\n", (int)(src.n - last), src.s + last);

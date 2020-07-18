@@ -344,10 +344,13 @@
 #define HACK MARK("HACK")
 
 #if !defined(EMSCRIPTEN)
-#define UNDERLINE(x) "\x1b[4m" x "\x1b[0m"
+#define UNDERLINE_START "\x1b[4m"
+#define UNDERLINE_END "\x1b[0m"
 #else
-#define UNDERLINE(x) "[[u;;]" x "]"
+#define UNDERLINE_START "[[u;;]"
+#define UNDERLINE_END "]"
 #endif
+#define UNDERLINE(x) UNDERLINE_START x UNDERLINE_END
 
 #define IRC_COLOR_red "04"
 #define IRC_COLOR_blue "02"
