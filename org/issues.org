@@ -154,6 +154,8 @@ look for word in parent module, parent imports, context module, context imports,
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
+** TODO popr -def f: 1 A + -bc 3 f +
+** TODO 2 3 | 5 7 | * dup 15 == !
 ** TODO bytecode is incorrect for tests.collatz when using custom default bounds
 ** TODO vlgen: link assert/unless into sync
 ** TODO io.getline_loop type mismatches in assert chain breaking trace_get_opaque_symbol()
