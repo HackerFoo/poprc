@@ -367,3 +367,8 @@ install:
 	install -m 644 $(POPR_SRC) $(PREFIX)/share/poprc/
 	install eval $(PREFIX)/bin/poprc
 	ln -sf $(PREFIX)/bin/poprc $(PREFIX)/bin/popr
+
+.PHONY: node2nix
+node2nix:
+	@mkdir -p nix/node
+	cd nix/node; node2nix -i ../../package.json
