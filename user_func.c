@@ -457,6 +457,7 @@ cell_t *exec_expand(cell_t *c) {
       nc->n = p->n;
     }
     nc->tmp = 0;
+    nc->src = c->src;
     p->alt = nc;
   }
 

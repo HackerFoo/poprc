@@ -247,8 +247,9 @@ response reduce_arg(cell_t *c,
   response r = reduce(ap, ctx);
   if(r <= DELAY) {
     ctx->up->alt_set |= ctx->alt_set;
-    ctx->up->text = seg_range(ctx->up->text, ctx->text);
     split_arg(c, n, dup_alt);
+  } else if(r == FAIL) {
+    ctx->up->text = seg_range(ctx->up->text, ctx->text);
   }
   return r;
 }
@@ -330,9 +331,11 @@ response reduce(cell_t **cp, context_t *ctx) {
     // prevent infinite loops when debugging
     assert_counter(LENGTH(cells));
 
-    LOG_WHEN(!*cp, MARK("FAIL") ": %O %C (%s.%s) %L @abort",
-             op, c, module_name, word_name, ctx->loc.raw);
-    log_fail(ctx);
+    if(!*cp) {
+      LOG(MARK("FAIL") ": %O %C (%s.%s) %L @abort",
+          op, c, module_name, word_name, ctx->loc.raw);
+      log_fail(ctx);
+    }
     c = *cp;
     if(r <= DELAY || (r == RETRY && ctx->retry)) {
       ctx->retry = false;
