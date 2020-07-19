@@ -154,6 +154,9 @@ look for word in parent module, parent imports, context module, context imports,
 ** DONE replace all tables with maps
 ** DONE add string map
 * bugs
+** TODO popr -ev [1 +] 2 $ dup even!
+- need to find correct .src
+- scan referenced entries
 ** TODO popr -def f: 1 A + -bc 3 f +
 ** TODO 2 3 | 5 7 | * dup 15 == !
 ** TODO bytecode is incorrect for tests.collatz when using custom default bounds
