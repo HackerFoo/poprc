@@ -247,9 +247,10 @@ response reduce_arg(cell_t *c,
   response r = reduce(ap, ctx);
   if(r <= DELAY) {
     ctx->up->alt_set |= ctx->alt_set;
+    ctx->up->text = seg_range(ctx->up->text, ctx->text);
     split_arg(c, n, dup_alt);
   } else if(r == FAIL) {
-    ctx->up->text = seg_range(ctx->up->text, ctx->text);
+    ctx->up->text = ctx->text;
   }
   return r;
 }
@@ -266,6 +267,8 @@ response reduce_ptr(cell_t *c,
     ctx->up->alt_set |= ctx->alt_set;
     ctx->up->text = seg_range(ctx->up->text, ctx->text);
     split_arg(c, n + VALUE_OFFSET(ptr), dup_list_alt);
+  } else if(r == FAIL) {
+    ctx->up->text = ctx->text;
   }
   return r;
 }
@@ -577,12 +580,13 @@ loop:
   return r;
 }
 
-void store_fail(cell_t *c, cell_t *alt) { // CLEANUP
+void store_fail(cell_t *c, cell_t *alt, context_t *ctx) { // CLEANUP
   closure_shrink(c, 1);
   memset(&c->value, 0, sizeof(c->value));
   c->op = OP_value;
   c->value.type = T_FAIL;
   c->alt = alt;
+  c->src = seg_range(c->src, ctx->text);
 }
 
 void store_dep(cell_t *c, tcell_t *tc, csize_t i, type_t t, range_t r, alt_set_t alt_set) { // CLEANUP
@@ -630,10 +634,10 @@ response abort_op(response rsp, cell_t **cp, context_t *ctx) {
         if(d && is_dep(d)) {
           assert_error(c == d->expr.arg[0]);
           drop(c);
-          store_fail(d, d->alt);
+          store_fail(d, d->alt, ctx);
         }
       }
-      store_fail(c, alt);
+      store_fail(c, alt, ctx);
     }
     drop(c);
     *cp = alt;

@@ -312,7 +312,7 @@ OP(read_array) {
       store_lazy_dep(c->expr.arg[2], val(T_INT, x), ctx->alt_set);
     } else {
       drop(c);
-      store_fail(c->expr.arg[2], NULL);
+      store_fail(c->expr.arg[2], NULL, ctx);
     }
     res = ref(p);
   }
