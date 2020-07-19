@@ -634,14 +634,16 @@ seg_t src_text(const cell_t *p) {
 }
 
 size_t get_flattened_error_ranges(seg_t src, pair_t *res) {
+  if(!src.s || !src.n) return 0;
+
   uintptr_t
     l[fail_location_n],
     r[fail_location_n];
 
   // load offsets into l and r
   COUNTUP(i, fail_location_n) {
-    l[i] = fail_location[i].s - src.s;
-    r[i] = l[i] + fail_location[i].n;
+    l[i] = clamp(0, (intptr_t)src.n, fail_location[i].s - src.s);
+    r[i] = clamp(0, src.n, l[i] + fail_location[i].n);
   }
 
   return flatten_ranges(l, r, res, fail_location_n);
