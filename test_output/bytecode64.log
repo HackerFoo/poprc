@@ -4127,6 +4127,10 @@ ___ tests.hello (1 -> 1) ___
 [27] __primitive.close 25 26 :: y x1
 [28] return [27]
 
+___ tests.help (0 -> 1) ___
+[1] val "Type `:help` (with initial colon) for help." :: s x1
+[3] return [1]
+
 ___ tests.id_map (1 -> 1) ___
 [1] var :: ?l x1
 [2] return [1]
