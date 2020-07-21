@@ -2980,10 +2980,10 @@ ___ tests.calc_loop (2 -> 1) x15 rec ___
 [68] __primitive.eq_str &21 69 :: y x3
 [69] val "/" :: s x1
 [70] __primitive.assert 74 &68 :: i? x3
-[71] __primitive.ap &1 -> 72 73 :: l? x3
+[71] __primitive.ap &1 -> 73 72 :: l? x3
 [72] __primitive.dep 71 :: i x1
 [73] __primitive.dep 71 :: i x1
-[74] __primitive.div 72 73 :: i? x1
+[74] __primitive.div 73 72 :: i? x1
 [75] __primitive.seq 79 &70 :: v x1
 [76] __primitive.assert 71 &68 :: l? x1
 [77] __primitive.pushr 76 &70 :: l x1
@@ -3146,10 +3146,10 @@ ___ tests.calc_step (2 -> 1) x14 ___
 [34] __primitive.eq_str &3 35 :: y x1
 [35] val "/" :: s x1
 [36] __primitive.assert 41 34 :: l? x1
-[37] __primitive.ap &2 -> 38 39 :: l? x3
+[37] __primitive.ap &2 -> 39 38 :: l? x3
 [38] __primitive.dep 37 :: i x1
 [39] __primitive.dep 37 :: i x1
-[40] __primitive.div 38 39 :: i? x1
+[40] __primitive.div 39 38 :: i? x1
 [41] __primitive.pushr 37 40 :: l x1
 [42] return [36] -> 51
 [43] __primitive.eq_str &3 44 :: y x1
@@ -4382,7 +4382,7 @@ ___ tests.mul_lt50 (2 -> 1) ___
 [13] __primitive.mul 8 12 in [1, 100] :: i x2
 [14] __primitive.lt &13 15 :: y x1
 [15] val 50 :: i x1
-[16] __primitive.assert 13 14 in [1, 100] :: i? x1
+[16] __primitive.assert 13 14 in [1, 49] :: i? x1
 [17] return [16]
 
 ___ tests.not_one_to_ten (1 -> 1) x2 ___
@@ -4597,10 +4597,10 @@ ___ tests.range_add10 (2 -> 1) ___
 [3] __primitive.add 2 1 :: i x2
 [4] __primitive.gte &3 5 :: y x1
 [5] val 1 :: i x1
-[6] __primitive.assert 3 4 <= 10 :: i? x2
+[6] __primitive.assert 3 4 in [1, 10] :: i? x2
 [7] __primitive.lte &6 8 :: y x1
 [8] val 10 :: i x1
-[9] __primitive.assert 6 7 <= 10 :: i? x1
+[9] __primitive.assert 6 7 in [1, 10] :: i? x1
 [10] return [9]
 
 ___ tests.repeat_int (1 -> 1) rec ___

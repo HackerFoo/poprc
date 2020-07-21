@@ -232,13 +232,17 @@ response func_op2(cell_t **cp, context_t *ctx,
 
   context_t arg_ctx[] = {CTX(t, arg_type), CTX(t, arg_type)};
   bound_contexts(c, ctx, arg_ctx);
-  CHECK(reduce_arg(c, 0, &arg_ctx[0]));
+  if(!nonzero) CHECK(reduce_arg(c, 0, &arg_ctx[0]));
   CHECK(reduce_arg(c, 1, &arg_ctx[1]));
+  if(nonzero && rsp != DELAY) { // TODO assert this for variables
+    cell_t *q = c->expr.arg[1];
+    CHECK_IF(!is_var(q) && q->value.integer == 0, FAIL);
+  }
+  CHECK(reduce_arg(c, 0, &arg_ctx[0]));
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   CHECK_DELAY();
   ARGS(p, q);
 
-  CHECK_IF(nonzero && !is_var(q) && q->value.integer == 0, FAIL); // TODO assert this for variables
   res = identity(p, q);
   if(res) {
     if(!is_value(res)) {
