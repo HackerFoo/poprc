@@ -688,7 +688,12 @@ cell_t *eval(const cell_t *p, cell_t **previous) {
     if(!quiet) printf("IO not allowed.\n");
   } else {
     cell_t *c = parse_expr(&p, eval_module(), NULL);
-    if(!c) return NULL;
+    if(!c) {
+      if(!quiet) {
+        printf("parse failure\n");
+      }
+      return NULL;
+    }
     if(*previous) {
       c = compose(list_begin(*previous), c); // TODO handle (*previous)->alt
       drop(*previous);

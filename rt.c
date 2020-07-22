@@ -298,10 +298,10 @@ cell_t *fill_incomplete(cell_t *c) {
   return c;
 }
 
-void log_fail(context_t *ctx) {
-  if(ctx->text.s &&
+void log_fail(seg_t src) {
+  if(src.s &&
      fail_location_n < LENGTH(fail_location)) {
-    fail_location[fail_location_n++] = ctx->text;
+    fail_location[fail_location_n++] = src;
   }
 }
 
@@ -337,7 +337,7 @@ response reduce(cell_t **cp, context_t *ctx) {
     if(!*cp) {
       LOG(MARK("FAIL") ": %O %C (%s.%s) %L @abort",
           op, c, module_name, word_name, ctx->loc.raw);
-      log_fail(ctx);
+      log_fail(ctx->text);
     }
     c = *cp;
     if(r <= DELAY || (r == RETRY && ctx->retry)) {

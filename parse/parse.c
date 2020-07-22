@@ -555,6 +555,7 @@ cell_t *parse_subexpr(const cell_t **l, cell_t *module, tcell_t *entry, int dept
         cell_t *c = parse_word(seg, module, n, entry);
         if(!c) {
           LOG("parse failure: %.*s", seg.n, seg.s);
+          log_fail(seg);
           goto fail;
         }
         bool f = !is_value(c);
