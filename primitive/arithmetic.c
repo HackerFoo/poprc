@@ -404,6 +404,7 @@ range_t sub_range_op(range_t a, range_t b) {
 }
 cell_t *sub_identity(cell_t *p, cell_t *q) {
   return
+    p == q || (is_var(p) && is_var(q) && p->value.var == q->value.var) ? val(T_INT, 0) :
     !is_var(p) && p->value.integer == 0 ? build_negate(ref(q)) :
     !is_var(q) && q->value.integer == 0 ? ref(p) : NULL;
 }
@@ -430,6 +431,7 @@ range_t div_range_op(range_t n, range_t d) {
 }
 cell_t *div_identity(cell_t *p, cell_t *q) {
   return
+    p == q || (is_var(p) && is_var(q) && p->value.var == q->value.var) ? val(T_INT, 1) :
     is_var(q) ? NULL :
     q->value.integer == 0 ? &fail_cell :
     q->value.integer == 1 ? ref(p) :
