@@ -678,6 +678,9 @@ void highlight_errors(seg_t src) {
 }
 
 cell_t *eval(const cell_t *p, cell_t **previous) {
+  cell_t *c = NULL, *left = NULL;
+  bool incomplete = false;
+  clear_fail_log();
   if(!match(p, "...")) {
     drop(*previous);
     *previous = NULL;
@@ -687,7 +690,7 @@ cell_t *eval(const cell_t *p, cell_t **previous) {
   if(!allow_io && has_IO(p)) {
     if(!quiet) printf("IO not allowed.\n");
   } else {
-    cell_t *c = parse_expr(&p, eval_module(), NULL);
+    c = parse_expr(&p, eval_module(), NULL);
     if(!c) {
       if(!quiet) {
         printf("parse failure\n");
@@ -701,11 +704,14 @@ cell_t *eval(const cell_t *p, cell_t **previous) {
     } else {
       rt_init();
     }
-    cell_t *left = *leftmost(&c);
-    if(left && !closure_is_ready(left)) {
-      if(!quiet) printf("incomplete expression\n");
-      drop(c);
-    } else {
+    left = *leftmost(&c);
+    if(left && !closure_is_ready(left)) { // Automatic IO
+      incomplete = true;
+      if(allow_io && !has_IO(p)) {
+        arg(left, val(T_SYMBOL, SYM_IO));
+      }
+    }
+    if(!left || closure_is_ready(left)) {
       reduce_root(&c, 0, reduction_limit);
       if(c) {
         ASSERT_REF();
@@ -713,6 +719,11 @@ cell_t *eval(const cell_t *p, cell_t **previous) {
         return c;
       }
     }
+  }
+  if(incomplete && empty_fail_log()) {
+    if(!quiet) printf("incomplete expression\n");
+    log_fail(left->src);
+    drop(c);
   }
   return NULL;
 }

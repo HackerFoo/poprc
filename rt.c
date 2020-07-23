@@ -114,6 +114,10 @@ void rt_init() {
   clear_ptr_tags();
   reset_counters();
   array_init();
+  clear_fail_log();
+}
+
+void clear_fail_log() {
   fail_location_n = 0;
 }
 
@@ -303,6 +307,13 @@ void log_fail(seg_t src) {
      fail_location_n < LENGTH(fail_location)) {
     fail_location[fail_location_n++] = src;
   }
+}
+
+// used for detecting failure of automatic IO
+bool empty_fail_log() {
+  return
+    fail_location_n == 0 ||
+    !fail_location[0].s;
 }
 
 void print_fail_log() {

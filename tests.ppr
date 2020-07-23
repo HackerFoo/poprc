@@ -540,4 +540,4 @@ stream_compute_ff2:
     [[3*] map nip2 stream_write_array] __ compute
     fork_cmp3 fork_array3
 
-help: "Type `:help` (with initial colon) for help."
+help: "Type `:help` (with initial colon) for help.\n" write_std
