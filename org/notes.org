@@ -1,5 +1,7 @@
 #+TITLE: PoprC Notes
 
+* compose
+- bind through row lists -> pushr
 * pos
 - works as an anchor
 - need to clean up

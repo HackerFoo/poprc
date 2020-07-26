@@ -506,9 +506,9 @@ fuse_filter_sum: [odd] filter sum
 fuse_map_filter: [1+] map [odd] filter __ {hide}
 fuse_filter_tail: [odd] filter tail __ {hide}
 
-fuse_map_ho: [map] pushl swap [map] pushl . $ __ {hide}
+fuse_map_ho: swap [map] pushl swap [map] pushl . $
 
-__ Array sRA sWA sW f_wa f_w stream_compute {hide}
+__ Array sRA sWA sW f_wa f_w stream_compute
 stream_compute:
   []ap50
     [drop drop drop drop stream_read_array] __ read
@@ -516,7 +516,7 @@ stream_compute:
     [[swap [map] dip21] dip32 map nip2 stream_write_array] __ compute
     fork_cmp3 fork_array3
 
-__ Array sRA sWA sW f_w stream_compute {hide}
+__ Array sRA sWA sW f_w stream_compute
 stream_compute2:
   []ap40
     [drop drop drop stream_read_array] __ read
@@ -540,4 +540,4 @@ parallel_map_zip: [[1+] map] dip11 [3*] map [+] zip
 parallel_map_zip2: swap [1+] map swap [3*] map [+] zip
 parallel_map_zip3: [[1+] map] [[3*] map] para [+] zip
 
-f14: dup [. head swap] dip32 $ __ miscompile, 1 [2] [3+] f14  ===>  5 4
+f14: dup [. head swap] dip32 $ __ 1 [2] [3+] f14  ===>  5 4

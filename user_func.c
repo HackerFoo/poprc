@@ -214,6 +214,13 @@ start:
     COUNTUP(i, closure_in(c)) {
       tail = bind_pattern(entry, &c->expr.arg[i], pattern->expr.arg[i], tail);
     }
+  } else if(is_row_list(c)) {
+    cell_t **r = left_elem(c);
+    LOG("match through row list %C -> %C", c, *r);
+    *cp = *r;
+    *r = NULL;
+    drop(c);
+    goto start;
   } else {
     // This can be caused by an operation before an infinite loop
     // This will prevent reducing the operation, and therefore fail to unify
