@@ -1018,6 +1018,7 @@ int inline_quote(tcell_t *entry, cell_t *l) {
                   OP_pushr) : OP_quote;
   tc->trace.type = T_LIST;
   int n = size;
+  LOG("inline_quote: %s[%d] <- %O %C", entry->word_name, x, tc->op, l);
 
   FORLIST(p, l, true) {
     int x = trace_value(entry, *p);

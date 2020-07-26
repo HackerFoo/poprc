@@ -835,19 +835,19 @@ ___ control.fork_cmp (3 -> 2) ___
 [1] var :: ?l x1
 [2] var :: ?l x1
 [3] var :: ?l x2
-[4] __primitive.compose &3 1 :: l x1
-[5] __primitive.compose 3 2 :: l x1
-[6] return [5 4]
+[4] __primitive.compose &3 2 :: l x1
+[5] __primitive.compose 3 1 :: l x1
+[6] return [4 5]
 
 ___ control.fork_cmp3 (4 -> 3) ___
 [1] var :: ?l x1
 [2] var :: ?l x1
 [3] var :: ?l x1
 [4] var :: ?l x3
-[5] __primitive.compose &4 1 :: l x1
-[6] __primitive.compose &4 2 :: l x1
-[7] __primitive.compose 4 3 :: l x1
-[8] return [7 6 5]
+[5] __primitive.compose &4 3 :: l x1
+[6] __primitive.compose &4 1 :: l x1
+[7] __primitive.compose 4 2 :: l x1
+[8] return [5 7 6]
 
 ___ control.if (3 -> 1) ___
 [1] var :: ?l x1
@@ -1854,7 +1854,7 @@ ___ list.merge_loop (3 -> 1) x4 rec ___
 [23] __primitive.ap 17 1 :: l x1
 [24] jump list.merge_loop 22 21 20 :: v x1
 [25] return [24] -> 28
-[26] __primitive.unless 27 5 :: a x1
+[26] __primitive.unless 27 5 :: l x1
 [27] __primitive.compose 2 1 :: l x1
 [28] return [26] -> 33
 [29] __primitive.ap 2 -> 30 :: v? x1
@@ -3541,8 +3541,8 @@ ___ tests.dup_map_r0 (1 -> 1) rec ___
 
 ___ tests.either_test (2 -> 1) ___
 [1] var :: ?l x1
-[2] var :: ?v x0
-[3] __primitive.ap 1 -> 4 :: v? x1
+[2] var :: ?l x1
+[3] __primitive.compose 2 1 -> 4 :: v? x1
 [4] __primitive.dep 3 :: a x1
 [5] return [4]
 
@@ -3585,6 +3585,16 @@ ___ tests.f13 (2 -> 2) ___
 [7] val 1 :: i x1
 [8] __primitive.seq 4 1 :: l x1
 [9] return [8 6]
+
+___ tests.f14 (3 -> 2) ___
+[1] var :: ?l x2
+[2] var :: ?l x1
+[3] var :: ?a x1
+[4] __primitive.ap 3 &1 -> 5 :: v? x1
+[5] __primitive.dep 4 :: a x1
+[6] __primitive.compose 2 1 -> 7 :: v? x1
+[7] __primitive.dep 6 :: a x1
+[8] return [7 5]
 
 ___ tests.f2 (3 -> 1) ___
 [1] var :: ?l x1

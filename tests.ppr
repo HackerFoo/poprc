@@ -539,3 +539,5 @@ __ reduced bug from stream_compute_ff
 parallel_map_zip: [[1+] map] dip11 [3*] map [+] zip
 parallel_map_zip2: swap [1+] map swap [3*] map [+] zip
 parallel_map_zip3: [[1+] map] [[3*] map] para [+] zip
+
+f14: dup [. head swap] dip32 $ __ miscompile, 1 [2] [3+] f14  ===>  5 4

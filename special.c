@@ -410,11 +410,20 @@ OP(placeholder) {
     out = closure_out(c),
     n = closure_args(c);
 
+  bool row = FLAG(*c, expr, ROW);
+
   assert_error(in >= 1);
+  assert_error(is_var(c->expr.arg[in - 1]) ||
+               is_placeholder(c->expr.arg[in - 1]));
   CHECK(reduce_arg(c, in - 1, &CTX(list, csub(ctx->s.in, in),
                                          csub(ctx->s.out, out))));
-  COUNTDOWN(i, in - 1) {
+
+  RANGEDOWN(i, row, in - 1) {
     CHECK(reduce_arg(c, i, &CTX(any)));
+    CHECK_IF(as_conflict(ctx->alt_set), FAIL);
+  }
+  if(row) {
+    CHECK(reduce_arg(c, 0, &CTX(list, 0, 0)));
     CHECK_IF(as_conflict(ctx->alt_set), FAIL);
   }
   CHECK_DELAY();

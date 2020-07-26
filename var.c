@@ -77,6 +77,7 @@ cell_t *var_create_list(cell_t *f, int in, int out, int shift, bool row) {
   a[out] = ph;
   c->value.flags = VALUE_ROW;
   if(row) FLAG_SET(*ph, expr, ROW);
+  LOG("var_create_list %C %C %d %d %d %d", f, c, in, out, shift, row);
   return c;
 }
 

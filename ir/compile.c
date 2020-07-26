@@ -417,15 +417,23 @@ void trace_final_pass(tcell_t *entry) {
     }
   }
 
+  // Placeholder Conversion
+  // Placeholders are converted in ap/compose on list variables.
+  // Rules:
+  //   ?x* ... ?y placeholder  ===>  ?x ... ?y compose
+  //   ?x* ... [] placeholder  ===>  ?x ...    pushr (special case of compose)
+  //       ...    placeholder  ===>     ...    ap
+  // where ?x* is indicated with EXPR_ROW set on placeholder
   FOR_TRACE(tc, entry) {
     cell_t *p = &tc->c;
     if(FLAG(*tc, trace, INCOMPLETE)) {
-      if(p->op == OP_placeholder) { // convert a placeholder to ap or compose
+      if(p->op == OP_placeholder) { // convert a placeholder
         FLAG_CLEAR(*tc, trace, INCOMPLETE);
-        if(closure_in(p) > 1 && FLAG(*p, expr, ROW)) {
+        if(FLAG(*p, expr, ROW)) { // to compose
+          assert_error(closure_in(p) > 1);
           cell_t **right_arg = &p->expr.arg[closure_in(p)-1];
           cell_t *l = &entry[tr_index(*right_arg)].c;
-          if(is_nil(l)) {
+          if(is_nil(l)) { // ?x ?y [] compose -> ?x ?y pushr
             p->op = OP_pushr;
             l->n--;
             p->size--;
@@ -433,7 +441,7 @@ void trace_final_pass(tcell_t *entry) {
           } else {
             p->op = OP_compose;
           }
-        } else {
+        } else { // to ap
           p->op = OP_ap;
         }
         if(prev && prev->op == OP_ap &&

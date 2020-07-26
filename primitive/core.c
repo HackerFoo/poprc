@@ -373,6 +373,11 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   CONTEXT("%s: %C", row ? "compose" : "ap", *cp);
   PRE_NO_CONTEXT(compose_ap);
 
+  LOG_WHEN(ctx->up &&
+           ctx->up->src &&
+           ctx->up->src->op == OP_ap,
+           "compose ap %C %C", c, ctx->up->src);
+
   const csize_t
     in = closure_in(c) - 1,
     arg_in = in - row,

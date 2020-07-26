@@ -43,6 +43,7 @@
 #include "primitive/io.h"
 #include "primitive/other.h"
 #include "primitive/string.h"
+#include "var.h"
 
 #if INTERFACE
 #define MAX_ALTS 256
@@ -454,7 +455,36 @@ cell_t *expand_deps(cell_t *c, csize_t s) {
   return c;
 }
 
+cell_t *expand_arg_left(cell_t *c, csize_t s) {
+  csize_t n = closure_args(c);
+  cell_t *nc = expand(c, s);
+  memmove(&nc->expr.arg[1], &nc->expr.arg[0], sizeof(cell_t *) * n);
+  int deps = update_deps(nc);
+  refn(nc, deps);
+  dropn(c, deps);
+  return nc;
+}
+
+// compose a variable (v) and a placeholder (ph)
+// NOTE: destructive to ph
+cell_t *compose_placeholder(cell_t *v, cell_t *ph) {
+  if(FLAG(*ph, expr, ROW)) {
+    cell_t *f = func(OP_placeholder, 2, 1);
+    arg(f, ph->expr.arg[0]);
+    arg(f, v);
+    FLAG_SET(*f, expr, ROW);
+    ph->expr.arg[0] = f;
+  } else {
+    ph = expand_arg_left(ph, 1);
+    ph->expr.arg[0] = v;
+    FLAG_SET(*ph, expr, ROW);
+  }
+  return ph;
+}
+
 cell_t *compose(list_iterator_t it, cell_t *b) {
+
+  // push args from it into b as needed
   cell_t **x;
   const csize_t b_in = function_in(b);
   if(b_in && (x = list_next(&it, true))) {
@@ -468,18 +498,39 @@ cell_t *compose(list_iterator_t it, cell_t *b) {
     }
   }
 
+  // if both it and b are row lists, compose them
   cell_t **ll = left_list(&b);
-  if(!b_in && it.row && is_row_list(*ll)) {
-    x = it.array;
+  if(it.index == it.size &&
+     it.row && is_row_list(*ll)) {
+    x = &it.array[it.size];
+    LOG("composing rows %C %C", *x, *ll);
+
     cell_t **r = left_elem(*ll);
-    if(!is_placeholder(*r)) {
-      LOG("composing rows %C %C", *x, *r);
-      *r = build_compose(ref(*x), *r); // *** TODO nondestructive
+
+    if(is_placeholder(*r)) { // replace input of *r with composed input
+      if(is_var(*x)) {
+        // nondestructively modify *ll
+        cell_t
+          *p = *left_elem(*ll),
+          *l = mutate(&p, &b);
+        clean_tmp(l);
+        r = left_elem(*ll);
+        *r = compose_placeholder(ref(*x), *r);
+        return b;
+      }
+    } else {
+      // nondestructively modify *ll
+      cell_t
+        *p = *ll,
+        *l = mutate(&p, &b);
+      clean_tmp(l);
+      r = left_elem(*ll);
+      *r = build_compose(ref(*x), *r);
       return b;
     }
   }
 
-  // prepend b with the remainder of a
+  // prepend b with the remainder of it
   insert_root(&b);
   int remaining_a = list_remaining_size(it, true);
   remove_root(&b);
@@ -772,17 +823,22 @@ bool deps_are_unique(cell_t *c) {
   return true;
 }
 
+cell_t *get_mutable(cell_t *c) {
+  return c->tmp ? c->tmp : c;
+}
+
 /* make a path copy from the root (r) to the cell to modify (c) and store in tmps */
 /* r references c. Optimization over: */
 /* r' = deep_copy(r) */
 /* drop(r) */
 /* modify c' in r' without affecting c */
+/* returns a chain of substitutions, use clean_tmp to finish */
 cell_t *mutate(cell_t **cp, cell_t **rp) {
   cell_t *c = *cp;
   cell_t *l = NULL;
   add_to_mutate_list(c, &l);
   l = mutate_list(l, rp);
-  if(l && c->tmp) *cp = c->tmp;
+  *cp = get_mutable(c);
   return l;
 }
 
@@ -828,7 +884,11 @@ cell_t *mutate_list(cell_t *l, cell_t **rp) {
 }
 
 bool check_deps(cell_t *c) {
-  bool ret = true;
+  return _check_deps(c, 20);
+}
+
+bool _check_deps(cell_t *c, int depth) {
+  assert_error(depth >= 0);
   if(c && is_cell(c)) {
     TRAVERSE(c, out) {
       cell_t *x = *p;
@@ -837,14 +897,14 @@ bool check_deps(cell_t *c) {
                (int)(x - cells),
                (int)(x->expr.arg[0] - cells),
                (int)(c - cells));
-        ret = false;
+        return false;
       }
     }
     TRAVERSE(c, alt, in, ptrs) {
-      if(!check_deps(*p)) ret = false;
+      if(!_check_deps(*p, depth - 1)) return false;
     }
   }
-  return ret;
+  return true;
 }
 
 bool check_tmp_loop(cell_t *c) {
