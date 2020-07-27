@@ -105,7 +105,7 @@ __ [f] index -> x
 __ a [a -> a] -> [a]
 iteratel: [dup [peek] dip22 iteratel swap] ap20
 
-__ concat: [] [.] foldr
+concat: [] [.] foldr
 
 __ [xs] [f] map -> [xs']
 map:
