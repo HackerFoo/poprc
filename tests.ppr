@@ -535,6 +535,8 @@ stream_compute_ff:
 
 help: "Type `:help` (with initial colon) for help.\n" write_std
 
+say: "\n" ++ write_std
+
 __ reduced bug from stream_compute_ff
 parallel_map_zip: [[1+] map] dip11 [3*] map [+] zip
 parallel_map_zip2: swap [1+] map swap [3*] map [+] zip

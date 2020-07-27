@@ -4691,6 +4691,19 @@ ___ tests.rpr (2 -> 1) ___
 [6] jump list.reverse_r0 4 5 :: l x1
 [7] return [6]
 
+___ tests.say (2 -> 1) ___
+[1] var :: ?s x1
+[2] var :: ?y x1
+[3] __primitive.open 2 4 -> 5 :: y x2
+[4] val "stream,out:std" :: s x1
+[5] __primitive.dep 3 is File :: o x1
+[6] __primitive.strcat 1 7 :: s x1
+[7] val "\n" :: s x1
+[8] __primitive.write 3 5 6 -> 9 :: y x2
+[9] __primitive.dep 8 is File :: o x1
+[10] __primitive.close 8 9 :: y x1
+[11] return [10]
+
 ___ tests.spaces (1 -> 1) x2 ___
 [1] var :: ?s x1
 [2] tests.spaces_r0 1 :: s x1
