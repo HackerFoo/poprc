@@ -280,6 +280,11 @@ int segcmp(const char *str, seg_t seg) {
   return *a;
 }
 
+/** Return a character from a seg_t if it is a single character, otherwise '\0'. */
+char seg_char(seg_t seg) {
+  return seg.n == 1 ? *seg.s : '\0';
+}
+
 /** Like `find`, but find the last match, with a string segment key.
  * O(log n) time.
  */

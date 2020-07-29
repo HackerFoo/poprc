@@ -40,6 +40,7 @@ char_class_t char_class(char c) {
   if(c == '.') return CC_DOT;
   if(c == '_') return CC_COMMENT;
   if(c == '\"') return CC_STRING;
+  if(c == ',') return CC_COMMA;
   if(ONEOF(c, '[', ']', '(', ')', '{', '}'))
     return CC_BRACKET;
   return CC_SYMBOL;
@@ -182,8 +183,8 @@ seg_t tok(const char *s, const char* e, char_class_t *class, attr_t *attr_before
     goto done;
   }
 
-  /* allow adjacent brackets to be separately tokenized */
-  if(ONEOF(cc, CC_BRACKET, CC_COMMENT)) {
+  /* separately tokenize these character classes */
+  if(ONEOF(cc, CC_BRACKET, CC_COMMENT, CC_COMMA)) {
     seg.n = 1;
     goto done;
   }

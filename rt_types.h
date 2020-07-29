@@ -277,7 +277,8 @@ typedef enum char_class_t {
   CC_VAR,
   CC_COMMENT,
   CC_DOT,
-  CC_STRING
+  CC_STRING,
+  CC_COMMA
 } char_class_t;
 
 

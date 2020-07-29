@@ -507,6 +507,7 @@ cell_t *parse_subexpr(const cell_t **l, cell_t *module, tcell_t *entry, int dept
     {
       push_arg(arg_stack, &n, seg, int_val(strtol(seg.s, NULL, 0)));
     } break;
+
     case CC_FLOAT:
     {
       char *end;
@@ -515,6 +516,7 @@ cell_t *parse_subexpr(const cell_t **l, cell_t *module, tcell_t *entry, int dept
         push_arg(arg_stack, &n, seg, float_val(x));
       }
     } break;
+
     case CC_STRING:
     {
       push_arg(arg_stack, &n, seg,
@@ -522,30 +524,18 @@ cell_t *parse_subexpr(const cell_t **l, cell_t *module, tcell_t *entry, int dept
                                                .n = seg.n - 2 }));
     } break;
 
-    case CC_SYMBOL:
-      if(seg.n == 1 && *seg.s == ',') {
-        if(n == 1) {
-          if(closure_is_ready(arg_stack[0])) {
-            arg_stack[1] = arg_stack[0];
-            arg_stack[0] = empty_list();
-            n = 2;
-          } else {
-            arg(arg_stack[0], empty_list());
-          }
-        }
-
-        if(ph) { // TODO move this into array_to_list()
-          assert_throw(n < MAX_ARGS);
-          memmove(arg_stack + 1, arg_stack, n * sizeof(arg_stack[0]));
-          arg_stack[0] = ph;
-          ph = NULL;
-          n++;
-        }
-        arg_stack[0] = array_to_list(arg_stack, n);
-        n = 1;
-        break;
+    case CC_COMMA:
+    {
+      if(depth) {
+        *l = t;
+        goto done;
+      } else {
+        LOG("parse failure, mismatched comma");
+        goto fail;
       }
-      // otherwise continue below
+    } break;
+
+    case CC_SYMBOL:
     case CC_ALPHA:
     case CC_VAR:
     {
@@ -599,13 +589,16 @@ cell_t *parse_subexpr(const cell_t **l, cell_t *module, tcell_t *entry, int dept
           }
         case '[':
         {
-          cell_t *c = parse_subexpr(l, module, entry, depth + 1);
-          if(c) {
-            push_arg(arg_stack, &n, seg, c); // TODO
-          } else {
-            LOG("parse failure");
-            goto fail;
-          }
+          cell_t *c;
+          do {
+            c = parse_subexpr(l, module, entry, depth + 1);
+            if(!c) {
+              LOG("parse failure");
+              goto fail;
+            }
+            push_arg(arg_stack, &n, seg, c);
+          } while(*l && seg_char(tok_seg(*l)) == ',' &&
+                  (*l = (*l)->tok_list.next));
         } break;
         case '(':
         case ')':
