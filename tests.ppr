@@ -543,3 +543,9 @@ parallel_map_zip2: swap [1+] map swap [3*] map [+] zip
 parallel_map_zip3: [[1+] map] [[3*] map] para [+] zip
 
 f14: dup [. head swap] dip32 $ __ 1 [2] [3+] f14  ===>  5 4
+
+reader0: [] [[0 swap pushl] dip11 .] foldr
+
+__ pointless, but to check fusion
+concat_map: map concat
+

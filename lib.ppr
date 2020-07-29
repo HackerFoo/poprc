@@ -449,6 +449,10 @@ bitree:
 
 seq2: [[]ap20] dip21 seq get2
 
+__ feed x as an input to each quote and compose them
+__ [[ ... , ... , ...]] x reader --> [ x ... x ... x ... ]
+reader: [[swap pushl] pushl dip11 .] pushl [] swap foldr
+
 module logic:
 
 imports:
