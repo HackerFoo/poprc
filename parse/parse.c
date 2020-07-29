@@ -494,12 +494,13 @@ cell_t *parse_subexpr(const cell_t **l, cell_t *module, tcell_t *entry, int dept
   cell_t *ph = NULL;
   unsigned int n = 0;
   const cell_t *t;
+  seg_t seg;
 
   assert_error(depth < MAX_PARSE_DEPTH, "too many nested quotes");
 
   while((t = *l)) {
     *l = t->tok_list.next;
-    seg_t seg = tok_seg(t);
+    seg = tok_seg(t);
 
     switch(t->char_class) {
 
@@ -630,6 +631,7 @@ done:
   }
   return array_to_list(arg_stack, n);
 fail:
+  log_fail(seg);
   COUNTUP(i, n) {
     drop(arg_stack[i]);
   }
