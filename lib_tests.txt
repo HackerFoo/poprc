@@ -27,6 +27,8 @@ __ list
 [1 2 3] [30 20 10] [+] zip
 [1 2 3 4] [5 6 7 8] 0 [[*] dip21 + dup 10* swap] zip_with
 [[1, 2+, 4, *]] concat
+[[ 2*, 3+ ]] 5 let
+0 [1+] iteratel
 
 __ stack
 [1] pull

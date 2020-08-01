@@ -915,6 +915,35 @@ ___ control.iterate (3 -> 1) x2 rec ___
 [14] jump control.iterate 13 2 1 :: a x1
 [15] return [11]
 
+___ control.let (2 -> 1) ___
+[1] var :: ?a x1
+[2] var :: ?l x1
+[3] [] :: l x1
+[4] jump control.let_r0 3 2 1 :: l x1
+[5] return [4]
+
+___ control.let_r0 (3 -> 1) x2 rec ___
+[1] var :: ?a x1
+[2] changing var :: ?l x1
+[3] changing var :: ?l x2
+[4] __primitive.ap 2 -> 5 :: l? x3
+[5] __primitive.dep 4 :: l x3
+[6] __primitive.seq 9 &5 :: v x1
+[7] __primitive.ap &4 5 :: l x1
+[8] __primitive.compose 7 3 :: l x1
+[9] jump control.let_r0 8 4 1 :: v x1
+[10] return [6] -> 12
+[11] __primitive.unless 3 5 :: l x1
+[12] return [11]
+
+___ control.let1 (3 -> 1) ___
+[1] var :: ?a x1
+[2] var :: ?l x1
+[3] var :: ?l x1
+[4] __primitive.ap 1 3 :: l x1
+[5] __primitive.compose 4 2 :: l x1
+[6] return [5]
+
 ___ control.maybe (3 -> 1) x2 ___
 [1] var :: ?a x2
 [2] var :: ?a x2
@@ -960,27 +989,6 @@ ___ control.peek_cmp (2 -> 2) ___
 [2] var :: ?l x2
 [3] __primitive.compose &2 1 :: l x1
 [4] return [2 3]
-
-___ control.reader (2 -> 1) ___
-[1] var :: ?a x1
-[2] var :: ?l x1
-[3] [] :: l x1
-[4] jump control.reader_r0 3 2 1 :: l x1
-[5] return [4]
-
-___ control.reader_r0 (3 -> 1) x2 rec ___
-[1] var :: ?a x2
-[2] changing var :: ?l x1
-[3] changing var :: ?l x2
-[4] __primitive.ap 2 -> 5 :: l? x2
-[5] __primitive.dep 4 :: l x3
-[6] __primitive.seq 9 &5 :: v x1
-[7] __primitive.ap &1 5 :: l x1
-[8] __primitive.compose 7 3 :: l x1
-[9] jump control.reader_r0 8 4 1 :: v x1
-[10] return [6] -> 12
-[11] __primitive.unless 3 5 :: l x1
-[12] return [11]
 
 ___ control.seq2 (3 -> 2) ___
 [1] var :: ?a x2
@@ -1777,11 +1785,11 @@ ___ list.head (1 -> 1) ___
 
 ___ list.iteratel (2 -> 1) rec ___
 [1] var :: ?l x2
-[2] changing var :: ?a x2
-[3] __primitive.ap &2 &1 -> 4 :: v? x1
-[4] __primitive.dep 3 :: a x1
-[5] list.iteratel 4 1 :: v x1
-[6] __primitive.quote 5 2 :: l x1
+[2] changing var :: ?a x1
+[3] __primitive.ap 2 &1 -> 4 :: v? x1
+[4] __primitive.dep 3 :: a x2
+[5] jump list.iteratel &4 1 :: v x1
+[6] __primitive.pushr 5 4 :: l x1
 [7] return [6]
 
 ___ list.length (1 -> 1) ___

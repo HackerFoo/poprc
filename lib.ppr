@@ -103,7 +103,7 @@ __ [f] index -> x
 @: dropl head
 
 __ a [a -> a] -> [a]
-iteratel: [dup [peek] dip22 iteratel swap] ap20
+iteratel:  dup [$ dup] dip22 [iteratel] ap20 swap pushr
 
 concat: [] [.] foldr
 
@@ -209,7 +209,7 @@ __ remove: [head] swap [=s not] pushl . filter
 
 repeat: dup [repeat]$ swap pushr
 
-__ [... a] [... b] popr2 -> [...] [...] a b
+__ [... a] [... b] popr_para -> [...] [...] a b
 popr_para: [popr] dip12 popr [swap] dip22
 
 __ [... a] [... b] [f] zip1 -> [...] [...] [f] a b f
@@ -450,8 +450,11 @@ bitree:
 seq2: [[]ap20] dip21 seq get2
 
 __ feed x as an input to each quote and compose them
-__ [[ ... , ... , ...]] x reader --> [ x ... x ... x ... ]
-reader: [[swap pushl] pushl dip11 .] pushl [] swap foldr
+__ this is the writer monad
+__ [ ... , ... ] x let1 ---> [ ... x ... ]
+__ [[ ... , ... , ...]] x let ---> [ x ... x ... x ... ]
+let1: [swap pushl] pushl dip11 .
+let: [let1] pushl [] swap foldr
 
 module logic:
 
