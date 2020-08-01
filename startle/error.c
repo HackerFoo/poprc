@@ -53,8 +53,8 @@ typedef struct {
 } error_t;
 
 #define assert_msg(...) DISPATCH(assert_msg, ##__VA_ARGS__)
-#define assert_msg_1(cond, ...) "Assertion `" #cond "' failed."
-#define assert_msg_2(cond, fmt, ...) "Assertion `" #cond "' failed: " fmt
+#define assert_msg_1(cond, ...) "Assertion `" cond "' failed."
+#define assert_msg_2(cond, fmt, ...) "Assertion `" cond "' failed: " fmt
 #define assert_msg_3(cond, fmt, ...) assert_msg_2(cond, fmt)
 #define assert_msg_4(cond, fmt, ...) assert_msg_2(cond, fmt)
 #define assert_msg_5(cond, fmt, ...) assert_msg_2(cond, fmt)
@@ -71,7 +71,7 @@ typedef struct {
   do {                                                  \
     if(!(cond)) {                                       \
       throw_error(ERROR_TYPE_LIMITATION,                \
-                  assert_msg(cond, ##__VA_ARGS__),      \
+                  assert_msg(#cond, ##__VA_ARGS__),     \
                   ##__VA_ARGS__);                       \
     }                                                   \
   } while(0)
@@ -82,14 +82,14 @@ typedef struct {
 #ifdef NDEBUG
 #define assert_error(...) ((void)0)
 #else
-#define assert_error(...) _assert_error(__VA_ARGS__)
+#define assert_error(cond, ...) _assert_error(cond, #cond, __VA_ARGS__)
 #endif
 
-#define _assert_error(cond, ...)                        \
+#define _assert_error(cond, cond_str, ...)              \
   do {                                                  \
     if(!(cond)) {                                       \
       throw_error(ERROR_TYPE_UNEXPECTED,                \
-                  assert_msg(cond, ##__VA_ARGS__),      \
+                  assert_msg(cond_str, ##__VA_ARGS__),  \
                   ##__VA_ARGS__);                       \
     }                                                   \
   } while(0)
@@ -98,7 +98,7 @@ typedef struct {
 #ifdef NDEBUG
 #define on_assert_error(...) if(0)
 #else
-#define on_assert_error(...) _on_assert_error(__VA_ARGS__)
+#define on_assert_error(cond, ...) _on_assert_error(cond, #cond, __VA_ARGS__)
 #endif
 
 /* Some explanation:
@@ -116,10 +116,10 @@ typedef struct {
  *
  * There will be no looping since throw_error() will longjmp out at the end.
  */
-#define _on_assert_error(cond, ...)                     \
-  for(;!(cond);                                         \
-      ({throw_error(ERROR_TYPE_UNEXPECTED,              \
-                    assert_msg(cond, ##__VA_ARGS__),    \
+#define _on_assert_error(cond, cond_str, ...)                   \
+  for(;!(cond);                                                 \
+      ({throw_error(ERROR_TYPE_UNEXPECTED,                      \
+                    assert_msg(cond_str, ##__VA_ARGS__),        \
                     ##__VA_ARGS__);}))
 
 
@@ -129,14 +129,14 @@ typedef struct {
 #ifdef NDEBUG
 #define assert_warn(...) ((void)0)
 #else
-#define assert_warn(...) _assert_warn(__VA_ARGS__)
+#define assert_warn(cond, ...) _assert_warn(cond, #cond, __VA_ARGS__)
 #endif
 
 #define _assert_warn(cond, ...)                 \
   do {                                          \
     if(!(cond)) {                               \
       LOG(MARK("WARN") " "                      \
-          assert_msg(cond, ##__VA_ARGS__)       \
+          assert_msg(cond_str, ##__VA_ARGS__)   \
           DROP(__VA_ARGS__));                   \
       breakpoint();                             \
     }                                           \
