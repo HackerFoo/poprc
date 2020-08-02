@@ -1785,11 +1785,11 @@ ___ list.head (1 -> 1) ___
 
 ___ list.iteratel (2 -> 1) rec ___
 [1] var :: ?l x2
-[2] changing var :: ?a x1
-[3] __primitive.ap 2 &1 -> 4 :: v? x1
-[4] __primitive.dep 3 :: a x2
-[5] jump list.iteratel &4 1 :: v x1
-[6] __primitive.pushr 5 4 :: l x1
+[2] changing var :: ?a x2
+[3] __primitive.ap &2 &1 -> 4 :: v? x1
+[4] __primitive.dep 3 :: a x1
+[5] jump list.iteratel 4 1 :: v x1
+[6] __primitive.pushr 5 2 :: l x1
 [7] return [6]
 
 ___ list.length (1 -> 1) ___

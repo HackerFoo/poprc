@@ -103,7 +103,7 @@ __ [f] index -> x
 @: dropl head
 
 __ a [a -> a] -> [a]
-iteratel:  dup [$ dup] dip22 [iteratel] ap20 swap pushr
+iteratel:  dup [peek] dip22 [iteratel] ap20 swap pushr
 
 concat: [] [.] foldr
 
