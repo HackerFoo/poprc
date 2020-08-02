@@ -4719,6 +4719,47 @@ ___ tests.qdec (1 -> 1) x2 rec ___
 [13] jump tests.qdec 12 :: l x1
 [14] return [9]
 
+___ tests.quadratic (3 -> 1) x2 ___
+[1] var :: ?a x3
+[2] var :: ?a x3
+[3] var :: ?a x3
+[4] __primitive.quote &3 &2 &1 :: l x1
+[5] list.dropl_r0 4 6 :: l x2
+[6] val 1 :: i x1
+[7] __primitive.quote &3 &2 &1 :: l x1
+[8] list.dropl_r0 7 9 :: l x1
+[9] val 0 :: i x1
+[10] __primitive.quote 3 2 1 :: l x1
+[11] list.dropl_r0 10 12 :: l x2
+[12] val 2 :: i x1
+[13] __primitive.ap &5 -> 14 :: v? x1
+[14] __primitive.dep 13 :: d x1
+[15] __primitive.mul_float 14 &16 :: d x2
+[16] val -1 :: d x2
+[17] __primitive.ap 5 -> 18 :: v? x1
+[18] __primitive.dep 17 :: d x2
+[19] __primitive.mul_float &18 18 :: d x1
+[20] __primitive.ap 8 -> 21 :: v? x1
+[21] __primitive.dep 20 :: d x1
+[22] __primitive.ap &11 -> 23 :: v? x1
+[23] __primitive.dep 22 :: d x1
+[24] __primitive.mul_float 21 23 :: d x1
+[25] __primitive.mul_float 24 26 :: d x1
+[26] val 4 :: d x1
+[27] __primitive.sub_float 19 25 :: d x1
+[28] __primitive.sqrt 27 :: d x2
+[29] __primitive.add_float &15 &28 :: d x1
+[30] __primitive.ap 11 -> 31 :: v? x1
+[31] __primitive.dep 30 :: d x1
+[32] __primitive.mul_float 31 33 :: d x2
+[33] val 2 :: d x1
+[34] __primitive.div_float 29 &32 :: d? x1
+[35] return [34] -> 39
+[36] __primitive.mul_float 28 16 :: d x1
+[37] __primitive.add_float 15 36 :: d x1
+[38] __primitive.div_float 37 32 :: d? x1
+[39] return [38]
+
 ___ tests.quote_str (1 -> 1) ___
 [1] var :: ?s x1
 [2] __primitive.strcat &3 1 :: s x1
