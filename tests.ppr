@@ -371,7 +371,9 @@ ext_cos: float_t "@math.h:cos" external float_t
 
 __ f10: [] [1] | ap12 swap2 drop
 
-sum3: [] ap30 sum
+sum3:  [] ap30 sum
+sum3r: [] ap30 0 [+] foldr __ {hide}
+sum3l: [] ap30 0 [+] foldl __ {hide}
 
 __ [a] [b] [f] [acc]
 
@@ -579,3 +581,5 @@ lengthl: 0 [drop 1+] foldl __ {hide}
 
 f15: [1+] swap . __ {hide}
 f16: [1+] __ {hide}
+
+return_test: [dup] pushl [[3* dup, 5+ dup]] pushl return drop get3

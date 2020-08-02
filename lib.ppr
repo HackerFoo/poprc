@@ -462,9 +462,15 @@ __ this is the reader monad
 __ [[ ... x, ... y, ... ]] return ---> [ ... ... ... ] [x y]
 
 return1: . pull [pushr] dip21
-return:  __ {hide}
-  [] [[return1] swap . pushl] foldr
-    [] [] swap2 $$-
+return_r:
+  [[] []] [swap pushr [return1] .] foldr get2
+return: reverse return_r
+__ these don't work yet:
+__ return: [[] []] [pushr [return1] .] foldl get2
+__ return:  __ {hide}
+__   [] [[return1] swap . pushl] foldr
+__     [] [] swap2 $$-
+
 
 module logic:
 
