@@ -38,6 +38,7 @@
 #include "var.h"
 #include "ir/analysis.h"
 #include "primitive/core.h"
+#include "parameters.h"
 
 // hash_entry() of `[id] map`
 #define ID_MAP_HASH 0x0c7881ab

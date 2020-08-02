@@ -260,16 +260,16 @@ test_output/test.log: eval
 	./eval -test > $@
 
 test_tests_txt: eval
-	./eval -echo < tests.txt | $(DIFF_TEST) test_output/tests.txt.log -
+	./eval -param echo on < tests.txt | $(DIFF_TEST) test_output/tests.txt.log -
 test_output/tests.txt.log: eval tests.txt
 	@mkdir -p test_output
-	./eval -echo < tests.txt > $@
+	./eval -param echo on < tests.txt > $@
 
 test_lib_tests_txt: eval
-	./eval -lo lib.ppr -im -echo < lib_tests.txt | $(DIFF_TEST) test_output/lib_tests.txt.log -
+	./eval -lo lib.ppr -im -param echo on < lib_tests.txt | $(DIFF_TEST) test_output/lib_tests.txt.log -
 test_output/lib_tests.txt.log: eval lib_tests.txt
 	@mkdir -p test_output
-	./eval -lo lib.ppr -im -echo < lib_tests.txt > $@
+	./eval -lo lib.ppr -im -param echo on < lib_tests.txt > $@
 
 test_bytecode: eval
 	./eval -lo $(POPR_SRC) -bc | $(DIFF_TEST) test_output/bytecode`./eval -bits -q`.log -

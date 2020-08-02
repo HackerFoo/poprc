@@ -40,8 +40,7 @@
 #include "ir/trace.h"
 #include "var.h"
 #include "ir/analysis.h"
-
-bool break_on_trace = false;
+#include "parameters.h"
 
 static void print_value(const cell_t *c) {
   switch(c->value.type) {
@@ -860,6 +859,6 @@ COMMAND(trace, "trace an instruction") {
   }
 }
 
-COMMAND(bt, "break on trace") {
-  break_on_trace = true;
+PARAMETER(break_on_trace, bool, false, "break on trace") {
+  break_on_trace = arg;
 }

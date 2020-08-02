@@ -32,6 +32,7 @@
 #include "ir/trace.h"
 #include "var.h"
 #include "parse/parse.h"
+#include "parameters.h"
 
 cell_t *empty_list() {
   return make_list(0);
@@ -87,16 +88,8 @@ bool _is_function(cell_t const *c) {
   return c && is_var(c) && c->value.type == T_LIST;
 }
 
-#define LIST_MAX_DEPTH 200
-uint8_t list_depth_limit = 20;
-
-COMMAND(list_depth_limit, "set list depth limit") {
-  if(match_class(rest, CC_NUMERIC, 0, 64)) {
-    list_depth_limit = clamp(1, LIST_MAX_DEPTH, parse_num(rest));
-    printf("list depth limit set to %d\n", list_depth_limit);
-  } else {
-    printf("list depth limit is %d\n", list_depth_limit);
-  }
+PARAMETER(unroll_limit, int, 20, "limit for unrolling lists") {
+  unroll_limit = clamp(1, 200, arg);
 }
 
 // not really a func
@@ -142,7 +135,7 @@ response func_list(cell_t **cp, context_t *ctx) {
     add_conditions_var(*p, value_condition(c)); // *** modifies *p
   }
   if(n && row && is_list(c->value.ptr[n-1])) {
-    if(ctx->depth >= list_depth_limit) {
+    if(ctx->depth >= unroll_limit) {
       drop(c->value.ptr[n-1]);
       c->value.ptr[n-1] = make_list(0);
       FLAG_SET(*c, value, ABBREV);

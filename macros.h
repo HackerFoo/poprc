@@ -410,4 +410,6 @@
     + (sizeof(t) - 1)) \
    / sizeof(t))
 
+#define PARAMETER(name, type, default, desc) void set_parameter_##name(type arg)
+
 #endif

@@ -36,6 +36,7 @@
 #include "ir/compile.h"
 #include "var.h"
 #include "ir/analysis.h"
+#include "parameters.h"
 
 // parameters
 #define ENTRY_BLOCK_SIZE 1024

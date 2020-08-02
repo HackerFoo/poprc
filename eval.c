@@ -60,6 +60,8 @@
 #include "primitive/io.h"
 #include "irc.h"
 #include "gen/vlgen.h"
+#include "command.h"
+#include "parameters.h"
 
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
@@ -76,13 +78,9 @@ bool command_line = false;
 bool exit_on_error = false;
 
 static bool tty = false;
-static bool echo = false;
-static bool run_leak_test = true;
 bool quiet = false;
 static bool will_eval_commands = true;
 static bool eval_commands = true;
-static bool allow_io = true;
-static int reduction_limit = 5;
 const char *history_path = NULL;
 
 cell_t *previous_result = NULL;
@@ -132,8 +130,8 @@ void stats_display() {
          saved_stats.alt_cnt);
 }
 
-COMMAND(echo, "whether the input line is echoed") {
-  echo = !rest || segcmp("yes", tok_seg(rest)) == 0;
+PARAMETER(echo, bool, false, "whether the input line is echoed") {
+  echo = arg;
 }
 
 COMMAND(stats, "print statistics") {
@@ -144,8 +142,8 @@ COMMAND(symbols, "print symbol table") {
   print_symbols();
 }
 
-COMMAND(leak, "whether leak test is performed") {
-  run_leak_test = !rest || segcmp("yes", tok_seg(rest)) == 0;
+PARAMETER(run_leak_test, bool, true, "whether leak test is performed") {
+  run_leak_test = arg;
 }
 
 COMMAND(single, "eval one line and exit") {
@@ -460,41 +458,6 @@ void run_eval_readline(bool echo) {
 }
 #endif
 
-#define COMMAND__ITEM(file, line, name, desc)            \
-  {                                                      \
-    .first = (uintptr_t)#name,                           \
-    .second = (uintptr_t)&command_##name                 \
-  },
-static pair_t commands[] = {
-#include "command_list.h"
-};
-#undef COMMAND__ITEM
-
-#define COMMAND__ITEM(file, line, name, desc)            \
-  {                                                      \
-    .first = (uintptr_t)#name,                           \
-    .second = (uintptr_t)desc                            \
-  },
-static pair_t command_descriptions[] = {
-#include "command_list.h"
-};
-#undef COMMAND__ITEM
-
-bool run_command(seg_t name, cell_t *rest) {
-  FOREACH(i, commands) {
-    pair_t *entry = &commands[i];
-    char *entry_name = (char *)entry->first;
-    void (*entry_func)(cell_t *) = (void (*)(cell_t *))entry->second;
-    int entry_name_size = strlen(entry_name);
-    if((int)name.n <= entry_name_size &&
-       strncmp(name.s, entry_name, name.n) == 0) {
-      entry_func(rest);
-      return true;
-    }
-  }
-  return false;
-}
-
 COMMAND(modules, "print all modules") {
   print_modules();
 }
@@ -534,25 +497,6 @@ COMMAND(define, "define a function") {
   cell_t *expr = p;
   if(!expr) return;
   parse_eval_def(tok_seg(name), expr);
-}
-
-COMMAND(help, "list available commands") {
-  char pre = command_line ? '-' : ':';
-  printf("%s | DESCRIPTION\n", command_line ? "'----> FLAG" : "'-> COMMAND");
-  seg_t name = { .s = "", .n = 0 };
-  if(rest) name = tok_seg(rest);
-  FOREACH(i, command_descriptions) {
-    pair_t *entry = &command_descriptions[i];
-    char *entry_name = (char *)entry->first;
-    char *entry_desc = (char *)entry->second;
-    int entry_name_size = strlen(entry_name);
-    if((int)name.n <= entry_name_size &&
-       strncmp(name.s, entry_name, name.n) == 0) {
-      printf("  %*c%s | %s\n", max(0, 9 - entry_name_size), pre, entry_name, entry_desc);
-    }
-  }
-  printf("            V\n");
-  if(command_line) quit = true;
 }
 
 COMMAND(quit, "quit interpreter") {
@@ -959,8 +903,8 @@ void breakpoint_hook() {
   }
 }
 
-COMMAND(noio, "prevent IO") {
-  allow_io = false;
+PARAMETER(allow_io, bool, true, "allow IO") {
+  allow_io = arg;
 }
 
 COMMAND(op, "set a watched op") {
@@ -990,13 +934,8 @@ COMMAND(cl, "clear log") {
   log_init();
 }
 
-COMMAND(limit, "set reduction limit") {
-  if(match_class(rest, CC_NUMERIC, 0, 64)) {
-    reduction_limit = clamp(1, 100, parse_num(rest));
-    printf("reduction limit set to %d\n", reduction_limit);
-  } else {
-    printf("reduction limit is %d\n", reduction_limit);
-  }
+PARAMETER(reduction_limit, int, 5, "reduction limit") {
+  reduction_limit = clamp(1, 100, arg);
 }
 
 COMMAND(tag, "convert tag <-> hex") {
