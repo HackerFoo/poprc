@@ -18,11 +18,10 @@ COMMA := ,
 	  LC_ALL=C sort -t ',' -u -k 3,3 > $@
 
 # store the current git commit
-.gen/git_log.h.new: LOG = $(shell git log -1 --oneline)
 .gen/git_log.h.new: $(SRC)
 	@mkdir -p $(dir $@)
 	echo -n '#define GIT_LOG "' > $@
-	git log -1 --oneline | tr -d '\n' >> $@
+	git log -1 --oneline | tr -d '\n' | sed 's/"/\\"/g' >> $@
 	@if git diff-index --quiet HEAD --; then \
 		echo '"' >> $@; \
 	else \
