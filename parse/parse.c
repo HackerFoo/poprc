@@ -319,9 +319,11 @@ fail:
 }
 
 bool parse_def(cell_t **c, cell_t **name, cell_t **l) {
-  cell_t *p = *c;
+  cell_t *p = *c, *colon;
   MATCH_IF(!is_reserved(tok_seg(p)), *name);
-  MATCH_ONLY(":");
+  MATCH_ONLY(":", colon);
+  // apply attributes after colon to the name
+  (*name)->tok_list.attributes |= colon->tok_list.attributes;
   if(!parse_rhs_expr(&p, l)) goto fail;
   *c = p;
   return true;
