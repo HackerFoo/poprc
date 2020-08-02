@@ -450,7 +450,7 @@ bitree:
 seq2: [[]ap20] dip21 seq get2
 
 __ feed x as an input to each quote and compose them
-__ this is the writer monad
+__ this is the reader monad
 __ [ ... , ... ] x let1 ---> [ ... x ... ]
 __ [[ ... , ... , ...]] x let ---> [ x ... x ... x ... ]
 let1: [swap pushl] pushl dip11 .
@@ -458,7 +458,7 @@ __ FIX using let1 gives different results
 let: [[swap pushl] pushl dip11 .] pushl [] swap foldr
 
 __ extract values
-__ this is the reader monad
+__ this is the writer monad
 __ [[ ... x, ... y, ... ]] return ---> [ ... ... ... ] [x y]
 
 return1: . pull [pushr] dip21
