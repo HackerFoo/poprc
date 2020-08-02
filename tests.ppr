@@ -559,3 +559,23 @@ quadratic:
        1@ dup *f, __ b^2
        0@, 2@ *f 4*f -f sqrt dup -1*f | +f,
        2@ 2*f /f ]] swap let head
+
+__ another version of let, doesn't work
+let_map: [swap pushl] pushl map concat
+
+after_fold: concat 42 swap $ __ {hide}
+after_sum: [+] foldr 42+ __ {hide}
+suml: 0 [+] foldl __ {hide}
+
+__ {hide}
+foldl2:
+  [swap] dip22
+    [pushl] pushl map
+    [quote] dip11 pushl
+    concat head
+
+concatl: [] [.] foldl __ {hide}
+lengthl: 0 [drop 1+] foldl __ {hide}
+
+f15: [1+] swap . __ {hide}
+f16: [1+] __ {hide}

@@ -990,6 +990,15 @@ ___ control.peek_cmp (2 -> 2) ___
 [3] __primitive.compose &2 1 :: l x1
 [4] return [2 3]
 
+___ control.return1 (3 -> 2) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] var :: ?l x1
+[4] __primitive.compose 2 1 -> 5 :: l? x2
+[5] __primitive.dep 4 :: a x1
+[6] __primitive.pushr 3 5 :: l x1
+[7] return [6 4]
+
 ___ control.seq2 (3 -> 2) ___
 [1] var :: ?a x2
 [2] var :: ?a x1
@@ -4409,6 +4418,24 @@ ___ tests.leak_r0 (2 -> 1) x2 rec ___
 [10] val 3 :: i x1
 [11] jump tests.leak_r0 9 1 :: i x1
 [12] return [8]
+
+___ tests.let_map (2 -> 1) ___
+[1] var :: ?a x1
+[2] var :: ?l x1
+[3] [] :: l x1
+[4] jump tests.let_map_r0 1 2 3 :: v x1
+[5] return [4]
+
+___ tests.let_map_r0 (3 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] changing var :: ?l x1
+[3] var :: ?a x2
+[4] __primitive.ap 2 -> 5 :: l? x2
+[5] __primitive.dep 4 :: l x1
+[6] __primitive.ap &3 5 :: l x1
+[7] __primitive.compose 6 1 :: l x1
+[8] jump tests.let_map_r0 3 4 7 :: v x1
+[9] return [8]
 
 ___ tests.map_add1 (1 -> 1) ___
 [1] var :: ?l x1

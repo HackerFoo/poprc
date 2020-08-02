@@ -457,6 +457,15 @@ let1: [swap pushl] pushl dip11 .
 __ FIX using let1 gives different results
 let: [[swap pushl] pushl dip11 .] pushl [] swap foldr
 
+__ extract values
+__ this is the reader monad
+__ [[ ... x, ... y, ... ]] return ---> [ ... ... ... ] [x y]
+
+return1: . pull [pushr] dip21
+return:  __ {hide}
+  [] [[return1] swap . pushl] foldr
+    [] [] swap2 $$-
+
 module logic:
 
 imports:
