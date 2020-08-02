@@ -454,7 +454,8 @@ __ this is the writer monad
 __ [ ... , ... ] x let1 ---> [ ... x ... ]
 __ [[ ... , ... , ...]] x let ---> [ x ... x ... x ... ]
 let1: [swap pushl] pushl dip11 .
-let: [let1] pushl [] swap foldr
+__ FIX using let1 gives different results
+let: [[swap pushl] pushl dip11 .] pushl [] swap foldr
 
 module logic:
 

@@ -923,13 +923,13 @@ ___ control.let (2 -> 1) ___
 [5] return [4]
 
 ___ control.let_r0 (3 -> 1) x2 rec ___
-[1] var :: ?a x1
+[1] var :: ?a x2
 [2] changing var :: ?l x1
 [3] changing var :: ?l x2
-[4] __primitive.ap 2 -> 5 :: l? x3
+[4] __primitive.ap 2 -> 5 :: l? x2
 [5] __primitive.dep 4 :: l x3
 [6] __primitive.seq 9 &5 :: v x1
-[7] __primitive.ap &4 5 :: l x1
+[7] __primitive.ap &1 5 :: l x1
 [8] __primitive.compose 7 3 :: l x1
 [9] jump control.let_r0 8 4 1 :: v x1
 [10] return [6] -> 12
