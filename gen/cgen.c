@@ -598,6 +598,7 @@ void gen_function(tcell_t *e) {
 }
 
 void clear_ops(tcell_t *e) {
+  e->op = OP_null;
   FOR_TRACE(c, e) {
     if(c->op == OP_exec) {
       tcell_t *x = get_entry(c);
