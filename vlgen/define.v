@@ -20,7 +20,7 @@
 `define intT [`intN-1:0]
 `define symT [`symN-1:0]
 `define anyT [`anyN-1:0]
-`define addrT [`anyN-1:0]
+`define addrT [`addrN-1:0]
 
 `define sync_ports \
   input wire clk, input wire nrst, \

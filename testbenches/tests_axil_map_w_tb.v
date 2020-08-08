@@ -43,7 +43,7 @@ module tests_axil_map_w_tb;
       `out(stream, 0, sR),
       `out(null_stream, 1, sB));
 
-    reg `addrT i;
+    integer i;
     initial begin
         sRA  = 0;
         sRA_next = 0;

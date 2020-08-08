@@ -290,7 +290,7 @@ endmodule
 module dup_stream #(
   parameter N = 1
 )(
-  input               clk,
+  input wire          clk,
   input wire          in_valid,
   output wire         in_ready,
   output wire [0:N-1] out_valid,

@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 `define intN 32
-`define addrN 11
+`define addrN 9
 `include "primitives.v"
 
 `define axi_module tests_stream_compute_fn
@@ -8,7 +8,7 @@
 
 `include "array.v"
 
-module tests_stream_compute_top
+module tests_axi_lite_slave_top
 (
  input  wire         s_axi_aclk,
  input  wire         s_axi_aresetn,
@@ -45,6 +45,9 @@ module tests_stream_compute_top
     `wire(stream, `intN , w);
     `wire(stream, `intN , r);
     `wire(null_stream, 0, b);
+    `assign_stream(inst, ar);
+    `assign_stream(inst, aw);
+    `assign_stream(inst, w);
 
     wire inst_in_ready;
     `inst_sync(`id(`axi_module), inst, #())(
@@ -82,4 +85,4 @@ module tests_stream_compute_top
     assign s_axi_bresp = 2'b00; // OKAY
     assign s_axi_rresp = 2'b00; // OKAY
 
-endmodule // tests_stream_compute_top
+endmodule // tests_axi_lite_slave_top

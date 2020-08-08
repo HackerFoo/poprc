@@ -5098,7 +5098,7 @@ ___ tests.stream_compute_fn_r0 (3 -> 1) rec ___
 [4] __primitive.ap 1 -> 5 :: l? x2
 [5] __primitive.dep 4 :: i x1
 [6] __primitive.add 5 7 :: i x1
-[7] val 1024 :: i x1
+[7] val 256 :: i x1
 [8] __primitive.ap 2 -> 9 :: l? x2
 [9] __primitive.dep 8 :: i x1
 [10] tests.collatz_r0 11 9 :: i x1

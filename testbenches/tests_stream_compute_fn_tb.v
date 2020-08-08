@@ -1,13 +1,13 @@
 `timescale 1ns / 1ps
 `define intN 32
-`define addrN 11
+`define addrN 9
 `include "primitives.v"
 `include "tests_stream_compute_fn.v"
 `include "array.v"
 
 module tests_stream_compute_fn_tb;
 
-    localparam N = 1024;
+    localparam N = 256;
 
     `wire(Array, (`addrN, `intN), arr);
     wire `intT res;
