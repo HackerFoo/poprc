@@ -256,4 +256,5 @@ arr(       509) =        109
 arr(       510) =         47
 arr(       511) =         47
 arr(       512) =          0
-done
+done @       24061
+max write time =         827 @         147

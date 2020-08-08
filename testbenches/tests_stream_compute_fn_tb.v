@@ -26,7 +26,9 @@ module tests_stream_compute_fn_tb;
     assign sR_ready = out_ready;
     assign sB_ready = out_ready;
 
-    `testbench(tests_stream_compute_fn_tb, 200000)
+    integer counter = 0;
+
+    `testbench(tests_stream_compute_fn_tb, 30000)
 
     // Use bit 31 to indicate that data is invalid
     array #(.N(2 * N), .INIT_ADDR(0), .INIT(1 << 31))
@@ -43,7 +45,11 @@ module tests_stream_compute_fn_tb;
       `out(stream, 0, sR),
       `out(null_stream, 1, sB));
 
-    reg `addrT i;
+    integer i;
+    integer start_time = 0;
+    integer max_time   = 0;
+    integer write_time = 0;
+    integer max_addr   = 0;
     initial begin
         sRA  = N;
         sRA_valid = `false;
@@ -55,11 +61,17 @@ module tests_stream_compute_fn_tb;
 
         // write some data
         for(i = 0; i < N; i = i + 1) begin
-            sWA = i;
-            sWA_valid = `true;
-            sW = i;
-            sW_valid = `true;
+            start_time = counter;
+            sWA        = i;
+            sWA_valid  = `true;
+            sW         = i;
+            sW_valid   = `true;
             `wait_for(sWA_ready && sW_ready);
+            write_time = counter - start_time;
+            if(write_time > max_time) begin
+                max_time = write_time;
+                max_addr = i;
+            end
             if($random(write_seed) & 1) begin
                 sWA_valid = `false;
                 sW_valid = `false;
@@ -73,11 +85,13 @@ module tests_stream_compute_fn_tb;
         `wait_for(sRA >= N + N-1 && sR_valid);
         nrst = `false;
         #2;
-        $display("done");
+        $display("done @ %d", counter);
+        $display("max write time = %d @ %d", max_time, max_addr);
         $finish;
     end
 
 always @(posedge clk) begin
+    counter <= counter + 1;
     if(sRA_ready) begin
         sRA_valid <= $random(read_seed);
     end
