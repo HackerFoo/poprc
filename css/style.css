@@ -1,0 +1,51 @@
+/* eliminate border */
+body {
+    background-color: #000;
+    margin: 6px;
+    border: 0;
+    padding: 0;
+}
+
+/* HACK to hide the MIME type error */
+.terminal-output > div:nth-child(2), .terminal-output > div:nth-child(3) {
+    display: none
+}
+
+/* text appearance */
+.terminal,
+.terminal-output,
+.terminal-output > :not(.raw),
+.terminal-output > :not(.raw) span,
+.terminal-output > :not(.raw) a,
+.cmd,
+.cmd span {
+    font-family: Inconsolata, Consolas, monospace;
+    font-size: 16px;
+    line-height: 18px;
+    text-shadow: 0 0 5px #ccc;
+    box-sizing: border-box;
+}
+
+.terminal, .cmd {
+    font-family: Inconsolata, Consolas, monospace;
+    color: #fff;
+    background-color: #000;
+    font-size: 16px;
+    line-height: 18px;
+    text-shadow: 0 0 5px #ccc;
+    box-sizing: border-box;
+}
+
+/* force color */
+.cmd, .cmd div, .cmd span[data-text]:not(.cmd-inverted):not(.token):not(.emoji), .terminal, .terminal-output > :not(.raw) a, .terminal-output > :not(.raw) div, .terminal-output > :not(.raw) span[data-text]:not(.token):not(.inverted):not(.terminal-inverted):not(.cmd-inverted):not(.terminal-error):not(.emoji) {
+    color: #fff;
+}
+
+/* scroll to bottom */
+#term {
+    margin: 0;
+    border: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+}

@@ -4,7 +4,8 @@
   <script src="node_modules/keyboardevent-key-polyfill/index.js"></script>
   <script>keyboardeventKeyPolyfill.polyfill();</script>
   <script src="node_modules/jquery.terminal/js/jquery.terminal.min.js"></script>
-  <link href="css/jquery.terminal.css" rel="stylesheet"/>
+  <link href="node_modules/jquery.terminal/css/jquery.terminal.min.css" rel="stylesheet"/>
+  <link href="css/style.css" rel="stylesheet"/>
 </head>
 <body>
   <div id="term"></div>
@@ -50,7 +51,7 @@
                " ,--------' Popr Interpreter '--------,\n" +
                " | [[;#f00;;]Copyright 2012-2020 Dustin DeWeese] |\n" +
                " '------------------------------------'\n" +
-               "   type :help for help\n \n",
+               " type :help for help - https://popr.dev\n \n",
     onClear: function(term) {
       term.echo(this.greetings);
     }
