@@ -17,7 +17,8 @@ FUNCTIONS = \
   tests.axi_lite_slave:32 \
   tests.three_reads:8 \
   tests.three_writes:8 \
-  tests.axil_map_w:32
+  tests.axil_map_w:32 \
+  tests.stream_compute_fn:32
 
 COMMON = ../vlgen/primitives.v ../vlgen/define.v
 

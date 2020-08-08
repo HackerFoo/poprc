@@ -223,9 +223,53 @@ void gen_stack(const tcell_t *e) {
   }
 }
 
+static
+void join_stream_ready_signals(const tcell_t *e, const tcell_t *c, uintptr_t const *const *backrefs) {
+  const uintptr_t *outs;
+  int ci = c - e;
+  size_t n = get_outputs(e, c, backrefs, &outs);
+  COUNTUP(i, n) {
+    int oi = outs[i];
+    const tcell_t *out = &e[oi];
+    if(!is_tail_call(e, out)) {
+      printf("  wire inst%d_lst%d_valid;\n", oi, ci);
+      printf("  wire inst%d_lst%d_ready;\n", oi, ci);
+    }
+  }
+  if(n == 0) {
+    printf("  assign lst%d_ready = `false;\n", ci);
+  } else {
+    printf("  dup_stream #(.N(%d)) dup_list%d(\n"
+           "    .clk(clk),\n"
+           "    .in_valid(lst%d_valid),\n"
+           "    .in_ready(lst%d_ready),\n"
+           "    .out_valid({", (int)n, ci, ci, ci);
+    SEP(", ");
+    COUNTUP(i, n) {
+      int oi = outs[i];
+      const tcell_t *out = &e[oi];
+      if(!is_tail_call(e, out)) {
+        printf_sep("inst%d_lst%d_valid", oi, ci);
+      }
+    }
+    printf("}),\n"
+           "    .out_ready({");
+    sep = "";
+    COUNTUP(i, n) {
+      int oi = outs[i];
+      const tcell_t *out = &e[oi];
+      if(!is_tail_call(e, out)) {
+        printf_sep("inst%d_lst%d_ready", oi, ci);
+      }
+    }
+    printf("})\n"
+           "  );\n");
+  }
+}
+
 // declare registers and wires
 static
-void gen_decls(tcell_t *e) {
+void gen_decls(tcell_t *e, uintptr_t const *const *backrefs) {
   FOR_TRACE_CONST(tc, e) {
     int i = tc - e;
     const cell_t *c = &tc->c;
@@ -233,10 +277,13 @@ void gen_decls(tcell_t *e) {
     if(ONEOF(t, T_BOTTOM, T_RETURN)) continue;
     const char *null_str = STR_IF(!tc->trace.bit_width, "null_");
     if(is_var(c)) { // inputs
-      const char *decl = FLAG(*e, entry, RECURSIVE) && t != T_OPAQUE ? "variable" : "alias";
+      const char *decl = FLAG(*e, entry, RECURSIVE) && t != T_OPAQUE ? "variable" : "alias"; // <---
       printf("  `%s(%s", decl, null_str);
       print_type_and_dims(&tc->trace);
       printf(", %s%d, in%d);\n", cname(t), i, e->entry.in - i);
+      if(t == T_LIST) {
+        join_stream_ready_signals(e, tc, backrefs);
+      }
     } else { // constants
       if(c->op == OP_value) {
         if(t == T_LIST) {
@@ -541,11 +588,7 @@ void next_block(const tcell_t *e, const tcell_t *r, int block,
 }
 
 static
-void gen_body(tcell_t *e) {
-  size_t backrefs_n = backrefs_size(e);
-  assert_le(backrefs_n, 1024);
-  uintptr_t const *backrefs[backrefs_n];
-  build_backrefs(e, (uintptr_t **)backrefs, backrefs_n);
+void gen_body(tcell_t *e, uintptr_t const *const *backrefs) {
   bool block_start = true;
   int block = 1;
   int return_block = 0;
@@ -800,14 +843,19 @@ void gen_loops(tcell_t *e) {
 
 static
 void gen_module(tcell_t *e) {
+  size_t backrefs_n = backrefs_size(e);
+  assert_le(backrefs_n, 1024);
+  uintptr_t const *backrefs[backrefs_n];
+  build_backrefs(e, (uintptr_t **)backrefs, backrefs_n);
+
   e->op = OP_value;
   gen_module_interface(e);
   printf("\n");
-  gen_decls(e);
+  gen_decls(e, backrefs);
   if(FLAG(*e, entry, STACK)) {
     gen_stack(e);
   }
-  gen_body(e);
+  gen_body(e, backrefs);
   printf("\n");
   if(FLAG(*e, entry, SYNC)) {
     gen_valid_ready(e);

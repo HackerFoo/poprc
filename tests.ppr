@@ -585,3 +585,5 @@ f15: [1+] swap . __ {hide}
 f16: [1+] __ {hide}
 
 return_test: [dup] pushl [[3* dup, 5+ dup]] pushl return drop get3
+
+stream_compute_fn: [1024+] [collatz] stream_compute

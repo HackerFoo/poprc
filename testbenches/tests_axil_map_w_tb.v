@@ -19,6 +19,9 @@ module tests_axil_map_w_tb;
     `reg(stream, `intN, sWA);
     `reg(stream, `intN, sW);
     `wire(stream, 1, sB);
+    `assign_stream(inst, sRA);
+    `assign_stream(inst, sWA);
+    `assign_stream(inst, sW);
     reg  `intT sRA_next;
 
     assign sR_ready = out_ready;

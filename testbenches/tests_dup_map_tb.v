@@ -7,6 +7,7 @@ module tests_dup_map_tb;
 
     `reg(stream, `intN, sIn);
     `wire(stream, `intN, sOut);
+    `assign_stream(dup_map, sIn);
     assign sOut_ready = out_ready;
 
     `testbench(tests_dup_map_tb, 100)

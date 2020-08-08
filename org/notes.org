@@ -1,5 +1,8 @@
 #+TITLE: PoprC Notes
 
+* stream_compute
+- input streams to io.stream_write_array & io.stream_compute must be dup'ed
+  - ready = X when only one of them is ready
 * compose
 - bind through row lists -> pushr
 * pos

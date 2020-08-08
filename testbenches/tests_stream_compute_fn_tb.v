@@ -1,13 +1,13 @@
 `timescale 1ns / 1ps
-`define intN 8
-`define addrN 8
+`define intN 32
+`define addrN 11
 `include "primitives.v"
-`include "io_stream_read_write_array.v"
+`include "tests_stream_compute_fn.v"
 `include "array.v"
 
-module io_stream_read_write_array_tb;
+module tests_stream_compute_fn_tb;
 
-    localparam N = 255;
+    localparam N = 1024;
 
     `wire(Array, (`addrN, `intN), arr);
     wire `intT res;
@@ -22,19 +22,19 @@ module io_stream_read_write_array_tb;
     `assign_stream(inst, sRA);
     `assign_stream(inst, sWA);
     `assign_stream(inst, sW);
-    reg  `intT sRA_next;
 
     assign sR_ready = out_ready;
     assign sB_ready = out_ready;
 
-    `testbench(io_stream_read_write_array_tb, 1000)
+    `testbench(tests_stream_compute_fn_tb, 200000)
 
-    array #(.N(N))
+    // Use bit 31 to indicate that data is invalid
+    array #(.N(2 * N), .INIT_ADDR(0), .INIT(1 << 31))
       arr(.clk(clk),
           `out(Array, 0, arr));
 
     `in_ready(inst);
-    `inst_sync(io_stream_read_write_array, inst, #())(
+    `inst_sync(tests_stream_compute_fn, inst, #())(
       `sync(in_valid, out_ready),
       `in(Array, 0, arr),
       `in(stream, 1, sRA),
@@ -45,8 +45,7 @@ module io_stream_read_write_array_tb;
 
     reg `addrT i;
     initial begin
-        sRA  = 0;
-        sRA_next = 0;
+        sRA  = N;
         sRA_valid = `false;
         sWA  = 0;
         sWA_valid = `false;
@@ -58,7 +57,7 @@ module io_stream_read_write_array_tb;
         for(i = 0; i < N; i = i + 1) begin
             sWA = i;
             sWA_valid = `true;
-            sW = (i * 7) & 8'h7f;
+            sW = i;
             sW_valid = `true;
             `wait_for(sWA_ready && sW_ready);
             if($random(write_seed) & 1) begin
@@ -71,8 +70,7 @@ module io_stream_read_write_array_tb;
         end
         sWA_valid = `false;
         sW_valid = `false;
-        sWA = N;
-        `wait_for(sRA == N-1 && sR_valid);
+        `wait_for(sRA >= N + N-1 && sR_valid);
         nrst = `false;
         #2;
         $display("done");
@@ -81,17 +79,12 @@ module io_stream_read_write_array_tb;
 
 always @(posedge clk) begin
     if(sRA_ready) begin
-        if(sRA_next < sWA & ($random(read_seed) & 1)) begin
-            `set(sRA_valid);
-            sRA <= sRA_next;
-            sRA_next <= sRA_next + 1;
-        end
-        else begin
-            `reset(sRA_valid);
-        end
+        sRA_valid <= $random(read_seed);
     end
-    if(sR_valid & sR != ((sRA * 7) & 8'h7f))
-      $display("MISMATCH arr(%d) = %d", sRA, sR);
+    if(sR_valid & (!sR[31])) begin
+        $display("arr(%d) = %d", sRA, sR);
+        sRA <= sRA + 1;
+    end
 end
 
-endmodule // io_stream_read_write_array_tb
+endmodule // tests_stream_compute_fn_tb

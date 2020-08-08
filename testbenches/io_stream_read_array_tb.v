@@ -10,6 +10,7 @@ module io_stream_read_array_tb;
     `wire(Array, (`addrN, `intN), arr);
     `reg(stream, `intN, sIn);
     `wire(stream, `intN, sOut);
+    `assign_stream(inst, sIn);
     assign sOut_ready = out_ready;
 
     `testbench(io_stream_read_array_tb, 100)

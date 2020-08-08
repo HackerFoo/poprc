@@ -3,13 +3,15 @@ module array (
   `output(Array, (`addrN, `intN), 0)
 );
     parameter N = 16;
+    parameter INIT_ADDR = 1;
+    parameter INIT = 0;
 
     reg              `intT data[0:N-1];
 
     integer          i;
     initial begin
         for(i = 0; i < N; i = i + 1) begin
-            data[i] = i;
+            data[i] = INIT_ADDR ? i : INIT;
         end
     end
 

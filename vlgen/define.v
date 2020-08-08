@@ -44,14 +44,16 @@
 
 `define sync_wire(name) `concat_(`current_inst, name)
 
-`define inst(t, n, p) t p t``_``n
-
-`define apply(f, x) `f x
+`define inst(t, n, p) \
+  `define current_inst n \
+  t p t``_``n
 
 `define inst_sync(t, n, p) \
   `define current_inst n \
   wire `sync_wire(out_valid); \
-  `inst(t, n, p)
+  t p t``_``n
+
+`define apply(f, x) `f x
 
 `define start_block(name) \
 `define block name \
@@ -94,7 +96,7 @@
 `define input_stream(N, index) input wire [N-1:0] in``index, input wire in``index``_valid, output wire in``index``_ready
 `define output_stream(N, index) output wire [N-1:0] out``index, output wire out``index``_valid, input wire out``index``_ready
 `define output_null_stream(N, index) output wire out``index``_valid, input wire out``index``_ready
-`define in_stream(index, name) .in``index(name), .in``index``_valid(name``_valid), .in``index``_ready(name``_ready)
+`define in_stream(index, name) .in``index(name), .in``index``_valid(`concat_(`current_inst, name``_valid)), .in``index``_ready(`concat_(`current_inst, name``_ready))
 `define in_null_stream(index, name) .in``index``_valid(name``_valid), .in``index``_ready(name``_ready)
 `define out_stream(index, name) .out``index(name), .out``index``_valid(name``_valid), .out``index``_ready(name``_ready)
 `define out_null_stream(index, name) .out``index``_valid(name``_valid), .out``index``_ready(name``_ready)
@@ -113,6 +115,8 @@
 `define const_stream(N, name, val) localparam [N-1:0] name = val; localparam name``_valid = `true
 `define const_nil(name) localparam name = 0; localparam name``_valid = `true; wire name``_ready
 `define null_const_nil(name) localparam name``_valid = `true; wire name``_ready
+
+`define assign_stream(inst, name) wire inst``_``name``_ready; assign name``_ready = inst``_``name``_ready; wire inst``_``name``_valid = name``_valid
 
 /* ------------------------------------------------------ *
      ARRAY BUS
