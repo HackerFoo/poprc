@@ -456,7 +456,7 @@ f13: seq popr 1+
 
 zip_add: [+] zip
 
-stream_combine: popr_para default [[stream_combine] ap20] dip21 pushr
+stream_combine: popr_para default [[stream_combine] $$] dip21 pushr
 
 axi_lite_slave: stream_read_write_array
 
@@ -587,3 +587,5 @@ f16: [1+] __ {hide}
 return_test: [dup] pushl [[3* dup, 5+ dup]] pushl return drop get3
 
 stream_compute_fn: [256+] [collatz] stream_compute
+
+dotswap: . swap . swap . __ {hide}

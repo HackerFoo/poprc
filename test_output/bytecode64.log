@@ -1830,7 +1830,7 @@ ___ list.iteratel (2 -> 1) rec ___
 [2] changing var :: ?a x2
 [3] __primitive.ap &2 &1 -> 4 :: v? x1
 [4] __primitive.dep 3 :: a x1
-[5] jump list.iteratel 4 1 :: v x1
+[5] jump list.iteratel 4 1 :: l x1
 [6] __primitive.pushr 5 2 :: l x1
 [7] return [6]
 
@@ -1894,7 +1894,7 @@ ___ list.map (2 -> 1) rec ___
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
 [4] __primitive.dep 3 :: a x1
-[5] jump list.map 3 &1 :: v x1
+[5] jump list.map 3 &1 :: l x1
 [6] __primitive.compose 5 4 1 :: l x1
 [7] return [6]
 
@@ -2212,7 +2212,7 @@ ___ list.zip (3 -> 1) rec ___
 [7] __primitive.dep 6 :: a x1
 [8] __primitive.ap 7 5 &1 -> 9 :: v? x1
 [9] __primitive.dep 8 :: a x1
-[10] jump list.zip 6 4 1 :: v x1
+[10] jump list.zip 6 4 1 :: l x1
 [11] __primitive.pushr 10 9 :: l x1
 [12] return [11]
 
@@ -2254,7 +2254,7 @@ ___ list.zip_with (4 -> 1) rec ___
 [9] __primitive.ap 8 6 2 &1 -> 11 12 :: v? x2
 [11] __primitive.dep 9 :: a x1
 [12] __primitive.dep 9 :: a x1
-[13] jump list.zip_with 7 5 12 1 :: v x1
+[13] jump list.zip_with 7 5 12 1 :: l x1
 [15] __primitive.pushr 13 11 :: l x1
 [16] return [15]
 
@@ -4970,7 +4970,7 @@ ___ tests.stream_combine (2 -> 1) rec ___
 [3] __primitive.ap 2 -> 4 :: l? x2
 [4] __primitive.dep 3 :: a x1
 [5] __primitive.ap 1 -> X :: l? x1
-[6] jump tests.stream_combine 3 5 :: v x1
+[6] jump tests.stream_combine 3 5 :: l x1
 [7] __primitive.pushr 6 4 :: l x1
 [8] return [7]
 

@@ -988,6 +988,10 @@ int trace_build_quote(tcell_t *entry, cell_t *l) {
   return inline_quote(entry, l);
 }
 
+bool is_compose_arg(const cell_t *c) {
+  return is_var(c) && FLAG(*c, value, ROW);
+}
+
 int inline_quote(tcell_t *entry, cell_t *l) {
   LOG("inline quote %C", l);
   FLAG_SET(*entry, entry, FORCED_INLINE);
@@ -1002,31 +1006,84 @@ int inline_quote(tcell_t *entry, cell_t *l) {
     switch_entry(entry, l);
     return var_index(entry, l->value.var);
   }
-  bool row = is_row_list(l);
-  const int size = function_out(l, true);
-  if(list_size(l) > size) {
-    row = false; // HACK the leftmost is nil
-  }
-  if(row) FLAG_SET(*entry, entry, ROW);
-  assert_error(!row || size > 1, "must have a non-row output");
-  FORLIST(p, l, true) force(p); // ***
-
-  // store the quote as a compose, pushr, or quote
-  int x = trace_alloc(entry, size);
-  tcell_t *tc = &entry[x];
-  cell_t *p0 = l->value.ptr[0];
-  tc->op = row ? (is_var(p0) && FLAG(*p0, value, ROW) ? OP_compose :
-                  OP_pushr) : OP_quote;
-  tc->trace.type = T_LIST;
-  int n = size;
-  LOG("inline_quote: %s[%d] <- %O %C", entry->word_name, x, tc->op, l);
-
   FORLIST(p, l, true) {
-    int x = trace_value(entry, *p);
-    tc->expr.arg[--n] = index_tr(x);
-    entry[x].n++;
+    reduce(p, is_row_arg(&__it) ?
+           &CTX(list, 0, 0) :
+           &CTX(any));
   }
 
+  // convert spans between `compose_args` (right arguments of compose)
+  // into a chain of composes
+  list_iterator_t right = list_begin(l);
+  cell_t *res = NULL, **left = &res, **q;
+  int n = 0;
+  bool row;
+  FORLIST(p, l, true) {
+    n++;
+    row = false;
+    if((is_row_arg(&__it) || is_compose_arg(*p)) && n > 1) {
+      int x = trace_alloc(entry, n);
+      tcell_t *tc = &entry[x];
+      tc->trace.type = T_LIST;
+      tc->op = OP_null;
+      tc->n = 0;
+      RANGEDOWN(i, 1, n) {
+        q = list_next(&right, true);
+        if(!tc->op) {
+          tc->op = is_compose_arg(*q) ? OP_compose : OP_pushr;
+        }
+        assert_error(q && q != p);
+        int y = trace_value(entry, *q);
+        tc->expr.arg[i] = index_tr(y);
+        entry[y].n++;
+      }
+      assert_error(tc->op);
+      n = 1;
+      *left = index_tr(x);
+      left = &tc->expr.arg[0];
+      row = true;
+    }
+  }
+  if(row) { // final left var, TODO handle nil?
+    if(n == 1) {
+      FLAG_SET(*entry, entry, ROW); // this entry returns a row
+      q = list_next(&right, true);
+      int x = trace_value(entry, *q);
+      *left = index_tr(x);
+      entry[x].n++;
+    } else { // ap
+      int x = trace_alloc(entry, n);
+      tcell_t *tc = &entry[x];
+      tc->op = OP_ap;
+      tc->trace.type = T_LIST;
+      tc->n = 0;
+      COUNTDOWN(i, n) {
+        q = list_next(&right, false);
+        assert_error(q);
+        int y = trace_value(entry, *q);
+        tc->expr.arg[i] = index_tr(y);
+        entry[y].n++;
+      }
+      *left = index_tr(x);
+    }
+  } else { // otherwise, this is just a flat list
+    int x = trace_alloc(entry, n);
+    tcell_t *tc = &entry[x];
+    tc->op = OP_quote;
+    tc->trace.type = T_LIST;
+    tc->n = 0;
+    COUNTDOWN(i, n) {
+      q = list_next(&right, false);
+      assert_error(q);
+      int y = trace_value(entry, *q);
+      tc->expr.arg[i] = index_tr(y);
+      entry[y].n++;
+    }
+    *left = index_tr(x);
+  }
+
+  int x = tr_index(res);
+  entry[x].n--;
   apply_condition(l, &x);
   return x;
 }

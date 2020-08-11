@@ -103,7 +103,7 @@ __ [f] index -> x
 @: dropl head
 
 __ a [a -> a] -> [a]
-iteratel:  dup [peek] dip22 [iteratel] ap20 swap pushr
+iteratel:  dup [peek] dip22 [iteratel] $$ swap pushr
 
 concat: [] [.] foldr
 
@@ -216,13 +216,13 @@ __ [... a] [... b] [f] zip1 -> [...] [...] [f] a b f
 zip1: [popr_para] dip24 $$keep swap
 
 __ [... a] [... b] [f] zip -> [... f a b f]
-zip: [zip1] ap31 [zip] swap [.] dip21 pushr
+zip: [zip1] ap31 [zip] swap [. head] dip21 pushr
 
 __ [... a] [... b] c [f] zip1_with -> [...] [...] c' [f] a b c f
 zip1_with: [[popr_para] dip24] dip35 $$$-keep swap2
 
 __ [... a] [... b] c [f] zip_with -> [... c' f a b c f]
-zip_with: [zip1_with] ap41 [zip_with] swap [.] dip21 pushr
+zip_with: [zip1_with] ap41 [zip_with] swap [. head] dip21 pushr
 
 module stack:
 
