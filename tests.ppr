@@ -556,16 +556,16 @@ __      -b ± √ b² - 4ac
 __  x = ---------------
 __           2a
 quadratic:
-  []ap30 __ 2@ = a, 1@ = b, 0@ = c
+  []ap30 quote __ 2@ = a, 1@ = b, 0@ = c
     [[ 1@ -1*f, __ -b
        1@ dup *f, __ b^2
        0@, 2@ *f 4*f -f __ - 4ac
        sqrt dup -1*f | +f, __ ± √
        2@ 2*f /f ]] __ / 2a
-    swap let head
+    swap scatter head
 
-__ another version of let, doesn't work
-let_map: [swap pushl] pushl map concat
+__ another version of scatter, doesn't work
+scatter_map: [swap .] pushl map concat
 
 after_fold: concat 42 swap $ __ {hide}
 after_sum: [+] foldr 42+ __ {hide}

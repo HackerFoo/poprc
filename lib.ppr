@@ -451,24 +451,23 @@ seq2: [[]ap20] dip21 seq get2
 
 __ feed x as an input to each quote and compose them
 __ this is the reader monad
-__ [ ... , ... ] x let1 ---> [ ... x ... ]
-__ [[ ... , ... , ...]] x let ---> [ x ... x ... x ... ]
-let1: [swap pushl] pushl dip11 .
-__ FIX using let1 gives different results
-let: [[swap pushl] pushl dip11 .] pushl [] swap foldr
+__ [ ... , ... ] [x] scatter1 ---> [ ... x ... ]
+__ [[ ... , ... , ...]] [x] scatter ---> [ x ... x ... x ... ]
+scatter1: [swap .] pushl dip11 .
+scatter: [scatter1] pushl [] swap foldr __ rename to splice?
 
 __ extract values
 __ this is the writer monad
-__ [[ ... x, ... y, ... ]] return ---> [ ... ... ... ] [x y]
+__ [[ ... x, ... y, ... ]] gather ---> [ ... ... ... ] [x y]
 
-return1: . pull [pushr] dip21
-return_r:
-  [[] []] [swap pushr [return1] .] foldr get2
-return: reverse return_r
+gather1: . pull [pushr] dip21
+gather_r:
+  [[] []] [swap pushr [gather1] .] foldr get2
+gather: reverse gather_r
 __ these don't work yet:
-__ return: [[] []] [pushr [return1] .] foldl get2
-__ return:  __ {hide}
-__   [] [[return1] swap . pushl] foldr
+__ gather: [[] []] [pushr [gather1] .] foldl get2
+__ gather:  __ {hide}
+__   [] [[gather1] swap . pushl] foldr
 __     [] [] swap2 $$-
 
 
