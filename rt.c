@@ -116,6 +116,7 @@ void rt_init() {
   reset_counters();
   array_init();
   clear_fail_log();
+  clean_tmp(NULL);
 }
 
 void clear_fail_log() {
@@ -593,6 +594,8 @@ void update_ready(cell_t *c, cell_t *a) {
   cell_t *p = c, *q = 0;
   cell_t *l = 0;
 
+  USE_TMP();
+
   // build stack
   while(p != a) {
     csize_t i = closure_next_child(p);
@@ -616,6 +619,7 @@ void update_ready(cell_t *c, cell_t *a) {
     p->tmp = 0;
     p = n;
   }
+  clean_tmp(NULL);
 
   if(q) --q->expr.idx[0]; // decrement offset
 }
@@ -836,6 +840,7 @@ cell_t *get_mutable(cell_t *c) {
 cell_t *mutate(cell_t **cp, cell_t **rp) {
   cell_t *c = *cp;
   cell_t *l = NULL;
+  USE_TMP();
   add_to_mutate_list(c, &l);
   l = mutate_list(l, rp);
   *cp = get_mutable(c);
@@ -926,6 +931,17 @@ bool check_tmp_loop(cell_t *c) {
   return false;
 }
 
+static location_t tmp_use_location = { .file = FILE_ID_NONE, .line = 0 };
+
+#if INTERFACE
+#define USE_TMP() use_tmp(LOCATION())
+#endif
+
+void use_tmp(location_t use_location) {
+  LOG_WHEN(tmp_use_location.file, MARK("WARN") " tmp used at %L", tmp_use_location.raw); // TODO make this an error
+  tmp_use_location = use_location;
+}
+
 // execute deferred drops and zero tmps
 void clean_tmp(cell_t *l) {
   while(l) {
@@ -934,6 +950,7 @@ void clean_tmp(cell_t *l) {
     assert_error(~l->n);
     l = next;
   }
+  tmp_use_location.file = FILE_ID_NONE;
 }
 
 void store_lazy(cell_t **cp, cell_t *r, alt_set_t alt_set) { // CLEANUP

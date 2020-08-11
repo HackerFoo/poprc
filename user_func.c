@@ -172,7 +172,7 @@ start:
             pp = list_next(&pi, true),
             cp && pp) {
         if(closure_is_ready(*cp) && !is_row_arg(&ci)) {
-          simplify(cp);
+          simplify(cp); // ***
           LOG_WHEN((*cp)->alt, MARK("WARN") " bind drops alt %C -> %C", *cp, (*cp)->alt);
         }
         tail = bind_pattern(entry, cp, *pp, tail);
@@ -315,6 +315,9 @@ response unify_exec(cell_t **cp, tcell_t *parent_entry, context_t *ctx) {
     **tail = &vl;
   COUNTUP(i, in) {
     simplify(&c->expr.arg[i]); // FIX this can cause arg flips
+  }
+  USE_TMP();
+  COUNTUP(i, in) {
     tail = bind_pattern(NULL, &c->expr.arg[i], initial->expr.arg[i], tail);
     if(!tail) {
       LOG("bind_pattern failed %C %C", c->expr.arg[i], initial->expr.arg[i]);

@@ -671,6 +671,7 @@ bool assert_ref_check(cell_t *c, cell_t ***roots, size_t roots_n) {
 // check ref counts starting at root
 bool assert_ref(cell_t ***roots, size_t n) {
   cell_t *list = 0, **tail = &list;
+  USE_TMP();
   COUNTUP(i, n) {
     if(!roots[i] || !is_closure(*roots[i])) continue; // ***
     tail = flatten(*roots[i], tail);
