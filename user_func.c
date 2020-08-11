@@ -57,6 +57,12 @@ tcell_t *closure_entry(cell_t *c) {
     NULL;
 }
 
+const tcell_t *closure_entry_const(const cell_t *c) {
+  return is_user_func(c) ?
+    (tcell_t *)c->expr.arg[closure_in(c)] :
+    NULL;
+}
+
 // alts in trace are used to temporarily point to cell instances
 // they are copied to during expansion.
 // this gets that pointer
@@ -127,6 +133,17 @@ void print_word_pattern(cell_t *word) {
   printf("\n");
 }
 
+static
+bool match_op(const cell_t *a, const cell_t *b) {
+  if(is_value(a) || is_value(b)) return false;
+  if(a->op != b->op) return false;
+  if(a->op == OP_exec &&
+     closure_entry_const(a) !=
+     closure_entry_const(b)) return false;
+  if(closure_in(a) != closure_in(b)) return false;
+  return true;
+}
+
 // build a binding list by applying the pattern to c
 // TODO add reduction back in
 cell_t **bind_pattern(tcell_t *entry, cell_t **cp, cell_t *pattern, cell_t **tail) {
@@ -135,7 +152,7 @@ start:
   c = *cp;
   assert_error(c);
   CONTEXT("bind_pattern %s %C %C @barrier", strfield(entry, word_name), c, pattern);
-  if(!pattern || !tail) return NULL;
+  if(!pattern || !tail) return tail;
   if(c->tmp || c == *tail) return tail;
   if(c == pattern) { // c == pattern, so add all variables
     cell_t **t = tail;
@@ -209,12 +226,6 @@ start:
     }
     force(&pattern);
     goto start;
-  } else if(is_user_func(c) && is_user_func(pattern) && // match user functions (fusion)
-            closure_entry(c) == closure_entry(pattern)) {
-    assert_eq(closure_in(c), closure_in(pattern));
-    COUNTUP(i, closure_in(c)) {
-      tail = bind_pattern(entry, &c->expr.arg[i], pattern->expr.arg[i], tail);
-    }
   } else if(is_row_list(c)) {
     cell_t **r = left_elem(c);
     LOG("match through row list %C -> %C", c, *r);
@@ -222,6 +233,10 @@ start:
     *r = NULL;
     drop(c);
     goto start;
+  } else if(match_op(c, pattern)) { // fusion
+    COUNTUP(i, closure_in(c)) {
+      tail = bind_pattern(entry, &c->expr.arg[i], pattern->expr.arg[i], tail);
+    }
   } else {
     // This can be caused by an operation before an infinite loop
     // This will prevent reducing the operation, and therefore fail to unify
@@ -634,7 +649,7 @@ cell_t *flat_call(cell_t *c, tcell_t *entry) {
   int i = 1;
   FOLLOW(p, vl, tmp) {
     tcell_t *tn = get_var(entry, p);
-    assert_error(tn);
+    assert_error(tn, "get_var(%E, %C)", entry, p);
     // Is it okay to update this from reassign_input_order?
     tn->var_index = i;
     // assert_error(tn->var_index == i, "%T (%C)", p->value.var, p);

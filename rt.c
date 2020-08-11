@@ -946,6 +946,14 @@ void use_tmp(location_t use_location) {
 void clean_tmp(cell_t *l) {
   while(l) {
     cell_t *next = l->tmp;
+
+    // remove escaped deps
+    TRAVERSE(l, out) {
+      if(*p && (*p)->expr.arg[0] != l) {
+        *p = NULL;
+      }
+    }
+
     l->tmp = 0;
     assert_error(~l->n);
     l = next;
