@@ -222,14 +222,6 @@ start:
             pattern->expr.alt_set == 0) {
     pattern = pattern->expr.arg[0];
     goto start;
-  } else if(pattern->op == OP_value && (pattern->pos || entry)) { // HACK to move constants out
-    assert_error(!is_list(pattern) || is_empty_list(pattern));
-    if(!pattern->pos) {
-      LOG(HACK " forcing pos for %C (%C) to %s", pattern, c, entry->word_name);
-      pattern->pos = entry->pos; // HACKity HACK
-    }
-    force(&pattern);
-    goto start;
   } else if(is_row_list(c)) {
     cell_t **r = left_elem(c);
     LOG("match through row list %C -> %C", c, *r);
