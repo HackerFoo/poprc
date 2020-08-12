@@ -1834,6 +1834,23 @@ ___ list.iteratel (2 -> 1) rec ___
 [6] __primitive.pushr 5 2 :: l x1
 [7] return [6]
 
+___ list.itercat (2 -> 1) ___
+[1] var :: ?l x1
+[2] var :: ?a x2
+[3] jump list.itercat_loop &2 1 :: l x1
+[4] __primitive.pushr 3 2 :: l x1
+[5] return [4]
+
+___ list.itercat_loop (2 -> 1) rec ___
+[1] var :: ?l x2
+[2] changing var :: ?a x1
+[3] __primitive.ap 2 &1 :: l x2
+[4] __primitive.ap &3 -> 5 :: v? x1
+[5] __primitive.dep 4 :: a x1
+[6] jump list.itercat_loop 5 1 :: l x1
+[7] __primitive.compose 6 3 :: l x1
+[8] return [7]
+
 ___ list.length (1 -> 1) ___
 [1] var :: ?l x1
 [2] val 0 :: i x1
@@ -2210,11 +2227,10 @@ ___ list.zip (3 -> 1) rec ___
 [5] __primitive.dep 4 :: a x1
 [6] __primitive.ap 3 -> 7 :: l? x2
 [7] __primitive.dep 6 :: a x1
-[8] __primitive.ap 7 5 &1 -> 9 :: v? x1
-[9] __primitive.dep 8 :: a x1
-[10] jump list.zip 6 4 1 :: l x1
-[11] __primitive.pushr 10 9 :: l x1
-[12] return [11]
+[8] __primitive.ap 7 5 &1 :: l x1
+[9] jump list.zip 6 4 1 :: l x1
+[10] __primitive.compose 9 8 :: l x1
+[11] return [10]
 
 ___ list.zip1 (3 -> 4) ___
 [1] var :: ?l x2
@@ -2224,9 +2240,8 @@ ___ list.zip1 (3 -> 4) ___
 [5] __primitive.dep 4 :: a x1
 [6] __primitive.ap 3 -> 7 :: l? x2
 [7] __primitive.dep 6 :: a x1
-[8] __primitive.ap 7 5 &1 -> 9 :: v? x1
-[9] __primitive.dep 8 :: a x1
-[10] return [6 4 1 9]
+[8] __primitive.ap 7 5 &1 :: l x1
+[9] return [6 4 1 8]
 
 ___ list.zip1_with (4 -> 5) ___
 [1] var :: ?l x2
@@ -2237,10 +2252,9 @@ ___ list.zip1_with (4 -> 5) ___
 [6] __primitive.dep 5 :: a x1
 [7] __primitive.ap 4 -> 8 :: l? x2
 [8] __primitive.dep 7 :: a x1
-[9] __primitive.ap 8 6 2 &1 -> 11 12 :: v? x2
+[9] __primitive.ap 8 6 2 &1 -> 11 :: l? x2
 [11] __primitive.dep 9 :: a x1
-[12] __primitive.dep 9 :: a x1
-[13] return [7 5 12 1 11]
+[12] return [7 5 11 1 9]
 
 ___ list.zip_with (4 -> 1) rec ___
 [1] var :: ?l x2
@@ -2251,12 +2265,11 @@ ___ list.zip_with (4 -> 1) rec ___
 [6] __primitive.dep 5 :: a x1
 [7] __primitive.ap 4 -> 8 :: l? x2
 [8] __primitive.dep 7 :: a x1
-[9] __primitive.ap 8 6 2 &1 -> 11 12 :: v? x2
+[9] __primitive.ap 8 6 2 &1 -> 11 :: l? x2
 [11] __primitive.dep 9 :: a x1
-[12] __primitive.dep 9 :: a x1
-[13] jump list.zip_with 7 5 12 1 :: l x1
-[15] __primitive.pushr 13 11 :: l x1
-[16] return [15]
+[12] jump list.zip_with 7 5 11 1 :: l x1
+[14] __primitive.compose 12 9 :: l x1
+[15] return [14]
 
 ___ logic.and (2 -> 1) x2 ___
 [1] var :: ?y x2
