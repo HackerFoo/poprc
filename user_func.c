@@ -145,6 +145,7 @@ bool match_op(const cell_t *a, const cell_t *b) {
 }
 
 // build a binding list by applying the pattern to c
+// don't produce bindings if tail is NULL, used to simplify before USE_TMP()
 // TODO add reduction back in
 cell_t **bind_pattern(tcell_t *entry, cell_t **cp, cell_t *pattern, cell_t **tail) {
   cell_t *c;
@@ -152,13 +153,15 @@ start:
   c = *cp;
   assert_error(c);
   CONTEXT("bind_pattern %s %C %C @barrier", strfield(entry, word_name), c, pattern);
-  if(!pattern || !tail) return tail;
-  if(c->tmp || c == *tail) return tail;
+  if(!pattern) return tail;
+  if(c->tmp || (tail && c == *tail)) return tail;
   if(c == pattern) { // c == pattern, so add all variables
-    cell_t **t = tail;
-    tail = trace_var_list(c, tail);
-    FOLLOW(p, *t, tmp) {
-      ref(p);
+    if(tail) {
+      cell_t **t = tail;
+      tail = trace_var_list(c, tail);
+      FOLLOW(p, *t, tmp) {
+        ref(p);
+      }
     }
     if(entry && is_var(pattern)) switch_entry(entry, pattern);
   } else if(is_var(pattern)) { // bind the pattern variable to c
@@ -170,7 +173,7 @@ start:
       entry = var_entry(pattern->value.var);
     }
     LOG("bound %s[%d] = %C", entry->word_name, pattern->value.var-entry, c);
-    LIST_ADD(tmp, tail, ref(c));
+    if(tail) LIST_ADD(tmp, tail, ref(c));
   } else if(is_id_list(c)) { // walk through id lists
     cp = &c->value.ptr[0];
     goto start;
@@ -188,7 +191,8 @@ start:
       while(cp = list_next(&ci, true),
             pp = list_next(&pi, true),
             cp && pp) {
-        if(closure_is_ready(*cp) && !is_row_arg(&ci)) {
+        if(!tail &&
+           closure_is_ready(*cp) && !is_row_arg(&ci)) {
           simplify(cp); // ***
           LOG_WHEN((*cp)->alt, MARK("WARN") " bind drops alt %C -> %C", *cp, (*cp)->alt);
         }
@@ -324,14 +328,17 @@ response unify_exec(cell_t **cp, tcell_t *parent_entry, context_t *ctx) {
 
   LOG_WHEN(out != 0, TODO " unify_convert %d: out(%d) != 0 @unify-multiout", c-cells, out);
 
+  // simplify
+  COUNTUP(i, in) {
+    simplify(&c->expr.arg[i]);
+    bind_pattern(NULL, &c->expr.arg[i], initial->expr.arg[i], NULL);
+  }
+
   // match c against initial and extract variable bindings
+  USE_TMP();
   cell_t
     *vl = 0,
     **tail = &vl;
-  COUNTUP(i, in) {
-    simplify(&c->expr.arg[i]); // FIX this can cause arg flips
-  }
-  USE_TMP();
   COUNTUP(i, in) {
     tail = bind_pattern(NULL, &c->expr.arg[i], initial->expr.arg[i], tail);
     if(!tail) {
@@ -602,6 +609,7 @@ void reassign_input_order(tcell_t *entry) {
   tcell_t *parent_entry = entry->entry.parent;
   CONTEXT("reassign input order %C (%s -> %s)", c,
           parent_entry->word_name, entry->word_name);
+  USE_TMP();
   cell_t *vl = 0;
   input_var_list(c, &vl);
   vars_in_entry(&vl, entry); // ***
@@ -640,6 +648,7 @@ cell_t *flat_call(cell_t *c, tcell_t *entry) {
     .expr.out = out - 1,
     .op = OP_exec
   );
+  USE_TMP();
   cell_t *vl = 0;
   input_var_list(c, &vl);
   assert_error(tmp_list_length(vl) == in,

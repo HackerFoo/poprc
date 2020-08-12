@@ -938,7 +938,7 @@ static location_t tmp_use_location = { .file = FILE_ID_NONE, .line = 0 };
 #endif
 
 void use_tmp(location_t use_location) {
-  LOG_WHEN(tmp_use_location.file, MARK("WARN") " tmp used at %L", tmp_use_location.raw); // TODO make this an error
+  assert_error(!tmp_use_location.file, MARK("WARN") " tmp used at %L", tmp_use_location.raw);
   tmp_use_location = use_location;
 }
 
