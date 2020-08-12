@@ -134,10 +134,9 @@ pushif:
     ifte
 
 __ [..x] [f] $top -> [..x] [f] xf
-__ $top: dup2 . head (doesn't work) {hide}
-$top: dup2 [head] dip11 $
+$top: dup2 . head
 
-__ [l] [p] next_match -> [l'] x {hide}
+__ [l] [p] next_match -> [l'] x
 next_match:
   $top [nip [popr] dip12 !!]
        [[[tail] dip11 next_match] dip22 not!!] | $$$-
@@ -470,7 +469,7 @@ gather_r:
 gather: reverse gather_r
 __ these don't work yet:
 __ gather: [[] []] [pushr [gather1] .] foldl get2
-__ gather:  __ {hide}
+__ gather:
 __   [] [[gather1] swap . pushl] foldr
 __     [] [] swap2 $$-
 

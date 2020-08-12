@@ -373,7 +373,7 @@ __ f10: [] [1] | ap12 swap2 drop
 
 sum3:  [] ap30 sum
 sum3r: [] ap30 0 [+] foldr __ {hide}
-sum3l: [] ap30 0 [+] foldl __ {hide}
+sum3l: [] ap30 0 [+] foldl
 
 __ [a] [b] [f] [acc]
 
@@ -476,7 +476,7 @@ fuse_map5d: [3*] map 0 [+ dup] map_with
 fuse_map5e: popr 0 + [+ dup] map_with
 fuse_map5f: 0 [+ dup] map_with [3*] map
 fuse_map6: 0 [+ dup] map_with 1 [* dup] map_with
-fuse_map7: [dup] map tail __ {hide}
+fuse_map7: [dup] map tail
 fuse_map8: []ap20 [2*] map 0 [+ dup] map_with [3+] map get2
 fuse_map8b: []ap20 [2*] map 0 [dup [*] dip21 2*] map_with [3+] map get2 __ {hide}
 fuse_map8c: []ap30 [2*] map 2 [dup [*] dip21 2*] map_with [3+] map get3
@@ -568,7 +568,7 @@ __ another version of scatter, doesn't work
 scatter_map: [swap .] pushl map concat
 
 after_fold: concat 42 swap $ __ {hide}
-after_sum: [+] foldr 42+ __ {hide}
+after_sum: 0 [+] foldr 42+
 suml: 0 [+] foldl __ {hide}
 
 __ {hide}
@@ -589,3 +589,6 @@ return_test: [dup] pushl [[3* dup, 5+ dup]] pushl return drop get3
 stream_compute_fn: [256+] [collatz] stream_compute
 
 dotswap: . swap . swap . __ {hide}
+
+__ 1 [2 3 4] [+] mapc $ ===> 10
+mapc: [swap . pushl] pushl [] swap foldr

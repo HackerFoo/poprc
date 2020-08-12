@@ -417,6 +417,7 @@ void switch_entry(tcell_t *entry, cell_t *r) {
 }
 
 void mark_pos(cell_t *c, int pos) {
+  while(is_id_list(c)) c = c->value.ptr[0];
   if(!pos || c->pos == pos) return;
   assert_error(c->n != PERSISTENT);
   tcell_t *entry = pos_entry(pos);
@@ -1074,6 +1075,7 @@ int inline_quote(tcell_t *entry, cell_t *l) {
     tc->n = 0;
     COUNTDOWN(i, n) {
       q = list_next(&right, false);
+      if(is_compose_arg(*q)) tc->op = OP_ap;
       assert_error(q);
       int y = trace_value(entry, *q);
       tc->expr.arg[i] = index_tr(y);
