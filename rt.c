@@ -44,6 +44,7 @@
 #include "primitive/other.h"
 #include "primitive/string.h"
 #include "var.h"
+#include "mutate.h"
 
 #if INTERFACE
 #define MAX_ALTS 256
@@ -116,7 +117,7 @@ void rt_init() {
   reset_counters();
   array_init();
   clear_fail_log();
-  clean_tmp(NULL);
+  done_with_tmp();
 }
 
 void clear_fail_log() {
@@ -514,7 +515,7 @@ cell_t *compose(list_iterator_t it, cell_t *b) {
         cell_t
           *p = *left_elem(*ll),
           *l = mutate(&p, &b);
-        clean_tmp(l);
+        mutate_finish(l);
         r = left_elem(*ll);
         *r = compose_placeholder(ref(*x), *r);
         return b;
@@ -524,7 +525,7 @@ cell_t *compose(list_iterator_t it, cell_t *b) {
       cell_t
         *p = *ll,
         *l = mutate(&p, &b);
-      clean_tmp(l);
+      mutate_finish(l);
       r = left_elem(*ll);
       *r = build_compose(ref(*x), *r);
       return b;
@@ -619,7 +620,7 @@ void update_ready(cell_t *c, cell_t *a) {
     p->tmp = 0;
     p = n;
   }
-  clean_tmp(NULL);
+  done_with_tmp();
 
   if(q) --q->expr.idx[0]; // decrement offset
 }
@@ -634,7 +635,7 @@ loop:
   if(!is_data(p->expr.arg[i])) {
     cell_t *l = mutate(&p, &r);
     if(c->tmp) c = c->tmp;
-    clean_tmp(l);
+    mutate_finish(l);
     p->expr.arg[i] = a;
     if(closure_is_ready(a)) {
       update_ready(c, a);
@@ -753,184 +754,6 @@ cell_t *conc_alt(cell_t *a, cell_t *b) {
   return a;
 }
 
-/* replace references in r with corresponding tmp references */
-/* m => in-place, update ref counts for replaced references */
-static
-void mutate_update(cell_t *r, bool m) {
-  WATCH(r, "mutate_update");
-  TRAVERSE(r, alt, in, ptrs) {
-    cell_t *c = *p;
-    if(is_closure(c) && c->n != PERSISTENT) {
-      if(c->tmp) {
-        *p = ref(c->tmp);
-        if (m) --c->n;
-      } else if (!m) ref(c);
-    }
-  }
-
-  TRAVERSE(r, out) {
-    cell_t *c = *p;
-    if(c && c->n != PERSISTENT && c->tmp) {
-      // if(m) fix deps?
-      *p = c->tmp;
-    }
-  }
-}
-
-static
-cell_t *add_to_list(cell_t *c, cell_t *nc, cell_t **l) {
-  WATCH(c, "add_to_list");
-  nc->n = -1;
-  CONS(tmp, l, nc);
-  CONS(tmp, l, c);
-  assert_error(check_tmp_loop(*l));
-  return nc;
-}
-
-cell_t *add_to_mutate_list(cell_t *c, cell_t **l) {
-  return c->tmp ? c->tmp : add_to_list(c, copy(c), l);
-}
-
-/* traverse r and make copies to tmp */
-/* u => subtree is unique, exp => to be expanded */
-static
-bool mutate_sweep(cell_t *r, cell_t **l) {
-  if(!is_closure(r) || r->n == PERSISTENT) return false;
-  if(r->tmp) return true;
-
-  bool unique = !~r->n; // only referenced by the root
-  bool dirty = false; // references c
-
-  // prevent looping
-  r->tmp = r;
-  TRAVERSE(r, alt, in, ptrs) {
-    dirty |= mutate_sweep(*p, l);
-  }
-  r->tmp = 0;
-
-  if(!dirty) return false;
-
-  if(unique) {
-    // rewrite pointers inplace
-    mutate_update(r, true);
-    return false;
-  } else {
-    add_to_mutate_list(r, l);
-    return true;
-  }
-}
-
-bool deps_are_unique(cell_t *c) {
-  TRAVERSE(c, out) {
-    if(*p && ~(*p)->n) return false;
-  }
-  return true;
-}
-
-cell_t *get_mutable(cell_t *c) {
-  return c->tmp ? c->tmp : c;
-}
-
-/* make a path copy from the root (r) to the cell to modify (c) and store in tmps */
-/* r references c. Optimization over: */
-/* r' = deep_copy(r) */
-/* drop(r) */
-/* modify c' in r' without affecting c */
-/* returns a chain of substitutions, use clean_tmp to finish */
-cell_t *mutate(cell_t **cp, cell_t **rp) {
-  cell_t *c = *cp;
-  cell_t *l = NULL;
-  USE_TMP();
-  add_to_mutate_list(c, &l);
-  l = mutate_list(l, rp);
-  *cp = get_mutable(c);
-  return l;
-}
-
-/* mutate a list of cells built with add_to_mutate_list */
-cell_t *mutate_list(cell_t *l, cell_t **rp) {
-  cell_t *r = *rp;
-
-  // check if necessary
-  fake_drop(r);
-  FOLLOW(c, nc, l, tmp) {
-    if(!~c->n) {
-      refcount_t n = c->n;
-      memcpy(c, nc, sizeof(cell_t) * closure_cells(c));
-      closure_free(nc);
-      c->n = n;
-      *_prev = nc->tmp; // delete
-    }
-  }
-  if(!l) {
-    fake_undrop(r);
-    return NULL;
-  }
-
-  mutate_sweep(r, &l);
-  fake_undrop(r);
-
-  if(r->tmp) {
-    ++r->tmp->n;
-    --r->n;
-  }
-
-  // traverse list and rewrite pointers
-  cell_t *li = l;
-  assert_error(check_tmp_loop(li));
-  while(li) {
-    cell_t *t = li->tmp;
-    mutate_update(t, false);
-    li = t->tmp;
-  }
-  assert_error(check_deps(r));
-  if(r->tmp) *rp = r->tmp;
-  return l;
-}
-
-bool check_deps(cell_t *c) {
-  return _check_deps(c, 20);
-}
-
-bool _check_deps(cell_t *c, int depth) {
-  assert_error(depth >= 0);
-  if(c && is_cell(c)) {
-    TRAVERSE(c, out) {
-      cell_t *x = *p;
-      if(x && x->expr.arg[0] != c) {
-        printf("bad dep %d -> %d, should be %d\n",
-               (int)(x - cells),
-               (int)(x->expr.arg[0] - cells),
-               (int)(c - cells));
-        return false;
-      }
-    }
-    TRAVERSE(c, alt, in, ptrs) {
-      if(!_check_deps(*p, depth - 1)) return false;
-    }
-  }
-  return true;
-}
-
-bool check_tmp_loop(cell_t *c) {
-  if(!c) return true;
-  cell_t *tortoise = c, *hare = c;
-  size_t cnt = 0;
-  do {
-    cnt += 2;
-    tortoise = tortoise->tmp;
-    hare = hare->tmp ? hare->tmp->tmp : NULL;
-    if(!(tortoise && hare)) return true;
-  } while(tortoise != hare);
-
-  while(cnt--) {
-    printf("%d -> ", (int)(c - cells));
-    c = c->tmp;
-  }
-  printf("...\n");
-  return false;
-}
-
 static location_t tmp_use_location = { .file = FILE_ID_NONE, .line = 0 };
 
 #if INTERFACE
@@ -942,20 +765,15 @@ void use_tmp(location_t use_location) {
   tmp_use_location = use_location;
 }
 
-// execute deferred drops and zero tmps
+void done_with_tmp() {
+  tmp_use_location.file = FILE_ID_NONE;
+}
+
+// clean up .tmp links
 void clean_tmp(cell_t *l) {
   while(l) {
     cell_t *next = l->tmp;
-
-    // remove escaped deps
-    TRAVERSE(l, out) {
-      if(*p && (*p)->expr.arg[0] != l) {
-        *p = NULL;
-      }
-    }
-
     l->tmp = 0;
-    assert_error(~l->n);
     l = next;
   }
   tmp_use_location.file = FILE_ID_NONE;
