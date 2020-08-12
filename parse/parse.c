@@ -527,17 +527,6 @@ cell_t *parse_subexpr(const cell_t **l, cell_t *module, tcell_t *entry, int dept
                                                .n = seg.n - 2 }));
     } break;
 
-    case CC_COMMA:
-    {
-      if(depth) {
-        *l = t;
-        goto done;
-      } else {
-        LOG("parse failure, mismatched comma");
-        goto fail;
-      }
-    } break;
-
     case CC_SYMBOL:
     case CC_ALPHA:
     case CC_VAR:
@@ -579,29 +568,34 @@ cell_t *parse_subexpr(const cell_t **l, cell_t *module, tcell_t *entry, int dept
       }
     } break;
 
+    case CC_COMMA:
     case CC_BRACKET: // TODO .src for lists
     {
       if(seg.n == 1) {
         switch(*seg.s) {
+        case ',':
         case ']':
           if(depth) {
+            *l = t;
             goto done;
           } else {
-            LOG("parse failure, mismatched closing bracket");
+            LOG("parse failure, mismatched closing bracket or comma");
             goto fail;
           }
         case '[':
         {
           cell_t *c;
+          char ch;
           do {
             c = parse_subexpr(l, module, entry, depth + 1);
             if(!c) {
               LOG("parse failure");
               goto fail;
             }
+            ch = *l ? seg_char(tok_seg(*l)) : '\0';
+            *l = (*l)->tok_list.next;
             push_arg(arg_stack, &n, seg, c);
-          } while(*l && seg_char(tok_seg(*l)) == ',' &&
-                  (*l = (*l)->tok_list.next));
+          } while(*l && ch == ',');
         } break;
         case '(':
         case ')':

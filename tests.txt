@@ -118,3 +118,6 @@ Array 3 read_array 0 swap unless
 
 __ fix me
 2 3 | 5 7 | * dup 15 == !
+
+__ comma
+[[1,2],3,[4,5]]
