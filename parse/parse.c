@@ -596,6 +596,10 @@ cell_t *parse_subexpr(const cell_t **l, cell_t *module, tcell_t *entry, int dept
             *l = (*l)->tok_list.next;
             push_arg(arg_stack, &n, seg, c);
           } while(*l && ch == ',');
+          if(ch != ']') {
+            LOG("parse failure");
+            goto fail;
+          }
         } break;
         case '(':
         case ')':
