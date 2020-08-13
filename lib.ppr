@@ -113,8 +113,8 @@ concat: [] [.] foldr
 
 __ [xs] [f] map -> [xs']
 map:
-  [popr [] pushl] dip12 __ [xs] [x] [f]
-    dup [.] dip21  __ [xs] [x f] [f]
+  [popr dup [] pushl] dip13 __ [xs] x [x] [f]
+    dup [. swap seq] dip31  __ [xs] [x f] [f]
     [map] pushl swap __ [xs] [[f] map] [x f]
     [$] dip21 . __ [[xs] [f] map . x f]
 

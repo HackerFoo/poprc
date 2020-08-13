@@ -156,7 +156,12 @@ int copy_conditions(tcell_t *entry, int i, int v) {
     entry[tr_index(tc->expr.arg[1])].n++;
   }
   entry[x].expr.arg[0] = index_tr(an);
-  if(an) entry[an].n++;
+  if(an) {
+    tcell_t *p = &entry[x], *q = &entry[an];
+    q->n++;
+    p->trace.type = q->trace.type;
+    p->trace.range = range_intersect(p->trace.range, q->trace.range);
+  }
   LOG("copy condition in %s: %d -> %d", entry->word_name, i, x);
   return x;
 }

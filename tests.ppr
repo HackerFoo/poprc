@@ -564,7 +564,7 @@ quadratic:
        2@ 2*f /f ]] __ / 2a
     swap scatter head
 
-__ another version of scatter, doesn't work
+__ another version of scatter, doesn't work {hide}
 scatter_map: [swap .] pushl map concat
 
 after_fold: concat 42 swap $ __ {hide}
