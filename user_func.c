@@ -796,7 +796,7 @@ response func_exec_specialize(cell_t **cp, context_t *ctx, tcell_t *parent_entry
   specialize.dep_mask = (1 << ctx->s.out) - 1;
   int dropped = 0;
   context_t *top = NULL;
-  if(ctx->t == T_LIST) {
+  if(ctx->t == T_LIST && ctx->s.out) {
     cell_t *deps[ctx->s.out];
     top = collect_ap_deps(ctx->up, deps, ctx->s.out);
     if(top) {

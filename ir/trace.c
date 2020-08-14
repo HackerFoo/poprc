@@ -1153,7 +1153,9 @@ unsigned int trace_reduce(tcell_t *entry, cell_t **cp) {
       cell_t **a;
       FORLIST(a, *p, true) {
         collapse_row(a);
-        if(reduce(a, WITH(&CTX(any), priority, PRIORITY_MAX)) != SUCCESS) goto loop_start; // ***
+        context_t arg_ctx = CTX(any);
+        arg_ctx.priority = PRIORITY_MAX;
+        if(reduce(a, &arg_ctx) != SUCCESS) goto loop_start; // ***
         if(is_value(*a) &&
            !is_list(*a) &&
            !is_var(*a)) { // TODO deps?
