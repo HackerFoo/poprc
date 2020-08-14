@@ -191,7 +191,7 @@ void print_def(const cell_t *l) {
 
 void free_def(cell_t *l) {
   if(!is_closure(l) ||
-     l->n == PERSISTENT) {
+     is_persistent(l)) {
     return;
   }
   if(is_list(l)) {
@@ -342,11 +342,6 @@ cell_t *build_module(cell_t *c) {
   cell_t *r = make_module();
   *module_ref(r) = persistent(m);
   return r;
-}
-
-cell_t *persistent(cell_t *c) {
-  c->n = PERSISTENT;
-  return c;
 }
 
 void merge_into_module(cell_t *ma, cell_t *mb) {

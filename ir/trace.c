@@ -248,7 +248,7 @@ tcell_t *var_entry(tcell_t *v) {
   for(tcell_t *e = block_first_entry(v);
       e < trace_ptr;
       e = trace_entry_next(e)) {
-    assert_error(e->n == PERSISTENT);
+    assert_error(is_persistent(e));
     if(entry_has(e, v)) return e;
   }
   return NULL;
@@ -419,7 +419,7 @@ void switch_entry(tcell_t *entry, cell_t *r) {
 void mark_pos(cell_t *c, int pos) {
   while(is_id_list(c)) c = c->value.ptr[0];
   if(!pos || c->pos == pos) return;
-  assert_error(c->n != PERSISTENT);
+  assert_error(!is_persistent(c));
   tcell_t *entry = pos_entry(pos);
   if(!entry) {
     LOG("mark_pos: stale %C %d", c, pos);
@@ -1366,7 +1366,7 @@ val_t trace_opaque_symbol(const tcell_t *c) {
 // get the address of the tcell_t in which e is embedded as a cell_t
 tcell_t *tcell_entry(cell_t *e) {
   if(!e) return NULL;
-  assert_error(e->op == OP_null && e->n == PERSISTENT);
+  assert_error(e->op == OP_null && is_persistent(e));
   return (tcell_t *)((char *)e - offsetof(tcell_t, c));
 }
 

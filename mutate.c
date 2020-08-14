@@ -34,7 +34,7 @@ void mutate_update(cell_t *r, bool m) {
   WATCH(r, "mutate_update");
   TRAVERSE(r, alt, in, ptrs) {
     cell_t *c = *p;
-    if(is_closure(c) && c->n != PERSISTENT) {
+    if(is_closure(c) && !is_persistent(c)) {
       if(c->tmp) {
         *p = ref(c->tmp);
         if (m) --c->n;
@@ -44,7 +44,7 @@ void mutate_update(cell_t *r, bool m) {
 
   TRAVERSE(r, out) {
     cell_t *c = *p;
-    if(c && c->n != PERSISTENT && c->tmp) {
+    if(c && !is_persistent(c) && c->tmp) {
       // if(m) fix deps?
       *p = c->tmp;
     }
@@ -69,7 +69,7 @@ cell_t *add_to_mutate_list(cell_t *c, cell_t **l) {
 /* u => subtree is unique, exp => to be expanded */
 static
 bool mutate_sweep(cell_t *r, cell_t **l) {
-  if(!is_closure(r) || r->n == PERSISTENT) return false;
+  if(!is_closure(r) || is_persistent(r)) return false;
   if(r->tmp) return true;
 
   bool unique = !~r->n; // only referenced by the root

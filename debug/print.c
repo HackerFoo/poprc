@@ -227,7 +227,7 @@ void graph_cell(FILE *f, cell_t const *c) {
     set_bit(visited, node+i);
   }
 
-  if(c->n == PERSISTENT || is_map(c)) return; // HACK
+  if(is_persistent(c) || is_map(c)) return; // HACK
 
   /* print node attributes */
   fprintf(f, "node%d [\ncolor=white\nlabel =<", node);

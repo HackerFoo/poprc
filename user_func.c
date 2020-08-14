@@ -166,7 +166,7 @@ start:
     if(entry && is_var(pattern)) switch_entry(entry, pattern);
   } else if(is_var(pattern)) { // bind the pattern variable to c
     assert_error(!pattern->alt);
-    assert_error(c->n != PERSISTENT);
+    assert_error(!is_persistent(c));
     if(entry) {
       switch_entry(entry, pattern);
     } else {

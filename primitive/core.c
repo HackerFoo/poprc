@@ -157,7 +157,7 @@ OP(seq) {
         reserve_condition(&q->value.var);
       } else if(is_empty_list(q) && !ctx->alt_set && TWEAK(true, "to keep seq %C", c)) {
         *cp = CUT(c, expr.arg[0]);
-        if((*cp)->n != PERSISTENT) mark_pos(*cp, pos);
+        if(!is_persistent(*cp)) mark_pos(*cp, pos);
         return RETRY;
       }
     }
@@ -287,7 +287,7 @@ OP(id) {
     return SUCCESS;
   } else {
     *cp = CUT(c, expr.arg[0]);
-    if((*cp)->n != PERSISTENT) mark_pos(*cp, pos);
+    if(!is_persistent(*cp)) mark_pos(*cp, pos);
     return RETRY;
   }
 

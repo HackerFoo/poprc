@@ -85,6 +85,19 @@ bool is_closure(void const *p) {
   return is_data(p) && ((cell_t *)p)->op;
 }
 
+#if INTERFACE
+#define is_persistent(c) _is_persistent(GET_CELL(c))
+#endif
+
+bool _is_persistent(cell_t const *c) {
+  return c->n == PERSISTENT;
+}
+
+cell_t *persistent(cell_t *c) {
+  c->n = PERSISTENT;
+  return c;
+}
+
 // Is the closure `c` ready to reduce?
 bool closure_is_ready(cell_t const *c) {
   assert_error(is_closure(c));
@@ -373,7 +386,7 @@ cell_t *ref(cell_t *c) {
 }
 
 cell_t *refn(cell_t *c, refcount_t n) {
-  if(c && c->n != PERSISTENT) {
+  if(c && !is_persistent(c)) {
     assert_error(is_closure(c));
     c->n += n;
   }
@@ -409,7 +422,7 @@ location_t cell_location(cell_t const *c) {
 #define drop(c) _dropn(c, 1, LOCATION())
 #endif
 void _dropn(cell_t *c, refcount_t n, location_t loc) {
-  if(!is_cell(c) || c->n == PERSISTENT) return;
+  if(!is_cell(c) || is_persistent(c)) return;
   assert_error(is_closure(c), "%C (last dropped at %L)", c, cell_location(c).raw);
   if(n > c->n) {
     cell_t *p;
@@ -442,7 +455,7 @@ void _dropn(cell_t *c, refcount_t n, location_t loc) {
 }
 
 void fake_drop(cell_t *c) {
-  if(!is_cell(c) || c->n == PERSISTENT) return;
+  if(!is_cell(c) || is_persistent(c)) return;
   assert_error(~c->n && is_closure(c));
   if(!c->n) {
     TRAVERSE(c, alt, in, ptrs) {
@@ -453,7 +466,7 @@ void fake_drop(cell_t *c) {
 }
 
 void fake_undrop(cell_t *c) {
-  if(!is_cell(c) || c->n == PERSISTENT) return;
+  if(!is_cell(c) || is_persistent(c)) return;
   assert_error(is_closure(c));
   if(!++c->n) {
     TRAVERSE(c, alt, in, ptrs) {
@@ -583,7 +596,7 @@ bool leak_test() {
   FOREACH(i, cells) {
     cell_t *c = &cells[i];
     if(is_closure(c)) {
-      if(c->n != PERSISTENT) {
+      if(!is_persistent(c)) {
         printf("LEAK: %" PRIuPTR " (%u)\n", i, (unsigned int)cells[i].n);
         leak = true;
       }
@@ -595,7 +608,7 @@ bool leak_test() {
 
 static
 cell_t **flatten(cell_t *c, cell_t **tail) {
-  if(c && !c->tmp && tail != &c->tmp && c->n != PERSISTENT) {
+  if(c && !c->tmp && tail != &c->tmp && !is_persistent(c)) {
     LIST_ADD(tmp, tail, c);
     TRAVERSE(c, alt, in, ptrs) {
       tail = flatten(*p, tail);
@@ -621,7 +634,7 @@ void assert_ref_dec(cell_t *c) {
   while(c) {
     TRAVERSE(c, alt, in, ptrs) {
       cell_t *x = *p;
-      if(x && x->n != PERSISTENT) --x->n;
+      if(x && !is_persistent(x)) --x->n;
     }
     c = c->tmp;
   }
@@ -632,7 +645,7 @@ void assert_ref_inc(cell_t *c) {
   while(c) {
     TRAVERSE(c, alt, in, ptrs) {
       cell_t *x = *p;
-      if(x && x->n != PERSISTENT) ++x->n;
+      if(x && !is_persistent(x)) ++x->n;
     }
     c = c->tmp;
   }
@@ -695,7 +708,7 @@ cell_t *take(cell_t **cp) {
 cell_t *unique(cell_t **cp) { // CLEANUP
   cell_t *c = *cp;
   if(c->n) {
-    if(c->n != PERSISTENT) --c->n;
+    if(!is_persistent(c)) --c->n;
     cell_t *n = copy(c);
     TRAVERSE_REF(n, alt, args, ptrs);
     *cp = n;
@@ -735,7 +748,7 @@ void cleanup_cells() {
     cell_t *c = &cells[i];
     if(is_closure(c)) {
       int s = closure_cells(c) - 1;
-      if(c->n != PERSISTENT) {
+      if(!is_persistent(c)) {
         closure_free(c);
       }
       i += s;

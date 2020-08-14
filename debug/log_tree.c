@@ -49,7 +49,7 @@ void fprint_arg(FILE *f, map_t map, cell_t *c) {
 static
 void fprint_tree(cell_t *c, map_t map, FILE *f) {
   if(!is_closure(c) ||
-     c->n == PERSISTENT ||
+     is_persistent(c) ||
      map_find(map, (uintptr_t)c) ||
      c->tmp_val) return;
 

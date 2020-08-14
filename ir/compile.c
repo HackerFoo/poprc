@@ -699,7 +699,7 @@ void mark_barriers(tcell_t *entry, cell_t *c) {
 void move_changing_values(tcell_t *entry, cell_t *c) {
   tcell_t *expanding = (tcell_t *)c->expr.arg[closure_in(c)];
   TRAVERSE(c, in) {
-    if(is_value(*p) && !is_var(*p)) {
+    if(is_value(*p) && !is_var(*p) && !is_persistent(*p)) {
       int i = expanding->entry.in - (p - c->expr.arg);
       if(FLAG(expanding[i], trace, CHANGES)) {
         WATCH(*p, "move changing value");
