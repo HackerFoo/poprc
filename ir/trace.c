@@ -1034,6 +1034,7 @@ int inline_quote(tcell_t *entry, cell_t *l) {
           tc->op = is_compose_arg(*q) ? OP_compose : OP_pushr;
         }
         assert_error(q && q != p);
+        force(q);
         int y = trace_value(entry, *q);
         tc->expr.arg[i] = index_tr(y);
         entry[y].n++;
@@ -1049,6 +1050,7 @@ int inline_quote(tcell_t *entry, cell_t *l) {
     if(n == 1) {
       FLAG_SET(*entry, entry, ROW); // this entry returns a row
       q = list_next(&right, true);
+      force(q);
       int x = trace_value(entry, *q);
       *left = index_tr(x);
       entry[x].n++;
@@ -1151,7 +1153,7 @@ unsigned int trace_reduce(tcell_t *entry, cell_t **cp) {
       cell_t **a;
       FORLIST(a, *p, true) {
         collapse_row(a);
-        if(force(a) != SUCCESS) goto loop_start; // ***
+        if(reduce(a, WITH(&CTX(any), priority, PRIORITY_MAX)) != SUCCESS) goto loop_start; // ***
         if(is_value(*a) &&
            !is_list(*a) &&
            !is_var(*a)) { // TODO deps?

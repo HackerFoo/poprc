@@ -113,10 +113,10 @@ concat: [] [.] foldr
 
 __ [xs] [f] map -> [xs']
 map:
-  [popr dup [] pushl] dip13 __ [xs] x [x] [f]
-    dup [. swap seq] dip31  __ [xs] [x f] [f]
-    [map] pushl swap __ [xs] [[f] map] [x f]
-    [$] dip21 . __ [[xs] [f] map . x f]
+  [popr dup [seq] pushl] dip13 __ [xs] x [x seq] [f]
+    dup [swap . pushl] dip31  __ [xs] [x f*] [f] (* = x seq)
+    [map] pushl swap __ [xs] [[f] map] [x f*]
+    [$] dip21 . __ [[xs] [f] map . x f*]
 
 __ [xs] s [f] map_with -> [xs']
 map_with:
@@ -161,6 +161,7 @@ pop_min:
     [[popr] dip12 not] | . popr! get3 __ a > b
 
 pushl_seq: over seq pushl
+pushl_seq2: pushl_seq pushl_seq
 
 __ [a] [b] [acc]
 merge_step: [pop_min] dip23 pushl_seq
@@ -216,7 +217,7 @@ __ [... a] [... b] popr_para -> [...] [...] a b
 popr_para: [popr] dip12 popr [swap] dip22
 
 __ [... a] [... b] [f] zip1 -> [...] [...] [f] [a b f]
-zip1: [popr_para] dip24 dup -swap3 ap20
+zip1: [popr_para] dip24 dup -swap3 pushl_seq2
 
 __ [... a] [... b] [f] zip -> [... f a b f]
 zip: [zip1] ap31 [zip] swap [. head] dip21 .
@@ -226,6 +227,14 @@ zip1_with: [[popr_para] dip24] dip35 dup -swap4 ap31 -swap2
 
 __ [... a] [... b] c [f] zip_with -> [... c' f a b c f]
 zip_with: [zip1_with] ap41 [zip_with] swap [. head] dip21 .
+
+pushq: [[]ap10] swap . ap10
+pushq2: [[]ap20] swap . ap20
+pushq3: [[]ap30] swap . ap30
+pushq4: [[]ap40] swap . ap40
+pushq5: [[]ap50] swap . ap50
+pushq6: [[]ap60] swap . ap60
+pushq7: [[]ap70] swap . ap70
 
 module stack:
 
@@ -257,6 +266,7 @@ rev3: [] ap30 pull3 drop
 __ a b -> b
 nip: swap drop
 nip2: swap2 drop
+nip3: swap3 drop
 
 __ a b  -> b a b
 tuck: [] ap20 dup . pull3 drop
@@ -352,6 +362,9 @@ $$$: ap31 nip
 $-: ap12 nip2
 $$-: ap22 nip2
 $$$-: ap32 nip2
+$--: ap13 nip3
+$$--: ap23 nip3
+$$$--: ap33 nip3
 
 __ a [f] -> fa [f]
 $keep: dup [$] dip21
@@ -580,10 +593,10 @@ fork_array2:
 
 __ Array sRA sWA sW -> sR sB
 stream_read_write_array:
-  []ap30
-    [drop drop stream_read_array] __ read
-    [nip2 stream_write_array] __ write
-    fork_cmp fork_array2
+  [] pushq2 pushq
+    [[stream_read_array, __ read
+      stream_write_array]] __ write
+    [.] zip get2 fork_array2
 
 fork_array3:
   [[[dup_array] dip12 $ swap] dip22

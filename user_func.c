@@ -176,6 +176,7 @@ start:
     if(tail) LIST_ADD(tmp, tail, ref(c));
   } else if(is_id_list(c)) { // walk through id lists
     cp = &c->value.ptr[0];
+    if(!tail) simplify(cp);
     goto start;
   } else if(is_id_list(pattern)) {
     pattern = pattern->value.ptr[0];
@@ -225,6 +226,13 @@ start:
   } else if(is_row_list(c)) {
     cell_t **r = left_elem(c);
     LOG("match through row list %C -> %C", c, *r);
+    *cp = *r;
+    *r = NULL;
+    drop(c);
+    goto start;
+  } else if(c->op == OP_compose) {
+    cell_t **r = &c->expr.arg[0];
+    LOG("match through compose %C -> %C", c, *r);
     *cp = *r;
     *r = NULL;
     drop(c);

@@ -27,7 +27,7 @@ def breakpoint_hit(frame, bp_loc, dict):
     dbgcall("finish")
 
 def make(debugger, command, result, dict):
-    os.system("make -j -s BUILD=debugger eval")
+    os.system("make -j -s BUILD=debug eval")
     dbgcall("target delete")
     dbgcall("target create \"eval\"")
     dbgcall("breakpoint set --name breakpoint");

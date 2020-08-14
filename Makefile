@@ -79,15 +79,6 @@ ifeq ($(BUILD),debug)
 	LIBS += $(SANITIZE)
 endif
 
-ifeq ($(BUILD),debugger)
-	OPT_FLAG = -O0
-	CFLAGS += -g $(OPT_FLAG) $(SANITIZE)
-	CXXFLAGS += -g $(OPT_FLAG) $(SANITIZE)
-	LIBS += $(SANITIZE)
-	USE_LINENOISE = n
-	USE_READLINE = n
-endif
-
 ifeq ($(BUILD),release)
 	CFLAGS += -DNDEBUG $(OPT_FLAG)
 	CXXFLAGS += -DNDEBUG $(OPT_FLAG)
@@ -320,7 +311,7 @@ profile:
 
 .PHONY: dbg
 dbg:
-	make -j BUILD=debugger eval
+	make -j BUILD=debug eval
 	lldb eval || gdb --nx eval
 
 .PHONY: autostash

@@ -169,6 +169,13 @@ OP(seq) {
   cell_t **p = &c->expr.arg[0];
 
   if(q_var && is_var(*p)) {
+    if(q->value.var == (*p)->value.var) {
+      res = build_id(ref(*p));
+      res->alt = ref(c->alt);
+      drop(c);
+      *cp = res;
+      ABORT(RETRY);
+    }
     res = var_create_bound(*p, tc, ctx);
     trace_arg(tc, 0, *p);
   } else {
@@ -391,6 +398,8 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   cell_t *l = NULL;
   int pos = c->pos;
 
+  CHECK_IF(!check_type(ctx->t, T_LIST), FAIL);
+
   // conservative guesses for the sizes of `a` and `b`
   int ctx_out = pos ? 0 : ctx->s.out;
   qsize_t
@@ -409,13 +418,19 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   bs = quote_size(c->expr.arg[in], false);
   as = row ? compose_size_a(arg_in, bs, cs) : (qsize_t) {0, 0};
 
-  if(row && (as.in || as.out ||
-             is_value(c->expr.arg[0]) ||
-             (!arg_in && is_nil(c->expr.arg[in])))) {
-    CHECK(reduce_arg(c, 0, &CTX(list, as.in, as.out)));
-    CHECK_DELAY();
-    p = c->expr.arg[0];
-    as = quote_size(p, false);
+  if(row) {
+    if(!arg_in && is_nil(c->expr.arg[in])) {
+      CHECK_DELAY();
+      *cp = build_id(ref(c->expr.arg[0]));
+      (*cp)->alt = ref(c->alt);
+      drop(c);
+      return RETRY;
+    } else if(as.in || as.out || is_value(c->expr.arg[0])) {
+      CHECK(reduce_arg(c, 0, &CTX(list, as.in, as.out)));
+      CHECK_DELAY();
+      p = c->expr.arg[0];
+      as = quote_size(p, false);
+    }
   }
 
   CHECK_IF(as_conflict(ctx->alt_set), FAIL);
@@ -461,12 +476,15 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
     if(d) {
       if(!x) {
         LOG("null quote output: arg[%d] = %C", n-1-i, d);
-        ABORT(FAIL);
+        assert_error(c == d->expr.arg[0]);
+        drop(c);
+        store_fail(d, d->alt, ctx);
+      } else {
+        mark_pos(*x, pos);
+        cell_t *seq_x = build_seq(ref(*x), ref(res));
+        store_lazy_dep(d, seq_x, ctx->alt_set);
+        LOG_WHEN(res->alt, "popr from alt quote %C <- %C #condition", d, seq_x);
       }
-      mark_pos(*x, pos);
-      cell_t *seq_x = build_seq(ref(*x), ref(res));
-      store_lazy_dep(d, seq_x, ctx->alt_set);
-      LOG_WHEN(res->alt, "popr from alt quote %C <- %C #condition", d, seq_x);
     }
   }
   if(pos &&

@@ -512,11 +512,12 @@ fuse_map_ho: swap [map] pushl swap [map] pushl . $
 
 __ Array sRA sWA sW f_wa f_w stream_compute
 stream_compute:
-  []ap50
-    [drop drop drop drop stream_read_array] __ read
-    [drop drop nip2 stream_write_array] __ write
-    [[swap [map] dip21] dip32 map nip2 stream_write_array] __ compute
-    fork_cmp3 fork_array3
+  [dup_under .
+    [[swap [map] dip21] dip32 map] .] pushq2 pushq2 pushq
+    [[stream_read_array, __ read
+      stream_write_array, __ write
+      stream_write_array]] __ compute
+    [.] zip get3 fork_array3
 
 __ Array sRA sWA sW f_w stream_compute
 stream_compute2:
@@ -592,3 +593,15 @@ dotswap: . swap . swap . __ {hide}
 
 __ 1 [2 3 4] [+] mapc $ ===> 10
 mapc: [swap . pushl] pushl [] swap foldr
+cmap: [pushl] pushl concat_map
+
+__ sc3b fails {hide}
+__ why: streams really end with a failure to the left,
+__      which makes means you can't pushl a value,
+__      even though they look like regular quotes.
+__ So, to pushl, you really need to know how large the
+__ quote will be in advance.
+__ This understandable, but unfortunate. This also implies:
+__ [1 2] [3+] map [4 5 6] [7+] map .  ===>  [11 12 13]
+sc3b: [] pushq [[+]] [.] zip [$] . $
+sc3b2: [] pushq [[+]] [.] zip head $

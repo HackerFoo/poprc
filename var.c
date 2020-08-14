@@ -142,23 +142,24 @@ void apply_condition(cell_t *c, int *x) {
 }
 
 int copy_conditions(tcell_t *entry, int i, int v) {
+  int x = i;
   if(!i || i == v) return v;
   tcell_t *tc = &entry[i];
   if(!ONEOF(tc->op, OP_assert, OP_seq, OP_unless)) return v;
   int a = tr_index(tc->expr.arg[0]);
   int an = copy_conditions(entry, a, v);
-  if(a == an) return i;
-  int x = i;
-  if(a) {
-    x = trace_copy_cell(entry, &tc->c);
-    tcell_t *tn = &entry[x];
-    tn->n = ~0;
-    entry[tr_index(tc->expr.arg[1])].n++;
+  if(a != an) {
+    if(a) {
+      x = trace_copy_cell(entry, &tc->c);
+      tcell_t *tn = &entry[x];
+      tn->n = ~0;
+      entry[tr_index(tc->expr.arg[1])].n++;
+    }
+    entry[x].expr.arg[0] = index_tr(an);
+    if(an) entry[an].n++;
   }
-  entry[x].expr.arg[0] = index_tr(an);
   if(an) {
     tcell_t *p = &entry[x], *q = &entry[an];
-    q->n++;
     p->trace.type = q->trace.type;
     p->trace.range = range_intersect(p->trace.range, q->trace.range);
   }
@@ -296,7 +297,7 @@ cell_t *trace_quote_var(tcell_t *entry, cell_t *l) {
 
 // builds a temporary list of referenced variables
 cell_t **trace_var_list(cell_t *c, cell_t **tail) {
-  if(c && !c->tmp_val && tail != &c->tmp) {
+  if(c && !c->tmp_val && tail != &c->tmp && !is_persistent(c)) {
     if(is_var(c) && !is_list(c)) {
       LIST_ADD(tmp, tail, c);
       tail = trace_var_list(c->alt, tail);

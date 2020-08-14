@@ -155,6 +155,10 @@ static bool is_sync(const tcell_t *c) {
       FLAG(*entry, entry, SYNC)));
 }
 
+static bool is_blocking(const tcell_t *c) {
+  return !ONEOF(c->op, OP_assert, OP_seq, OP_unless) && is_sync(c);
+}
+
 static
 bool update_block(const tcell_t *e, const tcell_t *c, int *block) {
   if(is_return(c) ||
@@ -227,23 +231,24 @@ static
 void join_stream_ready_signals(const tcell_t *e, const tcell_t *c, uintptr_t const *const *backrefs) {
   const uintptr_t *outs;
   int ci = c - e;
-  size_t n = get_outputs(e, c, backrefs, &outs);
+  size_t n = get_outputs(e, c, backrefs, &outs), nt = 0;
   COUNTUP(i, n) {
     int oi = outs[i];
     const tcell_t *out = &e[oi];
     if(!is_tail_call(e, out)) {
+      nt++;
       printf("  wire inst%d_lst%d_valid;\n", oi, ci);
       printf("  wire inst%d_lst%d_ready;\n", oi, ci);
     }
   }
-  if(n == 0) {
+  if(nt == 0) {
     printf("  assign lst%d_ready = `false;\n", ci);
   } else {
-    printf("  dup_stream #(.N(%d)) dup_list%d(\n"
+    printf("  dup_stream #(.N(%d)) dup_lst%d(\n"
            "    .clk(clk),\n"
            "    .in_valid(lst%d_valid),\n"
            "    .in_ready(lst%d_ready),\n"
-           "    .out_valid({", (int)n, ci, ci, ci);
+           "    .out_valid({", (int)nt, ci, ci, ci);
     SEP(", ");
     COUNTUP(i, n) {
       int oi = outs[i];
@@ -410,7 +415,7 @@ void find_sync_outputs(const tcell_t *e, const tcell_t *c, uintptr_t *set, size_
     const tcell_t *out = &e[oi];
     if(is_tail_call(e, out)) {
       // stop
-    } else if(is_return(out) || (is_sync(out))) {
+    } else if(is_return(out) || is_blocking(out)) {
       set_insert(oi, set, size);
     } else if(ONEOF(out->op, OP_unless, OP_assert, OP_seq) && cgen_lookup(e, out) != c - e) {
       // stop
