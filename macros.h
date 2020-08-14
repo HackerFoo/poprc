@@ -348,11 +348,11 @@
 
 #define strfield(s, f) maybe_get(s, f, "null")
 
-#define WITH(p, f, v)                           \
+#define WITH(name, x, f, v, k)                  \
   ({                                            \
-    LET(__p, (p));                              \
-    __p->f = (v);                               \
-    __p;                                        \
+    LET(name, (x));                             \
+    name->f = (v);                              \
+    k;                                          \
   })
 
 #define CHECK_PRIORITY(p)                                       \

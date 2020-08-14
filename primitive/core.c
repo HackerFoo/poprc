@@ -227,8 +227,7 @@ OP(unless) {
   cell_t **p = &c->expr.arg[0];
   cell_t **q = &c->expr.arg[1];
   while(*q) {
-    context_t *arg_ctx = &CTX(any);
-    response rsp0 = reduce(q, WITH(arg_ctx, inv, !ctx->inv));
+    response rsp0 = WITH(x, &CTX(any), inv, !ctx->inv, reduce(q, x));
     CHECK_IF(rsp0 == RETRY, RETRY);
     if(rsp0 == DELAY) {
       rsp = DELAY;

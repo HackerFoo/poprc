@@ -984,8 +984,8 @@ response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
       context_t arg_ctx = t == T_OPAQUE ?
         CTX(opaque, in_opaque[i]) :
         CTX(t, t);
-      CHECK_IF(reduce(&c->expr.arg[i],
-                      WITH(&arg_ctx, priority, PRIORITY_ASSERT - 1)) == FAIL, FAIL);
+      CHECK_IF(WITH(x, &arg_ctx, priority, PRIORITY_ASSERT - 1,
+                    reduce(&c->expr.arg[i], x)) == FAIL, FAIL);
     }
 
     // reduce again the usual way
@@ -1012,8 +1012,7 @@ response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
           switch_entry(parent_entry, f);
         }
       }
-      context_t *arg_ctx = &CTX(return);
-      CHECK(func_list(ap, WITH(arg_ctx, priority, PRIORITY_TOP)));
+      CHECK(WITH(x, &CTX(return), priority, PRIORITY_TOP, func_list(ap, x)));
       CHECK_DELAY();
 
       // ensure quotes are stored first

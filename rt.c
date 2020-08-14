@@ -375,7 +375,8 @@ response reduce(cell_t **cp, context_t *ctx) {
 
 response simplify_2(cell_t **cp, context_t *ctx) {
   CONTEXT("simplify %C", *cp);
-  return reduce(cp, WITH(ctx, priority, PRIORITY_SIMPLIFY));
+  return WITH(x, ctx, priority, PRIORITY_SIMPLIFY,
+              reduce(cp, x));
 }
 
 // Perform one reduction step on *cp
