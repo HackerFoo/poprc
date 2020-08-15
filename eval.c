@@ -277,7 +277,9 @@ int main(int argc, char **argv) {
 }
 #else // EMSCRIPTEN
 int main(int argc, char **argv) {
+  static_alloc_init();
   log_init();
+  io_init();
   cells_init();
   parse_init();
   module_init();

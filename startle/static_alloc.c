@@ -127,7 +127,9 @@ size_t get_mem_size() {
 
 void list_static_sizes() {
 #define STATIC_ALLOC_ALIGNED__ITEM(file, line, name, type, default_size, alignment) \
-  printf(#type " " #name "[%ld] aligned " #alignment " // " #file ":" #line "\n", name##_size);
+  printf(#type " " #name "[%ld] __attribute__ ((aligned (%d)));" \
+         " // " #file ".c:" #line ", %ld bytes\n", \
+         name##_size, (int)alignment, name##_size * sizeof(type));
 #define STATIC_ALLOC_DEPENDENT__ITEM(...) STATIC_ALLOC__ITEM(__VA_ARGS__)
 #include "static_alloc_list.h"
 #undef STATIC_ALLOC_ALIGNED__ITEM
