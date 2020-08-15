@@ -32,6 +32,7 @@
 
 #define STATIC_ALLOC__ITEM(file, line, name, type, default_size) STATIC_ALLOC_ALIGNED__ITEM(file, line, name, type, default_size, __alignof__(type))
 
+// declare pointers to static allocations
 #define STATIC_ALLOC_ALIGNED__ITEM(file, line, name, type, default_size, alignment) \
   type *name = NULL;                                                    \
   size_t name##_size = 0;
@@ -42,6 +43,32 @@
 
 static char *__mem = NULL;
 static size_t __mem_size = 0;
+
+// determine maximum name size
+#define STATIC_ALLOC_ALIGNED__ITEM(file, line, name, type, default_size, alignment) \
+  char name[sizeof(#name)];
+#define STATIC_ALLOC_DEPENDENT__ITEM(...) STATIC_ALLOC__ITEM(__VA_ARGS__)
+union static_alloc_names {
+#include "static_alloc_list.h"
+};
+#undef STATIC_ALLOC_ALIGNED__ITEM
+#undef STATIC_ALLOC_DEPENDENT__ITEM
+#define STATIC_ALLOC_NAME_SIZE sizeof(union static_alloc_names)
+
+// create allocation table
+typedef struct {
+  char name[STATIC_ALLOC_NAME_SIZE];
+  size_t offset;
+  size_t width;
+} allocation_t;
+static allocation_t allocation_table[] = {
+#define STATIC_ALLOC_ALIGNED__ITEM(file, line, _name, type, default_size, alignment) \
+  { .name = #_name, .offset = 0},
+#define STATIC_ALLOC_DEPENDENT__ITEM(...) STATIC_ALLOC__ITEM(__VA_ARGS__)
+#include "static_alloc_list.h"
+#undef STATIC_ALLOC_ALIGNED__ITEM
+#undef STATIC_ALLOC_DEPENDENT__ITEM
+};
 
 // alignment (a) must be a power of two
 size_t align_offset(size_t n, int a) {
@@ -59,6 +86,7 @@ static
 void alloc_all() {
   __mem_size = 0;
   unsigned int __max_align = 1;
+  unsigned int __i = 0;
 
   // set sizes for non-dependent allocations
 #define STATIC_ALLOC_ALIGNED__ITEM(file, line, name, type, default_size, alignment)       \
@@ -97,6 +125,9 @@ void alloc_all() {
 #define STATIC_ALLOC_ALIGNED__ITEM(file, line, name, type, default_size, alignment) \
   __offset += align_offset(__offset, alignment);                        \
   name = (type *)(__mem + __offset);                                    \
+  allocation_table[__i].offset = __offset;                              \
+  allocation_table[__i].width = sizeof(type);                           \
+  __i++;                                                                \
   __offset += sizeof(type) * name##_size;
 #define STATIC_ALLOC_DEPENDENT__ITEM(...) STATIC_ALLOC__ITEM(__VA_ARGS__)
 #include "static_alloc_list.h"
@@ -125,6 +156,7 @@ size_t get_mem_size() {
   return __mem_size;
 }
 
+// list information about static allocations
 void list_static_sizes() {
 #define STATIC_ALLOC_ALIGNED__ITEM(file, line, name, type, default_size, alignment) \
   printf(#type " " #name "[%ld] __attribute__ ((aligned (%d)));" \
@@ -134,4 +166,23 @@ void list_static_sizes() {
 #include "static_alloc_list.h"
 #undef STATIC_ALLOC_ALIGNED__ITEM
 #undef STATIC_ALLOC_DEPENDENT__ITEM
+}
+
+// identify a pointer into __mem
+void print_static_alloc(void *_p) {
+  char *p = (char *)_p;
+  if(!__mem_size ||
+     p < __mem ||
+     p > __mem + __mem_size) {
+    printf("unknown\n");
+  } else {
+    size_t offset = p - __mem;
+    allocation_t *res = NULL;
+    FOREACH(i, allocation_table) {
+      allocation_t *a = &allocation_table[i];
+      if(a->offset > offset) break;
+      res = a;
+    }
+    printf("%s[%ld]\n", res->name, (offset - res->offset) / res->width);
+  }
 }

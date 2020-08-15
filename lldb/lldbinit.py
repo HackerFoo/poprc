@@ -11,6 +11,7 @@ def __lldb_init_module(debugger, internal_dict):
     dbgcall("command script add -f lldbinit.bc bc")
     dbgcall("command script add -f lldbinit.ac ac")
     dbgcall("command script add -f lldbinit.pt pt")
+    dbgcall("command script add -f lldbinit.pp pp")
     dbgcall("command script add -f lldbinit.save_trees save-trees")
     dbgcall("command script add -f lldbinit.diff_trees diff-trees")
     dbgcall("breakpoint set --name breakpoint");
@@ -54,6 +55,11 @@ def pt(debugger, command, result, dict):
     args = shlex.split(command)
     if len(args) > 0:
         dbgcall("p print_tree(&cells[{}])".format(args[0]))
+
+def pp(debugger, command, result, dict):
+    args = shlex.split(command)
+    if len(args) > 0:
+        dbgcall("p print_static_alloc({})".format(args[0]))
 
 def ac(debugger, command, result, dict):
     args = shlex.split(command)
