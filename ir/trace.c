@@ -23,6 +23,7 @@
 #include "startle/test.h"
 #include "startle/support.h"
 #include "startle/log.h"
+#include "startle/static_alloc.h"
 
 #include "cells.h"
 #include "rt.h"
@@ -45,20 +46,19 @@
 #define BLOCK_MAP_SIZE ((MAX_TRACE_CELLS + MAP_BLOCK_SIZE - 1) / MAP_BLOCK_SIZE)
 
 // storage for all trace entries
-#define ALIGN64 __attribute__((aligned(64)))
-static tcell_t trace_cells[MAX_TRACE_CELLS] ALIGN64;
-static tcell_t *trace_ptr = &trace_cells[0];
+STATIC_ALLOC_ALIGNED(trace_cells, tcell_t, 1 << 15, 64);
+static tcell_t *trace_ptr = NULL;
 
 // scratch spaces at the end of trace_cells
-static scratch_t * const scratch_top = (scratch_t *)(&trace_cells + 1);
-static scratch_t *scratch_ptr = (scratch_t *)(&trace_cells + 1);
+static scratch_t *scratch_top = NULL;
+static scratch_t *scratch_ptr = NULL;
 
 // stack of entries that are being compiled
-static tcell_t *active_entries[1 << 4];
+STATIC_ALLOC(active_entries, tcell_t *, 1 << 4);
 static unsigned int prev_entry_pos = 0;
 
 // index to quickly find an entry for a var inside
-static tcell_t *trace_block_map[BLOCK_MAP_SIZE] = {0};
+STATIC_ALLOC_DEPENDENT(trace_block_map, tcell_t *, DIV_UP(trace_cells_size, 64));
 
 #include "ir/trace-local.h"
 
@@ -113,12 +113,15 @@ typedef intptr_t trace_index_t;
 #endif
 
 bool is_trace_cell(void const *p) {
-  return p >= (void *)&trace_cells && p < (void *)(&trace_cells+1);
+  return p >= (void *)trace_cells && p < (void *)(trace_cells + trace_cells_size);
 }
 
 void trace_init() {
   prev_entry_pos = 0;
   reset_scratch();
+  if(!trace_ptr) trace_ptr = trace_cells;
+  scratch_top = (scratch_t *)(trace_cells + trace_cells_size);
+  scratch_ptr = (scratch_t *)(trace_cells + trace_cells_size);
 }
 
 #if INTERFACE
@@ -694,7 +697,7 @@ int trace_store_something(tcell_t *entry, tcell_t **v) {
 }
 
 tcell_t *get_trace_ptr(size_t size) {
-  assert_error((void *)(trace_ptr + size) < (void *)(&trace_cells+1));
+  assert_error((void *)(trace_ptr + size) < (void *)(trace_cells + trace_cells_size));
   memset(trace_ptr, 0, sizeof(*trace_ptr) * size);
   return trace_ptr;
 }
@@ -712,7 +715,7 @@ tcell_t *trace_start_entry(tcell_t *parent, csize_t out) {
   };
 
   // active_entries[e->pos-1] = e
-  assert_error(prev_entry_pos < LENGTH(active_entries));
+  assert_error(prev_entry_pos < active_entries_size);
   active_entries[prev_entry_pos++] = e;
   e->pos = prev_entry_pos;
   trace_update_block_map(e);

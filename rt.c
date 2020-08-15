@@ -25,6 +25,7 @@
 #include "startle/test.h"
 #include "startle/support.h"
 #include "startle/log.h"
+#include "startle/static_alloc.h"
 
 #include "cells.h"
 #include "rt.h"
@@ -54,10 +55,9 @@
 // Counter of used alt ids
 uint8_t alt_cnt = 0;
 
-cell_t **rt_roots[257];
-const size_t rt_roots_n = LENGTH(rt_roots);
+STATIC_ALLOC(rt_roots, cell_t **, 257);
 
-static cell_t *watched_cells[4] = {0};
+STATIC_ALLOC(watched_cells, cell_t *, 4);
 static op watched_op = OP_null;
 bool watch_enabled = false;
 
@@ -65,23 +65,23 @@ seg_t fail_location[64];
 size_t fail_location_n = 0;
 
 #if INTERFACE
-#define ASSERT_REF() if(ctx->priority > PRIORITY_SIMPLIFY) assert_error(assert_ref(rt_roots, rt_roots_n))
+#define ASSERT_REF() if(ctx->priority > PRIORITY_SIMPLIFY) assert_error(assert_ref(rt_roots, rt_roots_size))
 #endif
 
 bool insert_root(cell_t **r) {
-  return set_insert((uintptr_t)r, (uintptr_t *)rt_roots, rt_roots_n);
+  return set_insert((uintptr_t)r, (uintptr_t *)rt_roots, rt_roots_size);
 }
 
 bool is_root(const cell_t *c) {
-  return count_root(c, rt_roots, rt_roots_n) > 0;
+  return count_root(c, rt_roots, rt_roots_size) > 0;
 }
 
 bool remove_root(cell_t **r) {
-  return set_remove((uintptr_t)r, (uintptr_t *)rt_roots, rt_roots_n);
+  return set_remove((uintptr_t)r, (uintptr_t *)rt_roots, rt_roots_size);
 }
 
 int set_watch(cell_t *c) {
-  FOREACH(i, watched_cells) {
+  STATIC_FOREACH(i, watched_cells) {
     if(!watched_cells[i]) {
       watch_enabled = true;
       watched_cells[i] = c;
@@ -98,7 +98,7 @@ void set_watched_op(op op) {
 
 int get_watch(cell_t *c) {
   if(!watch_enabled) return 0;
-  FOREACH(i, watched_cells) {
+  STATIC_FOREACH(i, watched_cells) {
     if(watched_cells[i] == c) {
       return i + 1;
     }
@@ -112,7 +112,7 @@ int get_watch(cell_t *c) {
 // Initialize run time
 void rt_init() {
   alt_cnt = 0;
-  memset(rt_roots, 0, sizeof(rt_roots));
+  memset(rt_roots, 0, static_sizeof(rt_roots));
   clear_ptr_tags();
   reset_counters();
   array_init();
@@ -346,7 +346,7 @@ response reduce(cell_t **cp, context_t *ctx) {
     response r = op_call(op, cp, ctx);
 
     // prevent infinite loops when debugging
-    assert_counter(LENGTH(cells));
+    assert_counter(cells_size);
 
     if(!*cp) {
       LOG(MARK("FAIL") ": %O %C (%s.%s) %L @abort",

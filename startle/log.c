@@ -26,6 +26,7 @@
 #include "startle/error.h"
 #include "startle/log.h"
 #include "startle/support.h"
+#include "startle/static_alloc.h"
 
 /** @file
  *  @brief Structured in-memory logging
@@ -43,9 +44,9 @@
 #define END_CONTEXT   '\xff'
 #define MASK (~(REVERSE | START_CONTEXT))
 
-#define LOG_SIZE (1 << 12)
-#define LOG_MASK (LOG_SIZE - 1)
-static intptr_t log_data[LOG_SIZE];
+// must be a power of two size
+STATIC_ALLOC(log_data, intptr_t, 1 << 12);
+
 static unsigned int log_start = 0;
 static unsigned int log_end = 0;
 static unsigned int log_watch = ~0;
@@ -84,7 +85,7 @@ void log_init() {
   zero(hash_tag_set);
 }
 
-#define log(x) (log_data[(x) & LOG_MASK])
+#define log(x) (log_data[(x) & (log_data_size - 1)])
 
 /** Set a tag to break on.
  * Break when this tag is reached.
@@ -219,7 +220,7 @@ unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
 
 void log_add(intptr_t x) {
   log(log_end++) = x;
-  if(log_end - log_start >= LOG_SIZE) {
+  if(log_end - log_start >= log_data_size) {
     log_start += log_entry_len(log_start) + 1;
   }
 }

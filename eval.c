@@ -41,6 +41,7 @@
 #include "startle/test.h"
 #include "startle/support.h"
 #include "startle/log.h"
+#include "startle/static_alloc.h"
 
 #include "cells.h"
 #include "rt.h"
@@ -85,7 +86,7 @@ const char *history_path = NULL;
 
 cell_t *previous_result = NULL;
 
-char line_buffer[1024];
+STATIC_ALLOC(line_buffer, char, 1024);
 
 COMMAND(git, "git commit for this build") {
   puts(GIT_LOG);
@@ -107,12 +108,12 @@ void stats_stop() {
 void stats_display() {
   double time = (saved_stats.stop - saved_stats.start) /
     (double)CLOCKS_PER_SEC;
-  printf("time        : %.3e sec\n"
-         "allocated   : %d cells\n"
-         "working set : %d cells\n"
-         "reductions  : %d\n"
-         "failures    : %d\n"
-         "trace       : %d\n",
+  printf("time         : %.3e sec\n"
+         "allocated    : %d cells\n"
+         "working set  : %d cells\n"
+         "reductions   : %d\n"
+         "failures     : %d\n"
+         "trace        : %d\n",
          time,
          saved_stats.alloc_cnt,
          saved_stats.max_alloc_cnt,
@@ -120,14 +121,15 @@ void stats_display() {
          saved_stats.fail_cnt,
          saved_stats.trace_cnt
     );
-  printf("rate        :");
+  printf("rate         :");
   if(time != 0) {
     printf(" %.3e reductions/sec",
            saved_stats.reduce_cnt / time);
   }
   printf("\n"
-         "alts used   : %d\n",
+         "alts used    : %d\n",
          saved_stats.alt_cnt);
+  printf("static bytes : %ld\n", get_mem_size());
 }
 
 PARAMETER(echo, bool, false, "whether the input line is echoed") {
@@ -189,7 +191,9 @@ int main(int argc, char **argv) {
   sa.sa_sigaction = crash_handler;
   sigaction(SIGSEGV, &sa, NULL);
 
+  static_alloc_init();
   log_init();
+  io_init();
 
   error_t error;
 
@@ -396,7 +400,7 @@ void run_eval(bool echo) {
 #endif
   char *line;
   while(tty && printf(": "),
-        (line = fgets(line_buffer, sizeof(line_buffer), stdin)))
+        (line = fgets(line_buffer, static_sizeof(line_buffer), stdin)))
   {
     replace_char(line, '\n', '\0');
     if(line[0] == '\0') {
@@ -772,7 +776,7 @@ COMMAND(bits, "number of bits in a pointer") {
 void for_each_line(void (*f)(cell_t *, unsigned int)) {
   unsigned int n = 0;
   char *line;
-  while((line = fgets(line_buffer, sizeof(line_buffer), stdin)))
+  while((line = fgets(line_buffer, static_sizeof(line_buffer), stdin)))
   {
     char *p = line;
     while(*p && *p != '\n') ++p;
@@ -831,7 +835,7 @@ bool match_log_tag(const cell_t *p) {
 COMMAND(watch, "set a watched cell") {
   if(match_class(rest, CC_NUMERIC, 0, 64)) {
     int idx = parse_num(rest);
-    assert_throw(idx >= 0 && (unsigned int)idx < LENGTH(cells));
+    assert_throw(idx >= 0 && (unsigned int)idx < cells_size);
     int i = set_watch(&cells[idx]);
     if(i) {
       printf("watch %d set: %d\n", i, idx);
@@ -1036,4 +1040,8 @@ COMMAND(analyze, "analyze a function") {
     printf("\n");
     stats_stop();
   }
+}
+
+COMMAND(ssizes, "list static sizes") {
+  list_static_sizes();
 }

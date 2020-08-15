@@ -288,6 +288,7 @@
 
 /** Zero an array or struct. */
 #define zero(a) memset(&(a), 0, sizeof(a))
+#define static_zero(a) memset(a, 0, static_sizeof(a))
 
 /** Trace an integer variable.
  * `show(name)` will print `name = <value>`
@@ -421,3 +422,10 @@
       __done = i, i = (i + __inc) & __mask)
 
 #define STR_IF(cond, str) ((cond) ? (str) : "")
+
+#define STATIC_ALLOC(name, type, default_size, ...) \
+  extern type *name;                                \
+  extern size_t name##_size
+#define STATIC_ALLOC_ALIGNED(...) STATIC_ALLOC(__VA_ARGS__)
+#define STATIC_ALLOC_DEPENDENT(...) STATIC_ALLOC(__VA_ARGS__)
+#define STATIC_FOREACH(i, a) COUNTUP(i, a##_size)

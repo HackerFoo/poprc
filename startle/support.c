@@ -956,6 +956,15 @@ TEST(append_data_to) {
   return x.data == x.hdr.data ? 0 : -1;
 }
 
+ring_buffer_t *rb_init(char *mem, size_t n) {
+  if(n < sizeof(ring_buffer_t)) return NULL;
+  ring_buffer_t *rb = (ring_buffer_t *)mem;
+  rb->head = 0;
+  rb->tail = 0;
+  rb->size = n - sizeof(ring_buffer_t);
+  return rb;
+}
+
 size_t rb_available(const ring_buffer_t *rb) {
   return (rb->size + rb->head - rb->tail) % rb->size;
 }

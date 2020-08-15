@@ -25,6 +25,7 @@
 #include "startle/error.h"
 #include "startle/support.h"
 #include "startle/log.h"
+#include "startle/static_alloc.h"
 
 #include "io.h"
 
@@ -49,11 +50,13 @@ typedef struct {
 
 #define INPUT_BUFFER_SIZE 1024
 
+STATIC_ALLOC(stdin_ring_buffer, char, sizeof(ring_buffer_t) + 1024);
+
 #endif
 
 file_t stream_stdin = {
   .name = SEG("stdin"),
-  .buffer = RING_BUFFER(INPUT_BUFFER_SIZE),
+  .buffer = NULL,
   .descriptor = STDIN_FILENO,
   .flags = FILE_IN | FILE_STREAM
 };
@@ -64,6 +67,10 @@ file_t stream_stdout = {
   .descriptor = STDOUT_FILENO,
   .flags = FILE_OUT | FILE_STREAM
 };
+
+void io_init() {
+  stream_stdin.buffer = (ring_buffer *)rb_init(stdin_ring_buffer, stdin_ring_buffer_size);
+}
 
 ring_buffer_t *alloc_ring_buffer(int size) {
   ring_buffer_t *rb = malloc(sizeof(ring_buffer_t) + size);
@@ -114,11 +121,11 @@ void io_unread(file_t *file, seg_t s) {
   rb_write(file->buffer, s.s, s.n);
 }
 
+STATIC_ALLOC(input_buf, char, 1024);
 seg_t io_read(file_t *file) {
-  static char input_buf[INPUT_BUFFER_SIZE]; // ***
   if(!FLAG_(file->flags, FILE_BINARY)) {
     assert_error(file->buffer);
-    const size_t size = min(file->buffer->size, sizeof(input_buf) - 1);
+    const size_t size = min(file->buffer->size, static_sizeof(input_buf) - 1);
     size_t old = rb_read(file->buffer, input_buf, size);
     ssize_t new = read(file->descriptor, input_buf + old, size - old);
     size_t read_size = old + max(0, new); // TODO handle errors

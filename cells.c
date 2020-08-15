@@ -24,6 +24,7 @@
 #include "startle/error.h"
 #include "startle/support.h"
 #include "startle/log.h"
+#include "startle/static_alloc.h"
 
 #include "cells.h"
 #include "special.h"
@@ -43,15 +44,11 @@
 // Cell storage array
 // NOTE: make sure &cells > 255
 #if INTERFACE
-#ifdef EMSCRIPTEN
 #define CELLS_SIZE (1<<16)
-#else
-#define CELLS_SIZE (1<<16)
-#endif
 #endif
 
 #define MAX_ALLOC (CELLS_SIZE - 32)
-cell_t cells[CELLS_SIZE] __attribute__((aligned(64))) = {};
+STATIC_ALLOC(cells, cell_t, 1 << 16);
 cell_t *cells_ptr;
 static cell_t *uninitialized_cells;
 static cell_t *uninitialized_cells_end;
@@ -77,7 +74,7 @@ bool is_data(void const *p) {
 
 // Is `p` a pointer to a cell in the cell storage array?
 bool is_cell(void const *p) {
-  return p >= (void *)&cells && p < (void *)(&cells+1);
+  return p >= (void *)cells && p < (void *)(cells + cells_size);
 }
 
 // Is `p` a pointer to a closure (i.e. allocated cell)?
@@ -119,7 +116,7 @@ cell_t *cells_next() {
 
 void cells_init() {
   // zero the cells
-  memset(&cells, 0, sizeof(cell_t) * 2);
+  memset(cells, 0, sizeof(cell_t) * 2);
 
   // set up doubly-linked pointer ring
   cells[0].mem.prev = &cells[1];
@@ -129,7 +126,7 @@ void cells_init() {
 
   cells_ptr = &cells[0];
   uninitialized_cells = &cells[2];
-  uninitialized_cells_end = &cells[LENGTH(cells)];
+  uninitialized_cells_end = &cells[cells_size];
   current_alloc_cnt = 0;
 }
 
@@ -557,7 +554,7 @@ bool check_bit(uint8_t *m, unsigned int x) {
 
 // used to get consistent allocations
 void alloc_to(size_t n) {
-  if(n < LENGTH(cells) &&
+  if(n < cells_size &&
      uninitialized_cells < &cells[n]) {
     size_t s = &cells[n] - uninitialized_cells;
     cell_t *c = closure_alloc_cells(s);
@@ -570,7 +567,7 @@ bool check_cycle() {
   size_t i = 0;
   cell_t *start = cells_ptr, *ptr = start;
   while(ptr->mem.next != start) {
-    if(i > LENGTH(cells)) return false;
+    if(i > cells_size) return false;
     i++;
     assert_error(is_cell(ptr->mem.next->mem.next));
     ptr = ptr->mem.next;
@@ -593,7 +590,7 @@ TEST(alloc) {
 
 bool leak_test() {
   bool leak = false;
-  FOREACH(i, cells) {
+  STATIC_FOREACH(i, cells) {
     cell_t *c = &cells[i];
     if(is_closure(c)) {
       if(!is_persistent(c)) {
@@ -744,7 +741,7 @@ int count_out_used(const cell_t *c) { // CLEANUP dep
 }
 
 void cleanup_cells() {
-  FOREACH(i, cells) {
+  STATIC_FOREACH(i, cells) {
     cell_t *c = &cells[i];
     if(is_closure(c)) {
       int s = closure_cells(c) - 1;

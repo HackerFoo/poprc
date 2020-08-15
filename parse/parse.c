@@ -44,9 +44,9 @@
 #include "var.h"
 
 // List of predefined symbols in value order.
-#define MAX_SYMBOLS 64
+STATIC_ALLOC(symbol_index, const char *, 64);
 #define ENTRY(name) [SYM_##name] = #name
-static const char *symbol_index[MAX_SYMBOLS] = {
+static const char *init_symbol_index[] = {
   ENTRY(False),
   ENTRY(True),
   ENTRY(IO),
@@ -58,9 +58,10 @@ static const char *symbol_index[MAX_SYMBOLS] = {
 #undef ENTRY
 
 // List of predefined symbols sorted alphabetically.
+STATIC_ALLOC(symbols, pair_t, 64);
 #define ENTRY(name) {(uintptr_t)#name, SYM_##name}
-static pair_t symbols[MAX_SYMBOLS+1] = {
-  {MAX_SYMBOLS, 7},
+static pair_t init_symbols[] = {
+  {0, 7},
   ENTRY(Array),
   ENTRY(Dict),
   ENTRY(False),
@@ -71,7 +72,7 @@ static pair_t symbols[MAX_SYMBOLS+1] = {
 };
 #undef ENTRY
 
-static char strings[1<<14];
+STATIC_ALLOC(strings, char, 1 << 14);
 static char *strings_top;
 
 void print_symbols() {
@@ -79,7 +80,7 @@ void print_symbols() {
 }
 
 const char *seg_string(seg_t s) {
-  if((uintptr_t)((char *)(&strings + 1) - strings_top) < s.n + 1) return NULL;
+  if((uintptr_t)((strings + strings_size) - strings_top) < s.n + 1) return NULL;
   char *str = strings_top;
   memcpy(str, s.s, s.n);
   strings_top += s.n;
@@ -88,7 +89,7 @@ const char *seg_string(seg_t s) {
 }
 
 const char *string_vprintf(const char *format, va_list ap) {
-  size_t remaining = ((char *)(&strings + 1) - strings_top);
+  size_t remaining = ((strings + strings_size) - strings_top);
   if(remaining > 1) {
     char *str = strings_top;
     int n = vsnprintf(str, remaining, format, ap);
@@ -125,6 +126,9 @@ TEST(strings) {
 
 void parse_init() {
   strings_top = strings;
+  memcpy(symbol_index, init_symbol_index, sizeof(init_symbol_index));
+  memcpy(symbols, init_symbols, sizeof(init_symbols));
+  symbols[0].first = symbols_size - 1;
 }
 
 bool is_num(char const *str) {
@@ -649,7 +653,7 @@ uintptr_t intern(seg_t sym) {
     strings_drop();
   } else {
     v = *map_cnt(symbols);
-    assert_throw(v < MAX_SYMBOLS);
+    assert_throw(v < symbols_size);
     pair_t p = {(uintptr_t)s, v};
     string_map_insert(symbols, p);
     symbol_index[v] = s;

@@ -122,7 +122,7 @@ void log_trees() {
   get_tag(tag);
   fprintf(f, "# TAG: " FORMAT_TAG "\n", tag);
   map_clear(map);
-  COUNTUP(i, rt_roots_n) {
+  COUNTUP(i, rt_roots_size) {
     cell_t **p = rt_roots[i];
     if(p && *p) {
       fprint_tree(*p, map, f);

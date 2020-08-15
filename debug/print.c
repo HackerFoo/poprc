@@ -28,6 +28,7 @@
 #include "startle/support.h"
 #include "startle/map.h"
 #include "startle/log.h"
+#include "startle/static_alloc.h"
 
 #include "cells.h"
 #include "rt.h"
@@ -42,8 +43,8 @@
 #include "debug/tags.h"
 #include "var.h"
 
-static BITSET_INDEX(visited, cells);
-static BITSET_INDEX(marked, cells);
+STATIC_ALLOC_DEPENDENT(visited, uint8_t, (cells_size + 7) / 8);
+STATIC_ALLOC_DEPENDENT(marked, uint8_t, (cells_size + 7) / 8);
 
 static enum {
   BASE_DEC = 0,
@@ -167,7 +168,7 @@ void make_graph(char const *path, cell_t const *c) {
              "graph [\n"
              "rankdir = \"RL\"\n"
              "];\n", path);
-  zero(visited);
+  static_zero(visited);
   graph_cell(f, c);
   fprintf(f, "}\n");
   fclose(f);
@@ -194,8 +195,8 @@ void make_graph_all(char const *path) {
              "graph [\n"
              "rankdir = \"RL\"\n"
              "];\n", path, label);
-  zero(visited);
-  FOREACH(i, cells) {
+  static_zero(visited);
+  STATIC_FOREACH(i, cells) {
     graph_cell(f, &cells[i]);
   }
   fprintf(f, "}\n");
