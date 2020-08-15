@@ -61,7 +61,7 @@ STATIC_ALLOC(watched_cells, cell_t *, 4);
 static op watched_op = OP_null;
 bool watch_enabled = false;
 
-seg_t fail_location[64];
+STATIC_ALLOC(fail_location, seg_t, 64);
 size_t fail_location_n = 0;
 
 #if INTERFACE
@@ -307,7 +307,7 @@ cell_t *fill_incomplete(cell_t *c) {
 
 void log_fail(seg_t src) {
   if(src.s &&
-     fail_location_n < LENGTH(fail_location)) {
+     fail_location_n < fail_location_size) {
     fail_location[fail_location_n++] = src;
   }
 }

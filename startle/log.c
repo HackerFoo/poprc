@@ -62,7 +62,7 @@ static char *tweak_fmt = NULL;
 static unsigned int tweak_trigger = ~0;
 static intptr_t tweak_value = 0;
 
-static uintptr_t hash_tag_set[63];
+STATIC_ALLOC(hash_tag_set, uintptr_t, 63);
 
 log_context_t *__log_context = NULL;
 
@@ -82,7 +82,7 @@ void log_init() {
   set_tweak_fmt = false;
   tweak_fmt = NULL;
   msg_head = 0;
-  zero(hash_tag_set);
+  static_zero(hash_tag_set);
 }
 
 #define log(x) (log_data[(x) & (log_data_size - 1)])
@@ -157,7 +157,7 @@ unsigned int log_printf(unsigned int idx, unsigned int *depth, bool event) {
     if(n[0] != '%') {
       p = strchrnul(n, ' ');
       uintptr_t key = nonzero_hash(n+1, p-n-1);
-      if(n[0] == '@' || set_member(key, hash_tag_set, LENGTH(hash_tag_set))) {
+      if(n[0] == '@' || set_member(key, hash_tag_set, hash_tag_set_size)) {
         printf(NOTE("%.*s"), (int)(p-n), n);
       } else {
         printf("%.*s", (int)(p-n), n);
@@ -413,7 +413,7 @@ void log_print_all() {
 }
 
 void log_scan_tags() {
-  zero(hash_tag_set);
+  static_zero(hash_tag_set);
   unsigned int i = log_start;
   while(i != log_end) {
     const char *fmt = (const char *)log(i);
@@ -429,7 +429,7 @@ void log_scan_tags() {
       const char *e = strchrnul(p, ' ');
       if(p == e) continue;
       uintptr_t key = nonzero_hash(p, e-p);
-      set_insert(key, hash_tag_set, LENGTH(hash_tag_set));
+      set_insert(key, hash_tag_set, hash_tag_set_size);
       p = e;
     }
   }

@@ -22,7 +22,7 @@
 // Provides a way to assign string tags to pointers, which is useful
 // to understand what things are when debugging.
 
-static MAP(tags, 4096);
+STATIC_ALLOC(tags_map, pair_t, 256);
 
 #if INTERFACE
 #define TAG_PTR(ptr, str)                       \
@@ -35,13 +35,13 @@ static MAP(tags, 4096);
 
 void set_ptr_tag(const void *ptr, const char *str) {
   pair_t p = { (uintptr_t)ptr, (uintptr_t)str };
-  map_insert(tags, p);
+  map_insert(tags_map, p);
 }
 
 // TODO: a way to remove tags
 
 const char *get_ptr_tag(const void *ptr) {
-  pair_t *p = map_find(tags, (uintptr_t)ptr);
+  pair_t *p = map_find(tags_map, (uintptr_t)ptr);
   if(p) {
     return (const char *)p->second;
   } else {
@@ -50,5 +50,5 @@ const char *get_ptr_tag(const void *ptr) {
 }
 
 void clear_ptr_tags() {
-  map_clear(tags);
+  init_map(tags_map, tags_map_size);
 }

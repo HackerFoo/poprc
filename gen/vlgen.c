@@ -25,6 +25,7 @@
 #include "startle/test.h"
 #include "startle/support.h"
 #include "startle/map.h"
+#include "startle/static_alloc.h"
 
 #include "cells.h"
 #include "rt.h"
@@ -42,7 +43,9 @@
 #include "var.h"
 #include "ir/analysis.h"
 
-#define MAX_DEGREE 31
+// size must be a prime number
+STATIC_ALLOC(vl_set, uintptr_t, 31);
+STATIC_ALLOC_DEPENDENT(vl_set_final, uintptr_t, vl_set_size);
 
 // table of corresponding Verilog types
 static
@@ -337,28 +340,29 @@ void find_sync_inputs(const tcell_t *e, const tcell_t *c, uintptr_t *set, size_t
 }
 
 // synchronize the minimum set of inputs
+// TODO document
 static
 void gen_sync_disjoint_inputs(const tcell_t *e, const tcell_t *c) {
-  uintptr_t set[MAX_DEGREE] = {0};
-  uintptr_t input_set[MAX_DEGREE] = {0};
   LOG("gen_sync_disjoint_inputs %E %d", e, c-e);
-  find_sync_inputs(e, c, set, LENGTH(set), 1);
-  FOREACH(i, set) {
-    if(INRANGE(set[i], 1, e->entry.len)) {
-      find_sync_inputs(e, &e[set[i]], input_set, LENGTH(input_set), 1);
+  static_zero(vl_set);
+  static_zero(vl_set_final);
+  find_sync_inputs(e, c, vl_set, vl_set_size, 1);
+  STATIC_FOREACH(i, vl_set) {
+    if(INRANGE(vl_set[i], 1, e->entry.len)) {
+      find_sync_inputs(e, &e[vl_set[i]], vl_set_final, vl_set_final_size, 1);
     }
   }
-  FOREACH(i, input_set) {
-    if(input_set[i]) {
-      set_remove(input_set[i], set, LENGTH(set));
+  STATIC_FOREACH(i, vl_set_final) {
+    if(vl_set_final[i]) {
+      set_remove(vl_set_final[i], vl_set, vl_set_size);
     }
   }
-  size_t inputs = squeeze(set, LENGTH(set));
+  size_t inputs = squeeze(vl_set, vl_set_size);
   if(inputs) {
     COUNTUP(i, inputs) {
       if(i) printf(" & ");
-      if(set[i] <= e->entry.len) {
-        printf("inst%d_out_valid", (int)set[i]);
+      if(vl_set[i] <= e->entry.len) {
+        printf("inst%d_out_valid", (int)vl_set[i]);
       } else {
         if(FLAG(*e, entry, RECURSIVE)) {
           printf("active");
@@ -426,35 +430,36 @@ void find_sync_outputs(const tcell_t *e, const tcell_t *c, uintptr_t *set, size_
 }
 
 // synchronize the minimum set of outputs
+// TODO document
 static
 void gen_sync_disjoint_outputs(const tcell_t *e, const tcell_t *c, uintptr_t const *const *backrefs) {
-  uintptr_t set[MAX_DEGREE] = {0};
-  uintptr_t output_set[MAX_DEGREE] = {0};
+  static_zero(vl_set);
+  static_zero(vl_set_final);
   LOG("gen_sync_disjoint_outputs %E %d", e, c-e);
   if(c > e) {
-    find_sync_outputs(e, c, set, LENGTH(set), backrefs);
+    find_sync_outputs(e, c, vl_set, vl_set_size, backrefs);
   } else {
     COUNTUP(i, e->entry.in) {
-      find_sync_outputs(e, &e[i+1], set, LENGTH(set), backrefs);
+      find_sync_outputs(e, &e[i+1], vl_set, vl_set_size, backrefs);
     }
   }
-  FOREACH(i, set) {
-    if(INRANGE(set[i], 1, e->entry.len)) {
-      find_sync_outputs(e, &e[set[i]], output_set, LENGTH(output_set), backrefs);
+  STATIC_FOREACH(i, vl_set) {
+    if(INRANGE(vl_set[i], 1, e->entry.len)) {
+      find_sync_outputs(e, &e[vl_set[i]], vl_set_final, vl_set_final_size, backrefs);
     }
   }
-  FOREACH(i, output_set) {
-    if(output_set[i]) {
-      set_remove(output_set[i], set, LENGTH(set));
+  STATIC_FOREACH(i, vl_set_final) {
+    if(vl_set_final[i]) {
+      set_remove(vl_set_final[i], vl_set, vl_set_size);
     }
   }
-  size_t outputs = squeeze(set, LENGTH(set));
+  size_t outputs = squeeze(vl_set, vl_set_size);
   if(outputs) {
     bool top = false;
     COUNTUP(i, outputs) {
       if(i) printf(" & ");
-      if(!is_return(&e[set[i]])) {
-        printf("inst%d_in_ready", (int)set[i]);
+      if(!is_return(&e[vl_set[i]])) {
+        printf("inst%d_in_ready", (int)vl_set[i]);
       } else if(!top) {
         printf("out_ready");
         top = true;

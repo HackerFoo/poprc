@@ -30,7 +30,7 @@
 #include "debug/log_tree.h"
 #include "var.h"
 
-static MAP(map, 255);
+STATIC_ALLOC(log_tree_map, pair_t, 256);
 
 static
 void fprint_arg(FILE *f, map_t map, cell_t *c) {
@@ -110,8 +110,8 @@ void fprint_tree(cell_t *c, map_t map, FILE *f) {
 
 void print_tree(cell_t *c) {
   if(c) {
-    map_clear(map);
-    fprint_tree(c, map, stdout);
+    init_map(log_tree_map, log_tree_map_size);
+    fprint_tree(c, log_tree_map, stdout);
   }
 }
 
@@ -121,11 +121,11 @@ void log_trees() {
   tag_t tag;
   get_tag(tag);
   fprintf(f, "# TAG: " FORMAT_TAG "\n", tag);
-  map_clear(map);
+  init_map(log_tree_map, log_tree_map_size);
   COUNTUP(i, rt_roots_size) {
     cell_t **p = rt_roots[i];
     if(p && *p) {
-      fprint_tree(*p, map, f);
+      fprint_tree(*p, log_tree_map, f);
     }
   }
   fprintf(f, "\n");

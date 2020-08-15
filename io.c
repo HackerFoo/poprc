@@ -41,7 +41,7 @@ struct ring_buffer;
 
 #define WORD_SIZE 4
 
-typedef struct {
+typedef struct file {
   seg_t name;
   struct ring_buffer *buffer;
   int descriptor;

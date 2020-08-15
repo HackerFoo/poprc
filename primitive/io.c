@@ -22,6 +22,7 @@
 #include "startle/error.h"
 #include "startle/support.h"
 #include "startle/log.h"
+#include "startle/static_alloc.h"
 
 #include "cells.h"
 #include "rt.h"
@@ -212,15 +213,7 @@ static MAP(arrays, 1 << 16);
 
 val_t next_array_id = 1;
 
-typedef struct mmap_array {
-  uintptr_t id;
-  size_t size;
-  unsigned int width;
-  file_t *file;
-  char *data;
-} mmap_array_t;
-
-static mmap_array_t mmap_array[8];
+STATIC_ALLOC(mmap_array, mmap_array_t, 8);
 static unsigned int mmap_array_count = 0;
 
 void array_init() {
@@ -240,7 +233,7 @@ mmap_array_t *lookup_mmap_array(uintptr_t arr) {
 
 static
 mmap_array_t *new_mmap_array(file_t *file, void *addr, int size, int width) {
-  if(mmap_array_count >= LENGTH(mmap_array)) return NULL;
+  if(mmap_array_count >= mmap_array_size) return NULL;
   if(width < 1) width = 1;
   if(size < 0) size = 0;
   mmap_array_t *ma = &mmap_array[mmap_array_count++];

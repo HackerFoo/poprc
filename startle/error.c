@@ -29,6 +29,7 @@
 #include "startle/macros.h"
 #include "startle/error.h"
 #include "startle/log.h"
+#include "startle/static_alloc.h"
 
 static bool breakpoint_disabled = false;
 
@@ -255,13 +256,13 @@ void breakpoint() {
   }
 }
 
-static unsigned int counters[8] = {0};
+STATIC_ALLOC(counters, unsigned int, 8);
 static unsigned int counters_n = 0;
 
 unsigned int *alloc_counter() {
-  assert_error(counters_n < LENGTH(counters));
+  assert_error(counters_n < counters_size);
   return &counters[counters_n++];
 }
 void reset_counters() {
-  zero(counters);
+  static_zero(counters);
 }

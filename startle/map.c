@@ -1234,3 +1234,8 @@ map_t alloc_map(uintptr_t size) {
   map[0] = (pair_t) {size, 0};
   return map;
 }
+
+map_t init_map(pair_t *mem, size_t n) {
+  mem[0] = (pair_t) {n - 1, 0};
+  return mem;
+}

@@ -701,11 +701,11 @@ bool get_arity(const cell_t *p, csize_t *in, csize_t *out, cell_t *module) {
   return true;
 }
 
-static struct mmfile files[16] = {};
+STATIC_ALLOC(files, struct mmfile, 16);
 size_t files_cnt = 0;
 
 bool load_file(int dirfd, const char *path) {
-  if(files_cnt >= LENGTH(files)) {
+  if(files_cnt >= files_size) {
     if(!quiet) printf("Can't load any more files.\n");
     return false;
   }

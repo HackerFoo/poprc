@@ -458,4 +458,13 @@ ASSERT_ALIAS(tcell_t, c.n, n);
 ASSERT_ALIAS(tcell_t, c.size, size);
 ASSERT_ALIAS(tcell_t, c.expr, expr);
 
+struct file;
+typedef struct mmap_array {
+  uintptr_t id;
+  size_t size;
+  unsigned int width;
+  struct file *file;
+  char *data;
+} mmap_array_t;
+
 #endif

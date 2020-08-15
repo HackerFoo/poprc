@@ -25,6 +25,7 @@
 #include "startle/test.h"
 #include "startle/support.h"
 #include "startle/map.h"
+#include "startle/static_alloc.h"
 
 #include "cells.h"
 #include "rt.h"
@@ -39,7 +40,7 @@
 #include "ir/trace.h"
 #include "var.h"
 
-static uintptr_t assert_set[67];
+STATIC_ALLOC(assert_set, uintptr_t, 67);
 
 // table of corresponding C types
 static
@@ -267,7 +268,7 @@ bool last_call(const tcell_t *e, const tcell_t *c) {
   FOR_TRACE_CONST(p, e, c - e) {
     if(p->op == OP_assert &&
        set_member(cgen_index(e, p->expr.arg[1]),
-                  assert_set, LENGTH(assert_set))) {
+                  assert_set, assert_set_size)) {
       continue;
     }
     if(!gen_skip(p)) {
@@ -536,7 +537,7 @@ void gen_assert(const tcell_t *e, const tcell_t *c, int depth) {
   const tcell_t *ret = NULL;
   const tcell_t *end = e + trace_entry_size(e);
 
-  if(!set_insert(iq, assert_set, LENGTH(assert_set))) {
+  if(!set_insert(iq, assert_set, assert_set_size)) {
     FOR_TRACE_CONST(p, e, closure_next_const(c) - e) {
       if(!ret && trace_type(p) == T_RETURN) {
         ret = p;
@@ -577,7 +578,7 @@ bool external_includes(const tcell_t *e) {
 
 void gen_function(tcell_t *e) {
   e->op = OP_value;
-  zero(assert_set);
+  static_zero(assert_set);
 
   gen_function_signature(e);
   printf("\n{\n");
