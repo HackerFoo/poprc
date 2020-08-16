@@ -233,6 +233,11 @@ void print_bytecode(tcell_t *entry, bool tags) {
   }
 }
 
+// to call from a debugger
+void print_bytecode_from_entry_number(int n) {
+  print_bytecode(&trace_cells[n], true);
+}
+
 // drop an expression from the trace
 void drop_trace(tcell_t *entry, tcell_t *tc) {
   if(tc->n <= 0) {

@@ -320,7 +320,7 @@ OP(read_array) {
 WORD("write_array", write_array, 3, 1)
 OP(write_array) {
   cell_t *res = 0;
-  PRE(write);
+  PRE(write_array);
 
   CHECK_IF(!check_type(ctx->t, T_OPAQUE), FAIL);
 
