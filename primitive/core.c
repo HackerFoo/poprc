@@ -466,6 +466,7 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
     list_iterator_t end = it;
     LOOP(out) list_next(&end, false);
     res = list_rest(end);
+    if(res->alt) res = id_list(res); // ***
   }
 
   cell_t **x;

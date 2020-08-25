@@ -106,7 +106,8 @@ typedef enum __attribute__((packed)) priority {
   PRIORITY_DELAY,
   PRIORITY_EXEC_SELF,
   PRIORITY_UNLESS,
-  PRIORITY_MAX
+  PRIORITY_MAX,
+  PRIORITY_REDUCE_LISTS
 } priority_t;
 #define PRIORITY_TOP (PRIORITY_MAX - 1)
 static_assert(sizeof(priority_t) == 1, "priority_t too big");

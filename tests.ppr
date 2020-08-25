@@ -480,8 +480,8 @@ fuse_map7: [dup] map tail
 fuse_map8: []ap20 [2*] map 0 [+ dup] map_with [3+] map get2
 fuse_map8b: []ap20 [2*] map 0 [dup [*] dip21 2*] map_with [3+] map get2 __ {hide}
 fuse_map8c: []ap30 [2*] map 2 [dup [*] dip21 2*] map_with [3+] map get3
-fuse_map_zip_map: [3*] map swap [5*] map [+] zip [2/] map
-fuse_zip_zip:
+fuse_map_zip_map: [3*] map swap [5*] map [+] zip [2/] map __ {hide}
+fuse_zip_zip: __ {hide}
   [2*] map swap
     [3*] map [+] zip swap
       [5*] map [+] zip [1-] map
@@ -618,3 +618,19 @@ stream_compute3:
     [.] zip get3 fork_array3
 
 map_iteratel: 0 [1+] iteratel swap map
+
+pick:
+  [popr]
+    [swap popr [swap] dip22] | $$--
+
+interleave: pick -swap2 [interleave] $$ swap pushr
+
+f17: | dup [quote] dip11 seq
+
+__ [[fa]] [[fb]] c -> [fa fb | ...]
+interleave_with:
+  [pick] dip23 swap $-seq __ [a] [b] c0' c1'
+    [interleave_with] dip31 dup [pushr] dip21 seq
+
+__ a [f]
+nd_rec: dup [$- |] dip21 nd_rec

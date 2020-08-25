@@ -103,8 +103,6 @@ response func_list(cell_t **cp, context_t *ctx) {
     c->priority = 0;
   }
 
-  // if(ctx->t == T_ANY && ctx->t == T_LIST) return SUCCESS; // *** always fails
-  CHECK_IF(!check_type(ctx->t, T_RETURN), FAIL);
   csize_t n = list_size(c);
   if(n == 0) return SUCCESS;
   bool row = is_row_list(c);
@@ -547,4 +545,11 @@ cell_t *get_list_function_var(cell_t *c) {
 
 void unwrap_id_lists(cell_t **lp) {
   while(is_id_list(*lp)) *lp = (*lp)->value.ptr[0];
+}
+
+cell_t *id_list(cell_t *c) {
+  cell_t *l = make_list(1);
+  l->value.ptr[0] = c;
+  FLAG_SET(*l, value, ROW);
+  return l;
 }

@@ -998,30 +998,33 @@ bool is_compose_arg(const cell_t *c) {
 
 int inline_quote(tcell_t *entry, cell_t *l) {
   LOG("inline quote %C", l);
+
   FLAG_SET(*entry, entry, FORCED_INLINE);
   cell_t **p;
-  FORLIST(p, l, true) {
+  FORLIST(p, l, true) { // ***
     reduce(p, is_row_arg(&__it) ?
            &CTX(list, 0, 0) :
            &CTX(any));
   }
   unwrap_id_lists(&l);
-  if(is_var(l)) {
-    switch_entry(entry, l);
-    return var_index(entry, l->value.var);
-  }
   FORLIST(p, l, true) {
     reduce(p, is_row_arg(&__it) ?
            &CTX(list, 0, 0) :
            &CTX(any));
   }
+  if(is_var(l)) {
+    switch_entry(entry, l);
+    return var_index(entry, l->value.var);
+  }
+
+  // need to split alts from reductions inside lists
 
   // convert spans between `compose_args` (right arguments of compose)
   // into a chain of composes
   list_iterator_t right = list_begin(l);
   cell_t *res = NULL, **left = &res, **q;
   int n = 0;
-  bool row;
+  bool row = false;
   FORLIST(p, l, true) {
     n++;
     row = false;
@@ -1127,11 +1130,20 @@ int trace_return(tcell_t *entry, cell_t *c_) {
   return x;
 }
 
+bool list_with_alt(const cell_t *l) {
+  if(is_list(l)) {
+    if(l->alt) return true;
+    COUNTUP(i, list_size(l)) {
+      if(list_with_alt(l->value.ptr[i])) return true;
+    }
+  }
+  return false;
+}
+
 // reduce for tracing & compilation
 unsigned int trace_reduce(tcell_t *entry, cell_t **cp) {
   cell_t *tc = NULL, **prev = &tc;
   unsigned int alts = 0;
-  context_t *ctx = &CTX(return);
 
   CONTEXT("trace_reduce %s %C", entry->word_name, *cp);
   insert_root(cp);
@@ -1144,7 +1156,7 @@ unsigned int trace_reduce(tcell_t *entry, cell_t **cp) {
   loop_start:
     while(*p) {
       CONTEXT("branch %d: %C", alts, *p);
-      response rsp = WITH(x, ctx, priority, priority, func_list(p, x));
+      response rsp = WITH(x, &CTX(return), priority, priority, func_list(p, x));
       if(rsp == DELAY) {
         delay = true;
         p = &(*p)->alt;
@@ -1154,7 +1166,8 @@ unsigned int trace_reduce(tcell_t *entry, cell_t **cp) {
       if(rsp != SUCCESS) continue;
 
       cell_t **a;
-      FORLIST(a, *p, true) {
+      bool has_lists = false;
+      FORLIST(a, *p, true) { // ***
         collapse_row(a);
         if(WITH(x, &CTX(any), priority, PRIORITY_MAX,
                 reduce(a, x)) != SUCCESS) goto loop_start; // ***
@@ -1164,6 +1177,14 @@ unsigned int trace_reduce(tcell_t *entry, cell_t **cp) {
           LOG(TODO " use return value of trace_store_value");
           trace_store_value(entry, *a); // TODO use return value
         }
+        if(is_list(*a)) {
+          has_lists = true;
+          LOG("has list %C", *a);
+        }
+      }
+      if(has_lists && !entry->entry.parent) {
+        LOG("reducing outer lists in %C", *p);
+        if(WITH(x, &CTX(return), priority, PRIORITY_REDUCE_LISTS, func_list(p, x)) != SUCCESS) goto loop_start;
       }
       int x = trace_return(entry, *p);
       tcell_t *r = &entry[x];

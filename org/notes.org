@@ -1,5 +1,11 @@
 #+TITLE: PoprC Notes
 
+* linear/flat laziness
+can only be lazy in one argument
+fits streams well
+* non-flat reduce_ptr
+- func_list
+- try something that forces alt
 * read/write_array sequencing
 hold the array bus with ready+!we to ensure sequencing
 * concat_map

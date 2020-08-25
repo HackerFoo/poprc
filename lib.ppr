@@ -366,6 +366,9 @@ $--: ap13 nip3
 $$--: ap23 nip3
 $$$--: ap33 nip3
 
+$seq: [dup] dip12 $ swap seq
+$-seq: [dup] dip12 $- swap2 seq2
+
 __ a [f] -> fa [f]
 $keep: dup [$] dip21
 $$keep: dup [$$] dip31

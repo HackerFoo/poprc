@@ -353,6 +353,14 @@ response reduce(cell_t **cp, context_t *ctx) {
           op, c, module_name, word_name, ctx->loc.raw);
       log_fail(ctx->text);
     }
+
+    if(r == SUCCESS &&
+       ctx->priority == PRIORITY_REDUCE_LISTS &&
+       is_list(*cp) &&
+       closure_is_ready(*leftmost(cp))) {
+      r = func_list(cp, ctx);
+    }
+
     c = *cp;
     if(r <= DELAY || (r == RETRY && ctx->retry)) {
       ctx->retry = false;
@@ -710,6 +718,7 @@ response abort_op(response rsp, cell_t **cp, context_t *ctx) {
     drop(c);
     *cp = alt;
     stats.fail_cnt++;
+    ASSERT_REF();
   }
   return rsp;
 }

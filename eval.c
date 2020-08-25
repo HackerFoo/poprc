@@ -560,9 +560,9 @@ void reduce_root(cell_t **cp, int depth, int limit) {
   if(depth < limit) {
     insert_root(cp);
     reduce_list(cp, depth);
-    if(*cp) {
+    if(*cp) { // alt?
       cell_t **p;
-      FORLIST(p, *cp, true) {
+      FORLIST(p, *cp, true) { // ***
         if(can_reduce(*p)) reduce_root(p, depth + 1, limit);
       }
     }
