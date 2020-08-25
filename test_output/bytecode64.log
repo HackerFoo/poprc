@@ -1037,7 +1037,7 @@ ___ control.scatter (2 -> 1) ___
 [1] var :: ?l x1
 [2] var :: ?l x1
 [3] [] :: l x1
-[4] jump control.scatter_r0 3 2 1 :: l x1
+[4] jump control.scatter_r0 3 1 2 :: l x1
 [5] return [4]
 
 ___ control.scatter_r0 (3 -> 1) x2 rec ___
@@ -1047,9 +1047,9 @@ ___ control.scatter_r0 (3 -> 1) x2 rec ___
 [4] __primitive.ap 2 -> 5 :: l? x2
 [5] __primitive.dep 4 :: l x3
 [6] __primitive.seq 9 &5 :: v x1
-[7] __primitive.compose &1 5 :: l x1
-[8] __primitive.compose 7 3 :: l x1
-[9] jump control.scatter_r0 8 4 1 :: v x1
+[7] __primitive.compose 8 3 :: l x1
+[8] __primitive.compose &1 5 :: l x1
+[9] jump control.scatter_r0 7 4 1 :: v x1
 [10] return [6] -> 12
 [11] __primitive.unless 3 5 :: l x1
 [12] return [11]

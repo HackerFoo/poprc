@@ -468,9 +468,9 @@ seq2: [[]ap20] dip21 seq get2
 __ feed x as an input to each quote and compose them
 __ this is the reader monad
 __ [ ... , ... ] [x] scatter1 ---> [ ... x ... ]
-__ [[ ... , ... , ...]] [x] scatter ---> [ x ... x ... x ... ]
+__ [x] [[ ... , ... , ...]] scatter ---> [ x ... x ... x ... ]
 scatter1: [swap .] pushl dip11 .
-scatter: [scatter1] pushl [] swap foldr __ rename to splice?
+scatter: swap [scatter1] pushl [] swap foldr __ rename to splice?
 
 __ extract values
 __ this is the writer monad
