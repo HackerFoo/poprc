@@ -65,6 +65,15 @@ ___ algorithm.gcd_r0 (2 -> 1) x2 rec ___
 [10] jump algorithm.gcd_r0 1 9 :: i x1
 [11] return [8]
 
+___ algorithm.in_range (3 -> 1) ___
+[1] var :: ?i x1
+[2] var :: ?i x1
+[3] var :: ?i x2
+[4] __primitive.gte &3 2 :: y x1
+[5] __primitive.lte 3 1 :: y x1
+[6] jump logic.and 4 5 :: y x1
+[7] return [6]
+
 ___ algorithm.iota2 (1 -> 1) ___
 [1] var :: ?l x1
 [2] jump algorithm.iota2_r0 1 :: l x1
@@ -1473,31 +1482,25 @@ ___ gen_ed.write_list_r0 (3 -> 2) x2 rec ___
 ___ io.fork_array2 (3 -> 2) ___
 [1] var :: ?l x1
 [2] var :: ?l x1
-[3] var is Array :: ?o x1
-[4] __primitive.dup_array 3 -> 7 is Array :: o x2
-[5] __primitive.ap 4 1 -> 6 :: v? x1
-[6] __primitive.dep 5 :: a x1
-[7] __primitive.dep 4 is Array :: o x1
-[8] __primitive.ap 7 2 -> 9 :: v? x1
-[9] __primitive.dep 8 :: a x1
-[10] return [9 6]
+[3] var :: ?a x2
+[4] __primitive.ap &3 1 -> 5 :: v? x1
+[5] __primitive.dep 4 :: a x1
+[6] __primitive.ap 3 2 -> 7 :: v? x1
+[7] __primitive.dep 6 :: a x1
+[8] return [7 5]
 
 ___ io.fork_array3 (4 -> 3) ___
 [1] var :: ?l x1
 [2] var :: ?l x1
 [3] var :: ?l x1
-[4] var is Array :: ?o x1
-[5] __primitive.dup_array 4 -> 12 is Array :: o x2
-[6] __primitive.dup_array 5 -> 9 is Array :: o x2
-[7] __primitive.ap 6 1 -> 8 :: v? x1
+[4] var :: ?a x3
+[5] __primitive.ap &4 1 -> 6 :: v? x1
+[6] __primitive.dep 5 :: a x1
+[7] __primitive.ap &4 2 -> 8 :: v? x1
 [8] __primitive.dep 7 :: a x1
-[9] __primitive.dep 6 is Array :: o x1
-[10] __primitive.ap 9 2 -> 11 :: v? x1
-[11] __primitive.dep 10 :: a x1
-[12] __primitive.dep 5 is Array :: o x1
-[13] __primitive.ap 12 3 -> 14 :: v? x1
-[14] __primitive.dep 13 :: a x1
-[15] return [14 11 8]
+[9] __primitive.ap 4 3 -> 10 :: v? x1
+[10] __primitive.dep 9 :: a x1
+[11] return [10 8 6]
 
 ___ io.getline (2 -> 3) ___
 [1] var is File :: ?o x1
@@ -1653,12 +1656,10 @@ ___ io.stream_read_write_array (4 -> 2) ___
 [1] var :: ?l x1
 [2] var :: ?l x1
 [3] var :: ?l x1
-[4] var is Array :: ?o x1
-[5] __primitive.dup_array 4 -> 6 is Array :: o x2
-[6] __primitive.dep 5 is Array :: o x1
-[7] io.stream_write_array_r0 5 1 2 :: l x1
-[8] jump io.stream_read_array_r0 6 3 :: l x1
-[9] return [8 7]
+[4] var is Array :: ?o x2
+[5] io.stream_write_array_r0 &4 1 2 :: l x1
+[6] jump io.stream_read_array_r0 4 3 :: l x1
+[7] return [6 5]
 
 ___ io.stream_write_array (3 -> 1) ___
 [1] var :: ?l x1
@@ -2433,8 +2434,8 @@ ___ list.zip_with (4 -> 1) rec ___
 
 ___ logic.and (2 -> 1) x2 ___
 [1] var :: ?y x2
-[2] var :: ?a x1
-[3] __primitive.assert 2 &1 :: a? x1
+[2] var :: ?y x1
+[3] __primitive.assert 2 &1 :: y? x1
 [4] return [3] -> 8
 [5] __primitive.not 1 :: y x1
 [6] __primitive.assert 7 5 is False :: y? x1
@@ -2448,22 +2449,18 @@ ___ logic.default (2 -> 1) x2 ___
 [4] __primitive.unless 1 2 :: a x1
 [5] return [4]
 
-___ logic.implies (2 -> 1) x2 ___
-[1] var :: ?a x1
+___ logic.implies (2 -> 1) ___
+[1] var :: ?y x1
 [2] var :: ?y x1
-[3] __primitive.not 2 :: y x2
-[4] __primitive.not &3 :: y x1
-[5] __primitive.assert 1 4 :: a? x1
-[6] return [5] -> 9
-[7] __primitive.assert 8 3 is True :: y? x1
-[8] val True :: y x1
-[9] return [7]
+[3] __primitive.not 2 :: y x1
+[4] jump logic.or 1 3 :: y x1
+[5] return [4]
 
 ___ logic.or (2 -> 1) x2 ___
 [1] var :: ?y x2
-[2] var :: ?a x1
+[2] var :: ?y x1
 [3] __primitive.not &1 :: y x1
-[4] __primitive.assert 2 3 :: a? x1
+[4] __primitive.assert 2 3 :: y? x1
 [5] return [4] -> 8
 [6] __primitive.assert 7 1 is True :: y? x1
 [7] val True :: y x1
@@ -3033,23 +3030,19 @@ ___ tests.axi_lite_slave (4 -> 2) ___
 [1] var :: ?l x1
 [2] var :: ?l x1
 [3] var :: ?l x1
-[4] var is Array :: ?o x1
-[5] __primitive.dup_array 4 -> 6 is Array :: o x2
-[6] __primitive.dep 5 is Array :: o x1
-[7] io.stream_write_array_r0 5 1 2 :: l x1
-[8] jump io.stream_read_array_r0 6 3 :: l x1
-[9] return [8 7]
+[4] var is Array :: ?o x2
+[5] io.stream_write_array_r0 &4 1 2 :: l x1
+[6] jump io.stream_read_array_r0 4 3 :: l x1
+[7] return [6 5]
 
 ___ tests.axil_map_r (4 -> 2) ___
 [1] var :: ?l x1
 [2] var :: ?l x1
 [3] var :: ?l x1
-[4] var is Array :: ?o x1
-[5] __primitive.dup_array 4 -> 7 is Array :: o x2
-[6] io.stream_write_array_r0 5 1 2 :: l x1
-[7] __primitive.dep 5 is Array :: o x1
-[8] jump tests.axil_map_r_r0 3 7 :: l x1
-[9] return [8 6]
+[4] var is Array :: ?o x2
+[5] io.stream_write_array_r0 &4 1 2 :: l x1
+[6] jump tests.axil_map_r_r0 3 4 :: l x1
+[7] return [6 5]
 
 ___ tests.axil_map_r_r0 (2 -> 1) rec ___
 [1] changing var is Array :: ?o x1
@@ -3069,12 +3062,10 @@ ___ tests.axil_map_w (4 -> 2) ___
 [1] var :: ?l x1
 [2] var :: ?l x1
 [3] var :: ?l x1
-[4] var is Array :: ?o x1
-[5] __primitive.dup_array 4 -> 6 is Array :: o x2
-[6] __primitive.dep 5 is Array :: o x1
-[7] io.stream_read_array_r0 6 3 :: l x1
-[8] jump tests.axil_map_w_r0 2 1 5 :: l x1
-[9] return [7 8]
+[4] var is Array :: ?o x2
+[5] io.stream_read_array_r0 &4 3 :: l x1
+[6] jump tests.axil_map_w_r0 2 1 4 :: l x1
+[7] return [5 6]
 
 ___ tests.axil_map_w_r0 (3 -> 1) rec ___
 [1] changing var is Array :: ?o x1
@@ -3098,12 +3089,10 @@ ___ tests.axil_map_w_fib (4 -> 2) ___
 [1] var :: ?l x1
 [2] var :: ?l x1
 [3] var :: ?l x1
-[4] var is Array :: ?o x1
-[5] __primitive.dup_array 4 -> 6 is Array :: o x2
-[6] __primitive.dep 5 is Array :: o x1
-[7] io.stream_read_array_r0 6 3 :: l x1
-[8] jump tests.axil_map_w_fib_r0 2 1 5 :: l x1
-[9] return [7 8]
+[4] var is Array :: ?o x2
+[5] io.stream_read_array_r0 &4 3 :: l x1
+[6] jump tests.axil_map_w_fib_r0 2 1 4 :: l x1
+[7] return [5 6]
 
 ___ tests.axil_map_w_fib_r0 (3 -> 1) rec ___
 [1] changing var is Array :: ?o x1
@@ -3597,6 +3586,23 @@ ___ tests.compose_alt (1 -> 1) x2 ___
 [5] val 1 :: i x1
 [6] return [4] -> 7
 [7] return [3]
+
+___ tests.compute_fn (1 -> 1) x2 ___
+[1] var :: ?i x4
+[2] __primitive.bitand &1 &3 in [0, 2147483648] :: i x1
+[3] val 2147483648 :: i x2
+[4] __primitive.eq 2 &5 :: y x1
+[5] val 0 :: i x3
+[6] __primitive.not 4 :: y x1
+[7] __primitive.eq &1 &5 :: y x1
+[8] jump logic.or 6 7 :: y x2
+[9] __primitive.assert &1 &8 :: i? x1
+[10] return [9] -> 15
+[11] __primitive.not 8 :: y x1
+[12] __primitive.assert 14 11 :: i? x1
+[13] tests.collatz_r0 5 1 :: i x1
+[14] __primitive.bitor 13 3 :: i x1
+[15] return [12]
 
 ___ tests.concat_map (2 -> 1) ___
 [1] var :: ?l x1
@@ -5306,15 +5312,11 @@ ___ tests.stream_compute (6 -> 3) ___
 [3] var :: ?l x2
 [4] var :: ?l x2
 [5] var :: ?l x1
-[6] var is Array :: ?o x1
-[7] __primitive.dup_array 6 -> 10 is Array :: o x2
-[8] __primitive.dup_array 7 -> 9 is Array :: o x2
-[9] __primitive.dep 8 is Array :: o x1
-[10] __primitive.dep 7 is Array :: o x1
-[11] io.stream_write_array_r0 9 &3 &4 :: l x1
-[12] io.stream_read_array_r0 10 5 :: l x1
-[13] jump tests.stream_compute_r0 2 4 1 3 8 :: l x1
-[15] return [12 11 13]
+[6] var is Array :: ?o x3
+[7] io.stream_write_array_r0 &6 &3 &4 :: l x1
+[8] io.stream_read_array_r0 &6 5 :: l x1
+[9] jump tests.stream_compute_r0 2 4 1 3 6 :: l x1
+[11] return [8 7 9]
 
 ___ tests.stream_compute_r0 (5 -> 1) rec ___
 [1] changing var is Array :: ?o x1
@@ -5344,15 +5346,11 @@ ___ tests.stream_compute2 (5 -> 3) ___
 [2] var :: ?l x2
 [3] var :: ?l x2
 [4] var :: ?l x1
-[5] var is Array :: ?o x1
-[6] __primitive.dup_array 5 -> 9 is Array :: o x2
-[7] __primitive.dup_array 6 -> 8 is Array :: o x2
-[8] __primitive.dep 7 is Array :: o x1
-[9] __primitive.dep 6 is Array :: o x1
-[10] io.stream_write_array_r0 8 &2 &3 :: l x1
-[11] io.stream_read_array_r0 9 4 :: l x1
-[12] jump tests.stream_compute2_r0 3 1 2 7 :: l x1
-[14] return [11 10 12]
+[5] var is Array :: ?o x3
+[6] io.stream_write_array_r0 &5 &2 &3 :: l x1
+[7] io.stream_read_array_r0 &5 4 :: l x1
+[8] jump tests.stream_compute2_r0 3 1 2 5 :: l x1
+[10] return [7 6 8]
 
 ___ tests.stream_compute2_r0 (4 -> 1) rec ___
 [1] changing var is Array :: ?o x1
@@ -5379,29 +5377,21 @@ ___ tests.stream_compute3 (6 -> 3) ___
 [3] var :: ?l x1
 [4] var :: ?l x1
 [5] var :: ?l x1
-[6] var is Array :: ?o x1
-[7] __primitive.dup_array 6 -> 10 is Array :: o x2
-[8] __primitive.dup_array 7 -> 9 is Array :: o x2
-[9] __primitive.dep 8 is Array :: o x1
-[10] __primitive.dep 7 is Array :: o x1
-[11] io.stream_modify_array_r0 1 8 2 :: l x1
-[12] io.stream_write_array_r0 9 3 4 :: l x1
-[13] jump io.stream_read_array_r0 10 5 :: l x1
-[14] return [13 12 11]
+[6] var is Array :: ?o x3
+[7] io.stream_modify_array_r0 1 &6 2 :: l x1
+[8] io.stream_write_array_r0 &6 3 4 :: l x1
+[9] jump io.stream_read_array_r0 6 5 :: l x1
+[10] return [9 8 7]
 
 ___ tests.stream_compute_ff (4 -> 3) ___
 [1] var :: ?l x2
 [2] var :: ?l x2
 [3] var :: ?l x1
-[4] var is Array :: ?o x1
-[5] __primitive.dup_array 4 -> 8 is Array :: o x2
-[6] __primitive.dup_array 5 -> 7 is Array :: o x2
-[7] __primitive.dep 6 is Array :: o x1
-[8] __primitive.dep 5 is Array :: o x1
-[9] io.stream_write_array_r0 7 &1 &2 :: l x1
-[10] io.stream_read_array_r0 8 3 :: l x1
-[11] jump tests.stream_compute_ff_r0 2 1 6 :: l x1
-[12] return [10 9 11]
+[4] var is Array :: ?o x3
+[5] io.stream_write_array_r0 &4 &1 &2 :: l x1
+[6] io.stream_read_array_r0 &4 3 :: l x1
+[7] jump tests.stream_compute_ff_r0 2 1 4 :: l x1
+[8] return [6 5 7]
 
 ___ tests.stream_compute_ff_r0 (3 -> 1) rec ___
 [1] changing var is Array :: ?o x1
@@ -5428,34 +5418,29 @@ ___ tests.stream_compute_fn (4 -> 3) ___
 [1] var :: ?l x1
 [2] var :: ?l x1
 [3] var :: ?l x1
-[4] var is Array :: ?o x1
-[5] __primitive.dup_array 4 -> 8 is Array :: o x2
-[6] __primitive.dup_array 5 -> 7 is Array :: o x2
-[7] __primitive.dep 6 is Array :: o x1
-[8] __primitive.dep 5 is Array :: o x1
-[9] io.stream_write_array_r0 7 1 2 :: l x1
-[10] io.stream_read_array_r0 8 3 :: l x1
-[11] val 0 :: i x1
-[12] jump tests.stream_compute_fn_r0 11 6 :: l x1
-[13] return [10 9 12]
+[4] var is Array :: ?o x3
+[5] io.stream_write_array_r0 &4 1 2 :: l x1
+[6] io.stream_read_array_r0 &4 3 :: l x1
+[7] val 0 :: i x1
+[8] jump tests.stream_compute_fn_r0 7 4 :: l x1
+[9] return [6 5 8]
 
 ___ tests.stream_compute_fn_r0 (2 -> 1) rec ___
 [1] changing var is Array :: ?o x1
 [2] changing var :: ?i x3
 [3] __primitive.read_array 1 &2 -> 4 is Array :: o x2
 [4] __primitive.dep 3 :: i x1
-[5] tests.collatz_r0 6 4 :: i x1
-[6] val 0 :: i x1
-[7] __primitive.write_array 3 &2 5 is Array :: o x2
-[8] __primitive.seq 15 &7 is True :: y x1
-[9] __primitive.add 2 10 :: i x1
-[10] val 1 :: i x1
-[11] __primitive.bitand 9 12 in [0, 15] :: i x1
-[12] val 15 :: i x1
-[13] jump tests.stream_compute_fn_r0 11 7 :: l x1
-[14] __primitive.pushr 13 8 :: l x1
-[15] val True :: y x1
-[16] return [14]
+[5] tests.compute_fn 4 :: i x1
+[6] __primitive.write_array 3 &2 5 is Array :: o x2
+[7] __primitive.seq 14 &6 is True :: y x1
+[8] __primitive.add 2 9 :: i x1
+[9] val 1 :: i x1
+[10] __primitive.bitand 8 11 in [0, 15] :: i x1
+[11] val 15 :: i x1
+[12] jump tests.stream_compute_fn_r0 10 6 :: l x1
+[13] __primitive.pushr 12 7 :: l x1
+[14] val True :: y x1
+[15] return [13]
 
 ___ tests.sum3 (3 -> 1) ___
 [1] var :: ?a x1

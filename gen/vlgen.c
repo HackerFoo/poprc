@@ -46,6 +46,7 @@
 // size must be a prime number
 STATIC_ALLOC(vl_set, uintptr_t, 31);
 STATIC_ALLOC_DEPENDENT(vl_set_final, uintptr_t, vl_set_size);
+STATIC_ALLOC(vl_outputs, uintptr_t, 16);
 
 // table of corresponding Verilog types
 static
@@ -159,7 +160,7 @@ static bool is_sync(const tcell_t *c) {
 }
 
 static bool is_blocking(const tcell_t *c) {
-  return !ONEOF(c->op, OP_assert, OP_seq, OP_unless) && is_sync(c);
+  return !is_passthrough(c) && is_sync(c);
 }
 
 static
@@ -231,47 +232,111 @@ void gen_stack(const tcell_t *e) {
 }
 
 static
-void join_stream_ready_signals(const tcell_t *e, const tcell_t *c, uintptr_t const *const *backrefs) {
-  const uintptr_t *outs;
+void or_signals(const char *sig, const tcell_t *e, const tcell_t *c, const uintptr_t *outs, size_t n) {
   int ci = c - e;
-  size_t n = get_outputs(e, c, backrefs, &outs), nt = 0;
+  type_t t = trace_type(c);
+  const char *pre = cname(t);
+  SEP(" | ");
+  printf("  assign %s%d_%s = ", pre, ci, sig);
   COUNTUP(i, n) {
     int oi = outs[i];
     const tcell_t *out = &e[oi];
-    if(!is_tail_call(e, out)) {
+    if(!is_dep(out) && !is_tail_call(e, out)) {
+      printf_sep("inst%d_%s%d_%s", oi, pre, ci, sig);
+    }
+  }
+  if(!*sep) printf("`false");
+  printf(";\n");
+}
+
+static
+bool in_vl_outputs(uintptr_t x) {
+  STATIC_FOREACH(i, vl_outputs) {
+    uintptr_t y = vl_outputs[i];
+    if(!y) break;
+    if(x == y) return true;
+  }
+  return false;
+}
+
+static
+void get_outputs_np_step(const tcell_t *e, const tcell_t *c, uintptr_t const *const *backrefs, size_t *cnt) {
+  const uintptr_t *outs;
+  size_t n = get_outputs(e, c, backrefs, &outs);
+  COUNTUP(i, n) {
+    int oi = outs[i];
+    if(in_vl_outputs(oi)) continue;
+    const tcell_t *out = &e[oi];
+    if(!is_dep(out)) {
+      if(is_passthrough(out)) {
+        if(tr_index(out->expr.arg[0]) == c - e) {
+          get_outputs_np_step(e, out, backrefs, cnt);
+        }
+      } else {
+        assert_error(*cnt < vl_outputs_size);
+        vl_outputs[(*cnt)++] = oi;
+      }
+    }
+  }
+}
+
+static
+size_t get_outputs_np(const tcell_t *e, const tcell_t *c, uintptr_t const *const *backrefs) {
+  static_zero(vl_outputs);
+  size_t cnt = 0;
+  get_outputs_np_step(e, c, backrefs, &cnt);
+  return cnt;
+}
+
+static
+void dup_streams(const tcell_t *e, const tcell_t *c, uintptr_t const *const *backrefs) {
+  int ci = c - e;
+  size_t n = get_outputs_np(e, c, backrefs), nt = 0;
+  type_t t = trace_type(c);
+  const char *pre = cname(t);
+  COUNTUP(i, n) {
+    int oi = vl_outputs[i];
+    const tcell_t *out = &e[oi];
+    if(!is_dep(out)) {
       nt++;
-      printf("  wire inst%d_lst%d_valid;\n", oi, ci);
-      printf("  wire inst%d_lst%d_ready;\n", oi, ci);
+      printf("  `dup_signals(");
+      print_type_and_dims(&c->trace);
+      printf(", inst%d, %s%d);\n", oi, pre, ci);
     }
   }
   if(nt == 0) {
-    printf("  assign lst%d_ready = `false;\n", ci);
+    printf("  assign %s%d_ready = `false;\n", pre, ci);
   } else {
-    printf("  dup_stream #(.N(%d)) dup_lst%d(\n"
+    printf("  dup_%s #(.N(%d)) dup_%s%d(\n"
            "    .clk(clk),\n"
-           "    .in_valid(lst%d_valid),\n"
-           "    .in_ready(lst%d_ready),\n"
-           "    .out_valid({", (int)nt, ci, ci, ci);
+           "    .in_valid(%s%d_valid),\n"
+           "    .in_ready(%s%d_ready),\n"
+           "    .out_valid({", vltype_full(c), (int)nt, pre, ci, pre, ci, pre, ci);
     SEP(", ");
     COUNTUP(i, n) {
-      int oi = outs[i];
+      int oi = vl_outputs[i];
       const tcell_t *out = &e[oi];
-      if(!is_tail_call(e, out)) {
-        printf_sep("inst%d_lst%d_valid", oi, ci);
+      if(!is_dep(out)) {
+        printf_sep("inst%d_%s%d_valid", oi, pre, ci);
       }
     }
     printf("}),\n"
            "    .out_ready({");
     sep = "";
     COUNTUP(i, n) {
-      int oi = outs[i];
+      int oi = vl_outputs[i];
       const tcell_t *out = &e[oi];
-      if(!is_tail_call(e, out)) {
-        printf_sep("inst%d_lst%d_ready", oi, ci);
+      if(!is_dep(out)) {
+        printf_sep("inst%d_%s%d_ready", oi, pre, ci);
       }
     }
     printf("})\n"
            "  );\n");
+    if(t == T_OPAQUE) {
+      or_signals("addr", e, c, vl_outputs, n);
+      or_signals("di", e, c, vl_outputs, n);
+      or_signals("we", e, c, vl_outputs, n);
+    }
   }
 }
 
@@ -280,20 +345,16 @@ static
 void gen_decls(tcell_t *e, uintptr_t const *const *backrefs) {
   FOR_TRACE_CONST(tc, e) {
     int i = tc - e;
-    const cell_t *c = &tc->c;
     type_t t = trace_type(tc);
     if(ONEOF(t, T_BOTTOM, T_RETURN)) continue;
     const char *null_str = STR_IF(!tc->trace.bit_width, "null_");
-    if(is_var(c)) { // inputs
+    if(is_var(tc)) { // inputs
       const char *decl = FLAG(*e, entry, RECURSIVE) && t != T_OPAQUE ? "variable" : "alias"; // <---
       printf("  `%s(%s", decl, null_str);
       print_type_and_dims(&tc->trace);
       printf(", %s%d, in%d);\n", cname(t), i, e->entry.in - i);
-      if(t == T_LIST) {
-        join_stream_ready_signals(e, tc, backrefs);
-      }
-    } else { // constants
-      if(c->op == OP_value) {
+    } else {
+      if(tc->op == OP_value) { // constants
         if(t == T_LIST) {
           printf("  `%sconst_nil(%s%d);\n", null_str, cname(t), i);
         } else {
@@ -318,13 +379,16 @@ void gen_decls(tcell_t *e, uintptr_t const *const *backrefs) {
         printf("  `%sconst_nil(%s%d);\n", null_str, cname(t), i);
       }
     }
+    if(direct_refs(&tc->c) > 1 && ONEOF(t, T_LIST, T_OPAQUE) && !is_passthrough(tc)) {
+      dup_streams(e, tc, backrefs);
+    }
   }
 }
 
 // find all inputs with which to synchronize
 static
 void find_sync_inputs(const tcell_t *e, const tcell_t *c, uintptr_t *set, size_t size, int depth) {
-  while(ONEOF(c->op, OP_assert, OP_seq, OP_unless)) {
+  while(is_passthrough(c)) {
     if(c->op == OP_assert && !depth) set_insert(c-e, set, size);
     c = &e[tr_index(c->expr.arg[0])];
   }
@@ -334,7 +398,10 @@ void find_sync_inputs(const tcell_t *e, const tcell_t *c, uintptr_t *set, size_t
     if(!depth) set_insert(e->entry.len+1, set, size);
   } else {
     TRAVERSE(c, const, in, ptrs) {
-      find_sync_inputs(e, &e[tr_index(*p)], set, size, max(0, depth-1));
+      const tcell_t *tc = &e[tr_index(*p)];
+      if(is_dep(c) || !ONEOF(trace_type(tc), T_LIST, T_OPAQUE)) {
+        find_sync_inputs(e, tc, set, size, max(0, depth-1));
+      }
     }
   }
 }
@@ -358,22 +425,21 @@ void gen_sync_disjoint_inputs(const tcell_t *e, const tcell_t *c) {
     }
   }
   size_t inputs = squeeze(vl_set, vl_set_size);
+  SEP(" & ");
   if(inputs) {
     COUNTUP(i, inputs) {
-      if(i) printf(" & ");
       if(vl_set[i] <= e->entry.len) {
-        printf("inst%d_out_valid", (int)vl_set[i]);
+        printf_sep("inst%d_out_valid", (int)vl_set[i]);
       } else {
         if(FLAG(*e, entry, RECURSIVE)) {
-          printf("active");
-        } else {
-          printf("in_valid");
+          printf_sep("active");
+        } else if(FLAG(*e, entry, SYNC)) {
+          printf_sep("in_valid");
         }
       }
     }
-  } else {
-    printf("`true");
   }
+  if(!*sep) printf("`true");
 }
 
 // synchronize the output of a block
@@ -409,6 +475,7 @@ void gen_sync_block(const tcell_t *e, const tcell_t *c, int block, bool ret) {
 }
 
 // find all outputs with which to synchronize
+static void find_all_sync_outputs(const tcell_t *e, const tcell_t *c, uintptr_t *set, size_t size, uintptr_t const *const *backrefs);
 static
 void find_sync_outputs(const tcell_t *e, const tcell_t *c, uintptr_t *set, size_t size, uintptr_t const *const *backrefs) {
   if(is_return(c)) return;
@@ -418,13 +485,29 @@ void find_sync_outputs(const tcell_t *e, const tcell_t *c, uintptr_t *set, size_
     int oi = outs[i];
     const tcell_t *out = &e[oi];
     if(is_tail_call(e, out)) {
-      // stop
+      // continue
     } else if(is_return(out) || is_blocking(out)) {
       set_insert(oi, set, size);
-    } else if(ONEOF(out->op, OP_unless, OP_assert, OP_seq) && cgen_lookup(e, out) != c - e) {
-      // stop
+    } else if(is_passthrough(out) && cgen_lookup(e, out) != c - e) {
+      // continue
     } else {
-      find_sync_outputs(e, out, set, size, backrefs);
+      find_all_sync_outputs(e, out, set, size, backrefs);
+    }
+  }
+}
+
+static
+void find_all_sync_outputs(const tcell_t *e, const tcell_t *c, uintptr_t *set, size_t size, uintptr_t const *const *backrefs) {
+  if(is_return(c)) return;
+  if(!ONEOF(trace_type(c), T_LIST, T_OPAQUE)) {
+    find_sync_outputs(e, c, set, size, backrefs);
+  }
+  if(!is_value(c)) {
+    TRAVERSE(c, const, out) {
+      const tcell_t *tc = &e[tr_index(*p)];
+      if(!ONEOF(trace_type(tc), T_LIST, T_OPAQUE)) {
+        find_sync_outputs(e, tc, set, size, backrefs);
+      }
     }
   }
 }
@@ -445,23 +528,23 @@ void gen_sync_disjoint_outputs(const tcell_t *e, const tcell_t *c, uintptr_t con
   }
   STATIC_FOREACH(i, vl_set) {
     if(INRANGE(vl_set[i], 1, e->entry.len)) {
-      find_sync_outputs(e, &e[vl_set[i]], vl_set_final, vl_set_final_size, backrefs);
+      find_all_sync_outputs(e, &e[vl_set[i]], vl_set_final, vl_set_final_size, backrefs);
     }
   }
   STATIC_FOREACH(i, vl_set_final) {
     if(vl_set_final[i]) {
-      set_remove(vl_set_final[i], vl_set, vl_set_size);
+      //set_remove(vl_set_final[i], vl_set, vl_set_size);
     }
   }
   size_t outputs = squeeze(vl_set, vl_set_size);
   if(outputs) {
     bool top = false;
+    SEP(" & ");
     COUNTUP(i, outputs) {
-      if(i) printf(" & ");
       if(!is_return(&e[vl_set[i]])) {
-        printf("inst%d_in_ready", (int)vl_set[i]);
-      } else if(!top) {
-        printf("out_ready");
+        printf_sep("inst%d_in_ready", (int)vl_set[i]);
+      } else if(!top && FLAG(*e, entry, SYNC)) {
+        printf_sep("out_ready");
         top = true;
       }
     }
@@ -559,8 +642,9 @@ void gen_instance(const tcell_t *e, const tcell_t *c, int *sync_chain, uintptr_t
     const tcell_t *a = &e[cgen_index(e, c->expr.arg[i])];
     type_t t = trace_type(a);
     const char *null_str = STR_IF(!a->trace.bit_width && t != T_OPAQUE, "null_");
-    printf_sep("\n      `in(%s%s, %d, ",
-               null_str,
+    const char *dup_str = STR_IF(ONEOF(t, T_LIST, T_OPAQUE) && direct_refs(&a->c) > 1, "dup_");
+    printf_sep("\n      `in(%s%s%s, %d, ",
+               dup_str, null_str,
                vltype_full(a), (int)i); // ***
     print_var(e, a, block);
     printf(")");
@@ -621,14 +705,20 @@ void gen_body(tcell_t *e, uintptr_t const *const *backrefs) {
         if(get_entry(c) == e) {
           if(FLAG(*c, trace, JUMP)) {
             TRAVERSE(c, const, in) {
+              char inst[8];
               int i = tr_index(*p);
               const tcell_t *a = &e[i];
+              if(direct_refs(&a->c) > 1) {
+                snprintf(inst, sizeof(inst), "inst%d_", (int)(c - e));
+              } else {
+                inst[0] = '\0';
+              }
               if(trace_type(a) == T_LIST && direct_refs(&a->c) <= 1) { // *** HACK
-                printf("    assign %s%d_ready = `true;\n", cname(T_LIST), i);
+                printf("    assign %s%s%d_ready = `true;\n", inst, cname(T_LIST), i);
               }
               if(is_array(a)) {
                 // teminate bus
-                printf("    assign `to_bus(%s%d) = 0;\n", cname(T_OPAQUE), i);
+                printf("    assign `to_bus(%s%s%d) = 0;\n", inst, cname(T_OPAQUE), i);
               }
             }
           } else {
@@ -667,7 +757,6 @@ bool gen_outputs(const tcell_t *e) {
   COUNTUP(i, out) {
     get_trace_info_for_output(&tr, e, i);
     type_t t = tr.type;
-    if(t == T_OPAQUE) continue; // TODO connect output arrays to outN
     const tcell_t *r;
     if(tr.bit_width) {
       printf("  assign out%d =", (int)i);
@@ -675,7 +764,7 @@ bool gen_outputs(const tcell_t *e) {
       const tcell_t *r_prev = NULL;
       int block = 1;
       do {
-        if(t == T_LIST || !is_tail_call(e, r)) {
+        if(ONEOF(t, T_LIST, T_OPAQUE) || !is_tail_call(e, r)) {
           if(r_prev) {
             int ri = cgen_index(e, r_prev->value.ptr[REVI(i)]);
             printf("\n      block%d_valid ? ", block);
@@ -693,18 +782,37 @@ bool gen_outputs(const tcell_t *e) {
       print_var(e, &e[cgen_index(e, r_prev->value.ptr[REVI(i)])], block);
       printf(";\n");
     }
-    if(t == T_LIST) {
+    if(ONEOF(t, T_LIST, T_OPAQUE)) {
+      char inst[8];
       printf("  assign out%d_valid = ", (int)i);
       r = &e[e->trace.first_return];
       SEP(" | ");
       while(r > e) {
-        printf_sep("%s%d_valid", cname(t), cgen_index(e, r->value.ptr[REVI(i)]));
+        int ri = r - e;
+        int x = cgen_index(e, r->value.ptr[REVI(i)]);
+        if(direct_refs(&e[x].c) > 1) {
+          snprintf(inst, sizeof(inst), "inst%d_", ri);
+        } else {
+          inst[0] = '\0';
+        }
+        printf_sep("%s%s%d_valid", inst, cname(t), x);
         r = &e[tr_index(r->alt)];
       }
       printf(";\n");
       r = &e[e->trace.first_return];
       while(r > e) {
-        printf("  assign %s%d_ready = out%d_ready;\n", cname(t), cgen_index(e, r->value.ptr[REVI(i)]), (int)i);
+        int x = cgen_index(e, r->value.ptr[REVI(i)]);
+        int ri = r - e;
+        if(direct_refs(&e[x].c) > 1) {
+          snprintf(inst, sizeof(inst), "inst%d_", ri);
+        } else {
+          inst[0] = '\0';
+        }
+        printf("  assign %s%s%d_ready = out%d_ready;\n", inst, cname(t), x, (int)i);
+        if(t == T_OPAQUE) {
+          printf("  assign %sintf%d_we = out%d_we;\n", inst, x, (int)i);
+          printf("  assign %sintf%d_di = out%d_di;\n", inst, x, (int)i);
+        }
         r = &e[tr_index(r->alt)];
       }
     }

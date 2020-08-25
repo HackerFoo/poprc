@@ -19,9 +19,6 @@ module tests_axil_map_w_tb;
     `reg(stream, `intN, sWA);
     `reg(stream, `intN, sW);
     `wire(stream, 1, sB);
-    `assign_stream(inst, sRA);
-    `assign_stream(inst, sWA);
-    `assign_stream(inst, sW);
     reg  `intT sRA_next;
 
     assign sR_ready = out_ready;
@@ -30,8 +27,8 @@ module tests_axil_map_w_tb;
     `testbench(tests_axil_map_w_tb, 5000)
 
     array #(.N(N))
-      arr(.clk(clk),
-          `out(Array, 0, arr));
+      array(.clk(clk),
+            `out(Array, 0, arr));
 
     `in_ready(inst);
     `inst_sync(tests_axil_map_w, inst, #())(
@@ -68,6 +65,7 @@ module tests_axil_map_w_tb;
                 sWA_valid = `true;
                 sW_valid = `true;
             end
+            sRA_valid = `true;
         end
         sWA_valid = `false;
         sW_valid = `false;
@@ -82,12 +80,8 @@ module tests_axil_map_w_tb;
 always @(posedge clk) begin
     if(sRA_ready) begin
         if(sRA_next < sWA & ($random(read_seed) & 1)) begin
-            `set(sRA_valid);
             sRA <= sRA_next;
             sRA_next <= sRA_next + 1;
-        end
-        else begin
-            `reset(sRA_valid);
         end
     end
     if(sR_valid & sR != sRA + 3)

@@ -32,6 +32,9 @@ Compile to direct C when possible
 **** closure_set_ready
 **** split_args
 * major
+** TODO type conflicts in condition chains (or, and)
+ir/trace.c:918: trace_update_2: Assertion `ONEOF(pt, T_ANY, T_BOTTOM) || ONEOF(t, T_BOTTOM, pt)' failed: @type
+*** workaround: force type of output to be the same (e.g. symbol_t)
 ** TODO pushl/pushr inside loops
 ** TODO nested lists
 ** STARTED implement tail recursion modulo X

@@ -19,9 +19,6 @@ module io_stream_read_write_array_tb;
     `reg(stream, `intN, sWA);
     `reg(stream, `intN, sW);
     `wire(stream, 1, sB);
-    `assign_stream(inst, sRA);
-    `assign_stream(inst, sWA);
-    `assign_stream(inst, sW);
     reg  `intT sRA_next;
 
     assign sR_ready = out_ready;
@@ -30,8 +27,8 @@ module io_stream_read_write_array_tb;
     `testbench(io_stream_read_write_array_tb, 1000)
 
     array #(.N(N))
-      arr(.clk(clk),
-          `out(Array, 0, arr));
+      array(.clk(clk),
+            `out(Array, 0, arr));
 
     `in_ready(inst);
     `inst_sync(io_stream_read_write_array, inst, #())(
@@ -47,7 +44,7 @@ module io_stream_read_write_array_tb;
     initial begin
         sRA  = 0;
         sRA_next = 0;
-        sRA_valid = `false;
+        sRA_valid = `true;
         sWA  = 0;
         sWA_valid = `false;
         sW = 0;
@@ -82,12 +79,8 @@ module io_stream_read_write_array_tb;
 always @(posedge clk) begin
     if(sRA_ready) begin
         if(sRA_next < sWA & ($random(read_seed) & 1)) begin
-            `set(sRA_valid);
             sRA <= sRA_next;
             sRA_next <= sRA_next + 1;
-        end
-        else begin
-            `reset(sRA_valid);
         end
     end
     if(sR_valid & sR != ((sRA * 7) & 8'h7f))

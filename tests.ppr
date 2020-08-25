@@ -587,7 +587,10 @@ f16: [1+] __ {hide}
 
 return_test: [dup] pushl [[3* dup, 5+ dup]] pushl return drop get3
 
-stream_compute_fn: 0 [1+ 15&b] iteratel [collatz] stream_compute3
+compute_fn:
+  dup dup 0 == [1 31<<b &b 0 == not] dip11 or
+    [!] [[collatz 1 31<<b |b] dip11 not!] | $$
+stream_compute_fn: 0 [1+ 15&b] iteratel [compute_fn] stream_compute3
 
 dotswap: . swap . swap . __ {hide}
 

@@ -45,9 +45,6 @@ module tests_axi_lite_slave_top
     `wire(stream, `intN , w);
     `wire(stream, `intN , r);
     `wire(null_stream, 0, b);
-    `assign_stream(inst, ar);
-    `assign_stream(inst, aw);
-    `assign_stream(inst, w);
 
     wire inst_in_ready;
     `inst_sync(`id(`axi_module), inst, #())(

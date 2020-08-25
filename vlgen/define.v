@@ -96,8 +96,10 @@
 `define input_stream(N, index) input wire [N-1:0] in``index, input wire in``index``_valid, output wire in``index``_ready
 `define output_stream(N, index) output wire [N-1:0] out``index, output wire out``index``_valid, input wire out``index``_ready
 `define output_null_stream(N, index) output wire out``index``_valid, input wire out``index``_ready
-`define in_stream(index, name) .in``index(name), .in``index``_valid(`concat_(`current_inst, name``_valid)), .in``index``_ready(`concat_(`current_inst, name``_ready))
+`define in_stream(index, name) .in``index(name), .in``index``_valid(name``_valid), .in``index``_ready(name``_ready)
+`define in_dup_stream(index, name) .in``index(name), .in``index``_valid(`concat_(`current_inst, name``_valid)), .in``index``_ready(`concat_(`current_inst, name``_ready))
 `define in_null_stream(index, name) .in``index``_valid(name``_valid), .in``index``_ready(name``_ready)
+`define in_dup_null_stream(index, name) .in``index``_valid(`concat_(`current_inst, name``_valid)), .in``index``_ready(`concat_(`current_inst, name``_ready))
 `define out_stream(index, name) .out``index(name), .out``index``_valid(name``_valid), .out``index``_ready(name``_ready)
 `define out_null_stream(index, name) .out``index``_valid(name``_valid), .out``index``_ready(name``_ready)
 `define alias_stream(N, name, other) \
@@ -116,80 +118,100 @@
 `define const_nil(name) localparam name = 0; localparam name``_valid = `true; wire name``_ready
 `define null_const_nil(name) localparam name``_valid = `true; wire name``_ready
 
-`define assign_stream(inst, name) wire inst``_``name``_ready; assign name``_ready = inst``_``name``_ready; wire inst``_``name``_valid = name``_valid
+`define in_alias(name, other) wire name; assign other = name
+`define in_alias_vec(name, other) wire [$bits(other)-1:0] name; assign other = name
+
+`define assign_stream(inst, name) \
+`in_alias(inst``_``name``_ready, name``_ready); \
+  wire inst``_``name``_valid = name``_valid
+
+`define assign_Array(inst, name) \
+  `assign_stream(inst, name); \
+  `in_alias_vec(inst``_``name``_addr, name``_addr); \
+  `in_alias_vec(inst``_``name``_di, name``_di); \
+  `in_alias(inst``_``name``_we, name``_we)
 
 /* ------------------------------------------------------ *
      ARRAY BUS
  * ------------------------------------------------------ *
-     addr:  address
-     we:    write enable
-     di:    data in
-     do:    data out
-     valid: address is valid
-     ready: ready for a new address
+     addr:        address      (*)
+     we:          write enable (*)
+     di:          data in      (*)
+     (no suffix): data out
+     valid: data out is valid
+     ready: ready for data
 
      NOTES:
-      -> do is assumed valid once the address
-         has been transmitted (ready & valid)
-      -> all inputs to the bus must be low
-         if valid is low, allowing the bus to be OR'ed
+      -> when not ready, pass back signals:
+         addr, we, di, and ready
+      -> (*) => must be valid when ready
+      -> addr, we & di must be terminated low
+         to allow OR'ing and selecting with valid
  * ------------------------------------------------------ */
 
 // master
 `define input_Array(N, index) \
   output wire [`fst(N)-1:0] in``index``_addr, \
-  output wire               in``index``_we, \
+  output wire in``index``_we, \
   output wire [`snd(N)-1:0] in``index``_di, \
-  input  wire [`snd(N)-1:0] in``index``_do, \
-  output wire               in``index``_valid, \
-  input  wire               in``index``_ready
+  input  wire [`snd(N)-1:0] in``index, \
+  input  wire in``index``_valid, \
+  output wire in``index``_ready
 
 // slave
 `define output_Array(N, index) \
   input  wire [`fst(N)-1:0] out``index``_addr, \
-  input  wire               out``index``_we, \
+  input  wire  out``index``_we, \
   input  wire [`snd(N)-1:0] out``index``_di, \
-  output wire [`snd(N)-1:0] out``index``_do, \
-  input  wire               out``index``_valid, \
-  output wire               out``index``_ready
+  output wire [`snd(N)-1:0] out``index, \
+  output wire out``index``_valid, \
+  input  wire out``index``_ready
 
 `define in_Array(index, name) \
       .in``index``_addr(name``_addr), \
       .in``index``_we(name``_we), \
       .in``index``_di(name``_di), \
-      .in``index``_do(name``_do), \
+      .in``index(name), \
       .in``index``_valid(name``_valid), \
       .in``index``_ready(name``_ready)
+
+`define in_dup_Array(index, name) \
+      .in``index``_addr(`concat_(`current_inst, name``_addr)), \
+      .in``index``_we(`concat_(`current_inst, name``_we)), \
+      .in``index``_di(`concat_(`current_inst, name``_di)), \
+      .in``index(name), \
+      .in``index``_valid(`concat_(`current_inst, name``_valid)), \
+      .in``index``_ready(`concat_(`current_inst, name``_ready))
 
 `define out_Array(index, name) \
       .out``index``_addr(name``_addr), \
       .out``index``_we(name``_we), \
       .out``index``_di(name``_di), \
-      .out``index``_do(name``_do), \
+      .out``index(name), \
       .out``index``_valid(name``_valid), \
       .out``index``_ready(name``_ready)
 
 `define wire_Array(N, name) \
   wire [`fst(N)-1:0] name``_addr; \
-  wire               name``_we; \
+  wire name``_we; \
   wire [`snd(N)-1:0] name``_di; \
-  wire [`snd(N)-1:0] name``_do; \
-  wire               name``_valid; \
-  wire               name``_ready
+  wire [`snd(N)-1:0] name; \
+  wire name``_valid; \
+  wire name``_ready
 
 `define alias_Array(N, name, other) \
   wire [`fst(N)-1:0] name``_addr; \
   assign other``_addr = name``_addr; \
-  wire               name``_we; \
+  wire name``_we; \
   assign other``_we = name``_we; \
   wire [`snd(N)-1:0] name``_di; \
   assign other``_di = name``_di; \
-  wire [`snd(N)-1:0] name``_do = other``_do; \
-  wire name``_valid; \
-  assign other``_valid = name``_valid; \
-  wire name``_ready = other``_ready
+  wire [`snd(N)-1:0] name = other; \
+  wire name``_valid = other``_valid; \
+  wire name``_ready; \
+  assign other``_ready = name``_ready
 
-`define to_bus(name) {name``_addr, name``_we, name``_di, name``_valid}
+`define to_bus(name) {name``_addr, name``_we, name``_di, name``_ready}
 
 `define true 1'b1
 `define false 1'b0
@@ -248,3 +270,16 @@
     #0.01 in_valid = `true
 
 `endif
+
+`define dup_signals_stream(N, inst, name) \
+    wire inst``_``name``_valid; \
+    wire inst``_``name``_ready
+
+`define dup_signals_Array(N, inst, name) \
+    wire inst``_``name``_valid; \
+    wire inst``_``name``_ready; \
+    wire [`fst(N)-1:0] inst``_``name``_addr; \
+    wire [`snd(N)-1:0] inst``_``name``_di; \
+    wire inst``_``name``_we
+
+`define dup_signals(type, N, inst, name) `dup_signals_``type(N, inst, name)

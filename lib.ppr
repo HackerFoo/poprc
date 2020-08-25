@@ -493,8 +493,8 @@ imports:
   module stack
   module control
 
-or: [not!] [True swap!] | ap21 nip
-and: [!] [False swap not!] | ap21 nip
+or: [not!] [True swap!] | ap21 nip symbol_t
+and: [!] [False swap not!] | ap21 nip symbol_t
 implies: swap not or
 
 __ A B default -> A, or B if A fails
@@ -514,6 +514,7 @@ imports:
   module list
   module control
   module num
+  module logic
 
 __ greatest common divisor (using Euclid's algorithm)
 gcd:
@@ -548,6 +549,9 @@ __ ERROR: user_func.c:424: flat_call: Assertion `tn->pos' failed
 __ iota: [1-] pushl [[dup 1-] .] [head 0 >] iterate
 iota2: [[dup 1-] .] [head 0 >] iterate
 __ iota3: [] pushl [[dup 1-] .] [head 0 >] iterate
+
+__ x lo hi inrange -> bool
+in_range: [over] dip23 <= [>=] dip21 and
 
 module io:
 
@@ -589,7 +593,7 @@ __ Array [... idx] [... data] stream_write_array -> [... True]
 stream_write_array: swap2 [-swap2 write_array dup True swap seq swap] zip_with
 
 fork_array2:
-  [[dup_array] dip12 $ swap] dip22 $
+  [[dup] dip12 $ swap] dip22 $
 
 __ Array sRA sWA sW -> sR sB
 stream_read_write_array:
@@ -599,8 +603,8 @@ stream_read_write_array:
     [.] zip get2 fork_array2
 
 fork_array3:
-  [[[dup_array] dip12 $ swap] dip22
-    [dup_array] dip12 $ swap] dip33 $
+  [[[dup] dip12 $ swap] dip22
+    [dup] dip12 $ swap] dip33 $
 
 __ Array a f -> Array
 stream_modify_array1: [dup [read_array] dip22 swap] dip23 $ write_array

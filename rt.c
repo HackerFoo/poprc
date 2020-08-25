@@ -1149,3 +1149,11 @@ alt_set_t ctx_alt_set_range(context_t *ctx) {
   }
   return as;
 }
+
+#if INTERFACE
+#define is_passthrough(c) _is_passthrough(GET_CELL(c))
+#endif
+
+bool _is_passthrough(const cell_t *c) {
+  return ONEOF(c->op, OP_seq, OP_assert, OP_unless);
+}

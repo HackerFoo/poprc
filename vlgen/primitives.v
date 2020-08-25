@@ -167,15 +167,20 @@ module transparent_buffer #(
 
     assign in0_ready = !data_valid | out0_ready;
     assign out0_valid = data_valid | in0_valid;
-    assign out0 = in0_valid ? in0 : data;
+    assign out0 = !data_valid ? in0 : data; // transparent when ready & valid
 
     always @(posedge clk) begin
-        if(!nrst) begin
+        if(!nrst) begin // reset
             `reset(data_valid);
         end
-        else if(in0_ready) begin
-            if(in0_valid) data <= in0;
-            if(!(in0_valid & out0_ready)) data_valid <= in0_valid;
+        else begin
+            if(!in0_valid && out0_ready) begin // drain
+                `reset(data_valid);
+            end
+            else if(in0_valid && !out0_ready) begin // fill
+                data <= in0;
+                if(!out0_ready) `set(data_valid);
+            end
         end
     end
 endmodule
@@ -194,24 +199,39 @@ module __primitive_read_array #(
   `output(Array, (out0AN, out0DN), 0),
   `output(simple, out1N, 1)
 );
-    assign in0_addr = in_valid ? in1 : out0_addr;
-    assign in0_we = !in_valid & out0_we;
-    assign in0_di = out0_di;
-    assign out0_do = in0_do;
-    assign in0_valid = in_valid | out0_valid;
-    assign out0_ready = !in_valid & in0_ready;
-
+    reg pending;
     wire buf_ready;
+
+    // three-way setup:
+    //   1. <- ready
+    //   2. -> valid (active)
+    //   3. <- addr, we, di (success)
+    wire active = in_valid & buf_ready & !pending & nrst;
+    wire success = active & in0_valid;
+
+    assign in0_addr = success ? in1 : out0_addr;
+    assign in0_we = !success & out0_we;
+    assign in0_di = out0_di;
+    assign out0 = in0;
+
+    assign in0_ready = active | out0_ready;
+    assign out0_valid = !active & in0_valid;
+    assign in_ready = active & in0_valid;
+
     transparent_buffer #(.N(out1N))
       buffer(.clk(clk),
              .nrst(nrst),
-             .in0(in0_do),
-             .in0_valid(in_valid & in0_ready),
+             .in0(in0),
+             .in0_valid(in0_valid & !pending),
              .in0_ready(buf_ready),
              .out0(out1),
              .out0_valid(out_valid),
              .out0_ready(out_ready));
-    assign in_ready = buf_ready & in0_ready;
+
+    always @(posedge clk) begin
+        if(!nrst) `reset(pending);
+        else if(in_ready) pending <= out0_ready;
+    end
 
 endmodule
 
@@ -229,65 +249,60 @@ module __primitive_write_array #(
   `input(simple, in2N, 2),
   `output(Array, (out0AN, out0DN), 0)
 );
-    reg valid;
-    wire beat = in_valid & in_ready;
+    reg pending;
 
-    assign in_ready = in0_ready & (!valid | out_ready);
-    assign in0_addr = in_valid ? in1 : out0_addr;
-    assign in0_we = in_valid | out0_we;
-    assign in0_di = in_valid ? in2 : out0_di;
-    assign out0_do = in0_do;
-    assign in0_valid = in_valid | out0_valid;
-    assign out0_ready = !in_valid & in0_ready;
-    assign out_valid = valid | beat;
+    // three-way setup:
+    //   1. <- ready
+    //   2. -> valid (active)
+    //   3. <- addr, we, di (success)
+    wire active = in_valid & !pending & nrst;
+    wire success = active & in0_valid;
 
-    always @(posedge clk) begin
-        if(!nrst) `reset(valid);
-        else if(beat | out_ready) valid <= beat;
-    end
+    assign in0_addr = success ? in1 : out0_addr;
+    assign in0_we = success | out0_we;
+    assign in0_di = success ? in2 : out0_di;
+    assign out0 = in0;
+    assign out_valid = `true;
 
-endmodule
-
-// arbitrates two masters out0 and out1 to slave in0
-// out0 has priority
-module __primitive_dup_array #(
-  parameter in0AN = `addrN,
-  parameter in0DN = `intN,
-  parameter out0AN = `addrN,
-  parameter out0DN = `intN,
-  parameter out1AN = `addrN,
-  parameter out1DN = `intN
-)(
-  `sync_ports,
-  `input(Array, (in0AN, in0DN), 0),
-  `output(Array, (out0AN, out0DN), 0),
-  `output(Array, (out1AN, out1DN), 1)
-);
-    reg last_active;
-    wire active0 = !out1_valid | last_active == 1;
-    wire active1 = !out0_valid | last_active == 0;
-    wire select0 = active0 & out0_valid;
-
-    assign in0_addr   = select0 ? out0_addr  : out1_addr;
-    assign in0_we     = select0 ? out0_we    : out1_we;
-    assign in0_di     = select0 ? out0_di    : out1_di;
-    assign out0_do    = in0_do;
-    assign out1_do    = in0_do;
-    assign in0_valid  = out0_valid | out1_valid;
-    assign out0_ready = in0_ready & active0;
-    assign out1_ready = in0_ready & active1;
-    assign in_ready   = `true;
-    assign out_valid  = `true;
+    assign in0_ready = active | out0_ready;
+    assign out0_valid = !active & in0_valid;
+    assign in_ready = active & in0_valid;
 
     always @(posedge clk) begin
-        if(!nrst) `reset(last_active);
-        else if(in0_ready) begin
-            last_active <= out1_valid & active1;
-        end
+        if(!nrst) `reset(pending);
+        else if(in_ready) pending <= out0_ready;
     end
+
 endmodule
 
 module dup_stream #(
+  parameter N = 1
+)(
+  input wire          clk,
+  input wire          in_valid,
+  output wire         in_ready,
+  output wire [N-1:0] out_valid,
+  input wire [N-1:0]  out_ready
+);
+    generate
+        if(N == 1) begin
+            assign in_ready = out_ready[0];
+            assign out_valid[0] = in_valid;
+        end
+        else begin
+            reg [0:N-1] pending_prev;
+            assign in_ready = ~| pending;
+            assign out_valid = in_valid ? pending_prev : 0;
+            wire [0:N-1] pending = pending_prev & ~out_ready;
+
+            always @(posedge clk) begin
+                pending_prev <= in_ready ? ~0 : pending;
+            end
+        end
+    endgenerate
+endmodule
+
+module dup_Array #(
   parameter N = 1
 )(
   input wire          clk,
@@ -302,13 +317,13 @@ module dup_stream #(
             assign out_valid = in_valid;
         end
         else begin
-            reg [0:N-1] pending_prev;
-            assign in_ready = ~| pending;
-            assign out_valid = in_valid ? pending_prev : 0;
-            wire [0:N-1] pending = pending_prev & ~out_ready;
+            reg [0:N-1] done;
+            assign in_ready = | out_ready;
+            assign out_valid = in_valid ? pending & ~(pending - 1) : 0; // select MSB
+            wire [0:N-1] pending = out_ready & ~done;
 
             always @(posedge clk) begin
-                pending_prev <= in_ready ? ~0 : pending;
+                done <= pending & ~out_valid ? done | out_valid : 0;
             end
         end
     endgenerate

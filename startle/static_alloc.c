@@ -172,8 +172,8 @@ void list_static_sizes() {
 }
 
 // identify a pointer into __mem
-void print_static_alloc(void *_p) {
-  char *p = (char *)_p;
+void print_static_alloc(const void *_p) {
+  const char *p = (const char *)_p;
   if(!__mem_size ||
      p < __mem ||
      p > __mem + __mem_size) {

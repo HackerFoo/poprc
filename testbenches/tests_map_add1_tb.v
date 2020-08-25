@@ -7,7 +7,6 @@ module tests_map_add1_tb;
 
     `reg(stream, `intN, sIn);
     `wire(stream, `intN, sOut);
-    `assign_stream(map_add1, sIn);
     assign sOut_ready = out_ready;
 
     `testbench(tests_map_add1_tb, 20)

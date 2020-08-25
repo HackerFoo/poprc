@@ -20,7 +20,7 @@ module tests_three_writes_tb;
 
     array arr(.clk(clk),
               `out(Array, 0, arr_in));
-    assign `to_bus(arr_out) = 0;
+    assign `to_bus(arr_out) = 1;
 
     always @(posedge clk) begin
        if(arr_in_valid & arr_in_we & arr_in_ready) begin
@@ -47,10 +47,9 @@ module tests_three_writes_tb;
       data2 = 20;
       addr3 = 3;
       data3 = 30;
-      out_ready = `false;
       `start;
 
-      `wait_for(inst_out_valid);
+      `wait_for(arr_out_valid);
       @(posedge clk);
       $finish;
     end

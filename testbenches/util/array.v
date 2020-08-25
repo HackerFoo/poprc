@@ -15,10 +15,10 @@ module array (
         end
     end
 
-    assign out0_ready = `true;
+    assign out0_valid = out0_ready;
 
     // async read
-    assign out0_do = data[out0_addr];
+    assign out0 = data[out0_addr];
 
     // sync write
     always @(posedge clk) begin

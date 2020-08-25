@@ -8,8 +8,6 @@ module tests_zip_add_tb;
     `reg(stream, `intN, sInA);
     `reg(stream, `intN, sInB);
     `wire(stream, `intN, sOut);
-    `assign_stream(zip_add, sInA);
-    `assign_stream(zip_add, sInB);
     assign sOut_ready = out_ready;
 
     `testbench(tests_zip_add_tb, 100)

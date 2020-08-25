@@ -7,7 +7,6 @@ module algorithm_sum_tb;
 
     `reg(stream, `intN, sIn);
     `wire(simple, `intN, sum);
-    `assign_stream(sum_inst, sIn);
 
     `testbench(algorithm_sum_tb, 20)
 

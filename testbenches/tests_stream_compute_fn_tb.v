@@ -1,13 +1,13 @@
 `timescale 1ns / 1ps
 `define intN 32
-`define addrN 9
+`define addrN 4
 `include "primitives.v"
 `include "tests_stream_compute_fn.v"
 `include "array.v"
 
 module tests_stream_compute_fn_tb;
 
-    localparam N = 256;
+    localparam N = 16;
 
     `wire(Array, (`addrN, `intN), arr);
     wire `intT res;
@@ -19,21 +19,20 @@ module tests_stream_compute_fn_tb;
     `reg(stream, `intN, sWA);
     `reg(stream, `intN, sW);
     `wire(stream, 1, sB);
-    `assign_stream(inst, sRA);
-    `assign_stream(inst, sWA);
-    `assign_stream(inst, sW);
+    `wire(stream, 1, sC);
 
     assign sR_ready = out_ready;
     assign sB_ready = out_ready;
+    assign sC_ready = out_ready;
 
     integer counter = 0;
 
-    `testbench(tests_stream_compute_fn_tb, 30000)
+    `testbench(tests_stream_compute_fn_tb, 15.45)
 
     // Use bit 31 to indicate that data is invalid
-    array #(.N(2 * N), .INIT_ADDR(0), .INIT(1 << 31))
-      arr(.clk(clk),
-          `out(Array, 0, arr));
+    array #(.N(N), .INIT_ADDR(0), .INIT(0))
+      array(.clk(clk),
+            `out(Array, 0, arr));
 
     `in_ready(inst);
     `inst_sync(tests_stream_compute_fn, inst, #())(
@@ -43,7 +42,8 @@ module tests_stream_compute_fn_tb;
       `in(stream, 2, sWA),
       `in(stream, 3, sW),
       `out(stream, 0, sR),
-      `out(null_stream, 1, sB));
+      `out(null_stream, 1, sB),
+      `out(null_stream, 2, sC));
 
     integer i;
     integer start_time = 0;
@@ -51,7 +51,7 @@ module tests_stream_compute_fn_tb;
     integer write_time = 0;
     integer max_addr   = 0;
     initial begin
-        sRA  = N;
+        sRA  = 0;
         sRA_valid = `false;
         sWA  = 0;
         sWA_valid = `false;
@@ -64,7 +64,7 @@ module tests_stream_compute_fn_tb;
             start_time = counter;
             sWA        = i;
             sWA_valid  = `true;
-            sW         = i;
+            sW         = i + 1;
             sW_valid   = `true;
             `wait_for(sWA_ready && sW_ready);
             write_time = counter - start_time;
@@ -82,7 +82,7 @@ module tests_stream_compute_fn_tb;
         end
         sWA_valid = `false;
         sW_valid = `false;
-        `wait_for(sRA >= N + N-1 && sR_valid);
+        `wait_for(sRA >= N-1 && sR_valid);
         nrst = `false;
         #2;
         $display("done @ %d", counter);
@@ -95,8 +95,8 @@ always @(posedge clk) begin
     if(sRA_ready) begin
         sRA_valid <= $random(read_seed);
     end
-    if(sR_valid & (!sR[31])) begin
-        $display("arr(%d) = %d", sRA, sR);
+    if(sR_valid & sR[31]) begin
+        $display("arr(%d) = %d", sRA, sR[30:0]);
         sRA <= sRA + 1;
     end
 end

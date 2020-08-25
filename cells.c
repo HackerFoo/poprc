@@ -307,6 +307,7 @@ bool is_offset(cell_t const *c) {
 #define closure_args(c) _closure_args(GET_CELL(c))
 #define closure_in(c) _closure_in(GET_CELL(c))
 #define closure_out(c) _closure_out(GET_CELL(c))
+#define get_closure_deps(c) _get_closure_deps(GET_CELL(c))
 #endif
 
 csize_t _list_size(cell_t const *c) {
@@ -328,6 +329,10 @@ csize_t _closure_in(cell_t const *c) {
 csize_t _closure_out(cell_t const *c) {
   assert_error(is_closure(c) && !is_value(c));
   return c->expr.out;
+}
+
+cell_t **_get_closure_deps(cell_t *c) {
+  return &c->expr.arg[c->size - c->expr.out];
 }
 
 csize_t closure_next_child(cell_t const *c) {
