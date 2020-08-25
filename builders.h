@@ -10,6 +10,10 @@
   static inline cell_t *build_##__name() {      \
     return build01(OP_##__op);                  \
   }
+#define BUILDER02(__name, __op)                         \
+  static inline cell_t *build_##__name(cell_t **o1) {   \
+    return build02(OP_##__op, o1);                      \
+  }
 #define BUILDER11(__name, __op)                         \
   static inline cell_t *build_##__name(cell_t *i0) {    \
     return build11(OP_##__op, i0);                      \

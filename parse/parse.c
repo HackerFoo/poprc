@@ -205,14 +205,17 @@ cell_t *parse_word(seg_t w, cell_t *module, unsigned int n, tcell_t *entry) {
       return NULL;
     }
   }
-  if(in) c->expr.arg[0] = (cell_t *)(intptr_t)(in - 1);
+  if(in) {
+    c->expr.arg[0] = (cell_t *)(intptr_t)(in - 1);
+  } else {
+    closure_set_ready(c, true);
+  }
   TRAVERSE(c, out) {
     *p = dep(c);
   }
   refn(c, out-1);
   if(data) {
     c->expr.arg[in] = data;
-    if(!in) closure_set_ready(c, true);
   }
   return c;
 }

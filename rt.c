@@ -899,6 +899,17 @@ cell_t *build01(op op) {
   return c;
 }
 
+cell_t *build02(op op, cell_t **o1) {
+  cell_t *c = ALLOC(1,
+    .op = op,
+    .expr = {
+      .out = 1,
+      .arg = {*o1 = dep(ref(_self))}
+    }
+  );
+  return c;
+}
+
 cell_t *build11(op op, cell_t *i0) {
   cell_t *c = ALLOC(1,
     .op = op,
