@@ -72,13 +72,16 @@ static allocation_t allocation_table[] = {
 
 // alignment (a) must be a power of two
 size_t align_offset(size_t n, int a) {
-  int r = n & (a - 1);
-  return r ? a - r : 0;
+  int m = a - 1;
+  return (a - (n & m)) & m;
 }
 
 TEST(align_offset) {
-  if(align_offset(3, 4) != 1) return -1;
-  if(align_offset(4, 4) != 0) return -2;
+  if(align_offset(0, 4) != 0) return -1;
+  if(align_offset(1, 4) != 3) return -2;
+  if(align_offset(2, 4) != 2) return -3;
+  if(align_offset(3, 4) != 1) return -4;
+  if(align_offset(4, 4) != 0) return -5;
   return 0;
 }
 
