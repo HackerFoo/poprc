@@ -587,7 +587,7 @@ f16: [1+] __ {hide}
 
 return_test: [dup] pushl [[3* dup, 5+ dup]] pushl return drop get3
 
-stream_compute_fn: [256+] [collatz] stream_compute
+stream_compute_fn: 0 [1+ 15&b] iteratel [collatz] stream_compute3
 
 dotswap: . swap . swap . __ {hide}
 
@@ -605,3 +605,13 @@ __ This understandable, but unfortunate. This also implies:
 __ [1 2] [3+] map [4 5 6] [7+] map .  ===>  [11 12 13]
 sc3b: [] pushq [[+]] [.] zip [$] . $
 sc3b2: [] pushq [[+]] [.] zip head $
+
+__ Array sRA sWA sW sAF f_w stream_compute
+stream_compute3:
+  [] pushq2 pushq2 pushq
+    [[stream_read_array, __ read
+      stream_write_array, __ write
+      stream_modify_array]] __ compute
+    [.] zip get3 fork_array3
+
+map_iteratel: 0 [1+] iteratel swap map
