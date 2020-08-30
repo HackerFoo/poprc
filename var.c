@@ -131,6 +131,8 @@ bool _is_var(cell_t const *c) {
 
 /* conditions */
 
+// TODO document these
+
 void apply_condition(cell_t *c, int *x) {
   assert_error(is_value(c));
   if(c->value.var) {
@@ -141,11 +143,13 @@ void apply_condition(cell_t *c, int *x) {
   }
 }
 
+// apply condition from trace i to v
 int copy_conditions(tcell_t *entry, int i, int v) {
   int x = i;
   if(!i || i == v) return v;
   tcell_t *tc = &entry[i];
   if(!ONEOF(tc->op, OP_assert, OP_seq, OP_unless)) return v;
+  if(tc->op == OP_seq && tr_index(tc->expr.arg[1]) == v) return v;
   int a = tr_index(tc->expr.arg[0]);
   int an = copy_conditions(entry, a, v);
   if(a != an) {
