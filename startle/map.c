@@ -946,22 +946,81 @@ bool string_map_replace_insert(map_t map, pair_t x) {
  * @return a pointer to the entry if found, otherwise NULL.
  */
 pair_t *map_find(map_t map, uintptr_t key) {
-  uintptr_t x = *map_cnt(map);
-  pair_t *elems = map_elems(map);
+  map_iterator it = map_iterator_begin(map, key);
+  return map_find_iter(&it);
+}
+
+#if INTERFACE
+typedef struct {
+  pair_t *elems;
+  uintptr_t key, x, bit, a;
+  size_t est;
+} map_iterator;
+#endif
+
+map_iterator map_iterator_begin(map_t map, uintptr_t key) {
+  map_iterator it;
+  it.elems = map_elems(map);
+  it.key = key;
+  it.x = *map_cnt(map);
+  it.bit = 1ll << int_log2(it.x);
+  it.a = 0;
+  it.est = it.bit >> 1;
+  return it;
+}
+
+pair_t *map_find_iter(map_iterator *it) {
   pair_t *result = NULL;
-  uintptr_t bit = 1ll << int_log2(x);
-  uintptr_t a = 0;
-  size_t est = bit >> 1;
-  while(x) {
-    if(x & bit) {
-      x &= ~bit;
-      if((result = find_last(&elems[a], bit, key, &est))) break;
-      a += bit;
+  while(it->x && !result) {
+    if(it->x & it->bit) {
+      it->x &= ~it->bit;
+      result = find_last(&it->elems[it->a], it->bit, it->key, &it->est);
+      it->a += it->bit;
     }
-    est >>= 1;
-    bit >>= 1;
+    it->est >>= 1;
+    it->bit >>= 1;
   }
   return result;
+}
+
+pair_t *map_next(map_iterator *it, pair_t *prev) {
+  if(prev >= &it->elems[it->a - (it->bit << 1)] &&
+     prev[-1].first == it->key) {
+    return &prev[-1];
+  } else {
+    return map_find_iter(it);
+  }
+}
+
+TEST(map_iterate) {
+  MAP(map, 32);
+  int key[] = {1, 2, 1, 2, 3, 3, 1};
+  FOREACH(i, key) {
+    pair_t p = {key[i], i};
+    map_insert(map, p);
+  }
+  print_map(map);
+  int count = 0;
+  COUNTUP(key, 4) {
+    printf("matches for key = %d:", (int)key);
+    map_iterator it = map_iterator_begin(map, key);
+    pair_t *p = map_find_iter(&it);
+    while(p) {
+      if(p->first != key) {
+        printf("key mismatch!\n");
+        return -1;
+      }
+      printf(" %d", (int)p->second);
+      count++;
+      p = map_next(&it, p);
+    }
+    printf("\n");
+  }
+  if(count != LENGTH(key)) {
+    printf("wrong count\n");
+    return -2;
+  }
+  return 0;
 }
 
 pair_t *map_find_recent(map_t map, uintptr_t key) {

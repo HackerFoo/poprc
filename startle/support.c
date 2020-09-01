@@ -217,7 +217,8 @@ pair_t *find(pair_t *array, size_t size, uintptr_t key) {
 }
 
 /** Like `find`, but find the last match.
- * O(log n) time.
+ * O(log n + m) time, where m is the most entries with the same key.
+ * *est is the estimated location
  */
 pair_t *find_last(pair_t *array, size_t size, uintptr_t key, size_t *est) {
   size_t low = 0, high = size;

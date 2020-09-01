@@ -177,6 +177,13 @@ map_find(map, 13) = {13, 12}
 map_find(map, 11) = {11, 13}
 map_find(map, 12) = {12, 14}
 map => 0
+@ map_iterate
+map[7] = {{1, 0}, {1, 2}, {2, 1}, {2, 3}, {3, 4}, {3, 5}, {1, 6}}
+matches for key = 0:
+matches for key = 1: 2 0 6
+matches for key = 2: 3 1
+matches for key = 3: 5 4
+map_iterate => 0
 @ map_merge
 map[16] = {{0, 0}, {1, 10}, {3, 20}, {4, 0}, {5, 30}, {7, 40}, {8, 1}, {9, 50}, {11, 60}, {12, 0}, {13, 70}, {15, 80}, {16, 0}, {17, 90}, {19, 100}, {21, 110}}
 r = {16, 0}
