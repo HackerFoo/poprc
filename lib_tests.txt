@@ -32,6 +32,7 @@ __ list
 [5, [ 2*, 3+ ]] scatter
 [[ 2 dup, 3* dup]] gather
 0 [1+] iteratel
+[[1 2, 3 4, 5 6]] unzip
 
 __ stack
 [1] pull

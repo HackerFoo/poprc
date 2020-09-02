@@ -2395,6 +2395,34 @@ ___ list.top_par (2 -> 4) ___
 [6] __primitive.dep 5 :: a x1
 [7] return [2 1 6 4]
 
+___ list.unzip (1 -> 2) ___
+[1] var :: ?l x2
+[2] list.unzip_r0 &1 :: l x1
+[3] jump list.unzip_r1 1 :: l x1
+[4] return [3 2]
+
+___ list.unzip_r0 (1 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] __primitive.ap 1 -> 3 :: l? x2
+[3] __primitive.dep 2 :: l x2
+[4] __primitive.seq 6 &3 :: a x1
+[5] __primitive.ap 3 -> 6 :: v? x1
+[6] __primitive.dep 5 :: a x1
+[7] jump list.unzip_r0 2 :: l x1
+[8] __primitive.pushr 7 4 :: l x1
+[9] return [8]
+
+___ list.unzip_r1 (1 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] __primitive.ap 1 -> 3 :: l? x2
+[3] __primitive.dep 2 :: l x2
+[4] __primitive.seq 6 &3 :: a x1
+[5] __primitive.ap 3 -> 6 X :: v? x1
+[6] __primitive.dep 5 :: a x1
+[7] jump list.unzip_r1 2 :: l x1
+[8] __primitive.pushr 7 4 :: l x1
+[9] return [8]
+
 ___ list.zip (3 -> 1) rec ___
 [1] var :: ?l x2
 [2] changing var :: ?l x1

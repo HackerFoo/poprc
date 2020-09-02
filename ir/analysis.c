@@ -176,6 +176,10 @@ uint32_t hash_trace_cell(tcell_t *entry, tcell_t *tc) {
       TRAVERSE(tc, in) {
         HASH('a', hash_trace_cell(entry, &entry[tr_index(*p)]));
       }
+      if(is_user_func(tc)) {
+        tcell_t *e = get_entry(tc);
+        HASH('u', e->trace.hash);
+      }
     }
     HASH('o', tc->op);
     HASH('O', closure_out(tc));

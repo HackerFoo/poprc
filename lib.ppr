@@ -228,6 +228,9 @@ zip1_with: [[popr_para] dip24] dip35 dup -swap4 ap31 -swap2
 __ [... a] [... b] c [f] zip_with -> [... c' f a b c f]
 zip_with: [zip1_with] ap41 [zip_with] swap [. head] dip21 .
 
+__ [... [a b]] unzip -> [... a] [... b]
+unzip: dup [popr drop head] map swap [head] map
+
 pushq: [[]ap10] swap . ap10
 pushq2: [[]ap20] swap . ap20
 pushq3: [[]ap30] swap . ap30
