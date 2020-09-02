@@ -241,8 +241,8 @@ scan: clean
 	make $(BUILD_DIR)/linenoise.o
 	scan-build make
 
-.PHONY: test test_test test_tests_txt test_lib_tests_txt test_bytecode
-test: test_test test_tests_txt test_lib_tests_txt test_bytecode
+.PHONY: test test_test test_tests_txt test_lib_tests_txt test_bytecode test_irc
+test: test_test test_tests_txt test_lib_tests_txt test_bytecode test_irc
 
 test_test: eval
 	./eval -test | $(DIFF_TEST) test_output/test.log -
@@ -270,9 +270,14 @@ test_output/bytecode32.log: eval $(POPR_SRC)
 test_output/bytecode64.log: eval $(POPR_SRC)
 	@mkdir -p test_output
 	if [[ `./eval -bits` = 64 ]]; then ./eval -lo $(POPR_SRC) -bc > $@; fi
+test_irc: eval
+	echo ": PRIVMSG test :popr 1 2 +" | ./eval -irc popr test | $(DIFF_TEST) test_output/test_irc.log -
+test_output/test_irc.log: eval
+	@mkdir -p test_output
+	echo ": PRIVMSG test :popr 1 2 +" | ./eval -irc popr test > $@
 
 .PHONY: test_output
-test_output: test_output/test.log test_output/tests.txt.log test_output/lib_tests.txt.log test_output/bytecode32.log test_output/bytecode64.log
+test_output: test_output/test.log test_output/tests.txt.log test_output/lib_tests.txt.log test_output/bytecode32.log test_output/bytecode64.log test_output/test_irc.log
 
 .PHONY: all_test_output
 all_test_output:

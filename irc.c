@@ -17,7 +17,6 @@
 
 #include <string.h>
 #include <math.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
@@ -26,6 +25,7 @@
 #include "startle/error.h"
 #include "startle/support.h"
 #include "startle/log.h"
+#include "startle/static_alloc.h"
 
 #include "cells.h"
 #include "rt.h"
@@ -56,10 +56,15 @@ int last_read_channel = 0;
 
 file_t stream_irc = {
   .name = SEG("irc"),
-  .buffer = RING_BUFFER(INPUT_BUFFER_SIZE),
+  .buffer = NULL,
   .descriptor = 0,
   .flags = FILE_IN | FILE_OUT | FILE_STREAM
 };
+
+void irc_init() {
+  // use the same buffer as io.c
+  stream_irc.buffer = (ring_buffer *)rb_init(stdin_ring_buffer, stdin_ring_buffer_size);
+}
 
 COMMAND(ircpass, "IRC password") {
   if(rest) {
@@ -70,6 +75,7 @@ COMMAND(ircpass, "IRC password") {
 COMMAND(irc, "IRC bot mode") {
   cell_t *tok = rest;
   if(tok) {
+    irc_init();
     irc.enabled = true;
     quiet = true;
     irc.nick = tok_seg(tok);
@@ -104,13 +110,12 @@ bool irc_message_sent() {
 }
 
 void irc_connect() {
-  char *username = getenv("LOGNAME");
   if(irc.password.n) {
     printf("PASS %.*s\n", (int)irc.password.n, irc.password.s);
   }
   printf("NICK %.*s\n", (int)irc.nick.n, irc.nick.s);
   fflush(stdout);
-  printf("USER %s 0 * :Popr Bot\n", username);
+  printf("USER popr-bot 0 * :Popr Bot\n");
   fflush(stdout);
 }
 
@@ -234,11 +239,11 @@ seg_t irc_io_read(file_t *file) {
   if(rb_available(file->buffer)) {
     return (seg_t) {
       .s = line_buffer,
-      .n = rb_read(file->buffer, line_buffer, sizeof(line_buffer))
+      .n = rb_read(file->buffer, line_buffer, static_sizeof(line_buffer))
     };
   }
   char *line;
-  while((line = fgets(line_buffer, sizeof(line_buffer) - 1, stdin))) {
+  while((line = fgets(line_buffer, static_sizeof(line_buffer) - 1, stdin))) {
     if(*line == ':') SKIP_PAST(line, ' ');
     if(STRING_IS(line, "PRIVMSG")) {
       SKIP(line, ' ');

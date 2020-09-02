@@ -1,0 +1,4 @@
+NICK popr
+USER popr-bot 0 * :Popr Bot
+JOIN :test
+:popr PRIVMSG test :3
