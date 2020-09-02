@@ -984,7 +984,8 @@ pair_t *map_find_iter(map_iterator *it) {
 }
 
 pair_t *map_next(map_iterator *it, pair_t *prev) {
-  if(prev >= &it->elems[it->a - (it->bit << 1)] &&
+  if(prev &&
+     prev >= &it->elems[it->a - (it->bit << 1)] &&
      prev[-1].first == it->key) {
     return &prev[-1];
   } else {

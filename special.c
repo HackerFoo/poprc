@@ -164,7 +164,8 @@ OP(value) {
       if(entry != ve && parent) {
         LOG_WHEN(is_list(c), "nil %C", c);
         int v = trace_store_value(parent, c);
-        tcell_t *tc = trace_alloc_var(entry, c->value.type);
+        c->value.var = switch_entry_var(entry, &parent[v], true);
+        c->value.flags = VALUE_VAR;
 
         /* bounds too tight in case of recursion
         switch(c->value.type) {
@@ -182,13 +183,6 @@ OP(value) {
         */
 
         c->value.range = default_bound;
-
-        LOG("move value %C %s[%d] -> %s[%d]", c,
-            entry->word_name, tc-entry,
-            parent->word_name, v);
-        c->value.var = tc;
-        c->value.flags = VALUE_VAR;
-        tc->value.var = &parent[v];
       }
       c->pos = 0;
     }

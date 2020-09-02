@@ -74,8 +74,8 @@ endif
 
 ifeq ($(BUILD),debug)
 	OPT_FLAG = -O0
-	CFLAGS += -g $(OPT_FLAG) $(SANITIZE)
-	CXXFLAGS += -g $(OPT_FLAG) $(SANITIZE)
+	CFLAGS += -g3 $(OPT_FLAG) $(SANITIZE)
+	CXXFLAGS += -g3 $(OPT_FLAG) $(SANITIZE)
 	LIBS += $(SANITIZE)
 endif
 

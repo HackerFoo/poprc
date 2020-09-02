@@ -24,6 +24,7 @@
 #include "startle/support.h"
 #include "startle/log.h"
 #include "startle/static_alloc.h"
+#include "startle/map.h"
 
 #include "cells.h"
 #include "rt.h"
@@ -59,6 +60,9 @@ static unsigned int prev_entry_pos = 0;
 
 // index to quickly find an entry for a var inside
 STATIC_ALLOC_DEPENDENT(trace_block_map, tcell_t *, DIV_UP(trace_cells_size, 64));
+
+STATIC_ALLOC(switch_map, pair_t, 64);
+STATIC_ALLOC(switch_rev_map, pair_t, 64);
 
 #include "ir/trace-local.h"
 
@@ -122,6 +126,8 @@ void trace_init() {
   if(!trace_ptr) trace_ptr = trace_cells;
   scratch_top = (scratch_t *)(trace_cells + trace_cells_size);
   scratch_ptr = (scratch_t *)(trace_cells + trace_cells_size);
+  init_map(switch_map, switch_map_size);
+  init_map(switch_rev_map, switch_rev_map_size);
 }
 
 #if INTERFACE
@@ -271,15 +277,33 @@ tcell_t *get_var(tcell_t *entry, cell_t *c) {
   return var_for_entry(entry, c->value.var);
 }
 
+#if INTERFACE
+#define FOR_SWITCH_MAP(tc, v, p, it)                                    \
+  for(tcell_t *__tc = is_var(v) && v->value.var ? v->value.var : v,     \
+        *tc = ((p = NULL,                                               \
+                it = map_iterator_begin(switch_map, (uintptr_t)__tc)), __tc); \
+      tc;                                                               \
+      p = map_next(&it, p),                                             \
+        tc = p ? (tcell_t *)p->second : NULL)
+#endif
 
 // get the var within the entry corresponding to v
 tcell_t *var_for_entry(tcell_t *entry, tcell_t *v) {
-  if(!entry) {
-    entry = var_entry(v);
+  if(!entry || entry_has(entry, v)) return v;
+
+  // get outermost variable (lowest entry)
+  tcell_t *ve = var_entry(v);
+  if(FLAG(*ve, entry, COMPLETE)) {
+
+    // complete entries have been rearranged, so must lookup
+    v = MAP_GET(switch_rev_map, v, v);
+    if(entry_has(entry, v)) return v;
   }
-  FOLLOW(p, v, value.var) {
-    if(entry_has(entry, p)) return p;
-    if(!is_value(p)) break;
+
+  map_iterator it;
+  pair_t *p;
+  FOR_SWITCH_MAP(tc, v, p, it) {
+    if(entry_has(entry, tc)) return tc;
   }
   return NULL;
 }
@@ -393,29 +417,39 @@ void switch_entry(tcell_t *entry, cell_t *r) {
   assert_error(NOT_FLAG(*entry, entry, COMPLETE));
   assert_error(is_var(r));
   if(entry_has(entry, r->value.var)) return;
-  if(!get_var(entry, r)) {
-    if(entry->entry.parent)
-      switch_entry(entry->entry.parent, r);
 
-    WATCH(r, "switch_entry", "%s", entry->word_name);
-    tcell_t *v = r->value.var;
-    assert_error(v < entry, "cannot switch out");
+  WATCH(r, "switch_entry", "%s", entry->word_name);
+  r->value.var = switch_entry_var(entry, r->value.var, false);
+}
 
-    // a little hacky because ideally variables shouldn't be duplicated
-    // see TODO in func_value
-    FOR_TRACE(c, entry) {
-      if(is_var(c) &&
-         c->value.var == v) {
-        r->value.var = c;
-        return;
-      }
-    }
+tcell_t *switch_entry_var(tcell_t *entry, tcell_t *v, bool always_allocate) {
+  assert_error(NOT_FLAG(*entry, entry, COMPLETE));
+  tcell_t *n;
 
-    type_t t = trace_type(v);
-    tcell_t *n = trace_alloc_var(entry, t);
-    //if(is_var(v)) v = &var_entry(v)[v->pos]; // variables move *** DOESN'T WORK
-    n->value.var = v;
-    r->value.var = n;
+  if(!always_allocate &&
+     (n = var_for_entry(entry, v))) return n;
+
+  n = trace_alloc_var(entry, trace_type(v));
+  tcell_t *t = MAP_GET(switch_rev_map, v, v); // TODO duplicate lookup, first in var_for_entry
+  LOG("switch %T <- %T from %T", t, n, v);
+  assert_throw(map_insert(switch_map, PAIR(t, n)) &&
+               map_insert(switch_rev_map, PAIR(n, t)), "switch_map overflow");
+  n->value.var = t;
+  return n;
+}
+
+void print_switch_maps() {
+  printf("___ switch_map ___\n");
+  FORMAP(i, switch_map) {
+    printf("%d -> %d\n",
+           (int)((tcell_t *)switch_map[i].first - trace_cells),
+           (int)((tcell_t *)switch_map[i].second - trace_cells));
+  }
+  printf("___ switch_rev_map ___\n");
+  FORMAP(i, switch_rev_map) {
+    printf("%d -> %d\n",
+           (int)((tcell_t *)switch_rev_map[i].first - trace_cells),
+           (int)((tcell_t *)switch_rev_map[i].second - trace_cells));
   }
 }
 
@@ -903,7 +937,9 @@ void trace_update_2(tcell_t *v, cell_t *c) {
   type_t t = c->value.type;
   if(t == T_ANY) return;
   range_t c_range = get_range(c);
-  FOLLOW(tc, v, value.var) {
+  map_iterator it;
+  pair_t *p;
+  FOR_SWITCH_MAP(tc, v, p, it) {
     tcell_t *entry = var_entry(tc);
     if(FLAG(*entry, entry, COMPLETE)) {
       LOG(MARK("WARN") " attempt to update with %t[%d, %d] for completed trace cell %T from %C",
@@ -917,7 +953,8 @@ void trace_update_2(tcell_t *v, cell_t *c) {
           p->trace.range = r;
           assert_error(ONEOF(pt, T_ANY, T_BOTTOM) || ONEOF(t, T_BOTTOM, pt), "@type");
           trace_set_type(p, t);
-          LOG("updated var %C (%T) to %t[%d, %d]", c, p, t, r.min, r.max);
+          LOG("updated var %C (%s[%d]) to %t[%d, %d]",
+              c, entry->word_name, p-entry, t, r.min, r.max);
           assert_error(trace_type(p) != T_OPAQUE || range_singleton(r));
         }
         p = ONEOF(p->op, OP_assert, OP_unless, OP_seq) ?
@@ -926,7 +963,6 @@ void trace_update_2(tcell_t *v, cell_t *c) {
         assert_counter(1000); // ***
       } while(p);
     }
-    if(!is_var(tc)) break;
   }
 
   // optimize this ***

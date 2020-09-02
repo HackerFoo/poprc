@@ -429,3 +429,11 @@
 #define STATIC_ALLOC_ALIGNED(...) STATIC_ALLOC(__VA_ARGS__)
 #define STATIC_ALLOC_DEPENDENT(...) STATIC_ALLOC(__VA_ARGS__)
 #define STATIC_FOREACH(i, a) COUNTUP(i, a##_size)
+
+#define PAIR(x, y) ((pair_t) {(uintptr_t)(x), (uintptr_t)(y)})
+
+#define MAP_GET(map, key, val)                                  \
+  ({                                                            \
+    pair_t *p = map_find(switch_rev_map, (uintptr_t)(key));     \
+    p ? (__typeof__(val))p->second : val;                       \
+  })

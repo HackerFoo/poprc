@@ -663,10 +663,9 @@ cell_t *flat_call(cell_t *c, tcell_t *entry) {
     tn->var_index = i;
     // assert_error(tn->var_index == i, "%T (%C)", p->value.var, p);
     switch_entry(parent_entry, p);
-    assert_error(entry_has(parent_entry, tn->value.var));
-    cell_t *v = var_create_nonlist(T_ANY, tn->value.var);
+    cell_t *v = var_create_nonlist(T_ANY, p->value.var);
     nc->expr.arg[in - i] = v;
-    LOG("arg[%d] -> %d", in - i, tn->value.var - parent_entry);
+    LOG("arg[%d] -> %T", in - i, p->value.var);
     i++;
   }
   clean_tmp(vl);

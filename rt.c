@@ -96,7 +96,7 @@ void set_watched_op(op op) {
   watched_op = op;
 }
 
-int get_watch(cell_t *c) {
+int get_watch(const cell_t *c) {
   if(!watch_enabled) return 0;
   STATIC_FOREACH(i, watched_cells) {
     if(watched_cells[i] == c) {
