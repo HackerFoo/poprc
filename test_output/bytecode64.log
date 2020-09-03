@@ -2015,11 +2015,12 @@ ___ list.map_with (3 -> 1) rec ___
 [3] changing var :: ?l x1
 [4] __primitive.ap 3 -> 5 :: l? x2
 [5] __primitive.dep 4 :: a x1
-[6] __primitive.ap 5 2 &1 -> 7 :: l? x2
-[7] __primitive.dep 6 :: a x1
-[8] jump list.map_with 4 7 1 :: l x1
-[9] __primitive.compose 8 6 :: l x1
-[10] return [9]
+[6] __primitive.ap 2 5 &1 -> 9 8 :: v? x2
+[8] __primitive.dep 6 :: a x1
+[9] __primitive.dep 6 :: a x1
+[10] jump list.map_with 4 9 1 :: l x1
+[11] __primitive.pushr 10 8 :: l x1
+[12] return [11]
 
 ___ list.merge (2 -> 1) ___
 [1] var :: ?l x1
@@ -4240,7 +4241,7 @@ ___ tests.fuse_filter_map_r0 (2 -> 1) rec ___
 [2] changing var :: ?i x1
 [3] tests.fuse_filter_map_r0_r0 1 -> 4 :: l x2
 [4] __primitive.dep 3 :: i x1
-[5] __primitive.add 4 2 :: i x2
+[5] __primitive.add 2 4 :: i x2
 [6] jump tests.fuse_filter_map_r0 &5 3 :: l x1
 [7] __primitive.pushr 6 5 :: l x1
 [8] return [7]
@@ -4391,7 +4392,7 @@ ___ tests.fuse_map5_r0 (2 -> 1) rec ___
 [2] changing var :: ?i x1
 [3] __primitive.ap 1 -> 4 :: l? x2
 [4] __primitive.dep 3 :: i x1
-[5] __primitive.add 4 2 :: i x2
+[5] __primitive.add 2 4 :: i x2
 [6] jump tests.fuse_map5_r0 &5 3 :: l x1
 [7] __primitive.pushr 6 5 :: l x1
 [8] return [7]
@@ -4408,7 +4409,7 @@ ___ tests.fuse_map5b_r0 (2 -> 1) rec ___
 [2] changing var :: ?i x1
 [3] __primitive.ap 1 -> 4 :: l? x2
 [4] __primitive.dep 3 :: i x1
-[5] __primitive.add 4 2 :: i x2
+[5] __primitive.add 2 4 :: i x2
 [6] jump tests.fuse_map5b_r0 &5 3 :: l x1
 [7] __primitive.pushr 6 5 :: l x1
 [8] return [7]
@@ -4433,7 +4434,7 @@ ___ tests.fuse_map5d_r0 (2 -> 1) rec ___
 [5] __primitive.seq 6 &4 :: i x1
 [6] __primitive.mul 4 7 :: i x1
 [7] val 3 :: i x1
-[8] __primitive.add 5 2 :: i x2
+[8] __primitive.add 2 5 :: i x2
 [9] jump tests.fuse_map5d_r0 &8 3 :: l x1
 [10] __primitive.pushr 9 8 :: l x1
 [11] return [10]
@@ -4450,7 +4451,7 @@ ___ tests.fuse_map5e_r0 (2 -> 1) rec ___
 [2] changing var :: ?i x1
 [3] __primitive.ap 1 -> 4 :: l? x2
 [4] __primitive.dep 3 :: i x1
-[5] __primitive.add 4 2 :: i x2
+[5] __primitive.add 2 4 :: i x2
 [6] jump tests.fuse_map5e_r0 &5 3 :: l x1
 [7] __primitive.pushr 6 5 :: l x1
 [8] return [7]
@@ -4466,7 +4467,7 @@ ___ tests.fuse_map5f_r0 (2 -> 1) rec ___
 [2] changing var :: ?i x1
 [3] __primitive.ap 1 -> 4 :: l? x2
 [4] __primitive.dep 3 :: i x1
-[5] __primitive.add 4 2 :: i x3
+[5] __primitive.add 2 4 :: i x3
 [6] __primitive.seq 7 &5 :: i x1
 [7] __primitive.mul &5 8 :: i x1
 [8] val 3 :: i x1
@@ -4487,8 +4488,8 @@ ___ tests.fuse_map6_r0 (3 -> 1) rec ___
 [3] changing var :: ?i x1
 [4] __primitive.ap 1 -> 5 :: l? x2
 [5] __primitive.dep 4 :: i x1
-[6] __primitive.add 5 2 :: i x2
-[7] __primitive.mul &6 3 :: i x2
+[6] __primitive.add 2 5 :: i x2
+[7] __primitive.mul 3 &6 :: i x2
 [8] jump tests.fuse_map6_r0 &7 6 4 :: l x1
 [9] __primitive.pushr 8 7 :: l x1
 [10] return [9]
@@ -4520,7 +4521,7 @@ ___ tests.fuse_map8 (2 -> 2) ___
 [8] val 3 :: i x2
 [9] __primitive.seq 10 &2 :: i x1
 [10] __primitive.shiftl 2 5 :: i x1
-[11] __primitive.add 9 3 :: i x2
+[11] __primitive.add 3 9 :: i x2
 [12] __primitive.seq 13 &11 :: i x1
 [13] __primitive.add 11 8 :: i x1
 [14] return [12 6]

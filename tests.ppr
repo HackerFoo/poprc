@@ -478,8 +478,8 @@ fuse_map5f: 0 [+ dup] map_with [3*] map
 fuse_map6: 0 [+ dup] map_with 1 [* dup] map_with
 fuse_map7: [dup] map tail
 fuse_map8: []ap20 [2*] map 0 [+ dup] map_with [3+] map get2
-fuse_map8b: []ap20 [2*] map 0 [dup [*] dip21 2*] map_with [3+] map get2 __ {hide}
-fuse_map8c: []ap30 [2*] map 2 [dup [*] dip21 2*] map_with [3+] map get3
+fuse_map8b: []ap20 [2*] map 0 [swap dup [*] dip21 2* swap] map_with [3+] map get2 __ {hide}
+fuse_map8c: []ap30 [2*] map 2 [swap dup [*] dip21 2* swap] map_with [3+] map get3
 fuse_map_zip_map: [3*] map swap [5*] map [+] zip [2/] map __ {hide}
 fuse_zip_zip: __ {hide}
   [2*] map swap

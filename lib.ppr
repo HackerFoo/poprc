@@ -120,10 +120,9 @@ map:
 
 __ [xs] s [f] map_with -> [xs']
 map_with:
-  [[popr] dip12] dip23 __ [xs] x s [f]
-    dup [ap21] dip32 __ [xs] [x s f / s'] s' [f]
-    [map_with] ap20 swap __ [xs] [s' [f] map_with] [x s f / s']
-    [$] dip21 . __ [xs s' [f] map_with . x s f / s']
+  [[popr] dip12 swap] dip23 __ [xs] s x [f]
+    dup [$$-] dip32 swap __ [xs] s' [f] x'
+    [map_with] dip31 pushr
 
 __ a [b..] [p] pushif
 __ a p       ==> [a b..]
@@ -593,7 +592,7 @@ __ Array addr [fn] -> Array
 update_array: [tuck read_array [swap] dip22] dip23 $ write_array
 
 __ Array [... idx] stream_read_array -> [... data]
-stream_read_array: swap [swap read_array swap] map_with
+stream_read_array: swap [read_array] map_with
 
 __ Array [... idx] [... data] stream_write_array -> [... True]
 stream_write_array: swap2 [-swap2 write_array dup True swap seq swap] zip_with
@@ -615,5 +614,5 @@ fork_array3:
 __ Array a f -> Array
 stream_modify_array1: [dup [read_array] dip22 swap] dip23 $ write_array
 stream_modify_array:
-  [stream_modify_array1 dup True swap seq swap] pushl
-    [swap] swap . [swap] dip22 map_with
+  [stream_modify_array1 dup True swap seq] pushl
+    [swap] dip22 map_with
