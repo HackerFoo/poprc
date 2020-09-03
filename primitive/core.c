@@ -352,17 +352,20 @@ OP(dup) {
 
 static
 response reduce_rows(cell_t *l, csize_t out, context_t *ctx) {
+  response rsp = SUCCESS;
   if(is_list(l)) {
+    insert_root(&l);
     list_iterator_t it = list_begin(l);
     { // reduce rows as much as needed and check for delays
       COUNTUP(i, out) {
-        response rsp = reduce_row(&it, out - i, ctx);
-        if(rsp != SUCCESS) return rsp;
+        rsp = reduce_row(&it, out - i, ctx);
+        if(rsp != SUCCESS) break;
         list_next(&it, false);
       }
     }
   }
-  return SUCCESS;
+  remove_root(&l);
+  return rsp;
 }
 
 // L M... R compMN --->

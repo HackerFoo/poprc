@@ -582,8 +582,8 @@ foldl2:
 concatl: [] [.] foldl __ {hide}
 lengthl: 0 [drop 1+] foldl __ {hide}
 
-f15: [1+] swap . __ {hide}
-f16: [1+] __ {hide}
+f15: [1+] swap .
+f16: [1+]
 
 return_test: [dup] pushl [[3* dup, 5+ dup]] pushl return drop get3
 

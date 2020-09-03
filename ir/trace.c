@@ -1028,7 +1028,12 @@ int trace_build_quote(tcell_t *entry, cell_t *l) {
       return var_index(entry, p->value.var);
     }
   }
-  return inline_quote(entry, l);
+
+  if(closure_is_ready(*leftmost(&l))) {
+    return inline_quote(entry, l);
+  } else {
+    return compile_quote(entry, l);
+  }
 }
 
 bool is_compose_arg(const cell_t *c) {
@@ -1152,7 +1157,7 @@ int trace_return(tcell_t *entry, cell_t *c_) {
       switch_entry(entry, *p);
       x = var_index(entry, (*p)->value.var);
     } else if(is_list(*p)) {
-      x = inline_quote(entry, *p);
+      x = trace_build_quote(entry, *p);
     } else {
       x = trace_store_value(entry, *p);
     }

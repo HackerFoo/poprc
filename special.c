@@ -408,6 +408,7 @@ OP(placeholder) {
 
   assert_error(in >= 1);
   assert_error(is_var(c->expr.arg[in - 1]) ||
+               is_list(c->expr.arg[in - 1]) ||
                is_placeholder(c->expr.arg[in - 1]));
   CHECK(reduce_arg(c, in - 1, &CTX(list, csub(ctx->s.in, in),
                                          csub(ctx->s.out, out))));

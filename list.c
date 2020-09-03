@@ -112,6 +112,7 @@ response func_list(cell_t **cp, context_t *ctx) {
     context_t *arg_ctx = row && i == n - 1 ?
       &CTX(list, 0, 0) :
       &CTX(any);
+    if(c->value.ptr[i] && !closure_is_ready(c->value.ptr[i])) continue;
     response r = reduce_ptr(c, i, arg_ctx);
     if(ctx->depth > 0 && r == FAIL) {
       // shrink the list to the first failure

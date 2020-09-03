@@ -715,6 +715,116 @@ void move_changing_values(tcell_t *entry, cell_t *c) {
   }
 }
 
+// mark shared and boundary expressions so they don't lift consumers out
+// TODO pull out/duplicate things referenced in multiple quotes
+void mark_quote_barriers(tcell_t *entry, cell_t *c) {
+  TRAVERSE(c, in) {
+    cell_t *x = *p;
+    if(!x) continue;
+    if(x->n >= 0 || x->pos) {
+      LOG("quote barrier %s %C #barrier", entry->word_name, x);
+      mark_pos(x, entry->pos);
+    } else {
+      mark_quote_barriers(entry, x);
+    }
+  }
+}
+
+// build a call into the quote (new_entry) from parent
+// see flat_call
+cell_t *flat_quote(tcell_t *new_entry, tcell_t *parent_entry) {
+  CONTEXT("flat quote (%s -> %s)", parent_entry->word_name, new_entry->word_name);
+
+  // count switched (external) variables
+  unsigned int i = 0;
+  FOR_TRACE(tc, new_entry) {
+    if(is_var(tc) && tc->value.var) {
+      tc->var_index = ++i;
+    }
+  }
+
+  unsigned int in = i;
+  cell_t *nc = ALLOC(in + 1,
+    .op = OP_exec
+  );
+
+  // use var_index to assign to nc
+  FOR_TRACE(tc, new_entry) {
+    if(is_var(tc)) {
+      if(tc->value.var) {
+        tcell_t *tp = var_for_entry(parent_entry, tc);
+        cell_t *v = var_create_nonlist(trace_type(tp), tp);
+        if(trace_type(tp) == T_OPAQUE) { // ***
+          v->value.range = tp->trace.range;
+        }
+        assert_error(INRANGE(tc->var_index, 1, in));
+        nc->expr.arg[in - tc->var_index] = v;
+        LOG("arg[%d] -> %d", in - tc->var_index, tp - parent_entry);
+      } else {
+        tc->var_index = ++i;
+      }
+    }
+  }
+  nc->expr.arg[in] = (cell_t *)new_entry;
+  return nc;
+}
+
+// takes a parent entry and offset to a quote, and creates an entry from compiling the quote
+int compile_quote(tcell_t *parent_entry, cell_t *l) {
+  // set up
+  tcell_t *e = trace_start_entry(parent_entry, 1);
+  e->module_name = parent_entry->module_name;
+  e->word_name = string_printf("%s_q%d", parent_entry->word_name, parent_entry->entry.sub_id++);
+  FLAG_SET(*e, entry, QUOTE);
+  CONTEXT_LOG("compiling %C to quote %s", l, e->word_name);
+
+  // conversion
+  cell_t *r = l->value.ptr[0];
+  bool add_nil = is_var(r) ? NOT_FLAG(*r, value, ROW) : !is_placeholder(r);
+  csize_t len = function_out(l, true) + add_nil;
+  cell_t *ph = func(OP_placeholder, len, 1);
+  if(add_nil) arg(ph, empty_list());
+  cell_t **p;
+  FORLIST(p, l, true) {
+    LOG("arg %C %C", ph, *p);
+    arg(ph, ref(*p));
+  }
+  if(is_row_list(*left_list(&l))) { // ***
+    FLAG_SET(*ph, expr, ROW);
+  }
+
+  EACH(fake_drop, l, ph);
+  mark_quote_barriers(e, ph);
+  EACH(fake_undrop, ph, l);
+
+  // compile
+  fill_args(e, ph);
+  cell_t *init = COPY_REF(ph, in);
+  insert_root(&init);
+  e->entry.alts = trace_reduce_one(e, ph);
+
+  cell_t *q = flat_quote(e, parent_entry);
+  //reverse_ptrs((void **)q->expr.arg, closure_in(q));
+  drop(init);
+  remove_root(&init);
+
+  trace_end_entry(e); // *** wait?
+
+  trace_clear_alt(parent_entry);
+  cell_t *res = var(T_LIST, q);
+  assert_error(entry_has(parent_entry, res->value.var),
+               "parent: %s, var: %s[%d]",
+               parent_entry->word_name,
+               var_entry(res->value.var),
+               var_index(NULL, res->value.var));
+  int x = var_index(parent_entry, res->value.var);
+  trace_reduction(q, res);
+  EACH(drop, q, res);
+
+  apply_condition(l, &x);
+  return x;
+}
+
 // decode a pointer to an index and return a trace pointer
 const tcell_t *tref(const tcell_t *entry, const cell_t *c) {
   int i = tr_index(c);
