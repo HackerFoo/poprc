@@ -534,7 +534,7 @@ void print_module_bytecode(cell_t *m) {
   FORMAP(i, map) {
     char *name = (char *)map[i].first;
     if(strcmp("imports", name) == 0) continue;
-    if(catch_error(&error)) {
+    CATCH(&error) {
       printf(NOTE("ERROR") " ");
       print_last_log_msg();
       print_active_entries("  - while compiling ");

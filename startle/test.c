@@ -159,11 +159,11 @@ TEST(oneof) {
 static int shadow_x = 1;
 TEST(shadow) {
   if(shadow_x != 1) return -1;
-  SHADOW(shadow_x, 2) {
+  SHADOW(shadow_x) {
+    shadow_x = 2;
     if(shadow_x != 2) return -2;
-    SHADOW(shadow_x, 3) {
+    SHADOW(shadow_x, 3)
       if(shadow_x != 3) return -3;
-    }
     if(shadow_x != 2) return -4;
   }
   if(shadow_x != 1) return -5;

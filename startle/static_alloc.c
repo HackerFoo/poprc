@@ -35,7 +35,8 @@
 // declare pointers to static allocations
 #define STATIC_ALLOC_ALIGNED__ITEM(file, line, name, type, default_size, alignment) \
   type *name = NULL;                                                    \
-  size_t name##_size = 0;
+  size_t name##_size = 0;                                               \
+  size_t name##_size_init = 0;
 #define STATIC_ALLOC_DEPENDENT__ITEM(...) STATIC_ALLOC__ITEM(__VA_ARGS__)
 #include "static_alloc_list.h"
 #undef STATIC_ALLOC_ALIGNED__ITEM
@@ -86,6 +87,17 @@ TEST(align_offset) {
 }
 
 static
+void load_default_sizes() {
+  // set sizes for non-dependent allocations
+#define STATIC_ALLOC_ALIGNED__ITEM(file, line, name, type, default_size, alignment)       \
+  name##_size_init = (default_size);
+#define STATIC_ALLOC_DEPENDENT__ITEM(...)
+#include "static_alloc_list.h"
+#undef STATIC_ALLOC_ALIGNED__ITEM
+#undef STATIC_ALLOC_DEPENDENT__ITEM
+}
+
+static
 void alloc_all() {
   __mem_size = 0;
   unsigned int __max_align = 1;
@@ -93,7 +105,7 @@ void alloc_all() {
 
   // set sizes for non-dependent allocations
 #define STATIC_ALLOC_ALIGNED__ITEM(file, line, name, type, default_size, alignment)       \
-  name##_size = (default_size);
+  name##_size = name##_size_init;
 #define STATIC_ALLOC_DEPENDENT__ITEM(...)
 #include "static_alloc_list.h"
 #undef STATIC_ALLOC_ALIGNED__ITEM
@@ -150,9 +162,14 @@ void free_all() {
   __mem_size = 0;
 }
 
-void static_alloc_init() {
+void static_alloc_reinit() {
   if(__mem_size) free_all();
   alloc_all();
+}
+
+void static_alloc_init() {
+  load_default_sizes();
+  static_alloc_reinit();
 }
 
 size_t get_mem_size() {

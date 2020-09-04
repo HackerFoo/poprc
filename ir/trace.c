@@ -120,6 +120,10 @@ bool is_trace_cell(void const *p) {
   return p >= (void *)trace_cells && p < (void *)(trace_cells + trace_cells_size);
 }
 
+void trace_reinit() {
+  trace_ptr = NULL;
+}
+
 void trace_init() {
   prev_entry_pos = 0;
   reset_scratch();

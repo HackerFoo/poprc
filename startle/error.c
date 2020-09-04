@@ -194,6 +194,7 @@ typedef struct {
 #define catch_error_1(e) catch_error_2(e, false)
 #define catch_error_2(e, q) (current_error = (e), current_error->quiet = (q), !!setjmp((e)->env))
 #define catch_error(...) DISPATCH(catch_error, __VA_ARGS__)
+#define CATCH(...) SHADOW(current_error) if(catch_error(__VA_ARGS__))
 
 /** Throw an error of a particular type.
  * Returns the error type and logs the following arguments.
@@ -222,10 +223,9 @@ void return_error(error_type_t type) {
 }
 
 TEST(error) {
-  error_t *prev_error = current_error;
   /** [error] */
   error_t test_error;
-  if(catch_error(&test_error)) {
+  CATCH(&test_error) {
     printf(NOTE("TEST") " ");
     print_last_log_msg();
   } else {
@@ -235,7 +235,6 @@ TEST(error) {
     }
   }
   /** [error] */
-  current_error = prev_error;
   return 0;
 }
 

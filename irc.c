@@ -184,7 +184,7 @@ void run_eval_irc() {
   error_t error;
   seg_t s = irc_io_read(&stream_irc);
   while(s.s) {
-    if(catch_error(&error, true)) {
+    CATCH(&error, true) {
       if(irc_should_wait()) {
         printf("%s\x01"
                "ACTION is tired, takes a nap for %lu seconds"

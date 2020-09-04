@@ -399,11 +399,19 @@
 #define ANY(...) DISPATCH(ANY, __VA_ARGS__)
 
 /** Reassign a variable for the duration of the following block. */
-#define SHADOW(var, val)                        \
+#define SHADOW_2(var, val)                      \
   for(const __typeof__(var) __tmp = (var),      \
         *__tmpp = (((var) = (val)), &__tmp);    \
       __tmpp;                                   \
       ((var) = __tmp), __tmpp = NULL)
+
+#define SHADOW_1(var)                           \
+  for(const __typeof__(var) __tmp = (var),      \
+        *__tmpp = &__tmp;                       \
+      __tmpp;                                   \
+      ((var) = __tmp), __tmpp = NULL)
+
+#define SHADOW(...) DISPATCH(SHADOW, __VA_ARGS__)
 
 #define maybe_get(s, f, d)                      \
   ({                                            \

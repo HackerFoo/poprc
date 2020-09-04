@@ -77,6 +77,7 @@
 bool quit = false;
 bool command_line = false;
 bool exit_on_error = false;
+bool reinit = false;
 
 static bool tty = false;
 bool quiet = false;
@@ -184,6 +185,11 @@ const char *strip_dir(const char *path) {
   return s ? s + 1 : path;
 }
 
+void eval_init() {
+  previous_result = NULL;
+  files_cnt = 0;
+}
+
 int main(int argc, char **argv) {
   struct sigaction sa;
   sa.sa_flags = SA_SIGINFO;
@@ -197,83 +203,95 @@ int main(int argc, char **argv) {
 
   error_t error;
 
-  if(catch_error(&error)) {
-    printf(NOTE("ERROR") " ");
-    print_last_log_msg();
-    print_active_entries("  - while compiling ");
-    if(exit_on_error) {
-      printf("\nExiting on error.\n");
-      printf("\n___ LOG ___\n");
-      log_print_all();
-      return -error.type;
-    }
-    exit_on_error = true;
-    cleanup_cells();
-  }
-
-  log_soft_init();
-  cells_init();
-  parse_init();
-  module_init();
-  char *home = getenv("HOME");
-  if(home) {
-    asprintf((char **)&history_path, "%s/" HISTORY_FILE, home);
-  }
-
-  command_line = true;
-  bool quit = false;
-  tty = isatty(fileno(stdin)) && isatty(fileno(stdout));
-  quiet = !tty;
-  cell_t *parsed_args = NULL;
-
-  if(argc >= 1) {
-    const char *exec_name = strip_dir(argv[0]);
-    char *args = arguments(argc - 1, argv + 1), *a = args;
-    // printf("__ arguments __\n%s", a);
-
-    if(strcmp(exec_name, "popr") == 0) {
-      eval_command_string(":ld " PREFIX "/share/poprc", 0);
-      eval_command_string(":import", 0);
-    }
-
-    if(args) {
-      // lex the arguments
-      cell_t **next = &parsed_args;
-      while(*a) {
-        char *e = strchr(a, '\n');
-        *e = '\0'; // HACKy (fix load_file instead)
-        *next = lex(a, e);
-        next = &(*next)->alt;
-        a = e + 1;
+  for(;;) {
+    CATCH(&error) {
+      if(reinit) {
+        reinit = false;
+        unload_files();
+        static_alloc_reinit();
+        log_init();
+        io_init();
+        trace_reinit();
+      } else {
+        printf(NOTE("ERROR") " ");
+        print_last_log_msg();
+        print_active_entries("  - while compiling ");
+        if(exit_on_error) {
+          printf("\nExiting on error.\n");
+          printf("\n___ LOG ___\n");
+          log_print_all();
+          return -error.type;
+        }
+        exit_on_error = true;
+        cleanup_cells();
+      }
+    } else {
+      log_soft_init();
+      cells_init();
+      parse_init();
+      module_init();
+      eval_init();
+      char *home = getenv("HOME");
+      if(home) {
+        asprintf((char **)&history_path, "%s/" HISTORY_FILE, home);
       }
 
-      // run the commands
-      alloc_to(64); // keep allocations consistent regardless of args
-      cell_t *p = parsed_args;
-      while(p) {
-        quit = !eval_command(p) || quit;
-        free_toks(p);
-        p = p->alt;
+      command_line = true;
+      bool quit = false;
+      tty = isatty(fileno(stdin)) && isatty(fileno(stdout));
+      quiet = !tty;
+      cell_t *parsed_args = NULL;
+
+      if(argc >= 1) {
+        const char *exec_name = strip_dir(argv[0]);
+        char *args = arguments(argc - 1, argv + 1), *a = args;
+        // printf("__ arguments __\n%s", a);
+
+        if(strcmp(exec_name, "popr") == 0) {
+          eval_command_string(":ld " PREFIX "/share/poprc", 0);
+          eval_command_string(":import", 0);
+        }
+
+        if(args) {
+          // lex the arguments
+          cell_t **next = &parsed_args;
+          while(*a) {
+            char *e = strchr(a, '\n');
+            *e = '\0'; // HACKy (fix load_file instead)
+            *next = lex(a, e);
+            next = &(*next)->alt;
+            a = e + 1;
+          }
+
+          // run the commands
+          alloc_to(64); // keep allocations consistent regardless of args
+          cell_t *p = parsed_args;
+          while(p) {
+            quit = !eval_command(p) || quit;
+            free_toks(p);
+            p = p->alt;
+          }
+
+          free(args);
+        }
       }
 
-      free(args);
+      eval_commands = will_eval_commands;
+      exit_on_error = false;
+      command_line = false;
+
+      if(!quit) run_eval(echo);
+      drop(previous_result);
+      free_modules();
+      unload_files();
+      if(run_leak_test &&
+         !leak_test()) {
+        make_graph_all("leaks.dot");
+      }
+      free((void *)history_path);
+      return 0;
     }
   }
-
-  eval_commands = will_eval_commands;
-  exit_on_error = false;
-  command_line = false;
-
-  if(!quit) run_eval(echo);
-  drop(previous_result);
-  free_modules();
-  unload_files();
-  if(run_leak_test &&
-     !leak_test()) {
-    make_graph_all("leaks.dot");
-  }
-  free((void *)history_path);
-  return 0;
 }
 #else // EMSCRIPTEN
 int main(int argc, char **argv) {
@@ -516,7 +534,7 @@ COMMAND(quit, "quit interpreter") {
 #ifdef EMSCRIPTEN
 int emscripten_eval(char *str, int len) {
   error_t error;
-  if(catch_error(&error)) {
+  CATCH(&error) {
     print_last_log_msg();
     return -error.type;
   } else {
@@ -530,9 +548,11 @@ bool eval_command(cell_t *p) {
   if(match(p, ":")) {
     if(eval_commands) {
       p = p->tok_list.next;
+      stats_start();
       if(!p || !run_command(tok_seg(p), p->tok_list.next)) {
         printf("unknown command\n");
       }
+      stats_stop();
     }
   } else {
     command_eval(p);
@@ -1046,4 +1066,9 @@ COMMAND(analyze, "analyze a function") {
 
 COMMAND(ssizes, "list static sizes") {
   list_static_sizes();
+}
+
+COMMAND(reinit, "reinitialize the compiler") {
+  reinit = true;
+  return_error(ERROR_TYPE_NONE);
 }
