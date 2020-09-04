@@ -192,6 +192,7 @@ cell_t *closure_alloc(csize_t args) {
   return c;
 }
 
+// NOTE: set .size properly afterwards, or closure_free may not free all cells
 cell_t *closure_alloc_cells(csize_t size) {
   assert_throw(size <= MAX_ALLOC_SIZE);
   assert_throw(current_alloc_cnt + size <= MAX_ALLOC, "%d bytes allocated", current_alloc_cnt);
@@ -245,6 +246,13 @@ csize_t calculate_cells(csize_t n) {
   const csize_t args_in_first_cell =
     (sizeof(cell_t) - offsetof(cell_t, expr.arg)) / sizeof(cell_t *);
   return n <= args_in_first_cell ? 1 : calc_size(cell_t, expr.arg, n);
+}
+
+csize_t calculate_args_from_cells(csize_t n) {
+  if(n == 0) return 0;
+  const csize_t args_in_first_cell =
+    (sizeof(cell_t) - offsetof(cell_t, expr.arg)) / sizeof(cell_t *);
+  return args_in_first_cell + (sizeof(cell_t) / sizeof(cell_t *)) * (n - 1);
 }
 
 csize_t calculate_list_size(csize_t n) {
@@ -564,6 +572,7 @@ void alloc_to(size_t n) {
     size_t s = &cells[n] - uninitialized_cells;
     cell_t *c = closure_alloc_cells(s);
     c->op = OP_value;
+    c->size = calculate_args_from_cells(s);
     closure_free(c);
   }
 }
