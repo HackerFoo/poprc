@@ -33,11 +33,13 @@
 #define STATIC_ALLOC__ITEM(file, line, name, type, default_size) STATIC_ALLOC_ALIGNED__ITEM(file, line, name, type, default_size, __alignof__(type))
 
 // declare pointers to static allocations
-#define STATIC_ALLOC_ALIGNED__ITEM(file, line, name, type, default_size, alignment) \
+#define STATIC_ALLOC_ALIGNED__ITEM(file, line, name, type, ...)         \
   type *name = NULL;                                                    \
   size_t name##_size = 0;                                               \
   size_t name##_size_init = 0;
-#define STATIC_ALLOC_DEPENDENT__ITEM(...) STATIC_ALLOC__ITEM(__VA_ARGS__)
+#define STATIC_ALLOC_DEPENDENT__ITEM(file, line, name, type, ...)       \
+  type *name = NULL;                                                    \
+  size_t name##_size = 0;
 #include "static_alloc_list.h"
 #undef STATIC_ALLOC_ALIGNED__ITEM
 #undef STATIC_ALLOC_DEPENDENT__ITEM

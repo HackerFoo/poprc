@@ -77,7 +77,9 @@
 bool quit = false;
 bool command_line = false;
 bool exit_on_error = false;
-bool reinit = false;
+
+bool reinit_requested = false;
+bool reinited_on_start = false;
 
 static bool tty = false;
 bool quiet = false;
@@ -188,6 +190,7 @@ const char *strip_dir(const char *path) {
 void eval_init() {
   previous_result = NULL;
   files_cnt = 0;
+  reinit_requested = false;
 }
 
 int main(int argc, char **argv) {
@@ -205,28 +208,27 @@ int main(int argc, char **argv) {
 
   for(;;) {
     CATCH(&error) {
-      if(reinit) {
-        reinit = false;
+      printf(NOTE("ERROR") " ");
+      print_last_log_msg();
+      print_active_entries("  - while compiling ");
+      if(exit_on_error) {
+        printf("\nExiting on error.\n");
+        printf("\n___ LOG ___\n");
+        log_print_all();
+        return -error.type;
+      }
+      exit_on_error = true;
+      cleanup_cells();
+    } else {
+      if(reinit_requested) {
         unload_files();
         static_alloc_reinit();
         log_init();
         io_init();
         trace_reinit();
       } else {
-        printf(NOTE("ERROR") " ");
-        print_last_log_msg();
-        print_active_entries("  - while compiling ");
-        if(exit_on_error) {
-          printf("\nExiting on error.\n");
-          printf("\n___ LOG ___\n");
-          log_print_all();
-          return -error.type;
-        }
-        exit_on_error = true;
-        cleanup_cells();
+        log_soft_init();
       }
-    } else {
-      log_soft_init();
       cells_init();
       parse_init();
       module_init();
@@ -266,7 +268,7 @@ int main(int argc, char **argv) {
           // run the commands
           alloc_to(64); // keep allocations consistent regardless of args
           cell_t *p = parsed_args;
-          while(p) {
+          while(p && (!reinit_requested || reinited_on_start)) {
             quit = !eval_command(p) || quit;
             free_toks(p);
             p = p->alt;
@@ -274,6 +276,11 @@ int main(int argc, char **argv) {
 
           free(args);
         }
+      }
+
+      if(reinit_requested && !reinited_on_start) {
+        reinited_on_start = true;
+        continue;
       }
 
       eval_commands = will_eval_commands;
@@ -430,7 +437,7 @@ void run_eval(bool echo) {
     if(echo) puts(line);
     bool run = eval_command_string(line, 0);
 
-    if(!run || !eval_commands) break;
+    if(!run || !eval_commands || reinit_requested) break;
   }
 }
 
@@ -726,7 +733,7 @@ size_t files_cnt = 0;
 
 bool load_file(int dirfd, const char *path) {
   if(files_cnt >= files_size) {
-    if(!quiet) printf("Can't load any more files.\n");
+    if(!quiet) printf("Can't load any more files, `files` too small\n");
     return false;
   }
   struct mmfile *f = &files[files_cnt++];
@@ -1069,6 +1076,5 @@ COMMAND(ssizes, "list static sizes") {
 }
 
 COMMAND(reinit, "reinitialize the compiler") {
-  reinit = true;
-  return_error(ERROR_TYPE_NONE);
+  reinit_requested = true;
 }

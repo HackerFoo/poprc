@@ -43,11 +43,9 @@
 // parameters
 #define ENTRY_BLOCK_SIZE 1024
 #define MAP_BLOCK_SIZE 64
-#define MAX_TRACE_CELLS (1 << 15)
-#define BLOCK_MAP_SIZE ((MAX_TRACE_CELLS + MAP_BLOCK_SIZE - 1) / MAP_BLOCK_SIZE)
 
 // storage for all trace entries
-STATIC_ALLOC_ALIGNED(trace_cells, tcell_t, 1 << 15, 64);
+STATIC_ALLOC_ALIGNED(trace_cells, tcell_t, 8000, 64);
 static tcell_t *trace_ptr = NULL;
 
 // scratch spaces at the end of trace_cells
@@ -165,7 +163,7 @@ tcell_t *entry_from_number(int n) {
 static
 void trace_update_block_map(tcell_t *entry) {
   tcell_t *e = entry, *ne = trace_entry_next(e);
-  RANGEUP(i, DIV_UP(entry - trace_cells, MAP_BLOCK_SIZE), BLOCK_MAP_SIZE) {
+  RANGEUP(i, DIV_UP(entry - trace_cells, MAP_BLOCK_SIZE), trace_block_map_size) {
     tcell_t *block_start = &trace_cells[i * MAP_BLOCK_SIZE];
     while(ne <= block_start) {
       e = ne;
@@ -221,7 +219,7 @@ bool entries_match(tcell_t *entry_a, tcell_t *entry_b) {
 // get first entry in the same block as v
 tcell_t *block_first_entry(tcell_t *v) {
   int i = (v - trace_cells) / MAP_BLOCK_SIZE;
-  assert_error(i < BLOCK_MAP_SIZE);
+  assert_error(i < (int)trace_block_map_size);
   return trace_block_map[i];
 }
 
@@ -735,7 +733,8 @@ int trace_store_something(tcell_t *entry, tcell_t **v) {
 }
 
 tcell_t *get_trace_ptr(size_t size) {
-  assert_error((void *)(trace_ptr + size) < (void *)(trace_cells + trace_cells_size));
+  assert_throw((void *)(trace_ptr + size) < (void *)(trace_cells + trace_cells_size),
+    "`trace_cells` too small");
   memset(trace_ptr, 0, sizeof(*trace_ptr) * size);
   return trace_ptr;
 }
@@ -753,7 +752,7 @@ tcell_t *trace_start_entry(tcell_t *parent, csize_t out) {
   };
 
   // active_entries[e->pos-1] = e
-  assert_error(prev_entry_pos < active_entries_size);
+  assert_throw(prev_entry_pos < active_entries_size, "`active_entries` too small");
   active_entries[prev_entry_pos++] = e;
   e->pos = prev_entry_pos;
   trace_update_block_map(e);

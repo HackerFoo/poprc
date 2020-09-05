@@ -43,12 +43,8 @@
 
 // Cell storage array
 // NOTE: make sure &cells > 255
-#if INTERFACE
-#define CELLS_SIZE (1<<16)
-#endif
 
-#define MAX_ALLOC (CELLS_SIZE - 32)
-STATIC_ALLOC(cells, cell_t, 1 << 16);
+STATIC_ALLOC(cells, cell_t, 40000);
 cell_t *cells_ptr;
 static cell_t *uninitialized_cells;
 static cell_t *uninitialized_cells_end;
@@ -115,6 +111,8 @@ cell_t *cells_next() {
 }
 
 void cells_init() {
+  assert_throw(cells_size >= 3);
+
   // zero the cells
   memset(cells, 0, sizeof(cell_t) * 2);
 
@@ -138,7 +136,7 @@ void cell_alloc(cell_t *c) {
   cell_t *next = c->mem.next;
   assert_error(is_cell(next) && !is_closure(next));
   if(cells_ptr == c) cells_next();
-  assert_throw(c != prev && c != next, "can't alloc the last cell");
+  assert_throw(c != prev && c != next, "can't alloc the last cell, `cells` too small?");
   prev->mem.next = next;
   next->mem.prev = prev;
 }
@@ -195,7 +193,7 @@ cell_t *closure_alloc(csize_t args) {
 // NOTE: set .size properly afterwards, or closure_free may not free all cells
 cell_t *closure_alloc_cells(csize_t size) {
   assert_throw(size <= MAX_ALLOC_SIZE);
-  assert_throw(current_alloc_cnt + size <= MAX_ALLOC, "%d bytes allocated", current_alloc_cnt);
+  assert_throw((size_t)(current_alloc_cnt + size) <= cells_size, "%d bytes allocated, `cells` too small", current_alloc_cnt);
   cell_t *c;
 
   if(uninitialized_cells &&

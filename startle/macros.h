@@ -431,11 +431,14 @@
 
 #define STR_IF(cond, str) ((cond) ? (str) : "")
 
-#define STATIC_ALLOC(name, type, default_size, ...) \
+#define STATIC_ALLOC(name, type, ...)               \
+  extern type *name;                                \
+  extern size_t name##_size;                        \
+  extern size_t name##_size_init
+#define STATIC_ALLOC_ALIGNED(...) STATIC_ALLOC(__VA_ARGS__)
+#define STATIC_ALLOC_DEPENDENT(name, type, ...)     \
   extern type *name;                                \
   extern size_t name##_size
-#define STATIC_ALLOC_ALIGNED(...) STATIC_ALLOC(__VA_ARGS__)
-#define STATIC_ALLOC_DEPENDENT(...) STATIC_ALLOC(__VA_ARGS__)
 #define STATIC_FOREACH(i, a) COUNTUP(i, a##_size)
 
 #define PAIR(x, y) ((pair_t) {(uintptr_t)(x), (uintptr_t)(y)})

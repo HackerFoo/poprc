@@ -44,7 +44,7 @@
 #include "var.h"
 
 // List of predefined symbols in value order.
-STATIC_ALLOC(symbol_index, const char *, 64);
+STATIC_ALLOC_DEPENDENT(symbol_index, const char *, symbols_size);
 #define ENTRY(name) [SYM_##name] = #name
 static const char *init_symbol_index[] = {
   ENTRY(False),
@@ -80,7 +80,8 @@ void print_symbols() {
 }
 
 const char *seg_string(seg_t s) {
-  if((uintptr_t)((strings + strings_size) - strings_top) < s.n + 1) return NULL;
+  assert_throw((uintptr_t)((strings + strings_size) - strings_top) >= s.n + 1,
+               "`strings` too small");
   char *str = strings_top;
   memcpy(str, s.s, s.n);
   strings_top += s.n;
@@ -656,7 +657,7 @@ uintptr_t intern(seg_t sym) {
     strings_drop();
   } else {
     v = *map_cnt(symbols);
-    assert_throw(v < symbols_size);
+    assert_throw(v < symbols_size, "`symbols` too small");
     pair_t p = {(uintptr_t)s, v};
     string_map_insert(symbols, p);
     symbol_index[v] = s;
