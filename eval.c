@@ -73,6 +73,7 @@
 #endif
 
 #define HISTORY_FILE ".poprc_history"
+#define RC_FILE ".poprc_rc"
 
 bool quit = false;
 bool command_line = false;
@@ -193,6 +194,15 @@ void eval_init() {
   reinit_requested = false;
 }
 
+void load_rc(char *path) {
+  FILE *f = fopen(path, "r");
+  if(f) {
+    SHADOW(quiet, true) {
+      run_eval_minimal(f, false, false);
+    }
+  }
+}
+
 int main(int argc, char **argv) {
   struct sigaction sa;
   sa.sa_flags = SA_SIGINFO;
@@ -236,6 +246,10 @@ int main(int argc, char **argv) {
       char *home = getenv("HOME");
       if(home) {
         asprintf((char **)&history_path, "%s/" HISTORY_FILE, home);
+        char *rc_path;
+        asprintf((char **)&rc_path, "%s/" RC_FILE, home);
+        load_rc(rc_path);
+        free(rc_path);
       }
 
       command_line = true;
@@ -413,6 +427,23 @@ static void initialize_readline()
 
 #endif
 
+void run_eval_minimal(FILE *f, bool echo, bool tty) {
+  char *line;
+  while(tty && printf(": "),
+        (line = fgets(line_buffer, static_sizeof(line_buffer), f)))
+  {
+    replace_char(line, '\n', '\0');
+    if(line[0] == '\0') {
+      continue;
+    }
+
+    if(echo) puts(line);
+    bool run = eval_command_string(line, 0);
+
+    if(!run || !eval_commands || reinit_requested) break;
+  }
+}
+
 void run_eval(bool echo) {
 #if defined(USE_READLINE)
   if(tty) {
@@ -425,20 +456,7 @@ void run_eval(bool echo) {
     return;
   }
 #endif
-  char *line;
-  while(tty && printf(": "),
-        (line = fgets(line_buffer, static_sizeof(line_buffer), stdin)))
-  {
-    replace_char(line, '\n', '\0');
-    if(line[0] == '\0') {
-      continue;
-    }
-
-    if(echo) puts(line);
-    bool run = eval_command_string(line, 0);
-
-    if(!run || !eval_commands || reinit_requested) break;
-  }
+  run_eval_minimal(stdin, echo, tty);
 }
 
 #ifdef USE_LINENOISE
