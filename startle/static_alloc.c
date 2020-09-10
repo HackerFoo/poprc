@@ -44,6 +44,7 @@
 #undef STATIC_ALLOC_ALIGNED__ITEM
 #undef STATIC_ALLOC_DEPENDENT__ITEM
 
+static char *__alloc = NULL;
 static char *__mem = NULL;
 static size_t __mem_size = 0;
 
@@ -133,8 +134,8 @@ void alloc_all() {
 #undef STATIC_ALLOC_DEPENDENT__ITEM
 
   // allocate block and clear
-  __mem = malloc(__max_align + __mem_size);
-  __mem += align_offset((uintptr_t)__mem, __max_align);
+  __alloc = malloc(__max_align + __mem_size);
+  __mem = __alloc + align_offset((uintptr_t)__mem, __max_align);
   memset(__mem, 0, __mem_size);
 
   size_t __offset = 0;
@@ -161,7 +162,7 @@ void free_all() {
 #include "static_alloc_list.h"
 #undef STATIC_ALLOC_ALIGNED__ITEM
 #undef STATIC_ALLOC_DEPENDENT__ITEM
-  free(__mem);
+  free(__alloc);
   __mem_size = 0;
 }
 
