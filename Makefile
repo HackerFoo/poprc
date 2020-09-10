@@ -193,6 +193,7 @@ endif
 DIFF_TEST := diff -U 3
 
 POPR_SRC := lib.ppr tests.ppr gen_ed.ppr
+POPRC_RC := poprc_rc
 
 print-%:
 	@echo $* = $($*)
@@ -257,19 +258,19 @@ test_output/tests.txt.log: eval tests.txt
 	./eval -param echo on < tests.txt > $@
 
 test_lib_tests_txt: eval
-	./eval -lo lib.ppr -im -param echo on < lib_tests.txt | $(DIFF_TEST) test_output/lib_tests.txt.log -
+	./eval -rc $(POPRC_RC) -lo lib.ppr -im -param echo on < lib_tests.txt | $(DIFF_TEST) test_output/lib_tests.txt.log -
 test_output/lib_tests.txt.log: eval lib_tests.txt
 	@mkdir -p test_output
-	./eval -lo lib.ppr -im -param echo on < lib_tests.txt > $@
+	./eval -rc $(POPRC_RC) -lo lib.ppr -im -param echo on < lib_tests.txt > $@
 
 test_bytecode: eval
-	./eval -lo $(POPR_SRC) -bc | $(DIFF_TEST) test_output/bytecode`./eval -bits -q`.log -
+	./eval -rc $(POPRC_RC) -lo $(POPR_SRC) -bc | $(DIFF_TEST) test_output/bytecode`./eval -bits -q`.log -
 test_output/bytecode32.log: eval $(POPR_SRC)
 	@mkdir -p test_output
-	if [[ `./eval -bits` = 32 ]]; then ./eval -lo $(POPR_SRC) -bc > $@; fi
+	if [[ `./eval -bits` = 32 ]]; then ./eval -rc $(POPRC_RC) -lo $(POPR_SRC) -bc > $@; fi
 test_output/bytecode64.log: eval $(POPR_SRC)
 	@mkdir -p test_output
-	if [[ `./eval -bits` = 64 ]]; then ./eval -lo $(POPR_SRC) -bc > $@; fi
+	if [[ `./eval -bits` = 64 ]]; then ./eval -rc $(POPRC_RC) -lo $(POPR_SRC) -bc > $@; fi
 test_irc: eval
 	echo ": PRIVMSG test :popr 1 2 +" | ./eval -irc popr test | $(DIFF_TEST) test_output/test_irc.log -
 test_output/test_irc.log: eval

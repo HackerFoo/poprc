@@ -1,0 +1,6 @@
+__ PoprC init file
+__ See :help for command descriptions
+
+:size cells 50000
+:size trace_cells 10000
+:reinit

@@ -203,6 +203,24 @@ void load_rc(char *path) {
   }
 }
 
+seg_t glue(const cell_t *t) {
+  seg_t s = tok_seg(t);
+  while((t = t->tok_list.next)) {
+    seg_t n = tok_seg(t);
+    if(!seg_adjacent(s, n)) break;
+    s.n += n.n;
+  }
+  return s;
+}
+
+STATIC_ALLOC(path_buffer, char, 64);
+COMMAND(rc, "load an rc script") {
+  if(rest) {
+    seg_read(glue(rest), path_buffer, static_sizeof(path_buffer));
+    load_rc(path_buffer);
+  }
+}
+
 int main(int argc, char **argv) {
   struct sigaction sa;
   sa.sa_flags = SA_SIGINFO;
@@ -282,7 +300,7 @@ int main(int argc, char **argv) {
           // run the commands
           alloc_to(64); // keep allocations consistent regardless of args
           cell_t *p = parsed_args;
-          while(p && (!reinit_requested || reinited_on_start)) {
+          while(p && !reinit_requested) {
             quit = !eval_command(p) || quit;
             free_toks(p);
             p = p->alt;
@@ -292,7 +310,7 @@ int main(int argc, char **argv) {
         }
       }
 
-      if(reinit_requested && !reinited_on_start) {
+      if(reinit_requested) {
         reinited_on_start = true;
         continue;
       }
@@ -1094,5 +1112,5 @@ COMMAND(ssizes, "list static sizes") {
 }
 
 COMMAND(reinit, "reinitialize the compiler") {
-  reinit_requested = true;
+  reinit_requested = !command_line || !reinited_on_start;
 }

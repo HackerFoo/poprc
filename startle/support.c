@@ -329,6 +329,11 @@ seg_t seg_after(seg_t s, char c) {
   return s;
 }
 
+/** Test if `b` immediately follows `a`. */
+bool seg_adjacent(seg_t a, seg_t b) {
+  return a.s && b.s && a.s + a.n == b.s;
+}
+
 /** Create a string segment from a C string. */
 seg_t string_seg(const char *str) {
   return (seg_t) {str, str ? strlen(str) : 0};
