@@ -12,6 +12,7 @@ def __lldb_init_module(debugger, internal_dict):
     dbgcall("command script add -f lldbinit.ac ac")
     dbgcall("command script add -f lldbinit.pt pt")
     dbgcall("command script add -f lldbinit.pp pp")
+    dbgcall("command script add -f lldbinit.def_static def_static")
     dbgcall("command script add -f lldbinit.save_trees save-trees")
     dbgcall("command script add -f lldbinit.diff_trees diff-trees")
     dbgcall("breakpoint set --name breakpoint");
@@ -60,6 +61,21 @@ def pp(debugger, command, result, dict):
     args = shlex.split(command)
     if len(args) > 0:
         dbgcall("p print_static_alloc({})".format(args[0]))
+
+def def_static(debugger, command, result, dict):
+    target = debugger.GetSelectedTarget()
+    process = target.GetProcess()
+    thread = process.GetSelectedThread()
+    frame = thread.GetSelectedFrame()
+    if not frame.IsValid():
+        return "no frame here"
+    res = frame.EvaluateExpression("list_static_addresses()")
+    if not res.error.Success():
+        return "failed"
+    e = lldb.SBError()
+    val = frame.GetThread().GetProcess().ReadCStringFromMemory(res.GetValueAsUnsigned(), 0xffffff, e)
+    for line in val.splitlines():
+        dbgcall("expr " + line)
 
 def ac(debugger, command, result, dict):
     args = shlex.split(command)

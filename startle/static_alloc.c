@@ -61,12 +61,13 @@ union static_alloc_names {
 // create allocation table
 typedef struct {
   char name[STATIC_ALLOC_NAME_SIZE];
+  char *type_name;
   size_t offset;
   size_t width;
 } allocation_t;
 static allocation_t allocation_table[] = {
-#define STATIC_ALLOC_ALIGNED__ITEM(file, line, _name, type, default_size, alignment) \
-  { .name = #_name, .offset = 0},
+#define STATIC_ALLOC_ALIGNED__ITEM(file, line, _name, _type, ...) \
+  { .name = #_name, .type_name = #_type },
 #define STATIC_ALLOC_DEPENDENT__ITEM(...) STATIC_ALLOC__ITEM(__VA_ARGS__)
 #include "static_alloc_list.h"
 #undef STATIC_ALLOC_ALIGNED__ITEM
@@ -207,4 +208,17 @@ void print_static_alloc(const void *_p) {
     }
     printf("%s[%ld]\n", res->name, (offset - res->offset) / res->width);
   }
+}
+
+STATIC_ALLOC(static_address_buffer, char, 4096);
+char *list_static_addresses() {
+  char *end = static_address_buffer + static_address_buffer_size - 1;
+  char *ptr = static_address_buffer;
+  FOREACH(i, allocation_table) {
+    allocation_t *e = &allocation_table[i];
+    int n = snprintf(ptr, end - ptr, "%s *$%s = (%s *)%p\n", e->type_name, e->name, e->type_name, (void *)&__mem[e->offset]);
+    if(n > 0) ptr += n;
+  }
+  *ptr = '\0';
+  return static_address_buffer;
 }
