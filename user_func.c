@@ -219,8 +219,9 @@ start:
         }
       }
     }
-  } else if(pattern->op == OP_id && // walk through id
-            pattern->expr.alt_set == 0) {
+  } else if(pattern->op == OP_seq ||
+            (pattern->op == OP_id && // walk through id
+             pattern->expr.alt_set == 0)) {
     pattern = pattern->expr.arg[0];
     goto start;
   } else if(is_row_list(c)) {
@@ -230,9 +231,9 @@ start:
     *r = NULL;
     drop(c);
     goto start;
-  } else if(c->op == OP_compose) {
+  } else if(ONEOF(c->op, OP_compose, OP_seq)) {
     cell_t **r = &c->expr.arg[0];
-    LOG("match through compose %C -> %C", c, *r);
+    LOG("match through %O %C -> %C", c->op, c, *r);
     *cp = *r;
     *r = NULL;
     drop(c);
@@ -423,6 +424,8 @@ cell_t *exec_expand(cell_t *c) {
   cell_t *res;
   tcell_t *returns = NULL;
   int pos = c->pos;
+
+  WATCH(c, "exec_expand", "%E", entry);
 
   // pointers to the outputs
   cell_t **results[out + 1];
@@ -1083,6 +1086,11 @@ bool is_specialized_to(tcell_t *entry, cell_t *c) {
           }
         } else if(ONEOF((*p)->op, OP_pushr, OP_compose)) {
           return false;
+        } else if(is_value(*p)) {
+          while(is_id_list(*p)) p = &(*p)->value.ptr[0];
+          if(is_var(*p) && (*p)->value.type == T_LIST && FLAG(**p, value, ROW)) {
+            return false;
+          }
         }
       }
     } else {
