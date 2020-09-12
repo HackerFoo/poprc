@@ -146,11 +146,26 @@ void apply_condition(cell_t *c, int *x) {
 bool depends_on(tcell_t *entry, int x, int y) {
   if(x == y) return true;
   tcell_t *tc = &entry[x];
-  if(trace_type(tc) == T_LIST ||
+  if((trace_type(tc) == T_LIST && !ONEOF(tc->op, OP_assert, OP_seq)) ||
      ONEOF(tc->op, OP_unless, OP_exec)) return false; // *** conservative
   TRAVERSE(tc, in) {
     int px = tr_index(*p);
     if(px && depends_on(entry, px, y)) {
+      LOG("%E %O %d depends on %d", entry, tc->op, x, y);
+      return true;
+    }
+  }
+  return false;
+}
+
+bool has_asserted(tcell_t *entry, int x, int y) {
+  tcell_t *tc = &entry[x];
+  if(tc->op == OP_assert && tr_index(tc->expr.arg[1]) == y) return true;
+  if((trace_type(tc) == T_LIST && !ONEOF(tc->op, OP_assert, OP_seq)) ||
+     ONEOF(tc->op, OP_unless, OP_exec)) return false; // *** conservative
+  TRAVERSE(tc, in) {
+    int px = tr_index(*p);
+    if(px && has_asserted(entry, px, y)) {
       LOG("%E %O %d depends on %d", entry, tc->op, x, y);
       return true;
     }
@@ -167,8 +182,17 @@ int copy_conditions(tcell_t *entry, int i, int v) {
   if(tc->op == OP_seq && tr_index(tc->expr.arg[1]) == v) return v;
   int a = tr_index(tc->expr.arg[0]);
   int an = copy_conditions(entry, a, v);
-  if(an && tc->op == OP_seq &&
-     depends_on(entry, an, tr_index(tc->expr.arg[1]))) return an;
+  if(an) {
+    switch(tc->op) {
+    case OP_seq:
+      if(depends_on(entry, an, tr_index(tc->expr.arg[1]))) return an;
+      break;
+    case OP_assert:
+      if(has_asserted(entry, an, tr_index(tc->expr.arg[1]))) return an;
+      break;
+    default: break;
+    }
+  }
   if(a != an) {
     if(a) {
       x = trace_copy_cell(entry, &tc->c);
