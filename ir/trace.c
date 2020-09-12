@@ -805,6 +805,13 @@ void trace_reset(tcell_t *entry) {
   }
 }
 
+void trace_reset_active() {
+  if(prev_entry_pos) {
+    prev_entry_pos = 0;
+    trace_ptr = active_entries[0];
+  }
+}
+
 // get the top active specialization of an entry
 tcell_t *trace_specializing_entry(tcell_t *entry) {
   COUNTDOWN(i, prev_entry_pos) {

@@ -539,6 +539,7 @@ void print_module_bytecode(cell_t *m) {
       print_last_log_msg();
       print_active_entries("  - while compiling ");
       printf("\n");
+      trace_reset_active();
       log_soft_init();
       cleanup_cells();
     } else {
