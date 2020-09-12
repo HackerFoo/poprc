@@ -949,6 +949,12 @@ void trace_update_2(tcell_t *v, cell_t *c) {
   range_t c_range = get_range(c);
   map_iterator it;
   pair_t *p;
+  tcell_t *v_e = var_entry(v);
+  if(FLAG(*v_e, entry, COMPLETE)) { // ***
+    LOG(MARK("WARN") " attempt to update with %t[%d, %d] for completed trace cell %T from %C",
+        t, c_range.min, c_range.max, v, c);
+    return;
+  }
   FOR_SWITCH_MAP(tc, v, p, it) {
     tcell_t *entry = var_entry(tc);
     if(FLAG(*entry, entry, COMPLETE)) {
@@ -1058,6 +1064,9 @@ int inline_quote(tcell_t *entry, cell_t *l) {
            &CTX(any));
   }
   unwrap_id_lists(&l);
+  if(is_var(l)) {
+    return var_index(entry, l->value.var);
+  }
   FORLIST(p, l, true) {
     reduce(p, is_row_arg(&__it) ?
            &CTX(list, 0, 0) :
@@ -1179,16 +1188,6 @@ int trace_return(tcell_t *entry, cell_t *c_) {
   tc->n = -1;
   tc->alt = NULL;
   return x;
-}
-
-bool list_with_alt(const cell_t *l) {
-  if(is_list(l)) {
-    if(l->alt) return true;
-    COUNTUP(i, list_size(l)) {
-      if(list_with_alt(l->value.ptr[i])) return true;
-    }
-  }
-  return false;
 }
 
 // reduce for tracing & compilation

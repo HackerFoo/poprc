@@ -524,10 +524,11 @@ void calculate_bit_width(tcell_t *entry) {
 int bit_width(tcell_t *entry, tcell_t *tc) {
   if(is_user_func(tc)) {
     const tcell_t *e = get_entry(tc);
-    COUNTUP(i, e->entry.in) {
+    csize_t unbound = e->entry.in - closure_in(tc);
+    RANGEUP(i, unbound, e->entry.in) {
       const tcell_t *v_e = &e[e->entry.in - i];
       type_t t = trace_type(v_e);
-      tcell_t *v = &entry[tr_index(tc->expr.arg[i])];
+      tcell_t *v = &entry[tr_index(tc->expr.arg[i - unbound])];
       if(t == T_LIST) {
         stream_bits(entry, v, v_e->trace.bit_width);
       } else if(t == T_OPAQUE &&

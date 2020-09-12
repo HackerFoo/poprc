@@ -301,6 +301,15 @@ void condense(tcell_t *entry) {
     }
   }
 
+  // update switch map (for propagating types)
+  map_clear(switch_rev_map);
+  FORMAP(i, switch_map) {
+    tcell_t *key = (tcell_t *)switch_map[i].first;
+    tcell_t **val = (tcell_t **)&switch_map[i].second;
+    if(entry_has(entry, *val)) *val = &entry[(*val)->var_index];
+    map_insert(switch_rev_map, PAIR(*val, key));
+  }
+
   csize_t len = idx - 1;
   assert_error(nvars == entry->entry.in);
 
@@ -311,7 +320,6 @@ void condense(tcell_t *entry) {
         int x = tr_index(*p);
         if(x > 0) {
           tr_set_index(p, tr_index(entry[x].alt));
-          assert_error(tr_index(*p) > 0, "at %s[%d]", entry->word_name, tc-entry);
         }
       }
     }
@@ -473,27 +481,8 @@ void trace_final_pass(tcell_t *entry) {
     }
     prev = tc;
   }
-  FOR_TRACE(tc, entry) { // *** TODO split condense_and_analyze
-    if(tc->op == OP_exec) {
-      tcell_t *e = get_entry(tc);
-      if(FLAG(*e, entry, QUOTE)) {
-        LOOP(2) { // run twice to for self calls
-          calculate_bit_width(e);
-        }
-      }
-    }
-  }
-  if(NOT_FLAG(*entry, entry, QUOTE) &&
-    TWEAK(true, "to disable condense/move_vars in %s", entry->word_name)) {
+  if(TWEAK(true, "to disable condense/move_vars in %s", entry->word_name)) {
     condense_and_analyze(entry);
-  }
-  FOR_TRACE(tc, entry) {
-    if(tc->op == OP_exec) {
-      tcell_t *e = get_entry(tc);
-      if(FLAG(*e, entry, QUOTE)) {
-        condense_and_analyze(e);
-      }
-    }
   }
 }
 
@@ -808,10 +797,8 @@ int compile_quote(tcell_t *parent_entry, cell_t *l) {
   drop(init);
   remove_root(&init);
 
-  trace_end_entry(e); // *** wait?
-
   trace_clear_alt(parent_entry);
-  cell_t *res = var(T_LIST, q);
+  cell_t *res = var_create_with_entry(T_LIST, parent_entry, q->size);
   assert_error(entry_has(parent_entry, res->value.var),
                "parent: %s, var: %s[%d]",
                parent_entry->word_name,
@@ -820,6 +807,8 @@ int compile_quote(tcell_t *parent_entry, cell_t *l) {
   int x = var_index(parent_entry, res->value.var);
   trace_reduction(q, res);
   EACH(drop, q, res);
+
+  trace_end_entry(e);
 
   apply_condition(l, &x);
   return x;

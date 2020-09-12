@@ -161,7 +161,7 @@ OP(value) {
       tcell_t *entry = pos_entry(c->pos);
       tcell_t *parent = entry->entry.parent;
       tcell_t *ve = c->value.var ? var_entry(c->value.var) : NULL;
-      if(entry != ve && parent) {
+      if(entry != ve && parent && entry->entry.specialize) { // .specialize is set when specializing loops
         LOG_WHEN(is_list(c), "nil %C", c);
         int v = trace_store_value(parent, c);
         c->value.var = switch_entry_var(entry, &parent[v], true);
