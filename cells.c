@@ -44,7 +44,7 @@
 // Cell storage array
 // NOTE: make sure &cells > 255
 
-STATIC_ALLOC(cells, cell_t, 40000);
+STATIC_ALLOC(cells, cell_t, 10000);
 cell_t *cells_ptr;
 static cell_t *uninitialized_cells;
 static cell_t *uninitialized_cells_end;
