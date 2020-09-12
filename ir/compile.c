@@ -831,12 +831,6 @@ const tcell_t *tref(const tcell_t *entry, const cell_t *c) {
   return i <= 0 ? NULL : &entry[i];
 }
 
-// get the return type
-type_t trace_type(const tcell_t *tc) {
-  assert_error(tc);
-  return tc->trace.type;
-}
-
 // get trace_t info for the nth output of entry e
 void get_trace_info_for_output(trace_t *tr, const tcell_t *e, int n) {
   assert_error(n < e->entry.out);

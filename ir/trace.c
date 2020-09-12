@@ -1511,3 +1511,9 @@ bool is_array(const tcell_t *tc) {
   return trace_type(tc) == T_OPAQUE &&
     tc->trace.range.min == SYM_Array;
 }
+
+// get the return type
+type_t trace_type(const tcell_t *tc) {
+  assert_error(tc);
+  return tc->trace.type;
+}
