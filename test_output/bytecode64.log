@@ -4054,6 +4054,59 @@ ___ tests.f17 (2 -> 1) x2 ___
 [7] __primitive.quote 1 :: l x1
 [8] return [6]
 
+___ tests.f18 (1 -> 1) ___
+[1] var :: ?l x1
+[2] jump tests.f18_r0 1 :: l x1
+[3] return [2]
+
+___ tests.f18_r0 (1 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] __primitive.ap 1 -> 3 :: l? x2
+[3] __primitive.dep 2 :: i x2
+[4] __primitive.seq 7 &3 :: l x1
+[5] tests.f18_r0 2 :: l x1
+[6] __primitive.pushr 5 4 :: l x1
+[7] jump tests.f18_r0_q0 3 :: l x1
+[8] return [6]
+
+___ tests.f18_r0_q0 (2 -> 1) ___
+[1] var :: ?i x1
+[2] var :: ?i x1
+[3] __primitive.add 2 1 :: i x1
+[4] __primitive.ap 3 5 :: l x1
+[5] [] :: l x1
+[6] return [4]
+
+___ tests.f19 (1 -> 1) ___
+[1] var :: ?l x1
+[2] jump tests.f19_r0 1 :: l x1
+[3] return [2]
+
+___ tests.f19_r0 (1 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] __primitive.ap 1 -> 3 :: l? x2
+[3] __primitive.dep 2 :: i x1
+[4] __primitive.add 5 3 :: i x1
+[5] val 1 :: i x1
+[6] jump tests.f19_r0 2 :: l x1
+[7] __primitive.pushr 6 4 :: l x1
+[8] return [7]
+
+___ tests.f19b (1 -> 1) ___
+[1] var :: ?l x1
+[2] jump tests.f19b_r0 1 :: l x1
+[3] return [2]
+
+___ tests.f19b_r0 (1 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] __primitive.ap 1 -> 3 :: l? x2
+[3] __primitive.dep 2 :: i x1
+[4] __primitive.add 5 3 :: i x1
+[5] val 1 :: i x1
+[6] jump tests.f19b_r0 2 :: l x1
+[7] __primitive.pushr 6 4 :: l x1
+[8] return [7]
+
 ___ tests.f2 (3 -> 1) ___
 [1] var :: ?l x1
 [2] var :: ?a x1
@@ -4067,6 +4120,254 @@ ___ tests.f2 (3 -> 1) ___
 [11] __primitive.dep 10 :: i x1
 [12] __primitive.add 6 11 :: i x1
 [13] return [12]
+
+___ tests.f21 (2 -> 1) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] val 1 :: i x1
+[4] jump tests.f21_r0 3 1 2 :: l x1
+[5] return [4]
+
+___ tests.f21_r0 (3 -> 1) x2 rec ___
+[1] changing var :: ?l x2
+[2] changing var :: ?l x2
+[3] changing var :: ?i x6
+[4] __primitive.seq 8 &3 :: i x3
+[5] __primitive.ap &2 -> 6 :: l? x2
+[6] __primitive.dep 5 :: i x1
+[7] __primitive.mul &3 6 :: i x2
+[8] __primitive.mul &7 9 :: i x1
+[9] val 10 :: i x2
+[10] __primitive.seq 14 &4 :: l x1
+[11] __primitive.seq 13 &4 :: l x1
+[12] __primitive.seq 7 3 :: i x1
+[13] jump tests.f21_r0 12 5 1 :: l x1
+[14] __primitive.pushr 11 4 :: l x1
+[15] return [10] -> 26
+[16] __primitive.seq 20 &3 :: i x3
+[17] __primitive.ap 1 -> 18 :: l? x2
+[18] __primitive.dep 17 :: i x1
+[19] __primitive.add &3 18 :: i x2
+[20] __primitive.mul &19 9 :: i x1
+[21] __primitive.seq 25 &16 :: l x1
+[22] __primitive.seq 24 &16 :: l x1
+[23] __primitive.seq 19 3 :: i x1
+[24] jump tests.f21_r0 23 2 17 :: l x1
+[25] __primitive.pushr 22 16 :: l x1
+[26] return [21]
+
+___ tests.f21b (2 -> 1) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] jump tests.f21b_r0 1 2 :: l x1
+[4] return [3]
+
+___ tests.f21b_r0 (2 -> 1) x2 rec ___
+[1] changing var :: ?l x2
+[2] changing var :: ?l x2
+[3] __primitive.ap &2 -> 4 :: l? x2
+[4] __primitive.dep 3 :: a x1
+[5] __primitive.seq 8 4 is 1 :: i x1
+[6] jump tests.f21b_r0 3 1 :: l x1
+[7] __primitive.pushr 6 5 :: l x1
+[8] val 1 :: i x1
+[9] return [7] -> 16
+[10] __primitive.ap 1 -> 11 :: l? x2
+[11] __primitive.dep 10 :: a x1
+[12] __primitive.seq 15 11 is 0 :: i x1
+[13] jump tests.f21b_r0 2 10 :: l x1
+[14] __primitive.pushr 13 12 :: l x1
+[15] val 0 :: i x1
+[16] return [14]
+
+___ tests.f21c (1 -> 1) ___
+[1] var :: ?l x1
+[2] val 0 :: i x1
+[3] jump tests.f21c_r0 2 1 :: i x1
+[4] return [3]
+
+___ tests.f21c_r0 (2 -> 1) x2 rec ___
+[1] changing var :: ?l x1
+[2] changing var :: ?i x2
+[3] __primitive.ap 1 -> 4 :: l? x2
+[4] __primitive.dep 3 :: i x3
+[5] __primitive.seq 7 &4 :: v x1
+[6] __primitive.add 2 4 :: i x1
+[7] jump tests.f21c_r0 6 3 :: v x1
+[8] return [5] -> 12
+[9] val Something :: y x1
+[10] __primitive.seq 9 4 :: y x1
+[11] __primitive.unless 2 10 :: i x1
+[12] return [11]
+
+___ tests.f22 (1 -> 1) ___
+[1] var :: ?l x1
+[2] jump tests.f22_r0 1 :: l x1
+[3] return [2]
+
+___ tests.f22_r0 (1 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] __primitive.ap 1 -> 3 :: l? x2
+[3] __primitive.dep 2 :: l x2
+[4] __primitive.seq 9 &3 :: l x1
+[5] __primitive.ap 3 -> 6 7 :: l? x3
+[6] __primitive.dep 5 :: i x2
+[7] __primitive.dep 5 :: i x2
+[8] __primitive.gt &6 &7 :: y x3
+[9] __primitive.assert 14 &8 :: l? x1
+[10] jump tests.f22_r0 2 :: l x1
+[11] __primitive.pushr 10 4 :: l x1
+[12] __primitive.assert 7 &8 :: i? x1
+[13] __primitive.assert 6 8 :: i? x1
+[14] __primitive.pushr 5 13 12 :: l x1
+[15] return [11]
+
+___ tests.f22a (1 -> 1) x2 ___
+[1] var :: ?l x1
+[2] __primitive.ap 1 -> 3 4 :: l? x4
+[3] __primitive.dep 2 :: i x4
+[4] __primitive.dep 2 :: i x4
+[5] __primitive.gt &3 &4 :: y x4
+[6] __primitive.assert &4 &5 :: i? x1
+[7] __primitive.assert &3 &5 :: i? x1
+[8] __primitive.assert &2 &5 :: l? x1
+[9] __primitive.pushr 8 7 6 :: l x1
+[10] __primitive.assert 9 5 :: l? x1
+[11] return [10] -> 18
+[12] __primitive.gt &4 &3 :: y x4
+[13] __primitive.assert 3 &12 :: i? x1
+[14] __primitive.assert 4 &12 :: i? x1
+[15] __primitive.assert 2 &12 :: l? x1
+[16] __primitive.pushr 15 14 13 :: l x1
+[17] __primitive.assert 16 12 :: l? x1
+[18] return [17]
+
+___ tests.f22b (1 -> 1) ___
+[1] var :: ?l x1
+[2] jump tests.f22b_r0 1 :: l x1
+[3] return [2]
+
+___ tests.f22b_r0 (1 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] __primitive.ap 1 -> 3 :: l? x2
+[3] __primitive.dep 2 :: l x2
+[4] __primitive.seq 9 &3 :: l x1
+[5] __primitive.ap 3 -> 6 7 :: l? x3
+[6] __primitive.dep 5 :: i x2
+[7] __primitive.dep 5 :: i x2
+[8] __primitive.gt &6 &7 :: y x1
+[9] __primitive.assert 12 8 :: l? x1
+[10] jump tests.f22b_r0 2 :: l x1
+[11] __primitive.pushr 10 4 :: l x1
+[12] __primitive.pushr 5 6 7 :: l x1
+[13] return [11]
+
+___ tests.f23 (2 -> 1) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] jump tests.f23_r0 1 2 :: l x1
+[4] return [3]
+
+___ tests.f23_r0 (2 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] changing var :: ?l x1
+[3] __primitive.ap 1 -> 4 :: l? x2
+[4] __primitive.dep 3 :: i x3
+[5] __primitive.ap 2 -> 6 :: l? x2
+[6] __primitive.dep 5 :: i x3
+[7] __primitive.seq 8 &4 :: l x1
+[8] __primitive.seq 13 &6 :: l x1
+[9] num.max &4 &6 :: i x1
+[10] __primitive.seq 11 4 :: l x1
+[11] __primitive.seq 12 6 :: l x1
+[12] jump tests.f23_r0 5 3 :: l x1
+[13] __primitive.pushr 10 9 :: l x1
+[14] return [7]
+
+___ tests.f24 (1 -> 1) ___
+[1] var :: ?l x1
+[2] jump tests.f24_r0 1 :: l x1
+[3] return [2]
+
+___ tests.f24_r0 (1 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] __primitive.ap 1 -> 3 :: l? x2
+[3] __primitive.dep 2 :: l x2
+[4] __primitive.seq 11 &3 :: l x1
+[5] tests.f24_r0 2 :: l x1
+[6] __primitive.pushr 5 4 :: l x1
+[7] __primitive.ap 3 -> 8 9 :: l? x3
+[8] __primitive.dep 7 :: i x1
+[9] __primitive.dep 7 :: i x1
+[10] jump num.max 8 9 :: i x1
+[11] __primitive.pushr 7 10 :: l x1
+[12] return [6]
+
+___ tests.f25 (1 -> 1) ___
+[1] var :: ?l x1
+[2] jump tests.f25_r0 1 :: l x1
+[3] return [2]
+
+___ tests.f25_r0 (1 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] __primitive.ap 1 -> 3 :: l? x2
+[3] __primitive.dep 2 :: l x2
+[4] __primitive.seq 5 &3 :: l x1
+[5] tests.f25_r0_r0 3 :: l x1
+[6] jump tests.f25_r0 2 :: l x1
+[7] __primitive.pushr 6 4 :: l x1
+[8] return [7]
+
+___ tests.f25_r0_r0 (1 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] __primitive.ap 1 -> 3 :: l? x2
+[3] __primitive.dep 2 :: i x2
+[4] __primitive.seq 5 &3 :: i x1
+[5] __primitive.add 3 6 :: i x1
+[6] val 1 :: i x1
+[7] jump tests.f25_r0_r0 2 :: l x1
+[8] __primitive.pushr 7 4 :: l x1
+[9] return [8]
+
+___ tests.f25b (1 -> 1) ___
+[1] var :: ?l x1
+[2] jump tests.f25b_r0 1 :: l x1
+[3] return [2]
+
+___ tests.f25b_r0 (1 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] __primitive.ap 1 -> 3 :: l? x2
+[3] __primitive.dep 2 :: l x2
+[4] __primitive.seq 5 &3 :: l x1
+[5] tests.f25b_r0_r0 3 :: l x1
+[6] jump tests.f25b_r0 2 :: l x1
+[7] __primitive.pushr 6 4 :: l x1
+[8] return [7]
+
+___ tests.f25b_r0_r0 (1 -> 1) rec ___
+[1] changing var :: ?l x1
+[2] tests.f25b_r0_r0_r0 1 -> 3 :: l x2
+[3] __primitive.dep 2 :: i x1
+[4] jump tests.f25b_r0_r0 2 :: l x1
+[5] __primitive.pushr 4 3 :: l x1
+[6] return [5]
+
+___ tests.f25b_r0_r0_r0 (1 -> 2) x2 rec ___
+[1] changing var :: ?l x1
+[2] __primitive.ap 1 -> 3 :: l? x3
+[3] __primitive.dep 2 :: i x2
+[4] __primitive.bitand &3 &5 in [0, 1] :: i x1
+[5] val 1 :: i x2
+[6] __primitive.eq 4 5 :: y x3
+[7] __primitive.assert 3 &6 :: i? x1
+[8] __primitive.assert &2 &6 :: l? x1
+[9] return [8 7] -> 15
+[10] __primitive.not 6 :: y x2
+[11] __primitive.assert 13 &10 :: i? x1
+[12] jump tests.f25b_r0_r0_r0 2 -> 13 :: l x2
+[13] __primitive.dep 12 :: i x1
+[14] __primitive.assert 12 10 :: l? x1
+[15] return [14 11]
 
 ___ tests.f6 (3 -> 3) ___
 [1] var :: ?a x1

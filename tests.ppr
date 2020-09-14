@@ -634,3 +634,41 @@ interleave_with:
 
 __ a [f]
 nd_rec: dup [$- |] dip21 nd_rec
+
+f18: [[+] pushl] map
+f19: [[+] pushl] map [1 swap $] map
+f19b: f18 [1 swap $] map
+
+__ mutual recursion
+f20a: __ {hide}
+  dup head 0 == swap
+    [tail f20a swap!]
+    [f20b swap not!] | $$
+f20b: __ {hide}
+  dup head
+    [0 == swap tail f20a swap!]
+    [1 == swap tail f20b swap!] |
+    [1 > swap head swap!] | $$
+
+__ simplified function interleaving
+f21:
+  [[[+ dup 10*] pushl] map] dip11
+    [[* dup 10*] pushl] map
+    1 interleave_with
+
+f21b:
+  [[0 swap drop] map] dip11
+    [1 swap drop] map
+    interleave
+
+f21c:
+  [[+] pushl] map
+    [0] [swap .] foldr head
+
+f22: [f22a] map
+f22a: dup [swap]. | dup [>]. head !
+f22b: [dup [swap]. | dup [>]. head !] map
+f23: [max] zip
+f24: [[max].] map
+f25: [[1+] map] map
+f25b: [[odd] filter] map
