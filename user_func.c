@@ -415,7 +415,7 @@ void reassign_deps(cell_t *c, cell_t *r) {
 
 // expand the user function into an instance
 static
-cell_t *exec_expand(cell_t *c) {
+cell_t *exec_expand(cell_t *c, tcell_t *new_entry) {
   size_t
     in = closure_in(c),
     out = closure_out(c),
@@ -508,13 +508,6 @@ cell_t *exec_expand(cell_t *c) {
 
     unwrap_id_lists(&t); // for row quotes created above
 
-    // skip rewriting for the entry argument
-    tcell_t **t_entry = NULL;
-    if(is_user_func(t)) {
-      t_entry = (tcell_t **)&t->expr.arg[closure_in(t)];
-      *t_entry = get_entry(t);
-    }
-
     TRAVERSE(t, args, ptrs) {
       if(*p) {
         trace_index_t x = tr_index(*p);
@@ -522,11 +515,21 @@ cell_t *exec_expand(cell_t *c) {
       }
     }
 
-    // TODO remove this
-    if(t_entry &&
-       *t_entry == entry) { // mark recursion
-      FLAG_SET(*t, expr, RECURSIVE);
-      //LOG("recursive exec %C -> %d", c, trace_ptr-trace_cur);
+    // rewrite entries
+    if(is_user_func(t)) {
+      cell_t **t_entry = &t->expr.arg[closure_in(t)];
+      tcell_t *e = tr_entry(*t_entry);
+      *t_entry = (cell_t *)e;
+
+      if(e == entry) {
+        // recursive call
+        FLAG_SET(*t, expr, RECURSIVE);
+        if(new_entry) {
+          // replace if specialized
+          *t_entry = (cell_t *)new_entry;
+          LOG("replaced self call %E %C -> %E", c, entry, new_entry);
+        }
+      }
     }
   }
 
@@ -747,14 +750,14 @@ cell_t *wrap_vars(cell_t **res, cell_t *p, uintptr_t dep_mask, csize_t out) {
 
 // expand a user function into a list of outputs
 static
-cell_t *expand_list(cell_t *c) {
+cell_t *expand_list(cell_t *c, tcell_t *new_entry) {
   size_t out = closure_out(c), n = out;
   cell_t *l = make_list(out + 1);
   TRAVERSE(c, out) {
     l->value.ptr[--n] = *p ? (*p = dep(c)) : &fail_cell;
   }
   refn(c, out);
-  l->value.ptr[out] = exec_expand(c); // deps will be in c ***
+  l->value.ptr[out] = exec_expand(c, new_entry); // deps will be in c ***
   return l;
 }
 
@@ -837,7 +840,7 @@ response func_exec_specialize(cell_t **cp, context_t *ctx, tcell_t *parent_entry
   }
   move_changing_values(new_entry, c);
 
-  cell_t *l = expand_list(nc);
+  cell_t *l = expand_list(nc, new_entry);
 
   // eliminate intermediate list using unwrap
   // this will be undone by exec_list
@@ -1104,18 +1107,11 @@ bool is_specialized_to(tcell_t *entry, cell_t *c) {
   return true;
 }
 
-// return specializing entry for recursive functions
-static tcell_t *substitute_entry(tcell_t *entry) {
-  if(NOT_FLAG(*entry, entry, RECURSIVE)) return entry;
-  tcell_t *e = trace_specializing_entry(entry); // breaks if specializing the same function twice!
-  return e ? e : entry;
-}
-
 OP(exec) {
   tcell_t *entry = closure_entry(*cp);
   PRE(exec, "%s", entry->word_name);
 
-  tcell_t *parent_entry = trace_current_entry();
+  tcell_t *parent_entry = trace_current_entry(); // ***
   if(FLAG(*entry, entry, ROW) && ctx->t == T_LIST && ctx->s.out) {
     if(c->pos && parent_entry) {
       tcell_t *e = pos_entry(c->pos);
@@ -1125,21 +1121,17 @@ OP(exec) {
     }
     // inline (below)
   } else {
-    tcell_t *s_entry = substitute_entry(entry);
-    if(s_entry->pos == c->pos) s_entry = entry;
-
-    if(NOT_FLAG(*s_entry, entry, COMPLETE)) { // unify a self call with the initial call
+    if(NOT_FLAG(*entry, entry, COMPLETE)) { // unify a self call with the initial call
       delay_branch(ctx, PRIORITY_DELAY);
       CHECK_PRIORITY(PRIORITY_EXEC_SELF);
       assert_error(parent_entry,
                    "incomplete entry can't be unified without "
                    "a parent entry %C @exec_split", c);
-      if(s_entry->entry.specialize && NOT_FLAG(*c, expr, NO_UNIFY)) {
-        c->expr.arg[closure_in(c)] = (cell_t *)s_entry;
+      if(entry->entry.specialize && NOT_FLAG(*c, expr, NO_UNIFY)) {
         rsp = unify_exec(cp, parent_entry, ctx);
         if(rsp == FAIL) {
           LOG(MARK("WARN") " unify failed: %C %C",
-              *cp, s_entry->entry.specialize->initial);
+              *cp, entry->entry.specialize->initial);
           ABORT(FAIL);
         }
         if(rsp != SUCCESS) return rsp;
@@ -1164,7 +1156,7 @@ OP(exec) {
     }
     CHECK_DELAY();
   }
-  cell_t *res = exec_expand(c);
+  cell_t *res = exec_expand(c, NULL);
 
   // debug tracing
   if(FLAG(*entry, entry, TRACE)) {

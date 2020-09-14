@@ -812,18 +812,6 @@ void trace_reset_active() {
   }
 }
 
-// get the top active specialization of an entry
-tcell_t *trace_specializing_entry(tcell_t *entry) {
-  COUNTDOWN(i, prev_entry_pos) {
-    tcell_t *e = active_entries[i];
-    if(e->entry.specialize &&
-       e->entry.specialize->entry == entry) {
-      return e;
-    }
-  }
-  return NULL;
-}
-
 void trace_clear_alt(tcell_t *entry) {
   FOR_TRACE(c, entry) {
     if(is_value(c) && c->value.type == T_RETURN) continue;
