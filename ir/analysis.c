@@ -336,7 +336,9 @@ bool mark_no_skip(tcell_t *entry, tcell_t *c, int last_return, int last_partial)
     res &= mark_no_skip(entry, &entry[tr_index(c->expr.arg[0])], last_return, last_partial);
   } else {
     TRAVERSE(c, in) {
-      res &= mark_no_skip(entry, &entry[tr_index(*p)], last_return, last_partial);
+      if(*p) {
+        res &= mark_no_skip(entry, &entry[tr_index(*p)], last_return, last_partial);
+      }
     }
   }
 

@@ -640,11 +640,11 @@ f19: [[+] pushl] map [1 swap $] map
 f19b: f18 [1 swap $] map
 
 __ mutual recursion
-f20a: __ {hide}
+f20a:
   dup head 0 == swap
     [tail f20a swap!]
     [f20b swap not!] | $$
-f20b: __ {hide}
+f20b:
   dup head
     [0 == swap tail f20a swap!]
     [1 == swap tail f20b swap!] |
