@@ -1,4 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+# prevent inheriting flags when called from make
+MAKEFLAGS=
 
 if [[ ! -f eval ]]; then
     printf "\x1b[92mBuilding eval...\x1b[0m\n"
@@ -15,7 +18,6 @@ if [[ "$1" == "-O" ]]; then
     shift
 fi
 
-OUT=`./eval -ident $1`
 DIR=poprc_out
 
 BUILDDIR="build/clang/release-with-asserts"
@@ -24,6 +26,13 @@ RT="${BUILDDIR}/cgen/primitives.o ${BUILDDIR}/io.o ${BUILDDIR}/startle/support.o
 make -s .gen/cgen/primitives.h
 make -s ${RT} CC=clang BUILD=release-with-asserts
 
+if [ -z "$1" ]
+then
+    echo "no function specified"
+    exit 0
+fi
+
+OUT=`./eval -ident $1`
 mkdir -p $DIR
 
 # generate the C source

@@ -242,8 +242,8 @@ scan: clean
 	make $(BUILD_DIR)/linenoise.o
 	scan-build make
 
-.PHONY: test test_test test_tests_txt test_lib_tests_txt test_bytecode test_irc
-test: test_test test_tests_txt test_lib_tests_txt test_bytecode test_irc
+.PHONY: test test_test test_tests_txt test_lib_tests_txt test_bytecode test_irc test_cgen
+test: test_test test_tests_txt test_lib_tests_txt test_bytecode test_irc test_cgen
 
 test_test: eval
 	./eval -test | $(DIFF_TEST) test_output/test.log -
@@ -276,9 +276,16 @@ test_irc: eval
 test_output/test_irc.log: eval
 	@mkdir -p test_output
 	echo ": PRIVMSG test :popr 1 2 +" | ./eval -irc popr test > $@
+test_cgen: eval
+	bash poprc # prepare
+	sh cgen/tests.sh | $(DIFF_TEST) test_output/cgen_tests.log -
+test_output/cgen_tests.log: eval
+	@mkdir -p test_output
+	bash poprc # prepare
+	sh cgen/tests.sh > $@
 
 .PHONY: test_output
-test_output: test_output/test.log test_output/tests.txt.log test_output/lib_tests.txt.log test_output/bytecode32.log test_output/bytecode64.log test_output/test_irc.log
+test_output: test_output/test.log test_output/tests.txt.log test_output/lib_tests.txt.log test_output/bytecode32.log test_output/bytecode64.log test_output/test_irc.log test_output/cgen_tests.log
 
 .PHONY: all_test_output
 all_test_output:

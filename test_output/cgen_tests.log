@@ -1,0 +1,9 @@
+__ tests.hello
+What's your name? Hello Dusty!
+
+__ tests.calc
+0
+3
+4
+12
+144
