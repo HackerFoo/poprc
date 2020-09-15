@@ -6,6 +6,7 @@ COMMON = $(wildcard ../vlgen/*.v util/*.v)
 
 BUILD = build
 INCLUDE = -I../vlgen -I$(BUILD)/gen -Iutil
+POPRC_RC := poprc_rc
 
 # set FUNCTION and BITS for each target in FUNCTION_SRCS
 $(foreach spec, $(FUNCTIONS), \
@@ -58,7 +59,8 @@ $(BUILD)/gen/%.v: ../lib.ppr ../tests.ppr ../eval
 	@if [ "$(FUNCTION)" ]; then \
 	  echo "generating $(FUNCTION)"; \
           (cd ..; \
-	   ./eval -lo lib.ppr tests.ppr \
+	   ./eval -rc $(POPRC_RC) \
+	     -lo lib.ppr tests.ppr \
 	     -bound $(BITS) \
 	     -cv $(FUNCTION) \
 	  ) > $@; \

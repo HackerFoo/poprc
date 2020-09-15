@@ -28,7 +28,7 @@ mkdir -p $DIR
 
 # generate the C source
 printf "#include \"cgen/main.h\"\n\n" > ${DIR}/${OUT}.c
-./eval -lo ${LIBS} -cc $1 >> ${DIR}/${OUT}.c
+./eval -rc poprc_rc -lo ${LIBS} -cc $1 >> ${DIR}/${OUT}.c
 printf "\nMAIN(${OUT})\n" >> ${DIR}/${OUT}.c
 
 clang -S -emit-llvm ${CFLAGS} -DNOLOG -I. -I.gen -o ${DIR}/${OUT}.ll ${DIR}/${OUT}.c 2>/dev/null
