@@ -130,8 +130,12 @@ response func_list(cell_t **cp, context_t *ctx) {
   }
   log_ptrs(c);
   CHECK_DELAY();
-  TRAVERSE(c, ptrs) {
-    add_conditions_var(*p, value_condition(c)); // *** modifies *p
+  tcell_t *vc = value_condition(c);
+  if(vc) {
+    TRAVERSE(c, ptrs) {
+      unique(p); // avoid modification of *p by add_conditions_var
+      add_conditions_var(*p, vc);
+    }
   }
   if(n && row && is_list(c->value.ptr[n-1])) {
     if(ctx->depth >= unroll_limit) {

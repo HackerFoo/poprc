@@ -143,6 +143,14 @@ next_match:
 __ [l] [p] filter -> [..x..] such that for all x, x p == True
 filter: tuck next_match [swap filter] dip21 pushr
 
+__ second implementation that fuses after map
+__ TODO remove need for this
+filter2:
+  [popr] dip12 tuck peek []ap20 __ [...] [fn] [x fx]
+    [filter2] dip21
+    [[pushr] dip21 !]
+    [[drop] dip21 not!] | . $
+
 __ a n listdup --> [a... x n]
 listdup: [] -swap2 [swap pushl] pushl swap times
 
@@ -230,6 +238,13 @@ zip_with: [zip1_with] ap41 [zip_with] swap [. head] dip21 .
 __ [... [a b]] unzip -> [... a] [... b]
 unzip: dup [popr drop head] map swap [head] map
 
+__ split interleaved streams marked with Left/Right
+__ [[..., xl Left, xr Right]] -> [... xl] [... xr]
+unzip_either:
+  [[head Left =:=] filter,
+   [head Right =:=] filter] fork
+   [[popr drop head] map] both
+
 pushq: [[]ap10] swap . ap10
 pushq2: [[]ap20] swap . ap20
 pushq3: [[]ap30] swap . ap30
@@ -237,6 +252,26 @@ pushq4: [[]ap40] swap . ap40
 pushq5: [[]ap50] swap . ap50
 pushq6: [[]ap60] swap . ap60
 pushq7: [[]ap70] swap . ap70
+
+pick:
+  [popr]
+    [swap popr [swap] dip22] | $$--
+
+pick_either:
+  [popr [Right] pushl]
+    [swap popr [Left] pushl [swap] dip22] | $$--
+
+interleave: pick -swap2 [interleave] $$ swap pushr
+
+__ [[fa]] [[fb]] c -> [fa fb | ...]
+interleave_with:
+  [pick] dip23 swap $-seq __ [a] [b] c0' c1'
+    [interleave_with] dip31 dup [pushr] dip21 seq
+
+__ [l] [r] x Left/Right -> [l x] [r] / [l] [r x]
+either_push:
+  [Left =:= [[swap] dip22 pushr swap] dip32 !!]
+    [Right =:= [pushr] dip21 !!] | $$$$-
 
 module stack:
 
@@ -361,12 +396,15 @@ __ a [f] -> fa
 $: ap11 nip
 $$: ap21 nip
 $$$: ap31 nip
+$$$$: ap41 nip
 $-: ap12 nip2
 $$-: ap22 nip2
 $$$-: ap32 nip2
+$$$$-: ap42 nip2
 $--: ap13 nip3
 $$--: ap23 nip3
 $$$--: ap33 nip3
+$$$$--: ap43 nip3
 
 $seq: [dup] dip12 $ swap seq
 $-seq: [dup] dip12 $- swap2 seq2

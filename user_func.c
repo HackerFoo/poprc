@@ -527,7 +527,7 @@ cell_t *exec_expand(cell_t *c, tcell_t *new_entry) {
         if(new_entry) {
           // replace if specialized
           *t_entry = (cell_t *)new_entry;
-          LOG("replaced self call %E %C -> %E", c, entry, new_entry);
+          LOG("replaced self call %C %E -> %E", c, entry, new_entry);
         }
       }
     }

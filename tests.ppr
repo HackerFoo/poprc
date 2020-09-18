@@ -505,8 +505,8 @@ filter_step: [[popr] dip12] dip23 pushif
 
 fuse_filter_map: [odd] filter 0 [+ dup] map_with
 fuse_filter_sum: [odd] filter sum
-fuse_map_filter: [1+] map [odd] filter __ {hide}
-fuse_filter_tail: [odd] filter tail __ {hide}
+fuse_map_filter: [1+] map [odd] filter2
+fuse_filter_tail: [odd] filter2 tail
 
 fuse_map_ho: swap [map] pushl swap [map] pushl . $
 
@@ -619,18 +619,7 @@ stream_compute3:
 
 map_iteratel: 0 [1+] iteratel swap map
 
-pick:
-  [popr]
-    [swap popr [swap] dip22] | $$--
-
-interleave: pick -swap2 [interleave] $$ swap pushr
-
 f17: | dup [quote] dip11 seq
-
-__ [[fa]] [[fb]] c -> [fa fb | ...]
-interleave_with:
-  [pick] dip23 swap $-seq __ [a] [b] c0' c1'
-    [interleave_with] dip31 dup [pushr] dip21 seq
 
 __ a [f]
 nd_rec: dup [$- |] dip21 nd_rec
