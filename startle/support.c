@@ -713,10 +713,36 @@ int next_bit(uintptr_t *mask) {
   }
 }
 
+/** Replace the first occurrence of a character. */
 char *replace_char(char *s, char c_old, char c_new) {
-  char *r = strchr(s, c_old);
-  if(r) *r = c_new;
-  return r;
+  char *p = s;
+  while(*p) {
+    if(*p == c_old) {
+      *p = c_new;
+      break;
+    }
+    p++;
+  }
+  return s;
+}
+
+/** Replace all occurrences of a character. */
+char *replace_all_char(char *s, char c_old, char c_new) {
+  char *p = s;
+  while(*p) {
+    if(*p == c_old) {
+      *p = c_new;
+    }
+    p++;
+  }
+  return s;
+}
+
+TEST(replace_char) {
+  char buf[] = "apples and bananas";
+  printf("%s\n", replace_char(buf, 'p', 'P'));
+  printf("%s\n", replace_all_char(buf, 'a', 'o'));
+  return 0;
 }
 
 bool is_whitespace(char c) {
@@ -1412,4 +1438,30 @@ seg_t pair_seg(pair_t p) {
       .n = (char *)p.second - (char *)p.first
     } :
   (seg_t) {NULL, 0};
+}
+
+/** Return the string after the last occurrence of a character. */
+const char *suffix(const char *str, char c) {
+  char *p = strrchr(str, c);
+  return p ? p + 1 : str;
+}
+
+TEST(suffix) {
+  const char *str = "start:middle:end";
+  printf("%s\n", suffix(str, ':'));
+  return 0;
+}
+
+/** Count characters in a string. */
+int count_char(const char *str, char c) {
+  const char *p = str;
+  int count = 0;
+  while(*p) {
+    count += *p++ == c;
+  }
+  return count;
+}
+
+TEST(count_char) {
+  return count_char("banana", 'a') == 3 ? 0 : -1;
 }

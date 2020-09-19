@@ -25,6 +25,8 @@ M:three
 comments => 0
 @ compose_size
 compose_size => 0
+@ count_char
+count_char => 0
 @ div_min_max
 div_min(5, 3) = 1, expected 1: PASS
 div_min(-5, 3) = -2, expected -2: PASS
@@ -56,6 +58,9 @@ escape_string => 0
 @ expand_map
 map[10] = {{eight, 7}, {five, 4}, {four, 3}, {one, 0}, {seven, 6}, {six, 5}, {three, 2}, {two, 1}, {nine, 8}, {ten, 9}}
 expand_map => 0
+@ expand_sym
+abc^def -> abc_ct_def
+expand_sym => 0
 @ flat_copy_list
 _check_flat_copy: 2 + 2 = 4
 _check_flat_copy: 0 + 1 = 1
@@ -291,6 +296,10 @@ prim_to_string => 0
 @ print_escaped_string
 test\n\\string\bG\0stuff&amp;
 print_escaped_string => 0
+@ replace_char
+aPples and bananas
+oPples ond bononos
+replace_char => 0
 @ ring_buffer
 he
 ll
@@ -364,6 +373,9 @@ string_map => 0
 strings => 0
 @ strnum
 strnum => 0
+@ suffix
+end
+suffix => 0
 @ tag
 tag: 99792 = great
 tag => 0

@@ -567,62 +567,10 @@ bool pre_compile_word(cell_t *l, cell_t *module, csize_t *in, csize_t *out) {
   return res;
 }
 
-// map a special character to an expanded sequence
-// NOTE: this is a unidirectional mapping, so it doesn't need to be
-//       easy to decode algorithmically
-const char *sym_to_ident(unsigned char c) {
-  static const char *table[] = {
-    ['^'] = "__caret__"
-    // TODO add all the other valid symbols
-  };
-  if(c < LENGTH(table)) {
-    return table[c];
-  } else {
-    return NULL;
-  }
-}
-
-// expand special characters so that names can be used as identifiers in generated code
-size_t expand_sym(char *buf, size_t n, seg_t src) {
-  char *out = buf, *stop = out + n - 1;
-  const char *in = src.s;
-  size_t left = src.n;
-  while(left-- &&
-        *in &&
-        out < stop) {
-    char c = *in++;
-    const char *s = sym_to_ident(c);
-    if(s) {
-      out = stpncpy(out, s, stop - out);
-    } else {
-      *out++ = c;
-    }
-  }
-  *out = '\0';
-  return out - buf;
-}
-
-COMMAND(ident, "convert symbol to C identifier") {
-  cell_t *p = rest;
-  while(p) {
-    char ident[64]; // ***
-    seg_t ident_seg = {
-      .s = ident,
-      .n = expand_sym(ident, LENGTH(ident), tok_seg(p))
-    };
-    COUNTUP(i, ident_seg.n) {
-      if(ident[i] == '.') ident[i] = '_';
-    }
-    printseg("", ident_seg, "\n");
-    p = p->tok_list.next;
-  }
-  if(command_line) quit = true;
-}
 
 // compile one user word (function)
 bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_t out) {
   cell_t *l;
-  char ident[64]; // ***
   if(!entry || !(l = *entry)) return false;
   if(!is_list(l)) return true;
   if(is_empty_list(l)) return false;
@@ -639,11 +587,7 @@ bool compile_word(cell_t **entry, seg_t name, cell_t *module, csize_t in, csize_
   *entry = &e->c;
 
   e->module_name = module_name(module);
-  seg_t ident_seg = {
-    .s = ident,
-    .n = expand_sym(ident, LENGTH(ident), name)
-  };
-  e->word_name = seg_string(ident_seg); // TODO fix unnecessary alloc
+  e->word_name = seg_string(name); // TODO fix unnecessary alloc
   e->src = src_text(toks);
   CONTEXT_LOG("compiling %s", e->word_name);
 
@@ -763,7 +707,10 @@ int compile_quote(tcell_t *parent_entry, cell_t *l) {
   // set up
   tcell_t *e = trace_start_entry(parent_entry, 1);
   e->module_name = parent_entry->module_name;
-  e->word_name = string_printf("%s_q%d", parent_entry->word_name, parent_entry->entry.sub_id++);
+  int sub_id = parent_entry->entry.sub_id++;
+  e->word_name = sub_id ?
+    string_printf("%s:quote_%d", parent_entry->word_name, sub_id) :
+    string_printf("%s:quote", parent_entry->word_name);
   FLAG_SET(*e, entry, QUOTE);
   CONTEXT_LOG("compiling %C to quote %s", l, e->word_name);
 

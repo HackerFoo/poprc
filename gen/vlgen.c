@@ -100,7 +100,9 @@ void gen_module_interface(const tcell_t *e) {
   csize_t out_n = e->entry.out;
   trace_t tr;
 
-  printf("module %s_%s (\n", e->module_name, e->word_name);
+  printf("module ");
+  print_entry_cname(e);
+  printf(" (\n");
   SEP(",\n");
   if(FLAG(*e, entry, SYNC)) {
     printf_sep("  `sync_ports");

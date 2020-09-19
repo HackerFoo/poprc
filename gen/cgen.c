@@ -104,7 +104,9 @@ void gen_function_signature(const tcell_t *e) {
   trace_t tr;
 
   get_trace_info_for_output(&tr, e, 0);
-  printf("%s%s_%s(", ctype(tr.type), e->module_name, e->word_name);
+  printf("%s", ctype(tr.type));
+  print_entry_cname(e);
+  printf("(");
   char *sep = "";
   COUNTDOWN(i, e->entry.in) {
     const tcell_t *a = &p[i];
@@ -422,9 +424,7 @@ void print_function_name(const tcell_t *e, const tcell_t *tc) {
                  "external name must be an immediate string");
     printf("%s", external_name(name->value.str));
   } else {
-    const char *module_name, *word_name;
-    trace_get_name(tc, &module_name, &word_name);
-    printf("%s_%s", module_name, word_name);
+    print_cname(tc);
   }
   csize_t
     in = closure_in(tc),
@@ -585,7 +585,9 @@ void gen_function(tcell_t *e) {
   gen_decls(e);
   gen_body(e);
   printf("}\n");
-  printf("} // end %s_%s\n", e->module_name, e->word_name);
+  printf("} // end ");
+  print_entry_cname(e);
+  printf("\n");
 
   FOR_TRACE(c, e) {
     if(c->op == OP_exec && c->trace.type != T_BOTTOM) {
@@ -625,4 +627,87 @@ COMMAND(cc, "print C code for given function") {
     }
   }
   if(command_line) quit = true;
+}
+
+// map a special character to an expanded sequence
+// NOTE: this is a unidirectional mapping, so it doesn't need to be
+//       easy to decode algorithmically
+const char *sym_to_ident(unsigned char c) {
+  static const char *table[] = {
+    ['^'] = "_ct_",
+    [':'] = "_cl_",
+    ['_'] = "__"
+    // TODO add all the other valid symbols
+  };
+  if(c < LENGTH(table)) {
+    return table[c];
+  } else {
+    return NULL;
+  }
+}
+
+// expand special characters so that names can be used as identifiers in generated code
+size_t expand_sym(char *buf, size_t n, seg_t src) {
+  char *out = buf, *stop = out + n - 1;
+  const char *in = src.s;
+  size_t left = src.n;
+  while(left-- &&
+        *in &&
+        out < stop) {
+    char c = *in++;
+    const char *s = sym_to_ident(c);
+    if(s) {
+      out = stpncpy(out, s, stop - out);
+    } else {
+      *out++ = c;
+    }
+  }
+  *out = '\0';
+  return out - buf;
+}
+
+TEST(expand_sym) {
+  char buf[64];
+  seg_t s = SEG("abc^def");
+  expand_sym(buf, sizeof(buf), s);
+  printf("%s -> %s\n", s.s, buf);
+  return 0;
+}
+
+COMMAND(ident, "convert symbol to C identifier") {
+  cell_t *p = rest;
+  while(p) {
+    char ident[64]; // ***
+    seg_t ident_seg = {
+      .s = ident,
+      .n = expand_sym(ident, LENGTH(ident), tok_seg(p))
+    };
+    COUNTUP(i, ident_seg.n) {
+      if(ident[i] == '.') ident[i] = '_';
+    }
+    printseg("", ident_seg, "\n");
+    p = p->tok_list.next;
+  }
+  if(command_line) quit = true;
+}
+
+STATIC_ALLOC(expand_sym_buf, char, 128);
+
+void print_entry_cname(const tcell_t *e) {
+  expand_sym(expand_sym_buf, static_sizeof(expand_sym_buf), string_seg(e->word_name));
+  printf("%s_%s", e->module_name, expand_sym_buf);
+}
+
+void print_cname(const tcell_t *tc) {
+  const char *module_name, *word_name;
+  if(is_user_func(tc)) {
+    tcell_t *e = get_entry(tc);
+    module_name = e->module_name;
+    word_name = expand_sym_buf;
+    expand_sym(expand_sym_buf, static_sizeof(expand_sym_buf), string_seg(e->word_name));
+  } else {
+    module_name = PRIMITIVE_MODULE_NAME;
+    word_name = op_name(tc->op);
+  }
+  printf("%s_%s", module_name, word_name);
 }

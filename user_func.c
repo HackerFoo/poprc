@@ -820,7 +820,13 @@ response func_exec_specialize(cell_t **cp, context_t *ctx, tcell_t *parent_entry
   tcell_t *new_entry = trace_start_entry(parent_entry, entry->entry.out);
   new_entry->entry.specialize = &specialize;
   new_entry->module_name = parent_entry->module_name;
-  new_entry->word_name = string_printf("%s_r%d", parent_entry->word_name, parent_entry->entry.sub_id++);
+  int sub_id = parent_entry->entry.sub_id++;
+  const char *sub_name = entry->entry.parent && FLAG(*entry->entry.parent, entry, RECURSIVE) ?
+    suffix(entry->word_name, ':') :
+    entry->word_name;
+  new_entry->word_name = sub_id ?
+    string_printf("%s:%s_%d", parent_entry->word_name, sub_name, sub_id) :
+    string_printf("%s:%s", parent_entry->word_name, sub_name);
   LOG("created entry for %s", new_entry->word_name);
 
   specialize.initial = TAG_PTR(ref(c), "specialize.initial");
