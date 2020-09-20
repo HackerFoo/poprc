@@ -45,7 +45,7 @@
 #define MAP_BLOCK_SIZE 64
 
 // storage for all trace entries
-STATIC_ALLOC_ALIGNED(trace_cells, tcell_t, 5000, 64);
+STATIC_ALLOC_ALIGNED(trace_cells, tcell_t, 8000, 64);
 static tcell_t *trace_ptr = NULL;
 
 // scratch spaces at the end of trace_cells

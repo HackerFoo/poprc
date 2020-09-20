@@ -177,12 +177,6 @@ COMMAND(eval, "evaluate the argument") {
   }
 }
 
-#ifndef EMSCRIPTEN
-static
-void crash_handler(int sig, UNUSED siginfo_t *info, UNUSED void *ctx) {
-  throw_error(ERROR_TYPE_UNEXPECTED, "%s", _, strsignal(sig));
-}
-
 const char *strip_dir(const char *path) {
   const char *s = strrchr(path, '/');
   return s ? s + 1 : path;
@@ -219,6 +213,12 @@ COMMAND(rc, "load an rc script") {
     seg_read(glue(rest), path_buffer, static_sizeof(path_buffer));
     load_rc(path_buffer);
   }
+}
+
+#ifndef EMSCRIPTEN
+static
+void crash_handler(int sig, UNUSED siginfo_t *info, UNUSED void *ctx) {
+  throw_error(ERROR_TYPE_UNEXPECTED, "%s", _, strsignal(sig));
 }
 
 int main(int argc, char **argv) {
