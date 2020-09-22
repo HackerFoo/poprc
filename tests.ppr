@@ -478,10 +478,10 @@ fuse_map5f: 0 [+ dup] map_with [3*] map
 fuse_map6: 0 [+ dup] map_with 1 [* dup] map_with
 fuse_map7: [dup] map tail
 fuse_map8: []ap20 [2*] map 0 [+ dup] map_with [3+] map get2
-fuse_map8b: []ap20 [2*] map 0 [swap dup [*] dip21 2* swap] map_with [3+] map get2 __ {hide}
+fuse_map8b: []ap20 [2*] map 2 [swap dup [*] dip21 2* swap] map_with [3+] map get2
 fuse_map8c: []ap30 [2*] map 2 [swap dup [*] dip21 2* swap] map_with [3+] map get3
-fuse_map_zip_map: [3*] map swap [5*] map [+] zip [2/] map __ {hide}
-fuse_zip_zip: __ {hide}
+fuse_map_zip_map: [3*] map swap [5*] map [+] zip [2/] map
+fuse_zip_zip:
   [2*] map swap
     [3*] map [+] zip swap
       [5*] map [+] zip [1-] map
@@ -505,7 +505,7 @@ filter_step: [[popr] dip12] dip23 pushif
 
 fuse_filter_map: [odd] filter 0 [+ dup] map_with
 fuse_filter_sum: [odd] filter sum
-fuse_map_filter: [1+] map [odd] filter2
+fuse_map_filter: [1+] map [odd] filter __ *** compiles incorrectly
 fuse_filter_tail: [odd] filter2 tail
 
 fuse_map_ho: swap [map] pushl swap [map] pushl . $
@@ -592,7 +592,7 @@ compute_fn:
     [!] [[collatz 1 31<<b |b] dip11 not!] | $$
 stream_compute_fn: 0 [1+ 15&b] iteratel [compute_fn] stream_compute3
 
-dotswap: . swap . swap . __ {hide}
+dotswap: . swap . swap .
 
 __ 1 [2 3 4] [+] mapc $ ===> 10
 mapc: [swap . pushl] pushl [] swap foldr
