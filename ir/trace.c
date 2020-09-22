@@ -1376,7 +1376,7 @@ void trace_compact(tcell_t *entry) {
 }
 
 int trace_count() {
-  return trace_ptr - trace_cells;
+  return trace_ptr ? trace_ptr - trace_cells : 0;
 }
 
 // delay a branch so that it is listed at the end

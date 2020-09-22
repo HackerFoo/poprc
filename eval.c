@@ -184,7 +184,6 @@ const char *strip_dir(const char *path) {
 
 void eval_init() {
   previous_result = NULL;
-  files_cnt = 0;
   reinit_requested = false;
 }
 
@@ -333,16 +332,27 @@ int main(int argc, char **argv) {
   }
 }
 #else // EMSCRIPTEN
-int main(int argc, char **argv) {
-  static_alloc_init();
+static
+void emscripten_init(bool reinit) {
+  if(!reinit) {
+    static_alloc_init();
+  } else {
+    unload_files();
+    static_alloc_reinit();
+  }
   log_init();
   io_init();
   cells_init();
   parse_init();
   module_init();
-
+  eval_init();
+  trace_reinit();
   eval_command_string(":load lib.ppr tests.ppr", 0);
   eval_command_string(":import", 0);
+}
+
+int main(int argc, char **argv) {
+  emscripten_init(false);
   emscripten_exit_with_live_runtime();
   return 0;
 }
@@ -582,6 +592,9 @@ int emscripten_eval(char *str, int len) {
     return -error.type;
   } else {
     eval_command_string(str, str + len);
+    if(reinit_requested) {
+      emscripten_init(true);
+    }
     return 0;
   }
 }
@@ -830,6 +843,7 @@ bool unload_files() {
   COUNTUP(i, files_cnt) {
     success &= munmap_file(&files[i]);
   }
+  files_cnt = 0;
   return success;
 }
 
