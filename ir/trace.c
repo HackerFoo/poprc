@@ -255,6 +255,7 @@ void dedup_entry(tcell_t **e) {
 
 // get the entry for a var
 tcell_t *var_entry(tcell_t *v) {
+  if(!v) return NULL;
   assert_error(is_trace_cell(v));
   for(tcell_t *e = block_first_entry(v);
       e < trace_ptr;

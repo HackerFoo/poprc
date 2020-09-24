@@ -155,8 +155,7 @@ start:
   CONTEXT("bind_pattern %s %C %C @barrier", strfield(entry, word_name), c, pattern);
   if(!pattern) return tail;
   if(c->tmp || (tail && c == *tail)) return tail;
-  if(c == pattern || // c == pattern, so add all variables
-     is_var(c)) { // if c is a var, there's no need to unify it
+  if(c == pattern) { // c == pattern, so add all variables
     if(tail) {
       cell_t **t = tail;
       tail = trace_var_list(c, tail);
@@ -243,6 +242,8 @@ start:
     COUNTUP(i, closure_in(c)) {
       tail = bind_pattern(entry, &c->expr.arg[i], pattern->expr.arg[i], tail);
     }
+  } else if(is_var(c)) { // if c is a var, there's no need to unify it
+    if(tail) LIST_ADD(tmp, tail, ref(c));
   } else {
     // This can be caused by an operation before an infinite loop
     // This will prevent reducing the operation, and therefore fail to unify
@@ -315,7 +316,7 @@ response exec_list(cell_t **cp, context_t *ctx) {
 //   for F = g . f . g', where g . g' = id,
 //       F^n = (g . f . g')^n = g . f^n . g'
 // eliminating the intermediate cancelling g/g' pairs.
-response unify_exec(cell_t **cp, tcell_t *parent_entry, context_t *ctx) {
+response unify_exec(cell_t **cp, context_t *ctx) {
   PRE(unify_exec, "#specialize");
 
   csize_t
@@ -375,9 +376,8 @@ response unify_exec(cell_t **cp, tcell_t *parent_entry, context_t *ctx) {
   }
   clean_tmp(vl);
 
-  LOG("unified %s %C with initial_word in %s %C",
-      entry->word_name, c,
-      parent_entry->word_name, initial);
+  LOG("unified %s %C with initial %C",
+      entry->word_name, c, initial);
   LOG_WHEN(closure_out(c), TODO " handle deps in c = %C, n = %C", c, n);
 
   TRAVERSE(c, in) {
@@ -784,7 +784,7 @@ context_t *collect_ap_deps(context_t *ctx, cell_t **deps, int n) {
 
 // generate a specialized sub-trace
 static
-response func_exec_specialize(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
+response func_exec_specialize(cell_t **cp, context_t *ctx) {
   csize_t
     in = closure_in(*cp),
     out = closure_out(*cp);
@@ -818,6 +818,7 @@ response func_exec_specialize(cell_t **cp, context_t *ctx, tcell_t *parent_entry
   }
 
   // start a new entry
+  tcell_t *parent_entry = trace_current_entry();
   tcell_t *new_entry = trace_start_entry(parent_entry, entry->entry.out);
   new_entry->entry.specialize = &specialize;
   new_entry->module_name = parent_entry->module_name;
@@ -958,12 +959,10 @@ void trace_update_all(cell_t *c) {
 
 // trace this call instead of expanding it
 static
-response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
+response func_exec_trace(cell_t **cp, context_t *ctx) {
   size_t in = closure_in(*cp);
   tcell_t *entry = closure_entry(*cp);
   PRE(exec_trace, "%s 0x%x", entry->word_name, (*cp)->expr.flags);
-
-  assert_error(parent_entry);
 
   cell_t *res;
   const size_t out = closure_out(c) + 1;
@@ -1017,18 +1016,11 @@ response func_exec_trace(cell_t **cp, context_t *ctx, tcell_t *parent_entry) {
     if(is_list(*ap) &&
        closure_is_ready(left = *leftmost(ap))) {
       LOG(HACK " forced cells[%C].expr.arg[%d]", c, i);
-      // hacky, switches function var in placeholders
-      if(is_placeholder(left)) {
-        cell_t *f = left->expr.arg[closure_in(left) - 1];
-        if(is_var(f)) {
-          switch_entry(parent_entry, f);
-        }
-      }
       CHECK(WITH(x, &CTX(return), priority, PRIORITY_TOP, func_list(ap, x)));
       CHECK_DELAY();
 
       // ensure quotes are stored first
-      *ap = trace_quote_var(parent_entry, *ap);
+      *ap = trace_quote_var(trace_current_entry(), *ap); // ***
     }
   }
 
@@ -1118,9 +1110,8 @@ OP(exec) {
   tcell_t *entry = closure_entry(*cp);
   PRE(exec, "%s", entry->word_name);
 
-  tcell_t *parent_entry = trace_current_entry(); // ***
   if(FLAG(*entry, entry, ROW) && ctx->t == T_LIST && ctx->s.out) {
-    if(c->pos && parent_entry) {
+    if(c->pos) {
       tcell_t *e = pos_entry(c->pos);
       c = unique(cp);
       mark_barriers(e, c);
@@ -1131,11 +1122,8 @@ OP(exec) {
     if(NOT_FLAG(*entry, entry, COMPLETE)) { // unify a self call with the initial call
       delay_branch(ctx, PRIORITY_DELAY);
       CHECK_PRIORITY(PRIORITY_EXEC_SELF);
-      assert_error(parent_entry,
-                   "incomplete entry can't be unified without "
-                   "a parent entry %C @exec_split", c);
       if(entry->entry.specialize && NOT_FLAG(*c, expr, NO_UNIFY)) {
-        rsp = unify_exec(cp, parent_entry, ctx);
+        rsp = unify_exec(cp, ctx);
         if(rsp == FAIL) {
           LOG(MARK("WARN") " unify failed: %C %C",
               *cp, entry->entry.specialize->initial);
@@ -1143,13 +1131,13 @@ OP(exec) {
         }
         if(rsp != SUCCESS) return rsp;
       }
-      return func_exec_trace(cp, ctx, parent_entry);
-    } else if(parent_entry) { // perform specialization
+      return func_exec_trace(cp, ctx);
+    } else if(trace_current_entry()) { // perform specialization
       if(is_specialized_to(entry, c)) {
-        return func_exec_trace(cp, ctx, parent_entry);
+        return func_exec_trace(cp, ctx);
       } else if(FLAG(*entry, entry, RECURSIVE)) {
         CHECK_PRIORITY(PRIORITY_EXEC_SELF);
-        return func_exec_specialize(cp, ctx, parent_entry);
+        return func_exec_specialize(cp, ctx);
       }
     }
   }
