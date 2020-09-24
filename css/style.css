@@ -6,11 +6,6 @@ body {
     padding: 0;
 }
 
-/* HACK to hide the MIME type error */
-.terminal-output > div:nth-child(2), .terminal-output > div:nth-child(3) {
-    display: none
-}
-
 /* text appearance */
 .terminal,
 .terminal-output,
