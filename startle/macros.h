@@ -448,3 +448,5 @@
     pair_t *p = map_find(switch_rev_map, (uintptr_t)(key));     \
     p ? (__typeof__(val))p->second : val;                       \
   })
+
+#define sizeof_bits(x) (sizeof(x) * 8)

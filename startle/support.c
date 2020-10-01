@@ -533,12 +533,12 @@ bool find_line(const char *x, const char **s, size_t *size) {
 
 /** Integer log2 */
 unsigned int int_log2(unsigned int x) {
-  return x <= 1 ? 0 : (sizeof(x) * 8) - __builtin_clz(x - 1);
+  return x <= 1 ? 0 : sizeof_bits(x) - __builtin_clz(x - 1);
 }
 
 /** Long integer log2 */
 unsigned int int_log2l(long unsigned int x) {
-  return x <= 1 ? 0 : (sizeof(x) * 8) - __builtin_clzl(x - 1);
+  return x <= 1 ? 0 : sizeof_bits(x) - __builtin_clzl(x - 1);
 }
 
 /** Insert into a set.
@@ -1166,7 +1166,7 @@ range_t range_bits(int b) {
       .max = 0
     };
   } else if(b < 0) {
-    if(b <= -(int)sizeof(intptr_t) * 8)
+    if(b <= -(int)sizeof_bits(intptr_t))
       return RANGE_ALL;
     int w = -b - 1;
     return (range_t) {
@@ -1174,7 +1174,7 @@ range_t range_bits(int b) {
         .max = (((intptr_t)1) << w) - 1
     };
   } else {
-    if(b >= (int)sizeof(intptr_t) * 8 - 1)
+    if(b >= (int)sizeof_bits(intptr_t) - 1)
       return RANGE_POS;
     return (range_t) {
       .min = 0,

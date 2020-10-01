@@ -850,7 +850,7 @@ bool unload_files() {
 }
 
 COMMAND(bits, "number of bits in a pointer") {
-  printf("%d\n", (int)sizeof(void *) * 8);
+  printf("%d\n", (int)sizeof_bits(void *));
   if(command_line) quit = true;
 }
 

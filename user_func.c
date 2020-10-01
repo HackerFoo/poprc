@@ -798,7 +798,7 @@ response func_exec_specialize(cell_t **cp, context_t *ctx) {
 
   // calculate dep_mask, which indicates which list items will be used,
   // as well as collecting references to where they will be stored.
-  assert_error(ctx->s.out < sizeof(specialize.dep_mask) * 8);
+  assert_error(ctx->s.out < sizeof_bits(specialize.dep_mask));
   specialize.dep_mask = (1 << ctx->s.out) - 1;
   int dropped = 0;
   context_t *top = NULL;

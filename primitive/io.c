@@ -204,7 +204,7 @@ OP(read) {
   return abort_op(rsp, cp, ctx);
 }
 
-#define KEY_BITS (sizeof(uintptr_t) * 8)
+#define KEY_BITS sizeof_bits(uintptr_t)
 #define ID_BITS (KEY_BITS / 4)
 #define ADDR_BITS (KEY_BITS - ID_BITS)
 #define ADDR_MASK ((1l << ADDR_BITS) - 1)

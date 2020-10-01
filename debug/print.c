@@ -62,7 +62,7 @@ char const *show_alt_set(uintptr_t as) {
   static char out[sizeof(as)*4+1];
   char *p = out;
   unsigned int n = sizeof(as)*4;
-  const unsigned int shift = sizeof(as) * 8 - 2;
+  const unsigned int shift = sizeof_bits(as) - 2;
   uintptr_t mask = ((uintptr_t)3) << shift;
 
   while(!(as & mask) && n) {
@@ -393,7 +393,7 @@ void graph_cell(FILE *f, cell_t const *c) {
   }
 }
 
-#define VAL_BITS (sizeof(val_t) * 8)
+#define VAL_BITS sizeof_bits(val_t)
 static
 void print_binary(val_t x) {
   char bits[VAL_BITS];
