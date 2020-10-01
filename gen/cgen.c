@@ -340,12 +340,23 @@ void gen_tail_call(const tcell_t *e, const tcell_t *c) {
   printf("\n  // tail call\n");
 
   // overwrite function arguments with new values
+  COUNTUP(i, in) { // first copy input vars to avoid overwriting *** TODO toposort?
+    int a = cgen_index(e, c->expr.arg[i]);
+    if(a <= in) {
+      printf("  %s%d = %s%d;\n",
+             cname(trace_type(&e[in - i])),
+             (int)(in - i),
+             cname(trace_type(&e[a])), a);
+    }
+  };
   COUNTUP(i, in) {
     int a = cgen_index(e, c->expr.arg[i]);
-    printf("  %s%d = %s%d;\n",
-           cname(trace_type(&e[in - i])),
-           (int)(in - i),
-           cname(trace_type(&e[a])), a);
+    if(a > in) {
+      printf("  %s%d = %s%d;\n",
+             cname(trace_type(&e[in - i])),
+             (int)(in - i),
+             cname(trace_type(&e[a])), a);
+    }
   };
 
   // jump to the beginning
@@ -634,10 +645,33 @@ COMMAND(cc, "print C code for given function") {
 //       easy to decode algorithmically
 const char *sym_to_ident(unsigned char c) {
   static const char *table[] = {
-    ['^'] = "_ct_",
-    [':'] = "_cl_",
+    ['!'] = "_bang_",
+    ['#'] = "_hash_",
+    ['$'] = "_cash_",
+    ['%'] = "_pct_",
+    ['&'] = "_amp_",
+    ['\''] = "_quote_",
+    ['('] = "_parL_",
+    [')'] = "_parR_",
+    ['*'] = "_star_",
+    ['+'] = "_cross_",
+    ['-'] = "_dash_",
+    ['/'] = "_slashR_",
+    [':'] = "_in_",
+    [';'] = "_semi_",
+    ['<'] = "_angL_",
+    ['='] = "_eq_",
+    ['>'] = "_angR_",
+    ['?'] = "_qmark_",
+    ['@'] = "_at_",
+    ['\\'] = "_slashL_",
+    ['^'] = "_caret_",
+    ['`'] = "_tick_",
+    ['{'] = "_curlyL_",
+    ['|'] = "_bar_",
+    ['}'] = "_curlyR_",
+    ['~'] = "_tilde_",
     ['_'] = "__"
-    // TODO add all the other valid symbols
   };
   if(c < LENGTH(table)) {
     return table[c];
