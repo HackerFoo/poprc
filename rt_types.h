@@ -116,7 +116,7 @@ static_assert(sizeof(priority_t) == 1, "priority_t too big");
 // allows both downward and upward information transfer
 struct context {
   context_t *up; // outer context [down]
-  cell_t *src; // closure for this context [down]
+  cell_t **src; // closure for this context [down]
   range_t bound; // requested bound [down]
   alt_set_t alt_set; // outside constraints [up/down]
   seg_t text; // text from source [up]

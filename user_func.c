@@ -767,7 +767,7 @@ cell_t *expand_list(cell_t *c, tcell_t *new_entry) {
 static
 context_t *collect_ap_deps(context_t *ctx, cell_t **deps, int n) {
   while(n > 0) {
-    const cell_t *c = ctx->src;
+    const cell_t *c = *ctx->src;
     if(c->op != OP_ap ||
        closure_in(c) != 1 ||
        c->n > count_out_used(c)) return NULL;

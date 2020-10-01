@@ -1388,10 +1388,12 @@ int trace_count() {
 // this allows reducing base cases first
 void delay_branch(context_t *ctx, priority_t priority) {
   FOLLOW(p, ctx, up) {
-    cell_t *c = p->src;
-    if(is_list(c)) {
-      c->priority = priority;
-      LOG("delay branch %C %d", c, priority);
+    if(p->src) {
+      cell_t *c = *p->src;
+      if(is_list(c)) {
+        c->priority = priority;
+        LOG("delay branch %C %d", c, priority);
+      }
     }
   }
 }

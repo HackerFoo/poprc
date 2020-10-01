@@ -1034,7 +1034,7 @@ cell_t *build23(op op, cell_t *i0, cell_t *i1, cell_t **o1, cell_t **o2) {
 // cache value in context on the way up?
 bool is_linear(context_t *ctx) {
   while(ctx) {
-    if(ctx->src && ctx->src->n) return false;
+    if(ctx->src && (*ctx->src)->n) return false;
     ctx = ctx->up;
   }
   return true;

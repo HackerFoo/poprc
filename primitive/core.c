@@ -197,8 +197,8 @@ OP(seq) {
 // ** what if Y fails?
 bool rule_merge_unless(context_t *ctx) {
   if(ctx->inv) {
-    cell_t *c = ctx->src;
-    cell_t *p = ctx->up->src;
+    cell_t *c = *ctx->src;
+    cell_t *p = *ctx->up->src;
     if(p && p->op == OP_unless && p->expr.arg[1] == c) {
       LOG("rule match: merge_unless %C %C", p, c);
       p->op = OP_seq;
@@ -384,7 +384,8 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
 
   LOG_WHEN(ctx->up &&
            ctx->up->src &&
-           ctx->up->src->op == OP_ap,
+           *ctx->up->src &&
+           (*ctx->up->src)->op == OP_ap,
            "compose ap %C %C", c, ctx->up->src);
 
   const csize_t

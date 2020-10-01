@@ -33,7 +33,7 @@
 
 bool ctx_has_pos(context_t *ctx) {
   FOLLOW(p, ctx, up) {
-    if(p->src && p->src->pos) {
+    if(p->src && (*p->src)->pos) {
       return true;
     }
   }
