@@ -349,7 +349,7 @@ response reduce(cell_t **cp, context_t *ctx) {
     assert_counter(cells_size);
 
     if(!*cp) {
-      LOG(MARK("FAIL") ": %O %C (%s.%s) %L @abort",
+      LOG(MARK("FAIL") ": %O %C (%s.%s) %L",
           op, c, module_name, word_name, ctx->loc.raw);
       log_fail(ctx->text);
     }

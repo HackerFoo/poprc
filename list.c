@@ -128,7 +128,6 @@ response func_list(cell_t **cp, context_t *ctx) {
       CHECK_IF(as_conflict(ctx->alt_set), FAIL);
     }
   }
-  log_ptrs(c);
   CHECK_DELAY();
   tcell_t *vc = value_condition(c);
   if(vc) {
@@ -158,18 +157,6 @@ response func_list(cell_t **cp, context_t *ctx) {
 
  abort:
   return abort_op(rsp, cp, ctx);
-}
-
-void log_ptrs(cell_t *c) {
-  CONTEXT_LOG("log_ptrs for %C", c);
-  COUNTUP(i, list_size(c)) {
-    cell_t *a = c->value.ptr[i];
-    if(is_value(a)) {
-      LOG("ptr[%d] = %C", i, a);
-    } else {
-      LOG("ptr[%d] = %C (skip delayed) #abort", i, a);
-    }
-  }
 }
 
 void reduce_list(cell_t **cp, int depth) {

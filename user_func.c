@@ -1100,7 +1100,6 @@ bool is_specialized_to(tcell_t *entry, cell_t *c) {
     } else {
       force(p); // HACK
       if(!is_input(*p)) {
-        LOG("not dynamic: %C %s arg[%d] = %C", c, entry->word_name, a, *p);
         return false;
       }
     }

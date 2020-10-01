@@ -155,7 +155,7 @@ OP(seq) {
     } else {
       if(q->value.var) {
         reserve_condition(&q->value.var);
-      } else if(is_empty_list(q) && !ctx->alt_set && TWEAK(true, "to keep seq %C", c)) {
+      } else if(is_empty_list(q) && !ctx->alt_set) {
         *cp = CUT(c, expr.arg[0]);
         if(!is_persistent(*cp)) mark_pos(*cp, pos);
         return RETRY;
@@ -381,12 +381,6 @@ static
 response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
   CONTEXT("%s: %C", row ? "compose" : "ap", *cp);
   PRE_NO_CONTEXT(compose_ap);
-
-  LOG_WHEN(ctx->up &&
-           ctx->up->src &&
-           *ctx->up->src &&
-           (*ctx->up->src)->op == OP_ap,
-           "compose ap %C %C", c, ctx->up->src);
 
   const csize_t
     in = closure_in(c) - 1,

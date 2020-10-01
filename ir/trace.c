@@ -1392,7 +1392,6 @@ void delay_branch(context_t *ctx, priority_t priority) {
       cell_t *c = *p->src;
       if(is_list(c)) {
         c->priority = priority;
-        LOG("delay branch %C %d", c, priority);
       }
     }
   }

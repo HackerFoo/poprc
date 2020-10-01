@@ -359,7 +359,6 @@
   do {                                                          \
     if(should_delay(ctx, p)) {                                  \
       rsp = DELAY;                                              \
-      LOG("delay (priority %d) %C", ctx->priority, c);          \
       STORE_LOCATION();                                         \
       goto abort;                                               \
     }                                                           \
