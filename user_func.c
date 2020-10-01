@@ -525,6 +525,7 @@ cell_t *exec_expand(cell_t *c, tcell_t *new_entry) {
       if(e == entry) {
         // recursive call
         FLAG_SET(*t, expr, RECURSIVE);
+        t->pos = pos; // *** move tail calls out
         if(new_entry) {
           // replace if specialized
           *t_entry = (cell_t *)new_entry;
@@ -616,7 +617,7 @@ void reassign_input_order(tcell_t *entry) {
   tcell_t *parent_entry = entry->entry.parent;
   CONTEXT("reassign input order %C (%s -> %s)", c,
           parent_entry->word_name, entry->word_name);
-  USE_TMP();
+  USE_TMP(); // fix
   cell_t *vl = 0;
   input_var_list(c, &vl);
   vars_in_entry(&vl, entry); // ***
@@ -655,7 +656,7 @@ cell_t *flat_call(cell_t *c, tcell_t *entry) {
     .expr.out = out - 1,
     .op = OP_exec
   );
-  USE_TMP();
+  USE_TMP(); // fix
   cell_t *vl = 0;
   input_var_list(c, &vl);
   assert_error(tmp_list_length(vl) == in,
@@ -1107,6 +1108,37 @@ bool is_specialized_to(tcell_t *entry, cell_t *c) {
   return true;
 }
 
+void lift_recursion(UNUSED cell_t **cp,
+                    UNUSED cell_t **lp,
+                    UNUSED int n,
+                    UNUSED uintptr_t lifted_args) {
+  cell_t *c = *cp, *l = *lp;
+  int lsize = list_size(l);
+  int nlsize = lsize - 1 + n;
+  cell_t *nl = make_list(nlsize);
+  COUNTUP(i, lsize - 1) {
+    nl->value.ptr[i] = ref(l->value.ptr[i]);
+  }
+  cell_t **p = &nl->value.ptr[nlsize - 1];
+  COUNTUP(i, n) {
+    if(lifted_args & (1ul << i)) {
+      *p-- = ref(c->expr.arg[i]);
+    }
+  }
+  drop(l);
+  *lp = nl;
+  breakpoint();
+}
+
+bool has_var(const cell_t *c) {
+  if(!c) return false;
+  if(is_var(c)) return true;
+  TRAVERSE(c, const, in, ptrs) {
+    if(has_var(*p)) return true;
+  }
+  return false;
+}
+
 OP(exec) {
   tcell_t *entry = closure_entry(*cp);
   PRE(exec, "%s", entry->word_name);
@@ -1115,6 +1147,7 @@ OP(exec) {
     if(c->pos) {
       tcell_t *e = pos_entry(c->pos);
       c = unique(cp);
+      c->pos = e->pos; // *** move tail calls out
       mark_barriers(e, c);
       move_changing_values(e, c);
     }
@@ -1138,6 +1171,31 @@ OP(exec) {
         return func_exec_trace(cp, ctx);
       } else if(FLAG(*entry, entry, RECURSIVE)) {
         CHECK_PRIORITY(PRIORITY_EXEC_SELF);
+        if(c->pos && c->pos <= trace_current_entry()->pos) {
+          assert_error(FLAG(*entry, entry, ROW)); // TODO
+          csize_t in = closure_in(c);
+          int n = 0;
+          uintptr_t lifted_args = 0;
+          assert_error(in < sizeof_bits(lifted_args));
+          COUNTUP(i, in) {
+            if(has_var(c->expr.arg[i])) {
+              lifted_args |= 1ul << i;
+              n++;
+            }
+          }
+          if(n == 1) {
+            store_reduced(cp, ctx, ref(c->expr.arg[0])); // HACK
+            return SUCCESS;
+          } else { // TODO properly move recursive function out
+            cell_t **l = NULL;
+            FOLLOW(p, ctx, up) {
+              p->retry = true;
+              l = p->src;
+            }
+            lift_recursion(cp, l, n, lifted_args);
+            return RETRY;
+          }
+        }
         return func_exec_specialize(cp, ctx);
       }
     }

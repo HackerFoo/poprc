@@ -1195,11 +1195,14 @@ unsigned int trace_reduce(tcell_t *entry, cell_t **cp) {
     cell_t **p = cp;
     bool delay = false;
     CONTEXT("priority = %d", priority);
+    context_t *ctx = &CTX_DEFAULT;
+    ctx->priority = priority;
+    ctx->src = p;
 
   loop_start:
     while(*p) {
       CONTEXT("branch %d: %C", alts, *p);
-      response rsp = WITH(x, &CTX(return), priority, priority, func_list(p, x));
+      response rsp = func_list(p, &CTX(return));
       if(rsp == DELAY) {
         delay = true;
         p = &(*p)->alt;
@@ -1212,8 +1215,9 @@ unsigned int trace_reduce(tcell_t *entry, cell_t **cp) {
       bool has_lists = false;
       FORLIST(a, *p, true) { // ***
         collapse_row(a);
-        if(WITH(x, &CTX(any), priority, PRIORITY_MAX,
-                reduce(a, x)) != SUCCESS) goto loop_start; // ***
+        response rsp = WITH(x, &CTX(any), priority, PRIORITY_MAX,
+                            reduce(a, x));
+        if(rsp != SUCCESS) goto loop_start; // ***
         if(is_value(*a) &&
            !is_list(*a) &&
            !is_var(*a)) { // TODO deps?

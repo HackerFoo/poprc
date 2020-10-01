@@ -624,6 +624,7 @@ void dedup_subentries(tcell_t *e) {
 
 // mark inputs so they don't lift consumers out
 void mark_barriers(tcell_t *entry, cell_t *c) {
+  if(c->pos) entry = pos_entry(c->pos);
   TRAVERSE(c, in) {
     cell_t *x = *p;
     if(x) {

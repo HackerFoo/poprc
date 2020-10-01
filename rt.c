@@ -365,7 +365,6 @@ response reduce(cell_t **cp, context_t *ctx) {
 
     c = *cp;
     if(r <= DELAY || (r == RETRY && ctx->retry)) {
-      ctx->retry = false;
       return r;
     }
   }
@@ -856,13 +855,14 @@ bool expected_symbol(context_t *ctx, val_t sym) {
 #define CTX_symbol(...) CTX_t(T_SYMBOL, ##__VA_ARGS__)
 #define CTX_string(...) CTX_t(T_STRING, ##__VA_ARGS__)
 #define CTX_opaque(...) CTX_t(T_OPAQUE, ##__VA_ARGS__)
-#define CTX_return() ((context_t) { .t = T_RETURN })
+#define CTX_return() ((context_t) { .t = T_RETURN, .priority = ctx->priority, .up = ctx })
 #define CTX_INV(invert) range_singleton(ctx->bound), invert(ctx->bound.min)
 #define CTX_UP ((context_t) { .t = ctx->t, .s = { .in = ctx->s.in, .out = ctx->s.out }, CTX_INHERIT_EXP})
+#define CTX_DEFAULT ((context_t) { .t = T_ANY, .priority = PRIORITY_TOP, .bound = { .min = INTPTR_MIN, .max = INTPTR_MAX } })
 #endif
 
 // default 'ctx' for CTX(...) to inherit
-context_t * const ctx = &(context_t) { .t = T_ANY, .priority = PRIORITY_TOP, .bound = { .min = INTPTR_MIN, .max = INTPTR_MAX } };
+context_t * const ctx = &CTX_DEFAULT;
 range_t default_bound = RANGE_ALL_INIT;
 
 COMMAND(bound, "set default_bound") {

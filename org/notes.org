@@ -1,5 +1,10 @@
 #+TITLE: PoprC Notes
 
+* fixing fuse_map_filter
+- pop map out of next_match up to filter, apply to unreachable tail, and eliminate
+- caught in the filter loop
+- maybe why unification failed, it wants to consume filter:next_match:map
+- pull out tail call to recursive functions on exclusive exit
 * linear/flat laziness
 can only be lazy in one argument
 fits streams well

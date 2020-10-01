@@ -160,13 +160,13 @@ response func_list(cell_t **cp, context_t *ctx) {
 }
 
 void reduce_list(cell_t **cp, int depth) {
-  context_t *ctx = &CTX(return);
-  ctx->priority = PRIORITY_TOP;
-  ctx->depth = depth;
+  context_t *arg_ctx = &CTX(return);
+  arg_ctx->priority = PRIORITY_TOP;
+  arg_ctx->depth = depth;
   response rsp = SUCCESS;
   cell_t **p = cp;
   while(*p) {
-    rsp = func_list(p, ctx);
+    rsp = func_list(p, arg_ctx);
     assert_error(rsp != DELAY);
     if(rsp == SUCCESS) {
       p = &(*p)->alt;
