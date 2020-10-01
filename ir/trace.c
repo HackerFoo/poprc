@@ -946,6 +946,10 @@ void trace_update_2(tcell_t *v, cell_t *c) {
   }
   FOR_SWITCH_MAP(tc, v, p, it) {
     tcell_t *entry = var_entry(tc);
+    if(!entry) {
+      LOG(MARK("WARN") " stale var %C", c);
+      continue;
+    }
     if(FLAG(*entry, entry, COMPLETE)) {
       LOG(MARK("WARN") " attempt to update with %t[%d, %d] for completed trace cell %T from %C",
           t, c_range.min, c_range.max, tc, c);

@@ -5281,16 +5281,7 @@ ___ tests.help (1 -> 1) ___
 
 ___ tests.id_map (1 -> 1) ___
 [1] var :: ?l x1
-[2] jump tests.id_map:map 1 :: l x1
-[3] return [2]
-
-___ tests.id_map:map (1 -> 1) rec ___
-[1] changing var :: ?l x1
-[2] __primitive.ap 1 -> 3 :: l? x2
-[3] __primitive.dep 2 :: a x1
-[4] jump tests.id_map:map 2 :: l x1
-[5] __primitive.pushr 4 3 :: l x1
-[6] return [5]
+[2] return [1]
 
 ___ tests.id_map2 (1 -> 1) rec ___
 [1] changing var :: ?l x1

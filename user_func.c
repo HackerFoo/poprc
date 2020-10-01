@@ -41,7 +41,7 @@
 #include "parameters.h"
 
 // hash_entry() of `[id] map`
-#define ID_MAP_HASH 0x0c7881ab
+#define ID_MAP_HASH 0xee5107e7
 
 #if INTERFACE
 #define is_user_func(c) _is_user_func(GET_CELL(c))
@@ -871,7 +871,9 @@ response func_exec_specialize(cell_t **cp, context_t *ctx) {
   remove_root(&nc);
 
   // eliminate [id] map
-  if(hash_entry(new_entry) == ID_MAP_HASH) {
+  uintptr_t hash = hash_entry(new_entry);
+  LOG("new_entry hash = 0x%x", hash);
+  if(hash == ID_MAP_HASH) {
     LOG("[id] map %C %C", c, nc);
 
     cell_t *p = c->expr.arg[0];
