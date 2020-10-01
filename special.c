@@ -143,11 +143,13 @@ OP(value) {
     if(list_size(*cp) == 1 && !c->pos && !c->alt &&
        !ONEOF(calling_op(ctx), OP_seq, OP_ap, OP_exec)) { // ***
       response rsp = reduce_ptr(c, 0, &CTX_t(ctx->t));
-      if(rsp != FAIL) {
-        if(rsp == SUCCESS) {
+      switch(rsp) {
+      case SUCCESS:
           replace_cell(cp, ctx, c->value.ptr[0]);
-          return rsp;
-        }
+      case RETRY:
+        return rsp;
+      default:
+        break;
       }
     } else {
       placeholder_extend(cp, ctx->s, false);

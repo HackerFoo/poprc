@@ -506,7 +506,7 @@ filter_step: [[popr] dip12] dip23 pushif
 fuse_filter_map: [odd] filter 0 [+ dup] map_with
 fuse_filter_sum: [odd] filter sum
 fuse_map_filter: [1+] map [odd] filter
-fuse_map_with_filter: 0 [+ dup 10*] map_with [odd] filter __ {hide}
+fuse_map_with_filter: 0 [+ dup 11*] map_with [odd] filter
 fuse_filter_tail: [odd] filter tail __ {hide}
 fuse_filter_tail2: [odd] filter2 tail
 
@@ -663,3 +663,5 @@ f23: [max] zip
 f24: [[max].] map
 f25: [[1+] map] map
 f25b: [[odd] filter] map
+
+fuse_map_with_sum: 0 [+ dup] map_with sum

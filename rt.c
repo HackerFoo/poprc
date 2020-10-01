@@ -666,6 +666,15 @@ void store_fail(cell_t *c, cell_t *alt, context_t *ctx) { // CLEANUP
   c->src = seg_range(c->src, ctx->text);
 }
 
+cell_t *dep_var(cell_t *c, csize_t i, type_t t) {
+  assert_error(is_var(c));
+  cell_t *v = make_val(t);
+  v->arg_index = i;
+  v->value.flags = VALUE_VAR | VALUE_DEP;
+  v->value.var = c->value.var;
+  return v;
+}
+
 void store_dep(cell_t *c, tcell_t *tc, csize_t i, type_t t, range_t r, alt_set_t alt_set) { // CLEANUP
   WATCH(c, "store_dep");
   cell_t v = {

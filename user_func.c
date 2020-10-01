@@ -243,6 +243,7 @@ start:
       tail = bind_pattern(entry, &c->expr.arg[i], pattern->expr.arg[i], tail);
     }
   } else if(is_var(c)) { // if c is a var, there's no need to unify it
+    LOG("bind var %C %C", c, pattern);
     if(tail) LIST_ADD(tmp, tail, ref(c));
   } else {
     // This can be caused by an operation before an infinite loop
@@ -367,12 +368,11 @@ response unify_exec(cell_t **cp, context_t *ctx) {
   n->expr.arg[n_in] = (cell_t *)entry;
   FLAG_SET(*n, expr, RECURSIVE);
   FLAG_SET(*n, expr, NO_UNIFY);
-  int pos = 0;
 
   // TODO this list should be sorted first by the parent variable pos's
+  int pos = 0;
   FOLLOW(p, vl, tmp) { // get arguments from the binding list
-    n->expr.arg[n_in - 1 - pos] = p;
-    pos++;
+    n->expr.arg[pos++] = p;
   }
   clean_tmp(vl);
 
@@ -630,14 +630,14 @@ void reassign_input_order(tcell_t *entry) {
     }
   }
 
-  int i = 1;
+  int i = entry->entry.in;
   FOLLOW(p, vl, tmp) {
     tcell_t *tn = var_for_entry(entry, p->value.var);
     assert_error(tn);
     assert_error(is_var(tn));
     assert_error(tn->var_index, "%s[%d] (%C)",
                  entry->word_name, tn-entry, p);
-    tn->var_index = i++;
+    tn->var_index = i--;
   }
   clean_tmp(vl);
 }
@@ -663,17 +663,17 @@ cell_t *flat_call(cell_t *c, tcell_t *entry) {
                "%d != %d, %s @specialize",
                tmp_list_length(vl), in, entry->word_name);
 
-  int i = 1;
+  int i = 0;
   FOLLOW(p, vl, tmp) {
     tcell_t *tn = get_var(entry, p);
     assert_error(tn, "get_var(%E, %C)", entry, p);
     // Is it okay to update this from reassign_input_order?
-    tn->var_index = i;
+    tn->var_index = in - i;
     // assert_error(tn->var_index == i, "%T (%C)", p->value.var, p);
     switch_entry(parent_entry, p);
     cell_t *v = var_create_nonlist(T_ANY, p->value.var);
-    nc->expr.arg[in - i] = v;
-    LOG("arg[%d] -> %T", in - i, p->value.var);
+    nc->expr.arg[i] = v;
+    LOG("arg[%d] -> %T", i, p->value.var);
     i++;
   }
   clean_tmp(vl);
@@ -924,9 +924,10 @@ response func_exec_specialize(cell_t **cp, context_t *ctx) {
   csize_t p_in = closure_in(p);
   if(out) {
     // replace outputs with variables
+    int offset = new_entry->entry.out - 1 - out;
     cell_t **c_out = &c->expr.arg[in + 1];
-    COUNTUP(i, out) {
-      cell_t *d = c_out[i];
+    RANGEUP(i, offset, new_entry->entry.out) {
+      cell_t *d = c_out[i - offset];
       if(d && is_dep(d)) { // NOTE should null deps be removed?
         assert_error(d->expr.arg[0] == c);
         drop(c);
@@ -971,6 +972,17 @@ response func_exec_trace(cell_t **cp, context_t *ctx) {
   const size_t out = closure_out(c) + 1;
   trace_t tr;
   assert_ge(out, entry->entry.out);
+  if(in < entry->entry.in) {
+    int offset = entry->entry.in - in;
+    c = expand(c, offset); // *** could break deps
+    memmove(&c->expr.arg[entry->entry.in], &c->expr.arg[in], sizeof(cell_t *) * out);
+    cell_t *v = c->expr.arg[0];
+    int d0 = closure_args(v->value.var) - closure_out(v->value.var);
+    COUNTUP(i, offset) {
+      c->expr.arg[i + in] = dep_var(c->expr.arg[0], d0 + i, T_ANY);
+    }
+    in = entry->entry.in;
+  }
 
   // reduce all inputs
   if(in) {
@@ -1108,13 +1120,72 @@ bool is_specialized_to(tcell_t *entry, cell_t *c) {
   return true;
 }
 
-void lift_recursion(UNUSED cell_t **cp,
-                    UNUSED cell_t **lp,
-                    UNUSED int n,
-                    UNUSED uintptr_t lifted_args) {
+static
+cell_t *with_conditions(cell_t *c, cell_t *old, cell_t *new) {
+  if(new == old) return c;
+  while(is_id_list(c)) c = c->value.ptr[0];
+  if(c == old) return new;
+  assert_error(ONEOF(c->op, OP_assert, OP_unless, OP_seq, OP_id));
+  cell_t *nc = copy(c);
+  c->expr.arg[0] = with_conditions(c->expr.arg[0], old, new);
+  RANGEUP(i, 1, closure_in(c)) ref(c->expr.arg[i]);
+  return nc;
+}
+
+static
+cell_t *expand_tail_call(tcell_t *entry, cell_t *l, int n) {
+  if(!l || n <= 1) return ref(l);
+  int lsize = list_size(l);
+  assert_error(lsize);
+  int nlsize = lsize - 1 + n;
+
+  // find the recursive call
+  cell_t *call = NULL;
+  FOLLOW(p, *left_elem(l), expr.arg[0]) { // ***
+    while(is_id_list(p)) p = p->value.ptr[0];
+    if(is_user_func(p)) {
+      call = p;
+      break;
+    }
+  }
+  assert_error(call && closure_entry(call) == entry);
+
+  // expand the call and return
+  cell_t *nl = make_list(entry->entry.out);
+  csize_t new_call_size = closure_in(call) + entry->entry.out;
+  cell_t *new_call = closure_alloc(new_call_size);
+  memcpy(new_call, call, offsetof(cell_t, expr.arg[closure_in(call) + 1]));
+  new_call->size = new_call_size;
+  new_call->expr.out = entry->entry.out - 1;
+  TRAVERSE_REF(new_call, in);
+  cell_t **p = &nl->value.ptr[nlsize - 1];
+  cell_t *r = l->value.ptr[lsize-1]; // ***
+  cell_t **deps = get_closure_deps(new_call);
+  *p-- = with_conditions(r, call, new_call);
+  COUNTUP(i, entry->entry.out - 1) {
+    cell_t *d = dep(new_call);
+    deps[i] = d;
+    *p-- = with_conditions(r, call, d);
+  }
+  new_call->n = entry->entry.out - 1;
+
+  // expand rest of alts
+  nl->alt = expand_tail_call(entry, l->alt, n);
+
+  return nl;
+}
+
+void lift_recursion(cell_t **cp,
+                    cell_t **lp,
+                    int n,
+                    uintptr_t lifted_args) {
   cell_t *c = *cp, *l = *lp;
   int lsize = list_size(l);
+  assert_error(lsize);
   int nlsize = lsize - 1 + n;
+  tcell_t *entry = trace_current_entry();
+  LOG("lift_recursion %E %C %C %d -> %d", entry, c, l, lsize, nlsize);
+  entry->entry.out = nlsize;
   cell_t *nl = make_list(nlsize);
   COUNTUP(i, lsize - 1) {
     nl->value.ptr[i] = ref(l->value.ptr[i]);
@@ -1122,12 +1193,12 @@ void lift_recursion(UNUSED cell_t **cp,
   cell_t **p = &nl->value.ptr[nlsize - 1];
   COUNTUP(i, n) {
     if(lifted_args & (1ul << i)) {
-      *p-- = ref(c->expr.arg[i]);
+      *p-- = with_conditions(l->value.ptr[lsize-1], c, ref(c->expr.arg[i])); // ***
     }
   }
+  nl->alt = expand_tail_call(entry, l->alt, n);
   drop(l);
   *lp = nl;
-  breakpoint();
 }
 
 bool has_var(const cell_t *c) {

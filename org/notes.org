@@ -5,6 +5,7 @@
 - caught in the filter loop
 - maybe why unification failed, it wants to consume filter:next_match:map
 - pull out tail call to recursive functions on exclusive exit
+- look at unroll & pattern match
 * linear/flat laziness
 can only be lazy in one argument
 fits streams well

@@ -636,6 +636,11 @@ void mark_barriers(tcell_t *entry, cell_t *c) {
 
 // mark values to be lifted out of recursive functions by setting pos
 void move_changing_values(tcell_t *entry, cell_t *c) {
+  // lift changing values out of all loops
+  while(entry->entry.parent &&
+        entry->entry.parent->entry.specialize) {
+    entry = entry->entry.parent;
+  }
   tcell_t *expanding = (tcell_t *)c->expr.arg[closure_in(c)];
   TRAVERSE(c, in) {
     if(is_value(*p) && !is_var(*p) && !is_persistent(*p)) {
