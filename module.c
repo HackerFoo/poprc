@@ -542,6 +542,7 @@ void print_module_bytecode(cell_t *m) {
       trace_reset_active();
       log_soft_init();
       cleanup_cells();
+      reset_counters();
     } else {
       cell_t *p = module_lookup(string_seg(name), &m);
       if(!(p->value.attributes & ATTR_HIDE)) {

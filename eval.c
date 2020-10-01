@@ -260,6 +260,7 @@ int main(int argc, char **argv) {
       parse_init();
       module_init();
       eval_init();
+      reset_counters();
       char *home = getenv("HOME");
       if(home) {
         asprintf((char **)&history_path, "%s/" HISTORY_FILE, home);
@@ -346,6 +347,7 @@ void emscripten_init(bool reinit) {
   parse_init();
   module_init();
   eval_init();
+  reset_counters();
   trace_reinit();
   eval_command_string(":load lib.ppr tests.ppr", 0);
   eval_command_string(":import", 0);

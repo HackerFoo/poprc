@@ -262,6 +262,7 @@ unsigned int *alloc_counter() {
   assert_error(counters_n < counters_size);
   return &counters[counters_n++];
 }
+
 void reset_counters() {
   static_zero(counters);
 }
