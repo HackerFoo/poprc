@@ -61,6 +61,9 @@ expand_map => 0
 @ expand_sym
 abc^def -> abc_caret_def
 expand_sym => 0
+@ find_path
+path: 3 + * 
+find_path => 0
 @ flat_copy_list
 _check_flat_copy: 2 + 2 = 4
 _check_flat_copy: 0 + 1 = 1

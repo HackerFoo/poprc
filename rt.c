@@ -46,6 +46,8 @@
 #include "primitive/string.h"
 #include "var.h"
 #include "mutate.h"
+#include "parse/parse.h"
+#include "parse/lex.h"
 
 #if INTERFACE
 #define MAX_ALTS 256
@@ -1175,4 +1177,35 @@ op calling_op(context_t *ctx) {
     *ctx->up->src ?
     (*ctx->up->src)->op :
     OP_null;
+}
+
+bool find_path(cell_t *start, cell_t *end) {
+  if(start == end) return true;
+  TRAVERSE(start, in, ptrs) {
+    if(*p && find_path(*p, end)) {
+      (*p)->tmp = start;
+      return true;
+    }
+  }
+  return false;
+}
+
+TEST(find_path) {
+  cell_t *l = lex("1 2 - 3 4 + *", 0);
+  const cell_t *p = l;
+  cell_t *start = parse_expr(&p, NULL, NULL);
+  cell_t *end = start
+    ->value.ptr[0] // *
+    ->expr.arg[1]  // +
+    ->expr.arg[0]; // 3
+  USE_TMP();
+  if(!find_path(start, end)) return -1;
+  printf("path:");
+  FOLLOW(c, end, tmp) {
+    printseg(" ", c->src, "");
+  }
+  printf("\n");
+  clean_tmp(start);
+  drop(start);
+  return 0;
 }
