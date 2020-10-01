@@ -1166,3 +1166,13 @@ alt_set_t ctx_alt_set_range(context_t *ctx) {
 bool _is_passthrough(const cell_t *c) {
   return ONEOF(c->op, OP_seq, OP_assert, OP_unless);
 }
+
+op calling_op(context_t *ctx) {
+  return
+    ctx &&
+    ctx->up &&
+    ctx->up->src &&
+    *ctx->up->src ?
+    (*ctx->up->src)->op :
+    OP_null;
+}

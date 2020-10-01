@@ -2147,27 +2147,26 @@ ___ list.merge_loop (3 -> 1) x4 rec ___
 [12] __primitive.seq 13 &11 :: l x1
 [13] __primitive.ap 11 1 :: l x1
 [14] jump list.merge_loop 9 10 12 :: v x1
-[15] return [14] -> 25
-[16] __primitive.not 8 :: y x3
+[15] return [14] -> 24
+[16] __primitive.not 8 :: y x2
 [17] __primitive.assert 19 &16 :: a? x2
 [18] __primitive.ap &2 -> 19 :: l? x2
 [19] __primitive.dep 18 :: a x1
-[20] __primitive.seq 23 &17 :: l x1
-[21] __primitive.assert 18 &16 :: l? x1
-[22] __primitive.assert &3 16 :: l? x1
-[23] __primitive.ap 17 1 :: l x1
-[24] jump list.merge_loop 22 21 20 :: v x1
-[25] return [24] -> 28
-[26] __primitive.unless 27 5 :: l x1
-[27] __primitive.compose 2 1 :: l x1
-[28] return [26] -> 35
-[29] __primitive.ap 2 -> 30 :: v? x1
-[30] __primitive.dep 29 :: a x3
-[31] __primitive.unless 1 &30 :: l x1
-[32] __primitive.unless 3 &30 :: l x1
-[33] __primitive.compose 32 31 :: l x1
-[34] __primitive.unless 33 30 :: l x1
-[35] return [34]
+[20] __primitive.seq 22 &17 :: l x1
+[21] __primitive.assert &3 16 :: l? x1
+[22] __primitive.ap 17 1 :: l x1
+[23] jump list.merge_loop 21 18 20 :: v x1
+[24] return [23] -> 27
+[25] __primitive.unless 26 5 :: l x1
+[26] __primitive.compose 2 1 :: l x1
+[27] return [25] -> 34
+[28] __primitive.ap 2 -> 29 :: v? x1
+[29] __primitive.dep 28 :: a x3
+[30] __primitive.unless 1 &29 :: l x1
+[31] __primitive.unless 3 &29 :: l x1
+[32] __primitive.compose 31 30 :: l x1
+[33] __primitive.unless 32 29 :: l x1
+[34] return [33]
 
 ___ list.merge_step (3 -> 3) x2 ___
 [1] var :: ?l x2
@@ -2183,16 +2182,15 @@ ___ list.merge_step (3 -> 3) x2 ___
 [11] __primitive.assert &2 &8 :: l? x1
 [12] __primitive.assert 4 &8 :: l? x1
 [13] __primitive.ap 9 1 :: l x1
-[14] return [12 11 10] -> 24
-[16] __primitive.not 8 :: y x3
+[14] return [12 11 10] -> 23
+[16] __primitive.not 8 :: y x2
 [17] __primitive.assert 19 &16 :: a? x2
 [18] __primitive.ap 2 -> 19 :: l? x2
 [19] __primitive.dep 18 :: a x1
-[20] __primitive.seq 23 &17 :: l x1
-[21] __primitive.assert 18 &16 :: l? x1
-[22] __primitive.assert 3 16 :: l? x1
-[23] __primitive.ap 17 1 :: l x1
-[24] return [22 21 20]
+[20] __primitive.seq 22 &17 :: l x1
+[21] __primitive.assert 3 16 :: l? x1
+[22] __primitive.ap 17 1 :: l x1
+[23] return [21 18 20]
 
 ___ list.movr (2 -> 2) ___
 [1] var :: ?l x1
@@ -2255,14 +2253,13 @@ ___ list.pop_min (2 -> 3) x2 ___
 [8] __primitive.assert 4 &7 :: i? x1
 [9] __primitive.assert &1 &7 :: l? x1
 [10] __primitive.assert 3 &7 :: l? x1
-[11] return [10 9 8] -> 19
-[13] __primitive.not 7 :: y x3
+[11] return [10 9 8] -> 18
+[13] __primitive.not 7 :: y x2
 [14] __primitive.assert 2 &13 :: l? x1
-[15] __primitive.assert 17 &13 :: a? x1
+[15] __primitive.assert 17 13 :: a? x1
 [16] __primitive.ap 1 -> 17 :: l? x2
 [17] __primitive.dep 16 :: a x1
-[18] __primitive.assert 16 13 :: l? x1
-[19] return [14 18 15]
+[18] return [14 16 15]
 
 ___ list.pop_par (2 -> 4) ___
 [1] var :: ?l x1
@@ -3804,19 +3801,15 @@ ___ tests.cmap:concat_map:concat:foldr:iterate (3 -> 1) x2 rec ___
 [2] changing var :: ?l x1
 [3] changing var :: ?l x2
 [4] __primitive.ap 2 -> 5 :: l? x2
-[5] __primitive.dep 4 :: a x4
-[6] __primitive.seq 10 &5 :: l x1
-[7] __primitive.ap &5 &1 :: l x1
-[8] __primitive.ap 7 -> 9 :: l? x2
-[9] __primitive.dep 8 :: a x1
-[10] __primitive.ap 8 9 3 :: l x1
-[11] jump tests.cmap:concat_map:concat:foldr:iterate 6 4 1 :: v x1
-[12] __primitive.seq 11 5 :: v x1
-[13] return [12] -> 17
-[14] val Something :: y x1
-[15] __primitive.seq 14 5 :: y x1
-[16] __primitive.unless 3 15 :: l x1
-[17] return [16]
+[5] __primitive.dep 4 :: a x1
+[6] __primitive.ap 5 &1 :: l x2
+[7] __primitive.ap &6 -> 8 :: l? x2
+[8] __primitive.dep 7 :: a x1
+[9] __primitive.ap 7 8 3 :: l x1
+[10] jump tests.cmap:concat_map:concat:foldr:iterate 9 4 1 :: v x1
+[11] return [10] -> 13
+[12] __primitive.unless 3 6 :: l x1
+[13] return [12]
 
 ___ tests.collatz (1 -> 1) ___
 [1] var :: ?i x1
@@ -4210,15 +4203,14 @@ ___ tests.f12 (1 -> 1) x2 ___
 [7] return [6]
 
 ___ tests.f13 (2 -> 2) ___
-[1] var :: ?a x2
+[1] var :: ?a x1
 [2] var :: ?l x1
-[3] __primitive.seq 5 &1 :: i x1
+[3] __primitive.seq 5 1 :: i x1
 [4] __primitive.ap 2 -> 5 :: l? x2
 [5] __primitive.dep 4 :: i x1
 [6] __primitive.add 3 7 :: i x1
 [7] val 1 :: i x1
-[8] __primitive.seq 4 1 :: l x1
-[9] return [8 6]
+[8] return [4 6]
 
 ___ tests.f14 (3 -> 2) ___
 [1] var :: ?l x2
@@ -4459,14 +4451,15 @@ ___ tests.f22:map (1 -> 1) rec ___
 [5] __primitive.ap 3 -> 6 7 :: l? x3
 [6] __primitive.dep 5 :: i x2
 [7] __primitive.dep 5 :: i x2
-[8] __primitive.gt &6 &7 :: y x3
-[9] __primitive.assert 14 &8 :: l? x1
+[8] __primitive.gt &6 &7 :: y x4
+[9] __primitive.assert 15 &8 :: l? x1
 [10] jump tests.f22:map 2 :: l x1
 [11] __primitive.pushr 10 4 :: l x1
 [12] __primitive.assert 7 &8 :: i? x1
-[13] __primitive.assert 6 8 :: i? x1
-[14] __primitive.pushr 5 13 12 :: l x1
-[15] return [11]
+[13] __primitive.assert 6 &8 :: i? x1
+[14] __primitive.assert 5 8 :: l? x1
+[15] __primitive.pushr 14 13 12 :: l x1
+[16] return [11]
 
 ___ tests.f22a (1 -> 1) x2 ___
 [1] var :: ?l x1
@@ -5175,9 +5168,10 @@ ___ tests.fuse_map_ho:map (3 -> 1) rec ___
 [9] __primitive.seq 11 &6 :: a x1
 [10] __primitive.ap 6 &3 -> 11 :: l? x2
 [11] __primitive.dep 10 :: a x1
-[12] __primitive.pushr 13 10 9 :: l x1
-[13] jump tests.fuse_map_ho:map 3 2 4 :: v x1
-[14] return [12]
+[12] jump tests.fuse_map_ho:map 3 2 4 :: l x1
+[13] __primitive.pushr 14 9 :: l x1
+[14] __primitive.compose 12 10 :: l x1
+[15] return [13]
 
 ___ tests.fuse_map_zip_map (2 -> 1) ___
 [1] var :: ?l x1
@@ -5517,11 +5511,12 @@ ___ tests.map_iteratel:map (2 -> 1) rec ___
 [3] __primitive.seq 5 &1 :: a x1
 [4] __primitive.ap &1 &2 -> 5 :: l? x2
 [5] __primitive.dep 4 :: a x1
-[6] __primitive.pushr 9 4 3 :: l x1
-[7] __primitive.add 1 8 :: i x1
-[8] val 1 :: i x1
-[9] jump tests.map_iteratel:map 2 7 :: v x1
-[10] return [6]
+[6] __primitive.add 1 7 :: i x1
+[7] val 1 :: i x1
+[8] jump tests.map_iteratel:map 2 6 :: l x1
+[9] __primitive.pushr 10 3 :: l x1
+[10] __primitive.compose 8 4 :: l x1
+[11] return [9]
 
 ___ tests.mapc (2 -> 1) ___
 [1] var :: ?l x1
@@ -5816,8 +5811,9 @@ ___ tests.popr_quote_compose (1 -> 1) ___
 [3] __primitive.dep 2 :: l x1
 [4] __primitive.ap 3 -> 5 :: l? x2
 [5] __primitive.dep 4 :: a x1
-[6] __primitive.pushr 2 4 5 :: l x1
-[7] return [6]
+[6] __primitive.pushr 7 5 :: l x1
+[7] __primitive.compose 2 4 :: l x1
+[8] return [6]
 
 ___ tests.push_input (2 -> 2) ___
 [1] var :: ?l x1
