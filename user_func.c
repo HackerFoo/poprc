@@ -1120,35 +1120,41 @@ bool is_specialized_to(tcell_t *entry, cell_t *c) {
   return true;
 }
 
+// copy condition chain (assert, seq, unless) up to old, replace with new
 static
-cell_t *with_conditions(cell_t *c, cell_t *old, cell_t *new) {
-  if(new == old) return c;
+cell_t *with_conditions(const cell_t *c, const cell_t *old, cell_t *new) {
+  if(new == old) return (cell_t *)c;
   while(is_id_list(c)) c = c->value.ptr[0];
   if(c == old) return new;
   assert_error(ONEOF(c->op, OP_assert, OP_unless, OP_seq, OP_id));
   cell_t *nc = copy(c);
-  c->expr.arg[0] = with_conditions(c->expr.arg[0], old, new);
+  nc->expr.arg[0] = with_conditions(c->expr.arg[0], old, new);
   RANGEUP(i, 1, closure_in(c)) ref(c->expr.arg[i]);
   return nc;
 }
 
+// find recursive call
 static
-cell_t *expand_tail_call(tcell_t *entry, cell_t *l, int n) {
+cell_t *find_call(cell_t *l) {
+  if(!l) return NULL;
+  FOLLOW(p, *left_elem(l), expr.arg[0]) { // ***
+    while(is_id_list(p)) p = p->value.ptr[0];
+    if(is_user_func(p)) {
+      return p;
+    }
+  }
+  return NULL;
+}
+
+// expand tail call to add more return values
+static
+cell_t *expand_tail_call(tcell_t *entry, cell_t *l, cell_t *call, int n) {
   if(!l || n <= 1) return ref(l);
   int lsize = list_size(l);
   assert_error(lsize);
   int nlsize = lsize - 1 + n;
 
-  // find the recursive call
-  cell_t *call = NULL;
-  FOLLOW(p, *left_elem(l), expr.arg[0]) { // ***
-    while(is_id_list(p)) p = p->value.ptr[0];
-    if(is_user_func(p)) {
-      call = p;
-      break;
-    }
-  }
-  assert_error(call && closure_entry(call) == entry);
+  assert_error(closure_entry(call) == entry, "expected call %E, got %E %C", entry, closure_entry(call), call); 
 
   // expand the call and return
   cell_t *nl = make_list(entry->entry.out);
@@ -1170,16 +1176,16 @@ cell_t *expand_tail_call(tcell_t *entry, cell_t *l, int n) {
   new_call->n = entry->entry.out - 1;
 
   // expand rest of alts
-  nl->alt = expand_tail_call(entry, l->alt, n);
+  nl->alt = expand_tail_call(entry, l->alt, find_call(l->alt), n);
 
   return nl;
 }
 
-void lift_recursion(cell_t **cp,
-                    cell_t **lp,
-                    int n,
-                    uintptr_t lifted_args) {
-  cell_t *c = *cp, *l = *lp;
+// remove inner recursive calls that have been lifted out of loops
+cell_t *lift_recursion(cell_t *c,
+                       cell_t *l,
+                       int n,
+                       uintptr_t lifted_args) {
   int lsize = list_size(l);
   assert_error(lsize);
   int nlsize = lsize - 1 + n;
@@ -1196,9 +1202,14 @@ void lift_recursion(cell_t **cp,
       *p-- = with_conditions(l->value.ptr[lsize-1], c, ref(c->expr.arg[i])); // ***
     }
   }
-  nl->alt = expand_tail_call(entry, l->alt, n);
-  drop(l);
-  *lp = nl;
+
+  cell_t *call = find_call(l->alt);
+  if(closure_entry(call) == closure_entry(c)) {
+    nl->alt = lift_recursion(call, l->alt, n, lifted_args);
+  } else {
+    nl->alt = expand_tail_call(entry, l->alt, call, n);
+  }
+  return nl;
 }
 
 bool has_var(const cell_t *c) {
@@ -1242,11 +1253,13 @@ OP(exec) {
         return func_exec_trace(cp, ctx);
       } else if(FLAG(*entry, entry, RECURSIVE)) {
         CHECK_PRIORITY(PRIORITY_EXEC_SELF);
-        if(c->pos && c->pos <= trace_current_entry()->pos) {
+        if(c->pos && c->pos <= trace_current_entry()->pos) { // lift recursion out of loop
           assert_error(FLAG(*entry, entry, ROW)); // TODO
           csize_t in = closure_in(c);
           int n = 0;
           uintptr_t lifted_args = 0;
+
+          // find args that should escape the loop
           assert_error(in < sizeof_bits(lifted_args));
           COUNTUP(i, in) {
             if(has_var(c->expr.arg[i])) {
@@ -1259,11 +1272,13 @@ OP(exec) {
             return SUCCESS;
           } else { // TODO properly move recursive function out
             cell_t **l = NULL;
-            FOLLOW(p, ctx, up) {
+            FOLLOW(p, ctx, up) { // cause retry up to return
               p->retry = true;
               l = p->src;
             }
-            lift_recursion(cp, l, n, lifted_args);
+            cell_t *nl = lift_recursion(c, *l, n, lifted_args);
+            drop(*l);
+            *l = nl;
             return RETRY;
           }
         }

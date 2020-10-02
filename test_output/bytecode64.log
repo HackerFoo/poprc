@@ -2134,35 +2134,39 @@ ___ list.merge (2 -> 1) ___
 
 ___ list.merge_loop (3 -> 1) x4 rec ___
 [1] changing var :: ?l x4
-[2] changing var :: ?l x3
+[2] changing var :: ?l x5
 [3] changing var :: ?l x3
 [4] __primitive.ap &3 -> 5 :: l? x2
 [5] __primitive.dep 4 :: i x3
-[6] __primitive.unless 7 5 :: l x1
-[7] __primitive.compose 2 1 :: l x1
-[8] return [6] -> 18
-[9] __primitive.ap &2 -> 10 :: l? x2
-[10] __primitive.dep 9 :: i x5
-[11] __primitive.lte &5 &10 :: y x4
-[12] __primitive.assert 4 &11 :: l? x1
-[13] __primitive.assert 2 &11 :: l? x1
-[14] __primitive.assert 5 &11 :: i? x2
-[15] __primitive.seq 16 &14 :: l x1
-[16] __primitive.ap 14 1 :: l x1
-[17] jump list.merge_loop 12 13 15 :: l x1
-[18] return [17] -> 23
-[19] __primitive.unless 1 &10 :: l x1
-[20] __primitive.unless 3 &10 :: l x1
-[21] __primitive.compose 20 19 :: l x1
-[22] __primitive.unless 21 10 :: l x1
-[23] return [22] -> 30
-[24] __primitive.not 11 :: y x2
-[25] __primitive.assert 10 &24 :: i? x2
-[26] __primitive.seq 28 &25 :: l x1
-[27] __primitive.assert 3 24 :: l? x1
-[28] __primitive.ap 25 1 :: l x1
-[29] jump list.merge_loop 27 9 26 :: l x1
-[30] return [29]
+[6] __primitive.ap &2 -> 7 :: v? x1
+[7] __primitive.dep 6 :: i x1
+[8] __primitive.lte &5 7 :: y x4
+[9] __primitive.assert 4 &8 :: l? x1
+[10] __primitive.assert &2 &8 :: l? x1
+[11] __primitive.assert &5 &8 :: i? x2
+[12] __primitive.seq 13 &11 :: l x1
+[13] __primitive.ap 11 1 :: l x1
+[14] jump list.merge_loop 9 10 12 :: v x1
+[15] return [14] -> 24
+[16] __primitive.not 8 :: y x2
+[17] __primitive.assert 19 &16 :: a? x2
+[18] __primitive.ap &2 -> 19 :: l? x2
+[19] __primitive.dep 18 :: a x1
+[20] __primitive.seq 22 &17 :: l x1
+[21] __primitive.assert &3 16 :: l? x1
+[22] __primitive.ap 17 1 :: l x1
+[23] jump list.merge_loop 21 18 20 :: v x1
+[24] return [23] -> 27
+[25] __primitive.unless 26 5 :: l x1
+[26] __primitive.compose 2 1 :: l x1
+[27] return [25] -> 34
+[28] __primitive.ap 2 -> 29 :: v? x1
+[29] __primitive.dep 28 :: a x3
+[30] __primitive.unless 1 &29 :: l x1
+[31] __primitive.unless 3 &29 :: l x1
+[32] __primitive.compose 31 30 :: l x1
+[33] __primitive.unless 32 29 :: l x1
+[34] return [33]
 
 ___ list.merge_step (3 -> 3) x2 ___
 [1] var :: ?l x2
@@ -4335,24 +4339,25 @@ ___ tests.f20a (1 -> 1) x2 rec ___
 [12] return [10]
 
 ___ tests.f20b (1 -> 1) x3 rec ___
-[1] changing var :: ?l x1
-[2] __primitive.ap 1 -> 3 :: l? x3
+[1] changing var :: ?l x2
+[2] __primitive.ap &1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: i x4
-[4] __primitive.gt &3 &5 :: y x1
-[5] val 1 :: i x2
-[6] __primitive.assert &3 4 :: i? x1
-[7] return [6] -> 15
-[8] __primitive.eq &3 9 :: y x1
-[9] val 0 :: i x1
-[10] __primitive.ap 8 &2 X -> 12 14 :: v? x2
-[12] __primitive.dep 10 :: y x1
-[13] __primitive.assert 14 12 :: a? x1
-[14] __primitive.dep 10 :: a x1
-[15] return [13] -> 19
-[16] __primitive.eq 3 5 :: y x1
-[17] __primitive.assert 18 16 :: a? x1
-[18] jump tests.f20b 2 :: a x1
-[19] return [17]
+[4] __primitive.eq &3 5 :: y x1
+[5] val 0 :: i x1
+[6] __primitive.ap 4 8 X -> 9 11 :: v? x2
+[8] __primitive.ap 1 -> X :: l? x1
+[9] __primitive.dep 6 :: y x1
+[10] __primitive.assert 11 9 :: a? x1
+[11] __primitive.dep 6 :: a x1
+[12] return [10] -> 16
+[13] __primitive.gt &3 &14 :: y x1
+[14] val 1 :: i x2
+[15] __primitive.assert &3 13 :: i? x1
+[16] return [15] -> 20
+[17] __primitive.eq 3 14 :: y x1
+[18] __primitive.assert 19 17 :: a? x1
+[19] jump tests.f20b 2 :: a x1
+[20] return [18]
 
 ___ tests.f21 (2 -> 1) ___
 [1] var :: ?l x1
@@ -4602,6 +4607,34 @@ ___ tests.f25b:map:filter:next_match (1 -> 2) x2 rec ___
 [13] __primitive.dep 12 :: i x1
 [14] __primitive.assert 12 10 :: l? x1
 [15] return [14 11]
+
+___ tests.f26 (2 -> 2) ___
+[1] var :: ?l x1
+[2] var :: ?l x1
+[3] tests.f26:interleave 2 1 4b :: l x2
+[4] list.unzip_either:map &3 :: l x1
+[5] jump list.unzip_either:map_1 3 :: l x1
+[6] return [5 4]
+
+___ tests.f26:interleave (2 -> 1) x2 rec ___
+[1] changing var :: ?l x2
+[2] changing var :: ?l x2
+[3] __primitive.ap &1 -> 4 :: l? x2
+[4] __primitive.dep 3 :: a x2
+[5] __primitive.seq 8 &4 3b :: l x1
+[6] tests.f26:interleave 2 3 :: l x1
+[7] __primitive.pushr 6 5 3b :: l x1
+[8] __primitive.quote 4 9 3b :: l x1
+[9] val Right :: y x1
+[10] return [7] -> 18
+[11] __primitive.ap 2 -> 12 :: l? x2
+[12] __primitive.dep 11 :: a x2
+[13] __primitive.seq 16 &12 4b :: l x1
+[14] tests.f26:interleave 11 1 :: l x1
+[15] __primitive.pushr 14 13 4b :: l x1
+[16] __primitive.quote 12 17 4b :: l x1
+[17] val Left :: y x1
+[18] return [15]
 
 ___ tests.f6 (3 -> 3) ___
 [1] var :: ?a x1
@@ -5120,17 +5153,16 @@ ___ tests.fuse_map_filter:filter:next_match (1 -> 2) x2 rec ___
 [5] __primitive.add &3 &6 :: i x2
 [6] val 1 :: i x3
 [7] __primitive.bitand 4 &6 in [0, 1] :: i x1
-[8] __primitive.eq 7 6 :: y x3
+[8] __primitive.eq 7 6 :: y x2
 [9] __primitive.assert 10 &8 :: i? x1
 [10] __primitive.seq 5 3 :: i x1
-[11] __primitive.assert &2 &8 :: l? x1
-[12] return [11 9] -> 18
-[13] __primitive.not 8 :: y x2
-[14] __primitive.assert 16 &13 :: i? x1
-[15] jump tests.fuse_map_filter:filter:next_match 2 -> 16 :: l x2
-[16] __primitive.dep 15 :: i x1
-[17] __primitive.assert 15 13 :: l? x1
-[18] return [17 14]
+[11] return [2 9] -> 17
+[12] __primitive.not 8 :: y x2
+[13] __primitive.assert 15 &12 :: i? x1
+[14] jump tests.fuse_map_filter:filter:next_match 2 -> 15 :: l x2
+[15] __primitive.dep 14 :: i x1
+[16] __primitive.assert 14 12 :: l? x1
+[17] return [16 13]
 
 ___ tests.fuse_map_ho (3 -> 1) ___
 [1] var :: ?l x1
@@ -5652,14 +5684,14 @@ ___ tests.old_filter:iterate (3 -> 1) x3 rec ___
 [9] __primitive.not &8 :: y x1
 [10] __primitive.assert &3 9 :: l? x1
 [11] jump tests.old_filter:iterate 10 4 1 :: v x1
-[12] return [6] -> 15
-[13] __primitive.seq 18 &5 :: v x1
-[14] __primitive.unless 3 5 :: l x1
-[15] return [14] -> 19
-[16] __primitive.assert 17 8 :: l? x1
-[17] __primitive.ap 5 3 :: l x1
-[18] jump tests.old_filter:iterate 16 4 1 :: v x1
-[19] return [13]
+[12] return [6] -> 17
+[13] __primitive.seq 16 &5 :: v x1
+[14] __primitive.assert 15 8 :: l? x1
+[15] __primitive.ap 5 3 :: l x1
+[16] jump tests.old_filter:iterate 14 4 1 :: v x1
+[17] return [13] -> 19
+[18] __primitive.unless 3 5 :: l x1
+[19] return [18]
 
 ___ tests.old_map (2 -> 1) ___
 [1] var :: ?l x1

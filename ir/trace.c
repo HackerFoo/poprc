@@ -1197,11 +1197,11 @@ unsigned int trace_reduce(tcell_t *entry, cell_t **cp) {
     CONTEXT("priority = %d", priority);
     context_t *ctx = &CTX_DEFAULT;
     ctx->priority = priority;
-    ctx->src = p;
 
   loop_start:
     while(*p) {
       CONTEXT("branch %d: %C", alts, *p);
+      ctx->src = p;
       response rsp = func_list(p, &CTX(return));
       if(rsp == DELAY) {
         delay = true;

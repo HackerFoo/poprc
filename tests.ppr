@@ -665,3 +665,8 @@ f25: [[1+] map] map
 f25b: [[odd] filter] map
 
 fuse_map_with_sum: 0 [+ dup] map_with sum
+
+f26: [[[Left] pushl] map, [[Right] pushl] map] para interleave unzip_either
+f26b: [[[Left] pushl] map, [[Right] pushl] map] para [] zip unzip_either __ deterministic version {hide}
+
+f27: interleave [odd] filter __ {hide}
