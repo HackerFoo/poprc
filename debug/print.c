@@ -58,6 +58,16 @@ void mark_cell(cell_t *c) {
   }
 }
 
+// mark nodes in the context to provide a visual stack trace
+void mark_ctx(const context_t *ctx) {
+  FOLLOW(p, ctx, up) {
+    cell_t **cp = p->src;
+    if(cp && *cp) {
+      mark_cell(*cp);
+    }
+  }
+}
+
 char const *show_alt_set(uintptr_t as) {
   static char out[sizeof(as)*4+1];
   char *p = out;
@@ -196,6 +206,8 @@ void make_graph_all(char const *path) {
              "rankdir = \"RL\"\n"
              "];\n", path, label);
   static_zero(visited);
+  static_zero(marked);
+  if(current_ctx) mark_ctx(current_ctx);
   STATIC_FOREACH(i, cells) {
     graph_cell(f, &cells[i]);
   }
@@ -217,8 +229,8 @@ void print_cell_pointer(FILE *f, const char *pre, cell_t *p) {
 void graph_cell(FILE *f, cell_t const *c) {
   if(!is_closure(c) || !is_cell(c)) return;
   int node = CELL_INDEX(c);
-  int border = check_bit(marked, node) ? 4 : 0;
-  clear_bit(marked, node);
+  bool is_marked = check_bit(marked, node);
+  int border = is_marked ? 4 : 0;
   if(check_bit(visited, node)) return;
   set_bit(visited, node);
   csize_t n = closure_args(c);
@@ -365,10 +377,12 @@ void graph_cell(FILE *f, cell_t const *c) {
     if(is_list(c)) {
       csize_t n = list_size(c);
       while(n--) {
-        if(is_cell(c->value.ptr[n])) {
-          fprintf(f, "node%d:ptr%u -> node%d:top [color=white];\n",
-                  node, (unsigned int)n, CELL_INDEX(c->value.ptr[n]));
-          graph_cell(f, c->value.ptr[n]);
+        cell_t *ptr = c->value.ptr[n];
+        if(is_cell(ptr)) {
+          fprintf(f, "node%d:ptr%u -> node%d:top [color=white%s];\n",
+                  node, (unsigned int)n, CELL_INDEX(ptr),
+                  STR_IF(is_marked && check_bit(marked, CELL_INDEX(ptr)) , ", penwidth=3"));
+          graph_cell(f, ptr);
         }
       }
     }
@@ -377,8 +391,9 @@ void graph_cell(FILE *f, cell_t const *c) {
     COUNTUP(i, start_out) {
       cell_t *arg = c->expr.arg[i];
       if(is_cell(arg)) {
-        fprintf(f, "node%d:arg%d -> node%d:top [color=white];\n",
-                node, (unsigned int)i, CELL_INDEX(arg));
+        fprintf(f, "node%d:arg%d -> node%d:top [color=white%s];\n",
+                node, (unsigned int)i, CELL_INDEX(arg),
+                STR_IF(is_marked && check_bit(marked, CELL_INDEX(arg)) , ", penwidth=3"));
         graph_cell(f, arg);
       }
     }
@@ -678,7 +693,6 @@ FORMAT(cell, 'C') {
   cell_t *c = (cell_t *)i;
   if(is_cell(c)) {
     printf("%d", CELL_INDEX(c));
-    mark_cell(c);
   } else if(c == &fail_cell) {
     printf("fail");
   } else {

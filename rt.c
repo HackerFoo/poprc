@@ -345,7 +345,10 @@ response reduce(cell_t **cp, context_t *ctx) {
     stats.reduce_cnt++;
     ctx->text = c->src;
     op op = c->op;
-    response r = op_call(op, cp, ctx);
+    response r;
+    SHADOW(current_ctx, ctx) {
+      r = op_call(op, cp, ctx);
+    }
 
     // prevent infinite loops when debugging
     assert_counter(cells_size);
@@ -873,6 +876,9 @@ bool expected_symbol(context_t *ctx, val_t sym) {
 // default 'ctx' for CTX(...) to inherit
 context_t * const ctx = &CTX_DEFAULT;
 range_t default_bound = RANGE_ALL_INIT;
+
+// current context for highlighting nodes in GraphViz output
+const context_t *current_ctx = ctx;
 
 COMMAND(bound, "set default_bound") {
   if(!rest) {
