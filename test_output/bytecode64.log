@@ -2706,6 +2706,17 @@ ___ logic.or (2 -> 1) x2 ___
 [7] val True :: y x1
 [8] return [6]
 
+___ logic.other (3 -> 1) x2 ___
+[1] var :: ?y x2
+[2] var :: ?y x2
+[3] var :: ?y x2
+[4] __primitive.eq_s &3 &2 :: y x1
+[5] __primitive.assert &1 4 :: y? x1
+[6] return [5] -> 9
+[7] __primitive.eq_s 3 1 :: y x1
+[8] __primitive.assert 2 7 :: y? x1
+[9] return [8]
+
 ___ logic.otherwise2 (4 -> 2) ___
 [1] var :: ?a x1
 [2] var :: ?a x1
@@ -5557,6 +5568,26 @@ ___ tests.leak:iterate (2 -> 1) x2 rec ___
 [10] val 3 :: i x1
 [11] jump tests.leak:iterate 2 9 :: i x1
 [12] return [8]
+
+___ tests.left_right (1 -> 1) ___
+[1] var :: ?l x1
+[2] val Left :: y x1
+[3] jump tests.left_right:map_with 1 2 :: l x1
+[4] return [3]
+
+___ tests.left_right:map_with (2 -> 1) rec ___
+[1] changing var :: ?y x2
+[2] changing var :: ?l x1
+[3] __primitive.ap 2 -> 4 :: l? x2
+[4] __primitive.dep 3 :: a x2
+[5] __primitive.seq 11 &4 :: l x1
+[6] logic.other &1 7 8 :: y x1
+[7] val Left :: y x1
+[8] val Right :: y x1
+[9] tests.left_right:map_with 3 6 :: l x1
+[10] __primitive.pushr 9 5 :: l x1
+[11] __primitive.quote 4 1 :: l x1
+[12] return [10]
 
 ___ tests.map_add1 (1 -> 1) ___
 [1] var :: ?l x1

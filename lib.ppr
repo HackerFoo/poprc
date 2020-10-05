@@ -550,6 +550,9 @@ vifte: [swap] dip22 otherwise dup swap2 otherwise |
 
 valid: True False vifte
 
+___ A A B other -> B, B A B other -> A
+other: [] [swap] | [[=:=] dip21 swap!] . $$$
+
 module algorithm:
 
 imports:
