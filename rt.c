@@ -367,7 +367,7 @@ response reduce(cell_t **cp, context_t *ctx) {
     }
 
     c = *cp;
-    if(r <= DELAY || (r == RETRY && ctx->retry)) {
+    if(r <= DELAY || (r == RETRY && (ctx->flags & CONTEXT_RETRY))) {
       return r;
     }
   }
@@ -844,8 +844,8 @@ bool expected_symbol(context_t *ctx, val_t sym) {
 #define CTX_INHERIT                             \
   .priority = ctx->priority,                    \
   .up = ctx,                                    \
-  .inv = ctx->inv,                              \
-  .depth = ctx->depth + 1
+  .depth = ctx->depth + 1,                      \
+  .flags = ctx->flags & CONTEXT_DOWN
 
 #define CTX_INHERIT_EXP                         \
   CTX_INHERIT,                                  \

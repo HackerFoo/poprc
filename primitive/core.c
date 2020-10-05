@@ -196,7 +196,7 @@ OP(seq) {
 // X Y Z unless unless --> X Z seq
 // ** what if Y fails?
 bool rule_merge_unless(context_t *ctx) {
-  if(ctx->inv) {
+  if(ctx->flags & CONTEXT_INV) {
     cell_t *c = *ctx->src;
     cell_t *p = *ctx->up->src;
     if(p && p->op == OP_unless && p->expr.arg[1] == c) {
@@ -205,7 +205,7 @@ bool rule_merge_unless(context_t *ctx) {
       //p->expr.arg[1] = p->expr.arg[0];
       p->expr.arg[1] = ref(c->expr.arg[1]);
       drop(c);
-      ctx->retry = true;
+      ctx->flags |= CONTEXT_RETRY;
       return true;
     }
   }
@@ -227,7 +227,7 @@ OP(unless) {
   cell_t **p = &c->expr.arg[0];
   cell_t **q = &c->expr.arg[1];
   while(*q) {
-    response rsp0 = WITH(x, &CTX(any), inv, !ctx->inv, reduce(q, x));
+    response rsp0 = WITH(x, &CTX(any), flags, ctx->flags ^ CONTEXT_INV, reduce(q, x));
     CHECK_IF(rsp0 == RETRY, RETRY);
     if(rsp0 == DELAY) {
       rsp = DELAY;

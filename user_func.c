@@ -1273,7 +1273,7 @@ OP(exec) {
           } else { // TODO properly move recursive function out
             cell_t **l = NULL;
             FOLLOW(p, ctx, up) { // cause retry up to return
-              p->retry = true;
+              p->flags |= CONTEXT_RETRY;
               l = p->src;
             }
             cell_t *nl = lift_recursion(c, *l, n, lifted_args);

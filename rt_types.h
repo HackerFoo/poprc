@@ -125,9 +125,12 @@ struct context {
   qsize_t s; // required quote size [down]
   type_t t; // required type [down]
   uint8_t depth; // limits nesting depth [down]
-  bool retry; // to trampoline out for rewrites [up]
-  bool inv; // to detect double inversions (see unless) [down]
+  uint8_t flags; // see below [up/down]
 };
+
+#define CONTEXT_RETRY 0x01
+#define CONTEXT_INV   0x02
+#define CONTEXT_DOWN  CONTEXT_INV
 
 typedef enum response {
   SUCCESS = 0, // continue reduction
