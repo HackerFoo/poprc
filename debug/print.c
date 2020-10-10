@@ -184,6 +184,27 @@ void make_graph(char const *path, cell_t const *c) {
   fclose(f);
 }
 
+static
+void print_relations(FILE *f) {
+  STATIC_FOREACH(i, related_link) {
+    pair_t *p = &related_link[i];
+    const cell_t *x = (const cell_t *)p->first;
+    const cell_t *y = (const cell_t *)p->second;
+    if(is_cell(x) &&
+       is_cell(y) &&
+       is_closure(x) &&
+       is_closure(y) &&
+       x->alt != y &&
+       !(check_bit(visited, CELL_INDEX(x)) &&
+         check_bit(visited, CELL_INDEX(y)))) {
+      fprintf(f, "node%d:top -> node%d:top [style=dashed, color=gray50, arrowhead=none];\n",
+              CELL_INDEX(x), CELL_INDEX(y));
+      set_bit(visited, CELL_INDEX(x));
+      set_bit(visited, CELL_INDEX(y));
+    }
+  }
+}
+
 void make_graph_all(char const *path) {
   static char autopath[16];
   static unsigned int autopath_count = 0;
@@ -205,6 +226,8 @@ void make_graph_all(char const *path) {
              "graph [\n"
              "rankdir = \"RL\"\n"
              "];\n", path, label);
+  static_zero(visited);
+  print_relations(f);
   static_zero(visited);
   static_zero(marked);
   if(current_ctx) mark_ctx(current_ctx);

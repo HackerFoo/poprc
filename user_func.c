@@ -122,6 +122,7 @@ start:
   CONTEXT("bind_pattern %s %C %C @barrier", strfield(entry, word_name), c, pattern);
   if(!pattern) return tail;
   if(c->tmp || (tail && c == *tail)) return tail;
+  relates_to(c, pattern);
   if(c == pattern) { // c == pattern, so add all variables
     if(tail) {
       cell_t **t = tail;

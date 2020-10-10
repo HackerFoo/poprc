@@ -376,6 +376,7 @@ cell_t *copy(cell_t const *c) {
   memcpy(new_c, c, size * sizeof(cell_t));
   new_c->n = 0;
   new_c->pos = 0;
+  relates_to(c, new_c);
   return new_c;
 }
 

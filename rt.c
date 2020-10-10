@@ -1226,3 +1226,15 @@ TEST(find_path) {
   drop(start);
   return 0;
 }
+
+STATIC_ALLOC(related_link, pair_t, 32);
+int related_link_next = 0;
+void relates_to(const cell_t *x, const cell_t *y) {
+  if(x != y) {
+    related_link[related_link_next] = (pair_t) {
+      .first = (uintptr_t)x,
+      .second = (uintptr_t)y
+    };
+    related_link_next = (related_link_next + 1) % related_link_size;
+  }
+}
