@@ -481,7 +481,7 @@ static
 int trace_get_value(tcell_t *entry, cell_t *r) {
   assert_error(r && is_value(r), "%C", r);
   if(is_list(r)) {
-    return trace_build_quote(entry, r); // *** TODO prevent building duplicate quotes
+    return trace_build_quote(entry, r, false); // *** TODO prevent building duplicate quotes
   } else if(is_var(r)) {
     if(FLAG(*r, value, DEP)) return 0;
     switch_entry(entry, r);
@@ -1019,7 +1019,7 @@ bool reduced_list(cell_t *l) {
 }
 
 // store captured variables to be compiled into a quote
-int trace_build_quote(tcell_t *entry, cell_t *l) {
+int trace_build_quote(tcell_t *entry, cell_t *l, bool from_return) {
   LOG("trace_build_quote %E %C", entry, l);
   WATCH(l, "build quote");
   assert_error(is_list(l));
@@ -1037,7 +1037,7 @@ int trace_build_quote(tcell_t *entry, cell_t *l) {
   }
 
   if(closure_is_ready(*leftmost(&l))) {
-    return inline_quote(entry, l);
+    return inline_quote(entry, l, from_return);
   } else {
     return compile_quote(entry, l);
   }
@@ -1047,7 +1047,7 @@ bool is_compose_arg(const cell_t *c) {
   return is_var(c) && FLAG(*c, value, ROW);
 }
 
-int inline_quote(tcell_t *entry, cell_t *l) {
+int inline_quote(tcell_t *entry, cell_t *l, bool from_return) {
   LOG("inline quote %C", l);
 
   FLAG_SET(*entry, entry, FORCED_INLINE);
@@ -1108,7 +1108,9 @@ int inline_quote(tcell_t *entry, cell_t *l) {
   }
   if(row) { // final left var, TODO handle nil?
     if(n == 1) {
-      FLAG_SET(*entry, entry, ROW); // this entry returns a row
+      if(from_return || // ***
+         (is_var(l->value.ptr[0]) &&
+          FLAG(*l->value.ptr[0], value, ROW))) FLAG_SET(*entry, entry, ROW); // this entry returns a row
       q = list_next(&right, true);
       force(q);
       int x = trace_value(entry, *q);
@@ -1167,7 +1169,7 @@ int trace_return(tcell_t *entry, cell_t *c_) {
       switch_entry(entry, *p);
       x = var_index(entry, (*p)->value.var);
     } else if(is_list(*p)) {
-      x = trace_build_quote(entry, *p);
+      x = trace_build_quote(entry, *p, true);
     } else {
       x = trace_store_value(entry, *p);
     }

@@ -536,6 +536,7 @@ void show_list(cell_t const *c) {
 }
 
 bool list_is_printable(cell_t const *l) {
+  if(!is_list(l)) return false;
   cell_t **p;
   FORLIST(p, (cell_t *)l) {
     if(!is_printable(*p)) return false;

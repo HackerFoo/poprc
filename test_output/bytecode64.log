@@ -921,7 +921,7 @@ ___ control.fork3 (4 -> 3) ___
 [10] __primitive.dep 9 :: a x1
 [11] return [10 8 6]
 
-___ control.fork_cmp (3 -> 2) ___
+___ control.fork_cmp (3 -> 2) row ___
 [1] var :: ?l x1
 [2] var :: ?l x1
 [3] var :: ?l x2
@@ -929,7 +929,7 @@ ___ control.fork_cmp (3 -> 2) ___
 [5] __primitive.compose 3 1 :: l x1
 [6] return [4 5]
 
-___ control.fork_cmp3 (4 -> 3) ___
+___ control.fork_cmp3 (4 -> 3) row ___
 [1] var :: ?l x1
 [2] var :: ?l x1
 [3] var :: ?l x1
@@ -947,7 +947,7 @@ ___ control.gather (1 -> 2) ___
 [6] __primitive.dep 4 :: l x1
 [7] return [4 6]
 
-___ control.gather1 (3 -> 2) ___
+___ control.gather1 (3 -> 2) row ___
 [1] var :: ?l x1
 [2] var :: ?l x1
 [3] var :: ?l x1
@@ -1087,7 +1087,7 @@ ___ control.peek (2 -> 2) ___
 [4] __primitive.dep 3 :: a x1
 [5] return [2 4]
 
-___ control.peek_cmp (2 -> 2) ___
+___ control.peek_cmp (2 -> 2) row ___
 [1] var :: ?l x1
 [2] var :: ?l x2
 [3] __primitive.compose &2 1 :: l x1
@@ -1100,7 +1100,7 @@ ___ control.scatter (2 -> 1) ___
 [4] jump control.scatter:foldr:iterate 3 1 2 :: l x1
 [5] return [4]
 
-___ control.scatter:foldr:iterate (3 -> 1) x2 rec ___
+___ control.scatter:foldr:iterate (3 -> 1) x2 rec row ___
 [1] var :: ?l x2
 [2] changing var :: ?l x1
 [3] changing var :: ?l x2
@@ -1114,7 +1114,7 @@ ___ control.scatter:foldr:iterate (3 -> 1) x2 rec ___
 [11] __primitive.unless 3 5 :: l x1
 [12] return [11]
 
-___ control.scatter1 (3 -> 1) ___
+___ control.scatter1 (3 -> 1) row ___
 [1] var :: ?l x1
 [2] var :: ?l x1
 [3] var :: ?l x1
@@ -1645,7 +1645,7 @@ ___ io.stream_modify_array (3 -> 1) ___
 [4] jump io.stream_modify_array:map_with 2 3 1 :: l x1
 [5] return [4]
 
-___ io.stream_modify_array:map_with (3 -> 1) rec ___
+___ io.stream_modify_array:map_with (3 -> 1) rec row ___
 [1] var :: ?l x2
 [2] changing var is Array :: ?o x1
 [3] changing var :: ?l x1
@@ -1679,7 +1679,7 @@ ___ io.stream_read_array (2 -> 1) ___
 [3] jump io.stream_read_array:map_with 1 2 :: l x1
 [4] return [3]
 
-___ io.stream_read_array:map_with (2 -> 1) rec ___
+___ io.stream_read_array:map_with (2 -> 1) rec row ___
 [1] changing var is Array :: ?o x1
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
@@ -1706,7 +1706,7 @@ ___ io.stream_write_array (3 -> 1) ___
 [4] jump io.stream_write_array:zip_with 2 1 3 :: l x1
 [5] return [4]
 
-___ io.stream_write_array:zip_with (3 -> 1) rec ___
+___ io.stream_write_array:zip_with (3 -> 1) rec row ___
 [1] changing var is Array :: ?o x1
 [2] changing var :: ?l x1
 [3] changing var :: ?l x1
@@ -1802,7 +1802,7 @@ ___ list.concat (1 -> 1) ___
 [3] jump list.concat:foldr:iterate 2 1 :: l x1
 [4] return [3]
 
-___ list.concat:foldr:iterate (2 -> 1) x2 rec ___
+___ list.concat:foldr:iterate (2 -> 1) x2 rec row ___
 [1] changing var :: ?l x1
 [2] changing var :: ?l x2
 [3] __primitive.ap 1 -> 4 :: l? x2
@@ -1835,7 +1835,7 @@ ___ list.dropl:iterate (2 -> 1) x2 rec ___
 [12] jump list.dropl:iterate 9 11 :: l x1
 [13] return [8]
 
-___ list.either_push (4 -> 2) x2 ___
+___ list.either_push (4 -> 2) x2 row ___
 [1] var :: ?y x2
 [2] var :: ?a x2
 [3] var :: ?l x2
@@ -1857,7 +1857,7 @@ ___ list.either_push (4 -> 2) x2 ___
 [19] __primitive.assert 18 13 :: l? x1
 [20] return [16 19]
 
-___ list.filter (2 -> 1) rec ___
+___ list.filter (2 -> 1) rec row ___
 [1] var :: ?l x2
 [2] changing var :: ?l x1
 [3] list.next_match 2 &1 -> 4 :: l x2
@@ -1866,7 +1866,7 @@ ___ list.filter (2 -> 1) rec ___
 [6] __primitive.pushr 5 4 :: l x1
 [7] return [6]
 
-___ list.filter2 (2 -> 1) x2 rec ___
+___ list.filter2 (2 -> 1) x2 rec row ___
 [1] var :: ?l x2
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
@@ -1893,7 +1893,7 @@ ___ list.foldl (3 -> 1) ___
 [7] __primitive.dep 6 :: a x1
 [8] return [7]
 
-___ list.foldl:iterate (3 -> 1) x2 rec ___
+___ list.foldl:iterate (3 -> 1) x2 rec row ___
 [1] var :: ?l x2
 [2] changing var :: ?l x1
 [3] changing var :: ?l x2
@@ -1907,7 +1907,7 @@ ___ list.foldl:iterate (3 -> 1) x2 rec ___
 [11] __primitive.unless 3 5 :: l x1
 [12] return [11]
 
-___ list.foldl_step (3 -> 3) ___
+___ list.foldl_step (3 -> 3) row ___
 [1] var :: ?l x1
 [2] var :: ?l x1
 [3] var :: ?l x2
@@ -1975,7 +1975,7 @@ ___ list.head (1 -> 1) ___
 [3] __primitive.dep 2 :: a x1
 [4] return [3]
 
-___ list.interleave (2 -> 1) x2 rec ___
+___ list.interleave (2 -> 1) x2 rec row ___
 [1] changing var :: ?l x2
 [2] changing var :: ?l x2
 [3] __primitive.ap &1 -> 4 :: l? x2
@@ -1989,7 +1989,7 @@ ___ list.interleave (2 -> 1) x2 rec ___
 [11] __primitive.pushr 9 10 :: l x1
 [12] return [11]
 
-___ list.interleave_with (3 -> 1) x2 rec ___
+___ list.interleave_with (3 -> 1) x2 rec row ___
 [1] changing var :: ?a x6
 [2] changing var :: ?l x2
 [3] changing var :: ?l x2
@@ -2018,7 +2018,7 @@ ___ list.interleave_with (3 -> 1) x2 rec ___
 [26] __primitive.seq 25 22 :: l x1
 [27] return [26]
 
-___ list.iteratel (2 -> 1) rec ___
+___ list.iteratel (2 -> 1) rec row ___
 [1] var :: ?l x2
 [2] changing var :: ?a x2
 [3] __primitive.ap &2 &1 -> 4 :: v? x1
@@ -2027,14 +2027,14 @@ ___ list.iteratel (2 -> 1) rec ___
 [6] __primitive.pushr 5 2 :: l x1
 [7] return [6]
 
-___ list.itercat (2 -> 1) ___
+___ list.itercat (2 -> 1) row ___
 [1] var :: ?l x1
 [2] var :: ?a x2
 [3] jump list.itercat_loop &2 1 :: l x1
 [4] __primitive.pushr 3 2 :: l x1
 [5] return [4]
 
-___ list.itercat_loop (2 -> 1) rec ___
+___ list.itercat_loop (2 -> 1) rec row ___
 [1] var :: ?l x2
 [2] changing var :: ?a x1
 [3] __primitive.ap 2 &1 :: l x2
@@ -2099,7 +2099,7 @@ ___ list.listdup:times:iterate (3 -> 1) x2 rec ___
 [13] jump list.listdup:times:iterate 10 2 12 :: l x1
 [14] return [9]
 
-___ list.map (2 -> 1) rec ___
+___ list.map (2 -> 1) rec row ___
 [1] var :: ?l x2
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
@@ -2112,7 +2112,7 @@ ___ list.map (2 -> 1) rec ___
 [10] __primitive.compose 8 6 :: l x1
 [11] return [9]
 
-___ list.map_with (3 -> 1) rec ___
+___ list.map_with (3 -> 1) rec row ___
 [1] var :: ?l x2
 [2] changing var :: ?a x1
 [3] changing var :: ?l x1
@@ -2132,7 +2132,7 @@ ___ list.merge (2 -> 1) ___
 [4] [] :: l x1
 [5] return [3]
 
-___ list.merge_loop (3 -> 1) x4 rec ___
+___ list.merge_loop (3 -> 1) x4 rec row ___
 [1] changing var :: ?l x4
 [2] changing var :: ?l x5
 [3] changing var :: ?l x3
@@ -2378,7 +2378,7 @@ ___ list.pushq7 (8 -> 1) ___
 [10] __primitive.quote 8 7 6 5 4 3 2 :: l x1
 [12] return [9]
 
-___ list.repeat (1 -> 1) rec ___
+___ list.repeat (1 -> 1) rec row ___
 [1] var :: ?a x2
 [2] jump list.repeat &1 :: l x1
 [3] __primitive.pushr 2 1 :: l x1
@@ -2526,7 +2526,7 @@ ___ list.unzip (1 -> 2) ___
 [3] jump list.unzip:map_1 1 :: l x1
 [4] return [3 2]
 
-___ list.unzip:map (1 -> 1) rec ___
+___ list.unzip:map (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: l x2
@@ -2537,7 +2537,7 @@ ___ list.unzip:map (1 -> 1) rec ___
 [8] __primitive.pushr 7 4 :: l x1
 [9] return [8]
 
-___ list.unzip:map_1 (1 -> 1) rec ___
+___ list.unzip:map_1 (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: l x2
@@ -2554,7 +2554,7 @@ ___ list.unzip_either (1 -> 2) ___
 [3] jump list.unzip_either:map_1 1 :: l x1
 [4] return [3 2]
 
-___ list.unzip_either:map (1 -> 1) rec ___
+___ list.unzip_either:map (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] list.unzip_either:map:next_match 1 -> 3 :: l x2
 [3] __primitive.dep 2 :: l x2
@@ -2583,7 +2583,7 @@ ___ list.unzip_either:map:next_match (1 -> 2) x2 rec ___
 [15] __primitive.assert 13 11 :: l? x1
 [16] return [15 12]
 
-___ list.unzip_either:map_1 (1 -> 1) rec ___
+___ list.unzip_either:map_1 (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] list.unzip_either:map_1:next_match 1 -> 3 :: l x2
 [3] __primitive.dep 2 :: l x2
@@ -2612,7 +2612,7 @@ ___ list.unzip_either:map_1:next_match (1 -> 2) x2 rec ___
 [15] __primitive.assert 13 11 :: l? x1
 [16] return [15 12]
 
-___ list.zip (3 -> 1) rec ___
+___ list.zip (3 -> 1) rec row ___
 [1] var :: ?l x2
 [2] changing var :: ?l x1
 [3] changing var :: ?l x1
@@ -2657,7 +2657,7 @@ ___ list.zip1_with (4 -> 5) ___
 [11] __primitive.dep 9 :: a x1
 [12] return [7 5 11 1 9]
 
-___ list.zip_with (4 -> 1) rec ___
+___ list.zip_with (4 -> 1) rec row ___
 [1] var :: ?l x2
 [2] changing var :: ?a x1
 [3] changing var :: ?l x1
@@ -3212,7 +3212,7 @@ ___ tests.altf_loop:iterate (2 -> 1) x3 rec ___
 [12] __primitive.assert 10 3 :: a? x1
 [13] return [12]
 
-___ tests.asq (2 -> 2) ___
+___ tests.asq (2 -> 2) row ___
 [1] var :: ?y x4
 [2] var :: ?l x1
 [3] __primitive.assert 5 &1 :: a? x2
@@ -3298,7 +3298,7 @@ ___ tests.axil_map_r (4 -> 2) ___
 [6] jump tests.axil_map_r:map 3 4 :: l x1
 [7] return [6 5]
 
-___ tests.axil_map_r:map (2 -> 1) rec ___
+___ tests.axil_map_r:map (2 -> 1) rec row ___
 [1] changing var is Array :: ?o x1
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
@@ -3321,7 +3321,7 @@ ___ tests.axil_map_w (4 -> 2) ___
 [6] jump tests.axil_map_w:stream_write_array:zip_with 2 1 4 :: l x1
 [7] return [5 6]
 
-___ tests.axil_map_w:stream_write_array:zip_with (3 -> 1) rec ___
+___ tests.axil_map_w:stream_write_array:zip_with (3 -> 1) rec row ___
 [1] changing var is Array :: ?o x1
 [2] changing var :: ?l x1
 [3] changing var :: ?l x1
@@ -3348,7 +3348,7 @@ ___ tests.axil_map_w_fib (4 -> 2) ___
 [6] jump tests.axil_map_w_fib:stream_write_array:zip_with 2 1 4 :: l x1
 [7] return [5 6]
 
-___ tests.axil_map_w_fib:stream_write_array:zip_with (3 -> 1) rec ___
+___ tests.axil_map_w_fib:stream_write_array:zip_with (3 -> 1) rec row ___
 [1] changing var is Array :: ?o x1
 [2] changing var :: ?l x1
 [3] changing var :: ?l x1
@@ -3605,7 +3605,7 @@ ___ tests.calc_loop (2 -> 1) x15 rec ___
 [195] __primitive.unless 194 174 :: y x1
 [196] return [195]
 
-___ tests.calc_step (2 -> 1) x14 ___
+___ tests.calc_step (2 -> 1) x14 row ___
 [1] var :: ?s x1
 [2] var :: ?l x15
 [3] __primitive.strtrim 1 :: s x14
@@ -3746,7 +3746,7 @@ ___ tests.calc_step (2 -> 1) x14 ___
 [138] __primitive.assert 137 131 :: l? x1
 [139] return [138]
 
-___ tests.calc_step_dummy (2 -> 1) ___
+___ tests.calc_step_dummy (2 -> 1) row ___
 [1] var :: ?s x1
 [2] var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
@@ -3757,7 +3757,7 @@ ___ tests.calc_step_dummy (2 -> 1) ___
 [8] __primitive.pushr 3 7 :: l x1
 [9] return [8]
 
-___ tests.calc_step_push (2 -> 1) x2 ___
+___ tests.calc_step_push (2 -> 1) x2 row ___
 [1] var :: ?s x1
 [2] var :: ?l x2
 [3] __primitive.strtrim 1 :: s x2
@@ -3781,7 +3781,7 @@ ___ tests.calc_step_push (2 -> 1) x2 ___
 [21] __primitive.assert 20 12 :: l? x1
 [22] return [21]
 
-___ tests.calc_step_simple (2 -> 1) x2 ___
+___ tests.calc_step_simple (2 -> 1) x2 row ___
 [1] var :: ?s x1
 [2] var :: ?l x2
 [3] __primitive.strtrim 1 :: s x2
@@ -3892,7 +3892,7 @@ ___ tests.concat_map (2 -> 1) ___
 [4] jump tests.concat_map:concat:foldr:iterate 3 2 1 :: l x1
 [5] return [4]
 
-___ tests.concat_map:concat:foldr:iterate (3 -> 1) x2 rec ___
+___ tests.concat_map:concat:foldr:iterate (3 -> 1) x2 rec row ___
 [1] var :: ?l x2
 [2] changing var :: ?l x1
 [3] changing var :: ?l x2
@@ -4000,7 +4000,7 @@ ___ tests.disj_bound (1 -> 1) x2 ___
 [14] __primitive.assert 11 12 in [8, 10] :: i? x1
 [15] return [14]
 
-___ tests.dotswap (4 -> 1) ___
+___ tests.dotswap (4 -> 1) row ___
 [1] var :: ?l x1
 [2] var :: ?l x1
 [3] var :: ?l x1
@@ -4171,7 +4171,7 @@ ___ tests.dup_map (1 -> 1) ___
 [2] jump tests.dup_map:map 1 :: l x1
 [3] return [2]
 
-___ tests.dup_map:map (1 -> 1) rec ___
+___ tests.dup_map:map (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: i x2
@@ -4275,7 +4275,7 @@ ___ tests.f18 (1 -> 1) ___
 [2] jump tests.f18:map 1 :: l x1
 [3] return [2]
 
-___ tests.f18:map (1 -> 1) rec ___
+___ tests.f18:map (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: i x2
@@ -4298,7 +4298,7 @@ ___ tests.f19 (1 -> 1) ___
 [2] jump tests.f19:map 1 :: l x1
 [3] return [2]
 
-___ tests.f19:map (1 -> 1) rec ___
+___ tests.f19:map (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: i x1
@@ -4313,7 +4313,7 @@ ___ tests.f19b (1 -> 1) ___
 [2] jump tests.f19b:map 1 :: l x1
 [3] return [2]
 
-___ tests.f19b:map (1 -> 1) rec ___
+___ tests.f19b:map (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: i x1
@@ -4379,7 +4379,7 @@ ___ tests.f21 (2 -> 1) ___
 [4] jump tests.f21:interleave_with 2 1 3 :: l x1
 [5] return [4]
 
-___ tests.f21:interleave_with (3 -> 1) x2 rec ___
+___ tests.f21:interleave_with (3 -> 1) x2 rec row ___
 [1] changing var :: ?i x6
 [2] changing var :: ?l x2
 [3] changing var :: ?l x2
@@ -4413,7 +4413,7 @@ ___ tests.f21b (2 -> 1) ___
 [3] jump tests.f21b:interleave 2 1 :: l x1
 [4] return [3]
 
-___ tests.f21b:interleave (2 -> 1) x2 rec ___
+___ tests.f21b:interleave (2 -> 1) x2 rec row ___
 [1] changing var :: ?l x2
 [2] changing var :: ?l x2
 [3] __primitive.ap &1 -> 4 :: l? x2
@@ -4456,7 +4456,7 @@ ___ tests.f22 (1 -> 1) ___
 [2] jump tests.f22:map 1 :: l x1
 [3] return [2]
 
-___ tests.f22:map (1 -> 1) x2 rec ___
+___ tests.f22:map (1 -> 1) x2 rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: l x3
@@ -4483,7 +4483,7 @@ ___ tests.f22:map (1 -> 1) x2 rec ___
 [24] __primitive.pushr 23 22 21 :: l x1
 [25] return [20]
 
-___ tests.f22a (1 -> 1) x2 ___
+___ tests.f22a (1 -> 1) x2 row ___
 [1] var :: ?l x1
 [2] __primitive.ap 1 -> 3 4 :: l? x4
 [3] __primitive.dep 2 :: i x4
@@ -4508,7 +4508,7 @@ ___ tests.f22b (1 -> 1) ___
 [2] jump tests.f22b:map 1 :: l x1
 [3] return [2]
 
-___ tests.f22b:map (1 -> 1) x2 rec ___
+___ tests.f22b:map (1 -> 1) x2 rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: l x4
@@ -4538,7 +4538,7 @@ ___ tests.f23 (2 -> 1) ___
 [3] jump tests.f23:zip 2 1 :: l x1
 [4] return [3]
 
-___ tests.f23:zip (2 -> 1) rec ___
+___ tests.f23:zip (2 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
@@ -4561,7 +4561,7 @@ ___ tests.f24 (1 -> 1) ___
 [2] jump tests.f24:map 1 :: l x1
 [3] return [2]
 
-___ tests.f24:map (1 -> 1) rec ___
+___ tests.f24:map (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: l x2
@@ -4580,7 +4580,7 @@ ___ tests.f25 (1 -> 1) ___
 [2] jump tests.f25:map 1 :: l x1
 [3] return [2]
 
-___ tests.f25:map (1 -> 1) rec ___
+___ tests.f25:map (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: l x2
@@ -4590,7 +4590,7 @@ ___ tests.f25:map (1 -> 1) rec ___
 [7] __primitive.pushr 6 4 :: l x1
 [8] return [7]
 
-___ tests.f25:map:map (1 -> 1) rec ___
+___ tests.f25:map:map (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: i x2
@@ -4606,7 +4606,7 @@ ___ tests.f25b (1 -> 1) ___
 [2] jump tests.f25b:map 1 :: l x1
 [3] return [2]
 
-___ tests.f25b:map (1 -> 1) rec ___
+___ tests.f25b:map (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: l x2
@@ -4616,7 +4616,7 @@ ___ tests.f25b:map (1 -> 1) rec ___
 [7] __primitive.pushr 6 4 :: l x1
 [8] return [7]
 
-___ tests.f25b:map:filter (1 -> 1) rec ___
+___ tests.f25b:map:filter (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] tests.f25b:map:filter:next_match 1 -> 3 :: l x2
 [3] __primitive.dep 2 :: i x1
@@ -4649,7 +4649,7 @@ ___ tests.f26 (2 -> 2) ___
 [5] jump list.unzip_either:map_1 3 :: l x1
 [6] return [5 4]
 
-___ tests.f26:interleave (2 -> 1) x2 rec ___
+___ tests.f26:interleave (2 -> 1) x2 rec row ___
 [1] changing var :: ?l x2
 [2] changing var :: ?l x2
 [3] __primitive.ap &1 -> 4 :: l? x2
@@ -4798,7 +4798,7 @@ ___ tests.fuse_filter_map (1 -> 1) ___
 [3] jump tests.fuse_filter_map:map_with 1 2 :: l x1
 [4] return [3]
 
-___ tests.fuse_filter_map:map_with (2 -> 1) rec ___
+___ tests.fuse_filter_map:map_with (2 -> 1) rec row ___
 [1] changing var :: ?i x1
 [2] changing var :: ?l x1
 [3] tests.fuse_filter_map:map_with:next_match 2 -> 4 :: l x2
@@ -4878,7 +4878,7 @@ ___ tests.fuse_filter_tail2 (1 -> 1) x3 ___
 [15] __primitive.ap 8 -> X :: l? x1
 [16] return [14]
 
-___ tests.fuse_filter_tail2:filter2 (1 -> 1) x2 rec ___
+___ tests.fuse_filter_tail2:filter2 (1 -> 1) x2 rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: i x2
@@ -4900,7 +4900,7 @@ ___ tests.fuse_map (1 -> 1) ___
 [2] jump tests.fuse_map:map 1 :: l x1
 [3] return [2]
 
-___ tests.fuse_map:map (1 -> 1) rec ___
+___ tests.fuse_map:map (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: i x2
@@ -4918,7 +4918,7 @@ ___ tests.fuse_map2 (1 -> 1) ___
 [2] jump tests.fuse_map2:map 1 :: l x1
 [3] return [2]
 
-___ tests.fuse_map2:map (1 -> 1) rec ___
+___ tests.fuse_map2:map (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: i x2
@@ -4949,7 +4949,7 @@ ___ tests.fuse_map4 (1 -> 1) ___
 [3] jump tests.fuse_map4:map 2 :: l x1
 [4] return [3]
 
-___ tests.fuse_map4:map (1 -> 1) rec ___
+___ tests.fuse_map4:map (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: i x2
@@ -4966,7 +4966,7 @@ ___ tests.fuse_map4b (1 -> 1) ___
 [3] jump tests.fuse_map4b:map 2 :: l x1
 [4] return [3]
 
-___ tests.fuse_map4b:map (1 -> 1) rec ___
+___ tests.fuse_map4b:map (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: i x2
@@ -4984,7 +4984,7 @@ ___ tests.fuse_map5 (1 -> 1) ___
 [4] jump tests.fuse_map5:map_with 2 3 :: l x1
 [5] return [4]
 
-___ tests.fuse_map5:map_with (2 -> 1) rec ___
+___ tests.fuse_map5:map_with (2 -> 1) rec row ___
 [1] changing var :: ?i x1
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
@@ -5001,7 +5001,7 @@ ___ tests.fuse_map5b (1 -> 1) ___
 [4] jump tests.fuse_map5b:map_with 3 2 :: l x1
 [5] return [4]
 
-___ tests.fuse_map5b:map_with (2 -> 1) rec ___
+___ tests.fuse_map5b:map_with (2 -> 1) rec row ___
 [1] changing var :: ?i x1
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
@@ -5023,7 +5023,7 @@ ___ tests.fuse_map5d (1 -> 1) ___
 [3] jump tests.fuse_map5d:map_with 1 2 :: l x1
 [4] return [3]
 
-___ tests.fuse_map5d:map_with (2 -> 1) rec ___
+___ tests.fuse_map5d:map_with (2 -> 1) rec row ___
 [1] changing var :: ?i x1
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
@@ -5043,7 +5043,7 @@ ___ tests.fuse_map5e (1 -> 1) ___
 [4] jump tests.fuse_map5e:map_with 2 3 :: l x1
 [5] return [4]
 
-___ tests.fuse_map5e:map_with (2 -> 1) rec ___
+___ tests.fuse_map5e:map_with (2 -> 1) rec row ___
 [1] changing var :: ?i x1
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
@@ -5059,7 +5059,7 @@ ___ tests.fuse_map5f (1 -> 1) ___
 [3] jump tests.fuse_map5f:map 1 2 :: l x1
 [4] return [3]
 
-___ tests.fuse_map5f:map (2 -> 1) rec ___
+___ tests.fuse_map5f:map (2 -> 1) rec row ___
 [1] changing var :: ?i x1
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
@@ -5079,7 +5079,7 @@ ___ tests.fuse_map6 (1 -> 1) ___
 [4] jump tests.fuse_map6:map_with 1 3 2 :: l x1
 [5] return [4]
 
-___ tests.fuse_map6:map_with (3 -> 1) rec ___
+___ tests.fuse_map6:map_with (3 -> 1) rec row ___
 [1] changing var :: ?i x1
 [2] changing var :: ?i x1
 [3] changing var :: ?l x1
@@ -5091,7 +5091,7 @@ ___ tests.fuse_map6:map_with (3 -> 1) rec ___
 [9] __primitive.pushr 8 7 :: l x1
 [10] return [9]
 
-___ tests.fuse_map7 (1 -> 1) ___
+___ tests.fuse_map7 (1 -> 1) row ___
 [1] var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: a x1
@@ -5099,7 +5099,7 @@ ___ tests.fuse_map7 (1 -> 1) ___
 [5] __primitive.pushr 4 3 :: l x1
 [6] return [5]
 
-___ tests.fuse_map7:map (1 -> 1) rec ___
+___ tests.fuse_map7:map (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: a x2
@@ -5170,7 +5170,7 @@ ___ tests.fuse_map_filter (1 -> 1) ___
 [2] jump tests.fuse_map_filter:filter 1 :: l x1
 [3] return [2]
 
-___ tests.fuse_map_filter:filter (1 -> 1) rec ___
+___ tests.fuse_map_filter:filter (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] tests.fuse_map_filter:filter:next_match 1 -> 3 :: l x2
 [3] __primitive.dep 2 :: i x1
@@ -5204,7 +5204,7 @@ ___ tests.fuse_map_ho (3 -> 1) ___
 [4] jump tests.fuse_map_ho:map 3 2 1 :: l x1
 [5] return [4]
 
-___ tests.fuse_map_ho:map (3 -> 1) rec ___
+___ tests.fuse_map_ho:map (3 -> 1) rec row ___
 [1] var :: ?l x2
 [2] var :: ?l x2
 [3] changing var :: ?l x1
@@ -5227,7 +5227,7 @@ ___ tests.fuse_map_with_filter (1 -> 1) ___
 [3] jump tests.fuse_map_with_filter:filter 1 2 :: l x1
 [4] return [3]
 
-___ tests.fuse_map_with_filter:filter (2 -> 1) rec ___
+___ tests.fuse_map_with_filter:filter (2 -> 1) rec row ___
 [1] changing var :: ?i x1
 [2] changing var :: ?l x1
 [3] tests.fuse_map_with_filter:filter:next_match 2 1 -> 6 5 :: l x3
@@ -5287,7 +5287,7 @@ ___ tests.fuse_map_zip_map (2 -> 1) ___
 [3] jump tests.fuse_map_zip_map:map 1 2 :: l x1
 [4] return [3]
 
-___ tests.fuse_map_zip_map:map (2 -> 1) rec ___
+___ tests.fuse_map_zip_map:map (2 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
@@ -5315,7 +5315,7 @@ ___ tests.fuse_zip_zip (3 -> 1) ___
 [4] jump tests.fuse_zip_zip:map 1 2 3 :: l x1
 [5] return [4]
 
-___ tests.fuse_zip_zip:map (3 -> 1) rec ___
+___ tests.fuse_zip_zip:map (3 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] changing var :: ?l x1
 [3] changing var :: ?l x1
@@ -5385,7 +5385,7 @@ ___ tests.id_map (1 -> 1) ___
 [1] var :: ?l x1
 [2] return [1]
 
-___ tests.id_map2 (1 -> 1) rec ___
+___ tests.id_map2 (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: a x1
@@ -5393,7 +5393,7 @@ ___ tests.id_map2 (1 -> 1) rec ___
 [5] __primitive.pushr 4 3 :: l x1
 [6] return [5]
 
-___ tests.id_quote_compose (1 -> 1) ___
+___ tests.id_quote_compose (1 -> 1) row ___
 [1] var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: a x1
@@ -5599,7 +5599,7 @@ ___ tests.left_right (1 -> 1) ___
 [3] jump tests.left_right:map_with 1 2 :: l x1
 [4] return [3]
 
-___ tests.left_right:map_with (2 -> 1) rec ___
+___ tests.left_right:map_with (2 -> 1) rec row ___
 [1] changing var :: ?y x2
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
@@ -5618,7 +5618,7 @@ ___ tests.map_add1 (1 -> 1) ___
 [2] jump tests.map_add1:map 1 :: l x1
 [3] return [2]
 
-___ tests.map_add1:map (1 -> 1) rec ___
+___ tests.map_add1:map (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: i x2
@@ -5635,7 +5635,7 @@ ___ tests.map_iteratel (1 -> 1) ___
 [3] jump tests.map_iteratel:map 2 1 :: l x1
 [4] return [3]
 
-___ tests.map_iteratel:map (2 -> 1) rec ___
+___ tests.map_iteratel:map (2 -> 1) rec row ___
 [1] var :: ?l x2
 [2] changing var :: ?i x3
 [3] __primitive.seq 5 &2 :: a x1
@@ -5755,7 +5755,7 @@ ___ tests.old_map (2 -> 1) ___
 [4] jump tests.old_map:iterate 1 3 2 :: l x1
 [5] return [4]
 
-___ tests.old_map:iterate (3 -> 1) x2 rec ___
+___ tests.old_map:iterate (3 -> 1) x2 rec row ___
 [1] changing var :: ?l x1
 [2] changing var :: ?l x2
 [3] var :: ?l x2
@@ -5833,7 +5833,7 @@ ___ tests.parallel_map_zip (2 -> 1) ___
 [3] jump tests.parallel_map_zip:zip 2 1 :: l x1
 [4] return [3]
 
-___ tests.parallel_map_zip:zip (2 -> 1) rec ___
+___ tests.parallel_map_zip:zip (2 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
@@ -5861,7 +5861,7 @@ ___ tests.parallel_map_zip2 (2 -> 1) ___
 [3] jump tests.parallel_map_zip2:zip 2 1 :: l x1
 [4] return [3]
 
-___ tests.parallel_map_zip2:zip (2 -> 1) rec ___
+___ tests.parallel_map_zip2:zip (2 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
@@ -5889,7 +5889,7 @@ ___ tests.parallel_map_zip3 (2 -> 1) ___
 [3] jump tests.parallel_map_zip3:zip 2 1 :: l x1
 [4] return [3]
 
-___ tests.parallel_map_zip3:zip (2 -> 1) rec ___
+___ tests.parallel_map_zip3:zip (2 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
@@ -5935,7 +5935,7 @@ ___ tests.pop_min_test (2 -> 1) x4 ___
 [10] __primitive.assert 2 7 :: a? x1
 [11] return [10]
 
-___ tests.popr_quote_compose (1 -> 1) ___
+___ tests.popr_quote_compose (1 -> 1) row ___
 [1] var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: l x1
@@ -6064,7 +6064,7 @@ ___ tests.reader0 (1 -> 1) ___
 [3] jump tests.reader0:foldr:iterate 2 1 :: l x1
 [4] return [3]
 
-___ tests.reader0:foldr:iterate (2 -> 1) x2 rec ___
+___ tests.reader0:foldr:iterate (2 -> 1) x2 rec row ___
 [1] changing var :: ?l x1
 [2] changing var :: ?l x2
 [3] __primitive.ap 1 -> 4 :: l? x2
@@ -6078,7 +6078,7 @@ ___ tests.reader0:foldr:iterate (2 -> 1) x2 rec ___
 [11] __primitive.unless 2 4 :: l x1
 [12] return [11]
 
-___ tests.repeat_int (1 -> 1) rec ___
+___ tests.repeat_int (1 -> 1) rec row ___
 [1] var :: ?i x2
 [2] jump tests.repeat_int &1 :: l x1
 [3] __primitive.pushr 2 1 :: l x1
@@ -6181,7 +6181,7 @@ ___ tests.stream (1 -> 2) rec ___
 [4] __primitive.quote 2 3 :: l x1
 [5] return [4 1]
 
-___ tests.stream_combine (2 -> 1) x2 rec ___
+___ tests.stream_combine (2 -> 1) x2 rec row ___
 [1] changing var :: ?l x1
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
@@ -6207,7 +6207,7 @@ ___ tests.stream_compute (6 -> 3) ___
 [9] jump tests.stream_compute:stream_write_array:zip_with 4 2 3 1 6 :: l x1
 [11] return [8 7 9]
 
-___ tests.stream_compute:stream_write_array:zip_with (5 -> 1) rec ___
+___ tests.stream_compute:stream_write_array:zip_with (5 -> 1) rec row ___
 [1] changing var is Array :: ?o x1
 [2] var :: ?l x2
 [3] changing var :: ?l x1
@@ -6241,7 +6241,7 @@ ___ tests.stream_compute2 (5 -> 3) ___
 [8] jump tests.stream_compute2:stream_write_array:zip_with 3 2 1 5 :: l x1
 [10] return [7 6 8]
 
-___ tests.stream_compute2:stream_write_array:zip_with (4 -> 1) rec ___
+___ tests.stream_compute2:stream_write_array:zip_with (4 -> 1) rec row ___
 [1] changing var is Array :: ?o x1
 [2] var :: ?l x2
 [3] changing var :: ?l x1
@@ -6282,7 +6282,7 @@ ___ tests.stream_compute_ff (4 -> 3) ___
 [7] jump tests.stream_compute_ff:stream_write_array:zip_with 2 1 4 :: l x1
 [8] return [6 5 7]
 
-___ tests.stream_compute_ff:stream_write_array:zip_with (3 -> 1) rec ___
+___ tests.stream_compute_ff:stream_write_array:zip_with (3 -> 1) rec row ___
 [1] changing var is Array :: ?o x1
 [2] changing var :: ?l x1
 [3] changing var :: ?l x1
@@ -6314,7 +6314,7 @@ ___ tests.stream_compute_fn (4 -> 3) ___
 [8] jump tests.stream_compute_fn:stream_modify_array:map_with 7 4 :: l x1
 [9] return [6 5 8]
 
-___ tests.stream_compute_fn:stream_modify_array:map_with (2 -> 1) rec ___
+___ tests.stream_compute_fn:stream_modify_array:map_with (2 -> 1) rec row ___
 [1] changing var is Array :: ?o x1
 [2] changing var :: ?i x3
 [3] __primitive.read_array 1 &2 -> 4 is Array :: o x2
@@ -6362,7 +6362,7 @@ ___ tests.sum_diff_map (1 -> 1) ___
 [2] jump tests.sum_diff_map:map 1 :: l x1
 [3] return [2]
 
-___ tests.sum_diff_map:map (1 -> 1) rec ___
+___ tests.sum_diff_map:map (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: l x2
@@ -6556,7 +6556,7 @@ ___ tests.zip_add (2 -> 1) ___
 [3] jump tests.zip_add:zip 2 1 :: l x1
 [4] return [3]
 
-___ tests.zip_add:zip (2 -> 1) rec ___
+___ tests.zip_add:zip (2 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2

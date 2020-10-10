@@ -120,6 +120,9 @@ void print_bytecode(tcell_t *entry, bool tags) {
   if(FLAG(*entry, entry, RECURSIVE)) {
     printf(" rec");
   }
+  if(FLAG(*entry, entry, ROW)) {
+    printf(" row");
+  }
   if(tags) {
     tag_t tag;
     write_tag(tag, entry->trace.hash);

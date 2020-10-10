@@ -335,7 +335,7 @@ cell_t *trace_quote_var(tcell_t *entry, cell_t *l) {
   assert_error(l != NULL);
   if(is_empty_list(l)) return l;
   if(is_var(l)) return l;
-  int x = trace_build_quote(entry, l);
+  int x = trace_build_quote(entry, l, false);
   drop(l);
   return var_create_nonlist(T_LIST, &entry[x]);
 }
