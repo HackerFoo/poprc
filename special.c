@@ -31,7 +31,7 @@
 #include "list.h"
 #include "var.h"
 
-bool ctx_has_pos(context_t *ctx) {
+bool ctx_has_pos(const context_t *ctx) {
   FOLLOW(p, ctx, up) {
     if(p->src && (*p->src)->pos) {
       return true;
@@ -40,7 +40,7 @@ bool ctx_has_pos(context_t *ctx) {
   return false;
 }
 
-bool ctx_split(cell_t *c, context_t *ctx) {
+bool ctx_split(cell_t *c, const context_t *ctx) {
   assert_error(is_var(c), "split on context only at variables");
   tcell_t *entry = var_entry(c->value.var);
   if(entry->entry.specialize) return false;

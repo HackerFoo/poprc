@@ -1161,7 +1161,7 @@ bool convert_to_opaque(cell_t *c) {
   return true;
 }
 
-alt_set_t ctx_alt_set(context_t *ctx) {
+alt_set_t ctx_alt_set(const context_t *ctx) {
   alt_set_t as = 0;
   FOLLOW(p, ctx, up) {
     as |= p->alt_set;

@@ -64,14 +64,16 @@ cell_t *_op1(cell_t *c, type_t arg_type, type_t res_type,
 }
 
 static
-bool bound_contexts_noop(UNUSED cell_t *c,
-                         UNUSED context_t *ctx,
+bool bound_contexts_noop(UNUSED const cell_t *c,
+                         UNUSED const context_t *ctx,
                          UNUSED context_t *arg_ctx) {
   return false;
 }
 
 static
-bool bound_contexts_arith(cell_t *c, context_t *ctx, context_t *arg_ctx) {
+bool bound_contexts_arith(const cell_t *c,
+                          const context_t *ctx,
+                          context_t *arg_ctx) {
   if(trace_current_entry() == NULL) {
     return false;
   }
@@ -150,7 +152,9 @@ bool bound_contexts_arith(cell_t *c, context_t *ctx, context_t *arg_ctx) {
 }
 
 static
-bool bound_contexts_cmp(cell_t *c, context_t *ctx, context_t *arg_ctx) {
+bool bound_contexts_cmp(const cell_t *c,
+                        const context_t *ctx,
+                        context_t *arg_ctx) {
   if(trace_current_entry() == NULL ||
      ctx->t != T_SYMBOL ||
      !range_singleton(ctx->bound)) {
@@ -213,7 +217,7 @@ range_t no_range_op(UNUSED range_t a,
 }
 
 cell_t *no_identity(UNUSED cell_t *p,
-                 UNUSED cell_t *q) {
+                    UNUSED cell_t *q) {
   return NULL;
 }
 
@@ -223,10 +227,10 @@ response func_op2(cell_t **cp, context_t *ctx,
                   val_t (*op)(val_t, val_t),
                   range_t (*range_op)(range_t, range_t),
                   bool nonzero,
-                  bool (*bound_contexts)(cell_t *, context_t *, context_t *),
+                  bool (*bound_contexts)(const cell_t *, const context_t *, context_t *),
                   cell_t *(*identity)(cell_t *, cell_t *)) {
   cell_t *res = 0;
-  PRE(op2);
+  PRE(op2, "%O", (*cp)->op);
 
   CHECK_IF(!check_type(ctx->t, res_type), FAIL);
 
@@ -268,7 +272,7 @@ response func_op1(cell_t **cp, context_t *ctx,
                   int arg_type, int res_type,
                   val_t (*op)(val_t), val_t (*inv_op)(val_t)) {
   cell_t *res = 0;
-  PRE(op1);
+  PRE(op1, "%O", (*cp)->op);
 
   CHECK_IF(!check_type(ctx->t, res_type), FAIL);
 
@@ -296,7 +300,7 @@ cell_t *_op1_float(double (*op)(double), cell_t *x) {
 
 response func_op2_float(cell_t **cp, context_t *ctx, double (*op)(double, double), bool nonzero) {
   cell_t *res = 0;
-  PRE(op2_float);
+  PRE(op2_float, "%O", (*cp)->op);
 
   CHECK_IF(!check_type(ctx->t, T_FLOAT), FAIL);
 
@@ -319,7 +323,7 @@ response func_op2_float(cell_t **cp, context_t *ctx, double (*op)(double, double
 
 response func_op1_float(cell_t **cp, context_t *ctx, double (*op)(double)) {
   cell_t *res = 0;
-  PRE(op1_float);
+  PRE(op1_float, "%O", (*cp)->op);
 
   CHECK_IF(!check_type(ctx->t, T_FLOAT), FAIL);
 
