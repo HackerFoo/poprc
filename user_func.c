@@ -1010,7 +1010,7 @@ response func_exec_trace(cell_t **cp, context_t *ctx) {
       context_t arg_ctx = t == T_OPAQUE ?
         CTX(opaque, in_opaque[i]) :
         CTX(t, t);
-      CHECK_IF(WITH(x, &arg_ctx, priority, PRIORITY_ASSERT - 1,
+      CHECK_IF(WITH(x, &arg_ctx, x->priority = PRIORITY_ASSERT - 1,
                     reduce(&c->expr.arg[i], x)) == FAIL, FAIL);
     }
 
@@ -1031,7 +1031,7 @@ response func_exec_trace(cell_t **cp, context_t *ctx) {
     if(is_list(*ap) &&
        closure_is_ready(left = *leftmost(ap))) {
       LOG(HACK " forced cells[%C].expr.arg[%d]", c, i);
-      CHECK(WITH(x, &CTX(return), priority, PRIORITY_TOP, func_list(ap, x)));
+      CHECK(WITH(x, &CTX(return), x->priority = PRIORITY_TOP, func_list(ap, x)));
       CHECK_DELAY();
 
       // ensure quotes are stored first

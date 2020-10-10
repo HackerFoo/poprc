@@ -145,7 +145,7 @@ OP(seq) {
   cell_t *q = NULL;
   bool q_var = false;
   int pos = c->pos;
-  CHECK(WITH(x, &CTX(any), flags, x->flags | CONTEXT_SEQ, reduce_arg(c, 1, x))); // don't split arg here?
+  CHECK(WITH(x, &CTX(any), x->flags |= CONTEXT_SEQ, reduce_arg(c, 1, x))); // don't split arg here?
   if(rsp == SUCCESS) {
     q = c->expr.arg[1];
     q_var = is_var(q);
@@ -227,7 +227,7 @@ OP(unless) {
   cell_t **p = &c->expr.arg[0];
   cell_t **q = &c->expr.arg[1];
   while(*q) {
-    response rsp0 = WITH(x, &CTX(any), flags, x->flags ^ CONTEXT_INV, reduce(q, x));
+    response rsp0 = WITH(x, &CTX(any), x->flags ^= CONTEXT_INV, reduce(q, x));
     CHECK_IF(rsp0 == RETRY, RETRY);
     if(rsp0 == DELAY) {
       rsp = DELAY;

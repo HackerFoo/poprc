@@ -387,7 +387,7 @@ response reduce(cell_t **cp, context_t *ctx) {
 
 response simplify_2(cell_t **cp, context_t *ctx) {
   CONTEXT("simplify %C", *cp);
-  return WITH(x, ctx, priority, PRIORITY_SIMPLIFY,
+  return WITH(x, ctx, x->priority = PRIORITY_SIMPLIFY,
               reduce(cp, x));
 }
 
