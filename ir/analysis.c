@@ -476,6 +476,8 @@ int stream_bits(tcell_t *entry, tcell_t *tc, int offset) {
 // calculate the address and data width of an array expression
 void array_bits(tcell_t *entry, tcell_t *tc, int aw, int bw) {
   assert_error(ONEOF(trace_type(tc), T_OPAQUE, T_ANY, T_BOTTOM));
+  trace_set_type(tc, T_OPAQUE); // ***
+  tc->trace.range.min = SYM_Array; // ***
   assert_error(trace_opaque_symbol(tc) == SYM_Array);
   if(tc->trace.addr_width && tc->trace.addr_width >= aw &&
      tc->trace.bit_width && tc->trace.bit_width >= bw) return;

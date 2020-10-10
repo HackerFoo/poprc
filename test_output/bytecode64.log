@@ -2095,7 +2095,7 @@ ___ list.length:iterate (2 -> 1) x2 rec ___
 [11] return [10]
 
 ___ list.listdup (2 -> 1) ___
-[1] var :: ?a x1
+[1] var :: ?l x1
 [2] var :: ?i x1
 [3] [] :: l x1
 [4] jump list.listdup:times:iterate 2 1 3 :: l x1
@@ -2103,7 +2103,7 @@ ___ list.listdup (2 -> 1) ___
 
 ___ list.listdup:times:iterate (3 -> 1) x2 rec ___
 [1] changing var :: ?l x2
-[2] var :: ?a x2
+[2] var :: ?l x2
 [3] changing var :: ?i x2
 [4] __primitive.gt &3 5 :: y x2
 [5] val 0 :: i x1
@@ -5636,7 +5636,7 @@ ___ tests.it10b:iterate (1 -> 1) x2 rec ___
 [14] return [9]
 
 ___ tests.ldmult (2 -> 1) ___
-[1] var :: ?a x1
+[1] var :: ?l x1
 [2] var :: ?i x1
 [3] list.listdup:times:iterate 2 1 4 :: l x1
 [4] [] :: l x1

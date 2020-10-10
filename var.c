@@ -225,8 +225,9 @@ tcell_t *concatenate_conditions(tcell_t *a, tcell_t *b) {
   if(a == NULL) return b;
   if(b == NULL) return a;
   tcell_t *entry = var_entry(a);
+  switch_entry_var(entry, b, false);
   b = var_for_entry(entry, b);
-  assert_error(b, "%s %d %d", entry->word_name, a-entry, b-entry);
+  assert_error(b, "%s %T %T", entry->word_name, a, b);
   int bi = var_index(entry, b);
   tcell_t *an = &entry[copy_conditions(entry, var_index(entry, a), bi)];
   LOG("condition %s %d ... %d %O arg <- %d",

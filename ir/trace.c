@@ -260,7 +260,7 @@ tcell_t *var_entry(tcell_t *v) {
   for(tcell_t *e = block_first_entry(v);
       e < trace_ptr;
       e = trace_entry_next(e)) {
-    assert_error(is_persistent(e));
+    if(!is_persistent(e)) return NULL;
     if(entry_has(e, v)) return e;
   }
   return NULL;

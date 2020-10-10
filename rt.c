@@ -589,7 +589,7 @@ cell_t *func(op op, csize_t in, csize_t out) {
 /* arg is destructive to c */
 void arg(cell_t *c, cell_t *a) {
   assert_error(is_closure(c) && is_closure(a));
-  assert_error(!closure_is_ready(c));
+  assert_error(!closure_is_ready(c), "%C", c);
   csize_t i = closure_next_child(c);
   if(!is_data(c->expr.arg[i])) {
     c->expr.arg[0] = (cell_t *)(intptr_t)
@@ -673,6 +673,7 @@ void store_fail(cell_t *c, cell_t *alt, context_t *ctx) { // CLEANUP
 
 cell_t *dep_var(cell_t *c, csize_t i, type_t t) {
   assert_error(is_var(c));
+  assert_error(i < closure_args(c->value.var));
   cell_t *v = make_val(t);
   v->arg_index = i;
   v->value.flags = VALUE_VAR | VALUE_DEP;

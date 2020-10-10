@@ -623,6 +623,12 @@ cell_t *flat_call(cell_t *c, tcell_t *entry) {
   tcell_t *parent_entry = entry->entry.parent;
   CONTEXT("flat call %C (%s -> %s)", c,
           parent_entry->word_name, entry->word_name);
+  USE_TMP(); // fix
+  cell_t *vl = 0;
+  input_var_list(c, &vl); // expand if needed
+  FOLLOW(p, vl, tmp) {
+    switch_entry(entry, p);
+  }
   csize_t
     in = entry->entry.in,
     out = entry->entry.out;
@@ -630,9 +636,6 @@ cell_t *flat_call(cell_t *c, tcell_t *entry) {
     .expr.out = out - 1,
     .op = OP_exec
   );
-  USE_TMP(); // fix
-  cell_t *vl = 0;
-  input_var_list(c, &vl);
   assert_error(tmp_list_length(vl) == in,
                "%d != %d, %s @specialize",
                tmp_list_length(vl), in, entry->word_name);
@@ -804,7 +807,7 @@ response func_exec_specialize(cell_t **cp, context_t *ctx) {
   new_entry->word_name = sub_id ?
     string_printf("%s:%s_%d", parent_entry->word_name, sub_name, sub_id) :
     string_printf("%s:%s", parent_entry->word_name, sub_name);
-  LOG("created entry for %s", new_entry->word_name);
+  LOG("created entry for %s(%d)", new_entry->word_name, TRACE_INDEX(new_entry));
 
   specialize.initial = TAG_PTR(ref(c), "specialize.initial");
   insert_root(&c);
@@ -946,14 +949,22 @@ response func_exec_trace(cell_t **cp, context_t *ctx) {
   const size_t out = closure_out(c) + 1;
   trace_t tr;
   assert_ge(out, entry->entry.out);
-  if(in < entry->entry.in) {
+  if(in < entry->entry.in) { // move this into specialization of v?
+    assert_error(in && c->expr.arg[0]);
     int offset = entry->entry.in - in;
+    cell_t *v = c->expr.arg[0]; // ***
+    while(is_id_list(v)) v = v->value.ptr[0];
+    assert_error(is_var(v));
+    tcell_t *v_entry = get_entry(v->value.var);
+    assert_error(v_entry);
+    assert_eq(closure_args(v->value.var), v_entry->entry.in + v_entry->entry.out);
+    assert_error(offset < v_entry->entry.out);
     c = expand(c, offset); // *** could break deps
+    assert_eq(closure_args(c), entry->entry.in + entry->entry.out);
     memmove(&c->expr.arg[entry->entry.in], &c->expr.arg[in], sizeof(cell_t *) * out);
-    cell_t *v = c->expr.arg[0];
     int d0 = closure_args(v->value.var) - closure_out(v->value.var);
     COUNTUP(i, offset) {
-      c->expr.arg[i + in] = dep_var(c->expr.arg[0], d0 + i, T_ANY);
+      c->expr.arg[i + in] = dep_var(v, d0 + i, T_ANY);
     }
     in = entry->entry.in;
   }
@@ -969,8 +980,8 @@ response func_exec_trace(cell_t **cp, context_t *ctx) {
     // find types of inputs
     FOR_TRACE(p, entry) {
       if(is_var(p) && p->var_index) {
-        assert_le(p->var_index, in);
-        int i = in - p->var_index;
+        assert_le(p->var_index, entry->entry.in);
+        int i = entry->entry.in - p->var_index;
         type_t t = p->value.type;
         in_types[i] = t;
         if(t == T_OPAQUE) in_opaque[i] = p->trace.range.min;
@@ -1120,13 +1131,13 @@ cell_t *find_call(cell_t *l) {
 
 // expand tail call to add more return values
 static
-cell_t *expand_tail_call(tcell_t *entry, cell_t *l, cell_t *call, int n) {
+cell_t *expand_tail_call(tcell_t *entry, cell_t *l, int ri, cell_t *call, int n) {
   if(!l || n <= 1) return ref(l);
   int lsize = list_size(l);
   assert_error(lsize);
   int nlsize = lsize - 1 + n;
 
-  assert_error(closure_entry(call) == entry, "expected call %E, got %E %C", entry, closure_entry(call), call); 
+  assert_error(closure_entry(call) == entry, "expected call %E, got %E %C", entry, closure_entry(call), call);
 
   // expand the call and return
   cell_t *nl = make_list(entry->entry.out);
@@ -1137,7 +1148,7 @@ cell_t *expand_tail_call(tcell_t *entry, cell_t *l, cell_t *call, int n) {
   new_call->expr.out = entry->entry.out - 1;
   TRAVERSE_REF(new_call, in);
   cell_t **p = &nl->value.ptr[nlsize - 1];
-  cell_t *r = l->value.ptr[lsize-1]; // ***
+  cell_t *r = l->value.ptr[ri];
   cell_t **deps = get_closure_deps(new_call);
   *p-- = with_conditions(r, call, new_call);
   COUNTUP(i, entry->entry.out - 1) {
@@ -1148,7 +1159,7 @@ cell_t *expand_tail_call(tcell_t *entry, cell_t *l, cell_t *call, int n) {
   new_call->n = entry->entry.out - 1;
 
   // expand rest of alts
-  nl->alt = expand_tail_call(entry, l->alt, find_call(l->alt), n);
+  nl->alt = expand_tail_call(entry, l->alt, ri, find_call(l->alt), n);
 
   return nl;
 }
@@ -1157,9 +1168,12 @@ cell_t *expand_tail_call(tcell_t *entry, cell_t *l, cell_t *call, int n) {
 static
 cell_t *lift_recursion(cell_t *c,
                        cell_t *l,
+                       int ri,
                        int n,
                        uintptr_t lifted_args) {
+  assert_counter(10000);
   int lsize = list_size(l);
+  assert_lt(lsize, 20);
   assert_error(lsize);
   int nlsize = lsize - 1 + n;
   tcell_t *entry = trace_current_entry();
@@ -1172,15 +1186,19 @@ cell_t *lift_recursion(cell_t *c,
   cell_t **p = &nl->value.ptr[nlsize - 1];
   COUNTUP(i, n) {
     if(lifted_args & (1ul << i)) {
-      *p-- = with_conditions(l->value.ptr[lsize-1], c, ref(c->expr.arg[i])); // ***
+      *p-- = with_conditions(l->value.ptr[ri], c, ref(c->expr.arg[i])); // ***
     }
   }
 
-  cell_t *call = find_call(l->alt);
-  if(closure_entry(call) == closure_entry(c)) {
-    nl->alt = lift_recursion(call, l->alt, n, lifted_args);
+  if(l->alt) {
+    cell_t *call = find_call(l->alt);
+    if(closure_entry(call) == closure_entry(c)) {
+      nl->alt = lift_recursion(call, l->alt, ri, n, lifted_args);
+    } else {
+      nl->alt = expand_tail_call(entry, l->alt, ri, call, n);
+    }
   } else {
-    nl->alt = expand_tail_call(entry, l->alt, call, n);
+    nl->alt = NULL;
   }
   return nl;
 }
@@ -1241,7 +1259,8 @@ response func_exec_lift_recursion(tcell_t *entry, cell_t **cp, context_t *ctx) {
       l = p->src;
     }
     assert_error(*l && ptr);
-    cell_t *nl = lift_recursion(c, *l, n, lifted_args);
+    int ri = ptr - (*l)->value.ptr; // return index
+    cell_t *nl = lift_recursion(c, *l, ri, n, lifted_args);
     drop(*l);
     *l = nl;
   }
