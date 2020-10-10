@@ -31,7 +31,7 @@
 #include "ir/compile.h"
 #include "ir/trace.h"
 #include "list.h"
-#include "user_func.h"
+#include "user_func-local.h"
 #include "debug/print.h"
 #include "parse/parse.h" // for string_printf
 #include "debug/tags.h"
@@ -82,6 +82,7 @@ cell_t *get_return_arg(tcell_t *entry, tcell_t *returns, intptr_t x) {
 
 // given a list l with arity in -> out, produce an application of the list
 // [X -> Y] => [X -> Y] apXY
+static
 cell_t *apply_list(cell_t *l, csize_t in, csize_t out) {
   LOG("apply list %C %d %d", l, in, out);
   cell_t *c = func(OP_ap, in + 1, out + 1);
@@ -98,41 +99,6 @@ cell_t *apply_list(cell_t *l, csize_t in, csize_t out) {
   return c;
 }
 
-// print a representation of a pattern for debugging
-void print_pattern(cell_t *pattern) {
-  if(is_var(pattern)) {
-    printf(" ?%d", (int)var_index(NULL, pattern->value.var));
-  } else if(is_list(pattern)) {
-    csize_t in = function_in(pattern);
-    cell_t **p;
-    printf(" [");
-    if(in) printf(" %d ->", in);
-    FORLIST(p, pattern) {
-      print_pattern(*p);
-    }
-    printf(" ]");
-  } else {
-    printf(" %c", 'A' + (char)((pattern-cells) % 26));
-  }
-}
-
-// print the list of bindings for debugging
-void print_bindings(cell_t *vl) {
-  FOLLOW(p, q, vl, tmp) {
-    csize_t x = var_index(NULL, p->value.var);
-    printf("?%d = %d\n", x, (int)(q-cells));
-  }
-}
-
-// print the word to match and its patterns
-void print_word_pattern(cell_t *word) {
-  printf("pattern:");
-  COUNTUP(i, closure_in(word)) {
-    print_pattern(word->expr.arg[i]);
-  }
-  printf("\n");
-}
-
 static
 bool match_op(const cell_t *a, const cell_t *b) {
   if(is_value(a) || is_value(b)) return false;
@@ -147,6 +113,7 @@ bool match_op(const cell_t *a, const cell_t *b) {
 // build a binding list by applying the pattern to c
 // don't produce bindings if tail is NULL, used to simplify before USE_TMP()
 // TODO add reduction back in
+static
 cell_t **bind_pattern(tcell_t *entry, cell_t **cp, cell_t *pattern, cell_t **tail) {
   cell_t *c;
 start:
@@ -317,6 +284,7 @@ response exec_list(cell_t **cp, context_t *ctx) {
 //   for F = g . f . g', where g . g' = id,
 //       F^n = (g . f . g')^n = g . f^n . g'
 // eliminating the intermediate cancelling g/g' pairs.
+static
 response unify_exec(cell_t **cp, context_t *ctx) {
   PRE(unify_exec, "#specialize");
 
@@ -389,6 +357,7 @@ response unify_exec(cell_t **cp, context_t *ctx) {
 }
 
 // reassign c's deps to r
+static
 void reassign_deps(cell_t *c, cell_t *r) {
   refcount_t n = 0;
   csize_t out_n = closure_out(c);
@@ -571,6 +540,7 @@ cell_t *exec_expand(cell_t *c, tcell_t *new_entry) {
 }
 
 // builds a temporary list of referenced variables
+static
 cell_t **input_var_list(cell_t *c, cell_t **tail) {
   if(c && !c->tmp_val && tail != &c->tmp) {
     if(is_var(c) && !is_list(c)) {
@@ -593,6 +563,7 @@ cell_t **input_var_list(cell_t *c, cell_t **tail) {
 }
 
 // remove vars from p that are not in entry
+static
 void vars_in_entry(cell_t **p, tcell_t *entry) {
   while(*p) {
     cell_t *v = *p;
@@ -610,6 +581,7 @@ void vars_in_entry(cell_t **p, tcell_t *entry) {
 
 // the argument order needs to be consistent on recursive calls
 // re-number inputs to match the order they are reached from specialize->expand
+static
 void reassign_input_order(tcell_t *entry) {
   if(!entry->entry.specialize) return;
   cell_t *c = entry->entry.specialize->expand;
@@ -645,6 +617,7 @@ void reassign_input_order(tcell_t *entry) {
 // build a call into entry from its parent
 // this doesn't work for quotes
 // all c's input args must be params
+static
 cell_t *flat_call(cell_t *c, tcell_t *entry) {
   tcell_t *parent_entry = entry->entry.parent;
   CONTEXT("flat call %C (%s -> %s)", c,
@@ -1186,6 +1159,7 @@ cell_t *expand_tail_call(tcell_t *entry, cell_t *l, cell_t *call, int n) {
 }
 
 // remove inner recursive calls that have been lifted out of loops
+static
 cell_t *lift_recursion(cell_t *c,
                        cell_t *l,
                        int n,
@@ -1244,87 +1218,43 @@ bool eliminate_seq(context_t *ctx) {
   return false;
 }
 
-OP(exec) {
-  tcell_t *entry = closure_entry(*cp);
-  PRE(exec, "%s", entry->word_name);
+static
+response func_exec_lift_recursion(tcell_t *entry, cell_t **cp, context_t *ctx) {
+  cell_t *c = *cp;
+  assert_error(!(ctx->flags & CONTEXT_REDUCE_LISTS));
+  assert_error(FLAG(*entry, entry, ROW)); // TODO
+  csize_t in = closure_in(c);
+  int n = 0;
+  uintptr_t lifted_args = 0;
 
-  if(FLAG(*entry, entry, ROW) && ctx->t == T_LIST && ctx->s.out) {
-    if(c->pos) {
-      tcell_t *e = pos_entry(c->pos);
-      c = unique(cp);
-      c->pos = e->pos; // *** move tail calls out
-      mark_barriers(e, c);
-      move_changing_values(e, c);
-    }
-    // inline (below)
-  } else {
-    if(NOT_FLAG(*entry, entry, COMPLETE)) { // unify a self call with the initial call
-      delay_branch(ctx, PRIORITY_DELAY);
-      CHECK_PRIORITY(PRIORITY_EXEC_SELF);
-      if(entry->entry.specialize && NOT_FLAG(*c, expr, NO_UNIFY)) {
-        rsp = unify_exec(cp, ctx);
-        if(rsp == FAIL) {
-          LOG(MARK("WARN") " unify failed: %C %C",
-              *cp, entry->entry.specialize->initial);
-          ABORT(FAIL);
-        }
-        if(rsp != SUCCESS) return rsp;
-      }
-      return func_exec_trace(cp, ctx);
-    } else if(trace_current_entry()) { // perform specialization
-      if(is_specialized_to(entry, c)) {
-        return func_exec_trace(cp, ctx);
-      } else if(FLAG(*entry, entry, RECURSIVE)) {
-        CHECK_PRIORITY(PRIORITY_EXEC_SELF);
-        if(c->pos && c->pos <= trace_current_entry()->pos) { // lift recursion out of loop
-          assert_error(!(ctx->flags & CONTEXT_REDUCE_LISTS));
-          assert_error(FLAG(*entry, entry, ROW)); // TODO
-          csize_t in = closure_in(c);
-          int n = 0;
-          uintptr_t lifted_args = 0;
-
-          // find args that should escape the loop
-          assert_error(in < sizeof_bits(lifted_args));
-          COUNTUP(i, in) {
-            if(has_var(c->expr.arg[i])) {
-              lifted_args |= 1ul << i;
-              n++;
-            }
-          }
-          if(n == 1) {
-            store_reduced(cp, ctx, ref(c->expr.arg[0])); // HACK
-            return SUCCESS;
-          } else if(eliminate_seq(ctx)) {
-            return RETRY;
-          } else { // TODO properly move recursive function out
-            cell_t **l = NULL;
-            FOLLOW(p, ctx, up) { // cause retry up to return
-              p->flags |= CONTEXT_RETRY;
-              l = p->src;
-            }
-            cell_t *nl = lift_recursion(c, *l, n, lifted_args);
-            drop(*l);
-            *l = nl;
-            return RETRY;
-          }
-        }
-        return func_exec_specialize(cp, ctx);
-      }
+  // find args that should escape the loop
+  assert_error(in < sizeof_bits(lifted_args));
+  COUNTUP(i, in) {
+    if(has_var(c->expr.arg[i])) {
+      lifted_args |= 1ul << i;
+      n++;
     }
   }
-
-  // inline the function
-  assert_counter(1000);
-
-  if(FLAG(*c, expr, RECURSIVE)) {
-    TRAVERSE(c, in) {
-      CHECK(force(p));
+  if(n == 1) {
+    store_reduced(cp, ctx, ref(c->expr.arg[0])); // remove call
+    return SUCCESS;
+  } else if(!eliminate_seq(ctx)) {
+    cell_t **l = NULL, **ptr = NULL;
+    FOLLOW(p, ctx, up) { // cause retry up to return
+      p->flags |= CONTEXT_RETRY;
+      if(l && *l != *p->src) ptr = l;
+      l = p->src;
     }
-    CHECK_DELAY();
+    assert_error(*l && ptr);
+    cell_t *nl = lift_recursion(c, *l, n, lifted_args);
+    drop(*l);
+    *l = nl;
   }
-  cell_t *res = exec_expand(c, NULL);
+  return RETRY;
+}
 
-  // debug tracing
+// debug tracing
+void debug_trace(tcell_t *entry, cell_t *c) {
   if(FLAG(*entry, entry, TRACE)) {
     printf(NOTE("TRACE") " %s.%s", entry->module_name, entry->word_name);
     TRAVERSE(c, in) {
@@ -1337,21 +1267,68 @@ OP(exec) {
       breakpoint();
     }
   }
+}
 
+OP(exec) {
+  tcell_t *entry = closure_entry(*cp);
+  PRE(exec, "%s", entry->word_name);
+
+  if(trace_current_entry() && // tracing enabled and not unrolling
+     !(FLAG(*entry, entry, ROW) && ctx->t == T_LIST && ctx->s.out)) {
+
+    if(NOT_FLAG(*entry, entry, COMPLETE)) { // entry is incomplete
+      delay_branch(ctx, PRIORITY_DELAY);
+
+      // unify a self call with the initial call
+      CHECK_PRIORITY(PRIORITY_EXEC_SELF);
+      if(entry->entry.specialize && NOT_FLAG(*c, expr, NO_UNIFY)) {
+        rsp = unify_exec(cp, ctx);
+        if(rsp == FAIL) {
+          LOG(MARK("WARN") " unify failed: %C %C",
+              *cp, entry->entry.specialize->initial);
+          ABORT(FAIL);
+        }
+        if(rsp != SUCCESS) return rsp;
+      }
+      return func_exec_trace(cp, ctx);
+    } else if(is_specialized_to(entry, c)) {
+      return func_exec_trace(cp, ctx);
+    } else if(FLAG(*entry, entry, RECURSIVE)) {
+      CHECK_PRIORITY(PRIORITY_EXEC_SELF);
+      if(c->pos && c->pos <= trace_current_entry()->pos) {
+        // lift tail call out of loop
+        return func_exec_lift_recursion(entry, cp, ctx);
+      } else {
+        return func_exec_specialize(cp, ctx);
+      }
+    }
+  }
+
+  // inline the function
+  assert_counter(1000);
+
+  if(c->pos && ctx->t == T_LIST) {
+    tcell_t *e = pos_entry(c->pos);
+    c = unique(cp);
+    c->pos = e->pos; // *** to move tail calls out
+    mark_barriers(e, c);
+    move_changing_values(e, c);
+  }
+
+  if(FLAG(*c, expr, RECURSIVE)) {
+    TRAVERSE(c, in) {
+      CHECK(force(p));
+    }
+    CHECK_DELAY();
+  }
+  cell_t *res = exec_expand(c, NULL);
+
+  debug_trace(entry, c);
   store_lazy(cp, res, 0);
   return RETRY;
 
  abort:
   return abort_op(rsp, cp, ctx);
-}
-
-void reduce_quote(cell_t **cp) {
-  if(is_user_func(*cp) && closure_is_ready(*cp)) { // HACKy
-    LOG("HACK reduce_quote[%C]", *cp);
-    insert_root(cp);
-    force(cp);
-    remove_root(cp);
-  }
 }
 
 bool is_self_call(const tcell_t *e, const tcell_t *c) {

@@ -195,7 +195,6 @@ start:
     return &it->array[it->index++];
   } else if(it->row && it->index == it->size) {
     cell_t **rp = &it->array[it->size];
-    // if(closure_is_ready(*rp)) reduce_quote(rp); // ***
     if(is_list(*rp)) { // ***
       *it = list_begin(*rp);
       goto start;
