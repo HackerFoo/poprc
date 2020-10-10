@@ -1060,13 +1060,7 @@ bool is_specialized_to(tcell_t *entry, cell_t *c) {
   int in = entry->entry.in;
   assert_error(in == closure_in(c));
   if(NOT_FLAG(*entry, entry, RECURSIVE)) {
-    if(entry->entry.alts == 1) return false;
-    COUNTUP(i, in) {
-      if(ONEOF(entry[i+1].value.type, T_LIST, T_ANY)) {
-        return false;
-      }
-    }
-    return true;
+    return false;
   }
   COUNTUP(i, in) {
     int a = REVI(i);

@@ -5,22 +5,30 @@ ___ algorithm.^ (2 -> 1) ___
 [4] jump algorithm.^:iterate 1 2 3 :: i x1
 [5] return [4]
 
-___ algorithm.^:iterate (3 -> 1) x2 rec ___
-[1] changing var :: ?i x2
+___ algorithm.^:iterate (3 -> 1) x3 rec ___
+[1] changing var :: ?i x3
 [2] changing var :: ?i x3
 [3] changing var :: ?i x3
-[4] __primitive.neq &3 5 :: y x2
+[4] __primitive.neq &3 5 :: y x3
 [5] val 0 :: i x1
 [6] __primitive.not &4 :: y x1
 [7] __primitive.assert &1 6 :: i? x1
-[8] return [7] -> 15
-[9] __primitive.assert 14 4 :: i? x1
-[10] __primitive.shiftr &3 11 :: i x1
-[11] val 1 :: i x1
-[12] __primitive.mul &2 &2 :: i x1
-[13] algorithm.acc_odd_power 1 2 3 :: i x1
-[14] jump algorithm.^:iterate 10 12 13 :: i x1
-[15] return [9]
+[8] return [7] -> 18
+[9] __primitive.assert 17 &4 :: i? x1
+[10] __primitive.shiftr &3 &11 :: i x2.
+[11] val 1 :: i x3
+[12] __primitive.mul &2 &2 :: i x2.
+[13] __primitive.bitand 3 &11 in [0, 1] :: i x1.
+[14] __primitive.eq 13 11 :: y x2.
+[15] __primitive.assert 16 &14 :: i? x1
+[16] __primitive.mul 1 2 :: i x1
+[17] jump algorithm.^:iterate 10 12 15 :: i x1
+[18] return [9] -> 23
+[19] __primitive.assert 22 4 :: i? x1
+[20] __primitive.not 14 :: y x1
+[21] __primitive.assert 1 20 :: i? x1
+[22] jump algorithm.^:iterate 10 12 21 :: i x1
+[23] return [19]
 
 ___ algorithm.acc_odd_power (3 -> 1) x2 ___
 [1] var :: ?i x1
@@ -65,14 +73,18 @@ ___ algorithm.gcd:iterate (2 -> 1) x2 rec ___
 [10] jump algorithm.gcd:iterate 9 2 :: i x1
 [11] return [8]
 
-___ algorithm.in_range (3 -> 1) ___
+___ algorithm.in_range (3 -> 1) x2 ___
 [1] var :: ?i x1
 [2] var :: ?i x1
 [3] var :: ?i x2
-[4] __primitive.gte &3 2 :: y x1
-[5] __primitive.lte 3 1 :: y x1
-[6] jump logic.and 4 5 :: y x1
-[7] return [6]
+[4] __primitive.lte &3 1 :: y x2
+[5] __primitive.assert 6 &4 :: y? x1
+[6] __primitive.gte 3 2 :: y x1
+[7] return [5] -> 11
+[8] __primitive.not 4 :: y x1
+[9] __primitive.assert 10 8 is False :: y? x1
+[10] val False :: y x1
+[11] return [9]
 
 ___ algorithm.iota2 (1 -> 1) ___
 [1] var :: ?l x1
@@ -95,15 +107,21 @@ ___ algorithm.iota2:iterate (1 -> 1) x2 rec ___
 [13] jump algorithm.iota2:iterate 12 :: l x1
 [14] return [9]
 
-___ algorithm.power_step (3 -> 3) ___
+___ algorithm.power_step (3 -> 3) x2 ___
 [1] var :: ?i x2
 [2] var :: ?i x3
-[3] var :: ?i x1
-[4] __primitive.shiftr &1 5 :: i x1
-[5] val 1 :: i x1
-[6] __primitive.mul &2 &2 :: i x1
-[7] jump algorithm.acc_odd_power 3 2 1 :: i x1
-[8] return [7 6 4]
+[3] var :: ?i x2
+[4] __primitive.shiftr &1 &5 :: i x2
+[5] val 1 :: i x3
+[6] __primitive.mul &2 &2 :: i x2
+[7] __primitive.bitand 1 &5 in [0, 1] :: i x1
+[8] __primitive.eq 7 5 :: y x2
+[9] __primitive.assert 10 &8 :: i? x1
+[10] __primitive.mul 3 2 :: i x1
+[11] return [9 6 4] -> 15
+[13] __primitive.not 8 :: y x1
+[14] __primitive.assert 3 13 :: i? x1
+[15] return [14 6 4]
 
 ___ algorithm.reduce_power (2 -> 2) ___
 [1] var :: ?i x1
@@ -2689,12 +2707,16 @@ ___ logic.default (2 -> 1) x2 ___
 [4] __primitive.unless 1 2 :: a x1
 [5] return [4]
 
-___ logic.implies (2 -> 1) ___
-[1] var :: ?y x1
+___ logic.implies (2 -> 1) x2 ___
+[1] var :: ?a x1
 [2] var :: ?y x1
-[3] __primitive.not 2 :: y x1
-[4] jump logic.or 1 3 :: y x1
-[5] return [4]
+[3] __primitive.not 2 :: y x2
+[4] __primitive.not &3 :: y x1
+[5] __primitive.assert 1 4 :: a? x1
+[6] return [5] -> 9
+[7] __primitive.assert 8 3 is True :: y? x1
+[8] val True :: y x1
+[9] return [7]
 
 ___ logic.or (2 -> 1) x2 ___
 [1] var :: ?y x2
@@ -3828,19 +3850,32 @@ ___ tests.collatz (1 -> 1) ___
 [3] jump tests.collatz:iterate 1 2 :: i x1
 [4] return [3]
 
-___ tests.collatz:iterate (2 -> 1) x2 rec ___
+___ tests.collatz:iterate (2 -> 1) x3 rec ___
 [1] changing var :: ?i x2
-[2] changing var :: ?i x2
-[3] __primitive.gt &2 &4 :: y x2
-[4] val 1 :: i x2
+[2] changing var :: ?i x4
+[3] __primitive.gt &2 &4 :: y x3
+[4] val 1 :: i x5
 [5] __primitive.not &3 :: y x1
 [6] __primitive.assert &1 5 :: i? x1
-[7] return [6] -> 12
-[8] __primitive.assert 11 3 :: i? x1
-[9] tests.collatz_step 2 :: i x1
-[10] __primitive.add 1 4 :: i x1
-[11] jump tests.collatz:iterate 9 10 :: i x1
-[12] return [8]
+[7] return [6] -> 17
+[8] __primitive.assert 16 &3 :: i? x1
+[9] __primitive.add 1 &4 :: i x2.
+[10] __primitive.bitand &2 &4 in [0, 1] :: i x2.
+[11] __primitive.eq &10 12 :: y x1
+[12] val 0 :: i x1
+[13] __primitive.assert 14 11 :: i? x1
+[14] __primitive.div &2 15 :: i? x1
+[15] val 2 :: i x1
+[16] jump tests.collatz:iterate 13 9 :: i x1
+[17] return [8] -> 25
+[18] __primitive.assert 24 3 :: i? x1
+[19] __primitive.eq 10 &4 :: y x1
+[20] __primitive.assert 23 19 :: i? x1
+[21] __primitive.mul 2 22 :: i x1
+[22] val 3 :: i x1
+[23] __primitive.add 21 4 :: i x1
+[24] jump tests.collatz:iterate 20 9 :: i x1
+[25] return [18]
 
 ___ tests.collatz_step (1 -> 1) x2 ___
 [1] var :: ?i x3
@@ -3869,21 +3904,22 @@ ___ tests.compose_alt (1 -> 1) x2 ___
 [7] return [3]
 
 ___ tests.compute_fn (1 -> 1) x2 ___
-[1] var :: ?i x4
-[2] __primitive.bitand &1 &3 in [0, 2147483648] :: i x1
-[3] val 2147483648 :: i x2
-[4] __primitive.eq 2 &5 :: y x1
-[5] val 0 :: i x3
-[6] __primitive.not 4 :: y x1
-[7] __primitive.eq &1 &5 :: y x1
-[8] jump logic.or 6 7 :: y x2
-[9] __primitive.assert &1 &8 :: i? x1
-[10] return [9] -> 15
-[11] __primitive.not 8 :: y x1
-[12] __primitive.assert 14 11 :: i? x1
-[13] tests.collatz:iterate 1 5 :: i x1
-[14] __primitive.bitor 13 3 :: i x1
-[15] return [12]
+[1] var in [0, 1] :: ?i x4
+[2] __primitive.eq &1 &3 :: y x2
+[3] val 0 :: i x3
+[4] __primitive.not &2 :: y x1
+[5] __primitive.bitand &1 &6 is 0 :: i x1
+[6] val 2147483648 :: i x2
+[7] __primitive.eq 5 &3 :: y x1
+[8] __primitive.not 7 :: y x1
+[9] __primitive.assert 8 4 :: y? x1
+[10] __primitive.assert &1 2 in [0, 1] :: i? x1
+[11] return [10] -> 16
+[12] __primitive.not 9 :: y x1
+[13] __primitive.assert 15 12 :: i? x1
+[14] tests.collatz:iterate 1 3 :: i x1
+[15] __primitive.bitor 14 6 :: i x1
+[16] return [13]
 
 ___ tests.concat_map (2 -> 1) ___
 [1] var :: ?l x1
@@ -3941,19 +3977,28 @@ ___ tests.decel (1 -> 1) ___
 [3] jump tests.decel:iterate 1 2 :: i x1
 [4] return [3]
 
-___ tests.decel:iterate (2 -> 1) x2 rec ___
+___ tests.decel:iterate (2 -> 1) x3 rec ___
 [1] changing var :: ?i x2
-[2] changing var :: ?i x2
-[3] __primitive.gt &2 &4 :: y x2
-[4] val 1 :: i x2
+[2] changing var :: ?i x5
+[3] __primitive.gt &2 &4 :: y x3
+[4] val 1 :: i x3
 [5] __primitive.not &3 :: y x1
 [6] __primitive.assert &1 5 :: i? x1
-[7] return [6] -> 12
-[8] __primitive.assert 11 3 :: i? x1
-[9] tests.decel_step 2 :: i x1
-[10] __primitive.add 1 4 :: i x1
-[11] jump tests.decel:iterate 9 10 :: i x1
-[12] return [8]
+[7] return [6] -> 15
+[8] __primitive.assert 14 &3 :: i? x1
+[9] __primitive.add 1 &4 :: i x2.
+[10] __primitive.lte &2 &11 :: y x1
+[11] val 5 :: i x3
+[12] __primitive.assert 13 10 :: i? x1
+[13] __primitive.sub 2 4 :: i x1
+[14] jump tests.decel:iterate 12 9 :: i x1
+[15] return [8] -> 21
+[16] __primitive.assert 20 3 :: i? x1
+[17] __primitive.gt &2 &11 :: y x1
+[18] __primitive.assert 19 17 :: i? x1
+[19] __primitive.sub 2 11 :: i x1
+[20] jump tests.decel:iterate 18 9 :: i x1
+[21] return [16]
 
 ___ tests.decel_step (1 -> 1) x2 ___
 [1] var :: ?i x4
@@ -4538,23 +4583,28 @@ ___ tests.f23 (2 -> 1) ___
 [3] jump tests.f23:zip 2 1 :: l x1
 [4] return [3]
 
-___ tests.f23:zip (2 -> 1) rec row ___
+___ tests.f23:zip (2 -> 1) x2 rec row ___
 [1] changing var :: ?l x1
 [2] changing var :: ?l x1
 [3] __primitive.ap 2 -> 4 :: l? x2
-[4] __primitive.dep 3 :: i x4
+[4] __primitive.dep 3 :: i x6
 [5] __primitive.ap 1 -> 6 :: l? x2
-[6] __primitive.dep 5 :: i x4
-[7] __primitive.seq 8 &4 :: i x1
-[8] __primitive.seq 9 &6 :: i x1
-[9] num.max &4 &6 :: i x1
-[10] __primitive.seq 11 &4 :: l x1
-[11] __primitive.seq 12 &6 :: l x1
-[12] jump tests.f23:zip 3 5 :: l x1
-[13] __primitive.pushr 10 7 :: l x1
-[14] __primitive.seq 13 6 :: l x1
-[15] __primitive.seq 14 4 :: l x1
-[16] return [15]
+[6] __primitive.dep 5 :: i x6
+[7] __primitive.seq 8 &4 :: l x1
+[8] __primitive.seq 14 &6 :: l x1
+[9] __primitive.lte &4 &6 :: y x1
+[10] __primitive.assert &6 9 :: i? x1
+[11] __primitive.seq 12 4 :: l x2.
+[12] __primitive.seq 13 6 :: l x1.
+[13] jump tests.f23:zip 3 5 :: l x1.
+[14] __primitive.pushr 11 10 :: l x1
+[15] return [7] -> 21
+[16] __primitive.lte &6 &4 :: y x1
+[17] __primitive.assert &4 16 :: i? x1
+[18] __primitive.pushr 11 17 :: l x1
+[19] __primitive.seq 18 6 :: l x1
+[20] __primitive.seq 19 4 :: l x1
+[21] return [20]
 
 ___ tests.f24 (1 -> 1) ___
 [1] var :: ?l x1
@@ -4565,15 +4615,16 @@ ___ tests.f24:map (1 -> 1) rec row ___
 [1] changing var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: l x2
-[4] __primitive.seq 11 &3 :: l x1
+[4] __primitive.seq 12 &3 :: l x1
 [5] tests.f24:map 2 :: l x1
 [6] __primitive.pushr 5 4 :: l x1
 [7] __primitive.ap 3 -> 8 9 :: l? x3
 [8] __primitive.dep 7 :: i x1
-[9] __primitive.dep 7 :: i x1
-[10] jump num.max 8 9 :: i x1
-[11] __primitive.pushr 7 10 :: l x1
-[12] return [6]
+[9] __primitive.dep 7 :: i x2
+[10] __primitive.lte 8 &9 :: y x1
+[11] __primitive.assert 9 10 :: i? x1
+[12] __primitive.pushr 7 11 :: l x1
+[13] return [6]
 
 ___ tests.f25 (1 -> 1) ___
 [1] var :: ?l x1
@@ -5619,19 +5670,27 @@ ___ tests.left_right (1 -> 1) ___
 [3] jump tests.left_right:map_with 1 2 :: l x1
 [4] return [3]
 
-___ tests.left_right:map_with (2 -> 1) rec row ___
-[1] changing var :: ?y x2
+___ tests.left_right:map_with (2 -> 1) x2 rec row ___
+[1] changing var :: ?y x4
 [2] changing var :: ?l x1
-[3] __primitive.ap 2 -> 4 :: l? x2
-[4] __primitive.dep 3 :: a x2
-[5] __primitive.seq 11 &4 :: l x1
-[6] logic.other &1 7 8 :: y x1
-[7] val Left :: y x1
-[8] val Right :: y x1
-[9] tests.left_right:map_with 3 6 :: l x1
-[10] __primitive.pushr 9 5 :: l x1
-[11] __primitive.quote 4 1 :: l x1
-[12] return [10]
+[3] __primitive.ap 2 -> 4 :: l? x3
+[4] __primitive.dep 3 :: a x4
+[5] __primitive.seq 12 &4 :: l x1
+[6] __primitive.eq_s &1 &7 :: y x1
+[7] val Left :: y x2
+[8] __primitive.assert &10 6 is Right :: y? x1
+[9] tests.left_right:map_with 3 8 :: l x1
+[10] val Right :: y x2
+[11] __primitive.pushr 9 5 :: l x1
+[12] __primitive.quote 4 1 :: l x1
+[13] return [11] -> 20
+[14] __primitive.eq_s &1 10 :: y x1
+[15] __primitive.assert 7 14 is Left :: y? x1
+[16] tests.left_right:map_with 3 15 :: l x1
+[17] __primitive.pushr 16 19 :: l x1
+[18] __primitive.quote &4 1 :: l x1
+[19] __primitive.seq 18 4 :: l x1
+[20] return [17]
 
 ___ tests.map_add1 (1 -> 1) ___
 [1] var :: ?l x1
@@ -6334,22 +6393,39 @@ ___ tests.stream_compute_fn (4 -> 3) ___
 [8] jump tests.stream_compute_fn:stream_modify_array:map_with 7 4 :: l x1
 [9] return [6 5 8]
 
-___ tests.stream_compute_fn:stream_modify_array:map_with (2 -> 1) rec row ___
+___ tests.stream_compute_fn:stream_modify_array:map_with (2 -> 1) x2 rec row ___
 [1] changing var is Array :: ?o x1
-[2] changing var :: ?i x3
-[3] __primitive.read_array 1 &2 -> 4 is Array :: o x2
-[4] __primitive.dep 3 :: i x1
-[5] tests.compute_fn 4 :: i x1
-[6] __primitive.write_array 3 &2 5 is Array :: o x2
-[7] __primitive.seq 14 &6 is True :: y x1
-[8] __primitive.add 2 9 :: i x1
-[9] val 1 :: i x1
-[10] __primitive.bitand 8 11 in [0, 15] :: i x1
-[11] val 15 :: i x1
-[12] jump tests.stream_compute_fn:stream_modify_array:map_with 10 6 :: l x1
-[13] __primitive.pushr 12 7 :: l x1
-[14] val True :: y x1
-[15] return [13]
+[2] changing var :: ?i x4
+[3] __primitive.read_array 1 &2 -> 4 is Array :: o x3
+[4] __primitive.dep 3 :: i x4
+[5] __primitive.eq &4 &6 :: y x2
+[6] val 0 :: i x3
+[7] __primitive.assert &4 &5 :: i? x1
+[8] __primitive.write_array 3 &2 7 is Array :: o x2
+[9] __primitive.seq 16 &8 is True :: y x1
+[10] __primitive.add 2 11 :: i x1.
+[11] val 1 :: i x1
+[12] __primitive.bitand 10 13 in [0, 15] :: i x2.
+[13] val 15 :: i x1
+[14] jump tests.stream_compute_fn:stream_modify_array:map_with 12 8 :: l x1
+[15] __primitive.pushr 14 9 :: l x1
+[16] val True :: y x2
+[17] return [15] -> 32
+[18] __primitive.not 5 :: y x1
+[19] __primitive.assert 23 18 :: y? x1
+[20] __primitive.bitand &4 &21 in [0, 2147483648] :: i x1
+[21] val 2147483648 :: i x2
+[22] __primitive.eq 20 &6 :: y x1
+[23] __primitive.not 22 :: y x1
+[24] __primitive.not 19 :: y x1
+[25] __primitive.assert 27 24 :: i? x1
+[26] tests.collatz:iterate 4 6 :: i x1
+[27] __primitive.bitor 26 21 :: i x1
+[28] __primitive.write_array 3 2 25 is Array :: o x2
+[29] jump tests.stream_compute_fn:stream_modify_array:map_with 12 &28 :: l x1
+[30] __primitive.seq 16 28 is True :: y x1
+[31] __primitive.pushr 29 30 :: l x1
+[32] return [31]
 
 ___ tests.sum3 (3 -> 1) ___
 [1] var :: ?a x1
@@ -6531,14 +6607,44 @@ ___ tests.two_to_twenty (1 -> 1) ___
 [9] __primitive.assert 6 7 in [1, 10] :: i? x1
 [10] return [9]
 
-___ tests.vifte_collatz (1 -> 1) x2 rec ___
-[1] changing var :: ?i x2
-[2] tests.vifte_collatz_step 1 >= 2 :: i x3
-[3] __primitive.seq 4 &2 :: v x1
-[4] jump tests.vifte_collatz 2 :: v x1
-[5] return [3] -> 7
-[6] __primitive.unless 1 2 :: i x1
-[7] return [6]
+___ tests.vifte_collatz (1 -> 1) x4 rec ___
+[1] changing var >= 1 :: ?i x5
+[2] __primitive.bitand &1 &3 in [0, 1] :: i x2
+[3] val 1 :: i x5
+[4] __primitive.eq &2 &3 :: y x2
+[5] __primitive.assert &8 &4 >= 4 :: i? x2
+[6] __primitive.mul &1 7 >= 3 :: i x1.
+[7] val 3 :: i x1
+[8] __primitive.add 6 &3 >= 4 :: i x2.
+[9] __primitive.gt &5 &3 :: y x2
+[10] __primitive.assert 5 &9 >= 4 :: i? x4
+[11] __primitive.seq 12 &10 :: v x1
+[12] jump tests.vifte_collatz 10 :: v x1
+[13] return [11] -> 25
+[14] __primitive.eq 2 15 :: y x2
+[15] val 0 :: i x1
+[16] __primitive.assert &17 &14 >= 2 :: i? x2
+[17] __primitive.div &1 18 >= 2 :: i? x2
+[18] val 2 :: i x1
+[19] __primitive.gt &16 3 :: y x2
+[20] __primitive.assert 16 &19 >= 2 :: i? x4
+[21] __primitive.assert 8 4 >= 4 :: i? x1
+[22] __primitive.assert 21 9 >= 4 :: i? x2
+[23] __primitive.seq 24 &20 :: i x1
+[24] jump tests.vifte_collatz 20 :: i x1
+[25] return [23] -> 32
+[26] __primitive.unless &1 &10 >= 1 :: i x1
+[27] __primitive.unless 26 &22 >= 1 :: i x1
+[28] __primitive.unless 27 &20 >= 1 :: i x1
+[29] __primitive.assert 17 14 >= 2 :: i? x1
+[30] __primitive.assert 29 19 >= 2 :: i? x2
+[31] __primitive.unless 28 30 >= 1 :: i x1
+[32] return [31] -> 37
+[33] __primitive.unless 1 10 >= 4 :: i x1
+[34] __primitive.unless 33 22 >= 4 :: i x1
+[35] __primitive.unless 34 20 >= 4 :: i x1
+[36] __primitive.unless 35 30 >= 4 :: i x1
+[37] return [36]
 
 ___ tests.vifte_collatz_step (1 -> 1) x2 ___
 [1] var >= 1 :: ?i x3

@@ -961,11 +961,14 @@ void trace_update_2(tcell_t *v, cell_t *c) {
         type_t pt = trace_type(p);
         if(pt != t || !range_eq(r, p->trace.range)) {
           p->trace.range = r;
-          assert_error(ONEOF(pt, T_ANY, T_BOTTOM) || ONEOF(t, T_BOTTOM, pt), "@type");
-          trace_set_type(p, t);
-          LOG("updated var %C (%s[%d]) to %t[%d, %d]",
-              c, entry->word_name, p-entry, t, r.min, r.max);
-          assert_error(trace_type(p) != T_OPAQUE || range_singleton(r));
+          if(ONEOF(pt, T_ANY, T_BOTTOM) || ONEOF(t, T_BOTTOM, pt)) {
+            trace_set_type(p, t);
+            LOG("updated var %C (%s[%d]) to %t[%d, %d]",
+                c, entry->word_name, p-entry, t, r.min, r.max);
+            assert_error(trace_type(p) != T_OPAQUE || range_singleton(r));
+          } else {
+            assert_error(!is_var(c) || FLAG(*c, value, DEP), "@type"); // ***
+          }
         }
         int i = tr_index(p->expr.arg[0]);
         p = i && ONEOF(p->op, OP_assert, OP_unless, OP_seq) ? &entry[i] : NULL;
