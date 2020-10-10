@@ -1215,7 +1215,8 @@ unsigned int trace_reduce(tcell_t *entry, cell_t **cp) {
       bool has_lists = false;
       FORLIST(a, *p, true) { // ***
         collapse_row(a);
-        response rsp = WITH(x, &CTX(any), x->priority = PRIORITY_MAX,
+        response rsp = WITH(x, &CTX(any),
+                            x->priority = PRIORITY_TOP,
                             reduce(a, x));
         if(rsp != SUCCESS) goto loop_start; // ***
         if(is_value(*a) &&
@@ -1231,7 +1232,10 @@ unsigned int trace_reduce(tcell_t *entry, cell_t **cp) {
       }
       if(has_lists && !entry->entry.parent) {
         LOG("reducing outer lists in %C", *p);
-        if(WITH(x, &CTX(return), x->priority = PRIORITY_REDUCE_LISTS, func_list(p, x)) != SUCCESS) goto loop_start;
+        if(WITH(x, &CTX(return),
+                x->priority = PRIORITY_TOP,
+                x->flags |= CONTEXT_REDUCE_LISTS,
+                func_list(p, x)) != SUCCESS) goto loop_start;
       }
       int x = trace_return(entry, *p);
       tcell_t *r = &entry[x];

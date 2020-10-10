@@ -145,7 +145,9 @@ OP(seq) {
   cell_t *q = NULL;
   bool q_var = false;
   int pos = c->pos;
-  CHECK(WITH(x, &CTX(any), x->flags |= CONTEXT_SEQ, reduce_arg(c, 1, x))); // don't split arg here?
+  CHECK(WITH(x, &CTX(any),
+             x->flags |= CONTEXT_SEQ,
+             reduce_arg(c, 1, x))); // don't split arg here?
   if(rsp == SUCCESS) {
     q = c->expr.arg[1];
     q_var = is_var(q);
@@ -227,7 +229,9 @@ OP(unless) {
   cell_t **p = &c->expr.arg[0];
   cell_t **q = &c->expr.arg[1];
   while(*q) {
-    response rsp0 = WITH(x, &CTX(any), x->flags ^= CONTEXT_INV, reduce(q, x));
+    response rsp0 = WITH(x, &CTX(any),
+                         x->flags ^= CONTEXT_INV,
+                         reduce(q, x));
     CHECK_IF(rsp0 == RETRY, RETRY);
     if(rsp0 == DELAY) {
       rsp = DELAY;
@@ -409,9 +413,11 @@ response func_compose_ap(cell_t **cp, context_t *ctx, bool row) {
     bs = compose_size_b(arg_in, as, cs);
   }
 
-  CHECK(reduce_arg(c, in, &CTX(list,
-                               out ? arg_in : bs.in, // only account for known inputs when there are outputs
-                               bs.out)));
+  CHECK(WITH(x, &CTX(list,
+                     out ? arg_in : bs.in, // only account for known inputs when there are outputs
+                     bs.out),
+             x->flags &= ~CONTEXT_REDUCE_LISTS,
+             reduce_arg(c, in, x)));
   bs = quote_size(c->expr.arg[in], false);
   as = row ? compose_size_a(arg_in, bs, cs) : (qsize_t) {0, 0};
 

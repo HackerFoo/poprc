@@ -360,7 +360,7 @@ response reduce(cell_t **cp, context_t *ctx) {
     }
 
     if(r == SUCCESS &&
-       ctx->priority == PRIORITY_REDUCE_LISTS &&
+       ctx->flags & CONTEXT_REDUCE_LISTS &&
        is_list(*cp) &&
        closure_is_ready(*leftmost(cp))) {
       r = func_list(cp, ctx);
@@ -387,7 +387,9 @@ response reduce(cell_t **cp, context_t *ctx) {
 
 response simplify_2(cell_t **cp, context_t *ctx) {
   CONTEXT("simplify %C", *cp);
-  return WITH(x, ctx, x->priority = PRIORITY_SIMPLIFY,
+  return WITH(x, ctx,
+              x->flags &= ~CONTEXT_REDUCE_LISTS,
+              x->priority = PRIORITY_SIMPLIFY,
               reduce(cp, x));
 }
 

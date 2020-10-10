@@ -106,8 +106,7 @@ typedef enum __attribute__((packed)) priority {
   PRIORITY_DELAY,
   PRIORITY_EXEC_SELF,
   PRIORITY_UNLESS,
-  PRIORITY_MAX,
-  PRIORITY_REDUCE_LISTS
+  PRIORITY_MAX
 } priority_t;
 #define PRIORITY_TOP (PRIORITY_MAX - 1)
 static_assert(sizeof(priority_t) == 1, "priority_t too big");
@@ -128,10 +127,11 @@ struct context {
   uint8_t flags; // see below [up/down]
 };
 
-#define CONTEXT_RETRY 0x01
-#define CONTEXT_INV   0x02
-#define CONTEXT_SEQ   0x04
-#define CONTEXT_DOWN  (CONTEXT_INV | CONTEXT_SEQ)
+#define CONTEXT_RETRY         0x01
+#define CONTEXT_INV           0x02
+#define CONTEXT_SEQ           0x04
+#define CONTEXT_REDUCE_LISTS  0x08
+#define CONTEXT_DOWN  (CONTEXT_INV | CONTEXT_SEQ | CONTEXT_REDUCE_LISTS)
 
 typedef enum response {
   SUCCESS = 0, // continue reduction

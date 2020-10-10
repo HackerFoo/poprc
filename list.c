@@ -100,6 +100,7 @@ response func_list(cell_t **cp, context_t *ctx) {
 
     // commit - force everything in this branch ***
     ctx->priority = PRIORITY_TOP;
+    ctx->flags &= ~CONTEXT_REDUCE_LISTS;
     c->priority = 0;
   }
 
@@ -112,6 +113,7 @@ response func_list(cell_t **cp, context_t *ctx) {
     context_t *arg_ctx = row && i == n - 1 ?
       &CTX(list, 0, 0) :
       &CTX(any);
+    if(ctx->t != T_RETURN) arg_ctx->flags &= ~CONTEXT_REDUCE_LISTS;
     if(c->value.ptr[i] && !closure_is_ready(c->value.ptr[i])) continue;
     response r = reduce_ptr(c, i, arg_ctx);
     if(ctx->depth > 0 && r == FAIL) {
