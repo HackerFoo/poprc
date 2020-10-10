@@ -785,6 +785,7 @@ void get_trace_info_for_output(trace_t *tr, const tcell_t *e, int n) {
 
   if(!e->trace.first_return) return;
   const tcell_t *p = &e[e->trace.first_return];
+  assert_error(p->trace.type == T_RETURN);
 
   while(p) {
     const tcell_t *tc = tref(e, p->value.ptr[i]);

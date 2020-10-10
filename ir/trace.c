@@ -956,6 +956,7 @@ void trace_update_2(tcell_t *v, cell_t *c) {
     } else {
       tcell_t *p = tc;
       do {
+        assert_error(p->op);
         range_t r = range_union(p->trace.range, c_range);
         type_t pt = trace_type(p);
         if(pt != t || !range_eq(r, p->trace.range)) {
@@ -966,8 +967,8 @@ void trace_update_2(tcell_t *v, cell_t *c) {
               c, entry->word_name, p-entry, t, r.min, r.max);
           assert_error(trace_type(p) != T_OPAQUE || range_singleton(r));
         }
-        p = ONEOF(p->op, OP_assert, OP_unless, OP_seq) ?
-          &entry[tr_index(p->expr.arg[0])] : NULL;
+        int i = tr_index(p->expr.arg[0]);
+        p = i && ONEOF(p->op, OP_assert, OP_unless, OP_seq) ? &entry[i] : NULL;
 
         assert_counter(1000); // ***
       } while(p);
