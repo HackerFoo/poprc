@@ -130,7 +130,8 @@ struct context {
 
 #define CONTEXT_RETRY 0x01
 #define CONTEXT_INV   0x02
-#define CONTEXT_DOWN  CONTEXT_INV
+#define CONTEXT_SEQ   0x04
+#define CONTEXT_DOWN  (CONTEXT_INV | CONTEXT_SEQ)
 
 typedef enum response {
   SUCCESS = 0, // continue reduction

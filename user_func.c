@@ -1221,6 +1221,25 @@ bool has_var(const cell_t *c) {
   return false;
 }
 
+static
+bool eliminate_seq(context_t *ctx) {
+  if(ctx->flags & CONTEXT_SEQ) {
+    cell_t **cp = NULL;
+    FOLLOW(x, ctx, up) {
+      cp = x->src;
+      if(!(x->flags & CONTEXT_SEQ)) {
+        break;
+      }
+      x->flags |= CONTEXT_RETRY;
+    }
+    cell_t *c = *cp;
+    *cp = ref(c->expr.arg[0]);
+    drop(c);
+    return true;
+  }
+  return false;
+}
+
 OP(exec) {
   tcell_t *entry = closure_entry(*cp);
   PRE(exec, "%s", entry->word_name);
@@ -1270,6 +1289,8 @@ OP(exec) {
           if(n == 1) {
             store_reduced(cp, ctx, ref(c->expr.arg[0])); // HACK
             return SUCCESS;
+          } else if(eliminate_seq(ctx)) {
+            return RETRY;
           } else { // TODO properly move recursive function out
             cell_t **l = NULL;
             FOLLOW(p, ctx, up) { // cause retry up to return
