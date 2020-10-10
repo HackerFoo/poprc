@@ -4669,6 +4669,29 @@ ___ tests.f26:interleave (2 -> 1) x2 rec row ___
 [17] val Left :: y x1
 [18] return [15]
 
+___ tests.f30 (2 -> 1) x2 ___
+[1] var :: ?i x2
+[2] var :: ?a x1
+[3] __primitive.div &4 &1 :: i? x1
+[4] val 1 :: i x2
+[5] __primitive.eq 3 4 :: y x2
+[6] __primitive.assert 1 &5 :: i? x1
+[7] return [6] -> 10
+[8] __primitive.not 5 :: y x1
+[9] __primitive.assert 2 8 :: a? x1
+[10] return [9]
+
+___ tests.f30b (2 -> 1) x2 ___
+[1] var :: ?i x2
+[2] var :: ?a x1
+[3] __primitive.eq &1 4 :: y x2
+[4] val 1 :: i x1
+[5] __primitive.assert 1 &3 :: i? x1
+[6] return [5] -> 9
+[7] __primitive.not 3 :: y x1
+[8] __primitive.assert 2 7 :: a? x1
+[9] return [8]
+
 ___ tests.f6 (3 -> 3) ___
 [1] var :: ?a x1
 [2] var :: ?a x1
@@ -4860,7 +4883,7 @@ ___ tests.fuse_filter_sum:sum:foldr:iterate:next_match (1 -> 2) x2 rec ___
 [14] __primitive.assert 12 10 :: l? x1
 [15] return [14 11]
 
-___ tests.fuse_filter_tail2 (1 -> 1) x3 ___
+___ tests.fuse_filter_tail2 (1 -> 1) x2 ___
 [1] var :: ?l x1
 [2] __primitive.ap 1 -> 3 :: l? x2
 [3] __primitive.dep 2 :: i x1
@@ -4868,15 +4891,12 @@ ___ tests.fuse_filter_tail2 (1 -> 1) x3 ___
 [5] val 1 :: i x2
 [6] __primitive.eq 4 5 :: y x2
 [7] __primitive.assert &8 &6 :: l? x1
-[8] jump tests.fuse_filter_tail2:filter2 2 :: l x3.
+[8] jump tests.fuse_filter_tail2:filter2 2 :: l x2.
 [9] return [7] -> 13
-[10] __primitive.not 6 :: y x2
-[11] __primitive.assert 12 &10 :: l? x1
-[12] __primitive.ap &8 -> X :: l? x1
-[13] return [11] -> 16
-[14] __primitive.assert 15 10 :: l? x1
-[15] __primitive.ap 8 -> X :: l? x1
-[16] return [14]
+[10] __primitive.not 6 :: y x1
+[11] __primitive.assert 12 10 :: l? x1
+[12] __primitive.ap 8 -> X :: l? x1
+[13] return [11]
 
 ___ tests.fuse_filter_tail2:filter2 (1 -> 1) x2 rec row ___
 [1] changing var :: ?l x1

@@ -79,9 +79,10 @@ OP(value) {
       range_t r = range_intersect(c->value.range, ctx->bound);
       if(!range_eq(r, c->value.range)) {
         if(ctx_split(c, ctx)) {
+          ctx->alt_set = c->value.alt_set;
           c->value.range = r;
-          if(is_any(c) && ctx->t != T_ANY) {
-            c->value.type = ctx->t;
+          if(is_any(c)) {
+            c->value.type = T_INT;
           }
         }
       }

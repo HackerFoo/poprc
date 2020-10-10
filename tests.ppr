@@ -673,3 +673,6 @@ f27: interleave [odd] filter __ {hide}
 
 left_right: Left [swap dup [[] pushl pushl_seq] dip21 Left Right other swap] map_with
 f28: left_right unzip_either __ {hide}
+
+f30: [dup 1 swap / 1 ==] ap10 ifdo
+f30b: [dup 1 / 1 ==] ap10 ifdo
