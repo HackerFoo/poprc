@@ -458,7 +458,7 @@ zip_add: [+] zip
 
 stream_combine: popr_para default [[stream_combine] $$] dip21 pushr
 
-axi_lite_slave: stream_read_write_array
+axi_lite_slave: stream_read_write_array __ {hide}
 
 three_reads: [[read_array swap] dip22 read_array swap] dip33 read_array swap -swap3
 
@@ -489,9 +489,9 @@ fuse_zip_zip:
 id_map: [id] map __ eliminate this
 id_map2: popr [id_map2] dip11 pushr
 
-axil_map_w: [3+] map stream_read_write_array
-axil_map_w_fib: [fibl] map stream_read_write_array
-axil_map_r: stream_read_write_array [[3+] map] dip11
+axil_map_w: [3+] map stream_read_write_array __ {hide}
+axil_map_w_fib: [fibl] map stream_read_write_array __ {hide}
+axil_map_r: stream_read_write_array [[3+] map] dip11 __ {hide}
 
 __ [l] [p] filter -> [..x..] such that for all x, x p == True
 old_filter:
@@ -511,32 +511,6 @@ fuse_filter_tail: [odd] filter tail __ {hide}
 fuse_filter_tail2: [odd] filter2 tail
 
 fuse_map_ho: swap [map] pushl swap [map] pushl . $
-
-__ Array sRA sWA sW f_wa f_w stream_compute
-stream_compute:
-  [dup_under .
-    [[swap [map] dip21] dip32 map] .] pushq2 pushq2 pushq
-    [[stream_read_array, __ read
-      stream_write_array, __ write
-      stream_write_array]] __ compute
-    [.] zip get3 fork_array3
-
-__ Array sRA sWA sW f_w stream_compute
-stream_compute2:
-  []ap40
-    [drop drop drop stream_read_array] __ read
-    [drop nip2 stream_write_array] __ write
-    [map nip2 stream_write_array] __ compute
-    fork_cmp3 fork_array3
-
-__ Fixed-function version of stream_compute to simplify testing
-__ Array sRA sWA sW stream_compute_ff
-stream_compute_ff:
-  []ap30
-    [drop drop stream_read_array] __ read
-    [nip2 stream_write_array] __ write
-    [[[1+] map] [[3*] map] para nip2 stream_write_array] __ compute
-    fork_cmp3 fork_array3
 
 help: "Type `:help` (with initial colon) for help.\n" write_std
 
@@ -592,7 +566,6 @@ return_test: [dup] pushl [[3* dup, 5+ dup]] pushl return drop get3
 compute_fn:
   dup dup 0 == [1 31<<b &b 0 == not] dip11 or
     [!] [[collatz 1 31<<b |b] dip11 not!] | $$
-stream_compute_fn: 0 [1+ 15&b] iteratel [compute_fn] stream_compute3
 
 dotswap: . swap . swap .
 
@@ -610,14 +583,6 @@ __ This understandable, but unfortunate. This also implies:
 __ [1 2] [3+] map [4 5 6] [7+] map .  ===>  [11 12 13]
 sc3b: [] pushq [[+]] [.] zip [$] . $
 sc3b2: [] pushq [[+]] [.] zip head $
-
-__ Array sRA sWA sW sAF f_w stream_compute
-stream_compute3:
-  [] pushq2 pushq2 pushq
-    [[stream_read_array, __ read
-      stream_write_array, __ write
-      stream_modify_array]] __ compute
-    [.] zip get3 fork_array3
 
 map_iteratel: 0 [1+] iteratel swap map
 
@@ -674,5 +639,29 @@ f27: interleave [odd] filter __ {hide}
 left_right: Left [swap dup [[] pushl pushl_seq] dip21 Left Right other swap] map_with
 f28: left_right unzip_either __ {hide}
 
+f29l: [[Left] pushl_seq] map unzip_either
+f29r: [[Right] pushl_seq] map unzip_either
+
 f30: [dup 1 swap / 1 ==] ap10 ifdo
 f30b: [dup 1 / 1 ==] ap10 ifdo
+
+__ simplified versions of stream_read_write_1
+f31:
+  [[[+ Right tag] pushl] map,
+   [[+ Left tag] pushl] map] para
+    interleave
+    swap [$-] map_with
+
+__ x t tag -> x [x t]
+tag: quote [dup] dip12 pushl
+
+f31b:
+  [[[+ dup] pushl] map] both
+    interleave
+    swap [$-] map_with
+
+f31c:
+  [[[+ dup] pushl] map] both
+    swap2 [[$-] map_with] pushl both
+
+f32: interleave [1+] map

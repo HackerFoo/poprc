@@ -153,4 +153,3 @@ __ algorithm
 
 __ io
 Array 3 42 write_array 3 [7/] update_array 3 read_array
-Array 1 10 write_array 2 20 write_array 3 30 write_array [1 2 3] stream_read_array

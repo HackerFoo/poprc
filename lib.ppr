@@ -268,6 +268,15 @@ interleave_with:
   [pick] dip23 swap $-seq __ [a] [b] c0' c1'
     [interleave_with] dip31 dup [pushr] dip21 seq
 
+interleave_with2:
+  [[[[].] map,
+    [[interleave_apply_right].] map] para] dip22 interleave_with
+      [] [swap .] foldr
+
+__ [l] [r] a [f] -> [l fa] [r] a' (left), [l] [r fa] a' (right)
+interleave_apply_left: $-seq [swap2] dip33 pushr -swap2
+interleave_apply_right: $-seq [swap] dip22 pushr swap
+
 __ [l] [r] x Left/Right -> [l x] [r] / [l] [r x]
 either_push:
   [Left =:= [[swap] dip22 pushr swap] dip32 !!]
@@ -632,28 +641,41 @@ is_eof:
 __ Array addr [fn] -> Array
 update_array: [tuck read_array [swap] dip22] dip23 $ write_array
 
-__ Array [... idx] stream_read_array -> [... data]
-stream_read_array: swap [read_array] map_with
-
-__ Array [... idx] [... data] stream_write_array -> [... True]
-stream_write_array: swap2 [-swap2 write_array dup True swap seq swap] zip_with
-
-fork_array2:
-  [[dup] dip12 $ swap] dip22 $
-
-__ Array sRA sWA sW -> sR sB
-stream_read_write_array:
-  [] pushq2 pushq
-    [[stream_read_array, __ read
-      stream_write_array]] __ write
-    [.] zip get2 fork_array2
-
-fork_array3:
-  [[[dup] dip12 $ swap] dip22
-    [dup] dip12 $ swap] dip33 $
-
 __ Array a f -> Array
 stream_modify_array1: [dup [read_array] dip22 swap] dip23 $ write_array
 stream_modify_array:
   [stream_modify_array1 dup True swap seq] pushl
     [swap] dip22 map_with
+
+ __ [RA] -> [[Array -> Array R B]]
+stream_read_array:
+  [[read_array quote __ [R]
+     [[]] pushl] __ [[R] []]
+     ap10] map
+
+__ [WA] [W] -> [[Array -> Array R B]]
+stream_write_array:
+  [[write_array dup [True swap seq] pushl __ [B]
+     [[] swap] pushl] __ [[] [B]]
+     ap20] zip
+
+__ Array sRA sWA sW -> sR sB
+stream_read_write_array_1:
+  [[write_array dup True swap seq [Right] pushl] ap20] zip
+    [[[read_array [Left] pushl] pushl] map] dip11
+    interleave
+    swap [$-] map_with
+
+stream_read_write_array: stream_read_write_array_1 unzip_either
+
+__ Array sRA -> sR sB {hide}
+stream_read_write_array_ro:
+  [[read_array [Left] pushl] pushl] map
+    swap [$-] map_with
+    unzip_either
+
+__ Array sWA sW -> sR sB {hide}
+stream_read_write_array_wo:
+  [[write_array dup True swap seq [Right] pushl] ap20] zip
+    swap [$-] map_with
+    unzip_either
