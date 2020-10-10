@@ -1230,7 +1230,7 @@ unsigned int trace_reduce(tcell_t *entry, cell_t **cp) {
           LOG("has list %C", *a);
         }
       }
-      if(has_lists && !entry->entry.parent) {
+      if(has_lists) {
         LOG("reducing outer lists in %C", *p);
         if(WITH(x, &CTX(return),
                 x->priority = PRIORITY_TOP,
