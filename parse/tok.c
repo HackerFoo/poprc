@@ -204,7 +204,7 @@ seg_t tok(const char *s, const char* e, char_class_t *class, attr_t *attr_before
     switch(ncc) {
     case CC_NUMERIC: // negative numbers
       if(cc == CC_FLOAT) continue;
-      if(s[-1] == '-') {
+      if(i == 1 && s[-1] == '-') {
         cc = CC_NUMERIC;;
         continue;
       } else if(cc == CC_ALPHA) { // allow numeric after alpha
@@ -249,6 +249,12 @@ seg_t tok(const char *s, const char* e, char_class_t *class, attr_t *attr_before
       if(cc == CC_SYMBOL && s[-1] != ':') {
         cc = CC_ALPHA;
         continue; // allow symbols to be followed with letters
+      }
+      break;
+    case CC_SYMBOL: // 5e-3
+      if(cc == CC_FLOAT &&
+         i > 0 && ONEOF(s[-1], 'e', 'E')) {
+        continue;
       }
       break;
     default:

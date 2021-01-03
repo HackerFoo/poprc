@@ -121,3 +121,6 @@ __ fix me
 
 __ comma
 [[1,2],3,[4,5]]
+
+__ number parsing
+-0.005 -5e-3 5e-3 5e3 -0xa 0xA 0644 42
