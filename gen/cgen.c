@@ -342,7 +342,7 @@ void gen_tail_call(const tcell_t *e, const tcell_t *c) {
   // overwrite function arguments with new values
   COUNTUP(i, in) { // first copy input vars to avoid overwriting *** TODO toposort?
     int a = cgen_index(e, c->expr.arg[i]);
-    if(a <= in) {
+    if(a <= in && (int)(in - i) != a) {
       printf("  %s%d = %s%d;\n",
              cname(trace_type(&e[in - i])),
              (int)(in - i),
