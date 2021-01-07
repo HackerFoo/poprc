@@ -1,4 +1,4 @@
-Popr Compiler [![Build Status](https://travis-ci.org/HackerFoo/poprc.svg?branch=master)](https://travis-ci.org/HackerFoo/poprc)
+Popr Compiler [![Build Status](https://github.com/HackerFoo/poprc/workflows/Test/badge.svg)](https://github.com/HackerFoo/poprc/actions/)
 ============
 
 This project implements a compiler for the Popr language.
