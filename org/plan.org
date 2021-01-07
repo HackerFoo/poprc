@@ -1,0 +1,16 @@
+#+TITLE: PoprC Plan
+
+* 2021
+** FPGA project
+*** Simple accelerator
+- Handle multiple requests in parallel
+- Should take multiple cycles
+- May complete out of order
+** CPU project
+*** MIDI processing
+- simplified from midipush
+- requires streaming
+- improve arrays, records
+** Library
+*** Implement an efficient map data structure
+*** Serialization
